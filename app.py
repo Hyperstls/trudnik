@@ -1,5 +1,4 @@
 import math
-import time
 import uuid
 from datetime import datetime
 from functools import wraps
@@ -39,23 +38,26 @@ def refresh_access_token():
     if not refresh_token:
         return False
     refresh_url = f'{SUPABASE_URL}/auth/v1/token?grant_type=refresh_token'
-    resp = requests.post(refresh_url,
-                         json={'refresh_token': refresh_token},
-                         headers={'apikey': SUPABASE_KEY, 'Content-Type': 'application/json'},
-                         timeout=10)
-    if resp.ok:
-        data = resp.json()
-        session['access_token'] = data['access_token']
-        session['refresh_token'] = data.get('refresh_token', refresh_token)
-        session.modified = True
-        return True
-    else:
-        session.clear()
+    try:
+        resp = requests.post(refresh_url,
+                             json={'refresh_token': refresh_token},
+                             headers={'apikey': SUPABASE_KEY, 'Content-Type': 'application/json'},
+                             timeout=10)
+        if resp.ok:
+            data = resp.json()
+            session['access_token'] = data['access_token']
+            session['refresh_token'] = data.get('refresh_token', refresh_token)
+            session.modified = True
+            return True
+        else:
+            session.clear()
+            return False
+    except requests.RequestException:
         return False
 
 
 def supabase_request(method, endpoint, **kwargs):
-    """Запрос к Supabase REST API с повторными попытками и автообновлением токена."""
+    """Запрос к Supabase REST API с автообновлением токена при 401."""
     def _make_request():
         headers = {
             'apikey': SUPABASE_KEY,
@@ -69,10 +71,8 @@ def supabase_request(method, endpoint, **kwargs):
         url = f'{SUPABASE_URL}/rest/v1/{endpoint}'
         return requests.request(method, url, headers=headers, timeout=15, **kwargs)
 
-    # Первая попытка
     resp = _make_request()
     if resp.status_code == 401 and session.get('refresh_token'):
-        # Токен истёк – пробуем обновить
         if refresh_access_token():
             resp = _make_request()
     return resp
@@ -85,10 +85,14 @@ def upload_to_storage(bucket, file_path, file_data, content_type):
         'apikey': SUPABASE_KEY,
         'Authorization': f'Bearer {session["access_token"]}',
     }
-    resp = requests.post(storage_url, headers=headers,
-                         files={'file': (file_path, file_data, content_type)})
-    if resp.status_code in (200, 201):
-        return f'{SUPABASE_URL}/storage/v1/object/public/{bucket}/{file_path}'
+    try:
+        resp = requests.post(storage_url, headers=headers,
+                             files={'file': (file_path, file_data, content_type)},
+                             timeout=30)
+        if resp.status_code in (200, 201):
+            return f'{SUPABASE_URL}/storage/v1/object/public/{bucket}/{file_path}'
+    except requests.RequestException:
+        pass
     return None
 
 
@@ -170,12 +174,9 @@ def index():
     sort = request.args.get('sort', '')
 
     query = 'status=eq.open&select=*,photos:job_photos(*)'
-    if city:
-        query += f'&city=ilike.*{city}*'
-    if payment_min:
-        query += f'&payment_amount=gte.{payment_min}'
-    if payment_max:
-        query += f'&payment_amount=lte.{payment_max}'
+    if city: query += f'&city=ilike.*{city}*'
+    if payment_min: query += f'&payment_amount=gte.{payment_min}'
+    if payment_max: query += f'&payment_amount=lte.{payment_max}'
 
     resp = supabase_request('GET', f'jobs?{query}&order=created_at.desc')
     jobs = resp.json() if resp.ok else []
@@ -206,18 +207,19 @@ def index():
 
 @app.route('/workers')
 def workers():
-    city = request.args.get('city', '')
-    experience = request.args.get('experience', '')
-    payment_from = request.args.get('payment_from', '')
-    payment_to = request.args.get('payment_to', '')
-    rating_min = request.args.get('rating_min', '')
-
+    filters = {
+        'city': request.args.get('city', ''),
+        'experience': request.args.get('experience', ''),
+        'payment_from': request.args.get('payment_from', ''),
+        'payment_to': request.args.get('payment_to', ''),
+        'rating_min': request.args.get('rating_min', ''),
+    }
     query = 'role=eq.worker'
-    if city: query += f'&city=ilike.*{city}*'
-    if experience: query += f'&experience=ilike.*{experience}*'
-    if payment_from: query += f'&desired_payment=gte.{payment_from}'
-    if payment_to: query += f'&desired_payment=lte.{payment_to}'
-    if rating_min: query += f'&rating=gte.{rating_min}'
+    if filters['city']: query += f'&city=ilike.*{filters["city"]}*'
+    if filters['experience']: query += f'&experience=ilike.*{filters["experience"]}*'
+    if filters['payment_from']: query += f'&desired_payment=gte.{filters["payment_from"]}'
+    if filters['payment_to']: query += f'&desired_payment=lte.{filters["payment_to"]}'
+    if filters['rating_min']: query += f'&rating=gte.{filters["rating_min"]}'
 
     resp = supabase_request('GET', f'profiles?{query}&order=rating.desc')
     workers_list = resp.json() if resp.ok else []
@@ -232,12 +234,11 @@ def job_detail(job_id):
         flash('Задание не найдено', 'danger')
         return redirect(url_for('index'))
 
-    application_count = 0
     if session.get('role') == 'employer' and job['employer_id'] == session.get('user_id'):
         app_resp = supabase_request('GET', f'applications?job_id=eq.{job_id}&select=id')
-        if app_resp.ok and app_resp.json():
-            application_count = len(app_resp.json())
-    job['application_count'] = application_count
+        job['application_count'] = len(app_resp.json()) if app_resp.ok and app_resp.json() else 0
+    else:
+        job['application_count'] = 0
 
     already_applied = False
     if 'user_id' in session:
@@ -270,18 +271,22 @@ def login():
         email = request.form.get('email')
         password = request.form.get('password')
         auth_url = f'{SUPABASE_URL}/auth/v1/token?grant_type=password'
-        resp = requests.post(auth_url, json={'email': email, 'password': password},
-                             headers={'apikey': SUPABASE_KEY}, timeout=10)
-        if resp.ok:
-            data = resp.json()
-            session['access_token'] = data['access_token']
-            session['refresh_token'] = data.get('refresh_token', '')
-            session['user_id'] = data['user']['id']
-            role_resp = supabase_request('GET', f'profiles?id=eq.{data["user"]["id"]}&select=role')
-            session['role'] = role_resp.json()[0]['role'] if role_resp.ok and role_resp.json() else 'worker'
-            session.modified = True
-            return redirect(url_for('index'))
-        flash('Ошибка входа: неверный email или пароль', 'danger')
+        try:
+            resp = requests.post(auth_url, json={'email': email, 'password': password},
+                                 headers={'apikey': SUPABASE_KEY}, timeout=10)
+            if resp.ok:
+                data = resp.json()
+                session['access_token'] = data['access_token']
+                session['refresh_token'] = data.get('refresh_token', '')
+                session['user_id'] = data['user']['id']
+                role_resp = supabase_request('GET', f'profiles?id=eq.{data["user"]["id"]}&select=role')
+                session['role'] = role_resp.json()[0]['role'] if role_resp.ok and role_resp.json() else 'worker'
+                session.modified = True
+                return redirect(url_for('index'))
+            else:
+                flash('Ошибка входа: неверный email или пароль', 'danger')
+        except requests.RequestException:
+            flash('Ошибка соединения с сервером авторизации', 'danger')
     return render_template('login.html')
 
 
@@ -295,18 +300,22 @@ def register():
         city = request.form.get('city', '')
 
         signup_url = f'{SUPABASE_URL}/auth/v1/signup'
-        resp = requests.post(signup_url, json={'email': email, 'password': password},
-                             headers={'apikey': SUPABASE_KEY}, timeout=10)
-        if resp.ok:
-            user = resp.json()['user']
-            update_data = {'role': role, 'full_name': full_name, 'city': city}
-            if role == 'worker':
-                update_data['desired_payment'] = float(request.form.get('desired_payment', 0))
-                update_data['experience'] = request.form.get('experience', '')
-            supabase_request('PATCH', f'profiles?id=eq.{user["id"]}', json=update_data)
-            flash('Регистрация успешна. Теперь войдите.', 'success')
-            return redirect(url_for('login'))
-        flash('Ошибка регистрации', 'danger')
+        try:
+            resp = requests.post(signup_url, json={'email': email, 'password': password},
+                                 headers={'apikey': SUPABASE_KEY}, timeout=10)
+            if resp.ok:
+                user = resp.json()['user']
+                update_data = {'role': role, 'full_name': full_name, 'city': city}
+                if role == 'worker':
+                    update_data['desired_payment'] = float(request.form.get('desired_payment', 0))
+                    update_data['experience'] = request.form.get('experience', '')
+                supabase_request('PATCH', f'profiles?id=eq.{user["id"]}', json=update_data)
+                flash('Регистрация успешна. Теперь войдите.', 'success')
+                return redirect(url_for('login'))
+            else:
+                flash('Ошибка регистрации', 'danger')
+        except requests.RequestException:
+            flash('Ошибка соединения с сервером', 'danger')
     return render_template('register.html')
 
 
@@ -324,17 +333,14 @@ def logout():
 @login_required
 def profile():
     user_id = session['user_id']
-    error_message = None
     profile_data = None
     try:
         resp = supabase_request('GET', f'profiles?id=eq.{user_id}&select=*')
         if resp.ok and resp.json():
             profile_data = resp.json()[0]
-        else:
-            error_message = f'Supabase ответил: {resp.status_code} {resp.text}'
-    except Exception as e:
-        error_message = f'Ошибка связи с Supabase: {str(e)}'
-    return render_template('profile.html', profile=profile_data, error_message=error_message)
+    except requests.RequestException:
+        pass
+    return render_template('profile.html', profile=profile_data)
 
 
 @app.route('/profile/update', methods=['POST'])
@@ -366,8 +372,17 @@ def update_profile():
     try:
         supabase_request('PATCH', f'profiles?id=eq.{user_id}', json=data)
         flash('Профиль обновлён', 'success')
-    except Exception:
+    except requests.RequestException:
         flash('Не удалось обновить профиль', 'danger')
+    return redirect(url_for('profile'))
+
+
+@app.route('/profile/delete-photo', methods=['POST'])
+@login_required
+def delete_photo():
+    user_id = session['user_id']
+    supabase_request('PATCH', f'profiles?id=eq.{user_id}', json={'photo_url': None})
+    flash('Фото удалено', 'success')
     return redirect(url_for('profile'))
 
 

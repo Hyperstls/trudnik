@@ -14,17 +14,26 @@
              class="w-24 h-24 rounded-full object-cover border-2 border-gold mb-2"
              alt="Ваше фото">
         <p class="text-sm text-gray-600">Рейтинг: {{ "%.1f"|format(profile.get('rating', 0) or 0) }} ({{ profile.get('total_reviews', 0) }} отзывов)</p>
+
+        <!-- Блок управления фото -->
+        <div class="flex gap-2 mt-2">
+            {% if profile.get('photo_url') %}
+            <form action="/profile/delete-photo" method="post" onsubmit="return confirm('Удалить текущее фото?');">
+                <button type="submit" class="text-xs bg-red-100 text-red-600 px-3 py-1 rounded-full hover:bg-red-200">
+                    🗑️ Удалить фото
+                </button>
+            </form>
+            {% endif %}
+            <label class="text-xs bg-gold text-white px-3 py-1 rounded-full cursor-pointer hover:bg-yellow-600">
+                📷 {% if profile.get('photo_url') %}Заменить{% else %}Загрузить{% endif %} фото
+                <form id="photo-form" action="/profile/update" method="post" enctype="multipart/form-data" class="hidden">
+                    <input type="file" name="photo" accept="image/*" onchange="document.getElementById('photo-form').submit();" class="hidden">
+                </form>
+            </label>
+        </div>
     </div>
 
     <form method="post" action="/profile/update" enctype="multipart/form-data" class="space-y-4 mt-4">
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Обновить фото профиля</label>
-            <input type="file" name="photo" accept="image/*"
-                   class="w-full border p-2 rounded bg-white file:mr-4 file:py-2 file:px-4
-                          file:rounded-full file:border-0 file:text-sm file:font-semibold
-                          file:bg-gold file:text-white hover:file:bg-yellow-600">
-        </div>
-
         <input type="text" name="full_name" value="{{ profile.get('full_name', '') }}"
                class="w-full border p-2 rounded" placeholder="Имя">
         <input type="text" name="phone" value="{{ profile.get('phone', '') }}"
@@ -48,7 +57,6 @@
     {% endif %}
     {% endif %}
 
-    <!-- Кнопка Выйти всегда видна, если пользователь залогинен -->
     <a href="/logout" class="block text-center mt-4 text-red-500">Выйти</a>
 </div>
 {% endblock %}
