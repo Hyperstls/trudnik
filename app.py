@@ -306,8 +306,13 @@ def profile():
     user_id = session['user_id']
     try:
         resp = supabase_request('GET', f'profiles?id=eq.{user_id}&select=*')
-        profile_data = resp.json()[0] if resp.ok and resp.json() else None
-    except Exception:
+        if resp.ok and resp.json():
+            profile_data = resp.json()[0]
+        else:
+            app.logger.error(f'Supabase error: {resp.status_code} {resp.text}')
+            profile_data = None
+    except Exception as e:
+        app.logger.error(f'Exception in profile: {str(e)}')
         profile_data = None
     return render_template('profile.html', profile=profile_data)
 
