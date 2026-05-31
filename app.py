@@ -224,21 +224,27 @@ def update_profile():
 
     photo = request.files.get('photo')
     if photo and photo.filename != '':
+        # Безопасное имя файла: убираем пробелы, спецсимволы
+        safe_filename = photo.filename.replace(" ", "_")
+        file_path = f"{user_id}/{uuid.uuid4()}_{safe_filename}"
+
         # Загружаем файл в Supabase Storage
-        file_path = f"{user_id}/{uuid.uuid4()}_{photo.filename}"
         storage_url = f"{SUPABASE_URL}/storage/v1/object/avatars/{file_path}"
         headers = {
             'apikey': SUPABASE_KEY,
             'Authorization': f'Bearer {session["access_token"]}',
             'Content-Type': photo.content_type
         }
+        # Важно: передаём сырые байты через data, а не через files
         upload_resp = requests.post(storage_url, headers=headers, data=photo.read())
-        if upload_resp.ok:
-            # Получаем публичный URL
+
+        if upload_resp.status_code in (200, 201):
+            # Публичный URL для отображения
             photo_url = f"{SUPABASE_URL}/storage/v1/object/public/avatars/{file_path}"
             data['photo_url'] = photo_url
+            flash('Фото загружено', 'success')
         else:
-            flash('Ошибка загрузки фото', 'danger')
+            flash(f'Ошибка загрузки фото: {upload_resp.text}', 'danger')
 
     try:
         supabase_request('PATCH', f'profiles?id=eq.{user_id}', json=data)
