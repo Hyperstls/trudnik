@@ -324,12 +324,17 @@ def logout():
 @login_required
 def profile():
     user_id = session['user_id']
+    error_message = None
+    profile_data = None
     try:
         resp = supabase_request('GET', f'profiles?id=eq.{user_id}&select=*')
-        profile_data = resp.json()[0] if resp.ok and resp.json() else None
-    except Exception:
-        profile_data = None
-    return render_template('profile.html', profile=profile_data)
+        if resp.ok and resp.json():
+            profile_data = resp.json()[0]
+        else:
+            error_message = f'Supabase ответил: {resp.status_code} {resp.text}'
+    except Exception as e:
+        error_message = f'Ошибка связи с Supabase: {str(e)}'
+    return render_template('profile.html', profile=profile_data, error_message=error_message)
 
 
 @app.route('/profile/update', methods=['POST'])

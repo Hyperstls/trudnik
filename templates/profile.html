@@ -46,7 +46,9 @@
     {% if profile.get('role') == 'employer' and profile.get('verification_status') != 'approved' %}
     <a href="/verify-employer" class="block text-center mt-2 text-gold">Верификация</a>
     {% endif %}
-    <a href="/logout" class="block text-center mt-4 text-red-500">Выйти</a>
     {% endif %}
+
+    <!-- Кнопка Выйти всегда видна, если пользователь залогинен -->
+    <a href="/logout" class="block text-center mt-4 text-red-500">Выйти</a>
 </div>
 {% endblock %}
