@@ -15,7 +15,7 @@
              alt="Ваше фото">
         <p class="text-sm text-gray-600">Рейтинг: {{ "%.1f"|format(profile.get('rating', 0) or 0) }} ({{ profile.get('total_reviews', 0) }} отзывов)</p>
 
-        <!-- Блок управления фото -->
+        <!-- Кнопки управления фото -->
         <div class="flex gap-2 mt-2">
             {% if profile.get('photo_url') %}
             <form action="/profile/delete-photo" method="post" onsubmit="return confirm('Удалить текущее фото?');">
@@ -26,23 +26,17 @@
             {% endif %}
             <label class="text-xs bg-gold text-white px-3 py-1 rounded-full cursor-pointer hover:bg-yellow-600">
                 📷 {% if profile.get('photo_url') %}Заменить{% else %}Загрузить{% endif %} фото
-                <form action="/profile/update" method="post" enctype="multipart/form-data" class="hidden">
-                    <input type="file" name="photo" accept="image/*" onchange="this.form.submit();">
-                    <!-- Передаём текущие значения профиля, чтобы не стереть их -->
-                    <input type="hidden" name="full_name" value="{{ profile.get('full_name', '') }}">
-                    <input type="hidden" name="phone" value="{{ profile.get('phone', '') }}">
-                    <input type="hidden" name="bio" value="{{ profile.get('bio', '') }}">
-                    <input type="hidden" name="city" value="{{ profile.get('city', '') }}">
-                    {% if profile.get('role') == 'worker' %}
-                    <input type="hidden" name="experience" value="{{ profile.get('experience', '') }}">
-                    <input type="hidden" name="desired_payment" value="{{ profile.get('desired_payment', '') }}">
-                    {% endif %}
-                </form>
+                <!-- Эта кнопка просто фокусирует поле выбора файла в основной форме -->
+                <span onclick="document.getElementById('photo-input').click();" class="cursor-pointer"></span>
             </label>
         </div>
     </div>
 
+    <!-- Основная форма профиля (содержит ВСЕ поля, включая фото) -->
     <form method="post" action="/profile/update" enctype="multipart/form-data" class="space-y-4 mt-4">
+        <!-- Скрытое поле для загрузки фото, активируемое по кнопке "Заменить/Загрузить" -->
+        <input type="file" id="photo-input" name="photo" accept="image/*" class="hidden" onchange="this.form.submit();">
+
         <input type="text" name="full_name" value="{{ profile.get('full_name', '') }}"
                class="w-full border p-2 rounded" placeholder="Имя">
         <input type="text" name="phone" value="{{ profile.get('phone', '') }}"
