@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="p-4 max-w-md mx-auto">
+    {% if error_message %}
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {{ error_message }}
+        </div>
+    {% endif %}
     {% if profile is none %}
         <p class="text-red-500">Не удалось загрузить профиль. Проверьте соединение.</p>
     {% else %}
