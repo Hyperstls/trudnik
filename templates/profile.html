@@ -26,8 +26,17 @@
             {% endif %}
             <label class="text-xs bg-gold text-white px-3 py-1 rounded-full cursor-pointer hover:bg-yellow-600">
                 📷 {% if profile.get('photo_url') %}Заменить{% else %}Загрузить{% endif %} фото
-                <form id="photo-form" action="/profile/update" method="post" enctype="multipart/form-data" class="hidden">
-                    <input type="file" name="photo" accept="image/*" onchange="document.getElementById('photo-form').submit();" class="hidden">
+                <form action="/profile/update" method="post" enctype="multipart/form-data" class="hidden">
+                    <input type="file" name="photo" accept="image/*" onchange="this.form.submit();">
+                    <!-- Передаём текущие значения профиля, чтобы не стереть их -->
+                    <input type="hidden" name="full_name" value="{{ profile.get('full_name', '') }}">
+                    <input type="hidden" name="phone" value="{{ profile.get('phone', '') }}">
+                    <input type="hidden" name="bio" value="{{ profile.get('bio', '') }}">
+                    <input type="hidden" name="city" value="{{ profile.get('city', '') }}">
+                    {% if profile.get('role') == 'worker' %}
+                    <input type="hidden" name="experience" value="{{ profile.get('experience', '') }}">
+                    <input type="hidden" name="desired_payment" value="{{ profile.get('desired_payment', '') }}">
+                    {% endif %}
                 </form>
             </label>
         </div>
