@@ -221,8 +221,30 @@ def update_profile():
         data['experience'] = request.form.get('experience')
     if request.form.get('desired_payment'):
         data['desired_payment'] = float(request.form.get('desired_payment'))
-    supabase_request('PATCH', f'profiles?id=eq.{user_id}', json=data)
-    flash('Профиль обновлён', 'success')
+
+    photo = request.files.get('photo')
+    if photo and photo.filename != '':
+        # Загружаем файл в Supabase Storage
+        file_path = f"{user_id}/{uuid.uuid4()}_{photo.filename}"
+        storage_url = f"{SUPABASE_URL}/storage/v1/object/avatars/{file_path}"
+        headers = {
+            'apikey': SUPABASE_KEY,
+            'Authorization': f'Bearer {session["access_token"]}',
+            'Content-Type': photo.content_type
+        }
+        upload_resp = requests.post(storage_url, headers=headers, data=photo.read())
+        if upload_resp.ok:
+            # Получаем публичный URL
+            photo_url = f"{SUPABASE_URL}/storage/v1/object/public/avatars/{file_path}"
+            data['photo_url'] = photo_url
+        else:
+            flash('Ошибка загрузки фото', 'danger')
+
+    try:
+        supabase_request('PATCH', f'profiles?id=eq.{user_id}', json=data)
+        flash('Профиль обновлён', 'success')
+    except:
+        flash('Не удалось обновить профиль', 'danger')
     return redirect(url_for('profile'))
 
 @app.route('/verify-employer', methods=['GET', 'POST'])
