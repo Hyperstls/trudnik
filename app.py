@@ -333,14 +333,17 @@ def logout():
 @login_required
 def profile():
     user_id = session['user_id']
+    error_message = None
     profile_data = None
     try:
         resp = supabase_request('GET', f'profiles?id=eq.{user_id}&select=*')
         if resp.ok and resp.json():
             profile_data = resp.json()[0]
-    except requests.RequestException:
-        pass
-    return render_template('profile.html', profile=profile_data)
+        else:
+            error_message = f'Ошибка Supabase: {resp.status_code} {resp.text}'
+    except Exception as e:
+        error_message = f'Исключение: {str(e)}'
+    return render_template('profile.html', profile=profile_data, error_message=error_message)
 
 
 @app.route('/profile/update', methods=['POST'])
@@ -355,8 +358,12 @@ def update_profile():
     }
     if request.form.get('experience') is not None:
         data['experience'] = request.form.get('experience')
-    if request.form.get('desired_payment'):
-        data['desired_payment'] = float(request.form.get('desired_payment'))
+    desired_payment = request.form.get('desired_payment')
+    if desired_payment and desired_payment.lower() != 'none':
+        try:
+            data['desired_payment'] = float(desired_payment)
+        except ValueError:
+            pass  # игнорируем некорректное значение
 
     photo = request.files.get('photo')
     if photo and photo.filename:
