@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-4 max-w-md mx-auto">
+    <div class="flex flex-col items-center">
+        <img src="{{ profile.photo_url or url_for('static', filename='default-avatar.png') }}" class="w-24 h-24 rounded-full object-cover">
+        <h2 class="text-xl font-bold mt-2">{{ profile.full_name }}</h2>
+        <p>{{ profile.city or '' }}</p>
+        <p>Опыт: {{ profile.experience or 'не указан' }}</p>
+        <p>Желаемая оплата: {{ profile.desired_payment or 'не указана' }} ₽</p>
+        <p>Рейтинг: {{ "%.1f"|format(profile.rating) }} ({{ profile.total_reviews }})</p>
+        <p class="mt-2">{{ profile.bio or '' }}</p>
+        <form action="/favorite/{{ profile.id }}" method="post" class="mt-4">
+            <button class="bg-gold text-white px-4 py-2 rounded">⭐ В избранное</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

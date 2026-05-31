@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-4">
+    {% for shift in shifts %}
+    <div class="border p-3 mb-2 rounded">
+        <p class="font-semibold">{{ shift.job.organization_name }}</p>
+        <p>{{ shift.job.date_time[:16] }}</p>
+        <p>Статус: {{ shift.status }}</p>
+        {% if shift.status == 'pending' and session.user_id == shift.worker_id %}
+        <form action="/shift/{{ shift.id }}/action" method="post" class="inline">
+            <input type="hidden" name="action" value="checkin">
+            <button type="submit" class="bg-gold text-white px-2 py-1 rounded">Отметить начало</button>
+        </form>
+        {% endif %}
+        {% if shift.status == 'active' and session.user_id == shift.worker_id and not shift.worker_complete %}
+        <form action="/shift/{{ shift.id }}/action" method="post" class="inline">
+            <input type="hidden" name="action" value="complete">
+            <button type="submit" class="bg-green-500 text-white px-2 py-1 rounded">Завершить</button>
+        </form>
+        {% endif %}
+        {% if shift.status == 'payment_pending' %}
+            {% if not shift.employer_payment_confirmed and session.user_id == shift.employer_id %}
+            <form action="/shift/{{ shift.id }}/action" method="post">
+                <input type="hidden" name="action" value="confirm_payment_employer">
+                <button class="bg-blue-500 text-white px-2 py-1 rounded">Подтвердить оплату</button>
+            </form>
+            {% endif %}
+            {% if not shift.worker_payment_confirmed and session.user_id == shift.worker_id %}
+            <form action="/shift/{{ shift.id }}/action" method="post">
+                <input type="hidden" name="action" value="confirm_payment_worker">
+                <button class="bg-blue-500 text-white px-2 py-1 rounded">Оплату получил</button>
+            </form>
+            {% endif %}
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

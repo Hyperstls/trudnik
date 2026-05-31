@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Трудник</title>
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Трудник">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
+    <meta name="theme-color" content="#800020">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        gold: '#D4AF37',
+                        burgundy: '#800020',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <header class="bg-burgundy text-white p-4 flex items-center gap-3 shadow-md">
+        <span class="text-2xl">⛪</span>
+        <h1 class="text-xl font-bold">Трудник</h1>
+    </header>
+    <main class="pb-16">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="px-4 pt-4">
+                {% for category, message in messages %}
+                <div class="mb-2 p-3 rounded {% if category == 'danger' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around py-2 shadow-md z-50">
+        <a href="/" class="flex flex-col items-center text-xs text-gray-500"><span class="text-lg">📋</span>Задания</a>
+        <a href="/workers" class="flex flex-col items-center text-xs text-gray-500"><span class="text-lg">👥</span>Работники</a>
+    {% if session.get('role') == 'employer' %}
+        <a href="/my-jobs" class="flex flex-col items-center text-xs text-gray-500"><span class="text-lg">📁</span>Мои задания</a>
+        <a href="/my-applications" class="flex flex-col items-center text-xs text-gray-500 relative">
+            <span class="text-lg">📨</span>
+        {% if pending_app_count is defined and pending_app_count > 0 %}
+            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{{ pending_app_count }}</span>
+        {% endif %}
+        Отклики
+        </a>
+    {% endif %}
+        <a href="/shifts" class="flex flex-col items-center text-xs text-gray-500"><span class="text-lg">🕒</span>Смены</a>
+        <a href="/chats" class="flex flex-col items-center text-xs text-gray-500"><span class="text-lg">💬</span>Чат</a>
+        <a href="/favorites" class="flex flex-col items-center text-xs text-gray-500"><span class="text-lg">⭐</span>Избранное</a>
+        <a href="/profile" class="flex flex-col items-center text-xs text-gray-500"><span class="text-lg">👤</span>Профиль</a>
+    </nav>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}")
+                    .then(reg => console.log('SW registered'))
+                    .catch(err => console.log('SW error', err));
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-md mx-auto mt-20 p-6 bg-white rounded-xl shadow">
+    <h1 class="text-2xl font-bold mb-4">Регистрация</h1>
+    <form method="post" class="space-y-4">
+        <input type="text" name="full_name" placeholder="Полное имя" class="w-full border p-2 rounded" required>
+        <input type="email" name="email" placeholder="Email" class="w-full border p-2 rounded" required>
+        <input type="password" name="password" placeholder="Пароль" class="w-full border p-2 rounded" required>
+        <select name="role" id="role" class="w-full border p-2 rounded" onchange="toggleFields()">
+            <option value="worker">Работник</option>
+            <option value="employer">Работодатель</option>
+        </select>
+        <input type="text" name="city" placeholder="Город" class="w-full border p-2 rounded">
+        <div id="worker-fields">
+            <input type="text" name="experience" placeholder="Опыт (кратко)" class="w-full border p-2 rounded">
+            <input type="number" name="desired_payment" placeholder="Желаемая оплата за смену" class="w-full border p-2 rounded">
+        </div>
+        <button type="submit" class="w-full bg-burgundy text-white py-2 rounded">Зарегистрироваться</button>
+    </form>
+    <script>
+        function toggleFields() {
+            const role = document.getElementById('role').value;
+            document.getElementById('worker-fields').style.display = role === 'worker' ? 'block' : 'none';
+        }
+        toggleFields();
+    </script>
+</div>
+{% endblock %}

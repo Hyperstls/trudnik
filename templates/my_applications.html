@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-4">
+    <h2 class="text-xl font-bold mb-4">Отклики на ваши задания</h2>
+    {% for app in applications %}
+    <div class="bg-white rounded-xl shadow p-4 mb-4 border">
+        <div class="flex items-center gap-3 mb-3">
+            <img src="{{ app.worker.photo_url or url_for('static', filename='default-avatar.png') }}" class="w-10 h-10 rounded-full">
+            <div>
+                <p class="font-semibold">{{ app.worker.full_name }}</p>
+                <p class="text-sm text-gray-500">{{ app.worker.city or '' }}</p>
+            </div>
+        </div>
+        <p class="text-sm mb-2">Задание: <strong>{{ app.job.organization_name }}</strong></p>
+        <p class="text-sm mb-3">Статус:
+            {% if app.status == 'pending' %}
+            <span class="text-yellow-500">Ожидает решения</span>
+            {% elif app.status == 'accepted' %}
+            <span class="text-green-500">Принят</span>
+            {% else %}
+            <span class="text-red-500">Отклонён</span>
+            {% endif %}
+        </p>
+        {% if app.status == 'pending' %}
+        <div class="flex gap-2">
+            <a href="/applications/{{ app.id }}/accept" class="bg-green-500 text-white px-3 py-1 rounded text-sm">Принять</a>
+            <a href="/applications/{{ app.id }}/reject" class="bg-red-500 text-white px-3 py-1 rounded text-sm">Отклонить</a>
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <p>Нет откликов</p>
+    {% endfor %}
+</div>
+{% endblock %}

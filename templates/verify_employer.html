@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-4 max-w-md mx-auto">
+    <h2 class="text-xl font-bold mb-4">Загрузите подтверждающий документ</h2>
+    <form method="post" enctype="multipart/form-data">
+        <input type="file" name="document" class="w-full border p-2 rounded mb-4">
+        <button type="submit" class="bg-gold text-white px-4 py-2 rounded">Отправить</button>
+    </form>
+</div>
+{% endblock %}

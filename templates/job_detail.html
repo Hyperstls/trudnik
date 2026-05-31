@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-4">
+    {% if job.photos %}
+    <div class="flex gap-2 overflow-x-auto mb-4">
+        {% for photo in job.photos %}
+        <img src="{{ photo.photo_url }}" class="h-64 rounded-lg">
+        {% endfor %}
+    </div>
+    {% endif %}
+    <h1 class="text-xl font-bold">{{ job.organization_name }}</h1>
+    <p class="text-gold font-bold text-2xl">{{ job.payment_amount }} ₽</p>
+    <p class="text-sm text-gray-500">{{ job.city }}, {{ job.address }}</p>
+    <div id="map" style="height: 300px;" class="mt-4"></div>
+    <div class="mt-4 space-y-2">
+        <p><strong>Описание:</strong> {{ job.object_description }}</p>
+        <p><strong>Вид работы:</strong> {{ job.work_type }}</p>
+        <p>{{ job.detailed_description }}</p>
+    </div>
+
+    {% if session.get('user_id') %}
+    <div class="mt-4">
+        {% if job.status != 'open' %}
+        <p class="text-sm text-gray-500 mb-2">Задание <strong>неактивно</strong> (статус: {{ job.status }})</p>
+        {% endif %}
+
+        {% if session.get('role') == 'employer' and session.get('user_id') == job.employer_id %}
+            {% if job.application_count is defined %}
+            <p class="text-sm mb-2">Откликов: <strong>{{ job.application_count }}</strong></p>
+            {% endif %}
+            <a href="/my-applications" class="text-blue-500 underline text-sm">Управление откликами</a>
+        {% elif session.get('role') == 'worker' and not already_applied and job.status == 'open' %}
+            <form action="/apply/{{ job.id }}" method="post" class="mt-4">
+                <button type="submit" class="w-full bg-gold text-white py-2 rounded">Откликнуться</button>
+            </form>
+        {% elif session.get('role') == 'worker' and already_applied %}
+            <p class="mt-4 text-green-600 font-semibold">Вы уже откликнулись</p>
+        {% elif session.get('role') == 'employer' and session.get('user_id') == job.employer_id %}
+            <p class="text-sm text-gray-500 mt-4">Это ваше задание.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+<script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_api_key }}&lang=ru_RU" type="text/javascript"></script>
+<script>
+    ymaps.ready(function() {
+        const map = new ymaps.Map('map', { center: [{{ job.lat }}, {{ job.lng }}], zoom: 14 });
+        map.geoObjects.add(new ymaps.Placemark([{{ job.lat }}, {{ job.lng }}]));
+    });
+</script>
+{% endblock %}

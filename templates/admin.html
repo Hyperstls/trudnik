@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-4">
+    <h2 class="text-xl font-bold mb-4">Заявки на верификацию</h2>
+    {% for user in pending %}
+    <div class="border p-2 flex justify-between items-center mb-2">
+        <div>
+            <p>{{ user.full_name }}</p>
+            {% if user.verification_doc_url %}
+            <a href="{{ user.verification_doc_url }}" target="_blank" class="text-blue-500">Документ</a>
+            {% endif %}
+        </div>
+        <div class="flex gap-2">
+            <a href="/admin/approve/{{ user.id }}" class="bg-green-500 text-white px-2 py-1 rounded">Одобрить</a>
+            <a href="/admin/reject/{{ user.id }}" class="bg-red-500 text-white px-2 py-1 rounded">Отклонить</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

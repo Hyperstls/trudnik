@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-md mx-auto mt-20 p-6 bg-white rounded-xl shadow">
+    <h1 class="text-2xl font-bold mb-4">Вход</h1>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <p class="text-{{ 'red' if category == 'danger' else 'green' }}-500">{{ message }}</p>
+        {% endfor %}
+    {% endwith %}
+    <form method="post" class="space-y-4">
+        <input type="email" name="email" placeholder="Email" class="w-full border p-2 rounded" required>
+        <input type="password" name="password" placeholder="Пароль" class="w-full border p-2 rounded" required>
+        <button type="submit" class="w-full bg-burgundy text-white py-2 rounded">Войти</button>
+    </form>
+    <p class="mt-2 text-center">Нет аккаунта? <a href="/register" class="text-gold">Зарегистрироваться</a></p>
+</div>
+{% endblock %}

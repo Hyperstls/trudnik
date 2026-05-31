@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-4 max-w-lg mx-auto">
+    <h2 class="text-xl font-bold mb-4">Новое задание</h2>
+    <form method="post" enctype="multipart/form-data">
+        <input name="organization_name" placeholder="Название организации" class="w-full border p-2 rounded mb-2">
+        <textarea name="org_description" placeholder="Описание организации" class="w-full border p-2 rounded mb-2"></textarea>
+        <textarea name="object_description" placeholder="Описание объекта" class="w-full border p-2 rounded mb-2"></textarea>
+        <input name="work_type" placeholder="Вид работы" class="w-full border p-2 rounded mb-2">
+        <textarea name="detailed_description" placeholder="Подробное описание" class="w-full border p-2 rounded mb-2"></textarea>
+        <input type="date" name="date" class="w-full border p-2 rounded mb-2">
+        <input type="time" name="time" class="w-full border p-2 rounded mb-2">
+        <input type="number" name="payment" placeholder="Оплата (₽)" class="w-full border p-2 rounded mb-2">
+        <input type="text" name="city" placeholder="Город" class="w-full border p-2 rounded mb-2">
+        <div class="mb-2">
+            <label class="block mb-1">Место на карте (кликните для выбора)</label>
+            <div id="map" style="height: 300px;"></div>
+            <input type="hidden" name="lat" id="lat">
+            <input type="hidden" name="lng" id="lng">
+            <input type="hidden" name="address" id="address">
+        </div>
+        <div class="mb-2">
+            <label class="block mb-1">Фото (до 5)</label>
+            <input type="file" name="photos" multiple accept="image/*" class="w-full border p-2 rounded">
+        </div>
+        <button type="submit" class="w-full bg-burgundy text-white py-2 rounded">Опубликовать</button>
+    </form>
+</div>
+<script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_api_key }}&lang=ru_RU" type="text/javascript"></script>
+<script>
+    ymaps.ready(init);
+    let map, marker;
+    function init() {
+        map = new ymaps.Map('map', { center: [55.75, 37.61], zoom: 10 });
+        marker = new ymaps.Placemark([55.75, 37.61], {}, { draggable: true });
+        map.geoObjects.add(marker);
+        map.events.add('click', function(e) {
+            const coords = e.get('coords');
+            marker.geometry.setCoordinates(coords);
+            updateAddress(coords);
+        });
+        marker.events.add('dragend', function(e) {
+            const coords = marker.geometry.getCoordinates();
+            updateAddress(coords);
+        });
+        function updateAddress(coords) {
+            document.getElementById('lat').value = coords[0];
+            document.getElementById('lng').value = coords[1];
+            ymaps.geocode(coords).then(res => {
+                const obj = res.geoObjects.get(0);
+                if (obj) {
+                    document.getElementById('address').value = obj.getAddressLine();
+                }
+            });
+        }
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(pos) {
+                const coords = [pos.coords.latitude, pos.coords.longitude];
+                map.setCenter(coords, 13);
+                marker.geometry.setCoordinates(coords);
+                updateAddress(coords);
+            });
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-4">
+    {% for chat in chats %}
+    <a href="/chat/{{ chat.id }}" class="block p-3 border rounded mb-2">
+        Чат: {{ chat.job.organization_name or 'Без названия' }}
+    </a>
+    {% else %}
+    <p>Нет чатов</p>
+    {% endfor %}
+</div>
+{% endblock %}
