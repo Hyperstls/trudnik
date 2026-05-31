@@ -33,30 +33,49 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
-def supabase_request(method, endpoint, **kwargs):
-    """Запрос к Supabase REST API с повторными попытками при таймаутах."""
-    headers = {
-        'apikey': SUPABASE_KEY,
-        'Authorization': f'Bearer {session.get("access_token", SUPABASE_KEY)}',
-        'Content-Type': 'application/json',
-        'Prefer': 'return=representation',
-    }
-    if 'headers' in kwargs:
-        extra = kwargs.pop('headers')
-        headers.update(extra)
+def refresh_access_token():
+    """Обновляет access_token по refresh_token, если он есть в сессии."""
+    refresh_token = session.get('refresh_token')
+    if not refresh_token:
+        return False
+    refresh_url = f'{SUPABASE_URL}/auth/v1/token?grant_type=refresh_token'
+    resp = requests.post(refresh_url,
+                         json={'refresh_token': refresh_token},
+                         headers={'apikey': SUPABASE_KEY, 'Content-Type': 'application/json'},
+                         timeout=10)
+    if resp.ok:
+        data = resp.json()
+        session['access_token'] = data['access_token']
+        session['refresh_token'] = data.get('refresh_token', refresh_token)
+        session.modified = True
+        return True
+    else:
+        session.clear()
+        return False
 
-    url = f'{SUPABASE_URL}/rest/v1/{endpoint}'
-    retries = 3
-    for attempt in range(retries):
-        try:
-            resp = requests.request(method, url, headers=headers, timeout=15, **kwargs)
-            return resp
-        except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError):
-            if attempt < retries - 1:
-                time.sleep(2)
-            else:
-                raise
-    return None
+
+def supabase_request(method, endpoint, **kwargs):
+    """Запрос к Supabase REST API с повторными попытками и автообновлением токена."""
+    def _make_request():
+        headers = {
+            'apikey': SUPABASE_KEY,
+            'Authorization': f'Bearer {session.get("access_token", SUPABASE_KEY)}',
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation',
+        }
+        if 'headers' in kwargs:
+            extra = kwargs.pop('headers')
+            headers.update(extra)
+        url = f'{SUPABASE_URL}/rest/v1/{endpoint}'
+        return requests.request(method, url, headers=headers, timeout=15, **kwargs)
+
+    # Первая попытка
+    resp = _make_request()
+    if resp.status_code == 401 and session.get('refresh_token'):
+        # Токен истёк – пробуем обновить
+        if refresh_access_token():
+            resp = _make_request()
+    return resp
 
 
 def upload_to_storage(bucket, file_path, file_data, content_type):
@@ -256,6 +275,7 @@ def login():
         if resp.ok:
             data = resp.json()
             session['access_token'] = data['access_token']
+            session['refresh_token'] = data.get('refresh_token', '')
             session['user_id'] = data['user']['id']
             role_resp = supabase_request('GET', f'profiles?id=eq.{data["user"]["id"]}&select=role')
             session['role'] = role_resp.json()[0]['role'] if role_resp.ok and role_resp.json() else 'worker'
@@ -304,17 +324,12 @@ def logout():
 @login_required
 def profile():
     user_id = session['user_id']
-    error_message = None
-    profile_data = None
     try:
         resp = supabase_request('GET', f'profiles?id=eq.{user_id}&select=*')
-        if resp.ok and resp.json():
-            profile_data = resp.json()[0]
-        else:
-            error_message = f'Supabase ответил: {resp.status_code} {resp.text}'
-    except Exception as e:
-        error_message = f'Ошибка связи с Supabase: {str(e)}'
-    return render_template('profile.html', profile=profile_data, error_message=error_message)
+        profile_data = resp.json()[0] if resp.ok and resp.json() else None
+    except Exception:
+        profile_data = None
+    return render_template('profile.html', profile=profile_data)
 
 
 @app.route('/profile/update', methods=['POST'])
