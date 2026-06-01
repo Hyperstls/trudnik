@@ -706,8 +706,14 @@ def my_jobs():
     if status_filter != 'all':
         query += f'&status=eq.{status_filter}'
     resp = supabase_request('GET', f'jobs?{query}&order=created_at.desc')
-    return render_template('my_jobs.html', jobs=resp.json() if resp.ok else [],
-                           current_status=status_filter)
+    jobs = resp.json() if resp.ok else []
+
+    # Считаем отклики для каждого задания
+    for job in jobs:
+        app_resp = supabase_request('GET', f'applications?job_id=eq.{job["id"]}&status=eq.pending&select=id')
+        job['application_count'] = len(app_resp.json()) if app_resp.ok and app_resp.json() else 0
+
+    return render_template('my_jobs.html', jobs=jobs, current_status=status_filter)
 
 
 @app.route('/repost-job/<job_id>', methods=['GET', 'POST'])

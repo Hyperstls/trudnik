@@ -45,6 +45,9 @@
                                 {% elif job.status == 'completed' %}<span class="text-green-600 font-medium">Завершено</span>
                                 {% elif job.status == 'cancelled' %}<span class="text-red-600 font-medium">Отозвано</span>
                                 {% else %}{{ job.status }}{% endif %}
+                                {% if job.application_count is defined and job.application_count > 0 %}
+                                · <span class="text-gray-600">{{ job.application_count }} откликов</span>
+                                {% endif %}
                             </p>
                         </div>
                         <div class="flex flex-col gap-1 text-right">
