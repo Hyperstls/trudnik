@@ -736,7 +736,9 @@ def my_jobs_action():
         return redirect(url_for('my_jobs'))
 
     for job_id in job_ids:
-        if action == 'cancel':
+        if action == 'restore':
+            supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'open'})
+        elif action == 'cancel':
             supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
         elif action == 'delete':
             supabase_request('DELETE', f'jobs?id=eq.{job_id}')
@@ -755,6 +757,13 @@ def my_jobs_action():
 def cancel_job(job_id):
     supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
     flash('Задание отозвано', 'success')
+    return redirect(url_for('my_jobs'))
+@app.route('/restore-job/<job_id>', methods=['GET', 'POST'])
+@login_required
+@role_required('employer')
+def restore_job(job_id):
+    supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'open'})
+    flash('Задание восстановлено', 'success')
     return redirect(url_for('my_jobs'))
 
 

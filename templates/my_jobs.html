@@ -7,6 +7,7 @@
             Создать задание
         </a>
     </div>
+
     <div class="flex gap-2 mb-5 flex-wrap">
         <a href="/my-jobs" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if current_status == 'all' %}bg-burgundy text-white shadow-md{% else %}bg-white text-gray-700 border border-gray-200 hover:bg-gray-50{% endif %}">Все</a>
         <a href="/my-jobs?status=open" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if current_status == 'open' %}bg-burgundy text-white shadow-md{% else %}bg-white text-gray-700 border border-gray-200 hover:bg-gray-50{% endif %}">Открытые</a>
@@ -15,40 +16,93 @@
         <a href="/my-jobs?status=cancelled" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if current_status == 'cancelled' %}bg-burgundy text-white shadow-md{% else %}bg-white text-gray-700 border border-gray-200 hover:bg-gray-50{% endif %}">Отозванные</a>
     </div>
 
-    <div class="space-y-4">
-        {% for job in jobs %}
-        <div class="card bg-white rounded-2xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-all">
-            <div class="flex justify-between items-start">
-                <div>
-                    <h3 class="font-semibold text-lg text-gray-900">{{ job.organization_name }}</h3>
-                    <p class="text-sm text-gray-500">{{ job.date_time[:16] }} · {{ job.payment_amount }} ₽</p>
-                    <p class="text-sm mt-1">
-                        {% if job.status == 'open' %}<span class="text-emerald-600 font-medium">Открыто</span>
-                        {% elif job.status == 'in_progress' %}<span class="text-blue-600 font-medium">В работе</span>
-                        {% elif job.status == 'completed' %}<span class="text-green-600 font-medium">Завершено</span>
-                        {% elif job.status == 'cancelled' %}<span class="text-red-600 font-medium">Отозвано</span>
-                        {% else %}{{ job.status }}{% endif %}
-                    </p>
-                </div>
-                <div class="flex flex-col gap-1 text-right">
-                    <a href="/jobs/{{ job.id }}" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Просмотр</a>
-                    <form action="/repost-job/{{ job.id }}" method="post" class="inline">
-                        <button type="submit" class="text-sm text-green-600 hover:text-green-800 font-medium">Дублировать</button>
-                    </form>
-                    <form action="/cancel-job/{{ job.id }}" method="post" class="inline">
-                        <button type="submit" class="text-sm text-yellow-600 hover:text-yellow-800 font-medium">Отозвать</button>
-                    </form>
-                    <form action="/delete-job/{{ job.id }}" method="post" onsubmit="return confirm('Удалить задание безвозвратно?');">
-                        <button type="submit" class="text-sm text-red-500 hover:text-red-700 font-medium">Удалить</button>
-                    </form>
-                </div>
+    <form method="POST" action="/my-jobs/action" id="bulk-form">
+        <div class="mb-4 flex flex-wrap items-center gap-2">
+            <button type="button" id="select-all-btn" class="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors">
+                Выбрать все
+            </button>
+            <span id="selected-count" class="text-sm text-gray-500 ml-2 hidden">Выбрано: <strong id="count">0</strong></span>
+            <div class="flex gap-2 ml-auto">
+                <button type="submit" name="action" value="restore" class="bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-600 transition-colors">Вернуть</button>
+                <button type="submit" name="action" value="cancel" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-yellow-600 transition-colors">Отозвать</button>
+                <button type="submit" name="action" value="duplicate" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">Дублировать</button>
+                <button type="submit" name="action" value="delete" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition-colors">Удалить</button>
             </div>
         </div>
-        {% else %}
-        <div class="text-center py-12 text-gray-400">
-            <p>Нет заданий</p>
+
+        <div class="space-y-4">
+            {% for job in jobs %}
+            <div class="card bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-start gap-3 hover:shadow-md transition-all">
+                <input type="checkbox" name="job_ids" value="{{ job.id }}" class="job-checkbox mt-1 rounded border-gray-300 text-gold focus:ring-gold">
+                <div class="flex-1">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="font-semibold text-lg text-gray-900">{{ job.organization_name }}</h3>
+                            <p class="text-sm text-gray-500">{{ job.date_time[:16] }} · {{ job.payment_amount }} ₽</p>
+                            <p class="text-sm mt-1">
+                                {% if job.status == 'open' %}<span class="text-emerald-600 font-medium">Открыто</span>
+                                {% elif job.status == 'in_progress' %}<span class="text-blue-600 font-medium">В работе</span>
+                                {% elif job.status == 'completed' %}<span class="text-green-600 font-medium">Завершено</span>
+                                {% elif job.status == 'cancelled' %}<span class="text-red-600 font-medium">Отозвано</span>
+                                {% else %}{{ job.status }}{% endif %}
+                            </p>
+                        </div>
+                        <div class="flex flex-col gap-1 text-right">
+                            <a href="/jobs/{{ job.id }}" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Просмотр</a>
+                            <form action="/repost-job/{{ job.id }}" method="post" class="inline">
+                                <button type="submit" class="text-sm text-green-600 hover:text-green-800 font-medium">Дублировать</button>
+                            </form>
+                            {% if job.status != 'cancelled' %}
+                            <form action="/cancel-job/{{ job.id }}" method="post" class="inline">
+                                <button type="submit" class="text-sm text-yellow-600 hover:text-yellow-800 font-medium">Отозвать</button>
+                            </form>
+                            {% else %}
+                            <form action="/restore-job/{{ job.id }}" method="post" class="inline">
+                                <button type="submit" class="text-sm text-emerald-600 hover:text-emerald-800 font-medium">Вернуть</button>
+                            </form>
+                            {% endif %}
+                            <form action="/delete-job/{{ job.id }}" method="post" onsubmit="return confirm('Удалить задание безвозвратно?');">
+                                <button type="submit" class="text-sm text-red-500 hover:text-red-700 font-medium">Удалить</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center py-12 text-gray-400">
+                <p>Нет заданий</p>
+            </div>
+            {% endfor %}
         </div>
-        {% endfor %}
-    </div>
+    </form>
 </div>
+
+<script>
+    const checkboxes = document.querySelectorAll('.job-checkbox');
+    const selectAllBtn = document.getElementById('select-all-btn');
+    const countSpan = document.getElementById('count');
+    const selectedCountDiv = document.getElementById('selected-count');
+    let allSelected = false;
+
+    function updateCount() {
+        const checked = document.querySelectorAll('.job-checkbox:checked');
+        const cnt = checked.length;
+        if (cnt > 0) {
+            selectedCountDiv.classList.remove('hidden');
+            countSpan.textContent = cnt;
+        } else {
+            selectedCountDiv.classList.add('hidden');
+        }
+        allSelected = cnt === checkboxes.length;
+        selectAllBtn.textContent = allSelected ? 'Снять выделение' : 'Выбрать все';
+    }
+
+    selectAllBtn.addEventListener('click', function() {
+        const newState = !allSelected;
+        checkboxes.forEach(cb => cb.checked = newState);
+        updateCount();
+    });
+
+    checkboxes.forEach(cb => cb.addEventListener('change', updateCount));
+</script>
 {% endblock %}
