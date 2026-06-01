@@ -402,6 +402,26 @@ def delete_photo():
     flash('Фото удалено', 'success')
     return redirect(url_for('profile'))
 
+@app.route('/profile/delete-account', methods=['POST'])
+@login_required
+def delete_account():
+    user_id = session['user_id']
+    if not SERVICE_KEY:
+        flash('Сервисный ключ не настроен. Удаление невозможно.', 'danger')
+        return redirect(url_for('profile'))
+    delete_url = f'{SUPABASE_URL}/auth/v1/admin/users/{user_id}'
+    resp = requests.delete(delete_url, headers={
+        'apikey': SERVICE_KEY,
+        'Authorization': f'Bearer {SERVICE_KEY}',
+        'Content-Type': 'application/json'
+    }, timeout=10)
+    if resp.ok:
+        session.clear()
+        flash('Ваш аккаунт полностью удалён.', 'success')
+        return redirect(url_for('login'))
+    else:
+        flash(f'Ошибка удаления аккаунта: {resp.text}', 'danger')
+        return redirect(url_for('profile'))
 
 @app.route('/verify-employer', methods=['GET', 'POST'])
 @login_required
