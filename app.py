@@ -544,8 +544,12 @@ def apply_selected():
 @login_required
 def unapply_job(job_id):
     user_id = session['user_id']
-    supabase_request('DELETE', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
-    flash('Отклик отозван', 'success')
+    resp = supabase_request('DELETE', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
+    # Supabase возвращает 200 с количеством удалённых записей, либо ошибку
+    if resp is not None and resp.ok:
+        flash('Отклик отозван', 'success')
+    else:
+        flash('Не удалось отозвать отклик (возможно, он уже удалён)', 'danger')
     return redirect(url_for('index'))
 
 
@@ -557,9 +561,15 @@ def unapply_selected():
         flash('Не выбрано ни одного задания', 'danger')
         return redirect(url_for('index'))
     user_id = session['user_id']
+    removed = 0
     for job_id in job_ids:
-        supabase_request('DELETE', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
-    flash(f'Отклики отозваны ({len(job_ids)} заданий)', 'success')
+        resp = supabase_request('DELETE', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
+        if resp is not None and resp.ok:
+            removed += 1
+    if removed > 0:
+        flash(f'Отклики отозваны ({removed} заданий)', 'success')
+    else:
+        flash('Ни один отклик не был удалён', 'info')
     return redirect(url_for('index'))
 
 
