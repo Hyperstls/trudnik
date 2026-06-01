@@ -86,7 +86,6 @@ def upload_to_storage(bucket, file_path, file_data, content_type):
                              files={'file': (file_path, file_data, content_type)},
                              timeout=30)
         if resp.status_code in (200, 201):
-            # Добавляем временную метку, чтобы браузер не кешировал старое изображение
             return f'{SUPABASE_URL}/storage/v1/object/public/{bucket}/{file_path}?t={int(time.time())}'
     except requests.RequestException:
         pass
@@ -418,6 +417,40 @@ def delete_account():
     else:
         flash(f'Ошибка удаления аккаунта: {resp.text}', 'danger')
         return redirect(url_for('profile'))
+
+
+@app.route('/profile/change-password', methods=['POST'])
+@login_required
+def change_password():
+    new_password = request.form.get('new_password')
+    confirm_password = request.form.get('confirm_password')
+
+    if not new_password or len(new_password) < 6:
+        flash('Пароль должен содержать минимум 6 символов', 'danger')
+        return redirect(url_for('profile'))
+
+    if new_password != confirm_password:
+        flash('Новые пароли не совпадают', 'danger')
+        return redirect(url_for('profile'))
+
+    auth_update_url = f'{SUPABASE_URL}/auth/v1/user'
+    headers = {
+        'apikey': SUPABASE_KEY,
+        'Authorization': f'Bearer {session["access_token"]}',
+        'Content-Type': 'application/json'
+    }
+    try:
+        resp = requests.put(auth_update_url, headers=headers,
+                            json={'password': new_password}, timeout=10)
+        if resp.ok:
+            flash('Пароль успешно изменён', 'success')
+        else:
+            error_data = resp.json()
+            flash(f'Ошибка смены пароля: {error_data.get("msg", "попробуйте позже")}', 'danger')
+    except requests.RequestException:
+        flash('Ошибка соединения с сервером', 'danger')
+
+    return redirect(url_for('profile'))
 
 
 @app.route('/verify-employer', methods=['GET', 'POST'])
