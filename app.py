@@ -276,7 +276,10 @@ def login():
                 role_resp = supabase_request('GET', f'profiles?id=eq.{data["user"]["id"]}&select=role')
                 session['role'] = role_resp.json()[0]['role'] if role_resp.ok and role_resp.json() else 'worker'
                 session.modified = True
-                return redirect(url_for('index'))
+                if session.get('role') == 'employer':
+                    return redirect(url_for('my_jobs'))
+                else:
+                    return redirect(url_for('index'))
             else:
                 flash('Ошибка входа: неверный email или пароль', 'danger')
         except requests.RequestException:
