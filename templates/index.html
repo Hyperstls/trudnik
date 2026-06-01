@@ -5,6 +5,7 @@
         <h2 class="text-2xl font-bold text-gray-900">Задания</h2>
     </div>
 
+    <!-- Фильтры (GET-форма) -->
     <form method="get" class="bg-white p-4 rounded-2xl shadow-sm mb-6 grid grid-cols-2 gap-3 border border-gray-100">
         <input name="city" placeholder="Город" value="{{ request.args.get('city','') }}" class="border border-gray-200 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
         <input name="payment_min" type="number" placeholder="Оплата от" value="{{ request.args.get('payment_min','') }}" class="border border-gray-200 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
@@ -27,16 +28,16 @@
     </form>
 
     {% if session.get('role') == 'worker' %}
-    <form method="POST" id="bulk-apply-form">
-        <div class="mb-3 flex items-center gap-3 flex-wrap">
-            <button type="button" id="select-all-btn" class="text-sm text-gray-600 underline">Выбрать все</button>
-            <button type="submit" formaction="/apply-selected" class="bg-gold text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-yellow-600 transition-colors">
-                Откликнуться на выбранные
-            </button>
-            <button type="submit" formaction="/unapply-selected" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition-colors">
-                Отозвать отклики (выбранные)
-            </button>
-        </div>
+    <!-- Панель массовых действий -->
+    <div class="mb-3 flex items-center gap-3 flex-wrap">
+        <button type="button" id="select-all-btn" class="text-sm text-gray-600 underline">Выбрать все</button>
+        <button type="button" onclick="bulkAction('/apply-selected')" class="bg-gold text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-yellow-600 transition-colors">
+            Откликнуться на выбранные
+        </button>
+        <button type="button" onclick="bulkAction('/unapply-selected')" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition-colors">
+            Отозвать отклики (выбранные)
+        </button>
+    </div>
     {% endif %}
 
     <div class="space-y-4">
@@ -69,14 +70,12 @@
                         </form>
                         {% else %}
                         <span class="text-sm text-emerald-600 font-medium">✓ Вы откликнулись</span>
-                        <!-- ИНДИВИДУАЛЬНЫЙ ОТЗЫВ – отдельная форма -->
                         <form action="/unapply/{{ job.id }}" method="post" class="inline">
                             <button type="submit" class="text-sm text-red-500 hover:text-red-700 font-medium ml-1">
                                 Отозвать
                             </button>
                         </form>
                         {% endif %}
-                        <!-- ИЗБРАННОЕ – отдельная форма -->
                         <form action="/favorite-job/{{ job.id }}" method="post" class="inline">
                             <button type="submit" class="text-sm text-gray-500 hover:text-gold font-medium">⭐ В избранное</button>
                         </form>
@@ -97,10 +96,6 @@
         </div>
         {% endfor %}
     </div>
-
-    {% if session.get('role') == 'worker' %}
-    </form>
-    {% endif %}
 </div>
 
 <script>
@@ -118,6 +113,28 @@ function useMyLocation() {
     });
 }
 
+// Массовые действия
+function bulkAction(url) {
+    const checkboxes = document.querySelectorAll('.job-checkbox:checked');
+    if (checkboxes.length === 0) {
+        alert('Выберите хотя бы одно задание');
+        return;
+    }
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+    checkboxes.forEach(cb => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'job_ids';
+        input.value = cb.value;
+        form.appendChild(input);
+    });
+    document.body.appendChild(form);
+    form.submit();
+}
+
+// Выбрать все
 const checkboxes = document.querySelectorAll('.job-checkbox');
 const selectAllBtn = document.getElementById('select-all-btn');
 if (selectAllBtn) {
