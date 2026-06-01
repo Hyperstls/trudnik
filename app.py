@@ -498,7 +498,7 @@ def create_job():
     return render_template('create_job.html', yandex_api_key=app.config['YANDEX_MAPS_API_KEY'])
 
 
-@app.route('/apply/<job_id>', methods=['POST'])
+@app.route('/apply/<job_id>', methods=['GET', 'POST'])   # было только POST
 @login_required
 def apply_job(job_id):
     user_id = session['user_id']
