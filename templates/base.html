@@ -25,10 +25,6 @@
                     fontFamily: {
                         sans: ['Inter', 'Segoe UI', 'Tahoma', 'Geneva', 'Verdana', 'sans-serif'],
                     },
-                    boxShadow: {
-                        'card': '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
-                        'card-hover': '0 4px 12px rgba(0,0,0,0.1)',
-                    }
                 }
             }
         }
@@ -44,12 +40,12 @@
             -webkit-box-orient: vertical;
             -webkit-line-clamp: 2;
         }
-        .header-icon {
-            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
-            transition: transform 0.2s;
+        .card {
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
         }
-        .header-icon:hover {
-            transform: scale(1.1);
+        .card:hover {
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
         }
         .nav-item {
             transition: color 0.2s, transform 0.2s;
@@ -58,28 +54,25 @@
             color: #D4AF37;
             transform: translateY(-2px);
         }
-        .card {
-            transition: box-shadow 0.2s ease, transform 0.2s ease;
-        }
-        .card:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            transform: translateY(-1px);
+        input, textarea, select {
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
         input:focus, textarea:focus, select:focus {
             outline: none;
             border-color: #D4AF37;
-            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
         }
     </style>
 </head>
 <body class="bg-gray-50">
-    <!-- Шапка -->
-    <header class="bg-gradient-to-r from-burgundy to-red-900 text-white p-4 flex items-center justify-between shadow-lg">
+    <!-- Шапка с нейтральным логотипом -->
+    <header class="bg-gradient-to-r from-burgundy to-red-800 text-white p-4 flex items-center justify-between shadow-lg">
         <div class="flex items-center gap-3">
-            <div class="header-icon text-3xl">✝️</div>
-            <h1 class="text-xl font-bold tracking-wide">Трудник</h1>
+            <!-- Нейтральный символ сотрудничества (без религиозной привязки) -->
+            <div class="text-3xl filter drop-shadow-md" style="font-size: 2.2rem;">🤝</div>
+            <h1 class="text-2xl font-bold tracking-tight">Трудник</h1>
         </div>
-        <a href="/profile" class="header-icon text-3xl" title="Профиль">
+        <a href="/profile" class="text-3xl filter drop-shadow-md hover:scale-110 transition-transform" title="Профиль">
             👤
         </a>
     </header>
