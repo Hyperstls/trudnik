@@ -1,83 +1,98 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="p-4 max-w-md mx-auto">
+<div class="p-4 max-w-lg mx-auto">
     {% if error_message %}
-        <div class="bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
+        <div class="bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4 text-sm">
             {{ error_message }}
         </div>
     {% endif %}
     {% if profile is none %}
-        <div class="text-center py-8">
-            <p class="text-red-500 text-lg">Не удалось загрузить профиль. Проверьте соединение.</p>
+        <div class="text-center py-12">
+            <span class="text-5xl mb-3 block">😕</span>
+            <p class="text-red-500 text-lg font-medium">Не удалось загрузить профиль</p>
+            <p class="text-gray-500 text-sm mt-1">Проверьте соединение</p>
         </div>
     {% else %}
-    <div class="flex flex-col items-center">
-        <img src="{{ profile.get('photo_url') or url_for('static', filename='default-avatar.png') }}"
-             class="w-28 h-28 rounded-full object-cover border-4 border-gold shadow-lg mb-3"
-             alt="Ваше фото">
-        <p class="text-sm text-gray-500 mb-3">Рейтинг: <span class="text-gold font-bold">{{ "%.1f"|format(profile.get('rating', 0) or 0) }}</span> ({{ profile.get('total_reviews', 0) }} отзывов)</p>
+    <div class="flex flex-col items-center mb-6">
+        <div class="relative">
+            <img src="{{ profile.get('photo_url') or url_for('static', filename='default-avatar.png') }}"
+                 class="w-24 h-24 rounded-full object-cover border-4 border-gold shadow-lg"
+                 alt="Ваше фото">
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mt-3">{{ profile.get('full_name') }}</h3>
+        <p class="text-sm text-gray-500 mt-1 flex items-center gap-1">
+            ⭐ {{ "%.1f"|format(profile.get('rating', 0) or 0) }}
+            <span class="text-gray-400">({{ profile.get('total_reviews', 0) }} отзывов)</span>
+        </p>
 
-        <!-- Блок управления фото -->
-        <div class="flex gap-2 mb-4">
+        <div class="flex gap-2 mt-4">
             {% if profile.get('photo_url') %}
-            <form action="/profile/delete-photo" method="post" onsubmit="return confirm('Удалить текущее фото?');">
-                <button type="submit" class="text-xs bg-red-50 text-red-600 px-4 py-1.5 rounded-full hover:bg-red-100 transition-colors font-medium">
+            <form action="/profile/delete-photo" method="post" onsubmit="return confirm('Удалить фото?');">
+                <button type="submit" class="text-xs bg-red-50 text-red-600 px-4 py-2 rounded-full hover:bg-red-100 active:scale-95 transition-all font-medium">
                     🗑️ Удалить
                 </button>
             </form>
             {% endif %}
-            <label for="photo-input" class="text-xs bg-gold text-white px-4 py-1.5 rounded-full cursor-pointer hover:bg-yellow-600 transition-colors font-medium">
+            <label for="photo-input" class="text-xs bg-gold text-white px-4 py-2 rounded-full cursor-pointer hover:bg-yellow-600 active:scale-95 transition-all font-medium shadow-sm">
                 📷 {% if profile.get('photo_url') %}Заменить{% else %}Загрузить{% endif %}
             </label>
         </div>
     </div>
 
-    <form method="post" action="/profile/update" enctype="multipart/form-data" class="space-y-4">
+    <form method="post" action="/profile/update" enctype="multipart/form-data" class="space-y-5">
         <input type="file" id="photo-input" name="photo" accept="image/*" class="hidden" onchange="this.form.submit();">
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Имя</label>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Имя</label>
             <input type="text" name="full_name" value="{{ profile.get('full_name', '') }}"
-                   class="w-full border border-gray-200 p-2.5 rounded-lg text-sm focus:border-gold focus:ring-2 focus:ring-gold/20">
+                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
         </div>
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Телефон</label>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Телефон</label>
             <input type="text" name="phone" value="{{ profile.get('phone', '') }}"
-                   class="w-full border border-gray-200 p-2.5 rounded-lg text-sm focus:border-gold focus:ring-2 focus:ring-gold/20">
+                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
         </div>
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">О себе</label>
-            <textarea name="bio" rows="3" class="w-full border border-gray-200 p-2.5 rounded-lg text-sm focus:border-gold focus:ring-2 focus:ring-gold/20">{{ profile.get('bio', '') }}</textarea>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">О себе</label>
+            <textarea name="bio" rows="3" class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">{{ profile.get('bio', '') }}</textarea>
         </div>
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Город</label>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Город</label>
             <input type="text" name="city" value="{{ profile.get('city', '') }}"
-                   class="w-full border border-gray-200 p-2.5 rounded-lg text-sm focus:border-gold focus:ring-2 focus:ring-gold/20">
+                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
         </div>
 
         {% if profile.get('role') == 'worker' %}
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Опыт</label>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Опыт</label>
             <input type="text" name="experience" value="{{ profile.get('experience', '') }}"
-                   class="w-full border border-gray-200 p-2.5 rounded-lg text-sm focus:border-gold focus:ring-2 focus:ring-gold/20">
+                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
         </div>
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Желаемая оплата</label>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Желаемая оплата (₽)</label>
             <input type="number" name="desired_payment" value="{{ profile.get('desired_payment', '') }}"
-                   class="w-full border border-gray-200 p-2.5 rounded-lg text-sm focus:border-gold focus:ring-2 focus:ring-gold/20">
+                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
         </div>
         {% endif %}
 
-        <button type="submit" class="w-full bg-burgundy text-white py-3 rounded-lg font-semibold hover:bg-red-900 transition-colors shadow-md">
-            Сохранить
+        <button type="submit" class="w-full bg-burgundy text-white py-3.5 rounded-xl font-bold text-base hover:bg-[#4A1720] active:scale-[0.98] transition-all duration-200 shadow-md mt-2">
+            Сохранить изменения
         </button>
     </form>
 
     {% if profile.get('role') == 'employer' and profile.get('verification_status') != 'approved' %}
-    <a href="/verify-employer" class="block text-center mt-4 text-gold hover:text-yellow-600 font-medium transition-colors">Пройти верификацию</a>
+    <div class="mt-5 text-center">
+        <a href="/verify-employer" class="inline-block bg-gold/10 text-gold font-semibold px-6 py-2.5 rounded-full hover:bg-gold/20 active:scale-95 transition-all duration-200">
+            ✨ Пройти верификацию
+        </a>
+    </div>
     {% endif %}
     {% endif %}
 
-    <a href="/logout" class="block text-center mt-6 text-red-500 hover:text-red-700 font-medium transition-colors">Выйти</a>
+    <div class="mt-6 text-center">
+        <a href="/logout" class="text-red-500 hover:text-red-700 font-medium text-sm transition-colors duration-200">
+            Выйти из аккаунта
+        </a>
+    </div>
 </div>
 {% endblock %}

@@ -9,21 +9,21 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <meta name="apple-mobile-web-app-title" content="Трудник">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
-    <meta name="theme-color" content="#800020">
+    <meta name="theme-color" content="#5C1D26">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
                         gold: '#D4AF37',
-                        burgundy: '#800020',
+                        burgundy: '#5C1D26',
                     },
                     fontFamily: {
-                        sans: ['Inter', 'Segoe UI', 'Tahoma', 'Geneva', 'Verdana', 'sans-serif'],
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
                     },
                 }
             }
@@ -31,8 +31,9 @@
     </script>
     <style>
         body {
-            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', system-ui, sans-serif;
             -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         .line-clamp-2 {
             overflow: hidden;
@@ -40,45 +41,32 @@
             -webkit-box-orient: vertical;
             -webkit-line-clamp: 2;
         }
-        .card {
-            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        /* Общие плавные переходы */
+        .nav-item, .card {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .card:hover {
-            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-            transform: translateY(-2px);
-        }
-        .nav-item {
-            transition: color 0.2s, transform 0.2s;
-        }
-        .nav-item:hover {
-            color: #D4AF37;
-            transform: translateY(-2px);
-        }
-        input, textarea, select {
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
+        /* Фокус для доступности и красоты */
         input:focus, textarea:focus, select:focus {
             outline: none;
             border-color: #D4AF37;
-            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
         }
     </style>
 </head>
-<body class="bg-gray-50">
-    <!-- Шапка с нейтральным логотипом -->
-    <header class="bg-gradient-to-r from-burgundy to-red-800 text-white p-4 flex items-center justify-between shadow-lg">
+<body class="bg-gray-50/80 backdrop-blur-sm">
+    <!-- Шапка -->
+    <header class="bg-gradient-to-r from-burgundy to-[#7A2E3B] text-white p-4 flex items-center justify-between shadow-lg shadow-burgundy/20">
         <div class="flex items-center gap-3">
-            <!-- Нейтральный символ сотрудничества (без религиозной привязки) -->
-            <div class="text-3xl filter drop-shadow-md" style="font-size: 2.2rem;">🤝</div>
+            <div class="text-3xl filter drop-shadow-md transition-transform hover:scale-110 duration-200">🤝</div>
             <h1 class="text-2xl font-bold tracking-tight">Трудник</h1>
         </div>
-        <a href="/profile" class="text-3xl filter drop-shadow-md hover:scale-110 transition-transform" title="Профиль">
+        <a href="/profile" class="text-3xl filter drop-shadow-md hover:scale-110 transition-transform duration-200" title="Профиль">
             👤
         </a>
     </header>
 
-    <!-- Сообщения -->
-    <main class="pb-16">
+    <!-- Основной контент и сообщения -->
+    <main class="pb-20">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
             <div class="px-4 pt-4">
@@ -93,38 +81,38 @@
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Нижнее меню -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around py-2 shadow-md z-50">
-        <a href="/" class="nav-item flex flex-col items-center text-xs text-gray-500">
+    <!-- Нижнее меню (как у лучших мобильных приложений) -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-200 flex justify-around py-1.5 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-50 safe-area-inset-bottom">
+        <a href="/" class="nav-item flex flex-col items-center text-xs text-gray-500 hover:text-gold py-1">
             <span class="text-xl mb-0.5">📋</span>
             <span>Задания</span>
         </a>
-        <a href="/workers" class="nav-item flex flex-col items-center text-xs text-gray-500">
+        <a href="/workers" class="nav-item flex flex-col items-center text-xs text-gray-500 hover:text-gold py-1">
             <span class="text-xl mb-0.5">👥</span>
             <span>Работники</span>
         </a>
         {% if session.get('role') == 'employer' %}
-        <a href="/my-jobs" class="nav-item flex flex-col items-center text-xs text-gray-500">
+        <a href="/my-jobs" class="nav-item flex flex-col items-center text-xs text-gray-500 hover:text-gold py-1">
             <span class="text-xl mb-0.5">📁</span>
             <span>Мои задания</span>
         </a>
-        <a href="/my-applications" class="nav-item flex flex-col items-center text-xs text-gray-500 relative">
+        <a href="/my-applications" class="nav-item flex flex-col items-center text-xs text-gray-500 hover:text-gold relative py-1">
             <span class="text-xl mb-0.5">📨</span>
             {% if pending_app_count is defined and pending_app_count > 0 %}
-            <span class="absolute -top-0.5 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">{{ pending_app_count }}</span>
+            <span class="absolute top-0 right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow-sm">{{ pending_app_count }}</span>
             {% endif %}
             <span>Отклики</span>
         </a>
         {% endif %}
-        <a href="/shifts" class="nav-item flex flex-col items-center text-xs text-gray-500">
+        <a href="/shifts" class="nav-item flex flex-col items-center text-xs text-gray-500 hover:text-gold py-1">
             <span class="text-xl mb-0.5">🕒</span>
             <span>Смены</span>
         </a>
-        <a href="/chats" class="nav-item flex flex-col items-center text-xs text-gray-500">
+        <a href="/chats" class="nav-item flex flex-col items-center text-xs text-gray-500 hover:text-gold py-1">
             <span class="text-xl mb-0.5">💬</span>
             <span>Чат</span>
         </a>
-        <a href="/favorites" class="nav-item flex flex-col items-center text-xs text-gray-500">
+        <a href="/favorites" class="nav-item flex flex-col items-center text-xs text-gray-500 hover:text-gold py-1">
             <span class="text-xl mb-0.5">⭐</span>
             <span>Избранное</span>
         </a>
