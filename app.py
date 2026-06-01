@@ -22,7 +22,6 @@ SERVICE_KEY = app.config.get('SUPABASE_SERVICE_ROLE_KEY', '')
 # ──────────────────────────────────────────────
 
 def calculate_distance(lat1, lon1, lat2, lon2):
-    """Расстояние в километрах (формула гаверсинусов)."""
     R = 6371
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
@@ -33,7 +32,6 @@ def calculate_distance(lat1, lon1, lat2, lon2):
 
 
 def refresh_access_token():
-    """Обновляет access_token по refresh_token."""
     refresh_token = session.get('refresh_token')
     if not refresh_token:
         return False
@@ -56,7 +54,6 @@ def refresh_access_token():
 
 
 def supabase_request(method, endpoint, **kwargs):
-    """Запрос к Supabase REST API с автообновлением токена при 401."""
     def _make_request():
         headers = {
             'apikey': SUPABASE_KEY,
@@ -78,7 +75,6 @@ def supabase_request(method, endpoint, **kwargs):
 
 
 def upload_to_storage(bucket, file_path, file_data, content_type):
-    """Загружает файл в Supabase Storage и возвращает публичный URL."""
     url = f'{SUPABASE_URL}/storage/v1/object/{bucket}/{file_path}'
     headers = {
         'apikey': SUPABASE_KEY,
@@ -96,7 +92,6 @@ def upload_to_storage(bucket, file_path, file_data, content_type):
 
 
 def copy_job(original_job):
-    """Создаёт словарь для нового задания на основе существующего."""
     return {
         'employer_id': original_job['employer_id'],
         'organization_name': original_job.get('organization_name', ''),
@@ -312,7 +307,6 @@ def register():
                         update_data['desired_payment'] = 0
                     update_data['experience'] = request.form.get('experience', '')
 
-                # Для обновления роли используем сервисный ключ
                 if SERVICE_KEY:
                     patch_url = f"{SUPABASE_URL}/rest/v1/profiles?id=eq.{user['id']}"
                     requests.patch(patch_url, json=update_data,
@@ -322,7 +316,6 @@ def register():
                                        'Content-Type': 'application/json'
                                    }, timeout=10)
                 else:
-                    # Запасной вариант – попробовать обычный ключ (может не сработать для роли)
                     supabase_request('PATCH', f'profiles?id=eq.{user["id"]}', json=update_data)
 
                 flash('Регистрация успешна. Теперь войдите.', 'success')
@@ -402,6 +395,7 @@ def delete_photo():
     flash('Фото удалено', 'success')
     return redirect(url_for('profile'))
 
+
 @app.route('/profile/delete-account', methods=['POST'])
 @login_required
 def delete_account():
@@ -422,6 +416,7 @@ def delete_account():
     else:
         flash(f'Ошибка удаления аккаунта: {resp.text}', 'danger')
         return redirect(url_for('profile'))
+
 
 @app.route('/verify-employer', methods=['GET', 'POST'])
 @login_required
@@ -460,7 +455,7 @@ def create_job():
         resp = supabase_request('POST', 'jobs', json=job_data)
         if resp.ok:
             flash('Задание опубликовано', 'success')
-            return redirect(url_for('index'))
+            return redirect(url_for('my_jobs'))
         flash('Ошибка создания задания', 'danger')
     return render_template('create_job.html', yandex_api_key=app.config['YANDEX_MAPS_API_KEY'])
 
@@ -508,7 +503,7 @@ def handle_application(app_id, action):
     else:
         supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'rejected'})
         flash('Отклик отклонён', 'info')
-    return redirect(url_for('index'))
+    return redirect(url_for('my_applications'))
 
 
 # ──────────────────────────────────────────────
@@ -680,7 +675,7 @@ def my_jobs():
                            current_status=status_filter)
 
 
-@app.route('/repost-job/<job_id>')
+@app.route('/repost-job/<job_id>', methods=['GET', 'POST'])
 @login_required
 @role_required('employer')
 def repost_job(job_id):
@@ -719,7 +714,7 @@ def my_jobs_action():
     return redirect(url_for('my_jobs'))
 
 
-@app.route('/cancel-job/<job_id>')
+@app.route('/cancel-job/<job_id>', methods=['GET', 'POST'])
 @login_required
 @role_required('employer')
 def cancel_job(job_id):
@@ -728,7 +723,7 @@ def cancel_job(job_id):
     return redirect(url_for('my_jobs'))
 
 
-@app.route('/delete-job/<job_id>')
+@app.route('/delete-job/<job_id>', methods=['GET', 'POST'])
 @login_required
 @role_required('employer')
 def delete_job(job_id):
