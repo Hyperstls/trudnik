@@ -1,46 +1,64 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="p-4">
+<div class="p-4 max-w-2xl mx-auto">
     {% if job.photos %}
     <div class="flex gap-2 overflow-x-auto mb-4">
         {% for photo in job.photos %}
-        <img src="{{ photo.photo_url }}" class="h-64 rounded-lg">
+        <img src="{{ photo.photo_url }}" class="h-64 rounded-xl shadow-sm">
         {% endfor %}
     </div>
     {% endif %}
-    <h1 class="text-xl font-bold">{{ job.organization_name }}</h1>
-    <p class="text-gold font-bold text-2xl">{{ job.payment_amount }} ₽</p>
-    <p class="text-sm text-gray-500">{{ job.city }}, {{ job.address }}</p>
-    <div id="map" style="height: 300px;" class="mt-4"></div>
-    <div class="mt-4 space-y-2">
+
+    <h1 class="text-2xl font-bold text-gray-900 mb-2">{{ job.organization_name }}</h1>
+    <p class="text-gold font-bold text-2xl mb-1">{{ job.payment_amount }} ₽</p>
+    <p class="text-sm text-gray-500 mb-4">{{ job.city }}, {{ job.address }}</p>
+
+    <div id="map" style="height: 300px;" class="rounded-xl overflow-hidden shadow-sm mb-4"></div>
+
+    <div class="space-y-3 text-sm text-gray-700">
         <p><strong>Описание:</strong> {{ job.object_description }}</p>
         <p><strong>Вид работы:</strong> {{ job.work_type }}</p>
         <p>{{ job.detailed_description }}</p>
     </div>
 
     {% if session.get('user_id') %}
-    <div class="mt-4">
+    <div class="mt-6 space-y-3">
         {% if job.status != 'open' %}
-        <p class="text-sm text-gray-500 mb-2">Задание <strong>неактивно</strong> (статус: {{ job.status }})</p>
+        <p class="text-sm text-red-500 font-medium">Задание неактивно (статус: {{ job.status }})</p>
         {% endif %}
 
         {% if session.get('role') == 'employer' and session.get('user_id') == job.employer_id %}
             {% if job.application_count is defined %}
-            <p class="text-sm mb-2">Откликов: <strong>{{ job.application_count }}</strong></p>
+            <p class="text-sm text-gray-600">Откликов: <strong>{{ job.application_count }}</strong></p>
             {% endif %}
-            <a href="/my-applications" class="text-blue-500 underline text-sm">Управление откликами</a>
-        {% elif session.get('role') == 'worker' and not already_applied and job.status == 'open' %}
-            <form action="/apply/{{ job.id }}" method="post" class="mt-4">
-                <button type="submit" class="w-full bg-gold text-white py-2 rounded">Откликнуться</button>
+            <a href="/my-applications" class="inline-block bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
+                Управление откликами
+            </a>
+        {% elif session.get('role') == 'worker' %}
+            {% if not already_applied and job.status == 'open' %}
+            <form action="/apply/{{ job.id }}" method="post">
+                <button type="submit" class="w-full bg-gold text-white py-3 rounded-xl font-semibold hover:bg-yellow-600 transition-colors">
+                    Откликнуться
+                </button>
             </form>
-        {% elif session.get('role') == 'worker' and already_applied %}
-            <p class="mt-4 text-green-600 font-semibold">Вы уже откликнулись</p>
-        {% elif session.get('role') == 'employer' and session.get('user_id') == job.employer_id %}
-            <p class="text-sm text-gray-500 mt-4">Это ваше задание.</p>
+            {% elif already_applied %}
+            <p class="text-emerald-600 font-medium">Вы уже откликнулись на это задание</p>
+            <form action="/unapply/{{ job.id }}" method="post">
+                <button type="submit" class="w-full bg-red-500 text-white py-3 rounded-xl font-semibold hover:bg-red-600 transition-colors">
+                    Отозвать отклик
+                </button>
+            </form>
+            {% endif %}
+            <form action="/favorite-job/{{ job.id }}" method="post">
+                <button type="submit" class="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors">
+                    ⭐ В избранное
+                </button>
+            </form>
         {% endif %}
     </div>
     {% endif %}
 </div>
+
 <script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_api_key }}&lang=ru_RU" type="text/javascript"></script>
 <script>
     ymaps.ready(function() {
