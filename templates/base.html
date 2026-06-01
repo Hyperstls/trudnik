@@ -29,10 +29,17 @@
     </style>
 </head>
 <body class="bg-gray-50">
-    <header class="bg-burgundy text-white p-4 flex items-center gap-3 shadow-md">
-        <span class="text-2xl">⛪</span>
-        <h1 class="text-xl font-bold">Трудник</h1>
+    <!-- Шапка с профилем -->
+    <header class="bg-burgundy text-white p-4 flex items-center justify-between shadow-md">
+        <div class="flex items-center gap-3">
+            <span class="text-2xl">⛪</span>
+            <h1 class="text-xl font-bold">Трудник</h1>
+        </div>
+        <a href="/profile" class="text-2xl hover:scale-110 transition-transform" title="Профиль">
+            👤
+        </a>
     </header>
+
     <main class="pb-16">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -47,24 +54,26 @@
         {% endwith %}
         {% block content %}{% endblock %}
     </main>
+
+    <!-- Нижнее меню (без Профиля) -->
     <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around py-2 shadow-md z-50">
         <a href="/" class="flex flex-col items-center text-xs text-gray-500"><span class="text-lg">📋</span>Задания</a>
         <a href="/workers" class="flex flex-col items-center text-xs text-gray-500"><span class="text-lg">👥</span>Работники</a>
-    {% if session.get('role') == 'employer' %}
+        {% if session.get('role') == 'employer' %}
         <a href="/my-jobs" class="flex flex-col items-center text-xs text-gray-500"><span class="text-lg">📁</span>Мои задания</a>
         <a href="/my-applications" class="flex flex-col items-center text-xs text-gray-500 relative">
             <span class="text-lg">📨</span>
-        {% if pending_app_count is defined and pending_app_count > 0 %}
+            {% if pending_app_count is defined and pending_app_count > 0 %}
             <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{{ pending_app_count }}</span>
-        {% endif %}
-        Отклики
+            {% endif %}
+            Отклики
         </a>
-    {% endif %}
+        {% endif %}
         <a href="/shifts" class="flex flex-col items-center text-xs text-gray-500"><span class="text-lg">🕒</span>Смены</a>
         <a href="/chats" class="flex flex-col items-center text-xs text-gray-500"><span class="text-lg">💬</span>Чат</a>
         <a href="/favorites" class="flex flex-col items-center text-xs text-gray-500"><span class="text-lg">⭐</span>Избранное</a>
-        <a href="/profile" class="flex flex-col items-center text-xs text-gray-500"><span class="text-lg">👤</span>Профиль</a>
     </nav>
+
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
