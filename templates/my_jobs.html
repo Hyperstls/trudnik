@@ -1,51 +1,54 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="p-4">
-    <h2 class="text-xl font-bold mb-4">Мои задания</h2>
-    <div class="flex gap-2 mb-4 flex-wrap">
-        <a href="/my-jobs" class="px-3 py-1 rounded-full text-sm {% if current_status == 'all' %}bg-burgundy text-white{% else %}bg-gray-200{% endif %}">Все</a>
-        <a href="/my-jobs?status=open" class="px-3 py-1 rounded-full text-sm {% if current_status == 'open' %}bg-burgundy text-white{% else %}bg-gray-200{% endif %}">Открытые</a>
-        <a href="/my-jobs?status=in_progress" class="px-3 py-1 rounded-full text-sm {% if current_status == 'in_progress' %}bg-burgundy text-white{% else %}bg-gray-200{% endif %}">В работе</a>
-        <a href="/my-jobs?status=completed" class="px-3 py-1 rounded-full text-sm {% if current_status == 'completed' %}bg-burgundy text-white{% else %}bg-gray-200{% endif %}">Завершённые</a>
-        <a href="/my-jobs?status=cancelled" class="px-3 py-1 rounded-full text-sm {% if current_status == 'cancelled' %}bg-burgundy text-white{% else %}bg-gray-200{% endif %}">Отозванные</a>
+    <h2 class="text-2xl font-bold text-gray-900 mb-5">Мои задания</h2>
+    <div class="flex gap-2 mb-5 flex-wrap">
+        <a href="/my-jobs" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if current_status == 'all' %}bg-burgundy text-white shadow-md{% else %}bg-white text-gray-700 border border-gray-200 hover:bg-gray-50{% endif %}">Все</a>
+        <a href="/my-jobs?status=open" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if current_status == 'open' %}bg-burgundy text-white shadow-md{% else %}bg-white text-gray-700 border border-gray-200 hover:bg-gray-50{% endif %}">Открытые</a>
+        <a href="/my-jobs?status=in_progress" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if current_status == 'in_progress' %}bg-burgundy text-white shadow-md{% else %}bg-white text-gray-700 border border-gray-200 hover:bg-gray-50{% endif %}">В работе</a>
+        <a href="/my-jobs?status=completed" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if current_status == 'completed' %}bg-burgundy text-white shadow-md{% else %}bg-white text-gray-700 border border-gray-200 hover:bg-gray-50{% endif %}">Завершённые</a>
+        <a href="/my-jobs?status=cancelled" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if current_status == 'cancelled' %}bg-burgundy text-white shadow-md{% else %}bg-white text-gray-700 border border-gray-200 hover:bg-gray-50{% endif %}">Отозванные</a>
     </div>
 
     <form method="POST" action="/my-jobs/action" id="bulk-form">
         <div class="mb-4 flex gap-2">
-            <button type="submit" name="action" value="cancel" class="bg-yellow-500 text-white px-3 py-1 rounded text-sm" onclick="return confirm('Отозвать выбранные задания?')">Отозвать</button>
-            <button type="submit" name="action" value="delete" class="bg-red-500 text-white px-3 py-1 rounded text-sm" onclick="return confirm('Удалить выбранные задания? Это действие необратимо.')">Удалить</button>
-            <button type="submit" name="action" value="duplicate" class="bg-blue-500 text-white px-3 py-1 rounded text-sm">Дублировать</button>
+            <button type="submit" name="action" value="cancel" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-yellow-600 transition-colors">Отозвать</button>
+            <button type="submit" name="action" value="delete" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition-colors">Удалить</button>
+            <button type="submit" name="action" value="duplicate" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">Дублировать</button>
         </div>
 
-        {% for job in jobs %}
-        <div class="bg-white rounded-xl shadow p-4 mb-4 border flex items-start gap-3">
-            <input type="checkbox" name="job_ids" value="{{ job.id }}" class="mt-1">
-            <div class="flex-1">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h3 class="font-semibold text-lg">{{ job.organization_name }}</h3>
-                        <p class="text-sm text-gray-500">{{ job.date_time[:16] }} – {{ job.payment_amount }} ₽</p>
-                        <p class="text-sm">Статус:
-                            {% if job.status == 'open' %}🟢 Открыто
-                            {% elif job.status == 'in_progress' %}🔵 В работе
-                            {% elif job.status == 'completed' %}✅ Завершено
-                            {% elif job.status == 'cancelled' %}❌ Отозвано
-                            {% else %}⚪ {{ job.status }}
-                            {% endif %}
-                        </p>
-                    </div>
-                    <div class="flex flex-col gap-1 text-right">
-                        <a href="/jobs/{{ job.id }}" class="text-sm text-blue-500 underline">Просмотр</a>
-                        <a href="/repost-job/{{ job.id }}" class="text-sm text-green-600 underline">Дублировать</a>
-                        <a href="/cancel-job/{{ job.id }}" class="text-sm text-yellow-600 underline" onclick="return confirm('Отозвать задание?')">Отозвать</a>
-                        <a href="/delete-job/{{ job.id }}" class="text-sm text-red-500 underline" onclick="return confirm('Удалить задание безвозвратно?')">Удалить</a>
+        <div class="space-y-4">
+            {% for job in jobs %}
+            <div class="card bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-start gap-3 hover:shadow-md transition-all">
+                <input type="checkbox" name="job_ids" value="{{ job.id }}" class="mt-1 rounded border-gray-300 text-gold focus:ring-gold">
+                <div class="flex-1">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="font-semibold text-lg text-gray-900">{{ job.organization_name }}</h3>
+                            <p class="text-sm text-gray-500">{{ job.date_time[:16] }} · {{ job.payment_amount }} ₽</p>
+                            <p class="text-sm mt-1">
+                                {% if job.status == 'open' %}<span class="text-emerald-600 font-medium">Открыто</span>
+                                {% elif job.status == 'in_progress' %}<span class="text-blue-600 font-medium">В работе</span>
+                                {% elif job.status == 'completed' %}<span class="text-green-600 font-medium">Завершено</span>
+                                {% elif job.status == 'cancelled' %}<span class="text-red-600 font-medium">Отозвано</span>
+                                {% else %}{{ job.status }}{% endif %}
+                            </p>
+                        </div>
+                        <div class="flex flex-col gap-1 text-right">
+                            <a href="/jobs/{{ job.id }}" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Просмотр</a>
+                            <a href="/repost-job/{{ job.id }}" class="text-sm text-green-600 hover:text-green-800 font-medium">Дублировать</a>
+                            <a href="/cancel-job/{{ job.id }}" class="text-sm text-yellow-600 hover:text-yellow-800 font-medium">Отозвать</a>
+                            <a href="/delete-job/{{ job.id }}" class="text-sm text-red-500 hover:text-red-700 font-medium">Удалить</a>
+                        </div>
                     </div>
                 </div>
             </div>
+            {% else %}
+            <div class="text-center py-12 text-gray-400">
+                <p>Нет заданий</p>
+            </div>
+            {% endfor %}
         </div>
-        {% else %}
-        <p>Нет заданий</p>
-        {% endfor %}
     </form>
 </div>
 {% endblock %}
