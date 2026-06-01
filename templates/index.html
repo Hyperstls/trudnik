@@ -69,12 +69,14 @@
                         </form>
                         {% else %}
                         <span class="text-sm text-emerald-600 font-medium">✓ Вы откликнулись</span>
+                        <!-- ИНДИВИДУАЛЬНЫЙ ОТЗЫВ – отдельная форма -->
                         <form action="/unapply/{{ job.id }}" method="post" class="inline">
                             <button type="submit" class="text-sm text-red-500 hover:text-red-700 font-medium ml-1">
                                 Отозвать
                             </button>
                         </form>
                         {% endif %}
+                        <!-- ИЗБРАННОЕ – отдельная форма -->
                         <form action="/favorite-job/{{ job.id }}" method="post" class="inline">
                             <button type="submit" class="text-sm text-gray-500 hover:text-gold font-medium">⭐ В избранное</button>
                         </form>
