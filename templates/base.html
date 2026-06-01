@@ -41,32 +41,38 @@
             -webkit-box-orient: vertical;
             -webkit-line-clamp: 2;
         }
-        /* Общие плавные переходы */
         .nav-item, .card {
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        /* Фокус для доступности и красоты */
         input:focus, textarea:focus, select:focus {
             outline: none;
             border-color: #D4AF37;
             box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
         }
+        /* Нижнее меню всегда поверх контента, с надёжным фоном */
+        .bottom-nav {
+            backdrop-filter: blur(12px);
+            background-color: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+            padding-bottom: env(safe-area-inset-bottom, 0.5rem);
+        }
     </style>
 </head>
-<body class="bg-gray-50/80 backdrop-blur-sm">
+<body class="bg-gray-50/80">
     <!-- Шапка -->
     <header class="bg-gradient-to-r from-burgundy to-[#7A2E3B] text-white p-4 flex items-center justify-between shadow-lg shadow-burgundy/20">
         <div class="flex items-center gap-3">
-            <div class="text-3xl filter drop-shadow-md transition-transform hover:scale-110 duration-200">🤝</div>
+            <div class="text-3xl filter drop-shadow-md hover:scale-110 transition-transform duration-200">🤝</div>
             <h1 class="text-2xl font-bold tracking-tight">Трудник</h1>
         </div>
-        <a href="/profile" class="text-3xl filter drop-shadow-md hover:scale-110 transition-transform duration-200" title="Профиль">
-            👤
+        <!-- Белая иконка профиля с мягкой тенью -->
+        <a href="/profile" class="flex items-center justify-center w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-200" title="Профиль">
+            <span class="text-2xl text-white drop-shadow-md" style="line-height: 1;">👤</span>
         </a>
     </header>
 
-    <!-- Основной контент и сообщения -->
-    <main class="pb-20">
+    <!-- Основной контент -->
+    <main class="pb-24">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
             <div class="px-4 pt-4">
@@ -81,22 +87,22 @@
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Нижнее меню (как у лучших мобильных приложений) -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-200 flex justify-around py-1.5 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-50 safe-area-inset-bottom">
-        <a href="/" class="nav-item flex flex-col items-center text-xs text-gray-500 hover:text-gold py-1">
+    <!-- Нижнее меню (всегда видимое, не скроллится) -->
+    <nav class="bottom-nav fixed bottom-0 left-0 right-0 border-t border-gray-200 flex justify-around items-center pt-2 pb-1 z-50">
+        <a href="/" class="nav-item flex flex-col items-center text-xs text-gray-500 hover:text-gold py-1 px-2">
             <span class="text-xl mb-0.5">📋</span>
             <span>Задания</span>
         </a>
-        <a href="/workers" class="nav-item flex flex-col items-center text-xs text-gray-500 hover:text-gold py-1">
+        <a href="/workers" class="nav-item flex flex-col items-center text-xs text-gray-500 hover:text-gold py-1 px-2">
             <span class="text-xl mb-0.5">👥</span>
             <span>Работники</span>
         </a>
         {% if session.get('role') == 'employer' %}
-        <a href="/my-jobs" class="nav-item flex flex-col items-center text-xs text-gray-500 hover:text-gold py-1">
+        <a href="/my-jobs" class="nav-item flex flex-col items-center text-xs text-gray-500 hover:text-gold py-1 px-2">
             <span class="text-xl mb-0.5">📁</span>
             <span>Мои задания</span>
         </a>
-        <a href="/my-applications" class="nav-item flex flex-col items-center text-xs text-gray-500 hover:text-gold relative py-1">
+        <a href="/my-applications" class="nav-item flex flex-col items-center text-xs text-gray-500 hover:text-gold relative py-1 px-2">
             <span class="text-xl mb-0.5">📨</span>
             {% if pending_app_count is defined and pending_app_count > 0 %}
             <span class="absolute top-0 right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow-sm">{{ pending_app_count }}</span>
@@ -104,15 +110,15 @@
             <span>Отклики</span>
         </a>
         {% endif %}
-        <a href="/shifts" class="nav-item flex flex-col items-center text-xs text-gray-500 hover:text-gold py-1">
+        <a href="/shifts" class="nav-item flex flex-col items-center text-xs text-gray-500 hover:text-gold py-1 px-2">
             <span class="text-xl mb-0.5">🕒</span>
             <span>Смены</span>
         </a>
-        <a href="/chats" class="nav-item flex flex-col items-center text-xs text-gray-500 hover:text-gold py-1">
+        <a href="/chats" class="nav-item flex flex-col items-center text-xs text-gray-500 hover:text-gold py-1 px-2">
             <span class="text-xl mb-0.5">💬</span>
             <span>Чат</span>
         </a>
-        <a href="/favorites" class="nav-item flex flex-col items-center text-xs text-gray-500 hover:text-gold py-1">
+        <a href="/favorites" class="nav-item flex flex-col items-center text-xs text-gray-500 hover:text-gold py-1 px-2">
             <span class="text-xl mb-0.5">⭐</span>
             <span>Избранное</span>
         </a>
