@@ -11,6 +11,9 @@
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
     <meta name="theme-color" content="#800020">
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
@@ -18,34 +21,76 @@
                     colors: {
                         gold: '#D4AF37',
                         burgundy: '#800020',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Segoe UI', 'Tahoma', 'Geneva', 'Verdana', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'card': '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+                        'card-hover': '0 4px 12px rgba(0,0,0,0.1)',
                     }
                 }
             }
         }
     </script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .line-clamp-2 {
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+        }
+        .header-icon {
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+            transition: transform 0.2s;
+        }
+        .header-icon:hover {
+            transform: scale(1.1);
+        }
+        .nav-item {
+            transition: color 0.2s, transform 0.2s;
+        }
+        .nav-item:hover {
+            color: #D4AF37;
+            transform: translateY(-2px);
+        }
+        .card {
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+        .card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-1px);
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #D4AF37;
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+        }
     </style>
 </head>
 <body class="bg-gray-50">
-    <!-- Шапка с профилем -->
-    <header class="bg-burgundy text-white p-4 flex items-center justify-between shadow-md">
+    <!-- Шапка -->
+    <header class="bg-gradient-to-r from-burgundy to-red-900 text-white p-4 flex items-center justify-between shadow-lg">
         <div class="flex items-center gap-3">
-            <span class="text-2xl">⛪</span>
-            <h1 class="text-xl font-bold">Трудник</h1>
+            <div class="header-icon text-3xl">✝️</div>
+            <h1 class="text-xl font-bold tracking-wide">Трудник</h1>
         </div>
-        <a href="/profile" class="text-2xl hover:scale-110 transition-transform" title="Профиль">
+        <a href="/profile" class="header-icon text-3xl" title="Профиль">
             👤
         </a>
     </header>
 
+    <!-- Сообщения -->
     <main class="pb-16">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
             <div class="px-4 pt-4">
                 {% for category, message in messages %}
-                <div class="mb-2 p-3 rounded {% if category == 'danger' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
+                <div class="mb-2 p-3 rounded-lg text-sm font-medium {% if category == 'danger' %}bg-red-100 text-red-700 border border-red-200{% else %}bg-green-100 text-green-700 border border-green-200{% endif %}">
                     {{ message }}
                 </div>
                 {% endfor %}
@@ -55,25 +100,44 @@
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Нижнее меню (без Профиля) -->
+    <!-- Нижнее меню -->
     <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around py-2 shadow-md z-50">
-        <a href="/" class="flex flex-col items-center text-xs text-gray-500"><span class="text-lg">📋</span>Задания</a>
-        <a href="/workers" class="flex flex-col items-center text-xs text-gray-500"><span class="text-lg">👥</span>Работники</a>
+        <a href="/" class="nav-item flex flex-col items-center text-xs text-gray-500">
+            <span class="text-xl mb-0.5">📋</span>
+            <span>Задания</span>
+        </a>
+        <a href="/workers" class="nav-item flex flex-col items-center text-xs text-gray-500">
+            <span class="text-xl mb-0.5">👥</span>
+            <span>Работники</span>
+        </a>
         {% if session.get('role') == 'employer' %}
-        <a href="/my-jobs" class="flex flex-col items-center text-xs text-gray-500"><span class="text-lg">📁</span>Мои задания</a>
-        <a href="/my-applications" class="flex flex-col items-center text-xs text-gray-500 relative">
-            <span class="text-lg">📨</span>
+        <a href="/my-jobs" class="nav-item flex flex-col items-center text-xs text-gray-500">
+            <span class="text-xl mb-0.5">📁</span>
+            <span>Мои задания</span>
+        </a>
+        <a href="/my-applications" class="nav-item flex flex-col items-center text-xs text-gray-500 relative">
+            <span class="text-xl mb-0.5">📨</span>
             {% if pending_app_count is defined and pending_app_count > 0 %}
-            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{{ pending_app_count }}</span>
+            <span class="absolute -top-0.5 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">{{ pending_app_count }}</span>
             {% endif %}
-            Отклики
+            <span>Отклики</span>
         </a>
         {% endif %}
-        <a href="/shifts" class="flex flex-col items-center text-xs text-gray-500"><span class="text-lg">🕒</span>Смены</a>
-        <a href="/chats" class="flex flex-col items-center text-xs text-gray-500"><span class="text-lg">💬</span>Чат</a>
-        <a href="/favorites" class="flex flex-col items-center text-xs text-gray-500"><span class="text-lg">⭐</span>Избранное</a>
+        <a href="/shifts" class="nav-item flex flex-col items-center text-xs text-gray-500">
+            <span class="text-xl mb-0.5">🕒</span>
+            <span>Смены</span>
+        </a>
+        <a href="/chats" class="nav-item flex flex-col items-center text-xs text-gray-500">
+            <span class="text-xl mb-0.5">💬</span>
+            <span>Чат</span>
+        </a>
+        <a href="/favorites" class="nav-item flex flex-col items-center text-xs text-gray-500">
+            <span class="text-xl mb-0.5">⭐</span>
+            <span>Избранное</span>
+        </a>
     </nav>
 
+    <!-- Service Worker -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

@@ -2,19 +2,19 @@
 {% block content %}
 <div class="p-4">
     <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-bold">Задания</h2>
+        <h2 class="text-xl font-bold text-gray-800">Задания</h2>
         {% if session.get('role') == 'employer' %}
-        <a href="/create-job" class="bg-gold text-white px-4 py-2 rounded-full text-sm font-semibold shadow">
+        <a href="/create-job" class="bg-gold text-white px-4 py-2 rounded-full text-sm font-semibold shadow-md hover:bg-yellow-600 transition-colors">
             ➕ Создать задание
         </a>
         {% endif %}
     </div>
 
-    <form method="get" class="bg-white p-3 rounded shadow mb-4 grid grid-cols-2 gap-2">
-        <input name="city" placeholder="Город" value="{{ request.args.get('city','') }}" class="border p-2 rounded">
-        <input name="payment_min" type="number" placeholder="Оплата от" value="{{ request.args.get('payment_min','') }}" class="border p-2 rounded">
-        <input name="payment_max" type="number" placeholder="Оплата до" value="{{ request.args.get('payment_max','') }}" class="border p-2 rounded">
-        <select name="sort" class="border p-2 rounded">
+    <form method="get" class="bg-white p-4 rounded-xl shadow-card mb-6 grid grid-cols-2 gap-3">
+        <input name="city" placeholder="Город" value="{{ request.args.get('city','') }}" class="border border-gray-200 p-2.5 rounded-lg text-sm focus:border-gold focus:ring-2 focus:ring-gold/20">
+        <input name="payment_min" type="number" placeholder="Оплата от" value="{{ request.args.get('payment_min','') }}" class="border border-gray-200 p-2.5 rounded-lg text-sm focus:border-gold focus:ring-2 focus:ring-gold/20">
+        <input name="payment_max" type="number" placeholder="Оплата до" value="{{ request.args.get('payment_max','') }}" class="border border-gray-200 p-2.5 rounded-lg text-sm focus:border-gold focus:ring-2 focus:ring-gold/20">
+        <select name="sort" class="border border-gray-200 p-2.5 rounded-lg text-sm focus:border-gold focus:ring-2 focus:ring-gold/20">
             <option value="">Сортировка</option>
             <option value="distance" {% if sort == 'distance' %}selected{% endif %}>По расстоянию</option>
             <option value="payment_asc" {% if sort == 'payment_asc' %}selected{% endif %}>Оплата ↑</option>
@@ -23,41 +23,41 @@
         <input type="hidden" name="lat" id="lat-input" value="{{ lat or '' }}">
         <input type="hidden" name="lng" id="lng-input" value="{{ lng or '' }}">
         <input type="hidden" name="radius" value="{{ radius }}">
-        <button type="button" onclick="useMyLocation()" class="bg-green-500 text-white rounded py-2 col-span-1">📍 Рядом со мной</button>
-        <button type="submit" class="bg-burgundy text-white rounded col-span-1 py-2">Искать</button>
+        <button type="button" onclick="useMyLocation()" class="bg-green-500 text-white rounded-lg py-2.5 col-span-1 text-sm font-medium hover:bg-green-600 transition-colors">📍 Рядом со мной</button>
+        <button type="submit" class="bg-burgundy text-white rounded-lg py-2.5 col-span-1 text-sm font-medium hover:bg-red-900 transition-colors">Искать</button>
     </form>
 
     <div>
         {% for job in jobs %}
-        <div class="bg-white rounded-xl shadow p-4 mb-4 border">
+        <div class="card bg-white rounded-xl shadow-card p-4 mb-4 border border-gray-100">
             <a href="/jobs/{{ job.id }}">
                 {% if job.photos and job.photos|length > 0 %}
-                <img src="{{ job.photos[0].photo_url }}" class="w-full h-48 object-cover rounded-lg mb-3">
+                <img src="{{ job.photos[0].photo_url }}" class="w-full h-48 object-cover rounded-xl mb-3">
                 {% endif %}
-                <h2 class="font-semibold text-lg">{{ job.organization_name }}</h2>
-                <p class="text-gold font-bold text-xl">{{ job.payment_amount }} ₽</p>
-                <p class="text-sm text-gray-500">
+                <h2 class="font-semibold text-lg text-gray-800">{{ job.organization_name }}</h2>
+                <p class="text-gold font-bold text-xl mt-1">{{ job.payment_amount }} ₽</p>
+                <p class="text-sm text-gray-500 mt-1">
                     {% if 'distance' in job and job.distance is not none %}{{ "%.1f"|format(job.distance) }} км, {% endif %}
                     {{ job.city }}, {{ job.date_time[:16] }}
                 </p>
-                <p class="mt-1 text-gray-600 line-clamp-2">{{ job.object_description }}</p>
+                <p class="mt-2 text-gray-600 line-clamp-2 text-sm">{{ job.object_description }}</p>
             </a>
             {% if session.get('role') == 'worker' and job.id not in applied_job_ids %}
-            <form action="/apply/{{ job.id }}" method="post" class="mt-2">
-                <button type="submit" class="bg-gold text-white px-4 py-1 rounded-full text-sm">Откликнуться</button>
+            <form action="/apply/{{ job.id }}" method="post" class="mt-3">
+                <button type="submit" class="bg-gold text-white px-4 py-1.5 rounded-full text-sm font-medium hover:bg-yellow-600 transition-colors">Откликнуться</button>
             </form>
             {% elif session.get('role') == 'worker' and job.id in applied_job_ids %}
-            <p class="mt-2 text-sm text-green-600">Вы уже откликнулись</p>
+            <p class="mt-3 text-sm text-green-600 font-medium">✓ Вы уже откликнулись</p>
             {% endif %}
             {% if session.get('role') == 'employer' and session.get('user_id') == job.employer_id %}
-            <div class="mt-2">
-                <a href="/my-applications" class="text-sm text-blue-500 underline">Смотреть отклики</a>
-                <a href="/my-jobs" class="text-sm text-gray-500 underline ml-2">Мои задания</a>
+            <div class="mt-3 flex gap-3">
+                <a href="/my-applications" class="text-sm text-blue-600 hover:text-blue-800 underline font-medium">Смотреть отклики</a>
+                <a href="/my-jobs" class="text-sm text-gray-500 hover:text-gray-700 underline">Мои задания</a>
             </div>
             {% endif %}
         </div>
         {% else %}
-        <p class="text-center">Нет заданий</p>
+        <p class="text-center text-gray-400 mt-8">Нет заданий</p>
         {% endfor %}
     </div>
 </div>
