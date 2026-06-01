@@ -3,11 +3,6 @@
 <div class="p-4">
     <div class="flex justify-between items-center mb-5">
         <h2 class="text-2xl font-bold text-gray-900">Задания</h2>
-        {% if session.get('role') == 'employer' %}
-        <a href="/create-job" class="bg-gold text-white px-5 py-2.5 rounded-full text-sm font-semibold shadow-md hover:shadow-lg hover:bg-yellow-600 active:scale-95 transition-all duration-200">
-            Создать задание
-        </a>
-        {% endif %}
     </div>
 
     <form method="get" class="bg-white p-4 rounded-2xl shadow-sm mb-6 grid grid-cols-2 gap-3 border border-gray-100">
@@ -31,36 +26,65 @@
         </button>
     </form>
 
+    {% if session.get('role') == 'worker' %}
+    <form method="POST" action="/apply-selected" id="bulk-apply-form">
+        <div class="mb-3 flex items-center gap-3">
+            <button type="button" id="select-all-btn" class="text-sm text-gray-600 underline">Выбрать все</button>
+            <button type="submit" class="bg-gold text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-yellow-600 transition-colors">
+                Откликнуться на выбранные
+            </button>
+        </div>
+    {% endif %}
+
     <div class="space-y-4">
         {% for job in jobs %}
         <div class="card bg-white rounded-2xl shadow-sm border border-gray-100 p-4 hover:shadow-md hover:-translate-y-0.5">
-            <a href="/jobs/{{ job.id }}">
-                {% if job.photos and job.photos|length > 0 %}
-                <img src="{{ job.photos[0].photo_url }}" class="w-full h-48 object-cover rounded-xl mb-3">
+            <div class="flex items-start gap-3">
+                {% if session.get('role') == 'worker' %}
+                <input type="checkbox" name="job_ids" value="{{ job.id }}" class="job-checkbox mt-1 rounded border-gray-300 text-gold focus:ring-gold">
                 {% endif %}
-                <h2 class="font-semibold text-lg text-gray-900">{{ job.organization_name }}</h2>
-                <p class="text-gold font-bold text-xl mt-1">{{ job.payment_amount }} ₽</p>
-                <p class="text-sm text-gray-500 mt-1">
-                    {% if 'distance' in job and job.distance is not none %}{{ "%.1f"|format(job.distance) }} км · {% endif %}
-                    {{ job.city }}, {{ job.date_time[:16] }}
-                </p>
-                <p class="mt-2 text-gray-600 line-clamp-2 text-sm">{{ job.object_description }}</p>
-            </a>
-            {% if session.get('role') == 'worker' and job.id not in applied_job_ids %}
-            <form action="/apply/{{ job.id }}" method="post" class="mt-3">
-                <button type="submit" class="bg-gold text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-yellow-600 active:scale-95 transition-all duration-200 shadow-sm">
-                    Откликнуться
-                </button>
-            </form>
-            {% elif session.get('role') == 'worker' and job.id in applied_job_ids %}
-            <p class="mt-3 text-sm text-emerald-600 font-medium">✓ Вы откликнулись</p>
-            {% endif %}
-            {% if session.get('role') == 'employer' and session.get('user_id') == job.employer_id %}
-            <div class="mt-3 flex gap-4">
-                <a href="/my-applications" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Отклики</a>
-                <a href="/my-jobs" class="text-sm text-gray-500 hover:text-gray-700 font-medium">Мои задания</a>
+                <div class="flex-1">
+                    <a href="/jobs/{{ job.id }}" class="block">
+                        {% if job.photos and job.photos|length > 0 %}
+                        <img src="{{ job.photos[0].photo_url }}" class="w-full h-48 object-cover rounded-xl mb-3">
+                        {% endif %}
+                        <h2 class="font-semibold text-lg text-gray-900">{{ job.organization_name }}</h2>
+                        <p class="text-gold font-bold text-xl mt-1">{{ job.payment_amount }} ₽</p>
+                        <p class="text-sm text-gray-500 mt-1">
+                            {% if 'distance' in job and job.distance is not none %}{{ "%.1f"|format(job.distance) }} км · {% endif %}
+                            {{ job.city }}, {{ job.date_time[:16] }}
+                        </p>
+                        <p class="mt-2 text-gray-600 line-clamp-2 text-sm">{{ job.object_description }}</p>
+                    </a>
+                    {% if session.get('role') == 'worker' %}
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        {% if job.id not in applied_job_ids %}
+                        <form action="/apply/{{ job.id }}" method="post">
+                            <button type="submit" class="bg-gold text-white px-4 py-1.5 rounded-full text-sm font-medium hover:bg-yellow-600 transition-colors">
+                                Откликнуться
+                            </button>
+                        </form>
+                        {% else %}
+                        <p class="text-sm text-emerald-600 font-medium">✓ Вы откликнулись</p>
+                        <form action="/unapply/{{ job.id }}" method="post">
+                            <button type="submit" class="text-sm text-red-500 hover:text-red-700 font-medium">
+                                Отозвать отклик
+                            </button>
+                        </form>
+                        {% endif %}
+                        <form action="/favorite/{{ job.id }}" method="post" class="inline">
+                            <button type="submit" class="text-sm text-gray-500 hover:text-gold font-medium">⭐ В избранное</button>
+                        </form>
+                    </div>
+                    {% endif %}
+                    {% if session.get('role') == 'employer' and session.get('user_id') == job.employer_id %}
+                    <div class="mt-3 flex gap-4">
+                        <a href="/my-applications" class="text-sm text-blue-600 hover:text-blue-800 font-medium">Отклики</a>
+                        <a href="/my-jobs" class="text-sm text-gray-500 hover:text-gray-700 font-medium">Мои задания</a>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
-            {% endif %}
         </div>
         {% else %}
         <div class="text-center py-12 text-gray-400">
@@ -68,6 +92,10 @@
         </div>
         {% endfor %}
     </div>
+
+    {% if session.get('role') == 'worker' %}
+    </form>
+    {% endif %}
 </div>
 
 <script>
@@ -82,6 +110,17 @@ function useMyLocation() {
         document.querySelector('form').submit();
     }, function() {
         alert('Не удалось определить местоположение');
+    });
+}
+
+// Чекбоксы и кнопка "Выбрать все" (только для работника)
+const checkboxes = document.querySelectorAll('.job-checkbox');
+const selectAllBtn = document.getElementById('select-all-btn');
+if (selectAllBtn) {
+    selectAllBtn.addEventListener('click', function() {
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        checkboxes.forEach(cb => cb.checked = !allChecked);
+        selectAllBtn.textContent = !allChecked ? 'Снять выделение' : 'Выбрать все';
     });
 }
 </script>
