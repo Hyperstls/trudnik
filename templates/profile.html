@@ -17,7 +17,9 @@
         <div class="relative">
             <img src="{{ profile.get('photo_url') or url_for('static', filename='default-avatar.png') }}"
                  class="w-24 h-24 rounded-full object-cover border-4 border-gold shadow-lg"
-                 alt="Ваше фото">
+                 alt="Ваше фото"
+                 crossorigin="anonymous"
+                 onerror="this.onerror=null;this.src='{{ url_for('static', filename='default-avatar.png') }}';">
         </div>
         <h3 class="text-xl font-bold text-gray-900 mt-3">{{ profile.get('full_name') }}</h3>
         <p class="text-sm text-gray-500 mt-1 flex items-center gap-1">

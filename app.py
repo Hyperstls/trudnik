@@ -85,7 +85,8 @@ def upload_to_storage(bucket, file_path, file_data, content_type):
                              files={'file': (file_path, file_data, content_type)},
                              timeout=30)
         if resp.status_code in (200, 201):
-            return f'{SUPABASE_URL}/storage/v1/object/public/{bucket}/{file_path}'
+            # Добавляем временную метку, чтобы браузер не кешировал старое изображение
+            return f'{SUPABASE_URL}/storage/v1/object/public/{bucket}/{file_path}?t={int(time.time())}'
     except requests.RequestException:
         pass
     return None
