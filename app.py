@@ -690,9 +690,20 @@ def send_message():
 @app.route('/favorites')
 @login_required
 def favorites():
+    # Избранные работодатели/работники
     resp = supabase_request('GET',
         f'favorites?user_id=eq.{session["user_id"]}&select=target:profiles!favorites_target_id_fkey(id,full_name,photo_url,rating)')
-    return render_template('favorites.html', items=resp.json() if resp.ok else [])
+    items = resp.json() if resp.ok else []
+
+    # Избранные задания (только для работника)
+    favorite_jobs = []
+    if session.get('role') == 'worker':
+        job_resp = supabase_request('GET',
+            f'job_favorites?user_id=eq.{session["user_id"]}&select=job:jobs(*)')
+        if job_resp.ok and job_resp.json():
+            favorite_jobs = [j['job'] for j in job_resp.json() if j.get('job')]
+
+    return render_template('favorites.html', items=items, favorite_jobs=favorite_jobs)
 
 
 @app.route('/favorite/<target_id>', methods=['POST'])
