@@ -15,6 +15,7 @@ app.secret_key = app.config['SECRET_KEY']
 
 SUPABASE_URL = app.config['SUPABASE_URL']
 SUPABASE_KEY = app.config['SUPABASE_ANON_KEY']
+SERVICE_KEY = app.config.get('SUPABASE_SERVICE_ROLE_KEY', '')
 
 # ──────────────────────────────────────────────
 # Утилиты
@@ -23,8 +24,7 @@ SUPABASE_KEY = app.config['SUPABASE_ANON_KEY']
 def calculate_distance(lat1, lon1, lat2, lon2):
     """Расстояние в километрах (формула гаверсинусов)."""
     R = 6371
-    phi1 = math.radians(lat1)
-    phi2 = math.radians(lat2)
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
     dlambda = math.radians(lon2 - lon1)
     a = (math.sin(dphi / 2) ** 2 +
@@ -33,14 +33,13 @@ def calculate_distance(lat1, lon1, lat2, lon2):
 
 
 def refresh_access_token():
-    """Обновляет access_token по refresh_token, если он есть в сессии."""
+    """Обновляет access_token по refresh_token."""
     refresh_token = session.get('refresh_token')
     if not refresh_token:
         return False
-    refresh_url = f'{SUPABASE_URL}/auth/v1/token?grant_type=refresh_token'
+    url = f'{SUPABASE_URL}/auth/v1/token?grant_type=refresh_token'
     try:
-        resp = requests.post(refresh_url,
-                             json={'refresh_token': refresh_token},
+        resp = requests.post(url, json={'refresh_token': refresh_token},
                              headers={'apikey': SUPABASE_KEY, 'Content-Type': 'application/json'},
                              timeout=10)
         if resp.ok:
@@ -80,13 +79,13 @@ def supabase_request(method, endpoint, **kwargs):
 
 def upload_to_storage(bucket, file_path, file_data, content_type):
     """Загружает файл в Supabase Storage и возвращает публичный URL."""
-    storage_url = f'{SUPABASE_URL}/storage/v1/object/{bucket}/{file_path}'
+    url = f'{SUPABASE_URL}/storage/v1/object/{bucket}/{file_path}'
     headers = {
         'apikey': SUPABASE_KEY,
         'Authorization': f'Bearer {session["access_token"]}',
     }
     try:
-        resp = requests.post(storage_url, headers=headers,
+        resp = requests.post(url, headers=headers,
                              files={'file': (file_path, file_data, content_type)},
                              timeout=30)
         if resp.status_code in (200, 201):
@@ -222,8 +221,7 @@ def workers():
     if filters['rating_min']: query += f'&rating=gte.{filters["rating_min"]}'
 
     resp = supabase_request('GET', f'profiles?{query}&order=rating.desc')
-    workers_list = resp.json() if resp.ok else []
-    return render_template('workers.html', workers=workers_list)
+    return render_template('workers.html', workers=resp.json() if resp.ok else [])
 
 
 @app.route('/jobs/<job_id>')
@@ -307,9 +305,26 @@ def register():
                 user = resp.json()['user']
                 update_data = {'role': role, 'full_name': full_name, 'city': city}
                 if role == 'worker':
-                    update_data['desired_payment'] = float(request.form.get('desired_payment', 0))
+                    desired_payment = request.form.get('desired_payment', '0')
+                    try:
+                        update_data['desired_payment'] = float(desired_payment) if desired_payment else 0
+                    except ValueError:
+                        update_data['desired_payment'] = 0
                     update_data['experience'] = request.form.get('experience', '')
-                supabase_request('PATCH', f'profiles?id=eq.{user["id"]}', json=update_data)
+
+                # Для обновления роли используем сервисный ключ
+                if SERVICE_KEY:
+                    patch_url = f"{SUPABASE_URL}/rest/v1/profiles?id=eq.{user['id']}"
+                    requests.patch(patch_url, json=update_data,
+                                   headers={
+                                       'apikey': SERVICE_KEY,
+                                       'Authorization': f'Bearer {SERVICE_KEY}',
+                                       'Content-Type': 'application/json'
+                                   }, timeout=10)
+                else:
+                    # Запасной вариант – попробовать обычный ключ (может не сработать для роли)
+                    supabase_request('PATCH', f'profiles?id=eq.{user["id"]}', json=update_data)
+
                 flash('Регистрация успешна. Теперь войдите.', 'success')
                 return redirect(url_for('login'))
             else:
@@ -333,17 +348,12 @@ def logout():
 @login_required
 def profile():
     user_id = session['user_id']
-    error_message = None
-    profile_data = None
     try:
         resp = supabase_request('GET', f'profiles?id=eq.{user_id}&select=*')
-        if resp.ok and resp.json():
-            profile_data = resp.json()[0]
-        else:
-            error_message = f'Ошибка Supabase: {resp.status_code} {resp.text}'
-    except Exception as e:
-        error_message = f'Исключение: {str(e)}'
-    return render_template('profile.html', profile=profile_data, error_message=error_message)
+        profile_data = resp.json()[0] if resp.ok and resp.json() else None
+    except:
+        profile_data = None
+    return render_template('profile.html', profile=profile_data)
 
 
 @app.route('/profile/update', methods=['POST'])
@@ -363,7 +373,7 @@ def update_profile():
         try:
             data['desired_payment'] = float(desired_payment)
         except ValueError:
-            pass  # игнорируем некорректное значение
+            pass
 
     photo = request.files.get('photo')
     if photo and photo.filename:
@@ -379,7 +389,7 @@ def update_profile():
     try:
         supabase_request('PATCH', f'profiles?id=eq.{user_id}', json=data)
         flash('Профиль обновлён', 'success')
-    except requests.RequestException:
+    except:
         flash('Не удалось обновить профиль', 'danger')
     return redirect(url_for('profile'))
 
