@@ -549,6 +549,36 @@ def unapply_job(job_id):
     return redirect(url_for('index'))
 
 
+@app.route('/unapply-selected', methods=['POST'])
+@login_required
+def unapply_selected():
+    job_ids = request.form.getlist('job_ids')
+    if not job_ids:
+        flash('Не выбрано ни одного задания', 'danger')
+        return redirect(url_for('index'))
+    user_id = session['user_id']
+    for job_id in job_ids:
+        supabase_request('DELETE', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
+    flash(f'Отклики отозваны ({len(job_ids)} заданий)', 'success')
+    return redirect(url_for('index'))
+
+
+@app.route('/favorite-job/<job_id>', methods=['POST'])
+@login_required
+def add_favorite_job(job_id):
+    supabase_request('POST', 'job_favorites', json={'user_id': session['user_id'], 'job_id': job_id})
+    flash('Задание добавлено в избранное', 'success')
+    return redirect(request.referrer or url_for('index'))
+
+
+@app.route('/unfavorite-job/<job_id>', methods=['POST'])
+@login_required
+def remove_favorite_job(job_id):
+    supabase_request('DELETE', f'job_favorites?user_id=eq.{session["user_id"]}&job_id=eq.{job_id}')
+    flash('Задание удалено из избранного', 'success')
+    return redirect(request.referrer or url_for('favorites'))
+
+
 @app.route('/applications/<app_id>/<action>')
 @login_required
 def handle_application(app_id, action):
