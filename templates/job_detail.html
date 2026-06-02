@@ -78,13 +78,4 @@
         map.geoObjects.add(new ymaps.Placemark([{{ job.lat }}, {{ job.lng }}]));
     });
 </script>
-{% if current_user_role == 'worker' %}
-<div class="mt-6">
-    <a href="/chat/new/{{ job.employer_id }}"
-       class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors inline-flex items-center space-x-2">
-        <span>✉️</span>
-        <span>Написать работодателю</span>
-    </a>
-</div>
-{% endif %}
 {% endblock %}

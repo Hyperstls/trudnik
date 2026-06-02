@@ -13,7 +13,7 @@ app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'default-secret-key')
 
 SUPABASE_URL = os.getenv('SUPABASE_URL')
-SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+SUPABASE_KEY = os.getenv('SUPABASE_KEY') or os.getenv('SUPABASE_ANON_KEY')
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ===================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====================
@@ -176,8 +176,8 @@ def job_detail(job_id):
         flash('Задание не найдено', 'error')
         return redirect(url_for('index'))
     job_data = job.data[0]
-    employer = supabase.table('profiles').select('name, rating, avatar_url').eq('id', job_data['employer_id']).execute()
-    return render_template('job_detail.html', job=job_data, employer=employer.data[0] if employer.data else None)
+    employer = supabase.table('profiles').select('full_name, rating, photo_url').eq('id', job_data['employer_id']).execute()
+    return render_template('job_detail.html', job=job_data, employer=employer.data[0] if employer.data else None, already_applied=False, yandex_api_key=os.getenv('YANDEX_MAPS_API_KEY', ''), current_user_role=session.get('role'))
 
 @app.route('/my-jobs')
 @login_required
@@ -193,7 +193,7 @@ def my_jobs():
 def my_applications():
     user_id = session['user_id']
     applications = supabase.table('applications').select(
-        '*, worker:worker_id(id, name, rating, skills, desired_payment, avatar_url)'
+        '*, worker:worker_id!inner(id, full_name, rating, skills, desired_payment, photo_url)'
     ).eq('employer_id', user_id).execute().data
     job_ids = list(set([a['job_id'] for a in applications]))
     jobs = supabase.table('jobs').select('*').in_('id', job_ids).execute().data if job_ids else []
@@ -300,6 +300,301 @@ def workers():
         query = query.gte('rating', float(min_rating))
     workers = query.execute().data
     return render_template('workers.html', workers=workers)
+
+# ===================== ПРОФИЛЬ (РЕДИРЕКТ) =====================
+
+@app.route('/profile')
+@login_required
+def profile_redirect():
+    user_id = get_current_user_id()
+    return redirect(url_for('profile', user_id=user_id))
+
+
+# ===================== УПРАВЛЕНИЕ ПРОФИЛЕМ =====================
+
+@app.route('/profile/update', methods=['POST'])
+@login_required
+def profile_update():
+    user_id = get_current_user_id()
+    full_name = request.form.get('full_name')
+    phone = request.form.get('phone')
+    bio = request.form.get('bio')
+    city = request.form.get('city')
+    religion = request.form.get('religion')
+    skills = request.form.get('skills')
+    portfolio_link = request.form.get('portfolio_link')
+    experience = request.form.get('experience')
+    desired_payment = request.form.get('desired_payment')
+
+    update_data = {}
+    if full_name: update_data['full_name'] = full_name
+    if phone: update_data['phone'] = phone
+    if bio: update_data['bio'] = bio
+    if city: update_data['city'] = city
+    if religion: update_data['religion'] = religion
+    if skills: update_data['skills'] = [s.strip() for s in skills.split(',') if s.strip()]
+    if portfolio_link: update_data['portfolio_link'] = portfolio_link
+    if experience: update_data['experience'] = experience
+    if desired_payment: update_data['desired_payment'] = float(desired_payment)
+
+    supabase.table('profiles').update(update_data).eq('id', user_id).execute()
+
+    if 'photo' in request.files:
+        photo = request.files['photo']
+        if photo.filename:
+            pass  # TODO: загрузка в Supabase Storage
+
+    flash('Профиль обновлён!', 'success')
+    return redirect(url_for('profile', user_id=user_id))
+
+
+@app.route('/profile/delete-photo', methods=['POST'])
+@login_required
+def profile_delete_photo():
+    user_id = get_current_user_id()
+    supabase.table('profiles').update({'photo_url': None}).eq('id', user_id).execute()
+    flash('Фото удалено', 'success')
+    return redirect(url_for('profile', user_id=user_id))
+
+
+@app.route('/profile/change-password', methods=['POST'])
+@login_required
+def profile_change_password():
+    new_password = request.form.get('new_password')
+    confirm_password = request.form.get('confirm_password')
+
+    if new_password != confirm_password:
+        flash('Пароли не совпадают', 'error')
+        return redirect(url_for('profile', user_id=get_current_user_id()))
+
+    if len(new_password) < 6:
+        flash('Пароль должен быть минимум 6 символов', 'error')
+        return redirect(url_for('profile', user_id=get_current_user_id()))
+
+    try:
+        supabase.auth.update_user({'password': new_password})
+        flash('Пароль изменён!', 'success')
+    except Exception as e:
+        flash(f'Ошибка: {str(e)}', 'error')
+
+    return redirect(url_for('profile', user_id=get_current_user_id()))
+
+
+@app.route('/profile/delete-account', methods=['POST'])
+@login_required
+def profile_delete_account():
+    user_id = get_current_user_id()
+    try:
+        supabase.table('profiles').delete().eq('id', user_id).execute()
+        supabase.auth.admin.delete_user(user_id)
+        session.clear()
+        flash('Аккаунт удалён', 'info')
+    except Exception as e:
+        flash(f'Ошибка удаления: {str(e)}', 'error')
+    return redirect(url_for('index'))
+
+
+# ===================== ИЗБРАННОЕ =====================
+
+@app.route('/api/favorites/add', methods=['POST'])
+@login_required
+def api_favorites_add():
+    user_id = get_current_user_id()
+    data = request.get_json()
+    worker_id = data.get('worker_id')
+
+    if not worker_id:
+        return jsonify({'success': False, 'error': 'Не указан worker_id'}), 400
+
+    try:
+        existing = supabase.table('favorites').select('*').eq('user_id', user_id).eq('target_id', worker_id).execute()
+        if existing.data:
+            return jsonify({'success': True, 'message': 'Уже в избранном'})
+
+        supabase.table('favorites').insert({
+            'user_id': user_id,
+            'target_id': worker_id,
+            'created_at': 'now()'
+        }).execute()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/favorites')
+@login_required
+def favorites():
+    user_id = get_current_user_id()
+    role = session.get('role')
+
+    favs = supabase.table('favorites').select('*, target:target_id(*)').eq('user_id', user_id).execute().data
+    items = []
+    for fav in favs:
+        target = fav.get('target', {})
+        if target:
+            items.append({'id': fav['id'], 'target': target})
+
+    favorite_jobs = []
+    if role == 'worker':
+        fav_jobs = supabase.table('favorite_jobs').select('*, job:job_id(*)').eq('user_id', user_id).execute().data
+        for fj in fav_jobs:
+            job = fj.get('job', {})
+            if job:
+                favorite_jobs.append(job)
+
+    return render_template('favorites.html', items=items, favorite_jobs=favorite_jobs)
+
+
+@app.route('/unfavorite/<target_id>', methods=['POST'])
+@login_required
+def unfavorite(target_id):
+    user_id = get_current_user_id()
+    supabase.table('favorites').delete().eq('user_id', user_id).eq('target_id', target_id).execute()
+    flash('Удалено из избранного', 'info')
+    return redirect(url_for('favorites'))
+
+
+@app.route('/unfavorite-job/<job_id>', methods=['POST'])
+@login_required
+def unfavorite_job(job_id):
+    user_id = get_current_user_id()
+    supabase.table('favorite_jobs').delete().eq('user_id', user_id).eq('job_id', job_id).execute()
+    flash('Удалено из избранного', 'info')
+    return redirect(url_for('favorites'))
+
+
+# ===================== ОТКЛИКИ НА ЗАДАНИЯ =====================
+
+@app.route('/apply/<job_id>', methods=['POST'])
+@login_required
+def apply_job(job_id):
+    user_id = get_current_user_id()
+
+    existing = supabase.table('applications').select('*').eq('job_id', job_id).eq('worker_id', user_id).execute()
+    if existing.data:
+        flash('Вы уже откликнулись на это задание', 'info')
+        return redirect(url_for('job_detail', job_id=job_id))
+
+    supabase.table('applications').insert({
+        'job_id': job_id,
+        'worker_id': user_id,
+        'status': 'pending',
+        'created_at': 'now()'
+    }).execute()
+
+    flash('Отклик отправлен!', 'success')
+    return redirect(url_for('job_detail', job_id=job_id))
+
+
+@app.route('/unapply/<job_id>', methods=['POST'])
+@login_required
+def unapply_job(job_id):
+    user_id = get_current_user_id()
+    supabase.table('applications').delete().eq('job_id', job_id).eq('worker_id', user_id).execute()
+    flash('Отклик отозван', 'info')
+    return redirect(url_for('job_detail', job_id=job_id))
+
+
+@app.route('/favorite-job/<job_id>', methods=['POST'])
+@login_required
+def favorite_job(job_id):
+    user_id = get_current_user_id()
+
+    existing = supabase.table('favorite_jobs').select('*').eq('user_id', user_id).eq('job_id', job_id).execute()
+    if not existing.data:
+        supabase.table('favorite_jobs').insert({
+            'user_id': user_id,
+            'job_id': job_id,
+            'created_at': 'now()'
+        }).execute()
+
+    flash('Добавлено в избранное!', 'success')
+    return redirect(url_for('job_detail', job_id=job_id))
+
+
+# ===================== СМЕНЫ =====================
+
+@app.route('/shifts')
+@login_required
+def shifts():
+    user_id = get_current_user_id()
+    role = session.get('role')
+
+    if role == 'employer':
+        data = supabase.table('shifts').select('*, job:job_id(*), worker:worker_id(*)').eq('employer_id', user_id).order('created_at', desc=True).execute().data
+    else:
+        data = supabase.table('shifts').select('*, job:job_id(*), worker:worker_id(*)').eq('worker_id', user_id).order('created_at', desc=True).execute().data
+
+    return render_template('shifts.html', shifts=data)
+
+
+@app.route('/shift/<shift_id>/action', methods=['POST'])
+@login_required
+def shift_action(shift_id):
+    user_id = get_current_user_id()
+    action = request.form.get('action')
+
+    if action == 'checkin':
+        supabase.table('shifts').update({'status': 'active', 'start_time': 'now()'}).eq('id', shift_id).execute()
+    elif action == 'complete':
+        supabase.table('shifts').update({'status': 'completed', 'worker_complete': True}).eq('id', shift_id).execute()
+    elif action == 'confirm_payment_employer':
+        supabase.table('shifts').update({'employer_payment_confirmed': True}).eq('id', shift_id).execute()
+    elif action == 'confirm_payment_worker':
+        supabase.table('shifts').update({'worker_payment_confirmed': True}).eq('id', shift_id).execute()
+
+    flash('Статус обновлён!', 'success')
+    return redirect(url_for('shifts'))
+
+
+# ===================== ЧАТЫ (СПИСОК) =====================
+
+@app.route('/chats')
+@login_required
+def chats_list():
+    user_id = get_current_user_id()
+    role = session.get('role')
+
+    if role == 'employer':
+        data = supabase.table('shifts').select('*, job:job_id(*), worker:worker_id(*)').eq('employer_id', user_id).order('created_at', desc=True).execute().data
+    else:
+        data = supabase.table('shifts').select('*, job:job_id(*), worker:worker_id(*)').eq('worker_id', user_id).order('created_at', desc=True).execute().data
+
+    return render_template('chats_list.html', chats=data)
+
+
+# ===================== ВЕРИФИКАЦИЯ РАБОТОДАТЕЛЯ =====================
+
+@app.route('/verify-employer')
+@login_required
+def verify_employer():
+    return render_template('verify_employer.html')
+
+
+# ===================== АДМИНКА =====================
+
+@app.route('/admin')
+@login_required
+def admin():
+    users = supabase.table('profiles').select('*').execute().data
+    return render_template('admin.html', users=users)
+
+
+@app.route('/admin/approve/<user_id>')
+@login_required
+def admin_approve(user_id):
+    supabase.table('profiles').update({'verification_status': 'approved'}).eq('id', user_id).execute()
+    flash('Пользователь одобрен', 'success')
+    return redirect(url_for('admin'))
+
+
+@app.route('/admin/reject/<user_id>')
+@login_required
+def admin_reject(user_id):
+    supabase.table('profiles').update({'verification_status': 'rejected'}).eq('id', user_id).execute()
+    flash('Пользователь отклонён', 'info')
+    return redirect(url_for('admin'))
+
 
 # ===================== ЗАПУСК =====================
 

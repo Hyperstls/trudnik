@@ -15,12 +15,12 @@
                  data-worker-id="{{ worker.id }}">
 
                 <div class="flex items-center space-x-4">
-                    <img src="{{ worker.avatar_url or '/static/default-avatar.png' }}"
-                         alt="{{ worker.name }}"
+                    <img src="{{ worker.photo_url or '/static/default-avatar.png' }}"
+                         alt="{{ worker.full_name }}"
                          class="w-16 h-16 rounded-full object-cover border-2 border-gray-200">
                     <div class="flex-1">
                         <h3 class="font-semibold text-lg text-blue-600 hover:text-blue-800">
-                            {{ worker.name }}
+                            {{ worker.full_name }}
                         </h3>
                         <div class="flex items-center space-x-1 mt-1">
                             {% set rating = worker.rating|default(0) %}
