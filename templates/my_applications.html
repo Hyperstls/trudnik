@@ -151,25 +151,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const panel = document.getElementById('bulk-actions-panel');
     const selectAll = document.getElementById('select-all');
     const selectedCount = document.getElementById('selected-count');
-
     function updatePanel() {
         const checked = document.querySelectorAll('.app-checkbox:checked');
         selectedCount.textContent = `(${checked.length})`;
-
         if (checked.length > 0) {
             panel.classList.remove('hidden');
         } else {
             panel.classList.add('hidden');
         }
     }
-
     checkboxes.forEach(cb => {
         cb.addEventListener('change', function(e) {
             e.stopPropagation();
             updatePanel();
         });
     });
-
     if (selectAll) {
         selectAll.addEventListener('change', function(e) {
             e.stopPropagation();
@@ -185,30 +181,20 @@ function bulkAction(action) {
     const checkboxes = document.querySelectorAll('.app-checkbox:checked');
     const ids = Array.from(checkboxes).map(cb => cb.value);
     const shiftIds = Array.from(checkboxes).map(cb => cb.dataset.shiftId);
-
     if (ids.length === 0) {
         alert('Выберите отклики');
         return;
     }
-
     const actionText = action === 'accept' ? 'принять' : 'отклонить';
     if (!confirm(`Вы уверены, что хотите ${actionText} ${ids.length} отклик(ов)?`)) {
         return;
     }
-
     const buttons = document.querySelectorAll('#bulk-actions-panel button');
     buttons.forEach(b => b.disabled = true);
-
     fetch('/api/bulk-action', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            application_ids: ids,
-            shift_ids: shiftIds,
-            action: action
-        })
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({application_ids: ids, shift_ids: shiftIds, action: action})
     })
     .then(response => response.json())
     .then(data => {

@@ -1,52 +1,100 @@
 {% extends "base.html" %}
-{% block content %}
-<div class="p-4">
-    <h2 class="text-xl font-bold mb-4">Работники</h2>
-    <form method="get" class="bg-white p-3 rounded shadow mb-4 grid grid-cols-2 gap-2">
-        <input name="city" placeholder="Город" value="{{ request.args.get('city','') }}" class="border p-2 rounded">
-        <input name="experience" placeholder="Опыт (ключевые слова)" value="{{ request.args.get('experience','') }}" class="border p-2 rounded">
-        <input name="payment_from" type="number" placeholder="Оплата от" value="{{ request.args.get('payment_from','') }}" class="border p-2 rounded">
-        <input name="payment_to" type="number" placeholder="Оплата до" value="{{ request.args.get('payment_to','') }}" class="border p-2 rounded">
-        <input name="rating_min" type="number" step="0.1" placeholder="Рейтинг от" value="{{ request.args.get('rating_min','') }}" class="border p-2 rounded">
-        <input name="skills" placeholder="Навыки (через запятую)" value="{{ request.args.get('skills','') }}" class="border p-2 rounded">
-        <select name="religion" class="border p-2 rounded">
-            <option value="">Вероисповедание</option>
-            <option value="православие" {% if request.args.get('religion') == 'православие' %}selected{% endif %}>Православие</option>
-            <option value="католицизм" {% if request.args.get('religion') == 'католицизм' %}selected{% endif %}>Католицизм</option>
-            <option value="протестантизм" {% if request.args.get('religion') == 'протестантизм' %}selected{% endif %}>Протестантизм</option>
-            <option value="ислам" {% if request.args.get('religion') == 'ислам' %}selected{% endif %}>Ислам</option>
-            <option value="иудаизм" {% if request.args.get('religion') == 'иудаизм' %}selected{% endif %}>Иудаизм</option>
-            <option value="буддизм" {% if request.args.get('religion') == 'буддизм' %}selected{% endif %}>Буддизм</option>
-        </select>
-        <button type="submit" class="bg-burgundy text-white rounded col-span-2 py-2">Искать</button>
-    </form>
 
-    <div>
-        {% for w in workers %}
-        <div class="bg-white rounded-xl shadow p-4 mb-4 border flex gap-4">
-            <img src="{{ w.photo_url or url_for('static', filename='default-avatar.png') }}" class="w-16 h-16 rounded-full object-cover">
-            <div>
-                <h3 class="font-semibold text-lg">{{ w.full_name }}</h3>
-                <p class="text-sm text-gray-500">{{ w.city or '' }}</p>
-                <p class="text-sm">Опыт: {{ w.experience or 'не указан' }}</p>
-                <p class="text-sm">Желаемая оплата: {{ w.desired_payment or 'не указана' }} ₽</p>
-                <p class="text-sm">Навыки: {{ w.skills|join(', ') or 'не указаны' }}</p>
-                <p class="text-sm">Вероисповедание: {{ w.religion or 'не указано' }}</p>
-                {% if w.portfolio_link %}
-                <a href="{{ w.portfolio_link }}" target="_blank" class="text-blue-500 text-sm">Портфолио</a>
-                {% endif %}
-                <p class="text-gold">Рейтинг: {{ "%.1f"|format(w.rating) }} ({{ w.total_reviews }})</p>
-                <div class="mt-1">
-                    <a href="/profile/{{ w.id }}" class="text-blue-500 text-sm">Подробнее</a>
-                    <form action="/favorite/{{ w.id }}" method="post" class="inline">
-                        <button class="text-sm text-gold underline ml-2">⭐ В избранное</button>
-                    </form>
+{% block title %}Трудники{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-8">Трудники</h1>
+
+    {% if workers %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for worker in workers %}
+            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow worker-card"
+                 onclick="window.location.href='/profile/{{ worker.id }}'"
+                 style="cursor: pointer;"
+                 data-worker-id="{{ worker.id }}">
+
+                <div class="flex items-center space-x-4">
+                    <img src="{{ worker.avatar_url or '/static/default-avatar.png' }}"
+                         alt="{{ worker.name }}"
+                         class="w-16 h-16 rounded-full object-cover border-2 border-gray-200">
+                    <div class="flex-1">
+                        <h3 class="font-semibold text-lg text-blue-600 hover:text-blue-800">
+                            {{ worker.name }}
+                        </h3>
+                        <div class="flex items-center space-x-1 mt-1">
+                            {% set rating = worker.rating|default(0) %}
+                            {% for i in range(5) %}
+                                {% if i < rating|int %}
+                                    <span class="text-yellow-400 text-sm">★</span>
+                                {% else %}
+                                    <span class="text-gray-300 text-sm">★</span>
+                                {% endif %}
+                            {% endfor %}
+                            {% if rating > 0 %}
+                                <span class="text-gray-500 text-xs ml-1">({{ rating|round(1) }})</span>
+                            {% else %}
+                                <span class="text-gray-400 text-xs ml-1">Нет оценок</span>
+                            {% endif %}
+                        </div>
+                        {% set skills = worker.skills|default([]) %}
+                        {% if skills %}
+                        <div class="mt-2 flex flex-wrap gap-1">
+                            {% for skill in skills[:3] %}
+                                <span class="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded">{{ skill }}</span>
+                            {% endfor %}
+                            {% if skills|length > 3 %}
+                                <span class="text-gray-400 text-xs">+{{ skills|length - 3 }}</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% if worker.desired_payment %}
+                        <p class="text-green-600 text-sm mt-2 font-medium">{{ worker.desired_payment }} ₽/час</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-gray-100 flex space-x-2">
+                    <button onclick="event.stopPropagation(); window.location.href='/chat/new/{{ worker.id }}'"
+                            class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm flex items-center space-x-1">
+                        <span>✉️</span>
+                        <span>Написать</span>
+                    </button>
+                    <button onclick="event.stopPropagation(); addToFavorites('{{ worker.id }}')"
+                            class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors text-sm flex items-center space-x-1">
+                        <span>⭐</span>
+                        <span>В избранное</span>
+                    </button>
                 </div>
             </div>
+            {% endfor %}
         </div>
-        {% else %}
-        <p>Нет работников</p>
-        {% endfor %}
-    </div>
+    {% else %}
+        <div class="text-center py-16">
+            <div class="text-6xl mb-4">👥</div>
+            <p class="text-gray-500 text-lg">Пока нет зарегистрированных трудников</p>
+        </div>
+    {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function addToFavorites(workerId) {
+    fetch('/api/favorites/add', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ worker_id: workerId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Работник добавлен в избранное!');
+        } else {
+            alert('Ошибка: ' + (data.error || 'Не удалось добавить'));
+        }
+    })
+    .catch(error => { alert('Ошибка сети'); });
+}
+</script>
 {% endblock %}
