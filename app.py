@@ -215,6 +215,47 @@ def my_jobs_action():
     flash(f'Действие "{action}" выполнено для {len(job_ids)} заданий', 'success')
     return redirect(url_for('my_jobs'))
 
+
+@app.route('/delete-job/<job_id>', methods=['POST'])
+@login_required
+def delete_job(job_id):
+    user_id = get_current_user_id()
+    supabase.table('jobs').delete().eq('id', job_id).eq('employer_id', user_id).execute()
+    flash('Задание удалено', 'success')
+    return redirect(url_for('my_jobs'))
+
+
+@app.route('/cancel-job/<job_id>', methods=['POST'])
+@login_required
+def cancel_job(job_id):
+    user_id = get_current_user_id()
+    supabase.table('jobs').update({'status': 'cancelled'}).eq('id', job_id).eq('employer_id', user_id).execute()
+    flash('Задание отозвано', 'info')
+    return redirect(url_for('my_jobs'))
+
+
+@app.route('/restore-job/<job_id>', methods=['POST'])
+@login_required
+def restore_job(job_id):
+    user_id = get_current_user_id()
+    supabase.table('jobs').update({'status': 'open'}).eq('id', job_id).eq('employer_id', user_id).execute()
+    flash('Задание восстановлено', 'success')
+    return redirect(url_for('my_jobs'))
+
+
+@app.route('/repost-job/<job_id>', methods=['POST'])
+@login_required
+def repost_job(job_id):
+    user_id = get_current_user_id()
+    job = supabase.table('jobs').select('*').eq('id', job_id).execute().data
+    if job:
+        j = job[0]
+        new_job = {k: v for k, v in j.items() if k not in ['id', 'created_at']}
+        new_job['status'] = 'open'
+        supabase.table('jobs').insert(new_job).execute()
+        flash('Задание продублировано', 'success')
+    return redirect(url_for('my_jobs'))
+
 # ===================== ОТКЛИКИ =====================
 
 @app.route('/my-applications')
