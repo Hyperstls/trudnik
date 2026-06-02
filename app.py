@@ -210,6 +210,8 @@ def workers():
         'payment_from': request.args.get('payment_from', ''),
         'payment_to': request.args.get('payment_to', ''),
         'rating_min': request.args.get('rating_min', ''),
+        'skills': request.args.get('skills', ''),
+        'religion': request.args.get('religion', ''),
     }
     query = 'role=eq.worker'
     if filters['city']: query += f'&city=ilike.*{filters["city"]}*'
@@ -217,6 +219,11 @@ def workers():
     if filters['payment_from']: query += f'&desired_payment=gte.{filters["payment_from"]}'
     if filters['payment_to']: query += f'&desired_payment=lte.{filters["payment_to"]}'
     if filters['rating_min']: query += f'&rating=gte.{filters["rating_min"]}'
+    if filters['skills']:
+        for skill in filters['skills'].split(','):
+            query += f'&skills=cs.{{{skill.strip()}}}'
+    if filters['religion']:
+        query += f'&religion=eq.{filters["religion"]}'
 
     resp = supabase_request('GET', f'profiles?{query}&order=rating.desc')
     return render_template('workers.html', workers=resp.json() if resp.ok else [])
@@ -297,6 +304,9 @@ def register():
         password = request.form.get('password')
         role = request.form.get('role')
         city = request.form.get('city', '')
+        religion = request.form.get('religion', 'не указано')
+        portfolio_link = request.form.get('portfolio_link', '')
+        skills_str = request.form.get('skills', '')
 
         signup_url = f'{SUPABASE_URL}/auth/v1/signup'
         try:
@@ -304,7 +314,14 @@ def register():
                                  headers={'apikey': SUPABASE_KEY}, timeout=10)
             if resp.ok:
                 user = resp.json()['user']
-                update_data = {'role': role, 'full_name': full_name, 'city': city}
+                update_data = {
+                    'role': role,
+                    'full_name': full_name,
+                    'city': city,
+                    'religion': religion,
+                    'portfolio_link': portfolio_link,
+                    'skills': [s.strip() for s in skills_str.split(',') if s.strip()] if skills_str else []
+                }
                 if role == 'worker':
                     desired_payment = request.form.get('desired_payment', '0')
                     try:
@@ -364,7 +381,12 @@ def update_profile():
         'phone': request.form.get('phone'),
         'bio': request.form.get('bio'),
         'city': request.form.get('city'),
+        'religion': request.form.get('religion', 'не указано'),
+        'portfolio_link': request.form.get('portfolio_link', ''),
     }
+    skills_str = request.form.get('skills', '')
+    data['skills'] = [s.strip() for s in skills_str.split(',') if s.strip()] if skills_str else []
+
     if request.form.get('experience') is not None:
         data['experience'] = request.form.get('experience')
     desired_payment = request.form.get('desired_payment')
@@ -491,6 +513,7 @@ def create_job():
             'city': request.form.get('city', ''),
             'lat': float(request.form.get('lat', 55.75)),
             'lng': float(request.form.get('lng', 37.61)),
+            'preferred_religion': request.form.get('preferred_religion', 'не важно'),
         }
         resp = supabase_request('POST', 'jobs', json=job_data)
         if resp.ok:
@@ -500,7 +523,7 @@ def create_job():
     return render_template('create_job.html', yandex_api_key=app.config['YANDEX_MAPS_API_KEY'])
 
 
-@app.route('/apply/<job_id>', methods=['GET', 'POST'])   # было только POST
+@app.route('/apply/<job_id>', methods=['GET', 'POST'])
 @login_required
 def apply_job(job_id):
     user_id = session['user_id']
@@ -547,7 +570,6 @@ def apply_selected():
 def unapply_job(job_id):
     user_id = session['user_id']
     resp = supabase_request('DELETE', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
-    # Supabase возвращает 200 с количеством удалённых записей, либо ошибку
     if resp is not None and resp.ok:
         flash('Отклик отозван', 'success')
     else:
@@ -692,12 +714,10 @@ def send_message():
 @app.route('/favorites')
 @login_required
 def favorites():
-    # Избранные работодатели/работники
     resp = supabase_request('GET',
         f'favorites?user_id=eq.{session["user_id"]}&select=target:profiles!favorites_target_id_fkey(id,full_name,photo_url,rating)')
     items = resp.json() if resp.ok else []
 
-    # Избранные задания (только для работника)
     favorite_jobs = []
     if session.get('role') == 'worker':
         job_resp = supabase_request('GET',
@@ -870,7 +890,7 @@ def delete_job(job_id):
     flash('Задание удалено', 'success')
     return redirect(url_for('my_jobs'))
 
-# Принудительный перезапуск Render
+
 # ──────────────────────────────────────────────
 # Запуск
 # ──────────────────────────────────────────────
@@ -897,9 +917,11 @@ def get_git_version():
     except Exception:
         return "версия неизвестна"
 
+
 @app.context_processor
 def inject_git_info():
     return {'git_version': get_git_version()}
+
 
 if __name__ == '__main__':
     app.run(debug=False, port=5000)

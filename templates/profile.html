@@ -64,6 +64,35 @@
                    class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
         </div>
 
+        <!-- Вероисповедание -->
+        <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Вероисповедание</label>
+            <select name="religion" class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+                <option value="не указано" {% if profile.get('religion') == 'не указано' %}selected{% endif %}>Не указано</option>
+                <option value="православие" {% if profile.get('religion') == 'православие' %}selected{% endif %}>Православие</option>
+                <option value="католицизм" {% if profile.get('religion') == 'католицизм' %}selected{% endif %}>Католицизм</option>
+                <option value="протестантизм" {% if profile.get('religion') == 'протестантизм' %}selected{% endif %}>Протестантизм</option>
+                <option value="ислам" {% if profile.get('religion') == 'ислам' %}selected{% endif %}>Ислам</option>
+                <option value="иудаизм" {% if profile.get('religion') == 'иудаизм' %}selected{% endif %}>Иудаизм</option>
+                <option value="буддизм" {% if profile.get('religion') == 'буддизм' %}selected{% endif %}>Буддизм</option>
+                <option value="не важно" {% if profile.get('religion') == 'не важно' %}selected{% endif %}>Не важно</option>
+            </select>
+        </div>
+
+        <!-- Навыки -->
+        <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Навыки (через запятую)</label>
+            <input type="text" name="skills" value="{{ profile.get('skills', [])|join(', ') }}"
+                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+        </div>
+
+        <!-- Портфолио -->
+        <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Ссылка на портфолио</label>
+            <input type="url" name="portfolio_link" value="{{ profile.get('portfolio_link', '') }}"
+                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+        </div>
+
         {% if profile.get('role') == 'worker' %}
         <div>
             <label class="block text-sm font-semibold text-gray-700 mb-1.5">Опыт</label>

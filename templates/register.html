@@ -15,6 +15,32 @@
             <input type="text" name="experience" placeholder="Опыт (кратко)" class="w-full border p-2 rounded">
             <input type="number" name="desired_payment" placeholder="Желаемая оплата за смену" class="w-full border p-2 rounded">
         </div>
+        <!-- Вероисповедание -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Вероисповедание</label>
+            <select name="religion" class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+                <option value="не указано">Не указано</option>
+                <option value="православие">Православие</option>
+                <option value="католицизм">Католицизм</option>
+                <option value="протестантизм">Протестантизм</option>
+                <option value="ислам">Ислам</option>
+                <option value="иудаизм">Иудаизм</option>
+                <option value="буддизм">Буддизм</option>
+                <option value="не важно">Не важно</option>
+            </select>
+        </div>
+        <!-- Навыки -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Навыки (через запятую)</label>
+            <input type="text" name="skills" placeholder="уборка, пение, ремонт..."
+                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+        </div>
+        <!-- Портфолио -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Ссылка на портфолио</label>
+            <input type="url" name="portfolio_link" placeholder="https://..."
+                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+        </div>
         <button type="submit" class="w-full bg-burgundy text-white py-2 rounded">Зарегистрироваться</button>
     </form>
     <script>

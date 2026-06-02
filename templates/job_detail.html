@@ -19,6 +19,9 @@
         <p><strong>Описание:</strong> {{ job.object_description }}</p>
         <p><strong>Вид работы:</strong> {{ job.work_type }}</p>
         <p>{{ job.detailed_description }}</p>
+        {% if job.preferred_religion %}
+        <p><strong>Предпочтительное вероисповедание:</strong> {{ job.preferred_religion }}</p>
+        {% endif %}
     </div>
 
     {% if session.get('user_id') %}

@@ -8,6 +8,16 @@
         <input name="payment_from" type="number" placeholder="Оплата от" value="{{ request.args.get('payment_from','') }}" class="border p-2 rounded">
         <input name="payment_to" type="number" placeholder="Оплата до" value="{{ request.args.get('payment_to','') }}" class="border p-2 rounded">
         <input name="rating_min" type="number" step="0.1" placeholder="Рейтинг от" value="{{ request.args.get('rating_min','') }}" class="border p-2 rounded">
+        <input name="skills" placeholder="Навыки (через запятую)" value="{{ request.args.get('skills','') }}" class="border p-2 rounded">
+        <select name="religion" class="border p-2 rounded">
+            <option value="">Вероисповедание</option>
+            <option value="православие" {% if request.args.get('religion') == 'православие' %}selected{% endif %}>Православие</option>
+            <option value="католицизм" {% if request.args.get('religion') == 'католицизм' %}selected{% endif %}>Католицизм</option>
+            <option value="протестантизм" {% if request.args.get('religion') == 'протестантизм' %}selected{% endif %}>Протестантизм</option>
+            <option value="ислам" {% if request.args.get('religion') == 'ислам' %}selected{% endif %}>Ислам</option>
+            <option value="иудаизм" {% if request.args.get('religion') == 'иудаизм' %}selected{% endif %}>Иудаизм</option>
+            <option value="буддизм" {% if request.args.get('religion') == 'буддизм' %}selected{% endif %}>Буддизм</option>
+        </select>
         <button type="submit" class="bg-burgundy text-white rounded col-span-2 py-2">Искать</button>
     </form>
 
@@ -20,6 +30,11 @@
                 <p class="text-sm text-gray-500">{{ w.city or '' }}</p>
                 <p class="text-sm">Опыт: {{ w.experience or 'не указан' }}</p>
                 <p class="text-sm">Желаемая оплата: {{ w.desired_payment or 'не указана' }} ₽</p>
+                <p class="text-sm">Навыки: {{ w.skills|join(', ') or 'не указаны' }}</p>
+                <p class="text-sm">Вероисповедание: {{ w.religion or 'не указано' }}</p>
+                {% if w.portfolio_link %}
+                <a href="{{ w.portfolio_link }}" target="_blank" class="text-blue-500 text-sm">Портфолио</a>
+                {% endif %}
                 <p class="text-gold">Рейтинг: {{ "%.1f"|format(w.rating) }} ({{ w.total_reviews }})</p>
                 <div class="mt-1">
                     <a href="/profile/{{ w.id }}" class="text-blue-500 text-sm">Подробнее</a>

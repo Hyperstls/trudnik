@@ -12,6 +12,19 @@
         <input type="time" name="time" class="w-full border p-2 rounded mb-2">
         <input type="number" name="payment" placeholder="Оплата (₽)" class="w-full border p-2 rounded mb-2">
         <input type="text" name="city" placeholder="Город" class="w-full border p-2 rounded mb-2">
+        <!-- Предпочтительное вероисповедание -->
+        <div class="mb-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Предпочтительное вероисповедание</label>
+            <select name="preferred_religion" class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+                <option value="не важно">Не важно</option>
+                <option value="православие">Православие</option>
+                <option value="католицизм">Католицизм</option>
+                <option value="протестантизм">Протестантизм</option>
+                <option value="ислам">Ислам</option>
+                <option value="иудаизм">Иудаизм</option>
+                <option value="буддизм">Буддизм</option>
+            </select>
+        </div>
         <div class="mb-2">
             <label class="block mb-1">Место на карте (кликните для выбора)</label>
             <div id="map" style="height: 300px;"></div>
