@@ -185,6 +185,36 @@ def my_jobs():
     jobs = supabase.table('jobs').select('*').eq('employer_id', user_id).order('created_at', desc=True).execute().data
     return render_template('my_jobs.html', jobs=jobs)
 
+
+@app.route('/my-jobs/action', methods=['POST'])
+@login_required
+def my_jobs_action():
+    user_id = get_current_user_id()
+    action = request.form.get('action')
+    job_ids = request.form.getlist('job_ids')
+
+    if not job_ids:
+        flash('Выберите задания', 'error')
+        return redirect(url_for('my_jobs'))
+
+    for job_id in job_ids:
+        if action == 'delete':
+            supabase.table('jobs').delete().eq('id', job_id).eq('employer_id', user_id).execute()
+        elif action == 'cancel':
+            supabase.table('jobs').update({'status': 'cancelled'}).eq('id', job_id).eq('employer_id', user_id).execute()
+        elif action == 'restore':
+            supabase.table('jobs').update({'status': 'open'}).eq('id', job_id).eq('employer_id', user_id).execute()
+        elif action == 'duplicate':
+            job = supabase.table('jobs').select('*').eq('id', job_id).execute().data
+            if job:
+                j = job[0]
+                new_job = {k: v for k, v in j.items() if k not in ['id', 'created_at']}
+                new_job['status'] = 'open'
+                supabase.table('jobs').insert(new_job).execute()
+
+    flash(f'Действие "{action}" выполнено для {len(job_ids)} заданий', 'success')
+    return redirect(url_for('my_jobs'))
+
 # ===================== ОТКЛИКИ =====================
 
 @app.route('/my-applications')
