@@ -153,14 +153,13 @@ def job_new():
         user_id = get_current_user_id()
         job_data = {
             'employer_id': user_id,
-            'title': title,
-            'description': description,
-            'payment': float(payment) if payment else 0,
+            'organization_name': title,
+            'object_description': description,
+            'payment_amount': float(payment) if payment else 0,
             'city': city,
             'address': address,
-            'latitude': float(latitude) if latitude else None,
-            'longitude': float(longitude) if longitude else None,
-            'required_workers': int(required_workers) if required_workers else 1,
+            'lat': float(latitude) if latitude else None,
+            'lng': float(longitude) if longitude else None,
             'status': 'active',
             'created_at': datetime.utcnow().isoformat()
         }
@@ -193,25 +192,18 @@ def my_jobs():
 def my_applications():
     user_id = session['user_id']
     # Сначала получаем все задания текущего работодателя
-    my_jobs = supabase.table('jobs').select('id, title, payment, city, status').eq('employer_id', user_id).execute().data
+    my_jobs = supabase.table('jobs').select('id, organization_name, payment_amount, city, status').eq('employer_id', user_id).execute().data
     my_job_ids = [j['id'] for j in my_jobs]
 
     applications = []
     jobs_dict = {j['id']: j for j in my_jobs}
-    shifts_dict = {}
 
     if my_job_ids:
-        # Получаем отклики на эти задания
         applications = supabase.table('applications').select(
             '*, worker:worker_id(id, full_name, rating, skills, desired_payment, photo_url)'
         ).in_('job_id', my_job_ids).execute().data
 
-        shift_ids = [a.get('shift_id') for a in applications if a.get('shift_id')]
-        if shift_ids:
-            shifts = supabase.table('shifts').select('id, status, start_time').in_('id', shift_ids).execute().data
-            shifts_dict = {s['id']: s for s in shifts}
-
-    return render_template('my_applications.html', applications=applications, jobs=jobs_dict, shifts=shifts_dict, user_id=user_id)
+    return render_template('my_applications.html', applications=applications, jobs=jobs_dict, user_id=user_id)
 
 @app.route('/api/bulk-action', methods=['POST'])
 @login_required
@@ -219,18 +211,18 @@ def bulk_action():
     data = request.get_json()
     action = data.get('action')
     application_ids = data.get('application_ids', [])
-    shift_ids = data.get('shift_ids', [])
     user_id = session['user_id']
+
+    # Получаем задания работодателя, чтобы проверить права
+    my_jobs = supabase.table('jobs').select('id').eq('employer_id', user_id).execute().data
+    my_job_ids = [j['id'] for j in my_jobs]
+
     if action == 'accept':
-        for shift_id in shift_ids:
-            supabase.table('shifts').update({'status': 'active', 'updated_at': 'now()'}).eq('id', shift_id).eq('employer_id', user_id).execute()
         for app_id in application_ids:
-            supabase.table('applications').update({'status': 'accepted', 'updated_at': 'now()'}).eq('id', app_id).eq('employer_id', user_id).execute()
+            supabase.table('applications').update({'status': 'accepted'}).eq('id', app_id).in_('job_id', my_job_ids).execute()
     elif action == 'reject':
-        for shift_id in shift_ids:
-            supabase.table('shifts').update({'status': 'rejected', 'updated_at': 'now()'}).eq('id', shift_id).eq('employer_id', user_id).execute()
         for app_id in application_ids:
-            supabase.table('applications').update({'status': 'rejected', 'updated_at': 'now()'}).eq('id', app_id).eq('employer_id', user_id).execute()
+            supabase.table('applications').update({'status': 'rejected'}).eq('id', app_id).in_('job_id', my_job_ids).execute()
     return jsonify({'success': True})
 
 # ===================== ЧАТ =====================
@@ -244,13 +236,14 @@ def chat(shift_id):
         flash('Чат не найден', 'error')
         return redirect(url_for('index'))
     shift_data = shift.data[0]
-    messages = supabase.table('messages').select('*').eq('shift_id', shift_id).order('created_at', asc=True).execute().data
+    messages = supabase.table('messages').select('*').eq('shift_id', shift_id).order('created_at').execute().data
     return render_template('chat.html', shift=shift_data, messages=messages, user_id=user_id)
 
 @app.route('/chat/new/<worker_id>')
 @login_required
 def chat_new(worker_id):
     user_id = session['user_id']
+    # Создаём смену с job_id = None (можно будет привязать позже)
     shift_data = {
         'employer_id': user_id,
         'worker_id': worker_id,
@@ -552,11 +545,11 @@ def shift_action(shift_id):
     action = request.form.get('action')
 
     if action == 'checkin':
-        supabase.table('shifts').update({'status': 'active', 'start_time': 'now()'}).eq('id', shift_id).execute()
+        supabase.table('shifts').update({'status': 'active', 'worker_checkin': True, 'start_time': 'now()'}).eq('id', shift_id).execute()
     elif action == 'complete':
         supabase.table('shifts').update({'status': 'completed', 'worker_complete': True}).eq('id', shift_id).execute()
     elif action == 'confirm_payment_employer':
-        supabase.table('shifts').update({'employer_payment_confirmed': True}).eq('id', shift_id).execute()
+        supabase.table('shifts').update({'employer_payment_confirmed': True, 'employer_confirm': True}).eq('id', shift_id).execute()
     elif action == 'confirm_payment_worker':
         supabase.table('shifts').update({'worker_payment_confirmed': True}).eq('id', shift_id).execute()
 

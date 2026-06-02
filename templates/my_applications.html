@@ -21,12 +21,12 @@
 
                 <div class="flex items-start justify-between">
                     <div class="flex items-center space-x-4">
-                        <img src="{{ worker.get('avatar_url') or '/static/default-avatar.png' }}"
-                             alt="{{ worker.get('name', 'Работник') }}"
+                        <img src="{{ worker.get('photo_url') or '/static/default-avatar.png' }}"
+                             alt="{{ worker.get('full_name', 'Работник') }}"
                              class="w-14 h-14 rounded-full object-cover border-2 border-gray-200">
                         <div>
                             <h3 class="font-semibold text-lg text-blue-600 hover:text-blue-800">
-                                {{ worker.get('name', 'Работник') }}
+                                {{ worker.get('full_name', 'Работник') }}
                             </h3>
 
                             <div class="flex items-center space-x-1 mt-1">
@@ -60,7 +60,7 @@
                             {% endif %}
 
                             <p class="text-gray-500 text-xs mt-2">
-                                Задание: <span class="font-medium">{{ job.get('title', 'Неизвестно') }}</span>
+                                Задание: <span class="font-medium">{{ job.get('organization_name', 'Неизвестно') }}</span>
                             </p>
                         </div>
                     </div>

@@ -1,13 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="p-4 max-w-2xl mx-auto">
-    {% if job.photos %}
-    <div class="flex gap-2 overflow-x-auto mb-4">
-        {% for photo in job.photos %}
-        <img src="{{ photo.photo_url }}" class="h-64 rounded-xl shadow-sm">
-        {% endfor %}
-    </div>
-    {% endif %}
+    {# Фото пока не поддерживаются #}
 
     <h1 class="text-2xl font-bold text-gray-900 mb-2">{{ job.organization_name }}</h1>
     <p class="text-gold font-bold text-2xl mb-1">{{ job.payment_amount }} ₽</p>
@@ -26,14 +20,12 @@
 
     {% if session.get('user_id') %}
     <div class="mt-6 space-y-3">
-        {% if job.status != 'open' %}
+        {% if job.status != 'active' and job.status != 'open' %}
         <p class="text-sm text-red-500 font-medium">Задание неактивно (статус: {{ job.status }})</p>
         {% endif %}
 
         {% if session.get('role') == 'employer' and session.get('user_id') == job.employer_id %}
-            {% if job.application_count is defined %}
-            <p class="text-sm text-gray-600">Откликов: <strong>{{ job.application_count }}</strong></p>
-            {% endif %}
+
             <a href="/my-applications" class="inline-block bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
                 Управление откликами
             </a>
