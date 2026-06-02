@@ -182,7 +182,7 @@ def job_detail(job_id):
 @login_required
 def my_jobs():
     user_id = get_current_user_id()
-    jobs = supabase.table('jobs').select('*').eq('employer_id', user_id).order('created_at', desc=True).execute().data
+    jobs = supabase.table('jobs').select('*').eq('employer_id', user_id).neq('status', 'deleted').order('created_at', desc=True).execute().data
     return render_template('my_jobs.html', jobs=jobs)
 
 
@@ -199,8 +199,7 @@ def my_jobs_action():
 
     for job_id in job_ids:
         if action == 'delete':
-            supabase.table('shifts').delete().eq('job_id', job_id).execute()
-            supabase.table('jobs').delete().eq('id', job_id).eq('employer_id', user_id).execute()
+            supabase.table('jobs').update({'status': 'deleted'}).eq('id', job_id).eq('employer_id', user_id).execute()
         elif action == 'cancel':
             supabase.table('jobs').update({'status': 'cancelled'}).eq('id', job_id).eq('employer_id', user_id).execute()
         elif action == 'restore':
@@ -221,10 +220,8 @@ def my_jobs_action():
 @login_required
 def delete_job(job_id):
     user_id = get_current_user_id()
-    # Сначала удаляем связанные shifts
-    supabase.table('shifts').delete().eq('job_id', job_id).execute()
-    # Потом удаляем задание
-    supabase.table('jobs').delete().eq('id', job_id).eq('employer_id', user_id).execute()
+    # Помечаем задание как удалённое (безопасно, не нарушает foreign keys)
+    supabase.table('jobs').update({'status': 'deleted'}).eq('id', job_id).eq('employer_id', user_id).execute()
     flash('Задание удалено', 'success')
     return redirect(url_for('my_jobs'))
 
