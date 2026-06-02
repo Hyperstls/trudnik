@@ -12,7 +12,7 @@
             {% set worker = app.worker if app.worker else {} %}
             {% set job = jobs.get(app.job_id, {}) %}
             
-            {% set shift_status = shift.get('status', 'pending') %}
+            {% set app_status = app.status %}
 
             <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow application-card"
                  data-application-id="{{ app.id }}"
@@ -78,10 +78,10 @@
                             {% elif app.status == 'completed' %}bg-blue-100 text-blue-800
                             {% else %}bg-gray-100 text-gray-800{% endif %}">
                             {% if app.status == 'pending' %}На рассмотрении
-                            {% elif shift_status == 'accepted' %}Принят
-                            {% elif shift_status == 'active' %}Активен
-                            {% elif shift_status == 'rejected' %}Отклонён
-                            {% elif shift_status == 'cancelled' %}Отменён
+                            {% elif app_status == 'accepted' %}Принят
+                            {% elif app_status == 'active' %}Активен
+                            {% elif app_status == 'rejected' %}Отклонён
+                            {% elif app_status == 'cancelled' %}Отменён
                             {% elif app.status == 'completed' %}Завершён
                             {% else %}{{ app.status }}{% endif %}
                         </span>
@@ -91,7 +91,7 @@
                 <div class="mt-4 pt-3 border-t border-gray-100 flex items-center space-x-3">
 
 
-                    {% if shift_status in ['pending', 'accepted'] %}
+                    {% if app.status in ['pending', 'accepted'] %}
                     <label class="flex items-center space-x-1 text-sm text-gray-600" onclick="event.stopPropagation();">
                         <input type="checkbox"
                                class="app-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500"
@@ -174,7 +174,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function bulkAction(action) {
     const checkboxes = document.querySelectorAll('.app-checkbox:checked');
     const ids = Array.from(checkboxes).map(cb => cb.value);
-    const shiftIds = Array.from(checkboxes).map(cb => cb.dataset.shiftId);
+    
     if (ids.length === 0) {
         alert('Выберите отклики');
         return;
@@ -188,7 +188,7 @@ function bulkAction(action) {
     fetch('/api/bulk-action', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({application_ids: ids, shift_ids: shiftIds, action: action})
+        body: JSON.stringify({application_ids: ids,  action: action})
     })
     .then(response => response.json())
     .then(data => {
