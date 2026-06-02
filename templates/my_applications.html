@@ -1,35 +1,228 @@
 {% extends "base.html" %}
+
+{% block title %}Мои отклики{% endblock %}
+
 {% block content %}
-<div class="p-4">
-    <h2 class="text-xl font-bold mb-4">Отклики на ваши задания</h2>
-    {% for app in applications %}
-    <div class="bg-white rounded-xl shadow p-4 mb-4 border">
-        <div class="flex items-center gap-3 mb-3">
-            <img src="{{ app.worker.photo_url or url_for('static', filename='default-avatar.png') }}" class="w-10 h-10 rounded-full">
-            <div>
-                <p class="font-semibold">{{ app.worker.full_name }}</p>
-                <p class="text-sm text-gray-500">{{ app.worker.city or '' }}</p>
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-8">Отклики на мои задания</h1>
+
+    {% if applications %}
+        <div class="space-y-4" id="applications-list">
+            {% for app in applications %}
+            {% set worker = app.worker if app.worker else {} %}
+            {% set job = jobs.get(app.job_id, {}) %}
+            {% set shift = shifts.get(app.shift_id, {}) %}
+            {% set shift_status = shift.get('status', 'pending') %}
+
+            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow application-card"
+                 data-application-id="{{ app.id }}"
+                 onclick="window.location.href='/profile/{{ worker.id }}'"
+                 style="cursor: pointer;">
+
+                <div class="flex items-start justify-between">
+                    <div class="flex items-center space-x-4">
+                        <img src="{{ worker.get('avatar_url') or '/static/default-avatar.png' }}"
+                             alt="{{ worker.get('name', 'Работник') }}"
+                             class="w-14 h-14 rounded-full object-cover border-2 border-gray-200">
+                        <div>
+                            <h3 class="font-semibold text-lg text-blue-600 hover:text-blue-800">
+                                {{ worker.get('name', 'Работник') }}
+                            </h3>
+
+                            <div class="flex items-center space-x-1 mt-1">
+                                {% set rating = worker.get('rating', 0) %}
+                                {% for i in range(5) %}
+                                    {% if i < rating|int %}
+                                        <span class="text-yellow-400 text-sm">★</span>
+                                    {% else %}
+                                        <span class="text-gray-300 text-sm">★</span>
+                                    {% endif %}
+                                {% endfor %}
+                                {% if rating > 0 %}
+                                    <span class="text-gray-500 text-xs ml-1">({{ rating|round(1) }})</span>
+                                {% else %}
+                                    <span class="text-gray-400 text-xs ml-1">Нет оценок</span>
+                                {% endif %}
+                            </div>
+
+                            {% set skills = worker.get('skills', []) %}
+                            {% if skills %}
+                            <div class="mt-2 flex flex-wrap gap-1">
+                                {% for skill in skills[:3] %}
+                                    <span class="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">{{ skill }}</span>
+                                {% endfor %}
+                                {% if skills|length > 3 %}
+                                    <span class="text-gray-400 text-xs">+{{ skills|length - 3 }}</span>
+                                {% endif %}
+                            </div>
+                            {% else %}
+                                <p class="text-gray-400 text-xs mt-1">Навыки не указаны</p>
+                            {% endif %}
+
+                            <p class="text-gray-500 text-xs mt-2">
+                                Задание: <span class="font-medium">{{ job.get('title', 'Неизвестно') }}</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="text-right">
+                        {% set payment = worker.get('desired_payment') %}
+                        {% if payment %}
+                            <p class="text-green-600 font-semibold text-lg">{{ payment }} ₽/час</p>
+                        {% endif %}
+
+                        <span class="inline-block px-3 py-1 rounded text-xs font-medium mt-2
+                            {% if shift_status == 'pending' %}bg-yellow-100 text-yellow-800
+                            {% elif shift_status == 'accepted' or shift_status == 'active' %}bg-green-100 text-green-800
+                            {% elif shift_status == 'rejected' or shift_status == 'cancelled' %}bg-red-100 text-red-800
+                            {% elif shift_status == 'completed' %}bg-blue-100 text-blue-800
+                            {% else %}bg-gray-100 text-gray-800{% endif %}">
+                            {% if shift_status == 'pending' %}На рассмотрении
+                            {% elif shift_status == 'accepted' %}Принят
+                            {% elif shift_status == 'active' %}Активен
+                            {% elif shift_status == 'rejected' %}Отклонён
+                            {% elif shift_status == 'cancelled' %}Отменён
+                            {% elif shift_status == 'completed' %}Завершён
+                            {% else %}{{ shift_status }}{% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-gray-100 flex items-center space-x-3">
+                    {% if app.shift_id %}
+                    <button onclick="event.stopPropagation(); window.location.href='/chat/{{ app.shift_id }}'"
+                            class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm flex items-center space-x-1">
+                        <span>✉️</span>
+                        <span>Написать</span>
+                    </button>
+                    {% endif %}
+
+                    {% if shift_status in ['pending', 'accepted'] %}
+                    <label class="flex items-center space-x-1 text-sm text-gray-600" onclick="event.stopPropagation();">
+                        <input type="checkbox"
+                               class="app-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                               value="{{ app.id }}"
+                               data-shift-id="{{ app.shift_id }}"
+                               data-status="{{ shift_status }}">
+                        <span>Выбрать</span>
+                    </label>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div id="bulk-actions-panel" class="mt-6 p-4 bg-gray-50 rounded-lg hidden">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <input type="checkbox" id="select-all" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                    <label for="select-all" class="text-sm text-gray-600">Выбрать все</label>
+                    <span id="selected-count" class="text-sm text-gray-500 ml-2">(0)</span>
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="bulkAction('accept')"
+                            class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 text-sm transition-colors">
+                        ✓ Принять выбранные
+                    </button>
+                    <button onclick="bulkAction('reject')"
+                            class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 text-sm transition-colors">
+                        ✕ Отклонить выбранные
+                    </button>
+                </div>
             </div>
         </div>
-        <p class="text-sm mb-2">Задание: <strong>{{ app.job.organization_name }}</strong></p>
-        <p class="text-sm mb-3">Статус:
-            {% if app.status == 'pending' %}
-            <span class="text-yellow-500">Ожидает решения</span>
-            {% elif app.status == 'accepted' %}
-            <span class="text-green-500">Принят</span>
-            {% else %}
-            <span class="text-red-500">Отклонён</span>
-            {% endif %}
-        </p>
-        {% if app.status == 'pending' %}
-        <div class="flex gap-2">
-            <a href="/applications/{{ app.id }}/accept" class="bg-green-500 text-white px-3 py-1 rounded text-sm">Принять</a>
-            <a href="/applications/{{ app.id }}/reject" class="bg-red-500 text-white px-3 py-1 rounded text-sm">Отклонить</a>
-        </div>
-        {% endif %}
-    </div>
+
     {% else %}
-    <p>Нет откликов</p>
-    {% endfor %}
+        <div class="text-center py-16">
+            <div class="text-6xl mb-4">📋</div>
+            <p class="text-gray-500 text-lg">Пока нет откликов на ваши задания</p>
+            <a href="/my-jobs" class="mt-4 inline-block bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                Перейти к моим заданиям
+            </a>
+        </div>
+    {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.app-checkbox');
+    const panel = document.getElementById('bulk-actions-panel');
+    const selectAll = document.getElementById('select-all');
+    const selectedCount = document.getElementById('selected-count');
+
+    function updatePanel() {
+        const checked = document.querySelectorAll('.app-checkbox:checked');
+        selectedCount.textContent = `(${checked.length})`;
+
+        if (checked.length > 0) {
+            panel.classList.remove('hidden');
+        } else {
+            panel.classList.add('hidden');
+        }
+    }
+
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', function(e) {
+            e.stopPropagation();
+            updatePanel();
+        });
+    });
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function(e) {
+            e.stopPropagation();
+            checkboxes.forEach(cb => {
+                cb.checked = this.checked;
+            });
+            updatePanel();
+        });
+    }
+});
+
+function bulkAction(action) {
+    const checkboxes = document.querySelectorAll('.app-checkbox:checked');
+    const ids = Array.from(checkboxes).map(cb => cb.value);
+    const shiftIds = Array.from(checkboxes).map(cb => cb.dataset.shiftId);
+
+    if (ids.length === 0) {
+        alert('Выберите отклики');
+        return;
+    }
+
+    const actionText = action === 'accept' ? 'принять' : 'отклонить';
+    if (!confirm(`Вы уверены, что хотите ${actionText} ${ids.length} отклик(ов)?`)) {
+        return;
+    }
+
+    const buttons = document.querySelectorAll('#bulk-actions-panel button');
+    buttons.forEach(b => b.disabled = true);
+
+    fetch('/api/bulk-action', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            application_ids: ids,
+            shift_ids: shiftIds,
+            action: action
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            setTimeout(() => { location.reload(); }, 1000);
+        } else {
+            alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+            buttons.forEach(b => b.disabled = false);
+        }
+    })
+    .catch(error => {
+        alert('Ошибка сети: ' + error);
+        buttons.forEach(b => b.disabled = false);
+    });
+}
+</script>
 {% endblock %}

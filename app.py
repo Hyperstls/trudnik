@@ -798,11 +798,27 @@ def admin_reject(user_id):
 
 @app.route('/my-applications')
 @login_required
-@role_required('employer')
 def my_applications():
-    resp = supabase_request('GET',
-        f'applications?job.employer_id=eq.{session["user_id"]}&select=*,job:jobs(*),worker:profiles(*)')
-    return render_template('my_applications.html', applications=resp.json() if resp.ok else [])
+    user_id = session['user_id']
+
+    applications = supabase.table('applications').select(
+        '*, worker:worker_id(id, name, rating, skills, desired_payment, avatar_url)'
+    ).eq('employer_id', user_id).execute().data
+
+    job_ids = list(set([a['job_id'] for a in applications]))
+    jobs = supabase.table('jobs').select('*').in_('id', job_ids).execute().data if job_ids else []
+    jobs_dict = {j['id']: j for j in jobs}
+
+    shift_ids = [a.get('shift_id') for a in applications if a.get('shift_id')]
+    shifts = supabase.table('shifts').select('id, status, start_time').in_('id',
+                                                                           shift_ids).execute().data if shift_ids else []
+    shifts_dict = {s['id']: s for s in shifts}
+
+    return render_template('my_applications.html',
+                           applications=applications,
+                           jobs=jobs_dict,
+                           shifts=shifts_dict,
+                           user_id=user_id)
 
 
 @app.route('/my-jobs')
@@ -922,6 +938,43 @@ def get_git_version():
 def inject_git_info():
     return {'git_version': get_git_version()}
 
+
+@app.route('/api/bulk-action', methods=['POST'])
+@login_required
+def bulk_action():
+    data = request.get_json()
+    action = data.get('action')
+    application_ids = data.get('application_ids', [])
+    shift_ids = data.get('shift_ids', [])
+    user_id = session['user_id']
+
+    if action == 'accept':
+        for shift_id in shift_ids:
+            supabase.table('shifts').update({
+                'status': 'active',
+                'updated_at': 'now()'
+            }).eq('id', shift_id).eq('employer_id', user_id).execute()
+
+        for app_id in application_ids:
+            supabase.table('applications').update({
+                'status': 'accepted',
+                'updated_at': 'now()'
+            }).eq('id', app_id).eq('employer_id', user_id).execute()
+
+    elif action == 'reject':
+        for shift_id in shift_ids:
+            supabase.table('shifts').update({
+                'status': 'rejected',
+                'updated_at': 'now()'
+            }).eq('id', shift_id).eq('employer_id', user_id).execute()
+
+        for app_id in application_ids:
+            supabase.table('applications').update({
+                'status': 'rejected',
+                'updated_at': 'now()'
+            }).eq('id', app_id).eq('employer_id', user_id).execute()
+
+    return jsonify({'success': True})
 
 if __name__ == '__main__':
     app.run(debug=False, port=5000)
