@@ -243,13 +243,16 @@ def chat(shift_id):
 @login_required
 def chat_new(worker_id):
     user_id = session['user_id']
-    # Создаём смену с job_id = None (можно будет привязать позже)
+    # Создаём чат (job_id берётся из query string, если есть)
+    job_id = request.args.get('job_id')
     shift_data = {
         'employer_id': user_id,
         'worker_id': worker_id,
         'status': 'pending',
         'created_at': 'now()'
     }
+    if job_id:
+        shift_data['job_id'] = job_id
     result = supabase.table('shifts').insert(shift_data).execute()
     shift_id = result.data[0]['id']
     return redirect(url_for('chat', shift_id=shift_id))
