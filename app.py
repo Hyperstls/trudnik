@@ -199,6 +199,7 @@ def my_jobs_action():
 
     for job_id in job_ids:
         if action == 'delete':
+            supabase.table('shifts').delete().eq('job_id', job_id).execute()
             supabase.table('jobs').delete().eq('id', job_id).eq('employer_id', user_id).execute()
         elif action == 'cancel':
             supabase.table('jobs').update({'status': 'cancelled'}).eq('id', job_id).eq('employer_id', user_id).execute()
@@ -220,6 +221,9 @@ def my_jobs_action():
 @login_required
 def delete_job(job_id):
     user_id = get_current_user_id()
+    # Сначала удаляем связанные shifts
+    supabase.table('shifts').delete().eq('job_id', job_id).execute()
+    # Потом удаляем задание
     supabase.table('jobs').delete().eq('id', job_id).eq('employer_id', user_id).execute()
     flash('Задание удалено', 'success')
     return redirect(url_for('my_jobs'))
