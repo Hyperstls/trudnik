@@ -192,15 +192,25 @@ def my_jobs():
 @login_required
 def my_applications():
     user_id = session['user_id']
-    applications = supabase.table('applications').select(
-        '*, worker:worker_id!inner(id, full_name, rating, skills, desired_payment, photo_url)'
-    ).eq('employer_id', user_id).execute().data
-    job_ids = list(set([a['job_id'] for a in applications]))
-    jobs = supabase.table('jobs').select('*').in_('id', job_ids).execute().data if job_ids else []
-    jobs_dict = {j['id']: j for j in jobs}
-    shift_ids = [a.get('shift_id') for a in applications if a.get('shift_id')]
-    shifts = supabase.table('shifts').select('id, status, start_time').in_('id', shift_ids).execute().data if shift_ids else []
-    shifts_dict = {s['id']: s for s in shifts}
+    # Сначала получаем все задания текущего работодателя
+    my_jobs = supabase.table('jobs').select('id, title, payment, city, status').eq('employer_id', user_id).execute().data
+    my_job_ids = [j['id'] for j in my_jobs]
+
+    applications = []
+    jobs_dict = {j['id']: j for j in my_jobs}
+    shifts_dict = {}
+
+    if my_job_ids:
+        # Получаем отклики на эти задания
+        applications = supabase.table('applications').select(
+            '*, worker:worker_id(id, full_name, rating, skills, desired_payment, photo_url)'
+        ).in_('job_id', my_job_ids).execute().data
+
+        shift_ids = [a.get('shift_id') for a in applications if a.get('shift_id')]
+        if shift_ids:
+            shifts = supabase.table('shifts').select('id, status, start_time').in_('id', shift_ids).execute().data
+            shifts_dict = {s['id']: s for s in shifts}
+
     return render_template('my_applications.html', applications=applications, jobs=jobs_dict, shifts=shifts_dict, user_id=user_id)
 
 @app.route('/api/bulk-action', methods=['POST'])
@@ -436,11 +446,14 @@ def favorites():
 
     favorite_jobs = []
     if role == 'worker':
-        fav_jobs = supabase.table('favorite_jobs').select('*, job:job_id(*)').eq('user_id', user_id).execute().data
-        for fj in fav_jobs:
-            job = fj.get('job', {})
-            if job:
-                favorite_jobs.append(job)
+        try:
+            fav_jobs = supabase.table('favorite_jobs').select('*, job:job_id(*)').eq('user_id', user_id).execute().data
+            for fj in fav_jobs:
+                job = fj.get('job', {})
+                if job:
+                    favorite_jobs.append(job)
+        except Exception:
+            pass  # Таблица favorite_jobs может отсутствовать
 
     return render_template('favorites.html', items=items, favorite_jobs=favorite_jobs)
 
@@ -458,8 +471,11 @@ def unfavorite(target_id):
 @login_required
 def unfavorite_job(job_id):
     user_id = get_current_user_id()
-    supabase.table('favorite_jobs').delete().eq('user_id', user_id).eq('job_id', job_id).execute()
-    flash('Удалено из избранного', 'info')
+    try:
+        supabase.table('favorite_jobs').delete().eq('user_id', user_id).eq('job_id', job_id).execute()
+        flash('Удалено из избранного', 'info')
+    except Exception:
+        flash('Функция избранных заданий временно недоступна', 'info')
     return redirect(url_for('favorites'))
 
 
@@ -499,16 +515,17 @@ def unapply_job(job_id):
 @login_required
 def favorite_job(job_id):
     user_id = get_current_user_id()
-
-    existing = supabase.table('favorite_jobs').select('*').eq('user_id', user_id).eq('job_id', job_id).execute()
-    if not existing.data:
-        supabase.table('favorite_jobs').insert({
-            'user_id': user_id,
-            'job_id': job_id,
-            'created_at': 'now()'
-        }).execute()
-
-    flash('Добавлено в избранное!', 'success')
+    try:
+        existing = supabase.table('favorite_jobs').select('*').eq('user_id', user_id).eq('job_id', job_id).execute()
+        if not existing.data:
+            supabase.table('favorite_jobs').insert({
+                'user_id': user_id,
+                'job_id': job_id,
+                'created_at': 'now()'
+            }).execute()
+        flash('Добавлено в избранное!', 'success')
+    except Exception:
+        flash('Функция временно недоступна', 'info')
     return redirect(url_for('job_detail', job_id=job_id))
 
 
