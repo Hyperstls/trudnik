@@ -61,10 +61,13 @@
     <!-- Фиксированная шапка -->
     <header class="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-burgundy to-[#A0525D] text-white p-4 flex items-center justify-between shadow-lg shadow-burgundy/20">
         <div class="flex items-center gap-3">
-            <div class="text-3xl filter drop-shadow-md hover:scale-110 transition-transform duration-200 cursor-pointer"
-                 onclick="alert('Версия: {{ git_version }}')"
+            <div class="text-3xl filter drop-shadow-md hover:scale-110 transition-transform duration-200 cursor-pointer relative"
+                 onclick="showVersion()"
                  title="Кликните, чтобы узнать версию">
                 🤝
+                <div id="version-toast" class="absolute top-full left-0 mt-2 bg-white text-gray-900 text-xs font-medium px-3 py-2 rounded-lg shadow-lg border border-gray-200 whitespace-nowrap hidden" style="z-index:100;">
+                    {{ git_version }}
+                </div>
             </div>
             <h1 class="text-2xl font-bold tracking-tight">Трудник</h1>
         </div>
@@ -132,8 +135,17 @@
     </nav>
     {% endif %}
 
-    <!-- Service Worker -->
     <script>
+        function showVersion() {
+            const toast = document.getElementById('version-toast');
+            if (toast) {
+                toast.classList.toggle('hidden');
+                if (!toast.classList.contains('hidden')) {
+                    setTimeout(() => toast.classList.add('hidden'), 5000);
+                }
+            }
+        }
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}")
