@@ -150,6 +150,7 @@
         </form>
     </div>
 </div>
+{% endif %}
 {% if current_user_role == 'employer' and profile_user.id != current_user_id %}
 <div class="mt-6 flex flex-wrap gap-3">
     <a href="/chat/new/{{ profile_user.id }}"

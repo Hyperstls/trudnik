@@ -3,8 +3,8 @@
 <div class="p-4">
     {% for shift in shifts %}
     <div class="border p-3 mb-2 rounded">
-        <p class="font-semibold">{{ shift.job.organization_name }}</p>
-        <p>{{ shift.job.date_time[:16] }}</p>
+        <p class="font-semibold">{% if shift.job %}{{ shift.job.organization_name }}{% else %}<span class="text-gray-400">Без задания</span>{% endif %}</p>
+        <p>{% if shift.job %}{{ shift.job.date_time[:16] }}{% else %}<span class="text-gray-400">Дата не указана</span>{% endif %}</p>
         <p>Статус: {{ shift.status }}</p>
         {% if shift.status == 'pending' and session.user_id == shift.worker_id %}
         <form action="/shift/{{ shift.id }}/action" method="post" class="inline">
