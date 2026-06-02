@@ -1,6 +1,7 @@
 import math
 import time
 import uuid
+import subprocess
 from datetime import datetime
 from functools import wraps
 
@@ -872,6 +873,32 @@ def delete_job(job_id):
 # ──────────────────────────────────────────────
 # Запуск
 # ──────────────────────────────────────────────
+
+def get_git_version():
+    """Получить хеш, сообщение и дату последнего коммита."""
+    try:
+        hash_commit = subprocess.check_output(
+            ['git', 'log', '-1', '--pretty=format:%h'],
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+            stderr=subprocess.DEVNULL
+        ).decode('utf-8').strip()
+        message = subprocess.check_output(
+            ['git', 'log', '-1', '--pretty=format:%s'],
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+            stderr=subprocess.DEVNULL
+        ).decode('utf-8').strip()
+        date_commit = subprocess.check_output(
+            ['git', 'log', '-1', '--pretty=format:%ad', '--date=short'],
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+            stderr=subprocess.DEVNULL
+        ).decode('utf-8').strip()
+        return f"{hash_commit} – {message} ({date_commit})"
+    except Exception:
+        return "версия неизвестна"
+
+@app.context_processor
+def inject_git_info():
+    return {'git_version': get_git_version()}
 
 if __name__ == '__main__':
     app.run(debug=False, port=5000)
