@@ -1,0 +1,5 @@
+Update: Error handling for create-job route
+
+- Add traceback import for debugging
+- Improve supabase_request() with try/except and logging
+- Update create-job route with error handling

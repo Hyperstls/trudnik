@@ -1,0 +1,34 @@
+# КОМАНДЫ ДЛЯ PYTHONANYWHERE CONSOLE
+
+# Скопируйте и вставьте эти команды в Bash console на PythonAnywhere:
+
+# 1. Перейти в директорию
+cd /home/hyperstls
+
+# 2. Создать резервную копию
+cp app.py app.py.backup.20260603
+
+# 3. Скачать обновлённый файл
+# Способ A: Через wget (если файл доступен по URL)
+# wget -O app.py https://ваш-сайт.com/app.py
+
+# Способ B: Через curl
+# curl -o app.py https://ваш-сайт.com/app.py
+
+# Способ C: Создать через heredoc (если файл небольшой)
+# cat > app.py << 'EOF'
+# (вставить содержимое app.py здесь)
+# EOF
+
+# 4. Проверить файл
+wc -l app.py
+head -20 app.py
+
+# 5. Перезапустить приложение
+touch app.py.wsgi
+
+# 6. Проверить логи
+cat /var/log/hyperstls.pythonanywhere.com.error.log
+
+# 7. Протестировать
+python3 -c "import requests; r = requests.get('https://hyperstls.pythonanywhere.com'); print(r.status_code)"
