@@ -987,29 +987,29 @@ def bulk_action():
 
     if action == 'accept':
         for shift_id in shift_ids:
-            supabase_request('PATCH', f'shifts?id=eq.{shift_id}&employer_id=eq.{user_id}', json={
+            supabase.table('shifts').update({
                 'status': 'active',
-                'updated_at': datetime.now().isoformat()
-            })
+                'updated_at': 'now()'
+            }).eq('id', shift_id).eq('employer_id', user_id).execute()
 
         for app_id in application_ids:
-            supabase_request('PATCH', f'applications?id=eq.{app_id}&employer_id=eq.{user_id}', json={
+            supabase.table('applications').update({
                 'status': 'accepted',
-                'updated_at': datetime.now().isoformat()
-            })
+                'updated_at': 'now()'
+            }).eq('id', app_id).eq('employer_id', user_id).execute()
 
     elif action == 'reject':
         for shift_id in shift_ids:
-            supabase_request('PATCH', f'shifts?id=eq.{shift_id}&employer_id=eq.{user_id}', json={
+            supabase.table('shifts').update({
                 'status': 'rejected',
-                'updated_at': datetime.now().isoformat()
-            })
+                'updated_at': 'now()'
+            }).eq('id', shift_id).eq('employer_id', user_id).execute()
 
         for app_id in application_ids:
-            supabase_request('PATCH', f'applications?id=eq.{app_id}&employer_id=eq.{user_id}', json={
+            supabase.table('applications').update({
                 'status': 'rejected',
-                'updated_at': datetime.now().isoformat()
-            })
+                'updated_at': 'now()'
+            }).eq('id', app_id).eq('employer_id', user_id).execute()
 
     return jsonify({'success': True})
 

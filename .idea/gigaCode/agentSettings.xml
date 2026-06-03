@@ -486,6 +486,12 @@
         <Execute>
           <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add -A &amp;&amp; git commit -m &quot;fix-template-variables&quot;" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add -A &amp;&amp; git commit -m &quot;fix-job-new-chat-new-routes&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git show 59a34ee:app.py &gt; app_current.py" />
+        </Execute>
       </list>
     </option>
   </component>
