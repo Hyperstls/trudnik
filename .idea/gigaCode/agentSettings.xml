@@ -663,6 +663,33 @@
         <Execute>
           <option name="pattern" value="git add -A &amp;&amp; git commit -m &quot;fix-add-buttons-for-accept-reject-applications&quot;" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;handle_application&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr &quot;handle_application&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add -A &amp;&amp; git commit -m &quot;fix-add-post-method-for-handle-application&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value=".venv\Scripts\activate &amp;&amp; python test_app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python test_app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="pip install requests &gt;nul 2&gt;&amp;1 &amp;&amp; python test_api.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python test_api.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value=".venv\Scripts\activate &amp;&amp; python test_api.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value=".venv\Scripts\activate &amp;&amp; python test_protected.py" />
+        </Execute>
       </list>
     </option>
   </component>
