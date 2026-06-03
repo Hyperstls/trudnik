@@ -660,6 +660,9 @@
         <Execute>
           <option name="pattern" value="git log -n 5 --oneline" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="git add -A &amp;&amp; git commit -m &quot;fix-add-buttons-for-accept-reject-applications&quot;" />
+        </Execute>
       </list>
     </option>
   </component>

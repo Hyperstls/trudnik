@@ -622,7 +622,7 @@ def remove_favorite_job(job_id):
     return redirect(request.referrer or url_for('favorites'))
 
 
-@app.route('/applications/<app_id>/<action>')
+@app.route('/applications/<app_id>/<action>', methods=['POST'])
 @login_required
 def handle_application(app_id, action):
     app_resp = supabase_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id')
