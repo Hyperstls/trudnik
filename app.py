@@ -648,6 +648,138 @@ def handle_application(app_id, action):
     return redirect(url_for('my_applications'))
 
 
+@app.route('/my-applications')
+@login_required
+def my_applications():
+    """Отображение откликов на задания работодателя"""
+    if session.get('role') != 'employer':
+        flash('Доступ только для работодателей', 'danger')
+        return redirect(url_for('index'))
+    
+    user_id = session['user_id']
+    # Получить все отклики на задания работодателя
+    resp = supabase_request('GET',
+        f'applications?job.employer_id=eq.{user_id}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,skills,desired_payment),job:jobs(organization_name,date_time,payment_amount,status)')
+    applications = resp.json() if resp.ok else []
+    
+    # Получить список работников для каждого отклика
+    worker_ids = [app.get('worker', {}).get('id') for app in applications if app.get('worker', {}).get('id')]
+    jobs = {}
+    if worker_ids:
+        job_ids = list(set([app.get('job_id') for app in applications]))
+        if job_ids:
+            job_resp = supabase_request('GET', f'jobs?id=in.({",".join(job_ids)})&select=id,organization_name,date_time,payment_amount,status,application_count')
+            if job_resp.ok and job_resp.json():
+                jobs = {job['id']: job for job in job_resp.json()}
+    
+    return render_template('my_applications.html', applications=applications, jobs=jobs)
+
+
+@app.route('/my-jobs')
+@login_required
+def my_jobs():
+    """Отображение заданий работодателя"""
+    if session.get('role') != 'employer':
+        flash('Доступ только для работодателей', 'danger')
+        return redirect(url_for('index'))
+    
+    user_id = session['user_id']
+    status_filter = request.args.get('status', 'all')
+    
+    if status_filter == 'all':
+        resp = supabase_request('GET', f'jobs?employer_id=eq.{user_id}&select=*,photos:job_photos(*),applications:applications(count)')
+    else:
+        resp = supabase_request('GET', f'jobs?employer_id=eq.{user_id}&status=eq.{status_filter}&select=*,photos:job_photos(*),applications:applications(count)')
+    
+    jobs = resp.json() if resp.ok else []
+    
+    # Подсчитать количество откликов для каждого задания
+    for job in jobs:
+        app_resp = supabase_request('GET', f'applications?job_id=eq.{job["id"]}&select=id')
+        job['application_count'] = len(app_resp.json()) if app_resp.ok and app_resp.json() else 0
+    
+    return render_template('my_jobs.html', jobs=jobs, current_status=status_filter)
+
+
+@app.route('/my-jobs/action', methods=['POST'])
+@login_required
+def my_jobs_action():
+    """Массовое действие с заданиями"""
+    if session.get('role') != 'employer':
+        flash('Доступ только для работодателей', 'danger')
+        return redirect(url_for('index'))
+    
+    user_id = session['user_id']
+    action = request.form.get('action')
+    job_ids = request.form.getlist('job_ids')
+    
+    if not job_ids:
+        flash('Не выбрано ни одного задания', 'danger')
+        return redirect(url_for('my_jobs'))
+    
+    for job_id in job_ids:
+        if action == 'restore':
+            supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'open'})
+        elif action == 'cancel':
+            supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
+        elif action == 'delete':
+            supabase_request('DELETE', f'jobs?id=eq.{job_id}')
+        elif action == 'duplicate':
+            resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=*')
+            if resp.ok and resp.json():
+                new_job = copy_job(resp.json()[0])
+                supabase_request('POST', 'jobs', json=new_job)
+    
+    flash(f'Операция выполнена для {len(job_ids)} заданий', 'success')
+    return redirect(url_for('my_jobs'))
+
+
+@app.route('/repost-job/<job_id>', methods=['POST'])
+@login_required
+def repost_job(job_id):
+    """Дублирование задания"""
+    if session.get('role') != 'employer':
+        flash('Доступ только для работодателей', 'danger')
+        return redirect(url_for('index'))
+    
+    resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=*')
+    if resp.ok and resp.json():
+        new_job = copy_job(resp.json()[0])
+        supabase_request('POST', 'jobs', json=new_job)
+        flash('Задание дублировано', 'success')
+    else:
+        flash('Задание не найдено', 'danger')
+    
+    return redirect(url_for('my_jobs'))
+
+
+@app.route('/cancel-job/<job_id>', methods=['GET', 'POST'])
+@login_required
+@role_required('employer')
+def cancel_job(job_id):
+    supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
+    flash('Задание отозвано', 'success')
+    return redirect(url_for('my_jobs'))
+
+
+@app.route('/restore-job/<job_id>', methods=['GET', 'POST'])
+@login_required
+@role_required('employer')
+def restore_job(job_id):
+    supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'open'})
+    flash('Задание восстановлено', 'success')
+    return redirect(url_for('my_jobs'))
+
+
+@app.route('/delete-job/<job_id>', methods=['GET', 'POST'])
+@login_required
+@role_required('employer')
+def delete_job(job_id):
+    supabase_request('DELETE', f'jobs?id=eq.{job_id}')
+    flash('Задание удалено', 'success')
+    return redirect(url_for('my_jobs'))
+
+
 # ──────────────────────────────────────────────
 # Смены
 # ──────────────────────────────────────────────

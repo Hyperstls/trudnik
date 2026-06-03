@@ -492,6 +492,60 @@
         <Execute>
           <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git show 59a34ee:app.py &gt; app_current.py" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="git status &amp;&amp; git log -n 5 --oneline" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git diff .idea/gigaCode/agentSettings.xml &amp;&amp; echo &quot;---&quot; &amp;&amp; git status app_current.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git show 59a34ee:app.py | findstr /C:&quot;/job/new&quot; /C:&quot;/chat/new&quot; /C:&quot;def profile&quot; &gt;nul &amp;&amp; echo &quot;All routes and fixes are in commit 59a34ee&quot; || echo &quot;Missing some fixes&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git show 59a34ee:app.py | findstr /C:&quot;/job/new&quot; /C:&quot;/chat/new&quot; /C:&quot;profile_user&quot; &gt;nul &amp;&amp; echo &quot;All routes and fixes are in commit 59a34ee&quot; || echo &quot;Missing some fixes&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git show 59a34ee:app.py | findstr /i &quot;/job/new&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git show 59a34ee:app.py | findstr /i &quot;job&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git show 59a34ee:app.py | findstr /i &quot;create&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git show 59a34ee:app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -m py_compile app.py &amp;&amp; echo &quot;Syntax OK&quot; || echo &quot;Syntax ERROR&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;supabase.table(&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;supabase&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;table(&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add -A &amp;&amp; git status" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git commit -m &quot;fix-bulk-action-api-supabase-request&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="del app_current.py &amp;&amp; git add app_current.py &amp;&amp; git commit -m &quot;cleanup-remove-app-current&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git log -n 3 --oneline" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git log -n 4 --oneline" />
+        </Execute>
       </list>
     </option>
   </component>
