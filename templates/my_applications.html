@@ -7,18 +7,12 @@
     <h1 class="text-3xl font-bold mb-8">Отклики на мои задания</h1>
 
     {% if applications %}
-        <div class="space-y-4" id="applications-list">
+        <div class="space-y-4">
             {% for app in applications %}
             {% set worker = app.worker if app.worker else {} %}
-            {% set job = jobs.get(app.job_id, {}) %}
+            {% set job = app.job if app.job else jobs.get(app.job_id, {}) %}
             
-            {% set app_status = app.status %}
-
-            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow application-card"
-                 data-application-id="{{ app.id }}"
-                 onclick="window.location.href='/profile/{{ worker.id }}'"
-                 style="cursor: pointer;">
-
+            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow application-card">
                 <div class="flex items-start justify-between">
                     <div class="flex items-center space-x-4">
                         <img src="{{ worker.get('photo_url') or '/static/default-avatar.png' }}"
@@ -59,9 +53,11 @@
                                 <p class="text-gray-400 text-xs mt-1">Навыки не указаны</p>
                             {% endif %}
 
+                            {% if job %}
                             <p class="text-gray-500 text-xs mt-2">
                                 Задание: <span class="font-medium">{{ job.get('organization_name', 'Неизвестно') }}</span>
                             </p>
+                            {% endif %}
                         </div>
                     </div>
 
@@ -78,52 +74,33 @@
                             {% elif app.status == 'completed' %}bg-blue-100 text-blue-800
                             {% else %}bg-gray-100 text-gray-800{% endif %}">
                             {% if app.status == 'pending' %}На рассмотрении
-                            {% elif app_status == 'accepted' %}Принят
-                            {% elif app_status == 'active' %}Активен
-                            {% elif app_status == 'rejected' %}Отклонён
-                            {% elif app_status == 'cancelled' %}Отменён
-                            {% elif app.status == 'completed' %}Завершён
+                            {% elif app.status == 'accepted' %}Принят
+                            {% elif app.status == 'rejected' %}Отклонён
                             {% else %}{{ app.status }}{% endif %}
                         </span>
                     </div>
                 </div>
 
                 <div class="mt-4 pt-3 border-t border-gray-100 flex items-center space-x-3">
-
-
-                    {% if app.status in ['pending', 'accepted'] %}
-                    <label class="flex items-center space-x-1 text-sm text-gray-600" onclick="event.stopPropagation();">
-                        <input type="checkbox"
-                               class="app-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                               value="{{ app.id }}"
-                               
-                               data-status="{{ app.status }}">
-                        <span>Выбрать</span>
-                    </label>
+                    {% if app.status == 'pending' %}
+                    <form action="/applications/{{ app.id }}/accept" method="POST" class="inline">
+                        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
+                            ✓ Принять
+                        </button>
+                    </form>
+                    <form action="/applications/{{ app.id }}/reject" method="POST" class="inline">
+                        <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors">
+                            ✕ Отклонить
+                        </button>
+                    </form>
+                    {% elif app.status == 'accepted' %}
+                    <span class="text-sm text-green-600 font-medium">Принят</span>
+                    {% elif app.status == 'rejected' %}
+                    <span class="text-sm text-red-600 font-medium">Отклонён</span>
                     {% endif %}
                 </div>
             </div>
             {% endfor %}
-        </div>
-
-        <div id="bulk-actions-panel" class="mt-6 p-4 bg-gray-50 rounded-lg hidden">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-2">
-                    <input type="checkbox" id="select-all" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                    <label for="select-all" class="text-sm text-gray-600">Выбрать все</label>
-                    <span id="selected-count" class="text-sm text-gray-500 ml-2">(0)</span>
-                </div>
-                <div class="flex space-x-2">
-                    <button onclick="bulkAction('accept')"
-                            class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 text-sm transition-colors">
-                        ✓ Принять выбранные
-                    </button>
-                    <button onclick="bulkAction('reject')"
-                            class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 text-sm transition-colors">
-                        ✕ Отклонить выбранные
-                    </button>
-                </div>
-            </div>
         </div>
 
     {% else %}
@@ -136,73 +113,4 @@
         </div>
     {% endif %}
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const checkboxes = document.querySelectorAll('.app-checkbox');
-    const panel = document.getElementById('bulk-actions-panel');
-    const selectAll = document.getElementById('select-all');
-    const selectedCount = document.getElementById('selected-count');
-    function updatePanel() {
-        const checked = document.querySelectorAll('.app-checkbox:checked');
-        selectedCount.textContent = `(${checked.length})`;
-        if (checked.length > 0) {
-            panel.classList.remove('hidden');
-        } else {
-            panel.classList.add('hidden');
-        }
-    }
-    checkboxes.forEach(cb => {
-        cb.addEventListener('change', function(e) {
-            e.stopPropagation();
-            updatePanel();
-        });
-    });
-    if (selectAll) {
-        selectAll.addEventListener('change', function(e) {
-            e.stopPropagation();
-            checkboxes.forEach(cb => {
-                cb.checked = this.checked;
-            });
-            updatePanel();
-        });
-    }
-});
-
-function bulkAction(action) {
-    const checkboxes = document.querySelectorAll('.app-checkbox:checked');
-    const ids = Array.from(checkboxes).map(cb => cb.value);
-    
-    if (ids.length === 0) {
-        alert('Выберите отклики');
-        return;
-    }
-    const actionText = action === 'accept' ? 'принять' : 'отклонить';
-    if (!confirm(`Вы уверены, что хотите ${actionText} ${ids.length} отклик(ов)?`)) {
-        return;
-    }
-    const buttons = document.querySelectorAll('#bulk-actions-panel button');
-    buttons.forEach(b => b.disabled = true);
-    fetch('/api/bulk-action', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({application_ids: ids,  action: action})
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            setTimeout(() => { location.reload(); }, 1000);
-        } else {
-            alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
-            buttons.forEach(b => b.disabled = false);
-        }
-    })
-    .catch(error => {
-        alert('Ошибка сети: ' + error);
-        buttons.forEach(b => b.disabled = false);
-    });
-}
-</script>
 {% endblock %}

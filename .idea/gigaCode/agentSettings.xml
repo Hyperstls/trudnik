@@ -639,6 +639,27 @@
         <Execute>
           <option name="pattern" value="git add -A &amp;&amp; git commit -m &quot;fix-add-missing-math-import&quot;" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="python -c &quot;lines = open('app.py', encoding='utf-8').readlines(); print('\\n'.join([f'{i+1}: {line.rstrip()}' for i, line in enumerate(lines) if 'my-applications' in line.lower()]))&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python find_duplicates.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python remove_duplicates.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python check_routes.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add -A &amp;&amp; git commit -m &quot;fix-remove-duplicate-my-applications&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="del check_routes.py find_duplicates.py remove_duplicates.py &amp;&amp; git add -A &amp;&amp; git commit -m &quot;cleanup-remove-test-scripts&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git log -n 5 --oneline" />
+        </Execute>
       </list>
     </option>
   </component>
