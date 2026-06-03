@@ -491,6 +491,14 @@ def verify_employer():
     return render_template('verify_employer.html')
 
 
+@app.route('/job/new', methods=['GET', 'POST'])
+@login_required
+@role_required('employer')
+def job_new():
+    """Дубликат create-job для совместимости с шаблонами"""
+    return create_job()
+
+
 # ──────────────────────────────────────────────
 # Задания
 # ──────────────────────────────────────────────
@@ -695,6 +703,35 @@ def chat(shift_id):
     resp = supabase_request('GET', f'messages?shift_id=eq.{shift_id}&select=*&order=created_at.asc')
     return render_template('chat.html', shift_id=shift_id,
                            messages=resp.json() if resp.ok else [], user_id=session['user_id'])
+
+
+@app.route('/chat/new/<worker_id>', methods=['GET'])
+@login_required
+def chat_new(worker_id):
+    """Создание нового чата с работником"""
+    user_id = session['user_id']
+    if session.get('role') != 'employer':
+        flash('Только работодатели могут создавать чаты', 'danger')
+        return redirect(url_for('index'))
+    
+    resp = supabase_request('GET', f'shifts?employer_id=eq.{user_id}&worker_id=eq.{worker_id}&select=id')
+    if resp.ok and resp.json():
+        shift_id = resp.json()[0]['id']
+        return redirect(url_for('chat', shift_id=shift_id))
+    
+    shift_data = {
+        'employer_id': user_id,
+        'worker_id': worker_id,
+        'status': 'pending',
+        'created_at': datetime.now().isoformat()
+    }
+    resp = supabase_request('POST', 'shifts', json=shift_data)
+    if resp.ok:
+        shift_id = resp.json()[0]['id'] if isinstance(resp.json(), list) else resp.json().get('id')
+        return redirect(url_for('chat', shift_id=shift_id))
+    
+    flash('Не удалось создать чат', 'danger')
+    return redirect(url_for('index'))
 
 
 @app.route('/api/send_message', methods=['POST'])
