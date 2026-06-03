@@ -1,4 +1,0 @@
-import sys
-sys.path.insert(0, '.')
-import app
-print('Import OK')
