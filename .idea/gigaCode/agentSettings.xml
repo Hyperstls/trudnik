@@ -1,0 +1,381 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="GigaCodeAgentSettings">
+    <option name="autoApprovedCommands">
+      <list>
+        <Execute>
+          <option name="pattern" value="python -c &quot;import sys; sys.path.insert(0, '.'); import app; print('Import OK')&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python test_import.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value=".venv\Scripts\activate &amp;&amp; python test_import.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value=".venv\Scripts\activate &amp;&amp; python -m pip install python-dotenv supabase requests" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value=".venv\Scripts\activate &amp;&amp; python -m pip install supabase==1.0.3" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="del check_templates.py test_import.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir /b templates" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="del templates\create_job.html" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -m py_compile app.py &amp;&amp; echo &quot;Syntax OK&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value=".venv\Scripts\activate &amp;&amp; python -c &quot;import app; print('Import OK')&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value=".venv\Scripts\activate &amp;&amp; python check_routes.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="del check_routes.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -m py_compile app.py config.py &amp;&amp; echo &quot;Syntax OK&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value=".venv\Scripts\activate &amp;&amp; python check_templates.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python check_templates.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd /d C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; python check_templates.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="del check_templates.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python verify_config.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="del verify_config.py check_templates.py 2&gt;nul; python -m py_compile app.py &amp;&amp; echo &quot;Syntax OK&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; dir app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir /b C:\Users\s.prokopenko\PycharmProjects\trudnik\app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git log --oneline -5 2&gt;nul" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git show HEAD:app.py &gt; app.py 2&gt;nul &amp;&amp; echo &quot;Restored from git&quot; || echo &quot;Failed to restore&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir /b templates\*.html" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="type app.py | findstr /N &quot;name = request.form.get&quot; | findstr register" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git checkout HEAD -- app.py &amp;&amp; echo &quot;Restored successfully&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir /b app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -c &quot;with open('app.py', encoding='utf-8') as f: print(f.read()[:1000])&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python check_app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="del check_app.py verify_config.py 2&gt;nul" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -c &quot;import app; print('Import OK')&quot; 2&gt;&amp;1" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python parse_app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd &amp;&amp; dir app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="type app.py | findstr /N &quot;def register&quot; | findstr &quot;name =&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /N &quot;name = request&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /N &quot;name&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /C:&quot;name&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr app.py name" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /i &quot;full_name&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="del test_import.py parse_app.py 2&gt;nul" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python check_register.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python fix_register.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="del fix_register.py check_register.py 2&gt;nul; python -m py_compile app.py &amp;&amp; echo &quot;Syntax OK&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python check_login.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; python check_login.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir C:\Users\s.prokopenko\PycharmProjects\trudnik\app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="del check_login.py 2&gt;nul; python -m py_compile app.py config.py &amp;&amp; echo &quot;All syntax OK&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir /s /b app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git status" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git restore app.py &amp;&amp; echo &quot;Restored&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="del check_app.py check_login.py check_register.py check_routes.py check_templates.py fix_register.py parse_app.py test_import.py verify_config.py 2&gt;nul; dir /b *.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir config.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git restore config.py &amp;&amp; echo &quot;Restored&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git diff app.py | head -100" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git diff app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /i &quot;full_name&quot; templates\register.html" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python fix_names.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="del fix_names.py; python -m py_compile app.py &amp;&amp; echo &quot;Syntax OK&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /i &quot;name = request&quot; app.py | findstr &quot;login&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -m py_compile app.py &amp;&amp; echo &quot;All OK&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python fix_all.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="del fix_all.py; python -m py_compile app.py &amp;&amp; echo &quot;Syntax OK&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir app.py &amp;&amp; python -m py_compile app.py &amp;&amp; echo &quot;Syntax OK&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git show HEAD:app.py | findstr /i &quot;register&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git show HEAD:app.py | findstr /N /C:&quot;register&quot; /C:&quot;name =&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -c &quot;with open('app.py', encoding='utf-8') as f: lines = f.readlines(); [print(f'{i+1}: {line.rstrip()}') for i, line in enumerate(lines) if 'register' in line.lower() or 'name' in line.lower()][:20]&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python check_names.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python check_profile_update.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python check_name_usage.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python check_profile_edit.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git show HEAD:app.py &gt; app.py &amp;&amp; echo &quot;Restored from git&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git status" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git diff HEAD -- config.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git show HEAD:config.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git show HEAD:app.py &gt; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git diff HEAD -- app.py | head -100" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git diff HEAD app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git checkout app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git log --oneline -5" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git ls-tree HEAD --name-only" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git show HEAD:app.py &gt; app.py 2&gt;&amp;1" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git ls-tree -r HEAD --name-only" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git show HEAD:agent_edit.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python -m py_compile config.py 2&gt;&amp;1" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python -c &quot;import config&quot; 2&gt;&amp;1" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python -c &quot;import config&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python check_config.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe check_config.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git checkout HEAD -- app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git show HEAD:app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git log --oneline -1" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; type app.py | findstr /N &quot;user_id = get_current_user_id&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git show HEAD:app.py | wc -l" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python -c &quot;import os; print(os.path.exists('app.py'))&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe check_app_exists.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe -m py_compile app.py 2&gt;&amp;1" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; dir app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe check_app_lines.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git log --oneline --all | head -20" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git rev-parse HEAD" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git show c1b901bc2f8caeb4d94a7c3eff6f8f8fca86962a:app.py | python -c &quot;import sys; print(len(sys.stdin.readlines()))&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe check_git_app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git stash" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git stash pop" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe find_backup.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git show ebde65c:app.py | python -c &quot;import sys; content = sys.stdin.read(); print(len(content.split('\n')))&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe check_app_length.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git show ca7dee0:app.py &gt; app_backup.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git show ca7dee0:app.py &gt; app_backup.py 2&gt;&amp;1" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; dir app_backup.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe -c &quot;with open('app_backup.py', 'r', encoding='utf-8') as f: lines = f.readlines(); print(len(lines)); print(''.join(lines[-10:]))&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe check_backup.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe verify_backup.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; copy app_backup.py app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe check_templates.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe check_routes_templates.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git show ca7dee0:app.py &gt; app_restored.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; copy app_restored.py app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe -m py_compile app.py &amp;&amp; echo &quot;Syntax OK&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe final_check.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; del /q check_*.py final_check.py app_backup.py app_restored.py 2&gt;&amp;1" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git diff app.py | head -50" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git diff --stat" />
+        </Execute>
+      </list>
+    </option>
+  </component>
+</project>

@@ -1,17 +1,132 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="p-4 max-w-md mx-auto">
-    <div class="flex flex-col items-center">
-        <img src="{{ profile.photo_url or url_for('static', filename='default-avatar.png') }}" class="w-24 h-24 rounded-full object-cover">
-        <h2 class="text-xl font-bold mt-2">{{ profile.full_name }}</h2>
-        <p>{{ profile.city or '' }}</p>
-        <p>Опыт: {{ profile.experience or 'не указан' }}</p>
-        <p>Желаемая оплата: {{ profile.desired_payment or 'не указана' }} ₽</p>
-        <p>Рейтинг: {{ "%.1f"|format(profile.rating) }} ({{ profile.total_reviews }})</p>
-        <p class="mt-2">{{ profile.bio or '' }}</p>
-        <form action="/favorite/{{ profile.id }}" method="post" class="mt-4">
-            <button class="bg-gold text-white px-4 py-2 rounded">⭐ В избранное</button>
-        </form>
+<div class="p-4 max-w-2xl mx-auto">
+    {% if profile_user is none %}
+        <div class="text-center py-12">
+            <span class="text-5xl mb-3 block">😕</span>
+            <p class="text-red-500 text-lg font-medium">Не удалось загрузить профиль</p>
+            <p class="text-gray-500 text-sm mt-1">Проверьте соединение</p>
+        </div>
+    {% else %}
+    <div class="flex flex-col items-center mb-6">
+        <div class="relative">
+            <img src="{{ profile_user.get('photo_url') or url_for('static', filename='default-avatar.png') }}"
+                 class="w-24 h-24 rounded-full object-cover border-4 border-gold shadow-lg"
+                 alt="Фото работника"
+                 crossorigin="anonymous"
+                 onerror="this.onerror=null;this.src='{{ url_for('static', filename='default-avatar.png') }}';">
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mt-3">{{ profile_user.get('full_name') or profile_user.get('name') }}</h3>
+        <p class="text-sm text-gray-500 mt-1 flex items-center gap-1">
+            ⭐ {{ "%.1f"|format(profile_user.get('rating', 0) or 0) }}
+            <span class="text-gray-400">({{ profile_user.get('total_reviews', 0) }} отзывов)</span>
+        </p>
+        
+        <div class="flex gap-2 mt-4">
+            <a href="/chat/new/{{ profile_user.id }}"
+               class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm flex items-center gap-1">
+                <span>✉️</span>
+                <span>Написать</span>
+            </a>
+            <button onclick="addToFavorites('{{ profile_user.id }}')"
+                    class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors text-sm flex items-center gap-1">
+                <span>⭐</span>
+                <span>В избранное</span>
+            </button>
+        </div>
     </div>
+    
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+        <div>
+            <h4 class="font-semibold text-gray-900 mb-2">О себе</h4>
+            <p class="text-gray-600">{{ profile_user.get('bio', 'Не указано') }}</p>
+        </div>
+        
+        <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Контакты</h4>
+            <p class="text-gray-600">{{ profile_user.get('phone', 'Не указано') }}</p>
+            <p class="text-gray-600">{{ profile_user.get('email', 'Не указано') }}</p>
+        </div>
+        
+        <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Город</h4>
+            <p class="text-gray-600">{{ profile_user.get('city', 'Не указано') }}</p>
+        </div>
+        
+        <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Вероисповедание</h4>
+            <p class="text-gray-600">{{ profile_user.get('religion', 'Не указано') }}</p>
+        </div>
+        
+        {% if profile_user.get('role') == 'worker' %}
+        <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Опыт</h4>
+            <p class="text-gray-600">{{ profile_user.get('experience', 'Не указано') }}</p>
+        </div>
+        
+        <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Желаемая оплата</h4>
+            <p class="text-gray-600">{{ profile_user.get('desired_payment', 'Не указано') }} ₽</p>
+        </div>
+        {% endif %}
+        
+        <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Навыки</h4>
+            {% if profile_user.get('skills') %}
+            <div class="flex flex-wrap gap-2">
+                {% for skill in profile_user.get('skills') %}
+                <span class="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm">{{ skill }}</span>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-gray-500">Навыки не указаны</p>
+            {% endif %}
+        </div>
+        
+        {% if profile_user.get('portfolio_link') %}
+        <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Портфолио</h4>
+            <a href="{{ profile_user.get('portfolio_link') }}" target="_blank"
+               class="text-blue-600 hover:text-blue-800 underline break-all">
+                {{ profile_user.get('portfolio_link') }}
+            </a>
+        </div>
+        {% endif %}
+    </div>
+    
+    {% if profile_user.id != current_user_id %}
+    <div class="mt-6 flex flex-wrap gap-3">
+        <a href="/chat/new/{{ profile_user.id }}"
+           class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-2">
+            <span>✉️</span>
+            <span>Написать сообщение</span>
+        </a>
+        <button onclick="addToFavorites('{{ profile_user.id }}')"
+                class="bg-yellow-500 text-white px-6 py-2 rounded-lg hover:bg-yellow-600 transition-colors flex items-center space-x-2">
+            <span>⭐</span>
+            <span>В избранное</span>
+        </button>
+    </div>
+    {% endif %}
+    {% endif %}
 </div>
+
+<script>
+function addToFavorites(workerId) {
+    fetch('/api/favorites/add', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ worker_id: workerId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Работник добавлен в избранное!');
+        } else {
+            alert('Ошибка: ' + (data.error || 'Не удалось добавить'));
+        }
+    })
+    .catch(error => { alert('Ошибка сети'); });
+}
+</script>
 {% endblock %}

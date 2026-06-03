@@ -1,16 +1,63 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="p-4">
-    <h2 class="text-xl font-bold mb-4">Чёрный список</h2>
-    {% for item in items %}
-    <div class="flex justify-between items-center p-2 border rounded mb-2">
-        <span>{{ item.blocked.full_name }}</span>
-        <form action="/unblock/{{ item.blocked.id }}" method="post">
-            <button class="text-red-500">Разблокировать</button>
-        </form>
+    <h2 class="text-2xl font-bold text-gray-900 mb-5">Черный список</h2>
+    
+    {% if workers %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for worker in workers %}
+        <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+            <div class="flex items-center space-x-4">
+                <img src="{{ worker.photo_url or '/static/default-avatar.png' }}"
+                     alt="{{ worker.full_name }}"
+                     class="w-16 h-16 rounded-full object-cover border-2 border-gray-200">
+                <div class="flex-1">
+                    <h3 class="font-semibold text-lg text-gray-900">{{ worker.full_name }}</h3>
+                    <p class="text-sm text-gray-500">{{ worker.city }}</p>
+                    {% if worker.skills %}
+                    <div class="mt-2 flex flex-wrap gap-1">
+                        {% for skill in worker.skills[:3] %}
+                        <span class="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded">{{ skill }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="mt-4 pt-3 border-t border-gray-100">
+                <button onclick="removeFromBlacklist('{{ worker.id }}')"
+                        class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors text-sm w-full">
+                    Удалить из черного списка
+                </button>
+            </div>
+        </div>
+        {% endfor %}
     </div>
     {% else %}
-    <p>Список пуст</p>
-    {% endfor %}
+    <div class="text-center py-12 text-gray-400">
+        <p>Черный список пуст</p>
+    </div>
+    {% endif %}
 </div>
+
+<script>
+function removeFromBlacklist(workerId) {
+    if (!confirm('Удалить из черного списка?')) return;
+    
+    fetch('/api/favorites/remove', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ worker_id: workerId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Ошибка: ' + (data.error || 'Не удалось удалить'));
+        }
+    })
+    .catch(error => { alert('Ошибка сети'); });
+}
+</script>
 {% endblock %}

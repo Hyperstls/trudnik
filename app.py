@@ -1,282 +1,943 @@
-# Этот файл является основным приложением Flask для платформы поиска работы
+import math
+import time
+import uuid
 import os
-import sys
 import subprocess
-from datetime import datetime, timedelta
+from datetime import datetime
 from functools import wraps
-from dotenv import load_dotenv
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
-from supabase import create_client, Client
 
-load_dotenv()
+import requests
+from flask import (Flask, flash, jsonify, redirect, render_template, request,
+                   session, url_for)
+
+import config
 
 app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY', 'default-secret-key')
+app.config.from_object(config.Config)
+app.secret_key = app.config['SECRET_KEY']
 
-SUPABASE_URL = os.getenv('SUPABASE_URL')
-SUPABASE_KEY = os.getenv('SUPABASE_KEY') or os.getenv('SUPABASE_ANON_KEY')
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+SUPABASE_URL = app.config['SUPABASE_URL']
+SUPABASE_KEY = app.config['SUPABASE_ANON_KEY']
+SERVICE_KEY = app.config.get('SUPABASE_SERVICE_ROLE_KEY', '')
 
-# ===================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====================
+# ──────────────────────────────────────────────
+# Утилиты
+# ──────────────────────────────────────────────
 
-def get_current_user_id():
-    return session.get('user_id')
+def calculate_distance(lat1, lon1, lat2, lon2):
+    R = 6371
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = (math.sin(dphi / 2) ** 2 +
+         math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2)
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def refresh_access_token():
+    refresh_token = session.get('refresh_token')
+    if not refresh_token:
+        return False
+    url = f'{SUPABASE_URL}/auth/v1/token?grant_type=refresh_token'
+    try:
+        resp = requests.post(url, json={'refresh_token': refresh_token},
+                             headers={'apikey': SUPABASE_KEY, 'Content-Type': 'application/json'},
+                             timeout=10)
+        if resp.ok:
+            data = resp.json()
+            session['access_token'] = data['access_token']
+            session['refresh_token'] = data.get('refresh_token', refresh_token)
+            session.modified = True
+            return True
+        else:
+            session.clear()
+            return False
+    except requests.RequestException:
+        return False
+
+
+def supabase_request(method, endpoint, **kwargs):
+    def _make_request():
+        headers = {
+            'apikey': SUPABASE_KEY,
+            'Authorization': f'Bearer {session.get("access_token", SUPABASE_KEY)}',
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation',
+        }
+        if 'headers' in kwargs:
+            extra = kwargs.pop('headers')
+            headers.update(extra)
+        url = f'{SUPABASE_URL}/rest/v1/{endpoint}'
+        return requests.request(method, url, headers=headers, timeout=15, **kwargs)
+
+    resp = _make_request()
+    if resp.status_code == 401 and session.get('refresh_token'):
+        if refresh_access_token():
+            resp = _make_request()
+    return resp
+
+
+def upload_to_storage(bucket, file_path, file_data, content_type):
+    url = f'{SUPABASE_URL}/storage/v1/object/{bucket}/{file_path}'
+    headers = {
+        'apikey': SUPABASE_KEY,
+        'Authorization': f'Bearer {session["access_token"]}',
+    }
+    try:
+        resp = requests.post(url, headers=headers,
+                             files={'file': (file_path, file_data, content_type)},
+                             timeout=30)
+        if resp.status_code in (200, 201):
+            return f'{SUPABASE_URL}/storage/v1/object/public/{bucket}/{file_path}?t={int(time.time())}'
+    except requests.RequestException:
+        pass
+    return None
+
+
+def copy_job(original_job):
+    return {
+        'employer_id': original_job['employer_id'],
+        'organization_name': original_job.get('organization_name', ''),
+        'org_description': original_job.get('org_description', ''),
+        'object_description': original_job.get('object_description', ''),
+        'work_type': original_job.get('work_type', ''),
+        'detailed_description': original_job.get('detailed_description', ''),
+        'date_time': original_job.get('date_time', ''),
+        'payment_amount': original_job.get('payment_amount', 0),
+        'address': original_job.get('address', ''),
+        'city': original_job.get('city', ''),
+        'lat': original_job.get('lat', 55.75),
+        'lng': original_job.get('lng', 37.61),
+        'status': 'open',
+    }
+
+
+# ──────────────────────────────────────────────
+# Декораторы
+# ──────────────────────────────────────────────
 
 def login_required(f):
     @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
+    def decorated(*args, **kwargs):
+        if 'access_token' not in session:
             return redirect(url_for('login'))
         return f(*args, **kwargs)
-    return decorated_function
+    return decorated
 
-def get_git_version():
-    try:
-        result = subprocess.run(
-            ['git', 'log', '--oneline', '-1'],
-            capture_output=True, text=True, cwd=os.path.dirname(os.path.abspath(__file__))
-        )
-        return result.stdout.strip() if result.stdout else "Версия не определена"
-    except:
-        return "Версия не определена"
 
-# ===================== ГЛАВНАЯ =====================
+def role_required(role):
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            if 'access_token' not in session:
+                return redirect(url_for('login'))
+            resp = supabase_request('GET', f'profiles?id=eq.{session["user_id"]}&select=role')
+            data = resp.json()
+            if not data or data[0]['role'] != role:
+                flash('Доступ запрещён', 'danger')
+                return redirect(url_for('index'))
+            return f(*args, **kwargs)
+        return decorated
+    return decorator
+
+
+# ──────────────────────────────────────────────
+# Контекстный процессор (счётчик откликов)
+# ──────────────────────────────────────────────
+
+@app.context_processor
+def inject_application_count():
+    count = 0
+    if session.get('role') == 'employer' and 'user_id' in session:
+        resp = supabase_request('GET',
+            f'applications?job.employer_id=eq.{session["user_id"]}&status=eq.pending&select=id')
+        if resp.ok and resp.json():
+            count = len(resp.json())
+    return {'pending_app_count': count}
+
+
+# ──────────────────────────────────────────────
+# Публичные маршруты
+# ──────────────────────────────────────────────
 
 @app.route('/')
 def index():
-    user_id = get_current_user_id()
-    user_role = session.get('role')
-    git_version = get_git_version()
-    jobs = supabase.table('jobs').select('*').order('created_at', desc=True).limit(20).execute().data
-    workers = supabase.table('profiles').select('*').eq('role', 'worker').limit(20).execute().data
-    return render_template('index.html', jobs=jobs, workers=workers, user_id=user_id, user_role=user_role, git_version=git_version)
+    city = request.args.get('city', '')
+    payment_min = request.args.get('payment_min', '')
+    payment_max = request.args.get('payment_max', '')
+    lat = request.args.get('lat', type=float)
+    lng = request.args.get('lng', type=float)
+    radius = request.args.get('radius', 20, type=float)
+    sort = request.args.get('sort', '')
 
-# ===================== АВТОРИЗАЦИЯ =====================
+    query = 'status=eq.open&select=*,photos:job_photos(*)'
+    if city: query += f'&city=ilike.*{city}*'
+    if payment_min: query += f'&payment_amount=gte.{payment_min}'
+    if payment_max: query += f'&payment_amount=lte.{payment_max}'
 
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-        name = request.form.get('name')
-        role = request.form.get('role')
-        phone = request.form.get('phone')
-        try:
-            auth_response = supabase.auth.sign_up({'email': email, 'password': password})
-            user = auth_response.user
-            user_id = user.id
-            profile_data = {
-                'id': user_id,
-                'email': email,
-                'name': name,
-                'role': role,
-                'phone': phone,
-                'created_at': datetime.utcnow().isoformat()
-            }
-            supabase.table('profiles').insert(profile_data).execute()
-            session['user_id'] = user_id
-            session['role'] = role
-            session['email'] = email
-            session['name'] = name
-            flash('Регистрация успешна!', 'success')
-            return redirect(url_for('index'))
-        except Exception as e:
-            flash(f'Ошибка регистрации: {str(e)}', 'error')
-            return render_template('register.html')
-    return render_template('register.html')
+    resp = supabase_request('GET', f'jobs?{query}&order=created_at.desc')
+    jobs = resp.json() if resp.ok else []
+
+    if lat is not None and lng is not None:
+        for job in jobs:
+            job['distance'] = calculate_distance(lat, lng, job['lat'], job['lng'])
+        if radius:
+            jobs = [j for j in jobs if j.get('distance', float('inf')) <= radius]
+
+    if sort == 'distance' and lat is not None:
+        jobs.sort(key=lambda x: x.get('distance', float('inf')))
+    elif sort == 'payment_asc':
+        jobs.sort(key=lambda x: x['payment_amount'])
+    elif sort == 'payment_desc':
+        jobs.sort(key=lambda x: x['payment_amount'], reverse=True)
+
+    applied_job_ids = []
+    if session.get('role') == 'worker' and 'user_id' in session:
+        app_resp = supabase_request('GET',
+            f'applications?worker_id=eq.{session["user_id"]}&select=job_id')
+        if app_resp.ok and app_resp.json():
+            applied_job_ids = [a['job_id'] for a in app_resp.json()]
+
+    return render_template('index.html', jobs=jobs, applied_job_ids=applied_job_ids,
+                           lat=lat, lng=lng, radius=radius, sort=sort)
+
+
+@app.route('/workers')
+def workers():
+    filters = {
+        'city': request.args.get('city', ''),
+        'experience': request.args.get('experience', ''),
+        'payment_from': request.args.get('payment_from', ''),
+        'payment_to': request.args.get('payment_to', ''),
+        'rating_min': request.args.get('rating_min', ''),
+        'skills': request.args.get('skills', ''),
+        'religion': request.args.get('religion', ''),
+    }
+    query = 'role=eq.worker'
+    if filters['city']: query += f'&city=ilike.*{filters["city"]}*'
+    if filters['experience']: query += f'&experience=ilike.*{filters["experience"]}*'
+    if filters['payment_from']: query += f'&desired_payment=gte.{filters["payment_from"]}'
+    if filters['payment_to']: query += f'&desired_payment=lte.{filters["payment_to"]}'
+    if filters['rating_min']: query += f'&rating=gte.{filters["rating_min"]}'
+    if filters['skills']:
+        for skill in filters['skills'].split(','):
+            query += f'&skills=cs.{{{skill.strip()}}}'
+    if filters['religion']:
+        query += f'&religion=eq.{filters["religion"]}'
+
+    resp = supabase_request('GET', f'profiles?{query}&order=rating.desc')
+    return render_template('workers.html', workers=resp.json() if resp.ok else [])
+
+
+@app.route('/jobs/<job_id>')
+def job_detail(job_id):
+    resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=*,photos:job_photos(*)')
+    job = resp.json()[0] if resp.ok and resp.json() else None
+    if not job:
+        flash('Задание не найдено', 'danger')
+        return redirect(url_for('index'))
+
+    if session.get('role') == 'employer' and job['employer_id'] == session.get('user_id'):
+        app_resp = supabase_request('GET', f'applications?job_id=eq.{job_id}&select=id')
+        job['application_count'] = len(app_resp.json()) if app_resp.ok and app_resp.json() else 0
+    else:
+        job['application_count'] = 0
+
+    already_applied = False
+    if 'user_id' in session:
+        app_resp = supabase_request('GET',
+            f'applications?job_id=eq.{job_id}&worker_id=eq.{session["user_id"]}')
+        already_applied = app_resp.ok and len(app_resp.json()) > 0
+
+    return render_template('job_detail.html', job=job,
+                           yandex_api_key=app.config['YANDEX_MAPS_API_KEY'],
+                           already_applied=already_applied)
+
+
+@app.route('/profile/<user_id>')
+def public_profile(user_id):
+    resp = supabase_request('GET', f'profiles?id=eq.{user_id}&select=*')
+    profile = resp.json()[0] if resp.ok and resp.json() else None
+    if not profile:
+        flash('Пользователь не найден', 'danger')
+        return redirect(url_for('index'))
+    return render_template('profile_worker.html', profile=profile)
+
+
+# ──────────────────────────────────────────────
+# Аутентификация
+# ──────────────────────────────────────────────
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
+        auth_url = f'{SUPABASE_URL}/auth/v1/token?grant_type=password'
         try:
-            auth_response = supabase.auth.sign_in_with_password({'email': email, 'password': password})
-            user = auth_response.user
-            user_id = user.id
-            profile = supabase.table('profiles').select('*').eq('id', user_id).execute()
-            if profile.data:
-                profile_data = profile.data[0]
-                session['user_id'] = user_id
-                session['role'] = profile_data.get('role')
-                session['email'] = email
-                session['name'] = profile_data.get('name')
-                flash('Вход выполнен!', 'success')
-                return redirect(url_for('index'))
+            resp = requests.post(auth_url, json={'email': email, 'password': password},
+                                 headers={'apikey': SUPABASE_KEY}, timeout=10)
+            if resp.ok:
+                data = resp.json()
+                session['access_token'] = data['access_token']
+                session['refresh_token'] = data.get('refresh_token', '')
+                session['user_id'] = data['user']['id']
+                role_resp = supabase_request('GET', f'profiles?id=eq.{data["user"]["id"]}&select=role')
+                session['role'] = role_resp.json()[0]['role'] if role_resp.ok and role_resp.json() else 'worker'
+                session.modified = True
+                if session.get('role') == 'employer':
+                    return redirect(url_for('my_jobs'))
+                else:
+                    return redirect(url_for('index'))
             else:
-                flash('Профиль не найден', 'error')
-        except Exception as e:
-            flash(f'Ошибка входа: {str(e)}', 'error')
+                flash('Ошибка входа: неверный email или пароль', 'danger')
+        except requests.RequestException:
+            flash('Ошибка соединения с сервером авторизации', 'danger')
     return render_template('login.html')
+
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        full_name = request.form.get('full_name')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        role = request.form.get('role')
+        city = request.form.get('city', '')
+        religion = request.form.get('religion', 'не указано')
+        portfolio_link = request.form.get('portfolio_link', '')
+        skills_str = request.form.get('skills', '')
+
+        signup_url = f'{SUPABASE_URL}/auth/v1/signup'
+        try:
+            resp = requests.post(signup_url, json={'email': email, 'password': password},
+                                 headers={'apikey': SUPABASE_KEY}, timeout=10)
+            if resp.ok:
+                user = resp.json()['user']
+                update_data = {
+                    'role': role,
+                    'full_name': full_name,
+                    'city': city,
+                    'religion': religion,
+                    'portfolio_link': portfolio_link,
+                    'skills': [s.strip() for s in skills_str.split(',') if s.strip()] if skills_str else []
+                }
+                if role == 'worker':
+                    desired_payment = request.form.get('desired_payment', '0')
+                    try:
+                        update_data['desired_payment'] = float(desired_payment) if desired_payment else 0
+                    except ValueError:
+                        update_data['desired_payment'] = 0
+                    update_data['experience'] = request.form.get('experience', '')
+
+                if SERVICE_KEY:
+                    patch_url = f"{SUPABASE_URL}/rest/v1/profiles?id=eq.{user['id']}"
+                    requests.patch(patch_url, json=update_data,
+                                   headers={
+                                       'apikey': SERVICE_KEY,
+                                       'Authorization': f'Bearer {SERVICE_KEY}',
+                                       'Content-Type': 'application/json'
+                                   }, timeout=10)
+                else:
+                    supabase_request('PATCH', f'profiles?id=eq.{user["id"]}', json=update_data)
+
+                flash('Регистрация успешна. Теперь войдите.', 'success')
+                return redirect(url_for('login'))
+            else:
+                flash('Ошибка регистрации', 'danger')
+        except requests.RequestException:
+            flash('Ошибка соединения с сервером', 'danger')
+    return render_template('register.html')
+
 
 @app.route('/logout')
 def logout():
     session.clear()
-    flash('Вы вышли из системы', 'info')
+    return redirect(url_for('login'))
+
+
+# ──────────────────────────────────────────────
+# Профиль
+# ──────────────────────────────────────────────
+
+@app.route('/profile')
+@login_required
+def profile():
+    user_id = session['user_id']
+    try:
+        resp = supabase_request('GET', f'profiles?id=eq.{user_id}&select=*')
+        profile_data = resp.json()[0] if resp.ok and resp.json() else None
+    except:
+        profile_data = None
+    return render_template('profile.html', profile=profile_data)
+
+
+@app.route('/profile/update', methods=['POST'])
+@login_required
+def update_profile():
+    user_id = session['user_id']
+    data = {
+        'full_name': request.form.get('full_name'),
+        'phone': request.form.get('phone'),
+        'bio': request.form.get('bio'),
+        'city': request.form.get('city'),
+        'religion': request.form.get('religion', 'не указано'),
+        'portfolio_link': request.form.get('portfolio_link', ''),
+    }
+    skills_str = request.form.get('skills', '')
+    data['skills'] = [s.strip() for s in skills_str.split(',') if s.strip()] if skills_str else []
+
+    if request.form.get('experience') is not None:
+        data['experience'] = request.form.get('experience')
+    desired_payment = request.form.get('desired_payment')
+    if desired_payment and desired_payment.lower() != 'none':
+        try:
+            data['desired_payment'] = float(desired_payment)
+        except ValueError:
+            pass
+
+    photo = request.files.get('photo')
+    if photo and photo.filename:
+        safe_name = photo.filename.replace(' ', '_')
+        file_path = f'{user_id}/{uuid.uuid4()}_{safe_name}'
+        photo_url = upload_to_storage('avatars', file_path, photo.read(), photo.content_type)
+        if photo_url:
+            data['photo_url'] = photo_url
+            flash('Фото загружено', 'success')
+        else:
+            flash('Ошибка загрузки фото', 'danger')
+
+    try:
+        supabase_request('PATCH', f'profiles?id=eq.{user_id}', json=data)
+        flash('Профиль обновлён', 'success')
+    except:
+        flash('Не удалось обновить профиль', 'danger')
+    return redirect(url_for('profile'))
+
+
+@app.route('/profile/delete-photo', methods=['POST'])
+@login_required
+def delete_photo():
+    user_id = session['user_id']
+    supabase_request('PATCH', f'profiles?id=eq.{user_id}', json={'photo_url': None})
+    flash('Фото удалено', 'success')
+    return redirect(url_for('profile'))
+
+
+@app.route('/profile/delete-account', methods=['POST'])
+@login_required
+def delete_account():
+    user_id = session['user_id']
+    if not SERVICE_KEY:
+        flash('Сервисный ключ не настроен. Удаление невозможно.', 'danger')
+        return redirect(url_for('profile'))
+    delete_url = f'{SUPABASE_URL}/auth/v1/admin/users/{user_id}'
+    resp = requests.delete(delete_url, headers={
+        'apikey': SERVICE_KEY,
+        'Authorization': f'Bearer {SERVICE_KEY}',
+        'Content-Type': 'application/json'
+    }, timeout=10)
+    if resp.ok:
+        session.clear()
+        flash('Ваш аккаунт полностью удалён.', 'success')
+        return redirect(url_for('login'))
+    else:
+        flash(f'Ошибка удаления аккаунта: {resp.text}', 'danger')
+        return redirect(url_for('profile'))
+
+
+@app.route('/profile/change-password', methods=['POST'])
+@login_required
+def change_password():
+    new_password = request.form.get('new_password')
+    confirm_password = request.form.get('confirm_password')
+
+    if not new_password or len(new_password) < 6:
+        flash('Пароль должен содержать минимум 6 символов', 'danger')
+        return redirect(url_for('profile'))
+
+    if new_password != confirm_password:
+        flash('Новые пароли не совпадают', 'danger')
+        return redirect(url_for('profile'))
+
+    auth_update_url = f'{SUPABASE_URL}/auth/v1/user'
+    headers = {
+        'apikey': SUPABASE_KEY,
+        'Authorization': f'Bearer {session["access_token"]}',
+        'Content-Type': 'application/json'
+    }
+    try:
+        resp = requests.put(auth_update_url, headers=headers,
+                            json={'password': new_password}, timeout=10)
+        if resp.ok:
+            flash('Пароль успешно изменён', 'success')
+        else:
+            error_data = resp.json()
+            flash(f'Ошибка смены пароля: {error_data.get("msg", "попробуйте позже")}', 'danger')
+    except requests.RequestException:
+        flash('Ошибка соединения с сервером', 'danger')
+
+    return redirect(url_for('profile'))
+
+
+@app.route('/verify-employer', methods=['GET', 'POST'])
+@login_required
+def verify_employer():
+    if request.method == 'POST':
+        supabase_request('PATCH', f'profiles?id=eq.{session["user_id"]}',
+                         json={'verification_status': 'pending'})
+        flash('Документ отправлен на проверку', 'success')
+        return redirect(url_for('profile'))
+    return render_template('verify_employer.html')
+
+
+# ──────────────────────────────────────────────
+# Задания
+# ──────────────────────────────────────────────
+
+@app.route('/create-job', methods=['GET', 'POST'])
+@login_required
+@role_required('employer')
+def create_job():
+    if request.method == 'POST':
+        job_data = {
+            'employer_id': session['user_id'],
+            'organization_name': request.form.get('organization_name') or 'Храм',
+            'org_description': request.form.get('org_description', ''),
+            'object_description': request.form.get('object_description', ''),
+            'work_type': request.form.get('work_type', ''),
+            'detailed_description': request.form.get('detailed_description', ''),
+            'date_time': f"{request.form['date']}T{request.form['time']}:00",
+            'payment_amount': float(request.form['payment']),
+            'address': request.form.get('address', ''),
+            'city': request.form.get('city', ''),
+            'lat': float(request.form.get('lat', 55.75)),
+            'lng': float(request.form.get('lng', 37.61)),
+            'preferred_religion': request.form.get('preferred_religion', 'не важно'),
+        }
+        resp = supabase_request('POST', 'jobs', json=job_data)
+        if resp.ok:
+            flash('Задание опубликовано', 'success')
+            return redirect(url_for('my_jobs'))
+        flash('Ошибка создания задания', 'danger')
+    return render_template('create_job.html', yandex_api_key=app.config['YANDEX_MAPS_API_KEY'])
+
+
+@app.route('/apply/<job_id>', methods=['GET', 'POST'])
+@login_required
+def apply_job(job_id):
+    user_id = session['user_id']
+    check = supabase_request('GET', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
+    if check.ok and check.json():
+        flash('Вы уже откликались на это задание', 'info')
+        return redirect(url_for('index'))
+
+    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=employer_id')
+    if job_resp.ok and job_resp.json() and job_resp.json()[0]['employer_id'] == user_id:
+        flash('Вы не можете откликаться на собственное задание', 'danger')
+        return redirect(url_for('index'))
+
+    supabase_request('POST', 'applications', json={'job_id': job_id, 'worker_id': user_id})
+    flash('Отклик отправлен', 'success')
     return redirect(url_for('index'))
 
-# ===================== ЗАДАНИЯ =====================
 
-@app.route('/jobs')
-def jobs_list():
-    city = request.args.get('city')
-    min_payment = request.args.get('min_payment')
-    max_payment = request.args.get('max_payment')
-    sort_by = request.args.get('sort_by', 'created_at')
-    query = supabase.table('jobs').select('*')
-    if city:
-        query = query.eq('city', city)
-    if min_payment:
-        query = query.gte('payment', float(min_payment))
-    if max_payment:
-        query = query.lte('payment', float(max_payment))
-    if sort_by == 'payment':
-        query = query.order('payment', desc=True)
-    elif sort_by == 'rating':
-        query = query.order('employer_rating', desc=True)
-    else:
-        query = query.order('created_at', desc=True)
-    jobs = query.execute().data
-    return render_template('jobs.html', jobs=jobs)
-
-@app.route('/job/new', methods=['GET', 'POST'])
+@app.route('/apply-selected', methods=['POST'])
 @login_required
-def job_new():
-    if request.method == 'POST':
-        title = request.form.get('title')
-        description = request.form.get('description')
-        payment = request.form.get('payment')
-        city = request.form.get('city')
-        address = request.form.get('address')
-        latitude = request.form.get('latitude')
-        longitude = request.form.get('longitude')
-        required_workers = request.form.get('required_workers', 1)
-        user_id = get_current_user_id()
-        job_data = {
-            'employer_id': user_id,
-            'organization_name': title,
-            'object_description': description,
-            'payment_amount': float(payment) if payment else 0,
-            'city': city,
-            'address': address,
-            'lat': float(latitude) if latitude else None,
-            'lng': float(longitude) if longitude else None,
-            'status': 'active',
-            'created_at': datetime.utcnow().isoformat()
-        }
-        supabase.table('jobs').insert(job_data).execute()
-        flash('Задание создано!', 'success')
-        return redirect(url_for('my_jobs'))
-    return render_template('job_new.html')
-
-@app.route('/job/<job_id>')
-def job_detail(job_id):
-    job = supabase.table('jobs').select('*').eq('id', job_id).execute()
-    if not job.data:
-        flash('Задание не найдено', 'error')
-        return redirect(url_for('index'))
-    job_data = job.data[0]
-    employer = supabase.table('profiles').select('full_name, rating, photo_url').eq('id', job_data['employer_id']).execute()
-    return render_template('job_detail.html', job=job_data, employer=employer.data[0] if employer.data else None, already_applied=False, yandex_api_key=os.getenv('YANDEX_MAPS_API_KEY', ''), current_user_role=session.get('role'))
-
-@app.route('/my-jobs')
-@login_required
-def my_jobs():
-    user_id = get_current_user_id()
-    jobs = supabase.table('jobs').select('*').eq('employer_id', user_id).neq('status', 'deleted').order('created_at', desc=True).execute().data
-    return render_template('my_jobs.html', jobs=jobs)
-
-
-@app.route('/my-jobs/action', methods=['POST'])
-@login_required
-def my_jobs_action():
-    user_id = get_current_user_id()
-    action = request.form.get('action')
+def apply_selected():
     job_ids = request.form.getlist('job_ids')
-
     if not job_ids:
-        flash('Выберите задания', 'error')
-        return redirect(url_for('my_jobs'))
+        flash('Не выбрано ни одного задания', 'danger')
+        return redirect(url_for('index'))
 
+    user_id = session['user_id']
+    applied = 0
     for job_id in job_ids:
-        if action == 'delete':
-            supabase.table('jobs').update({'status': 'deleted'}).eq('id', job_id).eq('employer_id', user_id).execute()
-        elif action == 'cancel':
-            supabase.table('jobs').update({'status': 'cancelled'}).eq('id', job_id).eq('employer_id', user_id).execute()
-        elif action == 'restore':
-            supabase.table('jobs').update({'status': 'open'}).eq('id', job_id).eq('employer_id', user_id).execute()
-        elif action == 'duplicate':
-            job = supabase.table('jobs').select('*').eq('id', job_id).execute().data
-            if job:
-                j = job[0]
-                new_job = {k: v for k, v in j.items() if k not in ['id', 'created_at']}
-                new_job['status'] = 'open'
-                supabase.table('jobs').insert(new_job).execute()
+        check = supabase_request('GET', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
+        if not (check.ok and check.json()):
+            supabase_request('POST', 'applications', json={'job_id': job_id, 'worker_id': user_id})
+            applied += 1
 
-    flash(f'Действие "{action}" выполнено для {len(job_ids)} заданий', 'success')
-    return redirect(url_for('my_jobs'))
+    if applied > 0:
+        flash(f'Отклик отправлен на {applied} заданий', 'success')
+    else:
+        flash('Вы уже откликались на все выбранные задания', 'info')
+    return redirect(url_for('index'))
 
 
-@app.route('/delete-job/<job_id>', methods=['POST'])
+@app.route('/unapply/<job_id>', methods=['POST'])
 @login_required
-def delete_job(job_id):
-    user_id = get_current_user_id()
-    # Помечаем задание как удалённое (безопасно, не нарушает foreign keys)
-    supabase.table('jobs').update({'status': 'deleted'}).eq('id', job_id).eq('employer_id', user_id).execute()
-    flash('Задание удалено', 'success')
-    return redirect(url_for('my_jobs'))
+def unapply_job(job_id):
+    user_id = session['user_id']
+    resp = supabase_request('DELETE', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
+    if resp is not None and resp.ok:
+        flash('Отклик отозван', 'success')
+    else:
+        flash('Не удалось отозвать отклик (возможно, он уже удалён)', 'danger')
+    return redirect(url_for('index'))
 
 
-@app.route('/cancel-job/<job_id>', methods=['POST'])
+@app.route('/unapply-selected', methods=['POST'])
 @login_required
-def cancel_job(job_id):
-    user_id = get_current_user_id()
-    supabase.table('jobs').update({'status': 'cancelled'}).eq('id', job_id).eq('employer_id', user_id).execute()
-    flash('Задание отозвано', 'info')
-    return redirect(url_for('my_jobs'))
+def unapply_selected():
+    job_ids = request.form.getlist('job_ids')
+    if not job_ids:
+        flash('Не выбрано ни одного задания', 'danger')
+        return redirect(url_for('index'))
+    user_id = session['user_id']
+    removed = 0
+    for job_id in job_ids:
+        resp = supabase_request('DELETE', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
+        if resp is not None and resp.ok:
+            removed += 1
+    if removed > 0:
+        flash(f'Отклики отозваны ({removed} заданий)', 'success')
+    else:
+        flash('Ни один отклик не был удалён', 'info')
+    return redirect(url_for('index'))
 
 
-@app.route('/restore-job/<job_id>', methods=['POST'])
+@app.route('/favorite-job/<job_id>', methods=['POST'])
 @login_required
-def restore_job(job_id):
-    user_id = get_current_user_id()
-    supabase.table('jobs').update({'status': 'open'}).eq('id', job_id).eq('employer_id', user_id).execute()
-    flash('Задание восстановлено', 'success')
-    return redirect(url_for('my_jobs'))
+def add_favorite_job(job_id):
+    supabase_request('POST', 'job_favorites', json={'user_id': session['user_id'], 'job_id': job_id})
+    flash('Задание добавлено в избранное', 'success')
+    return redirect(request.referrer or url_for('index'))
 
 
-@app.route('/repost-job/<job_id>', methods=['POST'])
+@app.route('/unfavorite-job/<job_id>', methods=['POST'])
 @login_required
-def repost_job(job_id):
-    user_id = get_current_user_id()
-    job = supabase.table('jobs').select('*').eq('id', job_id).execute().data
-    if job:
-        j = job[0]
-        new_job = {k: v for k, v in j.items() if k not in ['id', 'created_at']}
-        new_job['status'] = 'open'
-        supabase.table('jobs').insert(new_job).execute()
-        flash('Задание продублировано', 'success')
-    return redirect(url_for('my_jobs'))
+def remove_favorite_job(job_id):
+    supabase_request('DELETE', f'job_favorites?user_id=eq.{session["user_id"]}&job_id=eq.{job_id}')
+    flash('Задание удалено из избранного', 'success')
+    return redirect(request.referrer or url_for('favorites'))
 
-# ===================== ОТКЛИКИ =====================
+
+@app.route('/applications/<app_id>/<action>')
+@login_required
+def handle_application(app_id, action):
+    app_resp = supabase_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id')
+    if not app_resp.ok or not app_resp.json():
+        flash('Отклик не найден', 'danger')
+        return redirect(url_for('index'))
+
+    app_data = app_resp.json()[0]
+    job_id = app_data['job_id']
+    worker_id = app_data['worker_id']
+
+    if action == 'accept':
+        supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'accepted'})
+        supabase_request('PATCH', f'applications?job_id=eq.{job_id}&id=neq.{app_id}',
+                         json={'status': 'rejected'})
+        supabase_request('POST', 'shifts', json={
+            'job_id': job_id, 'worker_id': worker_id, 'employer_id': session['user_id']
+        })
+        supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'in_progress'})
+        flash('Работник принят', 'success')
+    else:
+        supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'rejected'})
+        flash('Отклик отклонён', 'info')
+    return redirect(url_for('my_applications'))
+
+
+# ──────────────────────────────────────────────
+# Смены
+# ──────────────────────────────────────────────
+
+@app.route('/shifts')
+@login_required
+def shifts():
+    user_id = session['user_id']
+    role_resp = supabase_request('GET', f'profiles?id=eq.{user_id}&select=role')
+    role = role_resp.json()[0]['role'] if role_resp.ok and role_resp.json() else 'worker'
+    if role == 'worker':
+        resp = supabase_request('GET', f'shifts?worker_id=eq.{user_id}&select=*,job:jobs(*)')
+    else:
+        resp = supabase_request('GET', f'shifts?employer_id=eq.{user_id}&select=*,job:jobs(*)')
+    return render_template('shifts.html', shifts=resp.json() if resp.ok else [])
+
+
+@app.route('/shift/<shift_id>/action', methods=['POST'])
+@login_required
+def shift_action(shift_id):
+    action = request.form.get('action')
+    if action == 'checkin':
+        supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={
+            'worker_checkin': True, 'start_time': datetime.now().isoformat(), 'status': 'active'
+        })
+    elif action == 'complete':
+        supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={
+            'worker_complete': True, 'status': 'payment_pending'
+        })
+    elif action == 'confirm_payment_employer':
+        supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={'employer_payment_confirmed': True})
+    elif action == 'confirm_payment_worker':
+        supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={'worker_payment_confirmed': True})
+    return redirect(url_for('shifts'))
+
+
+# ──────────────────────────────────────────────
+# Чат
+# ──────────────────────────────────────────────
+
+@app.route('/chats')
+@login_required
+def chats_list():
+    user_id = session['user_id']
+    resp = supabase_request('GET',
+        f'shifts?or=(worker_id.eq.{user_id},employer_id.eq.{user_id})&select=id,job:jobs(organization_name)')
+    return render_template('chats_list.html', chats=resp.json() if resp.ok else [])
+
+
+@app.route('/chat/<shift_id>')
+@login_required
+def chat(shift_id):
+    resp = supabase_request('GET', f'messages?shift_id=eq.{shift_id}&select=*&order=created_at.asc')
+    return render_template('chat.html', shift_id=shift_id,
+                           messages=resp.json() if resp.ok else [], user_id=session['user_id'])
+
+
+@app.route('/api/send_message', methods=['POST'])
+@login_required
+def send_message():
+    data = request.get_json()
+    supabase_request('POST', 'messages', json={
+        'shift_id': data['shift_id'], 'sender_id': session['user_id'], 'content': data['content']
+    })
+    return jsonify({'status': 'ok'})
+
+
+# ──────────────────────────────────────────────
+# Избранное и чёрный список
+# ──────────────────────────────────────────────
+
+@app.route('/favorites')
+@login_required
+def favorites():
+    resp = supabase_request('GET',
+        f'favorites?user_id=eq.{session["user_id"]}&select=target:profiles!favorites_target_id_fkey(id,full_name,photo_url,rating)')
+    items = resp.json() if resp.ok else []
+
+    favorite_jobs = []
+    if session.get('role') == 'worker':
+        job_resp = supabase_request('GET',
+            f'job_favorites?user_id=eq.{session["user_id"]}&select=job:jobs(*)')
+        if job_resp.ok and job_resp.json():
+            favorite_jobs = [j['job'] for j in job_resp.json() if j.get('job')]
+
+    return render_template('favorites.html', items=items, favorite_jobs=favorite_jobs)
+
+
+@app.route('/favorite/<target_id>', methods=['POST'])
+@login_required
+def add_favorite(target_id):
+    supabase_request('POST', 'favorites', json={'user_id': session['user_id'], 'target_id': target_id})
+    return redirect(request.referrer or url_for('index'))
+
+
+@app.route('/unfavorite/<target_id>', methods=['POST'])
+@login_required
+def remove_favorite(target_id):
+    supabase_request('DELETE', f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{target_id}')
+    return redirect(url_for('favorites'))
+
+
+@app.route('/blacklist')
+@login_required
+def blacklist():
+    resp = supabase_request('GET',
+        f'blacklists?user_id=eq.{session["user_id"]}&select=blocked:profiles!blacklists_blocked_user_id_fkey(id,full_name,photo_url)')
+    return render_template('blacklist.html', items=resp.json() if resp.ok else [])
+
+
+@app.route('/blacklist/<user_id>', methods=['POST'])
+@login_required
+def block_user(user_id):
+    supabase_request('POST', 'blacklists', json={'user_id': session['user_id'], 'blocked_user_id': user_id})
+    return redirect(request.referrer or url_for('index'))
+
+
+@app.route('/unblock/<user_id>', methods=['POST'])
+@login_required
+def unblock_user(user_id):
+    supabase_request('DELETE', f'blacklists?user_id=eq.{session["user_id"]}&blocked_user_id=eq.{user_id}')
+    return redirect(url_for('blacklist'))
+
+
+# ──────────────────────────────────────────────
+# Админка
+# ──────────────────────────────────────────────
+
+@app.route('/admin')
+@login_required
+@role_required('admin')
+def admin():
+    resp = supabase_request('GET', 'profiles?verification_status=eq.pending&select=*')
+    return render_template('admin.html', pending=resp.json() if resp.ok else [])
+
+
+@app.route('/admin/approve/<user_id>')
+@login_required
+@role_required('admin')
+def admin_approve(user_id):
+    supabase_request('PATCH', f'profiles?id=eq.{user_id}', json={'verification_status': 'approved'})
+    return redirect(url_for('admin'))
+
+
+@app.route('/admin/reject/<user_id>')
+@login_required
+@role_required('admin')
+def admin_reject(user_id):
+    supabase_request('PATCH', f'profiles?id=eq.{user_id}', json={'verification_status': 'rejected'})
+    return redirect(url_for('admin'))
+
+
+# ──────────────────────────────────────────────
+# Работодатель: мои задания и отклики
+# ──────────────────────────────────────────────
 
 @app.route('/my-applications')
 @login_required
 def my_applications():
     user_id = session['user_id']
-    # Сначала получаем все задания текущего работодателя
-    my_jobs = supabase.table('jobs').select('id, organization_name, payment_amount, city, status').eq('employer_id', user_id).execute().data
-    my_job_ids = [j['id'] for j in my_jobs]
 
-    applications = []
-    jobs_dict = {j['id']: j for j in my_jobs}
+    applications = supabase.table('applications').select(
+        '*, worker:worker_id(id, name, rating, skills, desired_payment, avatar_url)'
+    ).eq('employer_id', user_id).execute().data
 
-    if my_job_ids:
-        applications = supabase.table('applications').select(
-            '*, worker:worker_id(id, full_name, rating, skills, desired_payment, photo_url)'
-        ).in_('job_id', my_job_ids).execute().data
+    job_ids = list(set([a['job_id'] for a in applications]))
+    jobs = supabase.table('jobs').select('*').in_('id', job_ids).execute().data if job_ids else []
+    jobs_dict = {j['id']: j for j in jobs}
 
-    return render_template('my_applications.html', applications=applications, jobs=jobs_dict, user_id=user_id)
+    shift_ids = [a.get('shift_id') for a in applications if a.get('shift_id')]
+    shifts = supabase.table('shifts').select('id, status, start_time').in_('id',
+                                                                           shift_ids).execute().data if shift_ids else []
+    shifts_dict = {s['id']: s for s in shifts}
+
+    return render_template('my_applications.html',
+                           applications=applications,
+                           jobs=jobs_dict,
+                           shifts=shifts_dict,
+                           user_id=user_id)
+
+
+@app.route('/my-jobs')
+@login_required
+@role_required('employer')
+def my_jobs():
+    status_filter = request.args.get('status', 'all')
+    query = f'employer_id=eq.{session["user_id"]}&select=*'
+    if status_filter != 'all':
+        query += f'&status=eq.{status_filter}'
+    resp = supabase_request('GET', f'jobs?{query}&order=created_at.desc')
+    jobs = resp.json() if resp.ok else []
+
+    for job in jobs:
+        app_resp = supabase_request('GET', f'applications?job_id=eq.{job["id"]}&status=eq.pending&select=id')
+        job['application_count'] = len(app_resp.json()) if app_resp.ok and app_resp.json() else 0
+
+    return render_template('my_jobs.html', jobs=jobs, current_status=status_filter)
+
+
+@app.route('/repost-job/<job_id>', methods=['GET', 'POST'])
+@login_required
+@role_required('employer')
+def repost_job(job_id):
+    resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=*')
+    if resp.ok and resp.json():
+        new_job = copy_job(resp.json()[0])
+        new_job['employer_id'] = session['user_id']
+        supabase_request('POST', 'jobs', json=new_job)
+        flash('Задание переопубликовано!', 'success')
+    else:
+        flash('Задание не найдено', 'danger')
+    return redirect(url_for('my_jobs'))
+
+
+@app.route('/my-jobs/action', methods=['POST'])
+@login_required
+@role_required('employer')
+def my_jobs_action():
+    job_ids = request.form.getlist('job_ids')
+    action = request.form.get('action')
+    if not job_ids:
+        flash('Не выбрано ни одного задания', 'danger')
+        return redirect(url_for('my_jobs'))
+
+    for job_id in job_ids:
+        if action == 'restore':
+            supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'open'})
+        elif action == 'cancel':
+            supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
+        elif action == 'delete':
+            supabase_request('DELETE', f'jobs?id=eq.{job_id}')
+        elif action == 'duplicate':
+            resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=*')
+            if resp.ok and resp.json():
+                new_job = copy_job(resp.json()[0])
+                supabase_request('POST', 'jobs', json=new_job)
+    flash(f'Операция выполнена для {len(job_ids)} заданий', 'success')
+    return redirect(url_for('my_jobs'))
+
+
+@app.route('/cancel-job/<job_id>', methods=['GET', 'POST'])
+@login_required
+@role_required('employer')
+def cancel_job(job_id):
+    supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
+    flash('Задание отозвано', 'success')
+    return redirect(url_for('my_jobs'))
+
+
+@app.route('/restore-job/<job_id>', methods=['GET', 'POST'])
+@login_required
+@role_required('employer')
+def restore_job(job_id):
+    supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'open'})
+    flash('Задание восстановлено', 'success')
+    return redirect(url_for('my_jobs'))
+
+
+@app.route('/delete-job/<job_id>', methods=['GET', 'POST'])
+@login_required
+@role_required('employer')
+def delete_job(job_id):
+    supabase_request('DELETE', f'jobs?id=eq.{job_id}')
+    flash('Задание удалено', 'success')
+    return redirect(url_for('my_jobs'))
+
+
+# ──────────────────────────────────────────────
+# Запуск
+# ──────────────────────────────────────────────
+
+def get_git_version():
+    """Получить хеш, сообщение и дату последнего коммита."""
+    try:
+        hash_commit = subprocess.check_output(
+            ['git', 'log', '-1', '--pretty=format:%h'],
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+            stderr=subprocess.DEVNULL
+        ).decode('utf-8').strip()
+        message = subprocess.check_output(
+            ['git', 'log', '-1', '--pretty=format:%s'],
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+            stderr=subprocess.DEVNULL
+        ).decode('utf-8').strip()
+        date_commit = subprocess.check_output(
+            ['git', 'log', '-1', '--pretty=format:%ad', '--date=short'],
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+            stderr=subprocess.DEVNULL
+        ).decode('utf-8').strip()
+        return f"{hash_commit} – {message} ({date_commit})"
+    except Exception:
+        return "версия неизвестна"
+
+
+@app.context_processor
+def inject_git_info():
+    return {'git_version': get_git_version()}
+
 
 @app.route('/api/bulk-action', methods=['POST'])
 @login_required
@@ -284,116 +945,36 @@ def bulk_action():
     data = request.get_json()
     action = data.get('action')
     application_ids = data.get('application_ids', [])
+    shift_ids = data.get('shift_ids', [])
     user_id = session['user_id']
-
-    # Получаем задания работодателя, чтобы проверить права
-    my_jobs = supabase.table('jobs').select('id').eq('employer_id', user_id).execute().data
-    my_job_ids = [j['id'] for j in my_jobs]
 
     if action == 'accept':
+        for shift_id in shift_ids:
+            supabase.table('shifts').update({
+                'status': 'active',
+                'updated_at': 'now()'
+            }).eq('id', shift_id).eq('employer_id', user_id).execute()
+
         for app_id in application_ids:
-            supabase.table('applications').update({'status': 'accepted'}).eq('id', app_id).in_('job_id', my_job_ids).execute()
+            supabase.table('applications').update({
+                'status': 'accepted',
+                'updated_at': 'now()'
+            }).eq('id', app_id).eq('employer_id', user_id).execute()
+
     elif action == 'reject':
+        for shift_id in shift_ids:
+            supabase.table('shifts').update({
+                'status': 'rejected',
+                'updated_at': 'now()'
+            }).eq('id', shift_id).eq('employer_id', user_id).execute()
+
         for app_id in application_ids:
-            supabase.table('applications').update({'status': 'rejected'}).eq('id', app_id).in_('job_id', my_job_ids).execute()
+            supabase.table('applications').update({
+                'status': 'rejected',
+                'updated_at': 'now()'
+            }).eq('id', app_id).eq('employer_id', user_id).execute()
+
     return jsonify({'success': True})
 
-# ===================== ЧАТ =====================
-
-@app.route('/chat/<shift_id>')
-@login_required
-def chat(shift_id):
-    user_id = get_current_user_id()
-    shift = supabase.table('shifts').select('*').eq('id', shift_id).execute()
-    if not shift.data:
-        flash('Чат не найден', 'error')
-        return redirect(url_for('index'))
-    shift_data = shift.data[0]
-    messages = supabase.table('messages').select('*').eq('shift_id', shift_id).order('created_at').execute().data
-    return render_template('chat.html', shift=shift_data, messages=messages, user_id=user_id)
-
-@app.route('/chat/new/<worker_id>')
-@login_required
-def chat_new(worker_id):
-    user_id = session['user_id']
-    # Создаём чат (job_id берётся из query string, если есть)
-    job_id = request.args.get('job_id')
-    shift_data = {
-        'employer_id': user_id,
-        'worker_id': worker_id,
-        'status': 'pending',
-        'created_at': 'now()'
-    }
-    if job_id:
-        shift_data['job_id'] = job_id
-    result = supabase.table('shifts').insert(shift_data).execute()
-    shift_id = result.data[0]['id']
-    return redirect(url_for('chat', shift_id=shift_id))
-
-# ===================== ПРОФИЛЬ =====================
-
-@app.route('/profile/<user_id>')
-def profile(user_id):
-    profile = supabase.table('profiles').select('*').eq('id', user_id).execute()
-    if not profile.data:
-        flash('Пользователь не найден', 'error')
-        return redirect(url_for('index'))
-    profile_data = profile.data[0]
-    current_user_id = get_current_user_id()
-    current_user_role = session.get('role')
-    return render_template('profile.html', profile_user=profile_data, current_user_id=current_user_id, current_user_role=current_user_role)
-
-@app.route('/profile/edit', methods=['GET', 'POST'])
-@login_required
-def profile_edit():
-    user_id = get_current_user_id()
-    if request.method == 'POST':
-        name = request.form.get('name')
-        phone = request.form.get('phone')
-        skills = request.form.get('skills')
-        religion = request.form.get('religion')
-        desired_payment = request.form.get('desired_payment')
-        update_data = {}
-        if name: update_data['name'] = name
-        if phone: update_data['phone'] = phone
-        if skills: update_data['skills'] = skills.split(',')
-        if religion: update_data['religion'] = religion
-        if desired_payment: update_data['desired_payment'] = float(desired_payment)
-        supabase.table('profiles').update(update_data).eq('id', user_id).execute()
-        flash('Профиль обновлён!', 'success')
-        return redirect(url_for('profile', user_id=user_id))
-    profile = supabase.table('profiles').select('*').eq('id', user_id).execute()
-    return render_template('profile_edit.html', profile=profile.data[0] if profile.data else {})
-
-# ===================== ТРУДНИКИ =====================
-
-@app.route('/workers')
-def workers():
-    city = request.args.get('city')
-    skill = request.args.get('skill')
-    min_rating = request.args.get('min_rating')
-    query = supabase.table('profiles').select('*').eq('role', 'worker')
-    if city:
-        query = query.eq('city', city)
-    if min_rating:
-        query = query.gte('rating', float(min_rating))
-    workers = query.execute().data
-    return render_template('workers.html', workers=workers)
-
-# ===================== ПРОФИЛЬ (РЕДИРЕКТ) =====================
-
-@app.route('/profile')
-@login_required
-def profile_redirect():
-    user_id = get_current_user_id()
-    return redirect(url_for('profile', user_id=user_id))
-
-
-# ===================== УПРАВЛЕНИЕ ПРОФИЛЕМ =====================
-
-@app.route('/profile/update', methods=['POST'])
-@login_required
-def profile_update():
-    user_id = get_current_user_id()
-    full_name = request.form.get('full_name')
-    phone = request.form.get('phone')
+if __name__ == '__main__':
+    app.run(debug=False, port=5000)

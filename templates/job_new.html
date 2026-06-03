@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-4 max-w-2xl mx-auto">
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">Создать задание</h1>
+    
+    {% if error_message %}
+    <div class="bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4 text-sm">
+        {{ error_message }}
+    </div>
+    {% endif %}
+    
+    <form method="post" class="space-y-5">
+        <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Название организации/задания</label>
+            <input type="text" name="title" required class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+        </div>
+        
+        <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Город</label>
+            <input type="text" name="city" required class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+        </div>
+        
+        <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Адрес</label>
+            <input type="text" name="address" class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+        </div>
+        
+        <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Описание задания</label>
+            <textarea name="description" rows="3" required class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30"></textarea>
+        </div>
+        
+        <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Оплата (₽)</label>
+            <input type="number" name="payment" required min="0" class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+        </div>
+        
+        <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Количество работников</label>
+            <input type="number" name="required_workers" value="1" min="1" class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+        </div>
+        
+        <!-- Скрытое поле для координат -->
+        <input type="hidden" name="latitude" id="lat">
+        <input type="hidden" name="longitude" id="lng">
+        
+        <button type="submit" class="w-full bg-burgundy text-white py-3.5 rounded-xl font-bold text-base hover:bg-[#4A1720] active:scale-[0.98] transition-all duration-200 shadow-md">
+            Создать задание
+        </button>
+    </form>
+    
+    <div class="mt-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-3">Выберите местоположение на карте</h2>
+        <div id="map" style="height: 300px;" class="rounded-xl overflow-hidden shadow-sm"></div>
+    </div>
+</div>
+
+<script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_api_key|default('') }}&lang=ru_RU" type="text/javascript"></script>
+<script>
+ymaps.ready(function() {
+    const map = new ymaps.Map('map', { 
+        center: [55.751574, 37.573856], // Москва по умолчанию
+        zoom: 10
+    });
+    
+    const placemark = new ymaps.Placemark([55.751574, 37.573856], {
+        balloonContent: 'Местоположение'
+    });
+    
+    map.geoObjects.add(placemark);
+    
+    // Обработчик клика по карте
+    map.events.add('click', function (e) {
+        const coords = e.get('coords');
+        placemark.geometry.setCoordinates(coords);
+        document.getElementById('lat').value = coords[0];
+        document.getElementById('lng').value = coords[1];
+    });
+});
+</script>
+{% endblock %}
