@@ -257,11 +257,11 @@ def job_detail(job_id):
 @app.route('/profile/<user_id>')
 def public_profile(user_id):
     resp = supabase_request('GET', f'profiles?id=eq.{user_id}&select=*')
-    profile = resp.json()[0] if resp.ok and resp.json() else None
-    if not profile:
+    profile_user = resp.json()[0] if resp.ok and resp.json() else None
+    if not profile_user:
         flash('Пользователь не найден', 'danger')
         return redirect(url_for('index'))
-    return render_template('profile_worker.html', profile=profile)
+    return render_template('profile_worker.html', profile_user=profile_user)
 
 
 # ──────────────────────────────────────────────
@@ -366,10 +366,10 @@ def profile():
     user_id = session['user_id']
     try:
         resp = supabase_request('GET', f'profiles?id=eq.{user_id}&select=*')
-        profile_data = resp.json()[0] if resp.ok and resp.json() else None
+        profile_user = resp.json()[0] if resp.ok and resp.json() else None
     except:
-        profile_data = None
-    return render_template('profile.html', profile=profile_data)
+        profile_user = None
+    return render_template('profile.html', profile_user=profile_user)
 
 
 @app.route('/profile/update', methods=['POST'])
@@ -801,17 +801,17 @@ def admin_reject(user_id):
 def my_applications():
     user_id = session['user_id']
 
-    applications = supabase.table('applications').select(
-        '*, worker:worker_id(id, name, rating, skills, desired_payment, avatar_url)'
-    ).eq('employer_id', user_id).execute().data
+    apps_resp = supabase_request('GET', f'applications?employer_id=eq.{user_id}&select=*,worker:worker_id(id,full_name,rating,skills,desired_payment,photo_url)')
+    applications = apps_resp.json() if apps_resp.ok else []
 
     job_ids = list(set([a['job_id'] for a in applications]))
-    jobs = supabase.table('jobs').select('*').in_('id', job_ids).execute().data if job_ids else []
+    jobs_resp = supabase_request('GET', f'jobs?id=in.({",".join(job_ids)})&select=*') if job_ids else None
+    jobs = jobs_resp.json() if jobs_resp and jobs_resp.ok else []
     jobs_dict = {j['id']: j for j in jobs}
 
     shift_ids = [a.get('shift_id') for a in applications if a.get('shift_id')]
-    shifts = supabase.table('shifts').select('id, status, start_time').in_('id',
-                                                                           shift_ids).execute().data if shift_ids else []
+    shifts_resp = supabase_request('GET', f'shifts?id=in.({",".join(shift_ids)})&select=id,status,start_time') if shift_ids else None
+    shifts = shifts_resp.json() if shifts_resp and shifts_resp.ok else []
     shifts_dict = {s['id']: s for s in shifts}
 
     return render_template('my_applications.html',

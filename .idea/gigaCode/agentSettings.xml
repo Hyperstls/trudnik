@@ -462,6 +462,27 @@
         <Execute>
           <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git push origin main 2&gt;&amp;1" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git diff --stat | head -5" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe -m py_compile app_backup.py &amp;&amp; echo &quot;Backup syntax OK&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe check_routes.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add -A &amp;&amp; git commit -m &quot;fix-add-missing-routes&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; del /q check_*.py app_backup.py 2&gt;&amp;1" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add -A &amp;&amp; git commit -m &quot;cleanup-check-files&quot;" />
+        </Execute>
       </list>
     </option>
   </component>
