@@ -546,6 +546,57 @@
         <Execute>
           <option name="pattern" value="git log -n 4 --oneline" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n /C:&quot;@app.route('/apply&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;apply&quot; app.py | findstr &quot;route&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;def apply&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;def my_applications&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;my_applications&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /i &quot;applications&quot; app.py | findstr &quot;route&quot; | findstr &quot;def&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;applications&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr &quot;applications&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="grep -n &quot;def.*application&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr &quot;my_jobs&quot; app.py | findstr &quot;route&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;my_jobs&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /i &quot;def my&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;my_jobs\|my_applications\|/applications&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /r &quot;my_jobs\|my_applications\|applications/&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;my-jobs&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;def shifts&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add -A &amp;&amp; git commit -m &quot;fix-add-missing-routes-my-jobs-my-applications&quot;" />
+        </Execute>
       </list>
     </option>
   </component>
