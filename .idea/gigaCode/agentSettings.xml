@@ -597,6 +597,48 @@
         <Execute>
           <option name="pattern" value="git add -A &amp;&amp; git commit -m &quot;fix-add-missing-routes-my-jobs-my-applications&quot;" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="findstr &quot;my_applications&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="wc -l app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;@app.route('/my-applications')&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git log --oneline -5" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git show 8a8f16f --stat" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git show 8a8f16f app.py | findstr /n &quot;@app.route&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git show 8a8f16f:app.py | findstr /n &quot;def my_applications&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git show 8a8f16f:app.py | findstr /i &quot;my_applications&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="head -n 500 app.py | findstr /n &quot;my_applications&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -c &quot;import ast; tree = ast.parse(open('app.py').read()); funcs = [node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]; print('\\n'.join([f for f in funcs if 'application' in f.lower()]))&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /c:&quot;def my_applications&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="head -n 10 app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -c &quot;import ast; tree = ast.parse(open('app.py').read()); print([node.names[0].name for node in ast.walk(tree) if isinstance(node, ast.Import)])&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add -A &amp;&amp; git commit -m &quot;fix-add-missing-math-import&quot;" />
+        </Execute>
       </list>
     </option>
   </component>
