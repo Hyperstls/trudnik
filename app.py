@@ -620,10 +620,8 @@ def create_job():
             app.logger.error(f"Error creating job: {error_details}")
             flash(f'Ошибка сервера: {str(e)}', 'danger')
     
-    # Определить, какой шаблон использовать
-    if request.path == '/job/new':
-        return render_template('job_new.html', yandex_api_key=app.config['YANDEX_MAPS_API_KEY'])
-    return render_template('create_job.html', yandex_api_key=app.config['YANDEX_MAPS_API_KEY'])
+    # Для GET запроса возвращаем job_new.html, так как это основной шаблон
+    return render_template('job_new.html', yandex_api_key=app.config['YANDEX_MAPS_API_KEY'])
 
 
 @app.route('/apply/<job_id>', methods=['GET', 'POST'])
