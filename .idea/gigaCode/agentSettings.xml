@@ -2188,6 +2188,15 @@
         <Execute>
           <option name="pattern" value="dir archive/*.txt 2&gt;/dev/null | findstr /v &quot;.git&quot; | findstr /v &quot;.md&quot;" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="git add .gigacode/plans/1780484459834-curious-river.plan.md &amp;&amp; git commit -m &quot;refactor: update plan with archive instructions&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git commit -F .git_commit_msg &amp;&amp; git push" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git log -8 --oneline" />
+        </Execute>
       </list>
     </option>
   </component>
