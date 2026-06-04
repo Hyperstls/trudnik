@@ -11,6 +11,7 @@
 4. В открывшейся консоли выполните следующие команды:
    
    cd ~/mysite
+   git config pull.rebase false
    git pull
    touch app.py.wsgi
 
@@ -32,6 +33,7 @@
 КОМАНДЫ ДЛЯ КОПИРОВАНИЯ:
 
 cd ~/mysite
+git config pull.rebase false
 git pull
 touch app.py.wsgi
 
