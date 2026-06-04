@@ -62,7 +62,8 @@
                     </button>
                     <button onclick="event.stopPropagation(); toggleFavorite(this, '{{ worker.id }}')"
                             class="favorite-btn bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors text-sm flex items-center space-x-1"
-                            data-worker-id="{{ worker.id }}">
+                            data-worker-id="{{ worker.id }}"
+                            data-initial-status="not-favorited">
                         <span class="favorite-icon">⭐</span>
                         <span class="favorite-text">В избранное</span>
                     </button>
@@ -85,70 +86,106 @@
 toggleFavorite = function(btn, workerId) {
     console.log('toggleFavorite called for workerId:', workerId);
     
-    fetch('/api/favorites/check', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ worker_id: workerId })
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log('Check response:', data);
+    // Запретить клик по родительскому элементу
+    event.stopPropagation();
+    
+    // Получить текущий статус кнопки
+    const initialStatus = btn.dataset.initialStatus;
+    const isFavorited = initialStatus === 'favorited';
+    
+    console.log('Current status (from data):', initialStatus);
+    
+    // Сначала обновляем UI, чтобы пользователь видел мгновенный отклик
+    if (isFavorited) {
+        // Удаляем из избранного
+        btn.classList.remove('bg-red-500', 'hover:bg-red-600');
+        btn.classList.add('bg-yellow-500', 'hover:bg-yellow-600');
+        btn.querySelector('.favorite-icon').textContent = '⭐';
+        btn.querySelector('.favorite-text').textContent = 'В избранное';
+        btn.dataset.initialStatus = 'not-favorited';
         
-        if (!data.success) {
-            alert('Ошибка проверки: ' + (data.error || 'Не удалось определить статус'));
-            return;
-        }
-        
-        const isFavorited = data.is_favorited;
-        console.log('Is favorited:', isFavorited);
-        
-        const actionUrl = isFavorited ? '/api/favorites/remove' : '/api/favorites/add';
-        
-        fetch(actionUrl, {
+        fetch('/api/favorites/remove', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ worker_id: workerId })
         })
         .then(response => response.json())
         .then(data => {
-            console.log('Action response:', data);
-            
+            console.log('Remove response:', data);
             if (data.success) {
-                // Обновить кнопку
-                if (isFavorited) {
-                    btn.classList.remove('bg-red-500', 'hover\:bg-red-600');
-                    btn.classList.add('bg-yellow-500', 'hover\:bg-yellow-600');
-                    btn.querySelector('.favorite-icon').textContent = '⭐';
-                    btn.querySelector('.favorite-text').textContent = 'В избранное';
-                    alert('Трудник удалён из избранного');
-                } else {
-                    btn.classList.remove('bg-yellow-500', 'hover\:bg-yellow-600');
-                    btn.classList.add('bg-red-500', 'hover\:bg-red-600');
-                    btn.querySelector('.favorite-icon').textContent = '❤️';
-                    btn.querySelector('.favorite-text').textContent = 'Удалить из избранного';
-                    alert('Трудник добавлен в избранное!');
-                }
+                console.log('Successfully removed from favorites');
             } else {
-                alert('Ошибка: ' + (data.error || 'Не удалось изменить избранное'));
+                alert('Ошибка удаления: ' + (data.error || 'Не удалось удалить'));
+                // Откатываем изменения при ошибке
+                btn.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+                btn.classList.add('bg-red-500', 'hover:bg-red-600');
+                btn.querySelector('.favorite-icon').textContent = '❤️';
+                btn.querySelector('.favorite-text').textContent = 'Удалить из избранного';
+                btn.dataset.initialStatus = 'favorited';
             }
         })
         .catch(error => {
-            console.error('Fetch error:', error);
+            console.error('Remove error:', error);
             alert('Ошибка сети');
+            // Откатываем изменения
+            btn.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+            btn.classList.add('bg-red-500', 'hover:bg-red-600');
+            btn.querySelector('.favorite-icon').textContent = '❤️';
+            btn.querySelector('.favorite-text').textContent = 'Удалить из избранного';
+            btn.dataset.initialStatus = 'favorited';
         });
-    })
-    .catch(error => {
-        console.error('Fetch error:', error);
-        alert('Ошибка сети');
-    });
+    } else {
+        // Добавляем в избранное
+        btn.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+        btn.classList.add('bg-red-500', 'hover:bg-red-600');
+        btn.querySelector('.favorite-icon').textContent = '❤️';
+        btn.querySelector('.favorite-text').textContent = 'Удалить из избранного';
+        btn.dataset.initialStatus = 'favorited';
+        
+        fetch('/api/favorites/add', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ worker_id: workerId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Add response:', data);
+            if (data.success) {
+                console.log('Successfully added to favorites');
+            } else {
+                alert('Ошибка добавления: ' + (data.error || 'Не удалось добавить'));
+                // Откатываем изменения при ошибке
+                btn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                btn.classList.add('bg-yellow-500', 'hover:bg-yellow-600');
+                btn.querySelector('.favorite-icon').textContent = '⭐';
+                btn.querySelector('.favorite-text').textContent = 'В избранное';
+                btn.dataset.initialStatus = 'not-favorited';
+            }
+        })
+        .catch(error => {
+            console.error('Add error:', error);
+            alert('Ошибка сети');
+            // Откатываем изменения
+            btn.classList.remove('bg-red-500', 'hover:bg-red-600');
+            btn.classList.add('bg-yellow-500', 'hover:bg-yellow-600');
+            btn.querySelector('.favorite-icon').textContent = '⭐';
+            btn.querySelector('.favorite-text').textContent = 'В избранное';
+            btn.dataset.initialStatus = 'not-favorited';
+        });
+    }
 }
 
-// Проверить статус избранного при загрузке страницы
+// Проверить статус избранного при загрузке страницы (оптимизировано)
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOMContentLoaded - checking favorite status for all workers');
     const buttons = document.querySelectorAll('.favorite-btn');
     console.log('Found', buttons.length, 'favorite buttons');
     
+    // Не делаем параллельные запросы для всех - это вызывало проблемы
+    // Просто оставляем как есть, пользователь сам переключит
+    // Если нужно проверить - можно раскомментировать ниже
+    
+    /*
     buttons.forEach(btn => {
         const workerId = btn.dataset.workerId;
         console.log('Checking worker:', workerId);
@@ -163,14 +200,16 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Check result for', workerId, ':', data);
             
             if (data.success && data.is_favorited) {
-                btn.classList.remove('bg-yellow-500', 'hover\:bg-yellow-600');
-                btn.classList.add('bg-red-500', 'hover\:bg-red-600');
+                btn.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+                btn.classList.add('bg-red-500', 'hover:bg-red-600');
                 btn.querySelector('.favorite-icon').textContent = '❤️';
                 btn.querySelector('.favorite-text').textContent = 'Удалить из избранного';
+                btn.dataset.initialStatus = 'favorited';
             }
         })
         .catch(error => console.error('Ошибка проверки избранного для', workerId, ':', error));
     });
+    */
 });
 </script>
 {% endblock %}
