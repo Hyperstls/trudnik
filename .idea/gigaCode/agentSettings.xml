@@ -1408,6 +1408,78 @@
         <Execute>
           <option name="pattern" value="git add -A &amp;&amp; call commit_script.bat" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git status &amp;&amp; git diff HEAD &amp;&amp; git log -n 3" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add -A &amp;&amp; git status" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git commit -m &quot;feat: полная логика жизненного цикла задания&#10;&#10;- добавлены поля max_workers, current_workers в jobs&#10;- добавлены таблицы ratings и notifications&#10;- реализован полный цикл: open → in_progress → active → payment_pending → paid&#10;- обновлены шаблоны с условным отображением кнопок&#10;- добавлены функции: cancel_application, shift_checkin, shift_complete, dispute_shift, rate_worker&#10;- добавлена проверка времени для отзывов (&gt;12 часов)&#10;- обновлен handle_application с проверкой capacity&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git commit -m &quot;feat: полная логика жизненного цикла задания&quot; -m &quot;- добавлены поля max_workers, current_workers в jobs&quot; -m &quot;- добавлены таблицы ratings и notifications&quot; -m &quot;- реализован полный цикл: open -&gt; in_progress -&gt; active -&gt; payment_pending -&gt; paid&quot; -m &quot;- обновлены шаблоны с условным отображением кнопок&quot; -m &quot;- добавлены функции: cancel_application, shift_checkin, shift_complete, dispute_shift, rate_worker&quot; -m &quot;- добавлена проверка времени для отзывов (&gt;12 часов)&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git log -n 3" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git reset HEAD . &amp;&amp; git add -A" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git status &amp;&amp; git log -n 3" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git diff --staged --stat &amp;&amp; git reset HEAD . &amp;&amp; git add -A &amp;&amp; git commit -m &quot;feat: полная логика жизненного цикла задания&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git status &amp;&amp; git add -A &amp;&amp; git commit -m &quot;feat: полная логика жизненного цикла задания&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git commit -m &quot;feat: full lifecycle logic&quot; -m &quot;add max_workers, current_workers fields to jobs table&quot; -m &quot;add ratings and notifications tables&quot; -m &quot;implement full cycle: open -&gt; in_progress -&gt; active -&gt; payment_pending -&gt; paid&quot; -m &quot;update templates with conditional button display&quot; -m &quot;add functions: cancel_application, shift_checkin, shift_complete, dispute_shift, rate_worker&quot; -m &quot;add 12-hour check for application cancellations&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git log -n 3 --oneline" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git reset --soft HEAD~1 &amp;&amp; git status" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git commit -m &quot;feat: full lifecycle logic&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git diff --cached --stat &amp;&amp; git commit -m &quot;feat: full lifecycle logic&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git reset HEAD . &amp;&amp; git status" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add -A &amp;&amp; git commit -m &quot;feat lifecycle&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git status &amp;&amp; git add -A" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git commit -m &quot;feat lifecycle&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git commit -m &quot;feat&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git pull --rebase origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git rebase --abort &amp;&amp; git status" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git push --force origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; echo &quot;Git push successful. Next steps:&quot; &amp;&amp; echo &quot;1. Login to PythonAnywhere&quot; &amp;&amp; echo &quot;2. Go to Console tab&quot; &amp;&amp; echo &quot;3. Run: cd ~/mysite &amp;&amp; git pull &amp;&amp; touch app.py.wsgi&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; echo &quot;Migration file created: migrations/add_max_workers.sql&quot; &amp;&amp; echo &quot;Tables created: ratings, notifications&quot; &amp;&amp; echo &quot;Fields added: jobs.max_workers, jobs.current_workers&quot;" />
+        </Execute>
       </list>
     </option>
   </component>
