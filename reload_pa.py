@@ -26,7 +26,8 @@ try:
         print(f"Status: {response.status}")
         if response.status == 200:
             print("Web app reloaded successfully!")
-        else:
             print(f"Response: {response.read().decode()}")
+        else:
+            print(f"Error: {response.read().decode()}")
 except Exception as e:
     print(f"Exception: {e}")

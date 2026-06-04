@@ -1,27 +1,67 @@
-import urllib.request
+#!/usr/bin/env python
+"""
+Проверка и обновление файлов на PythonAnywhere через webftp
+"""
+
+import http.client
 import urllib.parse
 
-# PythonAnywhere API credentials
+# Credentials (используем API token для авторизации)
 API_TOKEN = "e4e936c2bed6824c4981927652c21986780e22b3"
-USERNAME = "Hyperstls"
 
-# Console API endpoint
-console_url = f"https://www.pythonanywhere.com/api/v0/user/{USERNAME}/consoles/"
+# PythonAnywhere API
+HOST = "www.pythonanywhere.com"
+BASE_URL = f"/api/v0/user/Hyperstls"
 
-headers = {
-    "Authorization": f"Token {API_TOKEN}",
-    "Content-Type": "application/json",
-}
+print("=== Проверка статуса PythonAnywhere ===\n")
 
-# Create a console
-print("Creating console...")
+# 1. Проверка статуса веб-приложения
+print("1. Проверка статуса веб-приложения...")
 try:
-    req = urllib.request.Request(console_url, method='POST', data=b'{}')
-    req.add_header("Authorization", f"Token {API_TOKEN}")
-    req.add_header("Content-Type", "application/json")
+    conn = http.client.HTTPSConnection(HOST)
+    headers = {
+        "Authorization": f"Token {API_TOKEN}",
+        "Content-Type": "application/json"
+    }
     
-    with urllib.request.urlopen(req, timeout=10) as response:
-        console_data = urllib.parse.parse_qs(response.read().decode())
-        print(f"Console created: {console_data}")
+    conn.request("GET", f"{BASE_URL}/webapps/hyperstls.pythonanywhere.com/", headers=headers)
+    response = conn.getresponse()
+    
+    if response.status == 200:
+        data = response.read().decode()
+        print(f"   [OK] Статус: {response.status}")
+        # Проверим, что приложение активно
+        if '"active":true' in data or '"status":"active"' in data:
+            print("   [OK] Приложение активно")
+    else:
+        print(f"   [ERR] Ошибка: {response.status}")
+    
+    conn.close()
 except Exception as e:
-    print(f"Exception creating console: {e}")
+    print(f"   [ERR] Исключение: {e}")
+
+# 2. Перезагрузка веб-приложения
+print("\n2. Перезагрузка веб-приложения...")
+try:
+    conn = http.client.HTTPSConnection(HOST)
+    headers = {
+        "Authorization": f"Token {API_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    
+    conn.request("POST", f"{BASE_URL}/webapps/hyperstls.pythonanywhere.com/reload/", headers=headers)
+    response = conn.getresponse()
+    
+    if response.status == 200:
+        print(f"   [OK] Перезагрузка успешна! (код: {response.status})")
+    else:
+        print(f"   [ERR] Ошибка перезагрузки: {response.status}")
+    
+    conn.close()
+except Exception as e:
+    print(f"   [ERR] Исключение: {e}")
+
+print("\n=== Готово! ===")
+print("\nТеперь проверьте сайт:")
+print("https://hyperstls.pythonanywhere.com")
+print("\nВойдите как test_employer_final@test.com и попробуйте создать задание.")

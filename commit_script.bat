@@ -1,4 +1,4 @@
 @echo off
 git add -A
-git commit -m "Add reload script for PythonAnywhere"
+git commit -m "Update check_pa_status script"
 git push origin main
