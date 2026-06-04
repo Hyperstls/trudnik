@@ -38,6 +38,11 @@
             <label class="block mb-1">Фото (до 5)</label>
             <input type="file" name="photos" multiple accept="image/*" class="w-full border p-2 rounded">
         </div>
+        <div class="mb-2">
+            <label class="block mb-1">Максимум работников</label>
+            <input type="number" name="max_workers" value="1" min="1" class="w-full border p-3 rounded-xl text-sm">
+            <p class="text-xs text-gray-500 mt-1">Сколько работников нужно для этого задания</p>
+        </div>
         <button type="submit" class="w-full bg-burgundy text-white py-3 rounded-xl font-bold text-base hover:bg-[#4A1720] active:scale-[0.98] transition-all duration-200 shadow-md">
             Опубликовать
         </button>

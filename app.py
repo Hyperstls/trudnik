@@ -114,6 +114,8 @@ def copy_job(original_job):
         'lat': original_job.get('lat', 55.75),
         'lng': original_job.get('lng', 37.61),
         'status': 'open',
+        'max_workers': original_job.get('max_workers', 1),
+        'current_workers': 0,
     }
 
 
@@ -558,6 +560,8 @@ def create_job():
                 'lat': float(request.form.get('lat', 55.75)),
                 'lng': float(request.form.get('lng', 37.61)),
                 'preferred_religion': request.form.get('preferred_religion', 'не важно'),
+                'max_workers': int(request.form.get('max_workers', 1)),
+                'current_workers': 0,
             }
             
             # Логирование для отладки
@@ -590,11 +594,32 @@ def apply_job(job_id):
         flash('Вы уже откликались на это задание', 'info')
         return redirect(url_for('index'))
 
-    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=employer_id')
-    if job_resp.ok and job_resp.json() and job_resp.json()[0]['employer_id'] == user_id:
+    # Проверить статус задания
+    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status,current_workers,max_workers,employer_id')
+    if not job_resp.ok or not job_resp.json():
+        flash('Задание не найдено', 'danger')
+        return redirect(url_for('index'))
+    
+    job = job_resp.json()[0]
+    
+    # Проверить, что задание не собственное
+    if job['employer_id'] == user_id:
         flash('Вы не можете откликаться на собственное задание', 'danger')
         return redirect(url_for('index'))
-
+    
+    # Проверить статус задания
+    if job['status'] != 'open':
+        flash('На это задание нельзя откликаться (не open)', 'danger')
+        return redirect(url_for('index'))
+    
+    # Проверить количество мест
+    current_workers = job.get('current_workers', 0)
+    max_workers = job.get('max_workers', 1)
+    
+    if current_workers >= max_workers:
+        flash(f'Места в задании заполнены (максимум {max_workers})', 'info')
+        return redirect(url_for('index'))
+    
     supabase_request('POST', 'applications', json={'job_id': job_id, 'worker_id': user_id})
     flash('Отклик отправлен', 'success')
     return redirect(url_for('index'))
@@ -684,18 +709,217 @@ def handle_application(app_id, action):
     worker_id = app_data['worker_id']
 
     if action == 'accept':
+        # Проверить количество мест
+        job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=current_workers,max_workers')
+        if not job_resp.ok or not job_resp.json():
+            flash('Ошибка: задание не найдено', 'danger')
+            return redirect(url_for('my_applications'))
+        
+        job = job_resp.json()[0]
+        current_workers = job.get('current_workers', 0)
+        max_workers = job.get('max_workers', 1)
+        
+        if current_workers >= max_workers:
+            flash(f'Ошибка: все места в задании уже заняты (максимум {max_workers})', 'danger')
+            return redirect(url_for('my_applications'))
+        
+        # Принять отклик и увеличить счетчик
         supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'accepted'})
         supabase_request('PATCH', f'applications?job_id=eq.{job_id}&id=neq.{app_id}',
                          json={'status': 'rejected'})
         supabase_request('POST', 'shifts', json={
             'job_id': job_id, 'worker_id': worker_id, 'employer_id': session['user_id']
         })
-        supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'in_progress'})
+        supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={
+            'status': 'in_progress',
+            'current_workers': current_workers + 1
+        })
         flash('Работник принят', 'success')
     else:
         supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'rejected'})
         flash('Отклик отклонён', 'info')
     return redirect(url_for('my_applications'))
+
+
+@app.route('/application/<app_id>/cancel', methods=['POST'])
+@login_required
+def cancel_application(app_id):
+    """Отмена принятого работника"""
+    app_resp = supabase_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id,shift_id')
+    if not app_resp.ok or not app_resp.json():
+        flash('Отклик не найден', 'danger')
+        return redirect(url_for('my_applications'))
+    
+    app_data = app_resp.json()[0]
+    job_id = app_data['job_id']
+    worker_id = app_data['worker_id']
+    shift_id = app_data.get('shift_id')
+    
+    # Получить информацию о задании
+    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status,start_time')
+    if not job_resp.ok or not job_resp.json():
+        flash('Задание не найдено', 'danger')
+        return redirect(url_for('my_applications'))
+    
+    job = job_resp.json()[0]
+    
+    # Проверить статус задания (можно отменить только до начала)
+    if job['status'] in ['active', 'payment_pending', 'paid', 'completed']:
+        flash('Нельзя отменить работника после начала смены', 'danger')
+        return redirect(url_for('my_applications'))
+    
+    # Проверить время (если статус in_progress - проверить 12 часов)
+    if job['status'] == 'in_progress' and shift_id:
+        shift_resp = supabase_request('GET', f'shifts?id=eq.{shift_id}&select=start_time')
+        if shift_resp.ok and shift_resp.json():
+            start_time = datetime.fromisoformat(shift_resp.json()[0]['start_time'].replace('Z', '+00:00'))
+            now = datetime.now(start_time.tzinfo)
+            hours_before = (start_time - now).total_seconds() / 3600
+            if hours_before < 12:
+                flash(f'Нельзя отменить работника менее чем за 12 часов до начала (осталось {hours_before:.1f} ч)', 'danger')
+                return redirect(url_for('my_applications'))
+    
+    # Уменьшить счетчик работников
+    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=current_workers,max_workers')
+    if job_resp.ok and job_resp.json():
+        job_data = job_resp.json()[0]
+        current_workers = max(0, job_data.get('current_workers', 1) - 1)
+        
+        # Вернуть статус в open если все ушли
+        new_status = 'open' if current_workers == 0 else 'in_progress'
+        supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={
+            'status': new_status,
+            'current_workers': current_workers
+        })
+    
+    # Отклонить отклик и удалить смену
+    supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'rejected'})
+    if shift_id:
+        supabase_request('DELETE', f'shifts?id=eq.{shift_id}')
+    
+    # Отправить уведомления
+    add_notification(worker_id, 'application_rejected', 'Отклик отменен', f'Ваш отклик на задание {job.get("organization_name", "#" + job_id)} был отменен')
+    
+    flash('Работник отменен', 'success')
+    return redirect(url_for('my_applications'))
+
+
+@app.route('/shift/<shift_id>/checkin', methods=['POST'])
+@login_required
+def shift_checkin(shift_id):
+    """Чек-ин работника"""
+    shift_resp = supabase_request('GET', f'shifts?id=eq.{shift_id}&select=worker_id,job_id,status')
+    if not shift_resp.ok or not shift_resp.json():
+        flash('Смена не найдена', 'danger')
+        return redirect(url_for('shifts'))
+    
+    shift = shift_resp.json()[0]
+    
+    # Проверить, что пользователь - работник
+    if session.get('user_id') != shift['worker_id']:
+        flash('Нет прав для чек-ина', 'danger')
+        return redirect(url_for('shifts'))
+    
+    # Обновить статус и записать время
+    supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={
+        'worker_checkin': True,
+        'start_time': datetime.now().isoformat(),
+        'status': 'active'
+    })
+    
+    # Обновить статус задания на active
+    job_resp = supabase_request('GET', f'jobs?id=eq.{shift["job_id"]}&select=status')
+    if job_resp.ok and job_resp.json():
+        job = job_resp.json()[0]
+        if job['status'] == 'in_progress':
+            supabase_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'active'})
+    
+    flash('Чек-ин успешно выполнен', 'success')
+    return redirect(url_for('shifts'))
+
+
+@app.route('/shift/<shift_id>/complete', methods=['POST'])
+@login_required
+def shift_complete(shift_id):
+    """Завершение смены работником"""
+    shift_resp = supabase_request('GET', f'shifts?id=eq.{shift_id}&select=worker_id,employer_id,job_id,status')
+    if not shift_resp.ok or not shift_resp.json():
+        flash('Смена не найдена', 'danger')
+        return redirect(url_for('shifts'))
+    
+    shift = shift_resp.json()[0]
+    
+    # Проверить, что пользователь - работник
+    if session.get('user_id') != shift['worker_id']:
+        flash('Нет прав для завершения', 'danger')
+        return redirect(url_for('shifts'))
+    
+    # Проверить, что смена активна
+    if shift['status'] != 'active':
+        flash('Только активные смены можно завершить', 'danger')
+        return redirect(url_for('shifts'))
+    
+    # Обновить статус и записать время
+    supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={
+        'worker_complete': True,
+        'complete_time': datetime.now().isoformat(),
+        'status': 'payment_pending'
+    })
+    
+    # Обновить статус задания на payment_pending
+    supabase_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'payment_pending'})
+    
+    flash('Смена завершена, ожидание подтверждения оплаты', 'success')
+    return redirect(url_for('shifts'))
+
+
+@app.route('/shift/<shift_id>/confirm-payment', methods=['POST'])
+@login_required
+def confirm_payment(shift_id):
+    """Подтверждение оплаты (работодателем или работником)"""
+    action = request.form.get('action', '')
+    
+    shift_resp = supabase_request('GET', f'shifts?id=eq.{shift_id}&select=employer_id,worker_id,job_id,employer_payment_confirmed,worker_payment_confirmed,status')
+    if not shift_resp.ok or not shift_resp.json():
+        flash('Смена не найдена', 'danger')
+        return redirect(url_for('shifts'))
+    
+    shift = shift_resp.json()[0]
+    
+    # Проверить права доступа
+    is_employer = session.get('user_id') == shift['employer_id']
+    is_worker = session.get('user_id') == shift['worker_id']
+    
+    if action == 'confirm_employer' and not is_employer:
+        flash('Только работодатель может подтвердить оплату', 'danger')
+        return redirect(url_for('shifts'))
+    
+    if action == 'confirm_worker' and not is_worker:
+        flash('Только работник может подтвердить получение оплаты', 'danger')
+        return redirect(url_for('shifts'))
+    
+    # Обновить статус подтверждения
+    if action == 'confirm_employer':
+        supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={'employer_payment_confirmed': True})
+        flash('Оплата подтверждена работодателем', 'success')
+    elif action == 'confirm_worker':
+        supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={'worker_payment_confirmed': True})
+        flash('Оплата подтверждена работником', 'success')
+    
+    # Проверить, подтвердили ли обе стороны
+    shift_resp = supabase_request('GET', f'shifts?id=eq.{shift_id}&select=employer_payment_confirmed,worker_payment_confirmed')
+    if shift_resp.ok and shift_resp.json():
+        shift = shift_resp.json()[0]
+        if shift.get('employer_payment_confirmed') and shift.get('worker_payment_confirmed'):
+            # Обе стороны подтвердили - установить статус paid
+            supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={'status': 'paid'})
+            supabase_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'paid'})
+            
+            # Отправить уведомления
+            add_notification(shift['employer_id'], 'payment_sent', 'Оплата подтверждена', f'Оплата по смене #{shift_id} подтверждена обеими сторонами')
+            add_notification(shift['worker_id'], 'payment_received', 'Оплата подтверждена', f'Оплата по смене #{shift_id} подтверждена обеими сторонами')
+    
+    return redirect(url_for('shifts'))
 
 
 @app.route('/my-applications')
@@ -709,7 +933,7 @@ def my_applications():
     user_id = session['user_id']
     # Получить все отклики на задания работодателя
     resp = supabase_request('GET',
-        f'applications?job.employer_id=eq.{user_id}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,skills,desired_payment),job:jobs(organization_name,date_time,payment_amount,status)')
+        f'applications?job.employer_id=eq.{user_id}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,skills,desired_payment),job:jobs(organization_name,date_time,payment_amount,status,current_workers,max_workers)')
     applications = resp.json() if resp.ok else []
     
     # Получить список работников для каждого отклика
@@ -718,7 +942,7 @@ def my_applications():
     if worker_ids:
         job_ids = list(set([app.get('job_id') for app in applications]))
         if job_ids:
-            job_resp = supabase_request('GET', f'jobs?id=in.({",".join(job_ids)})&select=id,organization_name,date_time,payment_amount,status,application_count')
+            job_resp = supabase_request('GET', f'jobs?id=in.({",".join(job_ids)})&select=id,organization_name,date_time,payment_amount,status,application_count,current_workers,max_workers')
             if job_resp.ok and job_resp.json():
                 jobs = {job['id']: job for job in job_resp.json()}
     
@@ -737,9 +961,9 @@ def my_jobs():
     status_filter = request.args.get('status', 'all')
     
     if status_filter == 'all':
-        resp = supabase_request('GET', f'jobs?employer_id=eq.{user_id}&select=*,photos:job_photos(*),applications:applications(count)')
+        resp = supabase_request('GET', f'jobs?employer_id=eq.{user_id}&select=*,photos:job_photos(*),applications:applications(count),current_workers,max_workers')
     else:
-        resp = supabase_request('GET', f'jobs?employer_id=eq.{user_id}&status=eq.{status_filter}&select=*,photos:job_photos(*),applications:applications(count)')
+        resp = supabase_request('GET', f'jobs?employer_id=eq.{user_id}&status=eq.{status_filter}&select=*,photos:job_photos(*),applications:applications(count),current_workers,max_workers')
     
     jobs = resp.json() if resp.ok else []
     
@@ -786,12 +1010,9 @@ def my_jobs_action():
 
 @app.route('/repost-job/<job_id>', methods=['POST'])
 @login_required
+@role_required('employer')
 def repost_job(job_id):
     """Дублирование задания"""
-    if session.get('role') != 'employer':
-        flash('Доступ только для работодателей', 'danger')
-        return redirect(url_for('index'))
-    
     resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=*')
     if resp.ok and resp.json():
         new_job = copy_job(resp.json()[0])
@@ -1009,6 +1230,141 @@ def admin_approve(user_id):
 def admin_reject(user_id):
     supabase_request('PATCH', f'profiles?id=eq.{user_id}', json={'verification_status': 'rejected'})
     return redirect(url_for('admin'))
+
+
+# ──────────────────────────────────────────────
+# Оценки и споры
+# ──────────────────────────────────────────────
+
+@app.route('/rate-worker/<worker_id>/<job_id>', methods=['POST'])
+@login_required
+def rate_worker(worker_id, job_id):
+    """Оценка работника после завершения смены"""
+    rating = int(request.form.get('rating', 5))
+    comment = request.form.get('comment', '')
+    
+    # Получить информацию о смене
+    shift_resp = supabase_request('GET', f'shifts?worker_id=eq.{worker_id}&job_id=eq.{job_id}&select=id,employer_id,worker_id,job_id,status')
+    if not shift_resp.ok or not shift_resp.json():
+        flash('Смена не найдена', 'danger')
+        return redirect(url_for('index'))
+    
+    shift = shift_resp.json()[0]
+    
+    # Проверить статус (только для-paid-)
+    if shift['status'] != 'paid':
+        flash('Оценить можно только после завершения оплаты', 'danger')
+        return redirect(url_for('shifts'))
+    
+    # Проверить, что оценка оставляется только один раз
+    existing = supabase_request('GET', f'ratings?rated_user_id=eq.{worker_id}&rater_user_id=eq.{session["user_id"]}&job_id=eq.{job_id}')
+    if existing.ok and existing.json():
+        flash('Вы уже оценили этого работника', 'info')
+        return redirect(url_for('shifts'))
+    
+    # Создать запись оценки
+    rating_data = {
+        'rated_user_id': worker_id,
+        'rater_user_id': session['user_id'],
+        'rating_type': 'worker',
+        'target_type': 'worker',
+        'rating': rating,
+        'comment': comment,
+        'shift_id': shift['id']
+    }
+    supabase_request('POST', 'ratings', json=rating_data)
+    
+    # Обновить средний рейтинг в профиле
+    update_rating(worker_id, rating)
+    
+    flash(f'Оценка работника: {rating}⭐', 'success')
+    return redirect(url_for('shifts'))
+
+
+def update_rating(user_id, new_rating):
+    """Обновить средний рейтинг пользователя"""
+    ratings_resp = supabase_request('GET', f'ratings?rated_user_id=eq.{user_id}&select=rating')
+    if not ratings_resp.ok or not ratings_resp.json():
+        return
+    
+    ratings_list = ratings_resp.json()
+    total = sum(r['rating'] for r in ratings_list)
+    avg = round(total / len(ratings_list), 1)
+    
+    supabase_request('PATCH', f'profiles?id=eq.{user_id}', json={'rating': avg})
+
+
+@app.route('/shift/<shift_id>/dispute', methods=['POST'])
+@login_required
+def dispute_shift(shift_id):
+    """Запрос спора по смене"""
+    shift_resp = supabase_request('GET', f'shifts?id=eq.{shift_id}&select=employer_id,worker_id')
+    if not shift_resp.ok or not shift_resp.json():
+        flash('Смена не найдена', 'danger')
+        return redirect(url_for('index'))
+    
+    shift = shift_resp.json()[0]
+    
+    # Проверить, что пользователь имеет отношение к смене
+    if session['user_id'] not in [shift['employer_id'], shift['worker_id']]:
+        flash('Нет прав на спор по этой смене', 'danger')
+        return redirect(url_for('index'))
+    
+    # Обновить статус на 'disputed'
+    supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={'status': 'disputed'})
+    
+    # Отправить уведомление администратору
+    admin_resp = supabase_request('GET', f'profiles?role=eq.admin&select=id')
+    if admin_resp.ok and admin_resp.json():
+        admin_id = admin_resp.json()[0]['id']
+        add_notification(admin_id, 'dispute_started', 'Новый спор', f'Пользователь запросил спор по смене #{shift_id}')
+    
+    # Добавить уведомления участникам
+    add_notification(shift['employer_id'], 'dispute_started', 'Спор открыт', f'Ваш спор по смене #{shift_id} открыт на рассмотрении')
+    add_notification(shift['worker_id'], 'dispute_started', 'Спор открыт', f'Ваш спор по смене #{shift_id} открыт на рассмотрении')
+    
+    flash('Спор открыт на рассмотрение', 'warning')
+    return redirect(url_for('shifts'))
+
+
+def add_notification(user_id, notification_type, title, message):
+    """Добавить уведомление пользователю"""
+    notification_data = {
+        'user_id': user_id,
+        'type': notification_type,
+        'title': title,
+        'message': message,
+        'is_read': False
+    }
+    supabase_request('POST', 'notifications', json=notification_data)
+
+
+# ──────────────────────────────────────────────
+# Уведомления
+# ──────────────────────────────────────────────
+
+@app.route('/notifications')
+@login_required
+def notifications_list():
+    """Список уведомлений пользователя"""
+    user_id = session['user_id']
+    resp = supabase_request('GET', f'notifications?user_id=eq.{user_id}&order=created_at.desc')
+    notifications = resp.json() if resp.ok else []
+    
+    # Пометить все как прочитанные
+    unread_ids = [n['id'] for n in notifications if not n.get('is_read')]
+    if unread_ids:
+        supabase_request('PATCH', f'notifications?id=in.({",".join(unread_ids)})', json={'is_read': True})
+    
+    return render_template('notifications.html', notifications=notifications)
+
+
+@app.route('/notification/<notification_id>/read', methods=['POST'])
+@login_required
+def mark_notification_read(notification_id):
+    """Пометить уведомление как прочитанное"""
+    supabase_request('PATCH', f'notifications?id=eq.{notification_id}', json={'is_read': True})
+    return jsonify({'status': 'ok'})
 
 
 # ──────────────────────────────────────────────

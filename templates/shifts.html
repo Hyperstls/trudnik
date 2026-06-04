@@ -31,6 +31,30 @@
                 <button class="bg-blue-500 text-white px-2 py-1 rounded">Оплату получил</button>
             </form>
             {% endif %}
+            {% if shift.employer_payment_confirmed and shift.worker_payment_confirmed %}
+            <span class="text-green-600 font-medium">Оплата подтверждена</span>
+            {% endif %}
+        {% endif %}
+        {% if shift.status == 'paid' %}
+            <div class="mt-2 space-y-1">
+                {% if session.user_id == shift.worker_id %}
+                <form action="/rate-worker/{{ shift.worker_id }}/{{ shift.job_id }}" method="post" class="inline">
+                    <button class="text-yellow-600 hover:text-yellow-800 font-medium">⭐ Оценить работодателя</button>
+                </form>
+                {% endif %}
+                {% if session.user_id == shift.employer_id %}
+                <form action="/rate-worker/{{ shift.worker_id }}/{{ shift.job_id }}" method="post" class="inline">
+                    <button class="text-yellow-600 hover:text-yellow-800 font-medium">⭐ Оценить работника</button>
+                </form>
+                {% endif %}
+            </div>
+        {% endif %}
+        {% if shift.status == 'payment_pending' %}
+            {% if session.user_id == shift.worker_id or session.user_id == shift.employer_id %}
+            <form action="/shift/{{ shift.id }}/dispute" method="post" class="inline" onclick="return confirm('Запросить спор?');">
+                <button class="text-red-500 hover:text-red-700 font-medium">⚠️ Спор</button>
+            </form>
+            {% endif %}
         {% endif %}
     </div>
     {% endfor %}

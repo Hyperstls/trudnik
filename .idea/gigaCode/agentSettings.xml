@@ -1357,6 +1357,57 @@
         <Execute>
           <option name="pattern" value="ssh hyperstls@hyperstls.pythonanywhere.com &quot;cd ~/mysite &amp;&amp; git pull&quot;" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="python reload_pa.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add -A &amp;&amp; git commit -m &quot;Add reload script for PythonAnywhere&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python check_pa_files.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python check_pa_git.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python check_pa_status.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="ssh hyperstls@hyperstls.pythonanywhere.com &quot;cd ~/mysite &amp;&amp; git pull origin main&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python deploy_pa.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python deploy_git.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python check_ssh.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python deploy_gitpython.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="pip install paramiko -q &amp;&amp; python deploy_sftp.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="type DEPLOY_INSTRUCTION.txt" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git status &amp;&amp; git log --oneline -5" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git log --oneline -10" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python deploy_via_git.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="type README_GIT_DEPLOY.txt" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add -A &amp;&amp; call commit_script.bat" />
+        </Execute>
       </list>
     </option>
   </component>

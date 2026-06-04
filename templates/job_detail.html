@@ -29,13 +29,20 @@
             <a href="/my-applications" class="inline-block bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
                 Управление откликами
             </a>
+            {% if job.max_workers and job.max_workers > 1 %}
+            <p class="text-sm text-gray-600 mt-2">Места: {{ job.current_workers }}/{{ job.max_workers }}</p>
+            {% endif %}
         {% elif session.get('role') == 'worker' %}
             {% if not already_applied and job.status == 'open' %}
+            {% if job.max_workers and job.current_workers >= job.max_workers %}
+            <p class="text-red-500 font-medium">Места в задании заполнены</p>
+            {% else %}
             <form action="/apply/{{ job.id }}" method="post">
                 <button type="submit" class="w-full bg-gold text-white py-3 rounded-xl font-semibold hover:bg-yellow-600 transition-colors">
                     Откликнуться
                 </button>
             </form>
+            {% endif %}
             {% elif already_applied %}
             <p class="text-emerald-600 font-medium">Вы уже откликнулись на это задание</p>
             <form action="/unapply/{{ job.id }}" method="post">

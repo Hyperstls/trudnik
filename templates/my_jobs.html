@@ -42,31 +42,41 @@
                             <p class="text-sm mt-1">
                                 {% if job.status == 'open' %}<span class="text-emerald-600 font-medium">Открыто</span>
                                 {% elif job.status == 'in_progress' %}<span class="text-blue-600 font-medium">В работе</span>
+                                {% elif job.status == 'active' %}<span class="text-blue-600 font-medium">Активно</span>
+                                {% elif job.status == 'payment_pending' %}<span class="text-yellow-600 font-medium">Ожидает оплаты</span>
+                                {% elif job.status == 'paid' %}<span class="text-green-600 font-medium">Оплачено</span>
                                 {% elif job.status == 'completed' %}<span class="text-green-600 font-medium">Завершено</span>
                                 {% elif job.status == 'cancelled' %}<span class="text-red-600 font-medium">Отозвано</span>
                                 {% else %}{{ job.status }}{% endif %}
                                 {% if job.application_count is defined and job.application_count > 0 %}
                                 · <span class="text-gray-600">{{ job.application_count }} откликов</span>
                                 {% endif %}
+                                {% if job.max_workers and job.max_workers > 1 %}
+                                · <span class="text-gray-600">{{ job.current_workers }}/{{ job.max_workers }} мест</span>
+                                {% endif %}
                             </p>
                         </a>
-                        <div class="flex flex-col gap-1 text-right ml-4">
-                            <form action="/repost-job/{{ job.id }}" method="post" class="inline">
-                                <button type="submit" class="text-sm text-green-600 hover:text-green-800 font-medium">Дублировать</button>
-                            </form>
-                            {% if job.status != 'cancelled' %}
-                            <form action="/cancel-job/{{ job.id }}" method="post" class="inline">
-                                <button type="submit" class="text-sm text-yellow-600 hover:text-yellow-800 font-medium">Отозвать</button>
-                            </form>
-                            {% else %}
-                            <form action="/restore-job/{{ job.id }}" method="post" class="inline">
-                                <button type="submit" class="text-sm text-emerald-600 hover:text-emerald-800 font-medium">Вернуть</button>
-                            </form>
-                            {% endif %}
-                            <form action="/delete-job/{{ job.id }}" method="post" onsubmit="return confirm('Удалить задание безвозвратно?');">
-                                <button type="submit" class="text-sm text-red-500 hover:text-red-700 font-medium">Удалить</button>
-                            </form>
-                        </div>
+                            <div class="flex flex-col gap-1 text-right">
+                                {% if job.status in ['open', 'cancelled'] %}
+                                <form action="/repost-job/{{ job.id }}" method="post" class="inline" onclick="event.stopPropagation();">
+                                    <button type="submit" class="text-sm text-green-600 hover:text-green-800 font-medium">Дублировать</button>
+                                </form>
+                                {% endif %}
+                                {% if job.status == 'open' %}
+                                <form action="/cancel-job/{{ job.id }}" method="post" class="inline" onclick="event.stopPropagation();">
+                                    <button type="submit" class="text-sm text-yellow-600 hover:text-yellow-800 font-medium">Отозвать</button>
+                                </form>
+                                {% elif job.status == 'cancelled' %}
+                                <form action="/restore-job/{{ job.id }}" method="post" class="inline" onclick="event.stopPropagation();">
+                                    <button type="submit" class="text-sm text-emerald-600 hover:text-emerald-800 font-medium">Вернуть</button>
+                                </form>
+                                {% endif %}
+                                {% if job.status in ['open', 'cancelled'] %}
+                                <form action="/delete-job/{{ job.id }}" method="post" class="inline" onsubmit="return confirm('Удалить задание безвозвратно?');" onclick="event.stopPropagation();">
+                                    <button type="submit" class="text-sm text-red-500 hover:text-red-700 font-medium">Удалить</button>
+                                </form>
+                                {% endif %}
+                            </div>
                     </div>
                 </div>
             </div>

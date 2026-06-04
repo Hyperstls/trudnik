@@ -82,9 +82,12 @@
                 </div>
 
                 <div class="mt-4 pt-3 border-t border-gray-100 flex items-center space-x-3">
+                    {% set job = app.job if app.job else {} %}
+                    {% set is_full = (job.current_workers|default(0)) >= (job.max_workers|default(1)) %}
                     {% if app.status == 'pending' %}
                     <form action="/applications/{{ app.id }}/accept" method="POST" class="inline">
-                        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
+                        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors" 
+                            {% if is_full %}disabled title="Места в задании заполнены"{% endif %}>
                             ✓ Принять
                         </button>
                     </form>
@@ -93,6 +96,9 @@
                             ✕ Отклонить
                         </button>
                     </form>
+                    {% if is_full %}
+                        <span class="text-sm text-gray-400">Места заполнены</span>
+                    {% endif %}
                     {% elif app.status == 'accepted' %}
                     <span class="text-sm text-green-600 font-medium">Принят</span>
                     {% elif app.status == 'rejected' %}
