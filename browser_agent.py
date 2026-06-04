@@ -59,14 +59,14 @@ If multiple actions needed, execute one at a time.
         try:
             action_data = json.loads(ai_response)
         except Exception:
-            print("[ERROR] Не удалось распарсить ответ от DeepSeek. Ответ:")
+            print("[ERROR] Failed to parse DeepSeek response. Response:")
             print(ai_response)
             browser.close()
             return
 
         action = action_data.get("action")
         selector = action_data.get("selector")
-        value = action_data.get("value", "")
+        value = action_data.get("value")
         message = action_data.get("message", "")
 
         print(f"[INFO] {message}")
@@ -79,7 +79,8 @@ If multiple actions needed, execute one at a time.
             elif action == "fill":
                 page.fill(selector, value)
             elif action == "goto":
-                page.goto(value if value else BASE_URL)
+                target_url = value if value else f"{BASE_URL}/job/new"
+                page.goto(target_url)
                 page.wait_for_timeout(2000)
             elif action == "done":
                 pass
