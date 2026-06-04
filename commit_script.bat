@@ -1,4 +1,4 @@
 @echo off
 git add -A
-git commit -m "Update check_pa_status script"
+git commit -m "Add deployment instruction"
 git push origin main

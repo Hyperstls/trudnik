@@ -1,0 +1,54 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+Инструкция по деплою на PythonAnywhere
+"""
+
+print("=== ИНСТРУКЦИЯ ПО ДЕПЛОЮ НА PYTHONANYWHERE ===\n")
+
+print("ВАШИ ИЗМЕНЕНИЯ УЖЕ ОТПРАВЛЕНЫ НА GITHUB!")
+print("Коммиты:")
+print("  d429f84 - Refactor app.py with error handling")
+print("  9248e50 - Add reload script for PythonAnywhere")
+print("  e7311bb - Update check_pa_status script\n")
+
+print("СЛЕДУЮЩИЕ ШАГИ:\n")
+
+print("Вариант 1: Через веб-интерфейс PythonAnywhere (САМЫЙ ПРОСТОЙ)")
+print("  1. Откройте https://www.pythonanywhere.com/")
+print("  2. Войдите как Hyperstls")
+print("  3. Перейдите во вкладку 'Files'")
+print("  4. Откройте файл: /home/hyperstls/mysite/app.py")
+print("  5. Скопируйте код из локального файла app.py")
+print("  6. Вставьте его в веб-редактор")
+print("  7. Нажмите 'Save'")
+print("  8. Перейдите во вкладку 'Web'")
+print("  9. Нажмите 'Reload'\n")
+
+print("Вариант 2: Через Git (если уже настроен)")
+print("  1. Откройте консоль на PythonAnywhere")
+print("  2. Выполните:")
+print("     cd ~/mysite")
+print("     git pull")
+print("     touch app.py.wsgi\n")
+
+print("Вариант 3: Через SFTP")
+print("  1. Подключитесь к hyperstls.pythonanywhere.com через SFTP")
+print("  2. Загрузите локальный файл app.py в ~/mysite/")
+print("  3. Перезагрузите приложение через веб-интерфейс\n")
+
+print("=== ПРОВЕРКА РАБОТЫ ===")
+print("После деплоя:")
+print("  1. Откройте https://hyperstls.pythonanywhere.com/")
+print("  2. Войдите как test_employer_final@test.com")
+print("  3. Перейдите на /create-job")
+print("  4. Заполните форму и отправьте")
+print("  5. Ожидаемый результат: 'Задание опубликовано' (НЕ ошибка 500)\n")
+
+print("=== КРИТИЧЕСКИЕ ИЗМЕНЕНИЯ В app.py ===")
+print("  - Добавлен try/except в /create-job для обработки ошибок")
+print("  - Улучшена функция supabase_request() с логированием")
+print("  - Добавлен traceback для диагностики")
+print("  - Логирование данных для отладки\n")
+
+print("=== ГОТОВО! ===")
