@@ -1564,6 +1564,84 @@
         <Execute>
           <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add migrations/fix_notifications.sql &amp;&amp; git commit -m &quot;fix&quot; &amp;&amp; git push origin main" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="type &quot;C:\Users\s.prokopenko\PycharmProjects\trudnik\migrations\add_max_workers.sql&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik/migrations &amp;&amp; type add_max_workers.sql" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python -c &quot;with open('migrations/add_max_workers.sql', 'r', encoding='utf-8') as f: content = f.read(); print('Rows:', len(content.splitlines())); print('Notifications table:', 'notifications' in content); print('Ratings table:', 'ratings' in content); print('max_workers:', 'max_workers' in content)&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python check_migration.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; del check_migration.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add migrations/add_max_workers.sql &amp;&amp; git commit -m &quot;docs&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git status &amp;&amp; git log -n 3 --oneline" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add migrations/add_is_read_column.sql &amp;&amp; git commit -m &quot;fix: add is_read column&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add migrations/add_is_read_column.sql &amp;&amp; git commit -m &quot;fix&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add README_FIX_IS_READ.txt &amp;&amp; git commit -m &quot;docs&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;repost&quot; C:\Users\s.prokopenko\PycharmProjects\trudnik\app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;duplicate\|cancel\|restore\|delete&quot; C:\Users\s.prokopenko\PycharmProjects\trudnik\app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;def &quot; C:\Users\s.prokopenko\PycharmProjects\trudnik\app.py | findstr -i &quot;job&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;def &quot; C:\Users\s.prokopenko\PycharmProjects\trudnik\app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;def&quot; C:\Users\s.prokopenko\PycharmProjects\trudnik\app.py | findstr &quot;job&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;@app.route.*jobs&quot; C:\Users\s.prokopenko\PycharmProjects\trudnik\app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;def copy_job&quot; C:\Users\s.prokopenko\PycharmProjects\trudnik\app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;copy_job&quot; C:\Users\s.prokopenko\PycharmProjects\trudnik\app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -c &quot;with open(r'C:\\Users\\s.prokopenko\\PycharmProjects\\trudnik\\app.py', 'r', encoding='utf-8') as f: lines = f.readlines(); print(f'Всего строк: {len(lines)}'); print('Последние 5 строк:'); print(''.join(lines[-5:]))&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -c &quot;with open(r'C:\Users\s.prokopenko\PycharmProjects\trudnik\app.py', 'r', encoding='utf-8') as f: lines = f.readlines(); print('Всего строк:', len(lines)); print('Последние 5 строк:'); print(''.join(lines[-5:]))&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="wc -l C:\Users\s.prokopenko\PycharmProjects\trudnik\app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="powershell -Command &quot;(Get-Content 'C:\Users\s.prokopenko\PycharmProjects\trudnik\app.py').Count&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -m py_compile &quot;C:\Users\s.prokopenko\PycharmProjects\trudnik\app.py&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -m py_compile C:\Users\s.prokopenko\PycharmProjects\trudnik\app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -c &quot;with open(r'C:\Users\s.prokopenko\PycharmProjects\trudnik\templates\job_new.html', 'r', encoding='utf-8') as f: print('Файл ok, max_workers' in f.read())&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr &quot;max_workers&quot; C:\Users\s.prokopenko\PycharmProjects\trudnik\templates\job_new.html" />
+        </Execute>
       </list>
     </option>
   </component>
