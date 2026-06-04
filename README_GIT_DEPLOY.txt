@@ -15,6 +15,14 @@
    git config --global user.name "Hyperstls"
    git config pull.rebase false
    git pull
+   
+   # Если возникли конфликты:
+   git status
+   # Просмотрите файлы с конфликтами и разрешите их вручную
+   # или используйте: git checkout --theirs <file> (для ours)
+   git add .
+   git commit -m "Merge conflicts resolved"
+   
    touch app.py.wsgi
 
 5. Нажмите Enter после каждой команды
@@ -39,6 +47,10 @@ git config --global user.email "hyperstls@gmail.com"
 git config --global user.name "Hyperstls"
 git config pull.rebase false
 git pull
+# Разрешите конфликты:
+git status
+git add .
+git commit -m "Merge conflicts resolved"
 touch app.py.wsgi
 
 Просто вставьте их по одной в консоль PythonAnywhere и нажимайте Enter.
