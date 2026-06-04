@@ -1999,6 +1999,48 @@
         <Execute>
           <option name="pattern" value="git add app.py &amp;&amp; git commit --file=.git_commit_msg" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="mkdir archive" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="move &quot;auto_fix_agent.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;browser_agent.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;test_runner.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;debug_app.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;check_end.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;check_max_workers.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;check_pa_files.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;check_pa_git.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;check_pa_status.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;check_pa_template.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;check_server_template.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;check_ssh.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;check_template_on_server.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;check_wsgi.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;cleanup.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;commit_script.bat&quot; &quot;archive\&quot; &amp;&amp; move &quot;deploy_git.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;deploy_gitpython.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;deploy_pa.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;deploy_sftp.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;deploy_via_git.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;final_role_update.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;final_update_role.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;reload_pa.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;quick_check.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;show_template.py&quot; &quot;archive\&quot; &amp;&amp; move &quot;verify_max_workers.py&quot; &quot;archive\&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="move &quot;DEPLOY_INSTRUCTION.txt&quot; &quot;archive\&quot; &amp;&amp; move &quot;DEPLOY_MAX_WORKERS.txt&quot; &quot;archive\&quot; &amp;&amp; move &quot;DEPLOY_SUMMARY.txt&quot; &quot;archive\&quot; &amp;&amp; move &quot;CHECK_STATUS.txt&quot; &quot;archive\&quot; &amp;&amp; move &quot;FINAL_SUMMARY_max_workers.txt&quot; &quot;archive\&quot; &amp;&amp; move &quot;FIX_NOTIFICATIONS_ERROR.txt&quot; &quot;archive\&quot; &amp;&amp; move &quot;INSTRUCTION_MANUAL_UPDATE.txt&quot; &quot;archive\&quot; &amp;&amp; move &quot;INSTRUCTION_UPDATE_PA.txt&quot; &quot;archive\&quot; &amp;&amp; move &quot;OPTIMIZATION_PLAN.txt&quot; &quot;archive\&quot; &amp;&amp; move &quot;QUICK_CHECK.txt&quot; &quot;archive\&quot; &amp;&amp; move &quot;README_FIX_IS_READ.txt&quot; &quot;archive\&quot; &amp;&amp; move &quot;README_GIT_DEPLOY.txt&quot; &quot;archive\&quot; &amp;&amp; move &quot;.git_commit_msg&quot; &quot;archive\&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="move &quot;REFACTORING_REPORT.md&quot; &quot;archive\&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="move auto_fix_agent.py archive\" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="move browser_agent.py archive\ &amp;&amp; move test_runner.py archive\ &amp;&amp; move debug_app.py archive\ &amp;&amp; move check_end.py archive\ &amp;&amp; move check_max_workers.py archive\" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="move check_pa_files.py archive\ &amp;&amp; move check_pa_git.py archive\ &amp;&amp; move check_pa_status.py archive\ &amp;&amp; move check_pa_template.py archive\ &amp;&amp; move check_server_template.py archive\ &amp;&amp; move check_ssh.py archive\ &amp;&amp; move check_template_on_server.py archive\ &amp;&amp; move check_wsgi.py archive\" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="move cleanup.py archive\ &amp;&amp; move commit_script.bat archive\ &amp;&amp; move deploy_git.py archive\ &amp;&amp; move deploy_gitpython.py archive\ &amp;&amp; move deploy_pa.py archive\ &amp;&amp; move deploy_sftp.py archive\ &amp;&amp; move deploy_via_git.py archive\ &amp;&amp; move final_role_update.py archive\ &amp;&amp; move final_update_role.py archive\ &amp;&amp; move reload_pa.py archive\" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="move DEPLOY_INSTRUCTION.txt archive\ &amp;&amp; move DEPLOY_MAX_WORKERS.txt archive\ &amp;&amp; move DEPLOY_SUMMARY.txt archive\ &amp;&amp; move CHECK_STATUS.txt archive\ &amp;&amp; move FINAL_SUMMARY_max_workers.txt archive\ &amp;&amp; move FIX_NOTIFICATIONS_ERROR.txt archive\ &amp;&amp; move INSTRUCTION_MANUAL_UPDATE.txt archive\ &amp;&amp; move INSTRUCTION_UPDATE_PA.txt archive\ &amp;&amp; move OPTIMIZATION_PLAN.txt archive\ &amp;&amp; move QUICK_CHECK.txt archive\" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="move README_FIX_IS_READ.txt archive\ &amp;&amp; move README_GIT_DEPLOY.txt archive\ &amp;&amp; move .git_commit_msg archive\ &amp;&amp; move REFACTORING_REPORT.md archive\ &amp;&amp; move show_template.py archive\ &amp;&amp; move verify_max_workers.py archive\ &amp;&amp; move quick_check.py archive\" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir archive" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir auto_fix_agent.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir auto_fix_agent.py 2&gt;&amp;1" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add archive/ &amp;&amp; git add app.py &amp;&amp; git commit --file=.git_commit_msg &amp;&amp; git push origin main" />
+        </Execute>
       </list>
     </option>
   </component>
