@@ -1537,6 +1537,33 @@
         <Execute>
           <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python -c &quot;import os; files = os.listdir('templates'); print('Templates:', files)&quot;" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python test_templates.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python test_routes.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; del test_import.py test_functions.py test_templates.py test_routes.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add -A &amp;&amp; git commit -m &quot;test&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add migrations/add_max_workers.sql &amp;&amp; git commit -m &quot;fix: update notifications table migration&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add migrations/add_max_workers.sql &amp;&amp; git commit -m &quot;fix&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add FIX_NOTIFICATIONS_ERROR.txt &amp;&amp; git commit -m &quot;docs&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add migrations/fix_notifications.sql &amp;&amp; git commit -m &quot;fix: add fix_notifications migration&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add migrations/fix_notifications.sql &amp;&amp; git commit -m &quot;fix&quot; &amp;&amp; git push origin main" />
+        </Execute>
       </list>
     </option>
   </component>
