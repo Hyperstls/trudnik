@@ -1,0 +1,94 @@
+# ИТОГОВАЯ ИНСТРУКЦИЯ ПО ДЕПЛОЮ
+
+## Выполненные действия
+
+### 1. Git коммиты и push
+✅ `feat: max_workers field and duplicate button fix` (8a86525)
+✅ `cleanup: remove temp files` (1cbcdfc)
+✅ `Final: max_workers, duplicate button, migrations` (5054d09)
+✅ `docs: deploy instructions` (2788e84)
+✅ `clean: remove helper files` (fc97905)
+
+Все изменения отправлены на GitHub.
+
+### 2. Файлы изменений
+- `app.py` - обновлены маршруты для поддержки max_workers и AJAX
+- `templates/job_new.html` - добавлено поле max_workers
+- `templates/my_jobs.html` - исправлена кнопка Дублировать
+- `migrations/add_max_workers.sql` - SQL миграция
+- `migrations/add_is_read_column.sql` - SQL миграция для is_read
+- `DEPLOY_MAX_WORKERS.txt` - инструкция по деплою
+
+## Что нужно выполнить
+
+### Шаг 1: Миграция базы данных на Supabase
+
+**Откройте Supabase Dashboard:** https://***REMOVED***.supabase.co
+
+1. Войдите в проект
+2. Перейдите в **SQL Editor**
+3. Создайте новый запрос
+4. Скопируйте и выполните содержимое файла:
+   ```
+   C:\Users\s.prokopenko\PycharmProjects\trudnik\migrations\add_max_workers.sql
+   ```
+
+**ВАЖНО:** Выполните эту миграцию, иначе поле `max_workers` не появится в базе данных.
+
+### Шаг 2: Деплой на PythonAnywhere
+
+**Откройте PythonAnywhere:** https://www.pythonanywhere.com
+
+1. Войдите в аккаунт
+2. Откройте **Consoles** → создайте **Bash console**
+3. Выполните команды:
+   ```bash
+   cd ~/mysite
+   git pull
+   touch app.py.wsgi
+   ```
+
+### Шаг 3: Проверка
+
+1. Откройте [https://hyperstls.pythonanywhere.com](https://hyperstls.pythonanywhere.com)
+2. Войдите как работодатель (test@example.com)
+3. Создайте новое задание
+4. Проверьте, что поле "Максимум работников" есть и работает
+5. Убедитесь, что кнопка "Дублировать" работает
+
+## Ошибки и решения
+
+### Ошибка: "column is_read does not exist"
+**Решение:** Выполните миграцию `add_is_read_column.sql`
+
+### Ошибка: "column max_workers does not exist"
+**Решение:** Выполните миграцию `add_max_workers.sql`
+
+### Ошибка: Кнопка "Дублировать" не работает
+**Решение:** Убедитесь, что:
+1. Миграция базы данных выполнена
+2. Приложение перезапущено (touch app.py.wsgi)
+3. Код обновлен через git pull
+
+## Технические детали
+
+### Что изменилось:
+
+1. **Маршрут `/job/new`** - теперь обрабатывает POST запросы и создает задание с `max_workers`
+2. **Маршрут `/create-job`** - обновлен для поддержки обоих шаблонов (create_job.html и job_new.html)
+3. **Шаблон `job_new.html`** - поле `max_workers` вместо `required_workers`
+4. **JavaScript в `my_jobs.html`** - AJAX функции для кнопок действий
+
+### Полный жизненный цикл задания:
+```
+open → in_progress → active → payment_pending → paid
+         ↑              ↑
+         └── отзыв      └── оценка/спор
+```
+
+## Контакты
+
+Если возникнут проблемы, проверьте:
+1. Логи на PythonAnywhere (файл error_log)
+2. SQL миграция на Supabase (таблица jobs должна иметь поля max_workers, current_workers)
+3. Версию кода на GitHub (должна быть fc97905)
