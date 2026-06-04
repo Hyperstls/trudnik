@@ -13,9 +13,9 @@
         </div>
         
         {% for item in items %}
-        <div class="card bg-white rounded-2xl shadow-sm border border-gray-100 p-4 hover:shadow-md hover:-translate-y-0.5 worker-item-{{ item.id }}">
+        <div class="card bg-white rounded-2xl shadow-sm border border-gray-100 p-4 hover:shadow-md hover:-translate-y-0.5 worker-item-{{ item.id }}" data-worker-id="{{ item.id }}">
             <div class="flex items-start gap-3">
-                <input type="checkbox" class="favorite-checkbox w-5 h-5 text-red-500 rounded border-gray-300" value="{{ item.id }}" data-worker-id="{{ item.id }}">
+                <input type="checkbox" class="favorite-checkbox w-5 h-5 text-red-500 rounded border-gray-300" value="{{ item.id }}">
                 <div class="flex-1">
                     <a href="/profile/{{ item.id }}" class="block">
                         {% if item.photo_url %}
@@ -38,8 +38,7 @@
                         <p class="text-sm text-gray-600 mt-2">{{ item.city|default('Город не указан') }}</p>
                     </a>
                     <div class="mt-3">
-                        <button onclick="toggleFavorite(this, '{{ item.id }}')" class="favorite-btn bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors text-sm flex items-center space-x-2">
-                            <span class="favorite-icon">❤️</span>
+                        <button onclick="toggleFavorite(this)" class="favorite-btn bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors text-sm flex items-center space-x-2">
                             <span class="favorite-text">Удалить из избранного</span>
                         </button>
                     </div>
@@ -69,7 +68,34 @@ document.addEventListener('change', function(e) {
     }
 });
 
-function toggleFavorite(btn, workerId) {
+function toggleFavorite(btn) {
+    // Получить workerId из родительской карточки
+    const card = btn.closest('.worker-item-' + btn.dataset.workerId);
+    let workerId = null;
+    
+    if (card && card.dataset.workerId) {
+        workerId = card.dataset.workerId;
+    } else if (btn.parentElement && btn.parentElement.parentElement && btn.parentElement.parentElement.dataset.workerId) {
+        workerId = btn.parentElement.parentElement.dataset.workerId;
+    }
+    
+    console.log('toggleFavorite workerId:', workerId);
+    
+    if (!workerId) {
+        // Попробовать получить из value чекбокса
+        const checkbox = btn.closest('.card').querySelector('.favorite-checkbox');
+        if (checkbox) {
+            workerId = checkbox.value;
+        }
+    }
+    
+    console.log('Using workerId:', workerId);
+    
+    if (!workerId) {
+        alert('Ошибка: не удалось определить ID трудника');
+        return;
+    }
+    
     fetch('/api/favorites/check', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -77,12 +103,12 @@ function toggleFavorite(btn, workerId) {
     })
     .then(response => response.json())
     .then(data => {
+        console.log('Check response:', data);
+        
         if (!data.success) {
             alert('Ошибка проверки: ' + (data.error || 'Не удалось определить статус'));
             return;
         }
-        
-        const isFavorited = data.is_favorited;
         
         fetch('/api/favorites/remove', {
             method: 'POST',
@@ -91,9 +117,11 @@ function toggleFavorite(btn, workerId) {
         })
         .then(response => response.json())
         .then(data => {
+            console.log('Remove response:', data);
+            
             if (data.success) {
                 // Удалить карточку из DOM
-                const card = btn.closest('.worker-item-' + workerId);
+                const card = btn.closest('.card');
                 if (card) {
                     card.style.opacity = '0';
                     card.style.transition = 'opacity 0.3s';
@@ -101,20 +129,15 @@ function toggleFavorite(btn, workerId) {
                         card.remove();
                         updateSelectedCount();
                     }, 300);
-                } else {
-                    // Если карточка не найдена, просто убрать чекбокс
-                    const checkbox = document.querySelector('input[value="' + workerId + '"]');
-                    if (checkbox) checkbox.checked = false;
-                    updateSelectedCount();
                 }
                 alert('Трудник удалён из избранного');
             } else {
                 alert('Ошибка: ' + (data.error || 'Не удалось удалить'));
             }
         })
-        .catch(error => { alert('Ошибка сети'); });
+        .catch(error => { alert('Ошибка сети'); console.error(error); });
     })
-    .catch(error => { alert('Ошибка сети'); });
+    .catch(error => { alert('Ошибка сети'); console.error(error); });
 }
 
 function removeSelectedFavorites() {
@@ -152,7 +175,7 @@ function removeSelectedFavorites() {
                 alert('Ошибка: ' + (data.error || 'Не удалось удалить'));
             }
         })
-        .catch(error => { alert('Ошибка сети'); });
+        .catch(error => { alert('Ошибка сети'); console.error(error); });
     }
 }
 </script>
