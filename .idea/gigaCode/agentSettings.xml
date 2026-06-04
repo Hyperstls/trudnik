@@ -2197,6 +2197,21 @@
         <Execute>
           <option name="pattern" value="git log -8 --oneline" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="git status &amp;&amp; git log -3 --oneline" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="move DEPLOY_INSTRUCTION.txt archive/" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add . &amp;&amp; git commit -m &quot;docs: add deploy instruction&quot; &amp;&amp; git push" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git log -3 --oneline" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python archive/browser_agent.py &quot;Проверь, что на странице https://hyperstls.pythonanywhere.com/job/new отображается поле 'Максимум работников'&quot;" />
+        </Execute>
       </list>
     </option>
   </component>
