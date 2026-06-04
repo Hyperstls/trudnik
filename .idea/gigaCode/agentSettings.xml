@@ -2212,6 +2212,9 @@
         <Execute>
           <option name="pattern" value="python archive/browser_agent.py &quot;Проверь, что на странице https://hyperstls.pythonanywhere.com/job/new отображается поле 'Максимум работников'&quot;" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="python archive/auto_fix_agent.py &quot;Обнови сайт и проверь поле max_workers&quot;" />
+        </Execute>
       </list>
     </option>
   </component>

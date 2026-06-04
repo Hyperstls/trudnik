@@ -29,7 +29,7 @@
             <a href="/my-applications" class="inline-block bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
                 Управление откликами
             </a>
-            {% if job.max_workers and job.max_workers > 1 %}
+            {% if job.max_workers %}
             <p class="text-sm text-gray-600 mt-2">Места: {{ job.current_workers }}/{{ job.max_workers }}</p>
             {% endif %}
         {% elif session.get('role') == 'worker' %}

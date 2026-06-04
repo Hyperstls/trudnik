@@ -53,7 +53,7 @@
                                     {% if job.application_count is defined and job.application_count > 0 %}
                                     · <span class="text-gray-600">{{ job.application_count }} откликов</span>
                                     {% endif %}
-                                    {% if job.max_workers and job.max_workers > 1 %}
+                                    {% if job.max_workers %}
                                     · <span class="text-gray-600">{{ job.current_workers }}/{{ job.max_workers }} мест</span>
                                     {% endif %}
                                 </p>

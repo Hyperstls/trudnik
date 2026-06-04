@@ -164,6 +164,24 @@ def inject_application_count():
 
 
 # ──────────────────────────────────────────────
+# Контекстный процессор (текущая роль пользователя)
+# ──────────────────────────────────────────────
+
+@app.context_processor
+def inject_user_role():
+    return {'current_user_role': session.get('role')}
+
+
+# ──────────────────────────────────────────────
+# Контекстный процессор (текущий ID пользователя)
+# ──────────────────────────────────────────────
+
+@app.context_processor
+def inject_user_id():
+    return {'current_user_id': session.get('user_id')}
+
+
+# ──────────────────────────────────────────────
 # Публичные маршруты
 # ──────────────────────────────────────────────
 
@@ -258,7 +276,8 @@ def job_detail(job_id):
 
     return render_template('job_detail.html', job=job,
                            yandex_api_key=app.config['YANDEX_MAPS_API_KEY'],
-                           already_applied=already_applied)
+                           already_applied=already_applied,
+                           current_user_role=session.get('role'))
 
 
 @app.route('/profile/<user_id>')
