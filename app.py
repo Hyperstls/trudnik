@@ -561,12 +561,9 @@ def job_new():
                 flash('Задание опубликовано', 'success')
                 return redirect(url_for('my_jobs'))
             else:
-                error_text = resp.text if hasattr(resp, 'text') else str(resp)
-                flash(f'Ошибка создания задания: {error_text}', 'danger')
+                flash('Ошибка создания задания', 'danger')
         except Exception as e:
-            error_details = traceback.format_exc()
-            app.logger.error(f"Error creating job: {error_details}")
-            flash(f'Ошибка сервера: {str(e)}', 'danger')
+            flash('Ошибка сервера', 'danger')
     
     return render_template('job_new.html', yandex_api_key=app.config['YANDEX_MAPS_API_KEY'])
 
@@ -574,55 +571,6 @@ def job_new():
 # ──────────────────────────────────────────────
 # Задания
 # ──────────────────────────────────────────────
-
-@app.route('/create-job', methods=['GET', 'POST'])
-@login_required
-@role_required('employer')
-def create_job():
-    if request.method == 'POST':
-        try:
-            job_data = {
-                'employer_id': session['user_id'],
-                'organization_name': request.form.get('organization_name') or request.form.get('title') or 'Храм',
-                'org_description': request.form.get('org_description', ''),
-                'object_description': request.form.get('object_description', ''),
-                'work_type': request.form.get('work_type', ''),
-                'detailed_description': request.form.get('detailed_description') or request.form.get('description', ''),
-                'date_time': f"{request.form['date']}T{request.form['time']}:00" if request.form.get('date') and request.form.get('time') else datetime.now().isoformat(),
-                'payment_amount': float(request.form.get('payment') or 0),
-                'address': request.form.get('address', ''),
-                'city': request.form.get('city', ''),
-                'lat': float(request.form.get('lat') or request.form.get('latitude') or 55.75),
-                'lng': float(request.form.get('lng') or request.form.get('longitude') or 37.61),
-                'preferred_religion': request.form.get('preferred_religion', 'не важно'),
-                'max_workers': int(request.form.get('max_workers', 1)),
-                'current_workers': 0,
-            }
-            
-            # Логирование для отладки
-            app.logger.info(f"Creating job: {job_data}")
-            
-            resp = supabase_request('POST', 'jobs', json=job_data)
-            
-            # Логирование ответа
-            app.logger.info(f"Supabase response: {resp.status_code} - {resp.text[:200]}")
-            
-            if resp.ok:
-                flash('Задание опубликовано', 'success')
-                return redirect(url_for('my_jobs'))
-            else:
-                error_text = resp.text if hasattr(resp, 'text') else str(resp)
-                flash(f'Ошибка создания задания: {error_text}', 'danger')
-                return render_template('job_new.html', yandex_api_key=app.config['YANDEX_MAPS_API_KEY'], error_message=error_text)
-        except Exception as e:
-            # Логирование ошибки
-            error_details = traceback.format_exc()
-            app.logger.error(f"Error creating job: {error_details}")
-            flash(f'Ошибка сервера: {str(e)}', 'danger')
-    
-    # Для GET запроса возвращаем job_new.html, так как это основной шаблон
-    return render_template('job_new.html', yandex_api_key=app.config['YANDEX_MAPS_API_KEY'])
-
 
 @app.route('/apply/<job_id>', methods=['GET', 'POST'])
 @login_required
