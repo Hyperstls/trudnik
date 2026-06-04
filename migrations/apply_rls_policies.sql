@@ -1,4 +1,9 @@
 -- ============================================
+-- Файл для установки RLS политик на Supabase
+-- Выполнить в SQL Editor на https://***REMOVED***.supabase.co
+-- ============================================
+
+-- ============================================
 -- Настройка Row Level Security (RLS) для таблицы profiles
 -- ============================================
 
@@ -39,16 +44,13 @@ CREATE POLICY "Service can insert profiles"
 -- Настройка Row Level Security (RLS) для таблицы jobs
 -- ============================================
 
--- 1. Включить RLS (если ещё не включён)
 ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
 
--- 2. Удалить старые политики, если есть
 DROP POLICY IF EXISTS "Employers can insert jobs" ON jobs;
 DROP POLICY IF EXISTS "Users can read jobs" ON jobs;
 DROP POLICY IF EXISTS "Employers can update their own jobs" ON jobs;
 DROP POLICY IF EXISTS "Employers can delete their own jobs" ON jobs;
 
--- 3. Создать политики
 -- 3.1. Работодатели могут вставлять задания (с указанием своего employer_id)
 CREATE POLICY "Employers can insert jobs"
     ON jobs

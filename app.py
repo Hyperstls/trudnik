@@ -1203,7 +1203,7 @@ def send_message():
 @login_required
 def favorites():
     resp = supabase_request('GET',
-        f'favorites?user_id=eq.{session["user_id"]}&select=target:profiles!favorites_target_id_fkey(id,full_name,photo_url,rating)')
+        f'favorites?user_id=eq.{session["user_id"]}&select=target:profiles!favorites_target_id_fkey(id,full_name,photo_url,rating,city,skills,experience,desired_payment)')
     items = resp.json() if resp.ok else []
 
     favorite_jobs = []
