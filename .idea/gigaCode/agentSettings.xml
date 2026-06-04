@@ -2119,6 +2119,75 @@
         <Execute>
           <option name="pattern" value="dir /b migrations/*.sql" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="copy ARCHIVE_INSTRUCTION.txt archive/" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="copy deploy.bat archive/" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="move deploy.bat archive/" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="move DEPLOY_INSTRUCTION_PA.txt archive/DEPLOY_INSTRUCTION_PA.txt" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="move ARCHIVE_INSTRUCTION.txt archive/" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add archive/deploy.bat archive/DEPLOY_INSTRUCTION_PA.txt archive/ARCHIVE_INSTRUCTION.txt &amp;&amp; git commit -F .git_commit_msg" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git mv deploy.bat archive/deploy.bat" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir deploy.bat" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir archive/deploy.bat" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir archive/*.bat archive/*.txt 2&gt;/dev/null | findstr /v &quot;.git&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir /b *.bat *.sh *.txt *.md 2&gt;/dev/null | findstr /v &quot;requirements.txt&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir /b *.txt" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir /b *.bat *.sh *.md" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir archive/*.txt 2&gt;/dev/null | findstr /v &quot;.git&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add ARCHIVE_INSTRUCTION.txt DEPLOY_INSTRUCTION_PA.txt deploy.bat .git_commit_msg" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git commit -m &quot;refactor: move files to archive folder&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add .git_commit_msg .idea/gigaCode/agentSettings.xml &amp;&amp; git commit -F .git_commit_msg &amp;&amp; git push" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git log -7 --oneline" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir /b *.bat *.sh *.txt *.md 2&gt;/dev/null" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="move deploy.bat archive/deploy.bat" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git mv ARCHIVE_INSTRUCTION.txt archive/ARCHIVE_INSTRUCTION.txt" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir archive/ARCHIVE_INSTRUCTION.txt" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir archive/*.txt 2&gt;/dev/null | findstr /v &quot;.git&quot; | findstr /v &quot;.md&quot;" />
+        </Execute>
       </list>
     </option>
   </component>
