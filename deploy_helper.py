@@ -1,10 +1,10 @@
 import subprocess
 
-# Очистка и коммит
+# Финальный коммит
 commands = [
     ["git", "status"],
     ["git", "add", "-A"],
-    ["git", "commit", "-m", "Final: max_workers, duplicate button, migrations"],
+    ["git", "commit", "-m", "docs: deploy instructions"],
     ["git", "push", "origin", "main"],
 ]
 

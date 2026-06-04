@@ -1,0 +1,132 @@
+# Инструкция по деплою на PythonAnywhere
+
+## 1. Завершите миграцию базы данных на Supabase
+
+### Шаг 1: Перейдите в Supabase Dashboard
+1. Откройте [Supabase Dashboard](https://***REMOVED***.supabase.co)
+2. Войдите в свой проект
+
+### Шаг 2: Откройте SQL Editor
+1. Слева в меню нажмите на **"SQL Editor"**
+2. Нажмите на кнопку **"New query"**
+
+### Шаг 3: Выполните миграцию
+Скопируйте и выполните содержимое файла `migrations/add_max_workers.sql`:
+
+**Путь к файлу:** `C:\Users\s.prokopenko\PycharmProjects\trudnik\migrations\add_max_workers.sql`
+
+```sql
+-- 1. Добавить поле max_workers
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS max_workers INTEGER DEFAULT 1 CHECK (max_workers >= 1);
+
+-- 2. Добавить поле current_workers
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS current_workers INTEGER DEFAULT 0 CHECK (current_workers >= 0 AND current_workers <= max_workers);
+
+-- 3. Индексы
+CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
+CREATE INDEX IF NOT EXISTS idx_jobs_employer_id ON jobs(employer_id);
+CREATE INDEX IF NOT EXISTS idx_jobs_current_workers ON jobs(current_workers);
+CREATE INDEX IF NOT EXISTS idx_jobs_status_and_workers ON jobs(status, current_workers, max_workers);
+
+-- 4. Ограничение
+ALTER TABLE jobs DROP CONSTRAINT IF EXISTS jobs_current_workers_check;
+ALTER TABLE jobs ADD CONSTRAINT jobs_current_workers_check 
+    CHECK (current_workers >= 0 AND current_workers <= max_workers);
+
+-- 5. Обновление данных
+UPDATE jobs SET max_workers = 1 WHERE max_workers IS NULL;
+UPDATE jobs SET current_workers = 0 WHERE current_workers IS NULL;
+
+-- 6. Таблица ratings
+CREATE TABLE IF NOT EXISTS ratings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    rated_user_id UUID REFERENCES auth.users(id) NOT NULL,
+    rater_user_id UUID REFERENCES auth.users(id) NOT NULL,
+    rating_type VARCHAR(20) NOT NULL CHECK (rating_type IN ('worker', 'employer')),
+    target_type VARCHAR(20) NOT NULL CHECK (target_type IN ('worker', 'employer')),
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    comment TEXT,
+    shift_id UUID REFERENCES shifts(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(rated_user_id, rater_user_id, shift_id)
+);
+
+-- 7. Таблица notifications
+CREATE TABLE IF NOT EXISTS notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT,
+    job_id UUID REFERENCES jobs(id),
+    shift_id UUID REFERENCES shifts(id),
+    application_id UUID REFERENCES applications(id),
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at);
+```
+
+## 2. Выполните деплой на PythonAnywhere
+
+### Шаг 1: Войдите в PythonAnywhere
+1. Откройте [PythonAnywhere](https://www.pythonanywhere.com/)
+2. Войдите в аккаунт
+
+### Шаг 2: Откройте консоль
+1. Нажмите на **"Consoles"** в верхнем меню
+2. Создайте новую **Bash console**
+
+### Шаг 3: Выполните команды
+```bash
+# Перейдите в папку проекта
+cd ~/mysite
+
+# Получите последние изменения
+git pull
+
+# Перезапустите приложение
+touch app.py.wsgi
+```
+
+## 3. Проверьте результат
+
+### Шаг 1: Откройте приложение
+1. Перейдите на [https://hyperstls.pythonanywhere.com](https://hyperstls.pythonanywhere.com)
+
+### Шаг 2: Проверьте функционал
+1. Войдите как работодатель
+2. Создайте новое задание - должно быть поле "Максимум работников"
+3. Создайте задание с `max_workers = 2`
+4. Убедитесь, что поле сохраняется в базе данных
+
+### Шаг 3: Проверьте кнопки
+1. Перейдите в "Мои задания"
+2. Проверьте, что кнопка "Дублировать" работает
+3. Проверьте, что кнопка "Отозвать" работает
+
+## 4. Дополнительные проверки
+
+### Миграция `add_is_read_column`
+Если вы еще не выполняли миграцию для столбца `is_read`, выполните также:
+
+```sql
+-- Добавить столбец is_read в таблицу notifications
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE;
+```
+
+### Проверка полей в базе
+1. Откройте Supabase Dashboard → Table Editor
+2. Выберите таблицу `jobs`
+3. Убедитесь, что есть колонки:
+   - `max_workers` (INTEGER)
+   - `current_workers` (INTEGER)
+
+### Логи
+Если что-то не работает, проверьте логи на PythonAnywhere:
+1. В PythonAnywhere откройте **"Files"**
+2. Перейдите в `~/mysite`
+3. Откройте файл `error_log` для просмотра ошибок
