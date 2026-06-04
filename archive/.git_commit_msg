@@ -1,1 +1,5 @@
-Add documentation for max_workers deployment
+docs: добавлен автотест для системы избранного
+
+- Создан test_favorites.ps1 для проверки HTML и API
+- Тестирует: кнопки, функции, API endpoints
+- Запуск: powershell -ExecutionPolicy Bypass -File test_favorites.ps1

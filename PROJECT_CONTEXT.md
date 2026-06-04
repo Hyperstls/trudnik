@@ -5,7 +5,7 @@
 Работодатели (настоятели, администраторы) публикуют задания, а зарегистрированные трудники находят разовую работу.
 
 ## Технологический стек
-- **Backend**: Python 3.14 + Flask
+- **Backend**: Python 3.14 + Flask (Application Factory + Blueprints)
 - **База данных**: Supabase (PostgreSQL) – REST API + Auth + Storage
 - **Фронтенд**: HTML5 + Tailwind CSS (CDN) + Jinja2
 - **Карты**: Яндекс.Карты (JavaScript API)
@@ -13,26 +13,78 @@
 - **Деплой**: Git + GitHub, ручной `git pull` на PythonAnywhere + `touch` WSGI‑файла
 - **Версионирование**: Git (информация о коммите отображается при клике на иконку 🤝 в шапке)
 - **AI‑помощник**: веб-чат DeepSeek (открывается в браузере по адресу `http://localhost:11434`) – используется для генерации/правок кода и анализа ошибок
-- **Автоматизация**: набор Python‑скриптов (агентов) для тестирования, деплоя и авто‑фикса
+- **Архитектура**: Flask Application Factory (`create_app()`) + 10 Blueprints
 
-## Структура проекта
-- **`app.py`** – основной файл приложения (маршруты, декораторы, работа с Supabase)
-- **`config.py`** – загрузка конфигурации из `.env`
-- **`templates/`** – HTML-шаблоны (Jinja2)
-  - `base.html` – базовый шаблон с шапкой и нижним меню
-  - `index.html` – лента заданий
-  - `workers.html` – страница «Трудники» (поиск и фильтрация работников)
-  - `my_jobs.html` – мои задания (работодатель)
-  - `my_applications.html` – отклики (работодатель)
-  - `job_detail.html` – страница задания
-  - `profile.html` – страница профиля
-  - `register.html` / `login.html` – регистрация / вход
-  - и др.
-- **`static/`** – CSS, JS, иконки
-- **`migrations/`** – SQL‑миграции (добавление полей, таблиц, индексов)
-- **Агенты и скрипты** (в корне проекта):
-  - `auto_fix_agent.py` – автоматический деплой и выполнение SQL
-  - `browser_agent.py` – управление браузером по текстовым командам
+## Структура проекта (после рефакторинга)
+
+### Корень проекта
+- **`app.py`** – точка входа (создаёт Flask-приложение через `create_app()`)
+- **`config.py`** – (будет удалён, дублируется в `app/config.py`)
+- **`.env`** – переменные окружения (Supabase URL, ключи, секреты)
+- **`requirements.txt`** – зависимости Python
+- **`supabase_agent.py`** – вспомогательный скрипт для работы с Supabase
+- **`PROJECT_CONTEXT.md`** – этот файл (контекст и roadmap)
+- **`plans/refactoring-plan.md`** – план рефакторинга
+
+### Модуль `app/` (основной код)
+```
+app/
+├── __init__.py          # create_app() – фабрика, регистрация blueprints
+├── config.py            # Конфигурация из .env (Config class)
+├── utils.py             # Утилиты: supabase_request, upload_to_storage, add_notification, update_rating, calculate_distance, copy_job
+├── decorators.py        # Декораторы: login_required, role_required
+└── blueprints/
+    ├── __init__.py
+    ├── auth.py           # /login, /register, /logout
+    ├── profile.py        # /profile, /profile/update, /profile/delete-photo, /profile/delete-account, /profile/change-password, /verify-employer, /profile/<user_id>
+    ├── jobs.py           # /, /workers, /jobs/<id>, /job/new, /my-jobs, /my-jobs/action, /repost-job, /cancel-job, /restore-job, /delete-job, /favorite-job, /unfavorite-job + context processors
+    ├── applications.py   # /apply, /apply-selected, /unapply, /unapply-selected, /my-applications, /applications/<id>/<action>, /application/<id>/cancel
+    ├── shifts.py         # /shifts, /shift/<id>/checkin, /shift/<id>/complete, /shift/<id>/confirm-payment, /rate-worker, /shift/<id>/dispute
+    ├── chat.py           # /chats, /chat/<shift_id>, /chat/new/<worker_id>, /api/send_message
+    ├── favorites.py      # /favorites, /favorite/<id>, /unfavorite/<id>, /api/favorites/add, /api/favorites/remove, /api/favorites/check, /api/favorites/remove-selected
+    ├── blacklist.py      # /blacklist, /blacklist/<user_id>, /unblock/<user_id>
+    ├── notifications.py  # /notifications, /notification/<id>/read
+    └── admin.py          # /admin, /admin/approve/<user_id>, /admin/reject/<user_id>
+```
+
+### Шаблоны (`templates/`)
+- `base.html` – базовый шаблон с шапкой и нижним меню
+- `index.html` – лента заданий
+- `workers.html` – страница «Трудники» (поиск и фильтрация работников)
+- `my_jobs.html` – мои задания (работодатель)
+- `my_applications.html` – отклики (работодатель)
+- `job_detail.html` – страница задания
+- `job_new.html` – создание/редактирование задания
+- `profile.html` / `profile_edit.html` / `profile_worker.html` – профили
+- `register.html` / `login.html` – регистрация / вход
+- `favorites.html` – избранное
+- `blacklist.html` – чёрный список
+- `notifications.html` – уведомления
+- `shifts.html` – смены
+- `chat.html` / `chats_list.html` – чаты
+- `admin.html` – панель администратора
+- `verify_employer.html` – запрос верификации
+- И другие вспомогательные
+
+### Статика (`static/`)
+- `default-avatar.png`, `manifest.json`, `sw.js` (Service Worker)
+- `icons/` – иконки PWA
+
+### Миграции (`migrations/`)
+1. `001_setup_rls.sql` – настройка Row Level Security для таблицы profiles
+2. `002_apply_rls_policies.sql` – полный набор RLS-политик для всех таблиц
+3. `003_add_max_workers.sql` – поля max_workers / current_workers, индексы
+4. `004_fix_notifications.sql` – добавление столбца is_read
+5. `005_add_is_read_column.sql` – альтернативный скрипт для is_read
+
+### Архив (`archive/`)
+В архиве находятся перемещённые скрипты, тесты, документация, которые больше не нужны в корне проекта:
+- Старые деплой-скрипты (`deploy_*.sh`, `deploy_*.bat`, `deploy_*.py`)
+- Тестовые скрипты (`test_*.py`, `test_*.ps1`, `test_*.sh`)
+- Вспомогательные скрипты (`auto_fix_agent.py`, `browser_agent.py`, `cleanup.py`)
+- Дубликаты (`create_job.html`, `setup_rls_jobs_only.sql`)
+- Документация (`DEPLOY_INSTRUCTION*.md`, `FIX_*.md`, `DEPLOY_SUMMARY.txt` и др.)
+- `REFACTORING_REPORT.md` – предыдущий отчёт о рефакторинге
 
 ## База данных Supabase (основные таблицы)
 - **`profiles`** – пользователи (роль, навыки, вероисповедание, рейтинг, `photo_url`, `portfolio_link`)
@@ -60,7 +112,16 @@
 - Автообновление JWT-токенов
 - Отображение версии приложения через Git (клик на 🤝 в шапке)
 - Адаптивное нижнее меню (разное для работника и работодателя)
-- Базовые миграции: `max_workers` + `current_workers`, таблицы `ratings` и `notifications`
+- Миграции: RLS, max_workers, notifications, is_read
+
+### ✅ Выполненный рефакторинг (Этап 0)
+- Монолитная `app.py` (1491 строка) разбита на 10 модульных Blueprint'ов
+- Реализована фабрика приложения `create_app()` в `app/__init__.py`
+- Утилиты и декораторы вынесены в `app/utils.py` и `app/decorators.py`
+- Корневая директория очищена от лишних скриптов (перемещены в `archive/`)
+- Миграции упорядочены с префиксами `001_`—`005_`
+- Удалены дублирующиеся маршруты (`/create-job`), шаблоны (`create_job.html`) и скрипты (`setup_rls_jobs_only.sql`)
+- 53 маршрута успешно зарегистрированы через Blueprints
 
 ## Полный Roadmap (в порядке реализации)
 
@@ -128,27 +189,13 @@
     - Добавить поле `commission_paid` в смену и логику списания
     - Пока без реальных платежей – только фиксация в интерфейсе
 
-## Как работать с AI‑помощником (DeepSeek / GigaCode)
-
-## Доступные агенты и скрипты (как использовать)
-
-### 1. `auto_fix_agent.py` – автоматическое исправление и деплой
-- **Запуск:** `python auto_fix_agent.py "команда"`
-- **Примеры:**
-  - `python auto_fix_agent.py "Добавь столбец verified в таблицу profiles"`
-  - `python auto_fix_agent.py "Обнови сайт"`
-- **Детали:** использует сервисный ключ Supabase и API‑токен PythonAnywhere. Консоль для деплоя задана явно (ID = 46987704).
-
-### 2. `browser_agent.py` – управление браузером по текстовым командам
-- **Запуск:** `python browser_agent.py "описание действия"`
-- **Пример:** `python browser_agent.py "Зарегистрируй нового работника Ивана с паролем 123456"`
-- **Требования:** установлены `playwright` и `openai`.
-
-### 3. `test_runner.py` – автотестирование в браузере
-- **Запуск:** `python test_runner.py`
-- **Требуется:** Playwright.
-
 ## Правила деплоя (обновления сайта)
 После локальных изменений и `git push` выполните в консоли PythonAnywhere:
 ```bash
 cd ~/mysite && git pull && touch /var/www/hyperstls_pythonanywhere_com_wsgi.py
+```
+
+### Важные замечания
+- При деплое на PythonAnywhere убедитесь, что корневой `app.py` остаётся точкой входа (WSGI импортирует `from app import app as application`)
+- Новые Blueprint'ы автоматически регистрируются в `app/__init__.py` – не забудьте импортировать и зарегистрировать их там
+- Все изменения в `app/blueprints/` не требуют дополнительных действий при деплое

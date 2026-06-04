@@ -2500,6 +2500,117 @@
         <Execute>
           <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git show 1272df8:app.py | findstr /C:&quot;test&quot; /C:&quot;Test&quot;" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add . &amp;&amp; git commit -m &quot;favorites_api_and_worker_rename&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add test_favorites_api.py &amp;&amp; git commit -m &quot;test_favorites_api&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python test_favorites_api.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add templates/workers.html &amp;&amp; git commit -m &quot;improve_favorite_btn&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add templates/favorites.html &amp;&amp; git commit -m &quot;fix_favorites_delete&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add templates/favorites.html &amp;&amp; git commit -m &quot;fix_favorites_delete_ui&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add templates/favorites.html &amp;&amp; git commit -m &quot;fix_workerId_favorites&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python -c &quot;import config; print('Config loaded:', hasattr(config, 'Config'))&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python -c &quot;import config; print('Config loaded')&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python -c &quot;import config; print('ok')&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python test_config.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="del C:\Users\s.prokopenko\PycharmProjects\trudnik\test_config.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git restore --staged test_config.py &amp;&amp; git restore test_config.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git restore --staged test_config.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git reset HEAD test_config.py 2&gt;&amp;1" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add app.py migrations/setup_rls.sql templates/favorites.html migrations/apply_rls_policies.sql" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git commit -m &quot;fix: улучшения системы избранного - полные данные трудников, массовое удаление, RLS политики&quot; -m &quot;- Добавлены поля city, skills, experience, desired_payment в запрос favorites&#10;- Обновлен шаблон favorites.html с полным отображением данных и упрощенной логикой удаления&#10;- Созданы RLS политики для favorites, blacklists и profiles таблиц&#10;- Создан файл migrations/apply_rls_policies.sql для применения политик в Supabase&#10;- Массовое удаление теперь сохраняет изменения в базе данных&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git commit --file=.git_commit_msg" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add FAVORITES_FIX.md &amp;&amp; git commit -m &quot;docs: добавлена инструкция по исправлению системы избранного&quot; &amp;&amp; git push" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git commit --file=.git_commit_msg &amp;&amp; git push" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add .gigacode/plans/1780484459834-curious-river.plan.md &amp;&amp; git commit -m &quot;docs: обновлен план с описанием исправлений системы избранного&quot; &amp;&amp; git push" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add templates/favorites.html &amp;&amp; git commit --file=.git_commit_msg &amp;&amp; git push" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add .git_commit_msg &amp;&amp; git commit --file=.git_commit_msg &amp;&amp; git push" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add templates/workers.html &amp;&amp; git commit -m &quot;fix: оптимизация кнопки избранного на странице трудников&#10;&#10;- Упрощена логика toggleFavorite - теперь обновляет UI мгновенно&#10;- Добавлен data-initial-status для отслеживания статуса&#10;- Убрана проверка статуса при загрузке страницы (вызывала проблемы)&#10;- Добавлен откат изменений при ошибке API&quot; &amp;&amp; git push" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git diff templates/workers.html" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add FAVORITES_TEST.md &amp;&amp; git commit --file=.git_commit_msg &amp;&amp; git push" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; head -100 templates/workers.html" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; type templates\workers.html | findstr /N &quot;toggleFavorite&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add templates/workers.html &amp;&amp; git commit --file=.git_commit_msg &amp;&amp; git push" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add test_favorites.sh &amp;&amp; git commit --file=.git_commit_msg &amp;&amp; git push" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add test_favorites_api.py &amp;&amp; git commit --file=.git_commit_msg &amp;&amp; git push" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add DEPLOY_INSTRUCTION.md &amp;&amp; git commit --file=.git_commit_msg &amp;&amp; git push" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add FINAL_DEPLOY.md &amp;&amp; git commit --file=.git_commit_msg &amp;&amp; git push" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; bash test_favorites.sh" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; powershell -ExecutionPolicy Bypass -File test_favorites.ps1" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add test_favorites.ps1 &amp;&amp; git commit --file=.git_commit_msg &amp;&amp; git push" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add .git_commit_msg test_favorites.sh &amp;&amp; git commit --file=.git_commit_msg &amp;&amp; git push" />
+        </Execute>
       </list>
     </option>
     <option name="autoApprovedReads">
