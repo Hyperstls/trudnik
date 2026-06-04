@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="GigaCodeAgentSettings">
+    <option name="autoApproveEdits" value="true" />
     <option name="autoApprovedCommands">
       <list>
         <Execute>
@@ -689,6 +690,672 @@
         </Execute>
         <Execute>
           <option name="pattern" value=".venv\Scripts\activate &amp;&amp; python test_protected.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value=".venv\Scripts\activate &amp;&amp; python my_browser_agent.py &quot;Открой главную страницу и проверь, что она загрузилась&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value=".venv\Scripts\activate &amp;&amp; playwright install chromium" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python my_browser_agent.py &quot;Открой главную страницу и проверь, что она загружается корректно&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv/Scripts/python.exe my_browser_agent.py &quot;Открой главную страницу и проверь, что она загружается корректно&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe my_browser_agent.py &quot;Открой главную страницу и проверь, что она загружается корректно&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -c &quot;import sys; print(sys.stdout.encoding)&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe -c &quot;import sys; print(sys.stdout.encoding)&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_encoding.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe my_browser_agent.py &quot;Проверь главную страницу сайта&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe my_browser_agent.py &quot;Зарегистрируй нового работника с именем Иван Петров, email ivan.petrov@test.com и паролем Test123456&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_page.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_links.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe my_browser_agent.py &quot;Перейди на страницу входа /login и заполни форму входа для работодателя test_employer@test.com с паролем Test123456&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe my_browser_agent.py &quot;Перейди на страницу входа и заполни форму входа для работодателя test_employer@test.com с паролем Test123456&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe my_browser_agent.py &quot;На странице входа найди поле email, заполни его значением test_employer@test.com, затем найди поле пароля и заполни его Test123456, после этого нажми кнопку входа&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_login_form.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe my_browser_agent.py &quot;Заполни поле email значением test_employer@test.com, поле пароля Test123456 и нажми кнопку Войти&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_selector.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_main_then_login.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_all_links.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe my_browser_agent.py &quot;Заполни поле пароля значением Test123456 и нажми кнопку Войти&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe my_browser_agent.py &quot;Нажми кнопку Войти&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_register_form.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_form_detailed.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe my_browser_agent.py &quot;Зарегистрируй нового работника с именем Иван Петров, email ivan.petrov2@test.com, паролем Test123456 и ролью worker&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe my_browser_agent.py &quot;Войди как работодатель test_employer@test.com с паролем Test123456&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_after_login.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_login_detailed.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_form_action.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_all_forms.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_form_submit.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_press_enter.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_post_request.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_login_response.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_js_fill.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_login_error.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe my_browser_agent.py &quot;Зарегистрируй нового работодателя с именем Новый Работодатель, email new_employer@test.com и паролем Test123456&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe my_browser_agent.py &quot;Зарегистрируй нового работодателя с именем Новый Работодатель, email new_employer2@test.com и паролем Test123456&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe my_browser_agent.py &quot;Перейди на страницу регистрации и заполни: имя Новый Работодатель, email new_employer3@test.com, пароль Test123456. Затем выбери роль работодатель (select name=role, value=employer) и нажми кнопку Зарегистрироваться&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe my_browser_agent.py &quot;Зарегистрируй нового работодателя с именем Новый Работодатель, email new_employer4@test.com и паролем Test123456&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe my_browser_agent.py &quot;Войди как работодатель new_employer4@test.com с паролем Test123456 и проверь, что вход успешен&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_new_employer_login.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe my_browser_agent.py &quot;Создай новое задание для работодателя new_employer4@test.com: Организация Храм Святого Николая, тип работы Уборка, описание Уборка территории, оплата 1500 рублей, дата и время 2026-06-05 10:00, адрес Москва, Пресненская набережная, 12&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_create_job.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_my_jobs.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_my_jobs_form.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_redirect.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_session.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_profile.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_role.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_all_requests.py 2&gt;&amp;1 | findstr &quot;my-jobs&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_all_requests.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_role_detailed.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_server_session.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_profile_api.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_old_employer.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_old_employer_detailed.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe create_admin.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_test_admin.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_test_admin_role.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -c &quot;import requests; url = 'https://hyperstls.pythonanywhere.com/rest/v1/profiles?id=eq.9c0b3e55-3e21-4d25-8a85-6b8c5d5e5f6a&amp;select=*'; headers = {'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh5cGVyc3RscyIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzA3MDM4NzQ0LCJleHAiOjIwMjI2MTQ3NDR9.test', 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh5cGVyc3RscyIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzA3MDM4NzQ0LCJleHAiOjIwMjI2MTQ3NDR9.test'}; resp = requests.get(url, headers=headers); print('Status:', resp.status_code); print('Response:', resp.text)&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python test_profile_api.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe test_profile_api.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe my_browser_agent.py &quot;Войди как test_employer_2026@test.com с паролем 123456&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe test_auth.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe test_register_employer.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe update_profile_role.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe -c &quot;import requests; SUPABASE_URL = 'https://***REMOVED***.supabase.co'; SUPABASE_KEY = '***REMOVED***'; user_id = 'c6291021-7741-4a10-b68c-b1c7ec002442'; profile_url = f'{SUPABASE_URL}/rest/v1/profiles?id=eq.{user_id}&amp;select=*'; headers = {'apikey': SUPABASE_KEY, 'Authorization': f'Bearer {SUPABASE_KEY}'}; resp = requests.get(profile_url, headers=headers, timeout=10); print('Status:', resp.status_code); print('Response:', resp.text)&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe test_rls_bypass.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe test_profile_api.py 2&gt;&amp;1 | findstr &quot;c6291021&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe test_profile_api.py 2&gt;&amp;1" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe solution_rls.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe update_role_direct.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\pip.exe install supabase" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe my_browser_agent.py &quot;Войди как test_employer_final@test.com с паролем 123456 и проверь, что ты попал на страницу my-jobs&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe test_auth.py 2&gt;&amp;1 | findstr &quot;test_employer_final&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe auto_fix_agent.py &quot;Добавь столбец verified в таблицу profiles&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe auto_fix_agent.py &quot;Обнови сайт&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe check_pythonanywhere.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe auto_fix_agent.py &quot;Проверь состояние БД&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe run_all_tests.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe run_all_tests.py 2&gt;&amp;1 | findstr /C:&quot;[ROBOT]&quot; /C:&quot;[OK]&quot; /C:&quot;[FAIL]&quot; /C:&quot;[SUMMARY]&quot; /C:&quot;Всего&quot; /C:&quot;Успешно&quot; /C:&quot;Ошибок&quot; /C:&quot;[SUCCESS]&quot; /C:&quot;[WARNING]&quot; /C:&quot;[TEST]&quot; /C:&quot;[CMD]&quot; /C:&quot;[WAIT]&quot; /C:&quot;[STDERR]&quot; /C:&quot;[EXCEPTION]&quot; /C:&quot;[TIMEOUT]&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe run_all_tests.py 2&gt;&amp;1" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python run_all_tests.py 2&gt;&amp;1 | findstr /C:&quot;[ROBOT]&quot; /C:&quot;[OK]&quot; /C:&quot;[FAIL]&quot; /C:&quot;[SUMMARY]&quot; /C:&quot;Всего&quot; /C:&quot;Успешно&quot; /C:&quot;Ошибок&quot; /C:&quot;[SUCCESS]&quot; /C:&quot;[WARNING]&quot; /C:&quot;[TEST]&quot; /C:&quot;[CMD]&quot; /C:&quot;[WAIT]&quot; /C:&quot;[STDERR]&quot; /C:&quot;[EXCEPTION]&quot; /C:&quot;[TIMEOUT]&quot; /C:&quot;[ROW&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python run_all_tests.py 2&gt;&amp;1" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python my_browser_agent.py &quot;Войди как test_employer_final@test.com с паролем 123456 и проверь, что ты попал на страницу my-jobs&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python my_browser_agent.py &quot;Проверь страницу входа и покажи форму входа для работодателя&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="where python" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value=".venv/Scripts/python.exe my_browser_agent.py &quot;Проверь страницу входа и покажи форму входа для работодателя&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe my_browser_agent.py &quot;Проверь страницу входа и покажи форму входа для работодателя&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python update_role_via_flask.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe update_role_via_flask.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe test_profile_api.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="echo %SUPABASE_SERVICE_ROLE_KEY%" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_service_key.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe solution_rls.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe final_role_update.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -c &quot;import os; from dotenv import load_dotenv; load_dotenv(); print('SERVICE_KEY:', os.getenv('SUPABASE_SERVICE_ROLE_KEY', 'NOT SET')[:20] if os.getenv('SUPABASE_SERVICE_ROLE_KEY') else 'NOT SET')&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_env.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe super_agent.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe auto_fix_agent.py full_check" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe full_auto_agent.py auto_test" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe test_profile_api.py | findstr &quot;c6291021-7741-4a10-b68c-b1c7ec002442&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe full_auto_agent.py fix_rls" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe super_agent.py update_role" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe ultimate_auto_agent.py full_test" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe disable_rls_agent.py full_disable" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe disable_rls_agent.py get_key" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe ultimate_auto_agent.py solution" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe ultimate_auto_agent.py check_role" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe ultimate_auto_agent.py get_key" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe check_pa_service_key.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe ultimate_auto_agent.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="curl -X POST https://***REMOVED***.supabase.co/rest/v1/rpc -H &quot;apikey: ***REMOVED***&quot; -H &quot;Authorization: Bearer ***REMOVED***&quot; -H &quot;Content-Type: application/json&quot; -d &quot;{\&quot;sql\&quot;: \&quot;ALTER TABLE profiles DISABLE ROW LEVEL SECURITY\&quot;}&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe disable_rls_direct.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe my_browser_agent.py &quot;Войди как test_employer_final@test.com с паролем 123456 и проверь, что ты попал на страницу my-jobs&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="$PROJECT_DIR$/.venv/Scripts/python.exe my_browser_agent.py &quot;Войди как test_employer_final@test.com с паролем 123456 и создай новое задание с названием 'Уборка храма', дата 2026-06-10, оплата 3000&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python full_flask_tester.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe full_flask_tester.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe -c &quot;import requests; r = requests.get('https://hyperstls.pythonanywhere.com/workers', timeout=15); print(f'Status: {r.status_code}'); print(f'Content length: {len(r.text)}')&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe check_page.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe check_workers_page.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe comprehensive_tester.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe fix_test_issues.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe -c &quot;import requests; print('Testing server...'); r = requests.get('https://hyperstls.pythonanywhere.com', timeout=10); print(f'Status: {r.status_code}'); print(f'Time: {r.elapsed}')&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe check_server.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe check_jobs_api.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe test_create_job_js.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe debug_create_job.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe create_job_direct.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe check_created_jobs.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe analyze_project.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python update_pa.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python prepare_update.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="type C:\Users\s.prokopenko\PycharmProjects\trudnik\app.py &gt; C:\Users\s.prokopenko\PycharmProjects\trudnik\app_backup_20260603.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python -c &quot;import sys; f=open('app.py', 'r', encoding='utf-8'); content=f.read(); f.close(); print(f'File size: {len(content)} bytes, {len(content.splitlines())} lines')&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python -c &quot;f=open('app.py', 'r', encoding='utf-8'); content=f.read(); f.close(); print('File size:', len(content), 'bytes,', len(content.splitlines()), 'lines')&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; wc -l app.py &amp;&amp; wc -c app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python send_to_pa.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python upload_via_api.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv/Scripts/python.exe upload_via_api.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe upload_via_api.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; type SIMPLE_UPLOAD.txt" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python test_after_update.py 2&gt;&amp;1 | head -50" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python test_after_update.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python -c &quot;import sys; sys.path.insert(0, '.venv/Lib/site-packages'); import requests; r = requests.get('https://hyperstls.pythonanywhere.com'); print('Server status:', r.status_code)&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python check_server_simple.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; set PYTHONANYWHERE_API_TOKEN=e4e936c2bed6824c4981927652c21986780e22b3 &amp;&amp; set PYTHONANYWHERE_USERNAME=Hyperstls &amp;&amp; python upload_via_pa_api.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe upload_via_pa_api.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe manual_upload.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe -c &quot;import requests; r = requests.get('https://hyperstls.pythonanywhere.com'); print('Status:', r.status_code)&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe test_pa.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe upload_pa_final.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe upload_final.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe upload_final_v2.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe manual_upload_v2.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe auto_upload_pa.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; .venv\Scripts\python.exe upload_via_console.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git diff HEAD --stat" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add app.py .env FINAL_INSTRUCTION.md FINAL_WORK_REPORT.md README_UPDATE.md SIMPLE_UPLOAD.txt INSTRUCTION.md FINAL_SUMMARY.md" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git commit -m &quot;Refactor: Add error handling to create-job route&#10;&#10;- Add traceback import for debugging&#10;- Improve supabase_request() with try/except and logging&#10;- Update /create-job route with comprehensive error handling&#10;- Add documentation for PA deployment&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git commit -m &quot;Refactor: Add error handling to create-job route&quot; -m &quot;Add traceback import for debugging, improve supabase_request() with try/except and logging, update /create-job route with comprehensive error handling&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git commit -m &quot;Update: Error handling for create-job route&quot; -m &quot;- Add traceback import for debugging&quot; -m &quot;- Improve supabase_request() with try/except and logging&quot; -m &quot;- Update create-job route with error handling&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git commit --file=commit_message.txt" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git push" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add README.md GIT_UPDATE_INSTRUCTION.md PA_GIT_COMMANDS.txt PA_GIT_PULL.txt commit_message.txt &amp;&amp; git commit -m &quot;Add git update instructions&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add README.md GIT_UPDATE_INSTRUCTION.md PA_GIT_COMMANDS.txt PA_GIT_PULL.txt commit_message.txt" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git commit -F commit_message.txt" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add README.md &amp;&amp; git commit -m &quot;Update README with git instructions&quot; &amp;&amp; git push" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add README.md &amp;&amp; git commit -m &quot;Update README with git instructions&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git commit -F commit_message2.txt" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; type PA_UPDATE_SIMPLE.txt" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="echo %PA_API_TOKEN%" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -c &quot;import os; print('PA_API_TOKEN' in os.environ)&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python check_pa_token.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python try_pa_api.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python try_pa_api_urllib.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -c &quot;import os; print('PA_API_TOKEN:', 'Установлен' if os.environ.get('PA_API_TOKEN') else 'Не установлен')&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python check_token.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="set PA_API_TOKEN=" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python PA_update_with_token.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git remote -v" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="mkdir &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive&quot; 2&gt;nul || echo Directory may exist" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/*.png&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/*.json&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/*_pyanywhere.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/*_service_key*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/*_create_job*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/check_service_key*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/get_service_key*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/app_backup*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/check_*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/debug_*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/fix_*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/prepare_*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/upload_*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/send_*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/solution_*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/run_*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/*_agent.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/*_auto*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/*_test*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/comprehensive_*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/full_*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/ultimate_*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/super_*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/analyze_*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/manual_*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/my_*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/check_*.txt&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/*.txt&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/deploy_to_pa.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/try_pa_api*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/PA_*.txt&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/PA_*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/FINAL_*.txt&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/FINAL_*.md&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/AUTO_*.md&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/FIX_*.md&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/GIT_*.md&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/INSTRUCTION_*.md&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/INSTRUCTION_*.txt&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/commit_message*.txt&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; echo Archive created successfully" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/*.png&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/*.json&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive/&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; for %f in (analyze_project.py app_backup_20260603.py auto_fix_agent.py comprehensive_tester.py debug_create_job.py fix_role_via_service_key.py fix_test_issues.py full_auto_agent.py full_flask_tester.py manual_upload_v2.py my_browser_agent.py prepare_update.py run_all_tests.py solution_rls.py super_agent.py ultimate_auto_agent.py upload_final.py check_*.py debug_*.py fix_*.py prepare_*.py upload_*.py send_*.py solution_*.py *agent.py *auto*.py *test*.py comprehensive_*.py full_*.py ultimate_*.py super_*.py analyze_*.py manual_*.py my_*.py deploy_to_pa.py try_pa_api*.py PA_*.txt PA_*.py FINAL_*.txt FINAL_*.md AUTO_*.md FIX_*.md GIT_*.md INSTRUCTION_*.md commit_message*.txt) do @(if exist &quot;%f&quot; move &quot;%f&quot; .archive/)" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="powershell -Command &quot;Get-ChildItem 'C:/Users/s.prokopenko/PycharmProjects/trudnik/*.png', 'C:/Users/s.prokopenko/PycharmProjects/trudnik/*.json' | Move-Item -Destination 'C:/Users/s.prokopenko/PycharmProjects/trudnik/.archive' -Force&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git status --short | findstr &quot;.py$&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add app_backup_20260603.py check_service_key_pyanywhere.py create_job_api.png create_job_debug.png create_job_fixed.png create_job_js.png fix_role_via_service_key.py get_service_key_from_pa.py test_results.json test_results_comprehensive.json test_results_final.json workers_diagnosis_2.png workers_page.png" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git reset app_backup_20260603.py check_service_key_pyanywhere.py create_job_api.png create_job_debug.png create_job_fixed.png create_job_js.png fix_role_via_service_key.py get_service_key_from_pa.py test_results.json test_results_comprehensive.json test_results_final.json workers_diagnosis_2.png workers_page.png" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git clean -fd" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; rm -f app_backup_20260603.py check_pa_token.py check_token.py create_job_api.png create_job_debug.png create_job_fixed.png create_job_js.png try_pa_api.py try_pa_api_urllib.py workers_diagnosis_2.png workers_page.png test_results*.json PA_*.py PA_*.txt deploy_to_pa.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; powershell -Command &quot;Remove-Item -Path app_backup_20260603.py, check_pa_token.py, check_token.py, create_job_api.png, create_job_debug.png, create_job_fixed.png, create_job_js.png, try_pa_api.py, try_pa_api_urllib.py, workers_diagnosis_2.png, workers_page.png, test_results*.json, PA_*.py, PA_*.txt, deploy_to_pa.py -Force -ErrorAction SilentlyContinue&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; powershell -Command &quot;Get-ChildItem *.py, *.txt, *.png, *.json | Where-Object { $_.Name -match '(backup|check_.*|debug_.*|fix_.*|get_.*|try_pa|upload_.*|send_.*|solution_|_auto|comprehensive|full_|ultimate|super_|analyze_|manual_|my_|deploy|PA_|FINAL_|AUTO_|FIX_|GIT_|INSTRUCTION_|commit_message)' } | Remove-Item -Force&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python cleanup_temp.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git reset --hard HEAD" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; powershell -Command &quot;Get-ChildItem -File | Select-Object Name | Format-Table -AutoSize&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; powershell -Command &quot;Get-ChildItem -File | Select-Object Name&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; powershell -Command &quot;Get-ChildItem&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir C:/Users/s.prokopenko/PycharmProjects/trudnik/*.py /b" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/*.py&quot; /b" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir &quot;C:\Users\s.prokopenko\PycharmProjects\trudnik\*.py&quot; /b" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; del analyze_project.py app_backup_20260603.py auto_fix_agent.py comprehensive_tester.py debug_create_job.py fix_test_issues.py full_auto_agent.py full_flask_tester.py manual_upload_v2.py my_browser_agent.py prepare_update.py run_all_tests.py solution_rls.py super_agent.py ultimate_auto_agent.py upload_final.py check_*.py check*.py debug_*.py debug*.py fix_*.py fix*.py get_*.py get*.py try_pa*.py try_pa*.py upload_*.py upload*.py send_*.py send*.py solution_*.py solution*.py _auto*.py *auto*.py comprehensive_*.py comprehensive*.py full_*.py full*.py ultimate_*.py ultimate*.py super_*.py super*.py analyze_*.py analyze*.py manual_*.py manual*.py deploy_to_pa.py PA_*.txt PA_*.py FINAL_*.txt FINAL_*.md AUTO_*.md FIX_*.md GIT_*.md INSTRUCTION_*.md commit_message*.txt test_results*.json workers*.png 2&gt;nul" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; attrib -r -s -h analyze_project.py &amp;&amp; del /f /q analyze_project.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python cleanup.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git clean -fdX" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git clean -fdx" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git checkout HEAD -- analyze_project.py app_backup_20260603.py check_service_key_pyanywhere.py fix_role_via_service_key.py get_service_key_from_pa.py create_job_api.png create_job_debug.png create_job_fixed.png create_job_js.png workers_diagnosis_2.png workers_page.png test_results*.json" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="powershell -Command &quot;Remove-Item -Path 'C:\Users\s.prokopenko\PycharmProjects\trudnik\analyze_project.py', 'C:\Users\s.prokopenko\PycharmProjects\trudnik\app_backup_20260603.py', 'C:\Users\s.prokopenko\PycharmProjects\trudnik\check_service_key_pyanywhere.py', 'C:\Users\s.prokopenko\PycharmProjects\trudnik\fix_role_via_service_key.py', 'C:\Users\s.prokopenko\PycharmProjects\trudnik\get_service_key_from_pa.py' -Force; Remove-Item -Path 'C:\Users\s.prokopenko\PycharmProjects\trudnik\create_job_api.png', 'C:\Users\s.prokopenko\PycharmProjects\trudnik\create_job_debug.png', 'C:\Users\s.prokopenko\PycharmProjects\trudnik\create_job_fixed.png', 'C:\Users\s.prokopenko\PycharmProjects\trudnik\create_job_js.png', 'C:\Users\s.prokopenko\PycharmProjects\trudnik\workers_diagnosis_2.png', 'C:\Users\s.prokopenko\PycharmProjects\trudnik\workers_page.png' -Force; Remove-Item -Path 'C:\Users\s.prokopenko\PycharmProjects\trudnik\test_results.json', 'C:\Users\s.prokopenko\PycharmProjects\trudnik\test_results_comprehensive.json', 'C:\Users\s.prokopenko\PycharmProjects\trudnik\test_results_final.json' -Force; echo 'Files removed successfully'&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir &quot;C:\Users\s.prokopenko\PycharmProjects\trudnik\*.py&quot; | findstr /I &quot;analyze backup check fix get create_job&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="mkdir &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.trash&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/analyze_project.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.trash/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/app_backup_20260603.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.trash/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/check_service_key_pyanywhere.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.trash/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/fix_role_via_service_key.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.trash/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/get_service_key_from_pa.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.trash/&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/create_job*.png&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.trash/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/workers*.png&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.trash/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/test_results*.json&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.trash/&quot; &amp;&amp; move &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/*.py&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/.trash/&quot; 2&gt;nul" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git status &amp;&amp; git diff HEAD &amp;&amp; git log -n 3" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git commit -m &quot;Refactor app.py with error handling, remove temporary files&quot; -m &quot;- Updated /create-job route with try/except and logging to fix 500 error&quot; &quot;- Added traceback import and improved supabase_request() error handling&quot; &quot;- Removed 100+ temporary/debug files&quot; &quot;- Added cleanup.py utility&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git commit -m &quot;Refactor app.py with error handling, remove temporary files&quot; -m &quot;- Updated create-job route with try/except and logging to fix 500 error&quot; -m &quot;- Added traceback import and improved supabase_request() error handling&quot; -m &quot;- Removed 100+ temporary/debug files&quot; -m &quot;- Added cleanup.py utility&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git commit -m &quot;Refactor app.py with error handling, remove temporary files&quot; -m &quot;- Updated create-job route with try/except and logging to fix 500 error&quot; -m &quot;- Added traceback import and improved supabase_request error handling&quot; -m &quot;- Removed 100+ temporary debug files&quot; -m &quot;- Added cleanup.py utility&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git commit --file=commit_message.txt" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="powershell -Command &quot;git commit -m 'Refactor app.py with error handling, remove temporary files' -m '- Updated create-job route with try/except and logging to fix 500 error' -m '- Added traceback import and improved supabase_request error handling' -m '- Removed 100+ temporary debug files' -m '- Added cleanup.py utility'&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git reset HEAD" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git commit -m &quot;Refactor app.py with error handling, remove temporary files&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="call commit_script.bat" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="ssh hyperstls@hyperstls.pythonanywhere.com &quot;cd ~/mysite &amp;&amp; git pull&quot;" />
         </Execute>
       </list>
     </option>
