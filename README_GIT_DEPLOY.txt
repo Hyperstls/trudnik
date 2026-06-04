@@ -11,7 +11,7 @@
 4. В открывшейся консоли выполните следующие команды:
    
    cd ~/mysite
-   git config --global user.email "hyperstls@inbox.ru"
+   git config --global user.email "hyperstls@gmail.com"
    git config --global user.name "Hyperstls"
    git config pull.rebase false
    git pull
@@ -35,7 +35,7 @@
 КОМАНДЫ ДЛЯ КОПИРОВАНИЯ:
 
 cd ~/mysite
-git config --global user.email "hyperstls@inbox.ru"
+git config --global user.email "hyperstls@gmail.com"
 git config --global user.name "Hyperstls"
 git config pull.rebase false
 git pull
