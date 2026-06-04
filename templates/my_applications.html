@@ -1,122 +1,82 @@
 {% extends "base.html" %}
-
-{% block title %}Мои отклики{% endblock %}
-
 {% block content %}
-<div class="container mx-auto px-4 py-8">
-    <h1 class="text-3xl font-bold mb-8">Отклики на мои задания</h1>
+<div class="p-4">
+    <h2 class="text-2xl font-bold text-gray-900 mb-5">Отклики на ваши задания</h2>
 
     {% if applications %}
-        <div class="space-y-4">
-            {% for app in applications %}
-            {% set worker = app.worker if app.worker else {} %}
-            {% set job = app.job if app.job else jobs.get(app.job_id, {}) %}
-            
-            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow application-card">
-                <div class="flex items-start justify-between">
-                    <div class="flex items-center space-x-4">
-                        <img src="{{ worker.get('photo_url') or '/static/default-avatar.png' }}"
-                             alt="{{ worker.get('full_name', 'Работник') }}"
-                             class="w-14 h-14 rounded-full object-cover border-2 border-gray-200">
-                        <div>
-                            <h3 class="font-semibold text-lg text-blue-600 hover:text-blue-800">
-                                {{ worker.get('full_name', 'Работник') }}
-                            </h3>
+    <div class="space-y-4">
+        {% for app in applications %}
+        <div class="card bg-white rounded-2xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-all">
+            <div class="flex items-start gap-3">
+                <!-- Чекбокс для массовых операций -->
+                <input type="checkbox" name="app_ids" value="{{ app.id }}" class="app-checkbox mt-1 rounded border-gray-300 text-gold focus:ring-gold">
 
-                            <div class="flex items-center space-x-1 mt-1">
-                                {% set rating = worker.get('rating', 0) %}
-                                {% for i in range(5) %}
-                                    {% if i < rating|int %}
-                                        <span class="text-yellow-400 text-sm">★</span>
-                                    {% else %}
-                                        <span class="text-gray-300 text-sm">★</span>
-                                    {% endif %}
-                                {% endfor %}
-                                {% if rating > 0 %}
-                                    <span class="text-gray-500 text-xs ml-1">({{ rating|round(1) }})</span>
-                                {% else %}
-                                    <span class="text-gray-400 text-xs ml-1">Нет оценок</span>
-                                {% endif %}
+                <div class="flex-1">
+                    <div class="flex justify-between items-start">
+                        <a href="/profile/{{ app.worker.id }}" class="flex-1 block">
+                            <div class="flex items-center gap-3">
+                                <img src="{{ app.worker.photo_url or url_for('static', filename='default-avatar.png') }}"
+                                     class="w-12 h-12 rounded-full object-cover border-2 border-gray-200">
+                                <div>
+                                    <h3 class="font-semibold text-lg text-gray-900">{{ app.worker.full_name }}</h3>
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-yellow-500 text-sm">★</span>
+                                        <span class="text-gray-700 text-sm font-medium">{{ "%.1f"|format(app.worker.rating or 0) }}</span>
+                                    </div>
+                                </div>
                             </div>
 
-                            {% set skills = worker.get('skills', []) %}
-                            {% if skills %}
-                            <div class="mt-2 flex flex-wrap gap-1">
-                                {% for skill in skills[:3] %}
-                                    <span class="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">{{ skill }}</span>
+                            {% if app.worker.skills %}
+                            <div class="flex flex-wrap gap-1 mt-2">
+                                {% for skill in app.worker.skills[:3] %}
+                                <span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs">{{ skill }}</span>
                                 {% endfor %}
-                                {% if skills|length > 3 %}
-                                    <span class="text-gray-400 text-xs">+{{ skills|length - 3 }}</span>
+                                {% if app.worker.skills|length > 3 %}
+                                <span class="text-xs text-gray-400">+{{ app.worker.skills|length - 3 }}</span>
                                 {% endif %}
                             </div>
-                            {% else %}
-                                <p class="text-gray-400 text-xs mt-1">Навыки не указаны</p>
                             {% endif %}
 
-                            {% if job %}
-                            <p class="text-gray-500 text-xs mt-2">
-                                Задание: <span class="font-medium">{{ job.get('organization_name', 'Неизвестно') }}</span>
+                            <p class="text-sm text-gray-500 mt-1">
+                                💰 {{ app.worker.desired_payment or '—' }} ₽ · 📋 {{ app.job.organization_name }}
                             </p>
-                            {% endif %}
+                        </a>
+
+                        <div class="text-right flex-shrink-0 ml-3">
+                            <span class="text-sm text-gray-500">Занято: {{ app.job.current_workers or 0 }}/{{ app.job.max_workers or 1 }}</span>
                         </div>
                     </div>
 
-                    <div class="text-right">
-                        {% set payment = worker.get('desired_payment') %}
-                        {% if payment %}
-                            <p class="text-green-600 font-semibold text-lg">{{ payment }} ₽/час</p>
+                    <div class="mt-3 flex items-center gap-3">
+                        {% if app.status == 'pending' %}
+                        <form action="/applications/{{ app.id }}/accept" method="POST">
+                            <button type="submit"
+                                    class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                                    {% if (app.job.current_workers or 0) >= (app.job.max_workers or 1) %}disabled{% endif %}>
+                                ✓ Принять
+                            </button>
+                        </form>
+                        <form action="/applications/{{ app.id }}/reject" method="POST">
+                            <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors">
+                                ✕ Отклонить
+                            </button>
+                        </form>
+                        {% elif app.status == 'accepted' %}
+                        <span class="text-green-600 font-medium">Принят</span>
+                        <a href="/chat/{{ app.shift_id }}" class="text-blue-600 hover:text-blue-800 font-medium text-sm">💬 Написать</a>
+                        {% elif app.status == 'rejected' %}
+                        <span class="text-red-600 font-medium">Отклонён</span>
                         {% endif %}
-
-                        <span class="inline-block px-3 py-1 rounded text-xs font-medium mt-2
-                            {% if app.status == 'pending' %}bg-yellow-100 text-yellow-800
-                            {% elif app.status == 'accepted' %}bg-green-100 text-green-800
-                            {% elif app.status == 'rejected' %}bg-red-100 text-red-800
-                            {% elif app.status == 'completed' %}bg-blue-100 text-blue-800
-                            {% else %}bg-gray-100 text-gray-800{% endif %}">
-                            {% if app.status == 'pending' %}На рассмотрении
-                            {% elif app.status == 'accepted' %}Принят
-                            {% elif app.status == 'rejected' %}Отклонён
-                            {% else %}{{ app.status }}{% endif %}
-                        </span>
                     </div>
                 </div>
-
-                <div class="mt-4 pt-3 border-t border-gray-100 flex items-center space-x-3">
-                    {% set job = app.job if app.job else {} %}
-                    {% set is_full = (job.current_workers|default(0)) >= (job.max_workers|default(1)) %}
-                    {% if app.status == 'pending' %}
-                    <form action="/applications/{{ app.id }}/accept" method="POST" class="inline">
-                        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors" 
-                            {% if is_full %}disabled title="Места в задании заполнены"{% endif %}>
-                            ✓ Принять
-                        </button>
-                    </form>
-                    <form action="/applications/{{ app.id }}/reject" method="POST" class="inline">
-                        <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors">
-                            ✕ Отклонить
-                        </button>
-                    </form>
-                    {% if is_full %}
-                        <span class="text-sm text-gray-400">Места заполнены</span>
-                    {% endif %}
-                    {% elif app.status == 'accepted' %}
-                    <span class="text-sm text-green-600 font-medium">Принят</span>
-                    {% elif app.status == 'rejected' %}
-                    <span class="text-sm text-red-600 font-medium">Отклонён</span>
-                    {% endif %}
-                </div>
             </div>
-            {% endfor %}
         </div>
-
+        {% endfor %}
+    </div>
     {% else %}
-        <div class="text-center py-16">
-            <div class="text-6xl mb-4">📋</div>
-            <p class="text-gray-500 text-lg">Пока нет откликов на ваши задания</p>
-            <a href="/my-jobs" class="mt-4 inline-block bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
-                Перейти к моим заданиям
-            </a>
-        </div>
+    <div class="text-center py-12 text-gray-400">
+        <p>Нет откликов</p>
+    </div>
     {% endif %}
 </div>
 {% endblock %}

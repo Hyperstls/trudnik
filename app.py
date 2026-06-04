@@ -591,6 +591,35 @@ def job_new():
 # Задания
 # ──────────────────────────────────────────────
 
+@app.route('/create-job', methods=['GET', 'POST'])
+@login_required
+@role_required('employer')
+def create_job():
+    if request.method == 'POST':
+        job_data = {
+            'employer_id': session['user_id'],
+            'organization_name': request.form.get('organization_name') or 'Храм',
+            'org_description': request.form.get('org_description', ''),
+            'object_description': request.form.get('object_description', ''),
+            'work_type': request.form.get('work_type', ''),
+            'detailed_description': request.form.get('detailed_description', ''),
+            'date_time': f"{request.form['date']}T{request.form['time']}:00",
+            'payment_amount': float(request.form['payment']),
+            'address': request.form.get('address', ''),
+            'city': request.form.get('city', ''),
+            'lat': float(request.form.get('lat', 55.75)),
+            'lng': float(request.form.get('lng', 37.61)),
+            'preferred_religion': request.form.get('preferred_religion', 'не важно'),
+            'max_workers': int(request.form.get('max_workers', 1)),
+            'current_workers': 0,
+        }
+        resp = supabase_request('POST', 'jobs', json=job_data)
+        if resp.ok:
+            flash('Задание опубликовано', 'success')
+            return redirect(url_for('my_jobs'))
+        flash('Ошибка создания задания', 'danger')
+    return render_template('create_job.html', yandex_api_key=app.config['YANDEX_MAPS_API_KEY'])
+
 @app.route('/apply/<job_id>', methods=['GET', 'POST'])
 @login_required
 def apply_job(job_id):
