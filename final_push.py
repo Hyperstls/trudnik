@@ -1,9 +1,10 @@
 import subprocess
 
-# Git commit и push
+# Очистка и коммит
 commands = [
-    ["git", "commit", "-m", "cleanup: remove temp files"],
-    ["git", "pull", "origin", "main", "--rebase"],
+    ["git", "status"],
+    ["git", "add", "-A"],
+    ["git", "commit", "-m", "Final: max_workers, duplicate button, migrations"],
     ["git", "push", "origin", "main"],
 ]
 
