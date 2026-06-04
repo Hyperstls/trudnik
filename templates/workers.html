@@ -60,7 +60,7 @@
                         <span>✉️</span>
                         <span>Написать</span>
                     </button>
-                    <button onclick="event.stopPropagation(); toggleFavorite(this, '{{ worker.id }}')"
+                    <button onclick="toggleFavorite(event, this, '{{ worker.id }}')"
                             class="favorite-btn bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors text-sm flex items-center space-x-1"
                             data-worker-id="{{ worker.id }}"
                             data-initial-status="not-favorited">
@@ -82,18 +82,18 @@
 
 {% block scripts %}
 <script>
-// Переключение избранного
-toggleFavorite = function(btn, workerId) {
+// Глобальная функция переключения избранного
+function toggleFavorite(e, btn, workerId) {
     console.log('toggleFavorite called for workerId:', workerId);
     
-    // Запретить клик по родительскому элементу
-    event.stopPropagation();
+    // Предотвращаем всплытие события
+    e.stopPropagation();
     
     // Получить текущий статус кнопки
     const initialStatus = btn.dataset.initialStatus;
     const isFavorited = initialStatus === 'favorited';
     
-    console.log('Current status (from data):', initialStatus);
+    console.log('Current status (from data):', initialStatus, 'isFavorited:', isFavorited);
     
     // Сначала обновляем UI, чтобы пользователь видел мгновенный отклик
     if (isFavorited) {
@@ -152,6 +152,7 @@ toggleFavorite = function(btn, workerId) {
             console.log('Add response:', data);
             if (data.success) {
                 console.log('Successfully added to favorites');
+                alert('Трудник добавлен в избранное!');
             } else {
                 alert('Ошибка добавления: ' + (data.error || 'Не удалось добавить'));
                 // Откатываем изменения при ошибке
@@ -181,11 +182,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const buttons = document.querySelectorAll('.favorite-btn');
     console.log('Found', buttons.length, 'favorite buttons');
     
-    // Не делаем параллельные запросы для всех - это вызывало проблемы
-    // Просто оставляем как есть, пользователь сам переключит
-    // Если нужно проверить - можно раскомментировать ниже
-    
-    /*
     buttons.forEach(btn => {
         const workerId = btn.dataset.workerId;
         console.log('Checking worker:', workerId);
@@ -209,7 +205,6 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => console.error('Ошибка проверки избранного для', workerId, ':', error));
     });
-    */
 });
 </script>
 {% endblock %}
