@@ -35,21 +35,21 @@ def execute_command(command):
         html_snippet = page.content()[:3000]
 
         prompt = f"""
-Ты — браузерный агент, который управляет веб-сайтом «Трудник».
-Сейчас ты на странице: {page.url}
-HTML-код (фрагмент): {html_snippet}
+You are a browser agent managing the "Trudnik" website.
+Current page: {page.url}
+HTML snippet: {html_snippet}
 
-Выполни команду пользователя: "{command}"
+Execute user command: "{command}"
 
-Верни ответ в JSON-формате:
+Return response in JSON format (use ONLY English keys and values):
 {{
-    "action": "click", "fill", "goto" или "done",
-    "selector": "CSS-селектор элемента (если нужно)",
-    "value": "текст для ввода (если fill)",
-    "message": "что было сделано или ошибка"
+    "action": "click", "fill", "goto" or "done",
+    "selector": "CSS selector (if needed)",
+    "value": "text for input (if fill)",
+    "message": "what was done or error message"
 }}
 
-Если для выполнения команды нужно несколько действий, выполняй их по одному.
+If multiple actions needed, execute one at a time.
 """
         # Запрашиваем DeepSeek
         ai_response = ask_deepseek(prompt)
@@ -84,7 +84,7 @@ HTML-код (фрагмент): {html_snippet}
             elif action == "done":
                 pass
             else:
-                print(f"⚠️ Неизвестное действие: {action}")
+                print(f"[WARN] Unknown action: {action}")
         except Exception as e:
             print(f"[ERROR] Ошибка выполнения: {e}")
 
