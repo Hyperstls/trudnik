@@ -310,15 +310,6 @@ def login():
                 session['user_id'] = data['user']['id']
                 role_resp = supabase_request('GET', f'profiles?id=eq.{data["user"]["id"]}&select=role')
                 session['role'] = role_resp.json()[0]['role'] if role_resp.ok and role_resp.json() else 'worker'
-                # Для тестирования: если роль не установлена, присваиваем employer
-                email_lower = data['user']['email'].lower()
-                if 'test' in email_lower:
-                    session['role'] = 'employer'
-                    flash('Тестовый аккаунт работодателя активирован', 'info')
-                    # Обновляем роль в базе данных для постоянного сохранения
-                    if SERVICE_KEY:
-                        supabase_request('PATCH', f'profiles?id=eq.{data["user"]["id"]}',
-                                        json={'role': 'employer'})
                 session.modified = True
                 if session.get('role') == 'employer':
                     return redirect(url_for('my_jobs'))
