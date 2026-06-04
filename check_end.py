@@ -4,5 +4,6 @@
 with open('app.py', 'r', encoding='utf-8') as f:
     lines = f.readlines()
 
-print("Last 5 lines:")
-print(''.join(lines[-5:]))
+print("Last 10 lines:")
+for line in lines[-10:]:
+    print(line.strip())

@@ -1,7 +1,1 @@
-Update auto_fix_agent.py browser_agent.py test_runner.py PROJECT_CONTEXT.md
-
-- Fix emoji encoding issues in auto_fix_agent.py
-- Update browser_agent.py with correct URL
-- Add check_template_on_server.py for template verification
-- Update test_runner.py for automated testing
-- Add PROJECT_CONTEXT.md with full project documentation
+Add documentation for max_workers deployment

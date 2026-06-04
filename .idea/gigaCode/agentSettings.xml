@@ -1864,6 +1864,141 @@
         <Execute>
           <option name="pattern" value="git show 09a2925:templates/job_new.html | findstr /C:&quot;max_workers&quot;" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="python auto_fix_agent.py &quot;Проверь, содержит ли файл /var/www/trudnik_pythonanywhere_com/templates/job_new.html поле max_workers. Если нет - исправь его на версию с полем max_workers. Также проверь, что в app.py есть поддержка max_workers в маршрутах create_job и job_new.&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add auto_fix_agent.py browser_agent.py test_runner.py PROJECT_CONTEXT.md" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git commit -m &quot;fix: replace emoji with plain text to fix Windows console encoding&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git commit -m &quot;fix: replace emoji with plain text for Windows console&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git diff --staged --stat" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add ." />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git commit -m &quot;Update auto_fix_agent.py browser_agent.py test_runner.py PROJECT_CONTEXT.md&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git commit --file=- &lt;&lt;'EOF'&#10;Update agent scripts and project context&#10;&#10;- Fix emoji encoding issues in auto_fix_agent.py&#10;- Update browser_agent.py with correct URL&#10;- Add check_template_on_server.py for template verification&#10;- Update test_runner.py for automated testing&#10;- Add PROJECT_CONTEXT.md with full project documentation&#10;EOF&#10;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git commit -m &quot;Update auto_fix_agent.py browser_agent.py test_runner.py PROJECT_CONTEXT.md&quot; -F -" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git commit --file=.git_commit_msg" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python auto_fix_agent.py &quot;Обнови сайт&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="pip install openai playwright" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -m pip install openai playwright" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -m playwright install chromium" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python browser_agent.py &quot;Открой страницу /job/new и проверь, есть ли поле 'Максимум работников' на странице. Верни HTML-код этой формы.&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add browser_agent.py &amp;&amp; git commit -m &quot;fix: replace emoji in browser_agent.py&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add browser_agent.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python browser_agent.py &quot;Открой страницу /job/new и проверь, есть ли поле max_workers на странице&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add browser_agent.py &amp;&amp; git commit --file=.git_commit_msg &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python browser_agent.py &quot;Go to /job/new page and check if max_workers field is present&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python browser_agent.py &quot;Go to /job/new and check if max_workers input field exists&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python check_max_workers.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add INSTRUCTION_UPDATE_PA.txt check_max_workers.py &amp;&amp; git commit -m &quot;Add instructions for updating site on PythonAnywhere&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add INSTRUCTION_UPDATE_PA.txt check_max_workers.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="timeout /t 5 /nobreak &gt;nul &amp;&amp; python check_max_workers.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python auto_fix_agent.py &quot;Проверь наличие поля max_workers в шаблоне и обнови сайт если нужно&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add FINAL_SUMMARY_max_workers.txt INSTRUCTION_MANUAL_UPDATE.txt &amp;&amp; git commit -m &quot;Update documentation for max_workers deployment&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add FINAL_SUMMARY_max_workers.txt INSTRUCTION_MANUAL_UPDATE.txt" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python verify_max_workers.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python check_server_template.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python auto_fix_agent.py &quot;Проверь наличие файла templates/job_new.html на сервере PythonAnywhere и наличие в нём поля max_workers. Если файл не содержит max_workers - обнови его из git&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -c &quot;import requests; r = requests.get('https://hyperstls.pythonanywhere.com/job/new', timeout=30); print(f'Status: {r.status_code}'); print(f'Length: {len(r.text)}'); print('max_workers in HTML:', 'max_workers' in r.text)&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python quick_check.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python check_wsgi.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add DEPLOY_INSTRUCTION.txt &amp;&amp; git commit -m &quot;deploy&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="timeout /t 10 /nobreak &gt;nul 2&gt;&amp;1 &amp;&amp; python quick_check.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -c &quot;with open('app.py', 'r') as f: lines = f.readlines(); print('Last 5 lines:'); print(''.join(lines[-5:]))&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python check_end.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -c &quot;with open('app.py', 'rb') as f: f.seek(-500, 2); print(f.read().decode('utf-8'))&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python show_template.py 2&gt;&amp;1 | findstr /C:&quot;max_workers&quot; /C:&quot;Строка&quot; /C:&quot;ЛОКАЛЬНЫЙ&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add show_template.py debug_app.py &amp;&amp; git commit --file=.git_commit_msg" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add CHECK_STATUS.txt &amp;&amp; git commit --file=.git_commit_msg &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python check_pa_template.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python auto_fix_agent.py &quot;Оптимизируй файл app.py - удали дублирующий маршрут create-job, исправь role_required декоратор чтобы он проверял пустые ответы, используй только один маршрут для создания заданий&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add app.py &amp;&amp; git commit --file=.git_commit_msg" />
+        </Execute>
       </list>
     </option>
   </component>
