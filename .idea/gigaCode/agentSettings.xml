@@ -1480,6 +1480,63 @@
         <Execute>
           <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; echo &quot;Migration file created: migrations/add_max_workers.sql&quot; &amp;&amp; echo &quot;Tables created: ratings, notifications&quot; &amp;&amp; echo &quot;Fields added: jobs.max_workers, jobs.current_workers&quot;" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add -A &amp;&amp; git commit -m &quot;docs: update plan with completed tasks&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add -A &amp;&amp; git commit -m &quot;docs&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git config pull.rebase false" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add README_GIT_DEPLOY.txt &amp;&amp; git commit -m &quot;fix: add git config command for branch reconciliation&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git status &amp;&amp; git add README_GIT_DEPLOY.txt &amp;&amp; git commit -m &quot;fix&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add README_GIT_DEPLOY.txt &amp;&amp; git commit -m &quot;docs&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add README_GIT_DEPLOY.txt &amp;&amp; git commit -m &quot;fix email&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add README_GIT_DEPLOY.txt &amp;&amp; git commit -m &quot;fix&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="pip install requests &amp;&amp; pip install flask" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -m pip install requests flask" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -m pip install python-dotenv" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; start /B python app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="timeout /t 3 &amp;&amp; curl http://127.0.0.1:5000/" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python -c &quot;import app; print('App imported successfully')&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python -c &quot;import app; print('OK')&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python test_import.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python test_functions.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python -c &quot;import os; files = os.listdir('templates'); print('Templates:', files)&quot;" />
+        </Execute>
       </list>
     </option>
   </component>
