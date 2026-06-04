@@ -1,54 +1,55 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""
-Инструкция по деплою на PythonAnywhere
-"""
+# ИНСТРУКЦИЯ ПО ДЕПЛОЮ max_workers
 
-print("=== ИНСТРУКЦИЯ ПО ДЕПЛОЮ НА PYTHONANYWHERE ===\n")
+## Проблема
+Поле `max_workers` не отображается на странице `/job/new` на PythonAnywhere.
 
-print("ВАШИ ИЗМЕНЕНИЯ УЖЕ ОТПРАВЛЕНЫ НА GITHUB!")
-print("Коммиты:")
-print("  d429f84 - Refactor app.py with error handling")
-print("  9248e50 - Add reload script for PythonAnywhere")
-print("  e7311bb - Update check_pa_status script\n")
+## Причина
+На сервере PythonAnywhere не обновлён шаблон `templates/job_new.html`.
 
-print("СЛЕДУЮЩИЕ ШАГИ:\n")
+## Решение (РУЧНОЕ ОБНОВЛЕНИЕ)
 
-print("Вариант 1: Через веб-интерфейс PythonAnywhere (САМЫЙ ПРОСТОЙ)")
-print("  1. Откройте https://www.pythonanywhere.com/")
-print("  2. Войдите как Hyperstls")
-print("  3. Перейдите во вкладку 'Files'")
-print("  4. Откройте файл: /home/hyperstls/mysite/app.py")
-print("  5. Скопируйте код из локального файла app.py")
-print("  6. Вставьте его в веб-редактор")
-print("  7. Нажмите 'Save'")
-print("  8. Перейдите во вкладку 'Web'")
-print("  9. Нажмите 'Reload'\n")
+1. Откройте https://www.pythonanywhere.com
+2. Зайдите в аккаунт
+3. Перейдите на вкладку **"Consoles"** (вверху экрана)
+4. Нажмите **"+ Start a new console"** и выберите **"Bash"**
+5. В консоли выполните следующие команды по порядку:
 
-print("Вариант 2: Через Git (если уже настроен)")
-print("  1. Откройте консоль на PythonAnywhere")
-print("  2. Выполните:")
-print("     cd ~/mysite")
-print("     git pull")
-print("     touch app.py.wsgi\n")
+```bash
+cd ~/mysite
+git pull
+touch /var/www/hyperstls_pythonanywhere_com_wsgi.py
+```
 
-print("Вариант 3: Через SFTP")
-print("  1. Подключитесь к hyperstls.pythonanywhere.com через SFTP")
-print("  2. Загрузите локальный файл app.py в ~/mysite/")
-print("  3. Перезагрузите приложение через веб-интерфейс\n")
+6. Подождите 5-10 секунд после выполнения команд
+7. Обновите страницу `/job/new` в браузере (используйте **Ctrl+Shift+R** для полной очистки кэша)
 
-print("=== ПРОВЕРКА РАБОТЫ ===")
-print("После деплоя:")
-print("  1. Откройте https://hyperstls.pythonanywhere.com/")
-print("  2. Войдите как test_employer_final@test.com")
-print("  3. Перейдите на /create-job")
-print("  4. Заполните форму и отправьте")
-print("  5. Ожидаемый результат: 'Задание опубликовано' (НЕ ошибка 500)\n")
+## Проверка
 
-print("=== КРИТИЧЕСКИЕ ИЗМЕНЕНИЯ В app.py ===")
-print("  - Добавлен try/except в /create-job для обработки ошибок")
-print("  - Улучшена функция supabase_request() с логированием")
-print("  - Добавлен traceback для диагностики")
-print("  - Логирование данных для отладки\n")
+После обновления на странице `/job/new` должно быть видно поле:
+```
+Максимум работников
+[1]
+Сколько работников нужно для этого задания
+```
 
-print("=== ГОТОВО! ===")
+## Дополнительная информация
+
+- Коммиты с изменениями уже отправлены на GitHub
+- Локальный файл `templates/job_new.html` содержит поле `max_workers`
+- Маршруты в `app.py` уже поддерживают `max_workers`
+- Миграция базы данных находится в `migrations/add_max_workers.sql`
+
+## Почему auto_fix_agent.py не работает?
+
+`auto_fix_agent.py` использует API консоли PythonAnywhere, который требует платного тарифа. 
+На бесплатном тарифе удалённый доступ к консоли через API недоступен.
+
+## Статус изменений
+
+✅ Все изменения закоммичены и отправлены на GitHub  
+✅ Локальный шаблон содержит поле `max_workers`  
+✅ Маршруты в `app.py` поддерживают `max_workers`  
+❌ Сайт на PythonAnywhere НЕ обновлён (требуется ручное действие)
+
+## Последний коммит
+`765bf6f` - Add documentation for max_workers deployment
