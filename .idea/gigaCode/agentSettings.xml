@@ -2422,12 +2422,93 @@
         <Execute>
           <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects &amp;&amp; dir" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /C:&quot;max_workers&quot; &quot;C:\Users\s.prokopenko\Downloads\backup\home\Hyperstls\mysite\app.py&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /N /C:&quot;def job_new&quot; &quot;C:\Users\s.prokopenko\Downloads\backup\home\Hyperstls\mysite\app.py&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /N &quot;def job_new&quot; &quot;C:\Users\s.prokopenko\Downloads\backup\home\Hyperstls\mysite\app.py&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr &quot;job_new&quot; &quot;C:\Users\s.prokopenko\Downloads\backup\home\Hyperstls\mysite\app.py&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /N &quot;def job_new&quot; &quot;C:\Users\s.prokopenko\PycharmProjects\trudnik\app.py&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr &quot;job_new&quot; &quot;C:\Users\s.prokopenko\PycharmProjects\trudnik\app.py&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /N &quot;max_workers&quot; &quot;C:/Users/s.prokopenko/Downloads/backup/home/Hyperstls/mysite/app.py&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git show a5fa06b:app.py | findstr /N &quot;def job_new&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git show a5fa06b:app.py | findstr &quot;job_new&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git show a5fa06b:app.py | grep -n &quot;def job_new&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="grep -n &quot;max_workers&quot; &quot;C:/Users/s.prokopenko/PycharmProjects/trudnik/templates/job_new.html&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python -c &quot;import requests; r = requests.get('https://hyperstls.pythonanywhere.com/job/new'); print('Status:', r.status_code); print('Has max_workers:', 'max_workers' in r.text)&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python check_wsgi_reload.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/Downloads/backup/home/Hyperstls/mysite &amp;&amp; findstr /N &quot;max_workers&quot; templates/job_new.html" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python check_page_content.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; python check_page_with_auth.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git diff app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add app.py &amp;&amp; git commit -m &quot;debug: добавить подробное сообщение об ошибке при создании задания&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git commit -m &quot;debug: add detailed error message for job creation&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git commit -m &quot;debug: add error details&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git commit -m &quot;add_debug_error_message&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add test_job_creation.py &amp;&amp; git commit -m &quot;test_job_script&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add migrations/setup_rls_jobs_only.sql &amp;&amp; git commit -m &quot;setup_rls_jobs_only&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add app.py &amp;&amp; git commit -m &quot;remove_test_auto_role&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git add update_pa.sh &amp;&amp; git commit -m &quot;update_script&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:/Users/s.prokopenko/PycharmProjects/trudnik &amp;&amp; git show 1272df8:app.py | findstr /C:&quot;test&quot; /C:&quot;Test&quot;" />
+        </Execute>
       </list>
     </option>
     <option name="autoApprovedReads">
       <list>
         <Read>
           <option name="pattern" value="$PROJECT_DIR$/../../../../temp/old_app.py" />
+        </Read>
+        <Read>
+          <option name="pattern" value="$USER_HOME$/Downloads/backup/home/Hyperstls/*" />
         </Read>
       </list>
     </option>

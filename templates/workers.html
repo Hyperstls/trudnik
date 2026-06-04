@@ -60,10 +60,11 @@
                         <span>✉️</span>
                         <span>Написать</span>
                     </button>
-                    <button onclick="event.stopPropagation(); addToFavorites('{{ worker.id }}')"
-                            class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors text-sm flex items-center space-x-1">
-                        <span>⭐</span>
-                        <span>В избранное</span>
+                    <button onclick="event.stopPropagation(); toggleFavorite(this, '{{ worker.id }}')"
+                            class="favorite-btn bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors text-sm flex items-center space-x-1"
+                            data-worker-id="{{ worker.id }}">
+                        <span class="favorite-icon">⭐</span>
+                        <span class="favorite-text">В избранное</span>
                     </button>
                 </div>
             </div>
@@ -80,21 +81,81 @@
 
 {% block scripts %}
 <script>
-function addToFavorites(workerId) {
-    fetch('/api/favorites/add', {
+// Проверить, добавлен ли трудник в избранное
+function checkFavoriteStatus(workerId, btn) {
+    fetch('/api/favorites/check', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ worker_id: workerId })
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success) {
-            alert('Работник добавлен в избранное!');
-        } else {
-            alert('Ошибка: ' + (data.error || 'Не удалось добавить'));
+        if (data.success && data.is_favorited) {
+            btn.classList.remove('bg-yellow-500', 'hover\:bg-yellow-600');
+            btn.classList.add('bg-red-500', 'hover\:bg-red-600');
+            btn.querySelector('.favorite-icon').textContent = '❤️';
+            btn.querySelector('.favorite-text').textContent = 'Удалить из избранного';
         }
+    })
+    .catch(error => console.error('Ошибка проверки избранного:', error));
+}
+
+// Переключение избранного
+toggleFavorite = function(btn, workerId) {
+    fetch('/api/favorites/check', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ worker_id: workerId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            alert('Ошибка проверки: ' + (data.error || 'Не удалось определить статус'));
+            return;
+        }
+        
+        const isFavorited = data.is_favorited;
+        const actionUrl = isFavorited ? '/api/favorites/remove' : '/api/favorites/add';
+        const method = 'POST';
+        
+        fetch(actionUrl, {
+            method: method,
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ worker_id: workerId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Обновить кнопку
+                if (isFavorited) {
+                    btn.classList.remove('bg-red-500', 'hover\:bg-red-600');
+                    btn.classList.add('bg-yellow-500', 'hover\:bg-yellow-600');
+                    btn.querySelector('.favorite-icon').textContent = '⭐';
+                    btn.querySelector('.favorite-text').textContent = 'В избранное';
+                    alert('Трудник удалён из избранного');
+                } else {
+                    btn.classList.remove('bg-yellow-500', 'hover\:bg-yellow-600');
+                    btn.classList.add('bg-red-500', 'hover\:bg-red-600');
+                    btn.querySelector('.favorite-icon').textContent = '❤️';
+                    btn.querySelector('.favorite-text').textContent = 'Удалить из избранного';
+                    alert('Трудник добавлен в избранное!');
+                }
+            } else {
+                alert('Ошибка: ' + (data.error || 'Не удалось изменить избранное'));
+            }
+        })
+        .catch(error => { alert('Ошибка сети'); });
     })
     .catch(error => { alert('Ошибка сети'); });
 }
+
+// Проверить статус избранного для всех трудников при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    const buttons = document.querySelectorAll('.favorite-btn');
+    buttons.forEach(btn => {
+        const workerId = btn.dataset.workerId;
+        checkFavoriteStatus(workerId, btn);
+    });
+});
 </script>
 {% endblock %}

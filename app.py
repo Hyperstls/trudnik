@@ -1230,6 +1230,76 @@ def remove_favorite(target_id):
     return redirect(url_for('favorites'))
 
 
+@app.route('/api/favorites/add', methods=['POST'])
+@login_required
+def add_favorite_api():
+    """API для добавления трудника в избранное"""
+    data = request.get_json()
+    worker_id = data.get('worker_id')
+    
+    if not worker_id:
+        return jsonify({'success': False, 'error': 'Не указан worker_id'})
+    
+    try:
+        supabase_request('POST', 'favorites', json={'user_id': session['user_id'], 'target_id': worker_id})
+        return jsonify({'success': True, 'message': 'Трудник добавлен в избранное'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/favorites/remove', methods=['POST'])
+@login_required
+def remove_favorite_api():
+    """API для удаления трудника из избранного"""
+    data = request.get_json()
+    worker_id = data.get('worker_id')
+    
+    if not worker_id:
+        return jsonify({'success': False, 'error': 'Не указан worker_id'})
+    
+    try:
+        supabase_request('DELETE', f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{worker_id}')
+        return jsonify({'success': True, 'message': 'Трудник удалён из избранного'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/favorites/check', methods=['POST'])
+@login_required
+def check_favorite_api():
+    """API для проверки, добавлен ли трудник в избранное"""
+    data = request.get_json()
+    worker_id = data.get('worker_id')
+    
+    if not worker_id:
+        return jsonify({'success': False, 'error': 'Не указан worker_id'})
+    
+    try:
+        resp = supabase_request('GET', f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{worker_id}')
+        is_favorited = resp.ok and len(resp.json()) > 0
+        return jsonify({'success': True, 'is_favorited': is_favorited})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/favorites/remove-selected', methods=['POST'])
+@login_required
+def remove_favorites_selected():
+    """API для массового удаления трудников из избранного"""
+    data = request.get_json()
+    worker_ids = data.get('worker_ids', [])
+    
+    if not worker_ids:
+        return jsonify({'success': False, 'error': 'Не указаны worker_ids'})
+    
+    try:
+        for worker_id in worker_ids:
+            supabase_request('DELETE', f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{worker_id}')
+        return jsonify({'success': True, 'message': f'{len(worker_ids)} трудников удалено из избранного'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
 @app.route('/blacklist')
 @login_required
 def blacklist():
