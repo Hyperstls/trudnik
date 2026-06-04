@@ -32,51 +32,55 @@
 
         <div class="space-y-4">
             {% for job in jobs %}
-            <div class="card bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-start gap-3 hover:shadow-md transition-all">
-                <input type="checkbox" name="job_ids" value="{{ job.id }}" class="job-checkbox mt-1 rounded border-gray-300 text-gold focus:ring-gold">
-                <div class="flex-1">
-                    <div class="flex justify-between items-start">
-                        <a href="/jobs/{{ job.id }}" class="block flex-1">
-                            <h3 class="font-semibold text-lg text-gray-900">{{ job.organization_name }}</h3>
-                            <p class="text-sm text-gray-500">{{ job.date_time[:16] }} · {{ job.payment_amount }} ₽</p>
-                            <p class="text-sm mt-1">
-                                {% if job.status == 'open' %}<span class="text-emerald-600 font-medium">Открыто</span>
-                                {% elif job.status == 'in_progress' %}<span class="text-blue-600 font-medium">В работе</span>
-                                {% elif job.status == 'active' %}<span class="text-blue-600 font-medium">Активно</span>
-                                {% elif job.status == 'payment_pending' %}<span class="text-yellow-600 font-medium">Ожидает оплаты</span>
-                                {% elif job.status == 'paid' %}<span class="text-green-600 font-medium">Оплачено</span>
-                                {% elif job.status == 'completed' %}<span class="text-green-600 font-medium">Завершено</span>
-                                {% elif job.status == 'cancelled' %}<span class="text-red-600 font-medium">Отозвано</span>
-                                {% else %}{{ job.status }}{% endif %}
-                                {% if job.application_count is defined and job.application_count > 0 %}
-                                · <span class="text-gray-600">{{ job.application_count }} откликов</span>
-                                {% endif %}
-                                {% if job.max_workers and job.max_workers > 1 %}
-                                · <span class="text-gray-600">{{ job.current_workers }}/{{ job.max_workers }} мест</span>
-                                {% endif %}
-                            </p>
-                        </a>
-                            <div class="flex flex-col gap-1 text-right">
-                                {% if job.status in ['open', 'cancelled'] %}
-                                <form action="/repost-job/{{ job.id }}" method="post" class="inline" onclick="event.stopPropagation();">
-                                    <button type="submit" class="text-sm text-green-600 hover:text-green-800 font-medium">Дублировать</button>
-                                </form>
-                                {% endif %}
-                                {% if job.status == 'open' %}
-                                <form action="/cancel-job/{{ job.id }}" method="post" class="inline" onclick="event.stopPropagation();">
-                                    <button type="submit" class="text-sm text-yellow-600 hover:text-yellow-800 font-medium">Отозвать</button>
-                                </form>
-                                {% elif job.status == 'cancelled' %}
-                                <form action="/restore-job/{{ job.id }}" method="post" class="inline" onclick="event.stopPropagation();">
-                                    <button type="submit" class="text-sm text-emerald-600 hover:text-emerald-800 font-medium">Вернуть</button>
-                                </form>
-                                {% endif %}
-                                {% if job.status in ['open', 'cancelled'] %}
-                                <form action="/delete-job/{{ job.id }}" method="post" class="inline" onsubmit="return confirm('Удалить задание безвозвратно?');" onclick="event.stopPropagation();">
-                                    <button type="submit" class="text-sm text-red-500 hover:text-red-700 font-medium">Удалить</button>
-                                </form>
-                                {% endif %}
-                            </div>
+            <div class="card bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                <!-- Row 1: Checkbox и основная информация -->
+                <div class="flex items-start gap-3">
+                    <input type="checkbox" name="job_ids" value="{{ job.id }}" class="job-checkbox mt-1 rounded border-gray-300 text-gold focus:ring-gold">
+                    <div class="flex-1">
+                        <div class="flex justify-between items-start">
+                            <a href="/jobs/{{ job.id }}" class="block flex-1">
+                                <h3 class="font-semibold text-lg text-gray-900">{{ job.organization_name }}</h3>
+                                <p class="text-sm text-gray-500">{{ job.date_time[:16] }} · {{ job.payment_amount }} ₽</p>
+                                <p class="text-sm mt-1">
+                                    {% if job.status == 'open' %}<span class="text-emerald-600 font-medium">Открыто</span>
+                                    {% elif job.status == 'in_progress' %}<span class="text-blue-600 font-medium">В работе</span>
+                                    {% elif job.status == 'active' %}<span class="text-blue-600 font-medium">Активно</span>
+                                    {% elif job.status == 'payment_pending' %}<span class="text-yellow-600 font-medium">Ожидает оплаты</span>
+                                    {% elif job.status == 'paid' %}<span class="text-green-600 font-medium">Оплачено</span>
+                                    {% elif job.status == 'completed' %}<span class="text-green-600 font-medium">Завершено</span>
+                                    {% elif job.status == 'cancelled' %}<span class="text-red-600 font-medium">Отозвано</span>
+                                    {% else %}{{ job.status }}{% endif %}
+                                    {% if job.application_count is defined and job.application_count > 0 %}
+                                    · <span class="text-gray-600">{{ job.application_count }} откликов</span>
+                                    {% endif %}
+                                    {% if job.max_workers and job.max_workers > 1 %}
+                                    · <span class="text-gray-600">{{ job.current_workers }}/{{ job.max_workers }} мест</span>
+                                    {% endif %}
+                                </p>
+                            </a>
+                        </div>
+                        <!-- Row 2: Кнопки действий -->
+                        <div class="flex flex-wrap gap-2 mt-3 ml-6">
+                            {% if job.status in ['open', 'cancelled'] %}
+                            <button type="button" onclick="duplicateJob('{{ job.id }}')" class="text-sm text-green-600 hover:text-green-800 font-medium px-3 py-1.5 rounded hover:bg-green-50 transition-colors">
+                                Дублировать
+                            </button>
+                            {% endif %}
+                            {% if job.status == 'open' %}
+                            <button type="button" onclick="cancelJob('{{ job.id }}')" class="text-sm text-yellow-600 hover:text-yellow-800 font-medium px-3 py-1.5 rounded hover:bg-yellow-50 transition-colors">
+                                Отозвать
+                            </button>
+                            {% elif job.status == 'cancelled' %}
+                            <button type="button" onclick="restoreJob('{{ job.id }}')" class="text-sm text-emerald-600 hover:text-emerald-800 font-medium px-3 py-1.5 rounded hover:bg-emerald-50 transition-colors">
+                                Вернуть
+                            </button>
+                            {% endif %}
+                            {% if job.status in ['open', 'cancelled'] %}
+                            <button type="button" onclick="deleteJob('{{ job.id }}')" class="text-sm text-red-500 hover:text-red-700 font-medium px-3 py-1.5 rounded hover:bg-red-50 transition-colors">
+                                Удалить
+                            </button>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -116,5 +120,98 @@
     });
 
     checkboxes.forEach(cb => cb.addEventListener('change', updateCount));
+
+    // Функции для действий над отдельными заданиями
+    function duplicateJob(jobId) {
+        if (confirm('Дублировать задание?')) {
+            fetch(`/repost-job/${jobId}`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                alert('Произошла ошибка при дублировании задания');
+            });
+        }
+    }
+
+    function cancelJob(jobId) {
+        if (confirm('Отозвать задание?')) {
+            fetch(`/cancel-job/${jobId}`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                alert('Произошла ошибка при отзыве задания');
+            });
+        }
+    }
+
+    function restoreJob(jobId) {
+        if (confirm('Вернуть задание?')) {
+            fetch(`/restore-job/${jobId}`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                alert('Произошла ошибка при возврате задания');
+            });
+        }
+    }
+
+    function deleteJob(jobId) {
+        if (confirm('Удалить задание безвозвратно?')) {
+            fetch(`/delete-job/${jobId}`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                alert('Произошла ошибка при удалении задания');
+            });
+        }
+    }
 </script>
 {% endblock %}

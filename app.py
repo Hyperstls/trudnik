@@ -532,8 +532,43 @@ def verify_employer():
 @login_required
 @role_required('employer')
 def job_new():
-    """Дубликат create-job для совместимости с шаблонами"""
-    return create_job()
+    """Маршрут для создания задания через шаблон job_new.html"""
+    if request.method == 'POST':
+        try:
+            job_data = {
+                'employer_id': session['user_id'],
+                'organization_name': request.form.get('title') or 'Храм',
+                'org_description': '',
+                'object_description': '',
+                'work_type': '',
+                'detailed_description': request.form.get('description', ''),
+                'date_time': datetime.now().isoformat(),
+                'payment_amount': float(request.form.get('payment') or 0),
+                'address': request.form.get('address', ''),
+                'city': request.form.get('city', ''),
+                'lat': float(request.form.get('latitude') or 55.75),
+                'lng': float(request.form.get('longitude') or 37.61),
+                'preferred_religion': 'не важно',
+                'max_workers': int(request.form.get('max_workers', 1)),
+                'current_workers': 0,
+            }
+            
+            app.logger.info(f"Creating job from job_new: {job_data}")
+            
+            resp = supabase_request('POST', 'jobs', json=job_data)
+            
+            if resp.ok:
+                flash('Задание опубликовано', 'success')
+                return redirect(url_for('my_jobs'))
+            else:
+                error_text = resp.text if hasattr(resp, 'text') else str(resp)
+                flash(f'Ошибка создания задания: {error_text}', 'danger')
+        except Exception as e:
+            error_details = traceback.format_exc()
+            app.logger.error(f"Error creating job: {error_details}")
+            flash(f'Ошибка сервера: {str(e)}', 'danger')
+    
+    return render_template('job_new.html', yandex_api_key=app.config['YANDEX_MAPS_API_KEY'])
 
 
 # ──────────────────────────────────────────────
@@ -548,17 +583,17 @@ def create_job():
         try:
             job_data = {
                 'employer_id': session['user_id'],
-                'organization_name': request.form.get('organization_name') or 'Храм',
+                'organization_name': request.form.get('organization_name') or request.form.get('title') or 'Храм',
                 'org_description': request.form.get('org_description', ''),
                 'object_description': request.form.get('object_description', ''),
                 'work_type': request.form.get('work_type', ''),
-                'detailed_description': request.form.get('detailed_description', ''),
-                'date_time': f"{request.form['date']}T{request.form['time']}:00",
-                'payment_amount': float(request.form['payment']),
+                'detailed_description': request.form.get('detailed_description') or request.form.get('description', ''),
+                'date_time': f"{request.form['date']}T{request.form['time']}:00" if request.form.get('date') and request.form.get('time') else datetime.now().isoformat(),
+                'payment_amount': float(request.form.get('payment') or 0),
                 'address': request.form.get('address', ''),
                 'city': request.form.get('city', ''),
-                'lat': float(request.form.get('lat', 55.75)),
-                'lng': float(request.form.get('lng', 37.61)),
+                'lat': float(request.form.get('lat') or request.form.get('latitude') or 55.75),
+                'lng': float(request.form.get('lng') or request.form.get('longitude') or 37.61),
                 'preferred_religion': request.form.get('preferred_religion', 'не важно'),
                 'max_workers': int(request.form.get('max_workers', 1)),
                 'current_workers': 0,
@@ -576,12 +611,18 @@ def create_job():
                 flash('Задание опубликовано', 'success')
                 return redirect(url_for('my_jobs'))
             else:
-                flash(f'Ошибка создания задания: {resp.text}', 'danger')
+                error_text = resp.text if hasattr(resp, 'text') else str(resp)
+                flash(f'Ошибка создания задания: {error_text}', 'danger')
+                return render_template('job_new.html', yandex_api_key=app.config['YANDEX_MAPS_API_KEY'], error_message=error_text)
         except Exception as e:
             # Логирование ошибки
             error_details = traceback.format_exc()
             app.logger.error(f"Error creating job: {error_details}")
             flash(f'Ошибка сервера: {str(e)}', 'danger')
+    
+    # Определить, какой шаблон использовать
+    if request.path == '/job/new':
+        return render_template('job_new.html', yandex_api_key=app.config['YANDEX_MAPS_API_KEY'])
     return render_template('create_job.html', yandex_api_key=app.config['YANDEX_MAPS_API_KEY'])
 
 
@@ -1017,10 +1058,16 @@ def repost_job(job_id):
     if resp.ok and resp.json():
         new_job = copy_job(resp.json()[0])
         supabase_request('POST', 'jobs', json=new_job)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': True, 'message': 'Задание дублировано'})
         flash('Задание дублировано', 'success')
     else:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
         flash('Задание не найдено', 'danger')
     
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': True})
     return redirect(url_for('my_jobs'))
 
 
@@ -1029,7 +1076,11 @@ def repost_job(job_id):
 @role_required('employer')
 def cancel_job(job_id):
     supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': True, 'message': 'Задание отозвано'})
     flash('Задание отозвано', 'success')
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': True})
     return redirect(url_for('my_jobs'))
 
 
@@ -1038,7 +1089,11 @@ def cancel_job(job_id):
 @role_required('employer')
 def restore_job(job_id):
     supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'open'})
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': True, 'message': 'Задание восстановлено'})
     flash('Задание восстановлено', 'success')
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': True})
     return redirect(url_for('my_jobs'))
 
 
@@ -1047,7 +1102,11 @@ def restore_job(job_id):
 @role_required('employer')
 def delete_job(job_id):
     supabase_request('DELETE', f'jobs?id=eq.{job_id}')
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': True, 'message': 'Задание удалено'})
     flash('Задание удалено', 'success')
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': True})
     return redirect(url_for('my_jobs'))
 
 
