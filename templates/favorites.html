@@ -85,6 +85,15 @@ function updateSelectedCount() {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Favorites page loaded');
     updateSelectedCount();
+    
+    // Проверить наличие карточек и удалить тех, у кого нет workerId
+    const cards = document.querySelectorAll('.card');
+    cards.forEach(card => {
+        if (!card.dataset.workerId) {
+            console.log('Removing card without workerId');
+            card.style.display = 'none';
+        }
+    });
 });
 
 document.addEventListener('change', function(e) {
@@ -97,6 +106,7 @@ function toggleFavorite(btn) {
     // Получить workerId из data-атрибута карточки
     const card = btn.closest('.card');
     if (!card) {
+        console.log('toggleFavorite: card not found');
         alert('Ошибка: не найдена карточка трудника');
         return;
     }
@@ -105,35 +115,69 @@ function toggleFavorite(btn) {
     console.log('toggleFavorite workerId:', workerId);
     
     if (!workerId) {
+        console.log('toggleFavorite: workerId is empty');
         alert('Ошибка: не удалось определить ID трудника');
         return;
     }
     
-    // Удаляем из избранного
-    fetch('/api/favorites/remove', {
+    // Проверяем статус - возможно трудник уже удален из избранного
+    fetch('/api/favorites/check', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ worker_id: workerId })
     })
     .then(response => response.json())
     .then(data => {
-        console.log('Remove response:', data);
+        console.log('Check favorite status:', data);
         
-        if (data.success) {
-            // Удалить карточку из DOM
+        if (!data.success) {
+            alert('Ошибка проверки статуса: ' + (data.error || 'Не удалось определить статус'));
+            return;
+        }
+        
+        // Если трудник уже не в избранном, просто удаляем карточку из DOM
+        if (!data.is_favorited) {
+            alert('Этот трудник уже удален из избранного');
             const card = btn.closest('.card');
             if (card) {
                 card.style.opacity = '0';
                 card.style.transition = 'opacity 0.3s';
-                setTimeout(() => {
-                    card.remove();
-                    updateSelectedCount();
-                }, 300);
+                setTimeout(() => card.remove(), 300);
             }
-            alert('Трудник удалён из избранного');
-        } else {
-            alert('Ошибка: ' + (data.error || 'Не удалось удалить'));
+            updateSelectedCount();
+            return;
         }
+        
+        // Удаляем из избранного
+        fetch('/api/favorites/remove', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ worker_id: workerId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Remove response:', data);
+            
+            if (data.success) {
+                // Удалить карточку из DOM
+                const card = btn.closest('.card');
+                if (card) {
+                    card.style.opacity = '0';
+                    card.style.transition = 'opacity 0.3s';
+                    setTimeout(() => {
+                        card.remove();
+                        updateSelectedCount();
+                    }, 300);
+                }
+                alert('Трудник удалён из избранного');
+            } else {
+                alert('Ошибка: ' + (data.error || 'Не удалось удалить'));
+            }
+        })
+        .catch(error => { 
+            alert('Ошибка сети'); 
+            console.error(error); 
+        });
     })
     .catch(error => { 
         alert('Ошибка сети'); 
