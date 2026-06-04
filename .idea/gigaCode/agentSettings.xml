@@ -2056,6 +2056,69 @@
         <Execute>
           <option name="pattern" value="git status &amp;&amp; git log -n 3" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="git add .git_commit_msg" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git commit -m &quot;fix: update commit message format&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git commit -m &quot;chore: update plan and commit message&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add .gigacode/plans/1780484459834-curious-river.plan.md" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git commit -m &quot;refactor: update plan file with deploy instructions&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git commit -F .git_commit_msg" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add deploy_pythonanywhere.bat &amp;&amp; git commit -m &quot;chore: add deploy script for PythonAnywhere&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add deploy_pythonanywhere.bat" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git commit -m &quot;chore: add deploy script for PythonAnywhere&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git push" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add . &amp;&amp; git commit -F .git_commit_msg &amp;&amp; git push" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git log -n 7 --oneline" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git log -n 8 --oneline" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="ls -la deploy*.sh deploy*.bat DEPLOY*.txt 2&gt;/dev/null || dir deploy*.sh deploy*.bat DEPLOY*.txt" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git log -n 9 --oneline" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git log --oneline | head -5" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git log -5 --oneline" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir *.bat *.sh *.txt *.md 2&gt;/dev/null | findstr /v &quot;archive&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir /b *.bat *.sh *.txt *.md" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir /b .*" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir /b migrations/*.sql" />
+        </Execute>
       </list>
     </option>
   </component>
