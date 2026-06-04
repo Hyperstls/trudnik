@@ -29,8 +29,8 @@ CREATE TABLE IF NOT EXISTS ratings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     rated_user_id UUID REFERENCES auth.users(id) NOT NULL,
     rater_user_id UUID REFERENCES auth.users(id) NOT NULL,
-    rating_type VARCHAR(20) NOT NULL CHECK (rating_type IN ('worker', 'employer')), -- Кто оценивается
-    target_type VARCHAR(20) NOT NULL CHECK (target_type IN ('worker', 'employer')),   -- Кто оценивает
+    rating_type VARCHAR(20) NOT NULL CHECK (rating_type IN ('worker', 'employer')),
+    target_type VARCHAR(20) NOT NULL CHECK (target_type IN ('worker', 'employer')),
     rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
     comment TEXT,
     shift_id UUID REFERENCES shifts(id),
@@ -44,16 +44,11 @@ CREATE INDEX IF NOT EXISTS idx_ratings_rater_user ON ratings(rater_user_id);
 -- ============================================
 -- 7. Таблица notifications (уведомления)
 -- ============================================
+-- Создать таблицу только если она не существует
 CREATE TABLE IF NOT EXISTS notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users(id) NOT NULL,
-    type VARCHAR(50) NOT NULL CHECK (type IN (
-        'job_created', 'job_updated', 'job_cancelled', 'job_deleted',
-        'application_received', 'application_accepted', 'application_rejected',
-        'shift_started', 'shift_completed', 'shift_confirmed', 'shift_disputed',
-        'payment_received', 'payment_sent', 'rating_received', ' dispute_started',
-        'dispute_resolved'
-    )),
+    type VARCHAR(50) NOT NULL,
     title TEXT NOT NULL,
     message TEXT,
     job_id UUID REFERENCES jobs(id),
@@ -66,3 +61,15 @@ CREATE TABLE IF NOT EXISTS notifications (
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read);
 CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at);
+
+-- Добавить столбец is_read если он не существует
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'notifications' AND column_name = 'is_read'
+    ) THEN
+        ALTER TABLE notifications ADD COLUMN is_read BOOLEAN DEFAULT FALSE;
+        CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read);
+    END IF;
+END $$;
