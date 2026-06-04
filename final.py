@@ -1,8 +1,8 @@
 import subprocess
 
 commands = [
-    ["git", "add", "DEPLOY_SUMMARY.txt"],
-    ["git", "commit", "-m", "docs: deploy summary"],
+    ["git", "add", "-A"],
+    ["git", "commit", "-m", "final: cleanup"],
     ["git", "push", "origin", "main"],
 ]
 
