@@ -604,7 +604,7 @@ def create_job():
             'work_type': request.form.get('work_type', ''),
             'detailed_description': request.form.get('detailed_description', ''),
             'date_time': f"{request.form['date']}T{request.form['time']}:00",
-            'payment_amount': float(request.form['payment']),
+            'payment_amount': float(request.form.get('payment') or 0),
             'address': request.form.get('address', ''),
             'city': request.form.get('city', ''),
             'lat': float(request.form.get('lat', 55.75)),

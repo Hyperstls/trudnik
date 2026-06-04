@@ -2215,6 +2215,24 @@
         <Execute>
           <option name="pattern" value="python archive/auto_fix_agent.py &quot;Обнови сайт и проверь поле max_workers&quot;" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="dir templates/notifications.html" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="dir templates/*.html | findstr /v &quot;.git&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /s /i &quot;create_job&quot; *.py templates/*.html 2&gt;/dev/null | findstr /v &quot;archive&quot; | findstr /v &quot;.pyc&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /s /i &quot;create_job&quot; *.py 2&gt;/dev/null" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /s /i &quot;create_job&quot; app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /s /i &quot;create_job&quot; templates/*.html" />
+        </Execute>
       </list>
     </option>
   </component>
