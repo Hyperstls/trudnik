@@ -13,7 +13,7 @@
         </div>
         
         {% for item in items %}
-        <div class="card bg-white rounded-2xl shadow-sm border border-gray-100 p-4 hover:shadow-md hover:-translate-y-0.5" data-worker-id="{{ item.id }}">
+        <div class="card bg-white rounded-2xl shadow-sm border border-gray-100 p-4 hover:shadow-md hover:-translate-y-0.5 worker-item-{{ item.id }}">
             <div class="flex items-start gap-3">
                 <input type="checkbox" class="favorite-checkbox w-5 h-5 text-red-500 rounded border-gray-300" value="{{ item.id }}" data-worker-id="{{ item.id }}">
                 <div class="flex-1">
@@ -92,16 +92,21 @@ function toggleFavorite(btn, workerId) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                btn.classList.remove('bg-red-500', 'hover\\:bg-red-600');
-                btn.classList.add('bg-yellow-500', 'hover\\:bg-yellow-600');
-                btn.querySelector('.favorite-icon').textContent = '⭐';
-                btn.querySelector('.favorite-text').textContent = 'В избранное';
-                
-                // Снять чекбокс
-                const checkbox = document.querySelector(`input[value="${workerId}"]`);
-                if (checkbox) checkbox.checked = false;
-                updateSelectedCount();
-                
+                // Удалить карточку из DOM
+                const card = btn.closest('.worker-item-' + workerId);
+                if (card) {
+                    card.style.opacity = '0';
+                    card.style.transition = 'opacity 0.3s';
+                    setTimeout(() => {
+                        card.remove();
+                        updateSelectedCount();
+                    }, 300);
+                } else {
+                    // Если карточка не найдена, просто убрать чекбокс
+                    const checkbox = document.querySelector('input[value="' + workerId + '"]');
+                    if (checkbox) checkbox.checked = false;
+                    updateSelectedCount();
+                }
                 alert('Трудник удалён из избранного');
             } else {
                 alert('Ошибка: ' + (data.error || 'Не удалось удалить'));
@@ -130,8 +135,19 @@ function removeSelectedFavorites() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                // Удалить карточки из DOM без перезагрузки
+                workerIds.forEach(workerId => {
+                    const card = document.querySelector('.worker-item-' + workerId);
+                    if (card) {
+                        card.style.opacity = '0';
+                        card.style.transition = 'opacity 0.3s';
+                        setTimeout(() => {
+                            card.remove();
+                        }, 300);
+                    }
+                });
+                updateSelectedCount();
                 alert(data.message);
-                location.reload();
             } else {
                 alert('Ошибка: ' + (data.error || 'Не удалось удалить'));
             }
