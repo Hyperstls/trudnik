@@ -1,8 +1,8 @@
 import subprocess
 
 commands = [
-    ["git", "add", "app.py"],
-    ["git", "commit", "-m", "fix: return job_new.html for GET requests"],
+    ["git", "add", "-A"],
+    ["git", "commit", "-m", "fix: cleanup"],
     ["git", "push", "origin", "main"],
 ]
 

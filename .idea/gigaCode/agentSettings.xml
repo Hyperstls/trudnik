@@ -1642,6 +1642,129 @@
         <Execute>
           <option name="pattern" value="findstr &quot;max_workers&quot; C:\Users\s.prokopenko\PycharmProjects\trudnik\templates\job_new.html" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git status" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git add ." />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git commit -m &quot;feat: Добавлено поле max_workers и исправлена кнопка Дублировать&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git commit -m &quot;feat: Add max_workers field and fix duplicate button&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git commit -m &quot;feat: max_workers&quot; -m &quot;Added max_workers field, fixed duplicate button, AJAX handlers&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git commit -m &quot;feat: max_workers field, fix duplicate button, AJAX handlers&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git diff --cached --stat" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git reset HEAD ." />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git add app.py templates/job_new.html" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git commit -m &quot;feat: max_workers field and duplicate button fix&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git diff --cached" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git commit -m &quot;feat: max_workers and fix duplicate&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git log --oneline -1" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git reset --soft HEAD~1" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git reset HEAD . &amp;&amp; git add app.py templates/job_new.html templates/my_jobs.html" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git commit -m &quot;fix: max_workers and duplicate button&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -c &quot;import subprocess; subprocess.run(['git', 'commit', '-m', 'fix: max_workers and duplicate button'])&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; python commit_helper.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; python push_helper.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; python git_push.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; del git_push.py push_helper.py commit_helper.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; del git_push.py push_helper.py commit_helper.py 2&gt;nul &amp; dir *.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git pull origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git restore --staged git_push.py push_helper.py &amp;&amp; git restore git_push.py push_helper.py commit_helper.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; del git_push.py push_helper.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git add -A" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git commit -m &quot;cleanup: remove temp files&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git rebase --abort" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git push origin main --force-with-lease" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; del git_push.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; python final_push.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; del final_push.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; python deploy_helper.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; del deploy_helper.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; python cleanup.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git add DEPLOY_SUMMARY.txt &amp;&amp; git commit -m &quot;docs: deploy summary&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; python final_commit.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; del final_commit.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; python final.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; del final.py &amp;&amp; git status" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git add final.py &amp;&amp; git commit -m &quot;cleanup&quot; &amp;&amp; git push origin main" />
+        </Execute>
       </list>
     </option>
   </component>
