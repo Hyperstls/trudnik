@@ -2041,6 +2041,21 @@
         <Execute>
           <option name="pattern" value="git add archive/ &amp;&amp; git add app.py &amp;&amp; git commit --file=.git_commit_msg &amp;&amp; git push origin main" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="git commit --file=.git_commit_msg &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git commit -m &quot;refactor: move unused files to archive&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git add -A" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git commit -m &quot;refactor: move unused files to archive folder&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git status &amp;&amp; git log -n 3" />
+        </Execute>
       </list>
     </option>
   </component>
