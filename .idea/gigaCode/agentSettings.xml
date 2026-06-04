@@ -1765,6 +1765,27 @@
         <Execute>
           <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git add final.py &amp;&amp; git commit -m &quot;cleanup&quot; &amp;&amp; git push origin main" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git log --oneline -3" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; python fix_commit.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; del fix_commit.py &amp;&amp; git status" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; python final_fix.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; del final_fix.py &amp;&amp; git status" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git add final_fix.py &amp;&amp; git commit -m &quot;cleanup&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git pull --abort 2&gt;nul &amp; echo Done" />
+        </Execute>
       </list>
     </option>
   </component>
