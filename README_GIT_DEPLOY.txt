@@ -19,7 +19,7 @@
    # Если возникли конфликты:
    git status
    # Просмотрите файлы с конфликтами и разрешите их вручную
-   # или используйте: git checkout --theirs <file> (для ours)
+   # или используйте: git checkout --theirs <file>
    git add .
    git commit -m "Merge conflicts resolved"
    
@@ -47,10 +47,12 @@ git config --global user.email "hyperstls@gmail.com"
 git config --global user.name "Hyperstls"
 git config pull.rebase false
 git pull
-# Разрешите конфликты:
+# Разрешите конфликты (если есть):
 git status
 git add .
 git commit -m "Merge conflicts resolved"
 touch app.py.wsgi
 
 Просто вставьте их по одной в консоль PythonAnywhere и нажимайте Enter.
+
+**Важно:** Если `git pull` показывает "Already up to date", значит изменения уже загружены, просто выполните `touch app.py.wsgi`.
