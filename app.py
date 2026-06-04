@@ -576,11 +576,15 @@ def job_new():
             
             resp = supabase_request('POST', 'jobs', json=job_data)
             
+            app.logger.info(f"Response status: {resp.status_code}, ok: {resp.ok}")
+            if not resp.ok:
+                app.logger.error(f"Response text: {resp.text}")
+            
             if resp.ok:
                 flash('Задание опубликовано', 'success')
                 return redirect(url_for('my_jobs'))
             else:
-                flash('Ошибка создания задания', 'danger')
+                flash(f'Ошибка создания задания: {resp.text}', 'danger')
         except Exception as e:
             flash('Ошибка сервера', 'danger')
     
