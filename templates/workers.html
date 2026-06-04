@@ -10,9 +10,9 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {% for worker in workers %}
             <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow worker-card"
-                 onclick="window.location.href='/profile/{{ worker.id }}'"
                  style="cursor: pointer;"
-                 data-worker-id="{{ worker.id }}">
+                 data-worker-id="{{ worker.id }}"
+                 onclick="event.stopPropagation(); window.location.href='/profile/{{ worker.id }}'">
 
                 <div class="flex items-center space-x-4">
                     <img src="{{ worker.photo_url or '/static/default-avatar.png' }}"
@@ -88,6 +88,9 @@ function toggleFavorite(e, btn, workerId) {
     
     // Предотвращаем всплытие события
     e.stopPropagation();
+    e.preventDefault();
+    
+    console.log('After stopPropagation - should not navigate');
     
     // Получить текущий статус кнопки
     const initialStatus = btn.dataset.initialStatus;
