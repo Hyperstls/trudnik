@@ -61,15 +61,3 @@ CREATE TABLE IF NOT EXISTS notifications (
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read);
 CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at);
-
--- Добавить столбец is_read если он не существует
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns 
-        WHERE table_name = 'notifications' AND column_name = 'is_read'
-    ) THEN
-        ALTER TABLE notifications ADD COLUMN is_read BOOLEAN DEFAULT FALSE;
-        CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read);
-    END IF;
-END $$;
