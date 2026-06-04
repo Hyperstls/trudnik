@@ -81,27 +81,10 @@
 
 {% block scripts %}
 <script>
-// Проверить, добавлен ли трудник в избранное
-function checkFavoriteStatus(workerId, btn) {
-    fetch('/api/favorites/check', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ worker_id: workerId })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success && data.is_favorited) {
-            btn.classList.remove('bg-yellow-500', 'hover\:bg-yellow-600');
-            btn.classList.add('bg-red-500', 'hover\:bg-red-600');
-            btn.querySelector('.favorite-icon').textContent = '❤️';
-            btn.querySelector('.favorite-text').textContent = 'Удалить из избранного';
-        }
-    })
-    .catch(error => console.error('Ошибка проверки избранного:', error));
-}
-
 // Переключение избранного
 toggleFavorite = function(btn, workerId) {
+    console.log('toggleFavorite called for workerId:', workerId);
+    
     fetch('/api/favorites/check', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -109,22 +92,27 @@ toggleFavorite = function(btn, workerId) {
     })
     .then(response => response.json())
     .then(data => {
+        console.log('Check response:', data);
+        
         if (!data.success) {
             alert('Ошибка проверки: ' + (data.error || 'Не удалось определить статус'));
             return;
         }
         
         const isFavorited = data.is_favorited;
+        console.log('Is favorited:', isFavorited);
+        
         const actionUrl = isFavorited ? '/api/favorites/remove' : '/api/favorites/add';
-        const method = 'POST';
         
         fetch(actionUrl, {
-            method: method,
+            method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ worker_id: workerId })
         })
         .then(response => response.json())
         .then(data => {
+            console.log('Action response:', data);
+            
             if (data.success) {
                 // Обновить кнопку
                 if (isFavorited) {
@@ -144,17 +132,44 @@ toggleFavorite = function(btn, workerId) {
                 alert('Ошибка: ' + (data.error || 'Не удалось изменить избранное'));
             }
         })
-        .catch(error => { alert('Ошибка сети'); });
+        .catch(error => {
+            console.error('Fetch error:', error);
+            alert('Ошибка сети');
+        });
     })
-    .catch(error => { alert('Ошибка сети'); });
+    .catch(error => {
+        console.error('Fetch error:', error);
+        alert('Ошибка сети');
+    });
 }
 
-// Проверить статус избранного для всех трудников при загрузке страницы
+// Проверить статус избранного при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOMContentLoaded - checking favorite status for all workers');
     const buttons = document.querySelectorAll('.favorite-btn');
+    console.log('Found', buttons.length, 'favorite buttons');
+    
     buttons.forEach(btn => {
         const workerId = btn.dataset.workerId;
-        checkFavoriteStatus(workerId, btn);
+        console.log('Checking worker:', workerId);
+        
+        fetch('/api/favorites/check', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ worker_id: workerId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Check result for', workerId, ':', data);
+            
+            if (data.success && data.is_favorited) {
+                btn.classList.remove('bg-yellow-500', 'hover\:bg-yellow-600');
+                btn.classList.add('bg-red-500', 'hover\:bg-red-600');
+                btn.querySelector('.favorite-icon').textContent = '❤️';
+                btn.querySelector('.favorite-text').textContent = 'Удалить из избранного';
+            }
+        })
+        .catch(error => console.error('Ошибка проверки избранного для', workerId, ':', error));
     });
 });
 </script>
