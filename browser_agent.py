@@ -53,13 +53,13 @@ HTML-код (фрагмент): {html_snippet}
 """
         # Запрашиваем DeepSeek
         ai_response = ask_deepseek(prompt)
-        print("DeepSeek ответил:", ai_response)
+        print("[DEEPSEEK] Ответ received:", ai_response)
 
         # Пробуем распарсить JSON
         try:
             action_data = json.loads(ai_response)
         except Exception:
-            print("❌ Не удалось распарсить ответ от DeepSeek. Ответ:")
+            print("[ERROR] Не удалось распарсить ответ от DeepSeek. Ответ:")
             print(ai_response)
             browser.close()
             return
@@ -69,7 +69,7 @@ HTML-код (фрагмент): {html_snippet}
         value = action_data.get("value", "")
         message = action_data.get("message", "")
 
-        print(f"🤖 {message}")
+        print(f"[INFO] {message}")
 
         # Выполняем действие
         try:
@@ -86,7 +86,7 @@ HTML-код (фрагмент): {html_snippet}
             else:
                 print(f"⚠️ Неизвестное действие: {action}")
         except Exception as e:
-            print(f"❌ Ошибка выполнения: {e}")
+            print(f"[ERROR] Ошибка выполнения: {e}")
 
         browser.close()
 
