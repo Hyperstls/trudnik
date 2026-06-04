@@ -1804,6 +1804,66 @@
         <Execute>
           <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git add commit_fix.py &amp;&amp; git commit -m &quot;cleanup&quot; &amp;&amp; git push origin main" />
         </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;max_workers&quot; C:\Users\s.prokopenko\PycharmProjects\trudnik\templates\job_new.html" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr /n &quot;max_workers&quot; C:\Users\s.prokopenko\PycharmProjects\trudnik\app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="findstr &quot;max_workers&quot; C:\Users\s.prokopenko\PycharmProjects\trudnik\app.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git add CHECK_LOGS.txt &amp;&amp; git commit -m &quot;docs: check logs instructions&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; python push_check.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; del push_check.py CHECK_LOGS.txt &amp;&amp; git status" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git add push_check.py CHECK_LOGS.txt &amp;&amp; git commit -m &quot;cleanup&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git add -A &amp;&amp; git commit -m &quot;clean&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; python restore_template.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; del restore_template.py &amp;&amp; git status" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git add restore_template.py &amp;&amp; git commit -m &quot;cleanup&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git add CHECK_TEMPLATE.txt &amp;&amp; git commit -m &quot;docs: check template instructions&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; python push_check2.py" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; del push_check2.py CHECK_TEMPLATE.txt &amp;&amp; git status" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="cd C:\Users\s.prokopenko\PycharmProjects\trudnik &amp;&amp; git add push_check2.py CHECK_TEMPLATE.txt &amp;&amp; git commit -m &quot;cleanup&quot; &amp;&amp; git push origin main" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python browser_agent.py &quot;Нажми на кнопку Войти&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="pip show openai" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="python -m pip show openai" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="ssh hyperstls@ssh.pythonanywhere.com &quot;cat /var/www/trudnik_pythonanywhere_com_wsgi.py&quot;" />
+        </Execute>
+        <Execute>
+          <option name="pattern" value="git show 09a2925:templates/job_new.html | findstr /C:&quot;max_workers&quot;" />
+        </Execute>
       </list>
     </option>
   </component>
