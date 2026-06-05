@@ -61,9 +61,63 @@
                                 ✕ Отклонить
                             </button>
                         </form>
+
+                        <!-- ============================================ -->
+                        <!-- ContactPaywall: кнопка открытия контакта      -->
+                        <!-- ============================================ -->
+                        <div id="contact-section-{{ app.id }}">
+                            {% if app.contact_paid %}
+                                {# Контакты уже оплачены - показываем их #}
+                                <div class="hidden-contact-info mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                    <p class="text-sm font-semibold text-green-800">📞 Контакты открыты</p>
+                                    <div id="worker-contacts-{{ app.id }}">
+                                        {% if app.worker_contacts %}
+                                        <p class="text-sm text-gray-700 mt-1"><strong>ФИО:</strong> {{ app.worker_contacts.full_name or '—' }}</p>
+                                        <p class="text-sm text-gray-700"><strong>Телефон:</strong> {{ app.worker_contacts.phone or '—' }}</p>
+                                        <p class="text-sm text-gray-700"><strong>Email:</strong> {{ app.worker_contacts.email or '—' }}</p>
+                                        {% else %}
+                                        <p class="text-sm text-gray-500">Загрузка контактов...</p>
+                                        {% endif %}
+                                    </div>
+                                    <div class="mt-2 flex gap-2">
+                                        <!-- ActGeneratorButton: PDF акта ГПХ -->
+                                        <a href="/api/act/generate/{{ app.id }}"
+                                           class="inline-block bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors">
+                                            📄 Сгенерировать акт ГПХ
+                                        </a>
+                                    </div>
+                                </div>
+                            {% else %}
+                                {# Контакты скрыты - показываем paywall #}
+                                <button type="button"
+                                        onclick="openPayment('{{ app.id }}', '{{ app.worker.id }}', '{{ app.job_id }}', {{ contact_price }})"
+                                        class="bg-gold text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors">
+                                    🔓 Открыть контакт за {{ contact_price }} ₽
+                                </button>
+                            {% endif %}
+                        </div>
+
                         {% elif app.status == 'accepted' %}
                         <span class="text-green-600 font-medium">Принят</span>
                         <a href="/chat/{{ app.shift_id }}" class="text-blue-600 hover:text-blue-800 font-medium text-sm">💬 Написать</a>
+
+                        <!-- ActGeneratorButton для принятых откликов (с оплаченным контактом) -->
+                        {% if app.contact_paid %}
+                        <a href="/api/act/generate/{{ app.id }}"
+                           class="inline-block bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors">
+                            📄 Акт ГПХ
+                        </a>
+                        {% endif %}
+
+                        <!-- ChequeReminderButton: для исполнителя -->
+                        {% if app.worker.id == current_user_id %}
+                        <button type="button"
+                                onclick="remindCheque('{{ app.id }}')"
+                                class="bg-orange-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-orange-600 transition-colors">
+                            🔔 Напомнить о чеке
+                        </button>
+                        {% endif %}
+
                         {% elif app.status == 'rejected' %}
                         <span class="text-red-600 font-medium">Отклонён</span>
                         {% endif %}
@@ -79,4 +133,159 @@
     </div>
     {% endif %}
 </div>
+
+<!-- ============================================ -->
+<!-- PaymentModal: имитация эквайринга            -->
+<!-- ============================================ -->
+<div id="payment-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl">
+        <h3 class="text-lg font-bold text-gray-900 mb-2">Оплата за раскрытие контакта</h3>
+        <p class="text-sm text-gray-600 mb-4">
+            Вы оплачиваете <strong>информационную услугу</strong> — раскрытие контактных данных исполнителя.
+            Платформа не участвует в расчётах за выполненную работу.
+        </p>
+        <div class="bg-gray-50 p-3 rounded-xl mb-4">
+            <p class="text-sm text-gray-700">Сумма к оплате:</p>
+            <p class="text-2xl font-bold text-burgundy" id="payment-amount-display">290 ₽</p>
+        </div>
+        <!-- Поля карты (заглушка) -->
+        <input type="text" placeholder="Номер карты" value="4242 4242 4242 4242" readonly
+               class="w-full border border-gray-200 p-3 rounded-xl text-sm mb-2 bg-gray-100 text-gray-500">
+        <div class="flex gap-2 mb-4">
+            <input type="text" placeholder="ММ/ГГ" value="12/28" readonly
+                   class="w-1/2 border border-gray-200 p-3 rounded-xl text-sm bg-gray-100 text-gray-500">
+            <input type="text" placeholder="CVC" value="123" readonly
+                   class="w-1/2 border border-gray-200 p-3 rounded-xl text-sm bg-gray-100 text-gray-500">
+        </div>
+        <div class="flex gap-2">
+            <button onclick="closePaymentModal()"
+                    class="flex-1 border border-gray-300 text-gray-700 py-3 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">
+                Отмена
+            </button>
+            <button id="pay-button" onclick="confirmPayment()"
+                    class="flex-1 bg-gold text-white py-3 rounded-xl text-sm font-bold hover:bg-amber-600 transition-colors">
+                Оплатить
+            </button>
+        </div>
+        <p class="text-xs text-gray-400 mt-3 text-center">
+            🔒 Тестовый режим. Нажмите «Оплатить» для симуляции успешного платежа.
+        </p>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- JavaScript для платежей                        -->
+<!-- ============================================ -->
+<script>
+let currentPaymentAppId = null;
+let currentPaymentWorkerId = null;
+let currentPaymentJobId = null;
+let currentPaymentPrice = 290;
+
+function openPayment(appId, workerId, jobId, price) {
+    currentPaymentAppId = appId;
+    currentPaymentWorkerId = workerId;
+    currentPaymentJobId = jobId;
+    currentPaymentPrice = price;
+    document.getElementById('payment-amount-display').textContent = price + ' ₽';
+    document.getElementById('payment-modal').classList.remove('hidden');
+}
+
+function closePaymentModal() {
+    document.getElementById('payment-modal').classList.add('hidden');
+}
+
+async function confirmPayment() {
+    const btn = document.getElementById('pay-button');
+    btn.disabled = true;
+    btn.textContent = 'Обработка...';
+
+    try {
+        // Шаг 1: Создать платёжное намерение
+        const createResp = await fetch('/api/payments/create', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                application_id: currentPaymentAppId,
+                job_id: currentPaymentJobId,
+                worker_id: currentPaymentWorkerId
+            })
+        });
+        const createData = await createResp.json();
+        if (!createData.success) {
+            alert('Ошибка: ' + (createData.error || 'Не удалось создать платёж'));
+            btn.disabled = false;
+            btn.textContent = 'Оплатить';
+            return;
+        }
+
+        // Шаг 2: Подтвердить платёж
+        const confirmResp = await fetch('/api/payments/confirm', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ payment_id: createData.payment_id })
+        });
+        const confirmData = await confirmResp.json();
+        if (confirmData.success) {
+            closePaymentModal();
+
+            // Обновить секцию контактов
+            const contactSection = document.getElementById('contact-section-' + currentPaymentAppId);
+            if (confirmData.worker) {
+                contactSection.innerHTML = `
+                    <div class="hidden-contact-info mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p class="text-sm font-semibold text-green-800">📞 Контакты открыты</p>
+                        <div id="worker-contacts-${currentPaymentAppId}">
+                            <p class="text-sm text-gray-700 mt-1"><strong>ФИО:</strong> ${confirmData.worker.full_name || '—'}</p>
+                            <p class="text-sm text-gray-700"><strong>Телефон:</strong> ${confirmData.worker.phone || '—'}</p>
+                            <p class="text-sm text-gray-700"><strong>Email:</strong> ${confirmData.worker.email || '—'}</p>
+                        </div>
+                        <div class="mt-2">
+                            <a href="/api/act/generate/${currentPaymentAppId}"
+                               class="inline-block bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors">
+                                📄 Сгенерировать акт ГПХ
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Показать предупреждение о переквалификации (если есть)
+            if (confirmData.hire_warning && confirmData.hire_warning.warning) {
+                setTimeout(() => {
+                    alert('⚠️ ' + confirmData.hire_warning.message);
+                }, 500);
+            }
+
+            alert('✅ Контакты открыты! Оплатите работу напрямую и не забудьте чек самозанятого!');
+        } else {
+            alert('Ошибка оплаты: ' + (confirmData.error || 'Попробуйте позже'));
+        }
+    } catch (e) {
+        alert('Ошибка соединения');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Оплатить';
+}
+
+// ============================================
+// ChequeReminderButton
+// ============================================
+async function remindCheque(applicationId) {
+    try {
+        const resp = await fetch('/api/cheque/remind/' + applicationId, {
+            method: 'POST'
+        });
+        const data = await resp.json();
+        if (data.success) {
+            alert('✅ Напоминание отправлено. Не забудьте выставить чек храму в приложении "Мой налог".');
+        } else {
+            alert('Ошибка: ' + (data.error || 'Попробуйте позже'));
+        }
+    } catch (e) {
+        alert('Ошибка соединения');
+    }
+}
+</script>
 {% endblock %}

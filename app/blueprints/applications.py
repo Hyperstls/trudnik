@@ -114,7 +114,7 @@ def my_applications():
 
     user_id = session['user_id']
     resp = supabase_request('GET',
-        f'applications?job.employer_id=eq.{user_id}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,skills,desired_payment),job:jobs(organization_name,date_time,payment_amount,status,current_workers,max_workers)')
+        f'applications?job.employer_id=eq.{user_id}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,skills,desired_payment,inn,phone,email_public),job:jobs(organization_name,date_time,payment_amount,status,current_workers,max_workers)')
     applications = resp.json() if resp.ok else []
 
     worker_ids = [app.get('worker', {}).get('id') for app in applications if app.get('worker', {}).get('id')]
@@ -126,7 +126,26 @@ def my_applications():
             if job_resp.ok and job_resp.json():
                 jobs = {job['id']: job for job in job_resp.json()}
 
-    return render_template('my_applications.html', applications=applications, jobs=jobs)
+    # Получить настройки монетизации
+    from app.services.payment_service import PaymentService
+    monetization_settings = PaymentService.get_settings()
+    contact_price = int(monetization_settings.get('contact_price', 290))
+
+    # Добавить контактные данные для оплаченных откликов (если контакт оплачен)
+    for app_data in applications:
+        if app_data.get('contact_paid') and app_data.get('worker'):
+            # Контакты уже раскрыты — передаём их в шаблон
+            app_data['worker_contacts'] = app_data['worker']
+        else:
+            app_data['worker_contacts'] = None
+            # Маскируем контакты в данных worker для оплаченных
+            if app_data.get('worker'):
+                app_data['worker']['phone'] = '***'
+                app_data['worker']['email_public'] = '***'
+                app_data['worker']['inn'] = '***'
+
+    return render_template('my_applications.html', applications=applications, jobs=jobs,
+                           contact_price=contact_price)
 
 
 @applications_bp.route('/applications/<app_id>/<action>', methods=['POST'])

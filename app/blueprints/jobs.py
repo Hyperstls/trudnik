@@ -8,6 +8,18 @@ from app.utils import calculate_distance, copy_job, supabase_request
 
 jobs_bp = Blueprint('jobs', __name__)
 
+# Юридически значимое: стоп-слова для предотвращения переквалификации
+# в трудовые отношения (ст. 15 ТК РФ)
+STOP_WORDS = ["ставка", "зарплата", "штат", "трудовая", "график", "постоянная работа", "вахта"]
+
+
+def check_stop_words(text):
+    """Проверить текст на наличие стоп-слов. Возвращает список найденных."""
+    if not text:
+        return []
+    text_lower = text.lower()
+    return [word for word in STOP_WORDS if word in text_lower]
+
 
 # ──────────────────────────────────────────────
 # Контекстные процессоры
@@ -29,9 +41,9 @@ def inject_user_role():
     return {'current_user_role': session.get('role')}
 
 
-@jobs_bp.app_context_processor
-def inject_user_id():
-    return {'current_user_id': session.get('user_id')}
+# @jobs_bp.app_context_processor
+# def inject_user_id():
+#     return {'current_user_id': session.get('user_id')}
 
 
 # ──────────────────────────────────────────────
@@ -144,13 +156,30 @@ def job_new():
     """Создание задания (единственный маршрут, заменяет /create-job)"""
     if request.method == 'POST':
         try:
+            title = request.form.get('title') or 'Храм'
+            description = request.form.get('description', '')
+
+            # Юридически значимое действие: проверка стоп-слов для предотвращения
+            # переквалификации в трудовые отношения (ст. 15 ТК РФ)
+            found_in_title = check_stop_words(title)
+            found_in_desc = check_stop_words(description)
+            stop_words_found = found_in_title + found_in_desc
+            if stop_words_found:
+                flash(
+                    f'Обнаружены слова, характерные для трудовых отношений: '
+                    f'{", ".join(stop_words_found)}. '
+                    f'Пожалуйста, опишите разовую услугу.',
+                    'danger'
+                )
+                return render_template('job_new.html', yandex_api_key=current_app.config['YANDEX_MAPS_API_KEY'])
+
             job_data = {
                 'employer_id': session['user_id'],
-                'organization_name': request.form.get('title') or 'Храм',
+                'organization_name': title,
                 'org_description': '',
                 'object_description': '',
                 'work_type': '',
-                'detailed_description': request.form.get('description', ''),
+                'detailed_description': description,
                 'date_time': datetime.now().isoformat(),
                 'payment_amount': float(request.form.get('payment') or 0),
                 'address': request.form.get('address', ''),

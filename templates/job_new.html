@@ -27,12 +27,19 @@
         
         <div>
             <label class="block text-sm font-semibold text-gray-700 mb-1.5">Описание задания</label>
-            <textarea name="description" rows="3" required class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30"></textarea>
+            <textarea name="description" id="job-description" rows="3" required
+                      class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30"
+                      oninput="highlightStopWords()"></textarea>
+            <div id="stop-words-warning" class="hidden mt-2 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-xs">
+                ⚠️ Обнаружены слова, характерные для трудовых отношений.
+                Пожалуйста, опишите разовую услугу.
+            </div>
         </div>
         
         <div>
             <label class="block text-sm font-semibold text-gray-700 mb-1.5">Оплата (₽)</label>
             <input type="number" name="payment" required min="0" class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+            <p class="text-xs text-gray-500 mt-1">Оплата труда производится напрямую исполнителю. Платформа не участвует в расчётах.</p>
         </div>
         
         <div>
@@ -78,5 +85,31 @@ ymaps.ready(function() {
         document.getElementById('lng').value = coords[1];
     });
 });
+</script>
+
+<!-- Стоп-слова: фильтр для предотвращения переквалификации в трудовые отношения -->
+<script>
+const STOP_WORDS = ["ставка", "зарплата", "штат", "трудовая", "график", "постоянная работа", "вахта"];
+
+function highlightStopWords() {
+    const textarea = document.getElementById('job-description');
+    const warning = document.getElementById('stop-words-warning');
+    const text = textarea.value.toLowerCase();
+    let found = false;
+    for (let word of STOP_WORDS) {
+        if (text.includes(word)) {
+            found = true;
+            break;
+        }
+    }
+    warning.classList.toggle('hidden', !found);
+    if (found) {
+        textarea.classList.add('border-red-400', 'bg-red-50');
+        textarea.classList.remove('border-gray-200');
+    } else {
+        textarea.classList.remove('border-red-400', 'bg-red-50');
+        textarea.classList.add('border-gray-200');
+    }
+}
 </script>
 {% endblock %}

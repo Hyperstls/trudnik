@@ -1,20 +1,160 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="p-4">
-    <h2 class="text-xl font-bold mb-4">Заявки на верификацию</h2>
-    {% for user in pending %}
-    <div class="border p-2 flex justify-between items-center mb-2">
-        <div>
-            <p>{{ user.full_name }}</p>
-            {% if user.verification_doc_url %}
-            <a href="{{ user.verification_doc_url }}" target="_blank" class="text-blue-500">Документ</a>
-            {% endif %}
+<div class="p-4 max-w-2xl mx-auto">
+    <h2 class="text-xl font-bold mb-4">Панель администратора</h2>
+
+    <!-- Заявки на верификацию -->
+    <h3 class="text-lg font-semibold mb-2">Заявки на верификацию</h3>
+    {% if pending %}
+    <div class="space-y-2 mb-8">
+        {% for user in pending %}
+        <div class="border p-3 rounded-lg flex justify-between items-center">
+            <div>
+                <p class="font-medium">{{ user.full_name }}</p>
+                {% if user.verification_doc_url %}
+                <a href="{{ user.verification_doc_url }}" target="_blank" class="text-blue-500 text-sm">Документ</a>
+                {% endif %}
+            </div>
+            <div class="flex gap-2">
+                <a href="/admin/approve/{{ user.id }}" class="bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-600">Одобрить</a>
+                <a href="/admin/reject/{{ user.id }}" class="bg-red-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-red-600">Отклонить</a>
+            </div>
         </div>
-        <div class="flex gap-2">
-            <a href="/admin/approve/{{ user.id }}" class="bg-green-500 text-white px-2 py-1 rounded">Одобрить</a>
-            <a href="/admin/reject/{{ user.id }}" class="bg-red-500 text-white px-2 py-1 rounded">Отклонить</a>
-        </div>
+        {% endfor %}
     </div>
-    {% endfor %}
+    {% else %}
+    <p class="text-gray-400 text-sm mb-8">Нет заявок на верификацию</p>
+    {% endif %}
+
+    <!-- Настройки монетизации -->
+    <h3 class="text-lg font-semibold mb-2">Настройки монетизации</h3>
+    <div class="bg-white border border-gray-200 rounded-xl p-4">
+        <form id="monetization-form" class="space-y-4" onsubmit="saveSettings(event)">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1.5">Цена за раскрытие контакта (₽)</label>
+                <input type="number" id="contact-price" value="290" min="1"
+                       class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+                <p class="text-xs text-gray-500 mt-1">Сумма, которую храм платит за доступ к контактам исполнителя</p>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1.5">ИНН самозанятого (владельца)</label>
+                <input type="text" id="owner-inn" value="" maxlength="12" pattern="\d{12}"
+                       class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+                <p class="text-xs text-gray-500 mt-1">ИНН для формирования чеков через «Мой налог»</p>
+            </div>
+            <button type="submit"
+                    class="bg-burgundy text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-[#4A1720] transition-colors">
+                💾 Сохранить
+            </button>
+            <span id="save-status" class="text-sm text-green-600 ml-2 hidden">✓ Сохранено</span>
+        </form>
+    </div>
+
+    <!-- История платежей -->
+    <h3 class="text-lg font-semibold mb-2 mt-8">История платежей</h3>
+    <div id="payments-list" class="space-y-2">
+        <p class="text-gray-400 text-sm">Загрузка...</p>
+    </div>
 </div>
+
+<script>
+// Загрузить настройки монетизации при загрузке страницы
+async function loadSettings() {
+    try {
+        const resp = await fetch('/api/admin/monetization-settings');
+        const data = await resp.json();
+        if (data.success) {
+            document.getElementById('contact-price').value = data.contact_price || '290';
+            document.getElementById('owner-inn').value = data.owner_inn || '';
+        }
+    } catch (e) {
+        console.error('Failed to load settings');
+    }
+}
+
+// Сохранить настройки монетизации
+async function saveSettings(event) {
+    event.preventDefault();
+    const btn = event.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = 'Сохранение...';
+
+    try {
+        const resp = await fetch('/api/admin/monetization-settings', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                contact_price: document.getElementById('contact-price').value,
+                owner_inn: document.getElementById('owner-inn').value
+            })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            const status = document.getElementById('save-status');
+            status.classList.remove('hidden');
+            setTimeout(() => status.classList.add('hidden'), 3000);
+        } else {
+            alert('Ошибка: ' + (data.error || 'Не удалось сохранить'));
+        }
+    } catch (e) {
+        alert('Ошибка соединения');
+    }
+
+    btn.disabled = false;
+    btn.textContent = '💾 Сохранить';
+}
+
+// Загрузить историю платежей
+async function loadPayments() {
+    try {
+        const resp = await fetch('/api/admin/payments');
+        const data = await resp.json();
+        const container = document.getElementById('payments-list');
+
+        if (data.success && data.payments && data.payments.length > 0) {
+            container.innerHTML = data.payments.map(p => `
+                <div class="bg-white border border-gray-200 rounded-lg p-3 text-sm">
+                    <div class="flex justify-between">
+                        <span class="font-medium">${p.amount} ₽</span>
+                        <span class="text-${p.status === 'paid' ? 'green' : 'yellow'}-600">${p.status === 'paid' ? 'Оплачено' : 'Ожидает'}</span>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">ID: ${p.id.slice(0, 8)}... | ${new Date(p.created_at).toLocaleString('ru-RU')}</p>
+                    ${p.transaction_id ? `<p class="text-xs text-gray-400">Транзакция: ${p.transaction_id}</p>` : ''}
+                    ${p.receipts && p.receipts.length > 0 ? `
+                        <div class="mt-2 text-xs text-gray-500">
+                            <p>🧾 Чек: ${p.receipts[0].status || 'отправлен'}</p>
+                            ${p.receipts[0].status === 'failed' ? `
+                                <button onclick="resendReceipt('${p.receipts[0].id}')"
+                                        class="text-blue-600 hover:underline">Переотправить</button>
+                            ` : ''}
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = '<p class="text-gray-400 text-sm">Нет платежей</p>';
+        }
+    } catch (e) {
+        document.getElementById('payments-list').innerHTML = '<p class="text-red-400 text-sm">Ошибка загрузки</p>';
+    }
+}
+
+async function resendReceipt(receiptId) {
+    try {
+        const resp = await fetch('/api/receipts/' + receiptId + '/resend', { method: 'POST' });
+        const data = await resp.json();
+        if (data.success) {
+            alert('✅ Чек переотправлен');
+            loadPayments();
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    } catch (e) {
+        alert('Ошибка соединения');
+    }
+}
+
+loadSettings();
+loadPayments();
+</script>
 {% endblock %}

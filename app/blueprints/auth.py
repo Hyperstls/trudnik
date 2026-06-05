@@ -47,6 +47,19 @@ def register():
         portfolio_link = request.form.get('portfolio_link', '')
         skills_str = request.form.get('skills', '')
 
+        # Юридически значимое действие: валидация ИНН и согласия самозанятого
+        inn = request.form.get('inn', '')
+        is_self_employed = request.form.get('is_self_employed') == 'on'
+
+        if role == 'worker':
+            # Валидация ИНН: 12 цифр
+            if not inn or not inn.isdigit() or len(inn) != 12:
+                flash('Для регистрации как самозанятый требуется ИНН (12 цифр)', 'danger')
+                return render_template('register.html')
+            if not is_self_employed:
+                flash('Вы должны подтвердить, что зарегистрированы как самозанятый', 'danger')
+                return render_template('register.html')
+
         signup_url = f'{SUPABASE_URL}/auth/v1/signup'
         try:
             resp = requests.post(signup_url, json={'email': email, 'password': password},
@@ -62,6 +75,8 @@ def register():
                     'skills': [s.strip() for s in skills_str.split(',') if s.strip()] if skills_str else []
                 }
                 if role == 'worker':
+                    update_data['inn'] = inn
+                    update_data['is_self_employed'] = is_self_employed
                     desired_payment = request.form.get('desired_payment', '0')
                     try:
                         update_data['desired_payment'] = float(desired_payment) if desired_payment else 0

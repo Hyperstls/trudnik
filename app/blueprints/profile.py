@@ -46,6 +46,17 @@ def update_profile():
         except ValueError:
             pass
 
+    # Поля ИНН и самозанятого (юридически значимые данные)
+    inn = request.form.get('inn', '')
+    if inn:
+        if not inn.isdigit() or len(inn) != 12:
+            flash('ИНН должен содержать ровно 12 цифр', 'danger')
+            return redirect(url_for('profile'))
+        data['inn'] = inn
+    is_self_employed = request.form.get('is_self_employed')
+    if is_self_employed is not None:
+        data['is_self_employed'] = is_self_employed == 'on'
+
     photo = request.files.get('photo')
     if photo and photo.filename:
         safe_name = photo.filename.replace(' ', '_')
