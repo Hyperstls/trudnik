@@ -45,3 +45,7 @@ def create_app():
     app.register_blueprint(monetization_bp)
 
     return app
+
+
+# Экземпляр приложения для WSGI (PythonAnywhere и совместимость)
+app = create_app()
