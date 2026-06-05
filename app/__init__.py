@@ -1,3 +1,4 @@
+import subprocess
 from flask import Flask, session
 
 from app.config import Config
@@ -14,10 +15,21 @@ def create_app():
                 static_folder='static')
     app.config.from_object(Config)
     app.secret_key = app.config['SECRET_KEY']
+@app.context_processor
+def inject_global_user():
+    return {'current_user_id': session.get('user_id')}
 
-    @app.context_processor
-    def inject_global_user():
-        return {'current_user_id': session.get('user_id')}
+@app.context_processor
+def inject_git_version():
+    try:
+        version = subprocess.check_output(
+            ['git', 'log', '-1', '--format=%h %s (%ai)'],
+            cwd=project_root, stderr=subprocess.DEVNULL, text=True
+        ).strip()
+    except Exception:
+        version = 'dev'
+    return {'git_version': version}
+
 
     # Регистрация blueprints
     from app.blueprints.auth import auth_bp
