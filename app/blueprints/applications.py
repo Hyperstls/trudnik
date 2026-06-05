@@ -152,7 +152,7 @@ def my_applications():
 @login_required
 def api_handle_application(app_id, action):
     """AJAX-эндпоинт: принять / отклонить / повторно принять отклик"""
-    app_resp = supabase_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id,status')
+    app_resp = supabase_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id,status,shift_id')
     if not app_resp.ok or not app_resp.json():
         return jsonify({'success': False, 'error': 'Отклик не найден'}), 404
 
@@ -160,6 +160,7 @@ def api_handle_application(app_id, action):
     job_id = app_data['job_id']
     worker_id = app_data['worker_id']
     current_status = app_data.get('status', 'pending')
+    shift_id = app_data.get('shift_id')
     # === AUTHORIZATION: проверяем, что задание принадлежит текущему пользователю ===
     owner_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=employer_id')
     if not (owner_resp.ok and owner_resp.json()):
@@ -230,8 +231,47 @@ def api_handle_application(app_id, action):
 
     elif action == 'reject':
         if current_status == 'accepted':
-            return jsonify({'success': False, 'error': 'Нельзя отклонить уже принятого работника. Используйте отмену.'}), 409
+            # === ОТКЛОНЕНИЕ УЖЕ ПРИНЯТОГО РАБОТНИКА ===
+            # 1. Получить данные задания
+            job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=current_workers,max_workers,status')
+            if not job_resp.ok or not job_resp.json():
+                return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
 
+            job = job_resp.json()[0]
+            current_workers = max(0, job.get('current_workers', 1) - 1)
+            new_job_status = 'open' if current_workers == 0 else 'in_progress'
+
+            # 2. Уменьшить счётчик и обновить статус задания
+            supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={
+                'status': new_job_status,
+                'current_workers': current_workers
+            })
+
+            # 3. Удалить смену (shift), если есть
+            if shift_id:
+                supabase_request('DELETE', f'shifts?id=eq.{shift_id}')
+
+            # 4. Отклонить отклик: сбросить status, shift_id и contact_paid
+            supabase_request('PATCH', f'applications?id=eq.{app_id}', json={
+                'status': 'rejected',
+                'shift_id': None,
+                'contact_paid': False
+            })
+
+            # 5. Уведомить работника
+            add_notification(worker_id, 'application_rejected', 'Отклик отклонён',
+                             f'Ваш отклик на задание #{job_id} был отклонён работодателем')
+
+            return jsonify({
+                'success': True,
+                'new_status': 'rejected',
+                'shift_id': None,
+                'current_workers': current_workers,
+                'job_status': new_job_status,
+                'message': 'Работник отклонён'
+            })
+
+        # === ОБЫЧНОЕ ОТКЛОНЕНИЕ (pending → rejected) ===
         supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'rejected'})
         add_notification(worker_id, 'application_rejected', 'Отклик отклонён',
                          f'Ваш отклик на задание #{job_id} был отклонён')
@@ -281,11 +321,6 @@ def api_batch_applications():
             # Для reopen проверяем, что статус rejected
             if action == 'reopen' and current_status != 'rejected':
                 results['errors'].append({'id': app_id, 'error': 'Можно повторно принять только отклонённый отклик'})
-                continue
-
-            # Для reject проверяем, что не accepted
-            if action == 'reject' and current_status == 'accepted':
-                results['errors'].append({'id': app_id, 'error': 'Нельзя отклонить уже принятого работника'})
                 continue
 
             # Выполняем действие через общий обработчик

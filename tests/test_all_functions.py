@@ -629,21 +629,54 @@ class TestApplicationsBlueprint(BaseBlueprintTest):
     def test_handle_application_accept(self):
         self._login_employer()
         responses = [
-            MagicMock(ok=True, json=lambda: [{'job_id': 'job-1', 'worker_id': 'w-1'}]),
+            MagicMock(ok=True, json=lambda: [{'job_id': 'job-1', 'worker_id': 'w-1', 'status': 'pending'}]),
+            MagicMock(ok=True, json=lambda: [{'employer_id': 'emp-1'}]),
+            MagicMock(ok=True, json=lambda: [{'current_workers': 0, 'max_workers': 5, 'status': 'open'}]),
             MagicMock(ok=True, json=lambda: [{'current_workers': 0, 'max_workers': 5}]),
+            MagicMock(ok=True),
+            MagicMock(ok=True, json=lambda: []),
+            MagicMock(ok=True, json=lambda: [{'id': 'shift-1'}]),
+            MagicMock(ok=True),
+        ]
+        with patch('app.blueprints.applications.supabase_request', side_effect=responses):
+            resp = self.client.post('/api/applications/app-1/accept')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.get_json()
+        self.assertTrue(data.get('success'))
+
+    def test_handle_application_reject(self):
+        self._login_employer()
+        responses = [
+            MagicMock(ok=True, json=lambda: [{'job_id': 'job-1', 'worker_id': 'w-1', 'status': 'pending'}]),
+            MagicMock(ok=True, json=lambda: [{'employer_id': 'emp-1'}]),
+            MagicMock(ok=True),
+            MagicMock(ok=True),
+        ]
+        with patch('app.blueprints.applications.supabase_request', side_effect=responses):
+            resp = self.client.post('/api/applications/app-1/reject')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.get_json()
+        self.assertTrue(data.get('success'))
+
+    def test_handle_application_reject_accepted(self):
+        """Отклонение уже принятого отклика (accepted → rejected)"""
+        self._login_employer()
+        responses = [
+            MagicMock(ok=True, json=lambda: [{'job_id': 'job-1', 'worker_id': 'w-1', 'status': 'accepted', 'shift_id': 'shift-1'}]),
+            MagicMock(ok=True, json=lambda: [{'employer_id': 'emp-1'}]),
+            MagicMock(ok=True, json=lambda: [{'current_workers': 2, 'max_workers': 5, 'status': 'in_progress'}]),
             MagicMock(ok=True),
             MagicMock(ok=True),
             MagicMock(ok=True),
             MagicMock(ok=True),
         ]
         with patch('app.blueprints.applications.supabase_request', side_effect=responses):
-            resp = self.client.post('/applications/app-1/accept')
-        self.assertEqual(resp.status_code, 302)
-
-    def test_handle_application_reject(self):
-        self._login_employer()
-        resp = self.client.post('/applications/app-1/reject')
-        self.assertEqual(resp.status_code, 302)
+            resp = self.client.post('/api/applications/app-1/reject')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.get_json()
+        self.assertTrue(data.get('success'))
+        self.assertEqual(data.get('new_status'), 'rejected')
+        self.assertIsNotNone(data.get('current_workers'))
 
     def test_unapply_job(self):
         self._login()

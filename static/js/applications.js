@@ -103,14 +103,20 @@
     // Индивидуальное действие (AJAX)
     // ============================================
     async function singleAction(appId, action, btnElement) {
+        // Подтверждение для отклонения принятого отклика
+        const card = document.querySelector(`.app-card[data-app-id="${appId}"]`);
+        if (action === 'reject' && card && card.dataset.status === 'accepted') {
+            if (!confirm('Вы уверены, что хотите отклонить принятого работника? Контактные данные будут скрыты.')) {
+                return;
+            }
+        }
+
         // Блокируем кнопку на время запроса (защита от двойного клика)
         if (btnElement) {
             btnElement.disabled = true;
             btnElement.style.opacity = '0.5';
             btnElement.style.cursor = 'not-allowed';
         }
-
-        const card = document.querySelector(`.app-card[data-app-id="${appId}"]`);
 
         try {
             const resp = await fetch('/api/applications/' + appId + '/' + action, {
@@ -228,6 +234,16 @@
             statusBadge.classList.add('status-badge');
         }
 
+        // Скрыть контактные данные при отклонении принятого отклика
+        const contactSection = card.querySelector('[id^="contact-section-"]');
+        if (contactSection && newStatus === 'rejected' && card.dataset.status !== 'rejected') {
+            contactSection.innerHTML = `
+                <div class="text-xs text-gray-400 italic mt-2">
+                    🔒 Контакты скрыты после отклонения
+                </div>
+            `;
+        }
+
         // Обновить кнопки
         if (actionButtons) {
             actionButtons.innerHTML = buildActionButtonsHTML(appId, newStatus, shiftId);
@@ -267,12 +283,12 @@
         } else if (status === 'accepted') {
             const chatHref = shiftId ? `/chat/${shiftId}` : '#';
             return `
-                <span class="inline-flex items-center gap-1 text-green-700 font-medium text-sm">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <span class="action-icon-btn accepted-badge" title="Принят">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                         <polyline points="22 4 12 14.01 9 11.01"></polyline>
                     </svg>
-                    Принят
+                    <span class="sr-only">Принят</span>
                 </span>
                 <a href="${chatHref}"
                    class="action-icon-btn chat-btn ${shiftId ? '' : 'opacity-50 pointer-events-none'}"
@@ -291,13 +307,13 @@
             `;
         } else if (status === 'rejected') {
             return `
-                <span class="inline-flex items-center gap-1 text-red-600 font-medium text-sm mr-2">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <span class="action-icon-btn rejected-badge" title="Отклонён">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="12" cy="12" r="10"></circle>
                         <line x1="15" y1="9" x2="9" y2="15"></line>
                         <line x1="9" y1="9" x2="15" y2="15"></line>
                     </svg>
-                    Отклонён
+                    <span class="sr-only">Отклонён</span>
                 </span>
                 <button type="button" data-app-id="${appId}" data-action="reopen"
                         class="action-icon-btn reopen-btn" title="Повторно принять">
