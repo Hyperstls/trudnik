@@ -47,5 +47,5 @@ def create_app():
     return app
 
 
-# Экземпляр приложения для WSGI (PythonAnywhere и совместимость)
+# Экземпляр приложения для WSGI/ASGI (Render, Gunicorn и совместимость)
 app = create_app()

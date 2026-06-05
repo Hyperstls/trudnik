@@ -1,51 +1,76 @@
-# ИТОГОВАЯ ИНСТРУКЦИЯ ПО ОБНОВЛЕНИЮ
+# Трудник — платформа для поиска временной подработки
 
-**Дата:** 2026-06-03  
-**Статус:** ✅ Изменения закоммичены и отправлены на GitHub
+**Дата:** 2026-06-05
+**Статус:** ✅ Миграция с PythonAnywhere на Render
 
 ---
 
-## 🚀 БЫСТРЫЙ СТАРТ (Самый простой способ)
+## 🚀 Деплой на Render
 
-### На PythonAnywhere (Bash Console):
+Проект автоматически деплоится на [Render](https://dashboard.render.com) при каждом `git push` в ветку `main`.
+
+### Первичная настройка на Render
+
+1. Создать новый **Web Service** на [dashboard.render.com](https://dashboard.render.com)
+2. Подключить GitHub-репозиторий
+3. Настроить параметры:
+   - **Runtime**: Python 3
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `gunicorn app:app --bind 0.0.0.0:$PORT`
+4. Добавить переменные окружения в разделе **Environment**:
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `SECRET_KEY`
+   - `YANDEX_MAPS_API_KEY`
+   - `DEEPSEEK_API_KEY` (опционально)
+
+Либо используйте файл `render.yaml` из корня проекта для конфигурации через **Blueprint** (Infrastructure as Code).
+
+### После деплоя
+
+1. Render автоматически соберёт и запустит приложение
+2. Приложение будет доступно по URL вида `https://trudnik.onrender.com`
+
+---
+
+## 📊 Технологический стек
+
+- **Backend**: Python 3.14 + Flask (Application Factory + Blueprints)
+- **База данных**: Supabase (PostgreSQL)
+- **Фронтенд**: HTML5 + Tailwind CSS (CDN) + Jinja2
+- **Хостинг**: Render (автоматический деплой из GitHub)
+- **WSGI-сервер**: Gunicorn
+
+---
+
+## 🛠 Локальная разработка
 
 ```bash
-cd /home/hyperstls/trudnik && git pull origin main && touch app.py.wsgi
+# Установка зависимостей
+pip install -r requirements.txt
+
+# Запуск
+python app.py
 ```
 
----
-
-## ✅ ПРОВЕРКА ПОСЛЕ ОБНОВЛЕНИЯ
-
-1. Открыть: https://hyperstls.pythonanywhere.com/
-2. Войти как: `test_employer_final@test.com`
-3. Перейти: `/create-job`
-4. Заполнить форму и отправить
-
-**Ожидаем:** "Задание опубликовано" (не 500)
+Приложение будет доступно на `http://localhost:5000`.
 
 ---
 
-## 📊 ЧТО ИЗМЕНИЛОСЬ
+## 📁 Структура проекта
 
-**Commit:** `bad4490` - "Update: Error handling for create-job route"
-
-**Изменения:**
-- ✅ Добавлен `import traceback`
-- ✅ Улучшена функция `supabase_request()` с try/except
-- ✅ Обновлён маршрут `/create-job` с логированием
-- ✅ Добавлены инструкции по обновлению
-
----
-
-## 📁 ИНСТРУКЦИИ
-
-| Файл | Назначение |
-|------|-----------|
-| `README.md` | Главная инструкция |
-| `GIT_UPDATE_INSTRUCTION.md` | Подробная инструкция по git |
-| `PA_GIT_COMMANDS.txt` | Готовые команды |
+| Директория/Файл | Назначение |
+|-----------------|------------|
+| `app.py` | Точка входа |
+| `app/` | Основной код (Blueprints, утилиты, конфигурация) |
+| `templates/` | HTML-шаблоны (Jinja2) |
+| `static/` | Статические файлы (CSS, JS, иконки) |
+| `migrations/` | SQL-миграции для Supabase |
+| `archive/` | Архив старых скриптов и документации |
+| `render.yaml` | Конфигурация деплоя на Render |
+| `requirements.txt` | Python-зависимости |
 
 ---
 
-**Готово к обновлению! 🎉**
+**Готово к деплою на Render! 🎉**

@@ -9,8 +9,8 @@
 - **База данных**: Supabase (PostgreSQL) – REST API + Auth + Storage
 - **Фронтенд**: HTML5 + Tailwind CSS (CDN) + Jinja2
 - **Карты**: Яндекс.Карты (JavaScript API)
-- **Хостинг**: PythonAnywhere (бесплатный, стабильный из РФ)
-- **Деплой**: Git + GitHub, ручной `git pull` на PythonAnywhere + `touch` WSGI‑файла
+- **Хостинг**: Render (dashboard.render.com) — автоматический деплой из GitHub
+- **Деплой**: Git + GitHub, автоматический деплой через `render.yaml` (при `git push` в main)
 - **Версионирование**: Git (информация о коммите отображается при клике на иконку 🤝 в шапке)
 - **AI‑помощник**: веб-чат DeepSeek (открывается в браузере по адресу `http://localhost:11434`) – используется для генерации/правок кода и анализа ошибок
 - **Архитектура**: Flask Application Factory (`create_app()`) + 10 Blueprints
@@ -190,12 +190,28 @@ app/
     - Пока без реальных платежей – только фиксация в интерфейсе
 
 ## Правила деплоя (обновления сайта)
-После локальных изменений и `git push` выполните в консоли PythonAnywhere:
-```bash
-cd ~/mysite && git pull && touch /var/www/hyperstls_pythonanywhere_com_wsgi.py
-```
+
+### Автоматический деплой через Render
+Проект использует автоматический деплой через Render. При каждом `git push` в ветку `main` Render автоматически:
+1. Обнаруживает изменения в репозитории GitHub
+2. Устанавливает зависимости из `requirements.txt`
+3. Запускает приложение через Gunicorn (команда: `gunicorn app:app`)
+4. Приложение слушает порт, указанный в переменной окружения `PORT`
+
+### Настройка на Render
+1. Создать новый Web Service на [dashboard.render.com](https://dashboard.render.com)
+2. Подключить GitHub-репозиторий
+3. Указать:
+   - **Runtime**: Python 3
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `gunicorn app:app --bind 0.0.0.0:$PORT`
+4. Добавить переменные окружения (из `.env` файла)
+
+### Конфигурация `render.yaml`
+В корне проекта находится файл `render.yaml` с полной конфигурацией деплоя.
 
 ### Важные замечания
-- При деплое на PythonAnywhere убедитесь, что корневой `app.py` остаётся точкой входа (WSGI импортирует `from app import app as application`)
+- При деплое на Render убедитесь, что корневой `app.py` содержит объект `app` (создаётся через `create_app()`)
+- Render автоматически устанавливает переменную `PORT`, приложение должно её использовать
 - Новые Blueprint'ы автоматически регистрируются в `app/__init__.py` – не забудьте импортировать и зарегистрировать их там
 - Все изменения в `app/blueprints/` не требуют дополнительных действий при деплое

@@ -29,7 +29,8 @@ if sys.platform == "win32":
 # ------------------------------------------------------------
 # Конфигурация
 # ------------------------------------------------------------
-BASE_URL = "https://hyperstls.pythonanywhere.com"
+import os
+BASE_URL = os.environ.get("BASE_URL", "http://localhost:5000")
 
 # Тестовые данные для нового пользователя
 TEST_EMAIL = f"test_fav_{uuid.uuid4().hex[:8]}@test.com"
