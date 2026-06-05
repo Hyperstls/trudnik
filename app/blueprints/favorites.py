@@ -26,7 +26,9 @@ def favorites():
 @favorites_bp.route('/favorite/<target_id>', methods=['POST'])
 @login_required
 def add_favorite(target_id):
-    supabase_request('POST', 'favorites', json={'user_id': session['user_id'], 'target_id': target_id})
+    resp = supabase_request('POST', 'favorites', json={'user_id': session['user_id'], 'target_id': target_id})
+    if not resp.ok:
+        flash('Не удалось добавить в избранное', 'danger')
     return redirect(request.referrer or url_for('jobs.index'))
 
 
@@ -51,8 +53,15 @@ def add_favorite_api():
         return jsonify({'success': False, 'error': 'Не указан worker_id'})
 
     try:
-        supabase_request('POST', 'favorites', json={'user_id': session['user_id'], 'target_id': worker_id})
-        return jsonify({'success': True, 'message': 'Трудник добавлен в избранное'})
+        resp = supabase_request('POST', 'favorites', json={'user_id': session['user_id'], 'target_id': worker_id})
+        if resp.ok:
+            return jsonify({'success': True, 'message': 'Трудник добавлен в избранное'})
+        else:
+            # Проверяем на дубликат
+            error_text = resp.text if hasattr(resp, 'text') else ''
+            if 'duplicate' in error_text.lower() or resp.status_code == 409:
+                return jsonify({'success': True, 'message': 'Трудник уже в избранном'})
+            return jsonify({'success': False, 'error': f'Ошибка сервера: {resp.status_code}'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
@@ -100,8 +109,14 @@ def remove_favorites_selected():
         return jsonify({'success': False, 'error': 'Не указаны worker_ids'})
 
     try:
-        for worker_id in worker_ids:
-            supabase_request('DELETE', f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{worker_id}')
-        return jsonify({'success': True, 'message': f'{len(worker_ids)} трудников удалено из избранного'})
+        # Batch delete: используем in.() синтаксис Supabase
+        ids_filter = ','.join(worker_ids)
+        resp = supabase_request('DELETE',
+            f'favorites?user_id=eq.{session["user_id"]}&target_id=in.({ids_filter})')
+        
+        if resp.ok:
+            return jsonify({'success': True, 'message': f'{len(worker_ids)} трудников удалено из избранного'})
+        else:
+            return jsonify({'success': False, 'error': f'Ошибка сервера: {resp.status_code}'}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': str(e)}), 500

@@ -158,86 +158,14 @@
         <span>✉️</span>
         <span>Написать сообщение</span>
     </a>
-    <button onclick="toggleFavorite(this, '{{ profile_user.id }}')"
-            class="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition-colors flex items-center space-x-2">
-        <span>❤️</span>
-        <span>Удалить из избранного</span>
+    <button onclick="toggleFavorite('{{ profile_user.id }}', this)"
+            class="favorite-btn bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition-colors flex items-center space-x-2"
+            data-worker-id="{{ profile_user.id }}"
+            data-favorited="false">
+        <span class="favorite-icon">❤️</span>
+        <span class="favorite-text">Удалить из избранного</span>
     </button>
 </div>
-<script>
-// Проверить статус избранного
-function checkFavoriteStatus(workerId, btn) {
-    fetch('/api/favorites/check', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ worker_id: workerId })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success && data.is_favorited) {
-            btn.classList.remove('bg-yellow-500', 'hover\:bg-yellow-600');
-            btn.classList.add('bg-red-500', 'hover\:bg-red-600');
-            btn.querySelector('span:nth-child(1)').textContent = '❤️';
-            btn.querySelector('span:nth-child(2)').textContent = 'Удалить из избранного';
-        }
-    })
-    .catch(error => console.error('Ошибка проверки избранного:', error));
-}
-
-// Проверить статус избранного при загрузке страницы
-document.addEventListener('DOMContentLoaded', function() {
-    const btn = document.querySelector('.favorite-btn');
-    if (btn) {
-        checkFavoriteStatus(btn.dataset.workerId, btn);
-    }
-});
-
-// Переключение избранного
-toggleFavorite = function(btn, targetId) {
-    fetch('/api/favorites/check', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ worker_id: targetId })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (!data.success) {
-            alert('Ошибка проверки: ' + (data.error || 'Не удалось определить статус'));
-            return;
-        }
-        
-        const isFavorited = data.is_favorited;
-        const actionUrl = isFavorited ? '/api/favorites/remove' : '/api/favorites/add';
-        
-        fetch(actionUrl, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ worker_id: targetId })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                if (isFavorited) {
-                    btn.classList.remove('bg-red-500', 'hover\:bg-red-600');
-                    btn.classList.add('bg-yellow-500', 'hover\:bg-yellow-600');
-                    btn.querySelector('span:nth-child(1)').textContent = '⭐';
-                    btn.querySelector('span:nth-child(2)').textContent = 'В избранное';
-                    alert('Трудник удалён из избранного');
-                } else {
-                    btn.classList.remove('bg-yellow-500', 'hover\:bg-yellow-600');
-                    btn.classList.add('bg-red-500', 'hover\:bg-red-600');
-                    btn.querySelector('span:nth-child(1)').textContent = '❤️';
-                    btn.querySelector('span:nth-child(2)').textContent = 'Удалить из избранного';
-                    alert('Трудник добавлен в избранное!');
-                }
-            } else {
-                alert('Ошибка: ' + (data.error || 'Не удалось изменить избранное'));
-            }
-        })
-        .catch(error => { alert('Ошибка сети'); });
-    })
-    .catch(error => { alert('Ошибка сети'); });
-}
-</script>
+<script src="{{ url_for('static', filename='js/favorites.js') }}"></script>
 {% endif %}
 {% endblock %}
