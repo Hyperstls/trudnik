@@ -12,15 +12,14 @@
         </select>
         <input type="text" name="city" placeholder="Город" class="w-full border p-2 rounded">
         <div id="worker-fields">
-            <!-- Юридически значимое поле: ИНН самозанятого (12 цифр) -->
-            <input type="text" name="inn" placeholder="ИНН (12 цифр)" maxlength="12" pattern="\d{12}"
-                   title="ИНН должен содержать ровно 12 цифр"
+            <!-- ИНН самозанятого (опционально) -->
+            <input type="text" name="inn" placeholder="ИНН (12 цифр, опционально)" maxlength="12"
                    class="w-full border p-2 rounded">
-            <div class="text-xs text-gray-500 mb-2">ИНН обязателен для самозанятого. Будет скрыт до оплаты заказчиком.</div>
-            <!-- Юридически значимое согласие: обязательство выдавать чеки -->
+            <div class="text-xs text-gray-500 mb-2">ИНН для формирования чеков (самозанятые). Будет скрыт до оплаты заказчиком.</div>
+            <!-- Подтверждение самозанятого (опционально) -->
             <label class="flex items-start gap-2 text-sm text-gray-700 mb-2">
                 <input type="checkbox" name="is_self_employed" class="mt-1 rounded border-gray-300 text-gold focus:ring-gold">
-                <span>Я зарегистрирован как самозанятый и обязуюсь выдавать чеки заказчикам через приложение «Мой налог»</span>
+                <span>Я зарегистрирован как самозанятый и обязуюсь выдавать чеки заказчикам через приложение «Мой налог» (опционально)</span>
             </label>
             <input type="text" name="experience" placeholder="Опыт (кратко)" class="w-full border p-2 rounded">
             <input type="number" name="desired_payment" placeholder="Желаемая оплата за смену" class="w-full border p-2 rounded">
