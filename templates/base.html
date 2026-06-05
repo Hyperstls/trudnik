@@ -55,6 +55,107 @@
             box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
             padding-bottom: env(safe-area-inset-bottom, 0.5rem);
         }
+
+        /* ============================= */
+        /* Action icon buttons (apps)    */
+        /* ============================= */
+        .action-icon-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: white;
+        }
+        .action-icon-btn:hover {
+            transform: scale(1.08);
+        }
+        .action-icon-btn:active {
+            transform: scale(0.95);
+        }
+        .accept-btn {
+            color: #16a34a;
+            border-color: #bbf7d0;
+            background: #f0fdf4;
+        }
+        .accept-btn:hover {
+            background: #16a34a;
+            color: white;
+            border-color: #16a34a;
+        }
+        .reject-btn {
+            color: #dc2626;
+            border-color: #fecaca;
+            background: #fef2f2;
+        }
+        .reject-btn:hover {
+            background: #dc2626;
+            color: white;
+            border-color: #dc2626;
+        }
+        .reopen-btn {
+            color: #2563eb;
+            border-color: #bfdbfe;
+            background: #eff6ff;
+        }
+        .reopen-btn:hover {
+            background: #2563eb;
+            color: white;
+            border-color: #2563eb;
+        }
+        .chat-btn {
+            color: #2563eb;
+            border-color: #bfdbfe;
+            background: #eff6ff;
+        }
+        .chat-btn:hover {
+            background: #2563eb;
+            color: white;
+            border-color: #2563eb;
+        }
+        .act-btn {
+            color: #7c3aed;
+            border-color: #ddd6fe;
+            background: #f5f3ff;
+        }
+        .act-btn:hover {
+            background: #7c3aed;
+            color: white;
+            border-color: #7c3aed;
+        }
+
+        /* ============================= */
+        /* Toast notifications           */
+        /* ============================= */
+        .toast {
+            opacity: 1;
+            transform: translateX(0);
+            transition: all 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .animate-slide-in {
+            animation: slideIn 0.3s ease forwards;
+        }
+
+        /* ============================= */
+        /* Mass actions bar              */
+        /* ============================= */
+        #mass-actions-bar {
+            backdrop-filter: blur(12px);
+            background-color: rgba(255, 255, 255, 0.97);
+        }
+
+        /* Status badge transitions */
+        .status-badge {
+            transition: all 0.3s ease;
+        }
     </style>
 </head>
 <body class="bg-gray-50/80">

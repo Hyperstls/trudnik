@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 
 from app.config import Config
 from app.decorators import login_required
@@ -148,49 +148,168 @@ def my_applications():
                            contact_price=contact_price)
 
 
-@applications_bp.route('/applications/<app_id>/<action>', methods=['POST'])
+@applications_bp.route('/api/applications/<app_id>/<action>', methods=['POST'])
 @login_required
-def handle_application(app_id, action):
-    app_resp = supabase_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id')
+def api_handle_application(app_id, action):
+    """AJAX-эндпоинт: принять / отклонить / повторно принять отклик"""
+    app_resp = supabase_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id,status')
     if not app_resp.ok or not app_resp.json():
-        flash('Отклик не найден', 'danger')
-        return redirect(url_for('jobs.index'))
+        return jsonify({'success': False, 'error': 'Отклик не найден'}), 404
 
     app_data = app_resp.json()[0]
     job_id = app_data['job_id']
     worker_id = app_data['worker_id']
+    current_status = app_data.get('status', 'pending')
+    # === AUTHORIZATION: проверяем, что задание принадлежит текущему пользователю ===
+    owner_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=employer_id')
+    if not (owner_resp.ok and owner_resp.json()):
+        return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
+    if owner_resp.json()[0]['employer_id'] != session.get('user_id'):
+        return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
 
     if action == 'accept':
-        # Проверить количество мест
-        job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=current_workers,max_workers')
+        # Повторное принятие: возвращаем rejected → pending
+        if current_status == 'rejected':
+            supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'pending'})
+
+        # Проверить количество мест и статус задания
+        job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=current_workers,max_workers,status')
         if not job_resp.ok or not job_resp.json():
-            flash('Ошибка: задание не найдено', 'danger')
-            return redirect(url_for('applications.my_applications'))
+            return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
 
         job = job_resp.json()[0]
         current_workers = job.get('current_workers', 0)
         max_workers = job.get('max_workers', 1)
 
         if current_workers >= max_workers:
-            flash(f'Ошибка: все места в задании уже заняты (максимум {max_workers})', 'danger')
-            return redirect(url_for('applications.my_applications'))
+            return jsonify({'success': False, 'error': f'Все места в задании заняты (максимум {max_workers})'}), 409
 
-        # Принять отклик и увеличить счетчик
-        supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'accepted'})
-        supabase_request('PATCH', f'applications?job_id=eq.{job_id}&id=neq.{app_id}',
-                         json={'status': 'rejected'})
-        supabase_request('POST', 'shifts', json={
-            'job_id': job_id, 'worker_id': worker_id, 'employer_id': session['user_id']
-        })
-        supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={
+        if job.get('status') not in ('open', 'in_progress'):
+            return jsonify({'success': False, 'error': 'Задание уже закрыто для принятия откликов'}), 409
+
+        # Атомарный PATCH с условием: обновляем только если current_workers < max_workers
+        # PostgREST выполняет UPDATE с WHERE current_workers < {max_workers} атомарно на уровне БД
+        # Благодаря Prefer: return=representation, при успехе возвращается обновлённая запись
+        patch_resp = supabase_request('PATCH', f'jobs?id=eq.{job_id}&current_workers=lt.{max_workers}', json={
             'status': 'in_progress',
             'current_workers': current_workers + 1
         })
-        flash('Работник принят', 'success')
-    else:
+        if not (patch_resp.ok and patch_resp.json()):
+            return jsonify({'success': False, 'error': 'Не удалось забронировать место (конкуренция запросов)'}), 409
+
+        # Принять отклик
+        supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'accepted'})
+
+        # Отклонить остальные ожидающие отклики на это задание
+        supabase_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.pending&id=neq.{app_id}',
+                         json={'status': 'rejected'})
+
+        # Создать смену (если ещё нет) и получить её ID
+        shift_id = None
+        shift_resp = supabase_request('GET', f'shifts?job_id=eq.{job_id}&worker_id=eq.{worker_id}&select=id')
+        if shift_resp.ok and shift_resp.json():
+            shift_id = shift_resp.json()[0].get('id')
+        else:
+            create_resp = supabase_request('POST', 'shifts', json={
+                'job_id': job_id, 'worker_id': worker_id, 'employer_id': session['user_id']
+            })
+            if create_resp.ok and create_resp.json():
+                created = create_resp.json()
+                shift_id = created[0].get('id') if isinstance(created, list) else created.get('id')
+
+        # Уведомить работника
+        add_notification(worker_id, 'application_accepted', 'Отклик принят',
+                         f'Ваш отклик на задание #{job_id} был принят')
+
+        return jsonify({
+            'success': True,
+            'new_status': 'accepted',
+            'shift_id': shift_id,
+            'message': 'Работник принят'
+        })
+
+    elif action == 'reject':
+        if current_status == 'accepted':
+            return jsonify({'success': False, 'error': 'Нельзя отклонить уже принятого работника. Используйте отмену.'}), 409
+
         supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'rejected'})
-        flash('Отклик отклонён', 'info')
-    return redirect(url_for('applications.my_applications'))
+        add_notification(worker_id, 'application_rejected', 'Отклик отклонён',
+                         f'Ваш отклик на задание #{job_id} был отклонён')
+
+        return jsonify({
+            'success': True,
+            'new_status': 'rejected',
+            'message': 'Отклик отклонён'
+        })
+
+    elif action == 'reopen':
+        if current_status != 'rejected':
+            return jsonify({'success': False, 'error': 'Можно повторно принять только отклонённый отклик'}), 409
+
+        return api_handle_application(app_id, 'accept')
+
+    return jsonify({'success': False, 'error': 'Неизвестное действие'}), 400
+
+
+@applications_bp.route('/api/applications/batch', methods=['POST'])
+@login_required
+def api_batch_applications():
+    """Массовая операция над откликами (принять / отклонить / повторно принять)"""
+    data = request.get_json(silent=True) or {}
+    app_ids = data.get('app_ids', [])
+    action = data.get('action')
+
+    if not app_ids or not action:
+        return jsonify({'success': False, 'error': 'Не указаны ID откликов или действие'}), 400
+
+    if action not in ('accept', 'reject', 'reopen'):
+        return jsonify({'success': False, 'error': f'Неизвестное действие: {action}'}), 400
+
+    results = {'success': [], 'errors': []}
+
+    for app_id in app_ids:
+        try:
+            # Симулируем вызов индивидуального эндпоинта
+            app_resp = supabase_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id,status')
+            if not app_resp.ok or not app_resp.json():
+                results['errors'].append({'id': app_id, 'error': 'Отклик не найден'})
+                continue
+
+            app_data = app_resp.json()[0]
+            current_status = app_data.get('status', 'pending')
+
+            # Для reopen проверяем, что статус rejected
+            if action == 'reopen' and current_status != 'rejected':
+                results['errors'].append({'id': app_id, 'error': 'Можно повторно принять только отклонённый отклик'})
+                continue
+
+            # Для reject проверяем, что не accepted
+            if action == 'reject' and current_status == 'accepted':
+                results['errors'].append({'id': app_id, 'error': 'Нельзя отклонить уже принятого работника'})
+                continue
+
+            # Выполняем действие через общий обработчик
+            # (он сам делает все проверки: авторизацию, места, атомарный PATCH)
+            resp = api_handle_application(app_id, action)
+            data = resp.get_json()
+            if data.get('success'):
+                results['success'].append({
+                    'id': app_id,
+                    'new_status': data.get('new_status', action if action != 'reopen' else 'accepted'),
+                    'shift_id': data.get('shift_id')
+                })
+            else:
+                results['errors'].append({'id': app_id, 'error': data.get('error', 'Ошибка')})
+        except Exception as e:
+            current_app.logger.error('Batch application error: app_id=%s, action=%s, error=%s',
+                                     app_id, action, str(e))
+            results['errors'].append({'id': app_id, 'error': str(e)})
+
+    return jsonify({
+        'success': len(results['success']) > 0,
+        'results': results,
+        'message': f'✅ {len(results["success"])} успешно, ⚠️ {len(results["errors"])} с ошибками'
+    })
 
 
 @applications_bp.route('/application/<app_id>/cancel', methods=['POST'])
