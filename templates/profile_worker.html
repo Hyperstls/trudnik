@@ -1,114 +1,179 @@
 {% extends "base.html" %}
-{% from '_icons.html' import star, chat %}
+{% from '_icons.html' import star, chat, mail, phone, map_pin, info, briefcase, award, link_icon %}
 {% block content %}
-<div class="p-4 max-w-2xl mx-auto">
+<div class="px-4 pb-24 max-w-2xl mx-auto">
     {% if profile_user is none %}
-        <div class="text-center py-12">
-            <span class="text-5xl mb-3 block">😕</span>
-            <p class="text-red-500 text-lg font-medium">Не удалось загрузить профиль</p>
-            <p class="text-gray-500 text-sm mt-1">Проверьте соединение</p>
+        <div class="flex flex-col items-center justify-center py-16 text-center">
+            <div class="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-300">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            </div>
+            <p class="text-lg font-semibold text-neutral-700">Не удалось загрузить профиль</p>
+            <p class="text-sm text-neutral-400 mt-1">Проверьте соединение</p>
         </div>
     {% else %}
+    {# ============================================ #}
+    {# Аватар и основная информация                 #}
+    {# ============================================ #}
     <div class="flex flex-col items-center mb-6">
         <div class="relative">
             <img src="{{ profile_user.get('photo_url') or url_for('static', filename='default-avatar.png') }}"
-                 class="w-24 h-24 rounded-full object-cover border-4 border-gold shadow-lg"
-                 alt="Фото работника"
+                 class="w-24 h-24 rounded-full object-cover border-4 border-primary-500 shadow-lg"
+                 alt="Фото {{ profile_user.get('full_name') or profile_user.get('name') }}"
                  crossorigin="anonymous"
                  onerror="this.onerror=null;this.src='{{ url_for('static', filename='default-avatar.png') }}';">
+            {% if profile_user.get('rating', 0) >= 4.5 %}
+            <div class="absolute -bottom-1 -right-1 w-7 h-7 bg-warning rounded-full flex items-center justify-center border-2 border-white shadow-sm" title="Высокий рейтинг">
+                <span class="text-white text-xs font-bold">★</span>
+            </div>
+            {% endif %}
         </div>
-        <h3 class="text-xl font-bold text-gray-900 mt-3">{{ profile_user.get('full_name') or profile_user.get('name') }}</h3>
-        <p class="text-sm text-gray-500 mt-1 flex items-center gap-1">
-            ⭐ {{ "%.1f"|format(profile_user.get('rating', 0) or 0) }}
-            <span class="text-gray-400">({{ profile_user.get('total_reviews', 0) }} отзывов)</span>
-        </p>
-        
+        <h3 class="text-xl font-bold text-neutral-900 mt-3">{{ profile_user.get('full_name') or profile_user.get('name') }}</h3>
+        <div class="flex items-center gap-1.5 mt-1">
+            <span class="text-warning">★</span>
+            <span class="text-sm font-medium text-neutral-700">{{ "%.1f"|format(profile_user.get('rating', 0) or 0) }}</span>
+            <span class="text-xs text-neutral-400">({{ profile_user.get('total_reviews', 0) }} {{ 'отзыв' if profile_user.get('total_reviews', 0) == 1 else 'отзывов' }})</span>
+        </div>
+
+        {# Быстрые кнопки #}
         <div class="flex gap-2 mt-4">
             <a href="/chat/new/{{ profile_user.id }}"
                class="action-icon-btn chat-btn" title="Написать сообщение">
-                {{ chat(20) }}
+                {{ chat(18) }}
                 <span class="text-sm ml-2 font-medium">Написать</span>
             </a>
             <button onclick="toggleFavorite('{{ profile_user.id }}', this, event)"
                     class="favorite-btn action-icon-btn contact-btn"
                     data-worker-id="{{ profile_user.id }}"
                     data-favorited="false" title="В избранное">
-                {{ star(20) }}
+                {{ star(18) }}
                 <span class="text-sm ml-2 font-medium">В избранное</span>
             </button>
         </div>
     </div>
-    
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+
+    {# ============================================ #}
+    {# Детальная информация                         #}
+    {# ============================================ #}
+    <div class="bg-white rounded-2xl shadow-sm border border-neutral-100 p-5 space-y-5">
+        {# О себе #}
         <div>
-            <h4 class="font-semibold text-gray-900 mb-2">О себе</h4>
-            <p class="text-gray-600">{{ profile_user.get('bio', 'Не указано') }}</p>
+            <h4 class="font-semibold text-neutral-900 mb-1.5 flex items-center gap-1.5">
+                {{ info(16) }}
+                О себе
+            </h4>
+            <p class="text-neutral-600 text-sm leading-relaxed">{{ profile_user.get('bio', 'Не указано') }}</p>
         </div>
-        
+        <div class="border-t border-neutral-100"></div>
+
+        {# Контакты #}
         <div>
-            <h4 class="font-semibold text-gray-900 mb-2">Контакты</h4>
-            <p class="text-gray-600">{{ profile_user.get('phone', 'Не указано') }}</p>
-            <p class="text-gray-600">{{ profile_user.get('email', 'Не указано') }}</p>
+            <h4 class="font-semibold text-neutral-900 mb-2 flex items-center gap-1.5">
+                {{ phone(16) }}
+                Контакты
+            </h4>
+            <div class="space-y-1.5 text-sm text-neutral-600">
+                <p class="flex items-center gap-2">
+                    {{ phone(14) }}
+                    {{ profile_user.get('phone', 'Не указано') }}
+                </p>
+                <p class="flex items-center gap-2">
+                    {{ mail(14) }}
+                    {{ profile_user.get('email', 'Не указано') }}
+                </p>
+            </div>
         </div>
-        
+        <div class="border-t border-neutral-100"></div>
+
+        {# Город #}
         <div>
-            <h4 class="font-semibold text-gray-900 mb-2">Город</h4>
-            <p class="text-gray-600">{{ profile_user.get('city', 'Не указано') }}</p>
+            <h4 class="font-semibold text-neutral-900 mb-1.5 flex items-center gap-1.5">
+                {{ map_pin(16) }}
+                Город
+            </h4>
+            <p class="text-neutral-600 text-sm">{{ profile_user.get('city', 'Не указано') }}</p>
         </div>
-        
+        <div class="border-t border-neutral-100"></div>
+
+        {# Вероисповедание #}
         <div>
-            <h4 class="font-semibold text-gray-900 mb-2">Вероисповедание</h4>
-            <p class="text-gray-600">{{ profile_user.get('religion', 'Не указано') }}</p>
+            <h4 class="font-semibold text-neutral-900 mb-1.5 flex items-center gap-1.5">
+                Вероисповедание
+            </h4>
+            <p class="text-neutral-600 text-sm">{{ profile_user.get('religion', 'Не указано') }}</p>
         </div>
-        
+
         {% if profile_user.get('role') == 'worker' %}
+        <div class="border-t border-neutral-100"></div>
+
+        {# Опыт #}
         <div>
-            <h4 class="font-semibold text-gray-900 mb-2">Опыт</h4>
-            <p class="text-gray-600">{{ profile_user.get('experience', 'Не указано') }}</p>
+            <h4 class="font-semibold text-neutral-900 mb-1.5 flex items-center gap-1.5">
+                {{ briefcase(16) }}
+                Опыт
+            </h4>
+            <p class="text-neutral-600 text-sm">{{ profile_user.get('experience', 'Не указано') }}</p>
         </div>
-        
+        <div class="border-t border-neutral-100"></div>
+
+        {# Желаемая оплата #}
         <div>
-            <h4 class="font-semibold text-gray-900 mb-2">Желаемая оплата</h4>
-            <p class="text-gray-600">{{ profile_user.get('desired_payment', 'Не указано') }} ₽</p>
+            <h4 class="font-semibold text-neutral-900 mb-1.5 flex items-center gap-1.5">
+                Желаемая оплата
+            </h4>
+            <p class="text-lg font-bold text-primary-600">{{ profile_user.get('desired_payment', '—') }} ₽</p>
         </div>
         {% endif %}
-        
+        <div class="border-t border-neutral-100"></div>
+
+        {# Навыки #}
         <div>
-            <h4 class="font-semibold text-gray-900 mb-2">Навыки</h4>
+            <h4 class="font-semibold text-neutral-900 mb-2 flex items-center gap-1.5">
+                {{ award(16) }}
+                Навыки
+            </h4>
             {% if profile_user.get('skills') %}
-            <div class="flex flex-wrap gap-2">
+            <div class="flex flex-wrap gap-1.5">
                 {% for skill in profile_user.get('skills') %}
-                <span class="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm">{{ skill }}</span>
+                <span class="bg-neutral-100 text-neutral-700 px-3 py-1.5 rounded-lg text-xs font-medium">{{ skill }}</span>
                 {% endfor %}
             </div>
             {% else %}
-            <p class="text-gray-500">Навыки не указаны</p>
+            <p class="text-sm text-neutral-400">Навыки не указаны</p>
             {% endif %}
         </div>
-        
+
+        {# Портфолио #}
         {% if profile_user.get('portfolio_link') %}
+        <div class="border-t border-neutral-100"></div>
         <div>
-            <h4 class="font-semibold text-gray-900 mb-2">Портфолио</h4>
-            <a href="{{ profile_user.get('portfolio_link') }}" target="_blank"
-               class="text-blue-600 hover:text-blue-800 underline break-all">
+            <h4 class="font-semibold text-neutral-900 mb-1.5 flex items-center gap-1.5">
+                {{ link_icon(16) }}
+                Портфолио
+            </h4>
+            <a href="{{ profile_user.get('portfolio_link') }}" target="_blank" rel="noopener noreferrer"
+               class="text-primary-600 hover:text-primary-700 underline break-all text-sm">
                 {{ profile_user.get('portfolio_link') }}
             </a>
         </div>
         {% endif %}
     </div>
-    
+
+    {# Если это не свой профиль — дублируем кнопки внизу #}
     {% if profile_user.id != current_user_id %}
     <div class="mt-6 flex flex-wrap gap-3">
         <a href="/chat/new/{{ profile_user.id }}"
            class="action-icon-btn chat-btn" title="Написать сообщение">
-            {{ chat(20) }}
+            {{ chat(18) }}
             <span class="text-sm ml-2 font-medium">Написать</span>
         </a>
         <button onclick="toggleFavorite('{{ profile_user.id }}', this, event)"
                 class="favorite-btn action-icon-btn contact-btn"
                 data-worker-id="{{ profile_user.id }}"
                 data-favorited="false" title="В избранное">
-            {{ star(20) }}
+            {{ star(18) }}
             <span class="text-sm ml-2 font-medium">В избранное</span>
         </button>
     </div>

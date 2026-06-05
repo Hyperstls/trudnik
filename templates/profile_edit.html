@@ -1,53 +1,66 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="p-4 max-w-lg mx-auto">
+<div class="px-4 pb-24 max-w-lg mx-auto">
     {% if profile is none %}
-        <div class="text-center py-12">
-            <span class="text-5xl mb-3 block">😕</span>
-            <p class="text-red-500 text-lg font-medium">Не удалось загрузить профиль</p>
-            <p class="text-gray-500 text-sm mt-1">Проверьте соединение</p>
+        <div class="flex flex-col items-center justify-center py-16 text-center">
+            <div class="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-300">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            </div>
+            <p class="text-lg font-semibold text-neutral-700">Не удалось загрузить профиль</p>
+            <p class="text-sm text-neutral-400 mt-1">Проверьте соединение</p>
         </div>
     {% else %}
+    {# ============================================ #}
+    {# Аватар                                       #}
+    {# ============================================ #}
     <div class="flex flex-col items-center mb-6">
         <div class="relative">
             <img src="{{ profile.get('photo_url') or url_for('static', filename='default-avatar.png') }}"
-                 class="w-24 h-24 rounded-full object-cover border-4 border-gold shadow-lg"
+                 class="w-24 h-24 rounded-full object-cover border-4 border-primary-500 shadow-lg"
                  alt="Фото профиля"
                  crossorigin="anonymous"
                  onerror="this.onerror=null;this.src='{{ url_for('static', filename='default-avatar.png') }}';">
         </div>
-        <h3 class="text-xl font-bold text-gray-900 mt-3">{{ profile.get('full_name') or profile.get('name') }}</h3>
-        <p class="text-sm text-gray-500 mt-1 flex items-center gap-1">
-            ⭐ {{ "%.1f"|format(profile.get('rating', 0) or 0) }}
-            <span class="text-gray-400">({{ profile.get('total_reviews', 0) }} отзывов)</span>
-        </p>
+        <h3 class="text-xl font-bold text-neutral-900 mt-3">{{ profile.get('full_name') or profile.get('name') }}</h3>
+        <div class="flex items-center gap-1.5 mt-1">
+            <span class="text-warning">★</span>
+            <span class="text-sm font-medium text-neutral-700">{{ "%.1f"|format(profile.get('rating', 0) or 0) }}</span>
+            <span class="text-xs text-neutral-400">({{ profile.get('total_reviews', 0) }} {{ 'отзыв' if profile.get('total_reviews', 0) == 1 else 'отзывов' }})</span>
+        </div>
     </div>
 
-    <form method="post" action="/profile/edit" class="space-y-5">
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Имя</label>
+    {# ============================================ #}
+    {# Форма редактирования                         #}
+    {# ============================================ #}
+    <form method="post" action="/profile/edit" class="space-y-4">
+        <div class="floating-label-group">
             <input type="text" name="name" value="{{ profile.get('name') or '' }}"
-                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
-        </div>
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Телефон</label>
-            <input type="text" name="phone" value="{{ profile.get('phone') or '' }}"
-                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
-        </div>
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">О себе</label>
-            <textarea name="bio" rows="3" class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">{{ profile.get('bio', '') }}</textarea>
-        </div>
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Город</label>
-            <input type="text" name="city" value="{{ profile.get('city') or '' }}"
-                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+                   class="floating-input" placeholder=" " required>
+            <label class="floating-label">Имя</label>
         </div>
 
-        <!-- Вероисповедание -->
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Вероисповедание</label>
-            <select name="religion" class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+        <div class="floating-label-group">
+            <input type="text" name="phone" value="{{ profile.get('phone') or '' }}"
+                   class="floating-input" placeholder=" ">
+            <label class="floating-label">Телефон</label>
+        </div>
+
+        <div class="floating-label-group">
+            <textarea name="bio" rows="3" class="floating-input resize-none" placeholder=" ">{{ profile.get('bio', '') }}</textarea>
+            <label class="floating-label">О себе</label>
+        </div>
+
+        <div class="floating-label-group">
+            <input type="text" name="city" value="{{ profile.get('city') or '' }}"
+                   class="floating-input" placeholder=" ">
+            <label class="floating-label">Город</label>
+        </div>
+
+        <div class="floating-label-group">
+            <select name="religion" class="floating-input">
                 <option value="не указано" {% if profile.get('religion') == 'не указано' %}selected{% endif %}>Не указано</option>
                 <option value="православие" {% if profile.get('religion') == 'православие' %}selected{% endif %}>Православие</option>
                 <option value="католицизм" {% if profile.get('religion') == 'католицизм' %}selected{% endif %}>Католицизм</option>
@@ -57,48 +70,50 @@
                 <option value="буддизм" {% if profile.get('religion') == 'буддизм' %}selected{% endif %}>Буддизм</option>
                 <option value="не важно" {% if profile.get('religion') == 'не важно' %}selected{% endif %}>Не важно</option>
             </select>
+            <label class="floating-label">Вероисповедание</label>
         </div>
 
-        <!-- Навыки -->
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Навыки (через запятую)</label>
+        <div class="floating-label-group">
             <input type="text" name="skills" value="{{ profile.get('skills', [])|join(', ') if profile.get('skills') else '' }}"
-                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+                   class="floating-input" placeholder=" ">
+            <label class="floating-label">Навыки (через запятую)</label>
         </div>
 
         {% if profile.get('role') == 'worker' %}
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">ИНН (12 цифр, опционально)</label>
+        <div class="floating-label-group">
             <input type="text" name="inn" value="{{ profile.get('inn', '') }}" maxlength="12"
-                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
-            <p class="text-xs text-gray-500 mt-1">ИНН для формирования чеков (самозанятые). Будет скрыт до оплаты заказчиком.</p>
+                   class="floating-input" placeholder=" ">
+            <label class="floating-label">ИНН (12 цифр)</label>
+            <p class="text-xs text-neutral-400 mt-1">ИНН для формирования чеков (самозанятые). Будет скрыт до оплаты заказчиком.</p>
         </div>
-        <div>
-            <label class="flex items-start gap-2 text-sm text-gray-700 mb-2">
-                <input type="checkbox" name="is_self_employed" {% if profile.get('is_self_employed') %}checked{% endif %}
-                       class="mt-1 rounded border-gray-300 text-gold focus:ring-gold">
-                <span>Я зарегистрирован как самозанятый и обязуюсь выдавать чеки заказчикам через приложение «Мой налог» (опционально)</span>
-            </label>
-        </div>
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Опыт</label>
+
+        <label class="flex items-start gap-2 text-sm text-neutral-700 cursor-pointer">
+            <input type="checkbox" name="is_self_employed" {% if profile.get('is_self_employed') %}checked{% endif %}
+                   class="app-checkbox mt-0.5">
+            <span>Я зарегистрирован как самозанятый и обязуюсь выдавать чеки заказчикам через приложение «Мой налог»</span>
+        </label>
+
+        <div class="floating-label-group">
             <input type="text" name="experience" value="{{ profile.get('experience', '') }}"
-                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+                   class="floating-input" placeholder=" ">
+            <label class="floating-label">Опыт</label>
         </div>
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Желаемая оплата (₽)</label>
+
+        <div class="floating-label-group">
             <input type="number" name="desired_payment" value="{{ profile.get('desired_payment', '') or '' }}"
-                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+                   class="floating-input" placeholder=" ">
+            <label class="floating-label">Желаемая оплата (₽)</label>
         </div>
         {% endif %}
 
-        <button type="submit" class="w-full bg-burgundy text-white py-3.5 rounded-xl font-bold text-base hover:bg-[#4A1720] active:scale-[0.98] transition-all duration-200 shadow-md mt-2">
+        <button type="submit"
+                class="w-full bg-primary-500 text-white py-3.5 rounded-xl font-bold text-base hover:bg-primary-600 active:scale-[0.97] transition-all duration-200 shadow-md mt-2">
             Сохранить изменения
         </button>
     </form>
 
     <div class="mt-6 flex flex-col items-center gap-2">
-        <a href="/logout" class="text-red-500 hover:text-red-700 font-medium text-sm transition-colors duration-200">
+        <a href="/logout" class="text-danger hover:text-danger/80 font-medium text-sm transition-colors duration-200">
             Выйти из аккаунта
         </a>
     </div>

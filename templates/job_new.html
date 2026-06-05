@@ -1,115 +1,369 @@
 {% extends "base.html" %}
+{% from '_icons.html' import info, map_pin, clock, eye, check, help_circle %}
 {% block content %}
-<div class="p-4 max-w-2xl mx-auto">
-    <h1 class="text-2xl font-bold text-gray-900 mb-6">Создать задание</h1>
-    
+<div class="max-w-2xl mx-auto px-4 py-4 fade-in">
+    <h1 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-6">Создать задание</h1>
+
     {% if error_message %}
-    <div class="bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4 text-sm">
+    <div class="bg-danger-light/50 border border-danger/20 text-danger-dark px-4 py-3 rounded-xl mb-4 text-sm flex items-center gap-2">
+        {{ info(16) }}
         {{ error_message }}
     </div>
     {% endif %}
-    
-    <form method="post" class="space-y-5">
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Название организации/задания</label>
-            <input type="text" name="title" required class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+
+    <!-- Progress bar -->
+    <div class="flex items-center gap-2 mb-6">
+        <div class="flex-1 h-2 rounded-full bg-neutral-200 overflow-hidden">
+            <div id="progress-bar" class="h-full rounded-full bg-primary-500 transition-all duration-500 ease-out" style="width: 25%"></div>
         </div>
-        
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Город</label>
-            <input type="text" name="city" required class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+        <span id="step-label" class="text-xs font-medium text-neutral-500 shrink-0">Шаг 1 из 4</span>
+    </div>
+
+    <!-- Step indicators -->
+    <div class="flex justify-between mb-6 text-xs font-medium text-neutral-400">
+        <span id="step-ind-1" class="text-primary-500">Информация</span>
+        <span id="step-ind-2">Локация</span>
+        <span id="step-ind-3">Условия</span>
+        <span id="step-ind-4">Проверка</span>
+    </div>
+
+    <form method="post" id="job-form" class="space-y-5">
+        <!-- ===== Шаг 1: Информация ===== -->
+        <div id="step-1" class="space-y-4">
+            <div class="floating-label-group">
+                <input type="text" name="title" id="title" placeholder=" " required>
+                <label for="title">Название организации/задания <span class="text-danger">*</span></label>
+            </div>
+
+            <div class="floating-label-group">
+                <textarea name="description" id="job-description" rows="4" placeholder=" " required></textarea>
+                <label for="job-description">Описание задания <span class="text-danger">*</span></label>
+            </div>
+            <div id="stop-words-warning" class="hidden bg-danger-light/50 border border-danger/20 text-danger-dark px-3 py-2 rounded-lg text-xs flex items-center gap-2">
+                {{ info(14) }}
+                Обнаружены слова, характерные для трудовых отношений. Пожалуйста, опишите разовую услугу.
+            </div>
+
+            <div class="floating-label-group">
+                <select name="work_type" id="work_type">
+                    <option value="">Выберите вид работы</option>
+                    <option value="уборка">Уборка</option>
+                    <option value="строительство">Строительство</option>
+                    <option value="ремонт">Ремонт</option>
+                    <option value="кухня">Кухня / Приготовление пищи</option>
+                    <option value="водитель">Водитель</option>
+                    <option value="помощник">Помощник</option>
+                    <option value="охрана">Охрана</option>
+                    <option value="другое">Другое</option>
+                </select>
+                <label for="work_type">Вид работы</label>
+            </div>
+
+            <div class="floating-label-group">
+                <select name="preferred_religion" id="preferred_religion">
+                    <option value="">Не указано</option>
+                    <option value="православие">Православие</option>
+                    <option value="католицизм">Католицизм</option>
+                    <option value="протестантизм">Протестантизм</option>
+                    <option value="не важно">Не важно</option>
+                </select>
+                <label for="preferred_religion">Предпочтительное вероисповедание</label>
+            </div>
+
+            <button type="button" id="to-step-2" class="w-full bg-primary-500 hover:bg-primary-600 active:scale-[0.98] text-white font-bold py-3.5 rounded-xl shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2">
+                Далее
+            </button>
         </div>
-        
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Адрес</label>
-            <input type="text" name="address" class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
-        </div>
-        
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Описание задания</label>
-            <textarea name="description" id="job-description" rows="3" required
-                      class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30"
-                      oninput="highlightStopWords()"></textarea>
-            <div id="stop-words-warning" class="hidden mt-2 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-xs">
-                ⚠️ Обнаружены слова, характерные для трудовых отношений.
-                Пожалуйста, опишите разовую услугу.
+
+        <!-- ===== Шаг 2: Локация ===== -->
+        <div id="step-2" class="space-y-4" style="display:none;">
+            <div class="floating-label-group">
+                <input type="text" name="city" id="city" placeholder=" " required>
+                <label for="city">Город <span class="text-danger">*</span></label>
+            </div>
+
+            <div class="floating-label-group">
+                <input type="text" name="address" id="address" placeholder=" ">
+                <label for="address">Адрес</label>
+            </div>
+
+            <div>
+                <p class="text-sm font-semibold text-neutral-700 mb-2">Выберите местоположение на карте</p>
+                <div id="map" style="height: 250px;" class="rounded-xl overflow-hidden shadow-sm border border-neutral-200"></div>
+            </div>
+
+            <input type="hidden" name="latitude" id="lat">
+            <input type="hidden" name="longitude" id="lng">
+
+            <div class="flex gap-3">
+                <button type="button" id="back-to-step-1" class="flex-1 bg-neutral-100 hover:bg-neutral-200 active:scale-[0.98] text-neutral-700 font-semibold py-3.5 rounded-xl transition-all duration-200">
+                    Назад
+                </button>
+                <button type="button" id="to-step-3" class="flex-1 bg-primary-500 hover:bg-primary-600 active:scale-[0.98] text-white font-bold py-3.5 rounded-xl shadow-md transition-all duration-200">
+                    Далее
+                </button>
             </div>
         </div>
-        
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Оплата (₽)</label>
-            <input type="number" name="payment" required min="0" class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
-            <p class="text-xs text-gray-500 mt-1">Оплата труда производится напрямую исполнителю. Платформа не участвует в расчётах.</p>
+
+        <!-- ===== Шаг 3: Условия ===== -->
+        <div id="step-3" class="space-y-4" style="display:none;">
+            <div class="floating-label-group">
+                <input type="number" name="payment" id="payment" required min="0" placeholder=" ">
+                <label for="payment">Оплата (₽) <span class="text-danger">*</span></label>
+            </div>
+
+            <div class="floating-label-group">
+                <input type="datetime-local" name="deadline" id="deadline" placeholder=" ">
+                <label for="deadline">Дата и время</label>
+            </div>
+
+            <div class="floating-label-group">
+                <input type="number" name="max_workers" id="max_workers" value="1" min="1" placeholder=" ">
+                <label for="max_workers">Максимум работников</label>
+            </div>
+
+            <!-- Info block -->
+            <div class="bg-info-light/30 border border-info/20 rounded-xl p-4">
+                <div class="flex items-start gap-3">
+                    {{ info(18) }}
+                    <div class="text-sm text-neutral-700">
+                        <p class="font-semibold mb-1">О трудовых отношениях</p>
+                        <p class="text-neutral-500">Платформа «Трудник» предназначена для поиска <strong>разовых работ и услуг</strong>. Размещение вакансий с признаками постоянных трудовых отношений (график, ставка, испытательный срок) запрещено. Оплата производится напрямую исполнителю.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stop words inline -->
+            <div id="step3-stop-warning" class="hidden bg-danger-light/50 border border-danger/20 text-danger-dark px-3 py-2 rounded-lg text-xs">
+                {{ info(14) }} В описании обнаружены слова, характерные для трудовых отношений. Вернитесь к шагу 1 и исправьте описание.
+            </div>
+
+            <div class="flex gap-3">
+                <button type="button" id="back-to-step-2" class="flex-1 bg-neutral-100 hover:bg-neutral-200 active:scale-[0.98] text-neutral-700 font-semibold py-3.5 rounded-xl transition-all duration-200">
+                    Назад
+                </button>
+                <button type="button" id="to-step-4" class="flex-1 bg-primary-500 hover:bg-primary-600 active:scale-[0.98] text-white font-bold py-3.5 rounded-xl shadow-md transition-all duration-200">
+                    Далее
+                </button>
+            </div>
         </div>
-        
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Максимум работников</label>
-            <input type="number" name="max_workers" value="1" min="1" class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
-            <p class="text-xs text-gray-500 mt-1">Сколько работников нужно для этого задания</p>
+
+        <!-- ===== Шаг 4: Проверка ===== -->
+        <div id="step-4" class="space-y-4" style="display:none;">
+            <h2 class="text-lg font-semibold text-neutral-800">Проверьте данные</h2>
+
+            <div class="bg-white rounded-2xl border border-neutral-200 p-4 space-y-2 text-sm">
+                <p><span class="font-semibold text-neutral-600">Название:</span> <span id="preview-title" class="text-neutral-800"></span></p>
+                <p><span class="font-semibold text-neutral-600">Описание:</span> <span id="preview-desc" class="text-neutral-800"></span></p>
+                <p><span class="font-semibold text-neutral-600">Вид работы:</span> <span id="preview-work" class="text-neutral-800"></span></p>
+                <p><span class="font-semibold text-neutral-600">Город:</span> <span id="preview-city" class="text-neutral-800"></span></p>
+                <p><span class="font-semibold text-neutral-600">Оплата:</span> <span id="preview-payment" class="text-neutral-800 font-bold text-primary-500"></span></p>
+                <p><span class="font-semibold text-neutral-600">Работников:</span> <span id="preview-workers" class="text-neutral-800"></span></p>
+            </div>
+
+            <div class="flex gap-3">
+                <button type="button" id="back-to-step-3" class="flex-1 bg-neutral-100 hover:bg-neutral-200 active:scale-[0.98] text-neutral-700 font-semibold py-3.5 rounded-xl transition-all duration-200">
+                    Назад
+                </button>
+                <button type="submit" class="flex-1 bg-primary-500 hover:bg-primary-600 active:scale-[0.98] text-white font-bold py-3.5 rounded-xl shadow-md transition-all duration-200">
+                    {{ check(18) }}
+                    Создать задание
+                </button>
+            </div>
         </div>
-        
-        <!-- Скрытое поле для координат -->
-        <input type="hidden" name="latitude" id="lat">
-        <input type="hidden" name="longitude" id="lng">
-        
-        <button type="submit" class="w-full bg-burgundy text-white py-3.5 rounded-xl font-bold text-base hover:bg-[#4A1720] active:scale-[0.98] transition-all duration-200 shadow-md">
-            Создать задание
-        </button>
     </form>
-    
-    <div class="mt-6">
-        <h2 class="text-lg font-semibold text-gray-900 mb-3">Выберите местоположение на карте</h2>
-        <div id="map" style="height: 300px;" class="rounded-xl overflow-hidden shadow-sm"></div>
-    </div>
 </div>
 
 <script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_api_key|default('') }}&lang=ru_RU" type="text/javascript"></script>
 <script>
-ymaps.ready(function() {
-    const map = new ymaps.Map('map', { 
-        center: [55.751574, 37.573856], // Москва по умолчанию
-        zoom: 10
-    });
-    
-    const placemark = new ymaps.Placemark([55.751574, 37.573856], {
-        balloonContent: 'Местоположение'
-    });
-    
-    map.geoObjects.add(placemark);
-    
-    // Обработчик клика по карте
-    map.events.add('click', function (e) {
-        const coords = e.get('coords');
-        placemark.geometry.setCoordinates(coords);
-        document.getElementById('lat').value = coords[0];
-        document.getElementById('lng').value = coords[1];
-    });
-});
-</script>
+(function() {
+    'use strict';
 
-<!-- Стоп-слова: фильтр для предотвращения переквалификации в трудовые отношения -->
-<script>
-const STOP_WORDS = ["ставка", "зарплата", "штат", "трудовая", "график", "постоянная работа", "вахта"];
+    var form = document.getElementById('job-form');
+    var steps = [1,2,3,4].map(function(n) { return document.getElementById('step-' + n); });
+    var progressBar = document.getElementById('progress-bar');
+    var stepLabel = document.getElementById('step-label');
+    var stepInds = [1,2,3,4].map(function(n) { return document.getElementById('step-ind-' + n); });
+    var currentStep = 1;
 
-function highlightStopWords() {
-    const textarea = document.getElementById('job-description');
-    const warning = document.getElementById('stop-words-warning');
-    const text = textarea.value.toLowerCase();
-    let found = false;
-    for (let word of STOP_WORDS) {
-        if (text.includes(word)) {
-            found = true;
-            break;
+    // ==========================================
+    // Stop words
+    // ==========================================
+    var STOP_WORDS = ["ставка", "зарплата", "штат", "трудовая", "график", "постоянная работа", "вахта", "оклад", "испытательный срок", "трудовой договор"];
+    var descTextarea = document.getElementById('job-description');
+    var stopWarning = document.getElementById('stop-words-warning');
+    var step3StopWarning = document.getElementById('step3-stop-warning');
+
+    function checkStopWords() {
+        var text = descTextarea.value.toLowerCase();
+        var found = STOP_WORDS.some(function(word) { return text.includes(word); });
+        stopWarning.classList.toggle('hidden', !found);
+        if (found) {
+            descTextarea.classList.add('border-danger', 'bg-danger-light/20');
+        } else {
+            descTextarea.classList.remove('border-danger', 'bg-danger-light/20');
         }
+        return found;
     }
-    warning.classList.toggle('hidden', !found);
-    if (found) {
-        textarea.classList.add('border-red-400', 'bg-red-50');
-        textarea.classList.remove('border-gray-200');
-    } else {
-        textarea.classList.remove('border-red-400', 'bg-red-50');
-        textarea.classList.add('border-gray-200');
+
+    descTextarea.addEventListener('input', checkStopWords);
+
+    // ==========================================
+    // Navigation
+    // ==========================================
+    function goToStep(step) {
+        steps.forEach(function(el, i) {
+            el.style.display = (i + 1 === step) ? 'block' : 'none';
+        });
+        currentStep = step;
+        var percent = (step / 4) * 100;
+        progressBar.style.width = percent + '%';
+        stepLabel.textContent = 'Шаг ' + step + ' из 4';
+        stepInds.forEach(function(el, i) {
+            if (i + 1 === step) {
+                el.classList.add('text-primary-500');
+                el.classList.remove('text-neutral-400');
+            } else if (i + 1 < step) {
+                el.classList.remove('text-primary-500', 'text-neutral-400');
+                el.classList.add('text-success');
+            } else {
+                el.classList.remove('text-primary-500', 'text-success');
+                el.classList.add('text-neutral-400');
+            }
+        });
     }
-}
+
+    // Step 1 → 2
+    document.getElementById('to-step-2').addEventListener('click', function() {
+        if (!document.getElementById('title').value.trim()) {
+            window.showToast('Введите название задания', 'warning');
+            return;
+        }
+        if (!descTextarea.value.trim()) {
+            window.showToast('Введите описание задания', 'warning');
+            return;
+        }
+        goToStep(2);
+        // Init map
+        if (typeof ymaps !== 'undefined') {
+            ymaps.ready(initMap);
+        }
+    });
+
+    // Step 2 → 3
+    document.getElementById('to-step-3').addEventListener('click', function() {
+        if (!document.getElementById('city').value.trim()) {
+            window.showToast('Введите город', 'warning');
+            return;
+        }
+        goToStep(3);
+        checkStopWords();
+    });
+
+    // Step 3 → 4
+    document.getElementById('to-step-4').addEventListener('click', function() {
+        var hasStopWords = checkStopWords();
+        if (hasStopWords) {
+            step3StopWarning.classList.remove('hidden');
+            window.showToast('Обнаружены стоп-слова! Исправьте описание.', 'error');
+            return;
+        }
+        step3StopWarning.classList.add('hidden');
+        // Fill preview
+        document.getElementById('preview-title').textContent = document.getElementById('title').value;
+        document.getElementById('preview-desc').textContent = descTextarea.value;
+        document.getElementById('preview-work').textContent = document.getElementById('work_type').value || 'Не указан';
+        document.getElementById('preview-city').textContent = document.getElementById('city').value;
+        document.getElementById('preview-payment').textContent = document.getElementById('payment').value + ' ₽';
+        document.getElementById('preview-workers').textContent = document.getElementById('max_workers').value;
+        goToStep(4);
+    });
+
+    // Back buttons
+    document.getElementById('back-to-step-1').addEventListener('click', function() { goToStep(1); });
+    document.getElementById('back-to-step-2').addEventListener('click', function() { goToStep(2); });
+    document.getElementById('back-to-step-3').addEventListener('click', function() { goToStep(3); });
+
+    // ==========================================
+    // Yandex Map for Step 2
+    // ==========================================
+    var map, placemark;
+
+    function initMap() {
+        try {
+            map = new ymaps.Map('map', {
+                center: [55.751574, 37.573856],
+                zoom: 10
+            });
+            placemark = new ymaps.Placemark([55.751574, 37.573856], {
+                balloonContent: 'Местоположение'
+            });
+            map.geoObjects.add(placemark);
+            map.events.add('click', function(e) {
+                var coords = e.get('coords');
+                placemark.geometry.setCoordinates(coords);
+                document.getElementById('lat').value = coords[0];
+                document.getElementById('lng').value = coords[1];
+            });
+        } catch(e) {}
+    }
+
+    // ==========================================
+    // Auto-save draft to localStorage
+    // ==========================================
+    var DRAFT_KEY = 'job_new_draft';
+
+    function saveDraft() {
+        var draft = {
+            title: document.getElementById('title').value,
+            description: descTextarea.value,
+            work_type: document.getElementById('work_type').value,
+            preferred_religion: document.getElementById('preferred_religion').value,
+            city: document.getElementById('city').value,
+            address: document.getElementById('address').value,
+            payment: document.getElementById('payment').value,
+            deadline: document.getElementById('deadline').value,
+            max_workers: document.getElementById('max_workers').value
+        };
+        try {
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        } catch(e) {}
+    }
+
+    function loadDraft() {
+        try {
+            var raw = localStorage.getItem(DRAFT_KEY);
+            if (!raw) return;
+            var draft = JSON.parse(raw);
+            if (draft.title) document.getElementById('title').value = draft.title;
+            if (draft.description) descTextarea.value = draft.description;
+            if (draft.work_type) document.getElementById('work_type').value = draft.work_type;
+            if (draft.preferred_religion) document.getElementById('preferred_religion').value = draft.preferred_religion;
+            if (draft.city) document.getElementById('city').value = draft.city;
+            if (draft.address) document.getElementById('address').value = draft.address;
+            if (draft.payment) document.getElementById('payment').value = draft.payment;
+            if (draft.deadline) document.getElementById('deadline').value = draft.deadline;
+            if (draft.max_workers) document.getElementById('max_workers').value = draft.max_workers;
+        } catch(e) {}
+    }
+
+    function clearDraft() {
+        try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
+    }
+
+    // Auto-save on any input
+    form.addEventListener('input', saveDraft);
+
+    // Load draft on page load
+    loadDraft();
+
+    // Clear draft on successful submit
+    form.addEventListener('submit', function() {
+        setTimeout(clearDraft, 100);
+    });
+
+    // Initial check stop words on load
+    checkStopWords();
+})();
 </script>
 {% endblock %}

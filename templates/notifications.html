@@ -1,25 +1,37 @@
 {% extends "base.html" %}
+{% from '_icons.html' import bell %}
 {% block content %}
-<div class="p-4">
-    <h2 class="text-2xl font-bold text-gray-900 mb-5">Уведомления</h2>
-    
+<div class="px-4 pb-24 max-w-lg mx-auto">
+    <h2 class="text-2xl font-bold text-neutral-900 mb-5">Уведомления</h2>
+
     {% if notifications %}
     <div class="space-y-3">
         {% for notification in notifications %}
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 {% if not notification.is_read %}bg-blue-50 border-blue-200{% endif %}">
+        <div class="app-card bg-white rounded-2xl shadow-sm border p-4 transition-all duration-200
+            {% if not notification.is_read %}border-primary-200 bg-primary-50/60{% else %}border-neutral-100{% endif %}">
             <div class="flex items-start gap-3">
-                <div class="flex-1">
-                    <p class="font-semibold text-gray-900">{{ notification.title }}</p>
-                    <p class="text-sm text-gray-600 mt-1">{{ notification.message }}</p>
-                    <p class="text-xs text-gray-400 mt-2">{{ notification.created_at[:16] if notification.created_at else '' }}</p>
+                <div class="w-9 h-9 rounded-full {% if not notification.is_read %}bg-primary-100{% else %}bg-neutral-100{% endif %} flex items-center justify-center shrink-0 mt-0.5">
+                    <span class="{% if not notification.is_read %}text-primary-600{% else %}text-neutral-400{% endif %} font-semibold text-sm">!</span>
                 </div>
+                <div class="flex-1 min-w-0">
+                    <p class="font-semibold text-neutral-900 text-sm">{{ notification.title }}</p>
+                    <p class="text-sm text-neutral-600 mt-0.5">{{ notification.message }}</p>
+                    <p class="text-xs text-neutral-400 mt-1.5">{{ notification.created_at[:16] if notification.created_at else '' }}</p>
+                </div>
+                {% if not notification.is_read %}
+                <span class="w-2 h-2 rounded-full bg-primary-500 shrink-0 mt-2"></span>
+                {% endif %}
             </div>
         </div>
         {% endfor %}
     </div>
     {% else %}
-    <div class="text-center py-12 text-gray-400">
-        <p>Нет уведомлений</p>
+    <div class="flex flex-col items-center justify-center py-16 text-center">
+        <div class="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
+            {{ bell(36) }}
+        </div>
+        <p class="text-lg font-semibold text-neutral-700">Нет уведомлений</p>
+        <p class="text-sm text-neutral-400 mt-1">У вас пока нет уведомлений</p>
     </div>
     {% endif %}
 </div>

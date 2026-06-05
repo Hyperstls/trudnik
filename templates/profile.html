@@ -1,76 +1,102 @@
 {% extends "base.html" %}
-{% from '_icons.html' import star, chat, trash, shield, camera %}
+{% from '_icons.html' import star, chat, trash, shield, camera, settings, mail, phone, map_pin, info %}
 {% block content %}
-<div class="p-4 max-w-lg mx-auto">
+<div class="px-4 pb-24 max-w-lg mx-auto">
     {% if error_message %}
-        <div class="bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4 text-sm">
+        <div class="bg-danger/10 border border-danger/20 text-danger px-4 py-3 rounded-xl mb-4 text-sm">
             {{ error_message }}
         </div>
     {% endif %}
     {% if profile_user is none %}
-        <div class="text-center py-12">
-            <span class="text-5xl mb-3 block">😕</span>
-            <p class="text-red-500 text-lg font-medium">Не удалось загрузить профиль</p>
-            <p class="text-gray-500 text-sm mt-1">Проверьте соединение</p>
+        <div class="flex flex-col items-center justify-center py-16 text-center">
+            <div class="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-300">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+            </div>
+            <p class="text-lg font-semibold text-neutral-700">Не удалось загрузить профиль</p>
+            <p class="text-sm text-neutral-400 mt-1">Проверьте соединение</p>
         </div>
     {% else %}
+    {# ============================================ #}
+    {# Аватар и основная информация                 #}
+    {# ============================================ #}
     <div class="flex flex-col items-center mb-6">
         <div class="relative">
             <img src="{{ profile_user.get('photo_url') or url_for('static', filename='default-avatar.png') }}"
-                 class="w-24 h-24 rounded-full object-cover border-4 border-gold shadow-lg"
+                 class="w-24 h-24 rounded-full object-cover border-4 border-primary-500 shadow-lg"
                  alt="Ваше фото"
                  crossorigin="anonymous"
                  onerror="this.onerror=null;this.src='{{ url_for('static', filename='default-avatar.png') }}';">
         </div>
-        <h3 class="text-xl font-bold text-gray-900 mt-3">{{ profile_user.get('full_name') }}</h3>
-        <p class="text-sm text-gray-500 mt-1 flex items-center gap-1">
-            ⭐ {{ "%.1f"|format(profile_user.get('rating', 0) or 0) }}
-            <span class="text-gray-400">({{ profile_user.get('total_reviews', 0) }} отзывов)</span>
-        </p>
+        <h3 class="text-xl font-bold text-neutral-900 mt-3">{{ profile_user.get('full_name') }}</h3>
+        <div class="flex items-center gap-1.5 mt-1">
+            <span class="text-warning">★</span>
+            <span class="text-sm font-medium text-neutral-700">{{ "%.1f"|format(profile_user.get('rating', 0) or 0) }}</span>
+            <span class="text-xs text-neutral-400">({{ profile_user.get('total_reviews', 0) }} {{ 'отзыв' if profile_user.get('total_reviews', 0) == 1 else 'отзывов' }})</span>
+        </div>
+        {% if profile_user.get('role') == 'employer' %}
+        <span class="mt-2 inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-primary-50 text-primary-700">
+            {{ shield(14) }}
+            Работодатель
+        </span>
+        {% elif profile_user.get('role') == 'worker' %}
+        <span class="mt-2 inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-info/10 text-info">
+            Исполнитель
+        </span>
+        {% endif %}
 
+        {# Кнопки фото #}
         <div class="flex gap-2 mt-4">
             {% if profile_user.get('photo_url') %}
             <form action="/profile/delete-photo" method="post" onsubmit="return confirm('Удалить фото?');">
                 <button type="submit" class="action-icon-btn reject-btn" title="Удалить фото">
-                    {{ trash(18) }}
-                    <span class="text-xs ml-1.5 font-medium">Удалить</span>
+                    {{ trash(16) }}
+                    <span class="text-xs ml-1.5 font-medium hidden sm:inline">Удалить</span>
                 </button>
             </form>
             {% endif %}
             <label for="photo-input" class="action-icon-btn chat-btn cursor-pointer" title="Загрузить фото">
-                {{ camera(18) }}
-                <span class="text-xs ml-1.5 font-medium">{% if profile_user.get('photo_url') %}Заменить{% else %}Загрузить{% endif %}</span>
+                {{ camera(16) }}
+                <span class="text-xs ml-1.5 font-medium hidden sm:inline">
+                    {% if profile_user.get('photo_url') %}Заменить{% else %}Загрузить{% endif %}
+                </span>
             </label>
         </div>
     </div>
 
-    <form method="post" action="/profile/update" enctype="multipart/form-data" class="space-y-5">
+    {# ============================================ #}
+    {# Форма редактирования профиля                 #}
+    {# ============================================ #}
+    <form method="post" action="/profile/update" enctype="multipart/form-data" class="space-y-4">
         <input type="file" id="photo-input" name="photo" accept="image/*" class="hidden" onchange="this.form.submit();">
 
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Имя</label>
+        <div class="floating-label-group">
             <input type="text" name="full_name" value="{{ profile_user.get('full_name', '') }}"
-                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
-        </div>
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Телефон</label>
-            <input type="text" name="phone" value="{{ profile_user.get('phone', '') }}"
-                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
-        </div>
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">О себе</label>
-            <textarea name="bio" rows="3" class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">{{ profile_user.get('bio', '') }}</textarea>
-        </div>
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Город</label>
-            <input type="text" name="city" value="{{ profile_user.get('city', '') }}"
-                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+                   class="floating-input" placeholder=" " required>
+            <label class="floating-label">Имя</label>
         </div>
 
-        <!-- Вероисповедание -->
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Вероисповедание</label>
-            <select name="religion" class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+        <div class="floating-label-group">
+            <input type="text" name="phone" value="{{ profile_user.get('phone', '') }}"
+                   class="floating-input" placeholder=" ">
+            <label class="floating-label">Телефон</label>
+        </div>
+
+        <div class="floating-label-group">
+            <textarea name="bio" rows="3" class="floating-input resize-none" placeholder=" ">{{ profile_user.get('bio', '') }}</textarea>
+            <label class="floating-label">О себе</label>
+        </div>
+
+        <div class="floating-label-group">
+            <input type="text" name="city" value="{{ profile_user.get('city', '') }}"
+                   class="floating-input" placeholder=" ">
+            <label class="floating-label">Город</label>
+        </div>
+
+        <div class="floating-label-group">
+            <select name="religion" class="floating-input">
                 <option value="не указано" {% if profile_user.get('religion') == 'не указано' %}selected{% endif %}>Не указано</option>
                 <option value="православие" {% if profile_user.get('religion') == 'православие' %}selected{% endif %}>Православие</option>
                 <option value="католицизм" {% if profile_user.get('religion') == 'католицизм' %}selected{% endif %}>Католицизм</option>
@@ -80,86 +106,96 @@
                 <option value="буддизм" {% if profile_user.get('religion') == 'буддизм' %}selected{% endif %}>Буддизм</option>
                 <option value="не важно" {% if profile_user.get('religion') == 'не важно' %}selected{% endif %}>Не важно</option>
             </select>
+            <label class="floating-label">Вероисповедание</label>
         </div>
 
-        <!-- Навыки -->
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Навыки (через запятую)</label>
+        <div class="floating-label-group">
             <input type="text" name="skills" value="{{ profile_user.get('skills', [])|join(', ') }}"
-                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+                   class="floating-input" placeholder=" ">
+            <label class="floating-label">Навыки (через запятую)</label>
         </div>
 
-        <!-- Портфолио -->
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Ссылка на портфолио</label>
+        <div class="floating-label-group">
             <input type="url" name="portfolio_link" value="{{ profile_user.get('portfolio_link', '') }}"
-                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+                   class="floating-input" placeholder=" ">
+            <label class="floating-label">Ссылка на портфолио</label>
         </div>
 
         {% if profile_user.get('role') == 'worker' %}
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Опыт</label>
+        <div class="floating-label-group">
             <input type="text" name="experience" value="{{ profile_user.get('experience', '') }}"
-                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+                   class="floating-input" placeholder=" ">
+            <label class="floating-label">Опыт</label>
         </div>
-        <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Желаемая оплата (₽)</label>
+        <div class="floating-label-group">
             <input type="number" name="desired_payment" value="{{ profile_user.get('desired_payment', '') }}"
-                   class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+                   class="floating-input" placeholder=" ">
+            <label class="floating-label">Желаемая оплата (₽)</label>
         </div>
         {% endif %}
 
-        <button type="submit" class="w-full bg-burgundy text-white py-3.5 rounded-xl font-bold text-base hover:bg-[#4A1720] active:scale-[0.98] transition-all duration-200 shadow-md mt-2">
+        <button type="submit"
+                class="w-full bg-primary-500 text-white py-3.5 rounded-xl font-bold text-base hover:bg-primary-600 active:scale-[0.97] transition-all duration-200 shadow-md mt-2">
             Сохранить изменения
         </button>
     </form>
 
+    {# Верификация работодателя #}
     {% if profile_user.get('role') == 'employer' and profile_user.get('verification_status') != 'approved' %}
     <div class="mt-5 text-center">
-        <a href="/verify-employer" class="inline-flex items-center gap-2 bg-gold/10 text-gold font-semibold px-6 py-2.5 rounded-full hover:bg-gold/20 active:scale-95 transition-all duration-200">
+        <a href="/verify-employer"
+           class="inline-flex items-center gap-2 bg-primary-50 text-primary-600 font-semibold px-6 py-2.5 rounded-full hover:bg-primary-100 active:scale-[0.97] transition-all duration-200">
             {{ shield(16) }}
             Пройти верификацию
         </a>
     </div>
     {% endif %}
 
-    <!-- Смена пароля -->
-    <div class="mt-8 p-4 bg-white rounded-2xl shadow-sm border border-gray-100">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Сменить пароль</h3>
+    {# ============================================ #}
+    {# Смена пароля                                 #}
+    {# ============================================ #}
+    <div class="mt-8 p-5 bg-white rounded-2xl shadow-sm border border-neutral-100">
+        <h3 class="text-lg font-semibold text-neutral-900 mb-4">Сменить пароль</h3>
         <form action="/profile/change-password" method="post" class="space-y-3">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Новый пароль</label>
+            <div class="floating-label-group">
                 <input type="password" name="new_password" required minlength="6"
-                       class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+                       class="floating-input" placeholder=" ">
+                <label class="floating-label">Новый пароль</label>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Подтвердите пароль</label>
+            <div class="floating-label-group">
                 <input type="password" name="confirm_password" required minlength="6"
-                       class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
+                       class="floating-input" placeholder=" ">
+                <label class="floating-label">Подтвердите пароль</label>
             </div>
-            <button type="submit" class="w-full bg-gold text-white py-3 rounded-xl font-semibold text-sm hover:bg-yellow-600 active:scale-[0.98] transition-all duration-200 shadow-sm">
+            <button type="submit"
+                    class="w-full bg-primary-500 text-white py-3 rounded-xl font-semibold text-sm hover:bg-primary-600 active:scale-[0.97] transition-all duration-200 shadow-sm">
                 Изменить пароль
             </button>
         </form>
     </div>
 
-    <div class="mt-6 flex flex-col items-center gap-2">
-        <a href="/logout" class="text-red-500 hover:text-red-700 font-medium text-sm transition-colors duration-200">
+    {# ============================================ #}
+    {# Действия с аккаунтом                         #}
+    {# ============================================ #}
+    <div class="mt-6 flex flex-col items-center gap-3">
+        <a href="/logout" class="text-danger hover:text-danger/80 font-medium text-sm transition-colors duration-200">
             Выйти из аккаунта
         </a>
-        <form action="/profile/delete-account" method="post" onsubmit="return confirm('Вы уверены? Аккаунт будет удалён безвозвратно!');">
-            <button type="submit" class="text-xs text-gray-400 hover:text-red-600 transition-colors duration-200 underline">
+        <form action="/profile/delete-account" method="post"
+              onsubmit="return confirm('Вы уверены? Аккаунт будет удалён безвозвратно!');">
+            <button type="submit" class="text-xs text-neutral-400 hover:text-danger transition-colors duration-200 underline">
                 Удалить аккаунт
             </button>
         </form>
     </div>
 </div>
 {% endif %}
+
 {% if current_user_role == 'employer' and profile_user.id != current_user_id %}
-<div class="mt-6 flex flex-wrap gap-3">
+<div class="mt-6 flex flex-wrap gap-3 px-4">
     <a href="/chat/new/{{ profile_user.id }}"
        class="action-icon-btn chat-btn" title="Написать сообщение">
-        {{ chat(20) }}
+        {{ chat(18) }}
         <span class="text-sm ml-2 font-medium">Написать</span>
     </a>
     <button onclick="toggleFavorite('{{ profile_user.id }}', this, event)"
@@ -167,7 +203,7 @@
             data-worker-id="{{ profile_user.id }}"
             data-favorited="false">
         <span class="favorite-icon flex items-center gap-2">
-            {{ star(20) }}
+            {{ star(18) }}
         </span>
         <span class="favorite-text text-sm font-medium">В избранное</span>
     </button>

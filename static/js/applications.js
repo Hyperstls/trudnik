@@ -75,28 +75,12 @@
     }
 
     // ============================================
-    // Уведомления (тост)
+    // Уведомления (тост) — используем глобальный showToast из base.html
     // ============================================
     function showToast(message, type) {
-        type = type || 'info';
-        const container = document.getElementById('toast-container');
-        if (!container) return;
-        const toast = document.createElement('div');
-        toast.className = 'toast toast-' + type + ' fixed top-4 right-4 z-[100] px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all duration-300 animate-slide-in';
-        const bgColors = {
-            success: 'bg-green-600 text-white',
-            error: 'bg-red-600 text-white',
-            warning: 'bg-yellow-500 text-black',
-            info: 'bg-blue-600 text-white'
-        };
-        toast.className += ' ' + (bgColors[type] || bgColors.info);
-        toast.textContent = message;
-        container.appendChild(toast);
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateX(100%)';
-            setTimeout(() => toast.remove(), 300);
-        }, 3500);
+        if (window.showToast) {
+            window.showToast(message, type || 'info');
+        }
     }
 
     // ============================================

@@ -34,12 +34,16 @@ function toggleFavorite(workerId, btn, event) {
         .then(data => {
             if (!data.success) {
                 updateButtonUI(btn, true); // откат
-                alert('Ошибка: ' + (data.error || 'Не удалось удалить'));
+                if (window.showToast) {
+                    window.showToast('❌ ' + (data.error || 'Не удалось удалить'), 'error');
+                }
             }
         })
         .catch(() => {
             updateButtonUI(btn, true); // откат
-            alert('Ошибка сети');
+            if (window.showToast) {
+                window.showToast('❌ Ошибка сети', 'error');
+            }
         });
     } else {
         // Добавляем в избранное
@@ -53,15 +57,21 @@ function toggleFavorite(workerId, btn, event) {
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                alert('Трудник добавлен в избранное!');
+                if (window.showToast) {
+                    window.showToast('✅ Трудник добавлен в избранное!', 'success');
+                }
             } else {
                 updateButtonUI(btn, false); // откат
-                alert('Ошибка: ' + (data.error || 'Не удалось добавить'));
+                if (window.showToast) {
+                    window.showToast('❌ ' + (data.error || 'Не удалось добавить'), 'error');
+                }
             }
         })
         .catch(() => {
             updateButtonUI(btn, false); // откат
-            alert('Ошибка сети');
+            if (window.showToast) {
+                window.showToast('❌ Ошибка сети', 'error');
+            }
         });
     }
 }

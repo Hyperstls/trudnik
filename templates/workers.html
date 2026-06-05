@@ -1,86 +1,88 @@
 {% extends "base.html" %}
 {% from '_icons.html' import star, chat, users %}
-
 {% block title %}Трудники{% endblock %}
-
 {% block content %}
-<div class="container mx-auto px-4 py-8">
-    <h1 class="text-3xl font-bold mb-8">Трудники</h1>
+<div class="px-4 pb-24 max-w-6xl mx-auto">
+    <h1 class="text-2xl font-bold text-neutral-900 mb-6">Трудники</h1>
 
     {% if workers %}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {% for worker in workers %}
-            <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow worker-card"
-                 style="cursor: pointer;"
+            <div class="app-card rounded-2xl bg-white shadow-sm border border-neutral-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
                  data-worker-id="{{ worker.id }}"
-                 onclick="event.stopPropagation(); window.location.href='/profile/{{ worker.id }}'">
+                 onclick="window.location.href='/profile/{{ worker.id }}'">
 
-                <div class="flex items-center space-x-4">
-                    <img src="{{ worker.photo_url or '/static/default-avatar.png' }}"
+                <div class="flex items-center gap-3">
+                    <img src="{{ worker.photo_url or url_for('static', filename='default-avatar.png') }}"
                          alt="{{ worker.full_name }}"
-                         class="w-16 h-16 rounded-full object-cover border-2 border-gray-200">
-                    <div class="flex-1">
-                        <h3 class="font-semibold text-lg text-blue-600 hover:text-blue-800">
-                            {{ worker.full_name }}
-                        </h3>
-                        <div class="flex items-center space-x-1 mt-1">
+                         class="w-14 h-14 rounded-full object-cover border-2 border-neutral-200 shrink-0"
+                         onerror="this.onerror=null;this.src='{{ url_for('static', filename='default-avatar.png') }}';">
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-semibold text-neutral-900 truncate">{{ worker.full_name }}</h3>
+                        <div class="flex items-center gap-0.5 mt-0.5">
                             {% set rating = worker.rating|default(0) %}
                             {% for i in range(5) %}
                                 {% if i < rating|int %}
-                                    <span class="text-yellow-400 text-sm">★</span>
+                                    <span class="text-warning text-xs">★</span>
                                 {% else %}
-                                    <span class="text-gray-300 text-sm">★</span>
+                                    <span class="text-neutral-300 text-xs">★</span>
                                 {% endif %}
                             {% endfor %}
                             {% if rating > 0 %}
-                                <span class="text-gray-500 text-xs ml-1">({{ rating|round(1) }})</span>
+                                <span class="text-neutral-500 text-[11px] ml-1">({{ rating|round(1) }})</span>
                             {% else %}
-                                <span class="text-gray-400 text-xs ml-1">Нет оценок</span>
+                                <span class="text-neutral-400 text-[11px] ml-1">Нет оценок</span>
                             {% endif %}
                         </div>
-                        {% set skills = worker.skills|default([]) %}
-                        {% if skills %}
-                        <div class="mt-2 flex flex-wrap gap-1">
-                            {% for skill in skills[:3] %}
-                                <span class="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded">{{ skill }}</span>
-                            {% endfor %}
-                            {% if skills|length > 3 %}
-                                <span class="text-gray-400 text-xs">+{{ skills|length - 3 }}</span>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                        {% if worker.desired_payment %}
-                        <p class="text-green-600 text-sm mt-2 font-medium">{{ worker.desired_payment }} ₽/час</p>
-                        {% endif %}
                     </div>
                 </div>
 
-                <div class="mt-4 pt-3 border-t border-gray-100 flex space-x-2">
+                {# Навыки #}
+                {% set skills = worker.skills|default([]) %}
+                {% if skills %}
+                <div class="mt-3 flex flex-wrap gap-1">
+                    {% for skill in skills[:3] %}
+                    <span class="bg-neutral-100 text-neutral-700 text-[11px] px-2 py-1 rounded-lg">{{ skill }}</span>
+                    {% endfor %}
+                    {% if skills|length > 3 %}
+                    <span class="text-neutral-400 text-[11px]">+{{ skills|length - 3 }}</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {# Оплата #}
+                {% if worker.desired_payment %}
+                <p class="text-success text-sm font-semibold mt-2">{{ worker.desired_payment }} ₽</p>
+                {% endif %}
+
+                {# Кнопки #}
+                <div class="mt-4 pt-3 border-t border-neutral-100 flex gap-2">
                     <button onclick="event.stopPropagation(); window.location.href='/chat/new/{{ worker.id }}'"
                             class="action-icon-btn chat-btn" title="Написать сообщение">
-                        {{ chat(18) }}
-                        <span class="text-xs ml-1.5 font-medium">Написать</span>
+                        {{ chat(16) }}
+                        <span class="text-[11px] ml-1.5 font-medium">Написать</span>
                     </button>
-                    <button onclick="toggleFavorite('{{ worker.id }}', this, event)"
+                    <button onclick="event.stopPropagation(); toggleFavorite('{{ worker.id }}', this, event)"
                             class="favorite-btn action-icon-btn contact-btn"
                             data-worker-id="{{ worker.id }}"
                             data-favorited="false"
                             data-initial-status="not-favorited">
                         <span class="favorite-icon flex items-center gap-1.5">
-                            {{ star(18) }}
+                            {{ star(16) }}
                         </span>
-                        <span class="favorite-text text-xs font-medium">В избранное</span>
+                        <span class="favorite-text text-[11px] font-medium">В избранное</span>
                     </button>
                 </div>
             </div>
             {% endfor %}
         </div>
     {% else %}
-        <div class="text-center py-16">
-            <div class="flex justify-center mb-4">
+        <div class="flex flex-col items-center justify-center py-16 text-center">
+            <div class="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
                 {{ users(64) }}
             </div>
-            <p class="text-gray-500 text-lg">Пока нет зарегистрированных трудников</p>
+            <p class="text-lg font-semibold text-neutral-700">Пока нет зарегистрированных трудников</p>
+            <p class="text-sm text-neutral-400 mt-1">Проверьте позже</p>
         </div>
     {% endif %}
 </div>

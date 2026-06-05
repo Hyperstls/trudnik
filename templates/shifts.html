@@ -1,72 +1,141 @@
 {% extends "base.html" %}
-{% from '_icons.html' import star, alert, trash %}
+{% from '_icons.html' import star, alert, trash, clock, check_circle %}
 {% block content %}
-<div class="p-4">
-    {% for shift in shifts %}
-    <div class="border p-3 mb-2 rounded">
-        <p class="font-semibold">{% if shift.job %}{{ shift.job.organization_name }}{% else %}<span class="text-gray-400">Без задания</span>{% endif %}</p>
-        <p>{% if shift.job %}{{ shift.job.date_time[:16] }}{% else %}<span class="text-gray-400">Дата не указана</span>{% endif %}</p>
-        <p>Статус: {{ shift.status }}</p>
-        {% if shift.status == 'pending' and session.user_id == shift.worker_id %}
-        <form action="/shift/{{ shift.id }}/action" method="post" class="inline">
-            <input type="hidden" name="action" value="checkin">
-            <button type="submit" class="bg-gold text-white px-2 py-1 rounded">Отметить начало</button>
-        </form>
-        {% endif %}
-        {% if shift.status == 'active' and session.user_id == shift.worker_id and not shift.worker_complete %}
-        <form action="/shift/{{ shift.id }}/action" method="post" class="inline">
-            <input type="hidden" name="action" value="complete">
-            <button type="submit" class="bg-green-500 text-white px-2 py-1 rounded">Завершить</button>
-        </form>
-        {% endif %}
-        {% if shift.status == 'payment_pending' %}
-            {% if not shift.employer_payment_confirmed and session.user_id == shift.employer_id %}
-            <form action="/shift/{{ shift.id }}/action" method="post">
-                <input type="hidden" name="action" value="confirm_payment_employer">
-                <button class="bg-blue-500 text-white px-2 py-1 rounded">Подтвердить оплату</button>
-            </form>
-            {% endif %}
-            {% if not shift.worker_payment_confirmed and session.user_id == shift.worker_id %}
-            <form action="/shift/{{ shift.id }}/action" method="post">
-                <input type="hidden" name="action" value="confirm_payment_worker">
-                <button class="bg-blue-500 text-white px-2 py-1 rounded">Оплату получил</button>
-            </form>
-            {% endif %}
-            {% if shift.employer_payment_confirmed and shift.worker_payment_confirmed %}
-            <span class="text-green-600 font-medium">Оплата подтверждена</span>
-            {% endif %}
-        {% endif %}
-        {% if shift.status == 'paid' %}
-            <div class="mt-2 space-y-1">
-                {% if session.user_id == shift.worker_id %}
-                <form action="/rate-worker/{{ shift.worker_id }}/{{ shift.job_id }}" method="post" class="inline">
-                    <button class="action-icon-btn contact-btn" title="Оценить работодателя">
-                        {{ star(18) }}
-                        <span class="text-xs ml-1.5 font-medium">Оценить работодателя</span>
+<div class="px-4 pb-24 max-w-lg mx-auto">
+    <div class="flex items-center justify-between mb-5">
+        <h1 class="text-2xl font-bold text-neutral-900">Мои смены</h1>
+    </div>
+
+    {% if shifts %}
+    <div class="space-y-3">
+        {% for shift in shifts %}
+        <div class="app-card bg-white rounded-2xl shadow-sm border border-neutral-100 p-4 hover:shadow-md transition-shadow duration-200">
+            <!-- Header -->
+            <div class="flex items-start justify-between mb-3">
+                <div class="flex-1 min-w-0">
+                    <p class="font-semibold text-neutral-900">
+                        {% if shift.job %}
+                            {{ shift.job.organization_name or 'Без названия' }}
+                        {% else %}
+                            <span class="text-neutral-400">Без задания</span>
+                        {% endif %}
+                    </p>
+                    <p class="text-sm text-neutral-500 mt-0.5 flex items-center gap-1.5">
+                        {{ clock(14) }}
+                        {% if shift.job %}
+                            {{ shift.job.date_time[:16] if shift.job.date_time else 'Дата не указана' }}
+                        {% else %}
+                            <span class="text-neutral-400">Дата не указана</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <span class="status-badge status-{{ shift.status }}">{{ shift.status }}</span>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex flex-wrap gap-2">
+                {% if shift.status == 'pending' and session.user_id == shift.worker_id %}
+                <form action="/shift/{{ shift.id }}/action" method="post" class="inline">
+                    <input type="hidden" name="action" value="checkin">
+                    <button type="submit" class="action-icon-btn accept-btn">
+                        {{ clock(16) }}
+                        <span class="text-xs font-medium">Отметить начало</span>
                     </button>
                 </form>
                 {% endif %}
-                {% if session.user_id == shift.employer_id %}
-                <form action="/rate-worker/{{ shift.worker_id }}/{{ shift.job_id }}" method="post" class="inline">
-                    <button class="action-icon-btn contact-btn" title="Оценить работника">
-                        {{ star(18) }}
-                        <span class="text-xs ml-1.5 font-medium">Оценить работника</span>
+
+                {% if shift.status == 'active' and session.user_id == shift.worker_id and not shift.worker_complete %}
+                <form action="/shift/{{ shift.id }}/action" method="post" class="inline">
+                    <input type="hidden" name="action" value="complete">
+                    <button type="submit" class="action-icon-btn accept-btn">
+                        {{ check_circle(16) }}
+                        <span class="text-xs font-medium">Завершить</span>
                     </button>
                 </form>
+                {% endif %}
+
+                {% if shift.status == 'payment_pending' %}
+                    {% if not shift.employer_payment_confirmed and session.user_id == shift.employer_id %}
+                    <form action="/shift/{{ shift.id }}/action" method="post" class="inline">
+                        <input type="hidden" name="action" value="confirm_payment_employer">
+                        <button class="action-icon-btn contact-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                            <span class="text-xs font-medium">Подтвердить оплату</span>
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% if not shift.worker_payment_confirmed and session.user_id == shift.worker_id %}
+                    <form action="/shift/{{ shift.id }}/action" method="post" class="inline">
+                        <input type="hidden" name="action" value="confirm_payment_worker">
+                        <button class="action-icon-btn contact-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                            <span class="text-xs font-medium">Оплату получил</span>
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% if shift.employer_payment_confirmed and shift.worker_payment_confirmed %}
+                    <span class="text-sm font-medium text-success flex items-center gap-1">
+                        {{ check_circle(16) }}
+                        Оплата подтверждена
+                    </span>
+                    {% endif %}
+                {% endif %}
+
+                {% if shift.status == 'paid' %}
+                    <div class="flex gap-2 w-full">
+                        {% if session.user_id == shift.worker_id %}
+                        <form action="/rate-worker/{{ shift.worker_id }}/{{ shift.job_id }}" method="post" class="inline">
+                            <button class="action-icon-btn contact-btn" title="Оценить работодателя">
+                                {{ star(16) }}
+                                <span class="text-xs font-medium">Оценить работодателя</span>
+                            </button>
+                        </form>
+                        {% endif %}
+                        {% if session.user_id == shift.employer_id %}
+                        <form action="/rate-worker/{{ shift.worker_id }}/{{ shift.job_id }}" method="post" class="inline">
+                            <button class="action-icon-btn contact-btn" title="Оценить работника">
+                                {{ star(16) }}
+                                <span class="text-xs font-medium">Оценить работника</span>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                {% if shift.status == 'payment_pending' %}
+                    {% if session.user_id == shift.worker_id or session.user_id == shift.employer_id %}
+                    <form action="/shift/{{ shift.id }}/dispute" method="post" class="inline" onsubmit="return confirmDispute(event, this);">
+                        <button class="action-icon-btn reject-btn" title="Спор">
+                            {{ alert(16) }}
+                            <span class="text-xs font-medium">Спор</span>
+                        </button>
+                    </form>
+                    {% endif %}
                 {% endif %}
             </div>
-        {% endif %}
-        {% if shift.status == 'payment_pending' %}
-            {% if session.user_id == shift.worker_id or session.user_id == shift.employer_id %}
-            <form action="/shift/{{ shift.id }}/dispute" method="post" class="inline" onclick="return confirm('Запросить спор?');">
-                <button class="action-icon-btn reject-btn" title="Спор">
-                    {{ alert(18) }}
-                    <span class="text-xs ml-1.5 font-medium">Спор</span>
-                </button>
-            </form>
-            {% endif %}
-        {% endif %}
+        </div>
+        {% endfor %}
     </div>
-    {% endfor %}
+    {% else %}
+    <div class="flex flex-col items-center justify-center py-16 text-center">
+        <div class="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
+            {{ clock(36) }}
+        </div>
+        <p class="text-lg font-semibold text-neutral-700">Нет смен</p>
+        <p class="text-sm text-neutral-400 mt-1">У вас пока нет активных смен</p>
+    </div>
+    {% endif %}
 </div>
+
+<script>
+function confirmDispute(event, form) {
+    event.preventDefault();
+    if (window.showToast) {
+        window.showToast('⏳ Спор будет отправлен после подтверждения', 'warning');
+    }
+    // Submit after a brief delay
+    setTimeout(() => form.submit(), 800);
+    return false;
+}
+</script>
 {% endblock %}

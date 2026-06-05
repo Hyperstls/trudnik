@@ -959,12 +959,12 @@ class TestAdminBlueprint(BaseBlueprintTest):
 
     def test_approve_employer(self):
         self._login_admin()
-        resp = self.client.get('/admin/approve/u-1')
+        resp = self.client.post('/admin/approve/u-1')
         self.assertEqual(resp.status_code, 302)
 
     def test_reject_employer(self):
         self._login_admin()
-        resp = self.client.get('/admin/reject/u-1')
+        resp = self.client.post('/admin/reject/u-1')
         self.assertEqual(resp.status_code, 302)
 
 
