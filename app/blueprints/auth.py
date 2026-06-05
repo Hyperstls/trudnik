@@ -38,11 +38,27 @@ def login():
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        full_name = request.form.get('full_name')
-        email = request.form.get('email')
-        password = request.form.get('password')
-        role = request.form.get('role')
-        city = request.form.get('city', '')
+        full_name = request.form.get('full_name', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '')
+        role = request.form.get('role', '')
+        city = request.form.get('city', '').strip()
+
+        # Валидация обязательных полей
+        errors = []
+        if not full_name:
+            errors.append('Укажите полное имя')
+        if not email:
+            errors.append('Укажите email')
+        if not password:
+            errors.append('Укажите пароль')
+        if role not in ('worker', 'employer'):
+            errors.append('Выберите роль')
+        if errors:
+            for err in errors:
+                flash(err, 'danger')
+            return render_template('register.html')
+
         religion = request.form.get('religion', 'не указано')
         portfolio_link = request.form.get('portfolio_link', '')
         skills_str = request.form.get('skills', '')
