@@ -11,17 +11,37 @@ except ImportError:
     pass
 
 # --- Конфигурация ---
-DEEPSEEK_API_KEY = "sk-4192af6e581549b58d35cedb5b8743b5"
-SUPABASE_URL = os.getenv("SUPABASE_URL", "https://***REMOVED***.supabase.co")
+# Все секреты читаются из переменных окружения (файл .env)
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
-# Читаем service_role ключ из переменной окружения. Если её нет, замените на строку "ваш_реальный_ключ"
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "ваш_service_role_ключ_сюда")
+PA_USERNAME = os.getenv("PYTHONANYWHERE_USERNAME")
+PA_API_TOKEN = os.getenv("PYTHONANYWHERE_API_TOKEN")
 
-PA_USERNAME = "Hyperstls"
-PA_API_TOKEN = "e4e936c2bed6824c4981927652c21986780e22b3"
+try:
+    PA_CONSOLE_ID = int(os.getenv("PA_CONSOLE_ID", "0"))
+except (ValueError, TypeError):
+    raise RuntimeError(
+        "PA_CONSOLE_ID должен быть целым числом. "
+        "Проверьте файл .env"
+    )
 
-# Явный ID вашей консоли (Python 3) на PythonAnywhere
-PA_CONSOLE_ID = 46987704
+# Проверка обязательных переменных
+_REQUIRED_ENV = {
+    "DEEPSEEK_API_KEY": DEEPSEEK_API_KEY,
+    "SUPABASE_URL": SUPABASE_URL,
+    "SUPABASE_SERVICE_ROLE_KEY": SUPABASE_SERVICE_KEY,
+    "PYTHONANYWHERE_USERNAME": PA_USERNAME,
+    "PYTHONANYWHERE_API_TOKEN": PA_API_TOKEN,
+    "PA_CONSOLE_ID": PA_CONSOLE_ID,
+}
+_missing = [k for k, v in _REQUIRED_ENV.items() if not v]
+if _missing:
+    raise RuntimeError(
+        f"Отсутствуют обязательные переменные окружения: {', '.join(_missing)}. "
+        f"Проверьте файл .env"
+    )
 
 # --- Клиенты ---
 client = OpenAI(

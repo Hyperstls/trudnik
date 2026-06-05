@@ -5,9 +5,22 @@ RLS должен быть отключен в Supabase Dashboard
 
 import requests
 import json
+import os
 
-SUPABASE_URL = "https://***REMOVED***.supabase.co"
-SUPABASE_KEY = "***REMOVED***"
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise RuntimeError(
+        "SUPABASE_URL и SUPABASE_ANON_KEY должны быть установлены "
+        "в переменных окружения."
+    )
 
 user_id = "c6291021-7741-4a10-b68c-b1c7ec002442"
 update_data = {

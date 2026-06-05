@@ -1,10 +1,18 @@
 import sys
 import json
+import os
 import requests
+from requests.exceptions import JSONDecodeError as RequestsJSONDecodeError
 from playwright.sync_api import sync_playwright
 
-DEEPSEEK_API_KEY = "sk-4192af6e581549b58d35cedb5b8743b5"
-BASE_URL = "https://trudnik.onrender.com"   # или ваш PythonAnywhere URL
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+if not DEEPSEEK_API_KEY:
+    print("❌ DEEPSEEK_API_KEY не установлен в переменных окружения.")
+    sys.exit(1)
+BASE_URL = os.getenv("BASE_URL", "")
+if not BASE_URL:
+    print("❌ BASE_URL не установлен в переменных окружения.")
+    sys.exit(1)
 
 def get_test_scenarios():
     """Просит DeepSeek сгенерировать тестовые сценарии для «Трудника»."""
@@ -35,7 +43,7 @@ def get_test_scenarios():
                     content = content[4:].strip()
             scenarios = json.loads(content)
             return scenarios if isinstance(scenarios, list) else []
-        except:
+        except (json.JSONDecodeError, KeyError, IndexError, RequestsJSONDecodeError, AttributeError):
             return ["Ошибка парсинга ответа от DeepSeek"]
     return []
 

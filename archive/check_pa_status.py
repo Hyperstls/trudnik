@@ -5,13 +5,26 @@
 
 import http.client
 import urllib.parse
+import os
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 # Credentials (используем API token для авторизации)
-API_TOKEN = "e4e936c2bed6824c4981927652c21986780e22b3"
+API_TOKEN = os.getenv("PYTHONANYWHERE_API_TOKEN")
+USERNAME = os.getenv("PYTHONANYWHERE_USERNAME", "Hyperstls")
+
+if not API_TOKEN:
+    raise RuntimeError(
+        "PYTHONANYWHERE_API_TOKEN должен быть установлен в переменных окружения."
+    )
 
 # PythonAnywhere API
 HOST = "www.pythonanywhere.com"
-BASE_URL = f"/api/v0/user/Hyperstls"
+BASE_URL = f"/api/v0/user/{USERNAME}"
 
 print("=== Проверка статуса PythonAnywhere ===\n")
 

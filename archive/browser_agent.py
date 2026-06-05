@@ -1,16 +1,27 @@
 import sys
 import json
+import os
 from openai import OpenAI
 from playwright.sync_api import sync_playwright
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 # ⚙️ Настройки DeepSeek
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+if not DEEPSEEK_API_KEY:
+    raise RuntimeError("DEEPSEEK_API_KEY не установлен в переменных окружения.")
+
 client = OpenAI(
-    api_key="sk-4192af6e581549b58d35cedb5b8743b5",   # ваш актуальный ключ
+    api_key=DEEPSEEK_API_KEY,
     base_url="https://api.deepseek.com/v1"
 )
 
 # 🔗 Адрес вашего сайта (можно заменить на PythonAnywhere-ссылку)
-BASE_URL = "https://hyperstls.pythonanywhere.com"
+BASE_URL = os.getenv("BASE_URL", "https://hyperstls.pythonanywhere.com")
 
 def ask_deepseek(prompt):
     """Отправляем вопрос в DeepSeek и возвращаем ответ."""

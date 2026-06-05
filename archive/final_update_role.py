@@ -5,15 +5,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SUPABASE_URL = os.environ.get('SUPABASE_URL', 'https://***REMOVED***.supabase.co')
+SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
 
 print("=== Обновление роли пользователя ===")
 
-if not SERVICE_KEY:
-    print("SERVICE_KEY не найден в .env файле!")
-    print("Пожалуйста, добавьте SERVICE_KEY в .env файл")
-    print("Получить его можно в Supabase Dashboard -> Settings -> API -> service_role key")
+if not SUPABASE_URL or not SERVICE_KEY:
+    print("SUPABASE_URL или SUPABASE_SERVICE_ROLE_KEY не найдены в .env файле!")
+    print("Пожалуйста, добавьте их в .env файл")
+    print("Получить их можно в Supabase Dashboard -> Settings -> API")
     exit(1)
 
 print(f"SERVICE_KEY: {SERVICE_KEY[:20]}...")

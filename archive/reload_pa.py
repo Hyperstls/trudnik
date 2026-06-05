@@ -1,9 +1,22 @@
 import urllib.request
 import json
+import os
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 # PythonAnywhere API credentials
-API_TOKEN = "e4e936c2bed6824c4981927652c21986780e22b3"
-USERNAME = "Hyperstls"
+API_TOKEN = os.getenv("PYTHONANYWHERE_API_TOKEN")
+USERNAME = os.getenv("PYTHONANYWHERE_USERNAME")
+
+if not API_TOKEN or not USERNAME:
+    raise RuntimeError(
+        "PYTHONANYWHERE_API_TOKEN и PYTHONANYWHERE_USERNAME должны быть "
+        "установлены в переменных окружения."
+    )
 
 # API endpoints
 API_BASE = f"https://www.pythonanywhere.com/api/v0/user/{USERNAME}/"
