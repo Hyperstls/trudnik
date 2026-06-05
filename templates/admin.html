@@ -1,60 +1,69 @@
 {% extends "base.html" %}
+{% from '_icons.html' import save, check, x %}
 {% block content %}
-<div class="p-4 max-w-2xl mx-auto">
-    <h2 class="text-xl font-bold mb-4">Панель администратора</h2>
+<div class="px-4 pb-24 max-w-2xl mx-auto">
+    <h2 class="text-2xl font-bold text-neutral-900 mb-6">Панель администратора</h2>
 
     <!-- Заявки на верификацию -->
-    <h3 class="text-lg font-semibold mb-2">Заявки на верификацию</h3>
+    <h3 class="text-lg font-semibold text-neutral-800 mb-3">Заявки на верификацию</h3>
     {% if pending %}
     <div class="space-y-2 mb-8">
         {% for user in pending %}
-        <div class="border p-3 rounded-lg flex justify-between items-center">
-            <div>
-                <p class="font-medium">{{ user.full_name }}</p>
+        <div class="app-card bg-white rounded-xl border border-neutral-100 p-3 flex justify-between items-center gap-3 shadow-sm">
+            <div class="min-w-0">
+                <p class="font-medium text-neutral-900">{{ user.full_name }}</p>
                 {% if user.verification_doc_url %}
-                <a href="{{ user.verification_doc_url }}" target="_blank" class="text-blue-500 text-sm">Документ</a>
+                <a href="{{ user.verification_doc_url }}" target="_blank" class="text-primary-500 text-sm hover:underline">Документ</a>
                 {% endif %}
             </div>
-            <div class="flex gap-2">
-                <a href="/admin/approve/{{ user.id }}" class="bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-600">Одобрить</a>
-                <a href="/admin/reject/{{ user.id }}" class="bg-red-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-red-600">Отклонить</a>
+            <div class="flex gap-2 shrink-0">
+                <a href="/admin/approve/{{ user.id }}" class="action-icon-btn accept-btn px-3 py-1.5">
+                    {{ check(14) }}
+                    <span class="text-xs font-medium">Одобрить</span>
+                </a>
+                <a href="/admin/reject/{{ user.id }}" class="action-icon-btn reject-btn px-3 py-1.5">
+                    {{ x(14) }}
+                    <span class="text-xs font-medium">Отклонить</span>
+                </a>
             </div>
         </div>
         {% endfor %}
     </div>
     {% else %}
-    <p class="text-gray-400 text-sm mb-8">Нет заявок на верификацию</p>
+    <p class="text-sm text-neutral-400 mb-8">Нет заявок на верификацию</p>
     {% endif %}
 
     <!-- Настройки монетизации -->
-    <h3 class="text-lg font-semibold mb-2">Настройки монетизации</h3>
-    <div class="bg-white border border-gray-200 rounded-xl p-4">
-        <form id="monetization-form" class="space-y-4" onsubmit="saveSettings(event)">
-            <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1.5">Цена за раскрытие контакта (₽)</label>
+    <h3 class="text-lg font-semibold text-neutral-800 mb-3">Настройки монетизации</h3>
+    <div class="app-card bg-white rounded-2xl border border-neutral-100 p-5 shadow-sm">
+        <form id="monetization-form" class="space-y-5" onsubmit="saveSettings(event)">
+            <div class="floating-label-group">
                 <input type="number" id="contact-price" value="290" min="1"
-                       class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
-                <p class="text-xs text-gray-500 mt-1">Сумма, которую храм платит за доступ к контактам исполнителя</p>
+                       class="floating-input peer" placeholder="Цена за раскрытие контакта">
+                <label for="contact-price" class="floating-label">Цена за раскрытие контакта (₽)</label>
+                <p class="text-xs text-neutral-400 mt-1">Сумма, которую храм платит за доступ к контактам исполнителя</p>
             </div>
-            <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1.5">ИНН самозанятого (владельца)</label>
+            <div class="floating-label-group">
                 <input type="text" id="owner-inn" value="" maxlength="12" pattern="\d{12}"
-                       class="w-full border border-gray-200 p-3 rounded-xl text-sm focus:ring-2 focus:ring-gold/30">
-                <p class="text-xs text-gray-500 mt-1">ИНН для формирования чеков через «Мой налог»</p>
+                       class="floating-input peer" placeholder="ИНН самозанятого">
+                <label for="owner-inn" class="floating-label">ИНН самозанятого (владельца)</label>
+                <p class="text-xs text-neutral-400 mt-1">ИНН для формирования чеков через «Мой налог»</p>
             </div>
             <button type="submit"
-                    class="bg-burgundy text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-[#4A1720] transition-colors flex items-center gap-2">
+                    class="w-full bg-primary-500 text-white px-6 py-3 rounded-xl text-sm font-bold
+                    hover:bg-primary-600 active:scale-[0.98] transition-all duration-150
+                    flex items-center justify-center gap-2 shadow-sm">
                 {{ save(16) }}
                 Сохранить
             </button>
-            <span id="save-status" class="text-sm text-green-600 ml-2 hidden">✓ Сохранено</span>
+            <span id="save-status" class="text-sm text-success font-medium text-center block hidden">✓ Сохранено</span>
         </form>
     </div>
 
     <!-- История платежей -->
-    <h3 class="text-lg font-semibold mb-2 mt-8">История платежей</h3>
+    <h3 class="text-lg font-semibold text-neutral-800 mb-3 mt-8">История платежей</h3>
     <div id="payments-list" class="space-y-2">
-        <p class="text-gray-400 text-sm">Загрузка...</p>
+        <p class="text-sm text-neutral-400">Загрузка...</p>
     </div>
 </div>
 
@@ -95,11 +104,24 @@ async function saveSettings(event) {
             const status = document.getElementById('save-status');
             status.classList.remove('hidden');
             setTimeout(() => status.classList.add('hidden'), 3000);
+            if (window.showToast) {
+                window.showToast('✅ Настройки сохранены', 'success');
+            } else {
+                alert('✅ Настройки сохранены');
+            }
         } else {
-            alert('Ошибка: ' + (data.error || 'Не удалось сохранить'));
+            if (window.showToast) {
+                window.showToast('❌ Ошибка: ' + (data.error || 'Не удалось сохранить'), 'error');
+            } else {
+                alert('Ошибка: ' + (data.error || 'Не удалось сохранить'));
+            }
         }
     } catch (e) {
-        alert('Ошибка соединения');
+        if (window.showToast) {
+            window.showToast('❌ Ошибка соединения', 'error');
+        } else {
+            alert('Ошибка соединения');
+        }
     }
 
     btn.disabled = false;
@@ -115,29 +137,29 @@ async function loadPayments() {
 
         if (data.success && data.payments && data.payments.length > 0) {
             container.innerHTML = data.payments.map(p => `
-                <div class="bg-white border border-gray-200 rounded-lg p-3 text-sm">
+                <div class="app-card bg-white rounded-xl border border-neutral-100 p-3 text-sm shadow-sm">
                     <div class="flex justify-between">
-                        <span class="font-medium">${p.amount} ₽</span>
-                        <span class="text-${p.status === 'paid' ? 'green' : 'yellow'}-600">${p.status === 'paid' ? 'Оплачено' : 'Ожидает'}</span>
+                        <span class="font-medium text-neutral-900">${p.amount} ₽</span>
+                        <span class="text-${p.status === 'paid' ? 'success' : 'warning'} font-medium">${p.status === 'paid' ? 'Оплачено' : 'Ожидает'}</span>
                     </div>
-                    <p class="text-xs text-gray-500 mt-1">ID: ${p.id.slice(0, 8)}... | ${new Date(p.created_at).toLocaleString('ru-RU')}</p>
-                    ${p.transaction_id ? `<p class="text-xs text-gray-400">Транзакция: ${p.transaction_id}</p>` : ''}
+                    <p class="text-xs text-neutral-400 mt-1">ID: ${p.id.slice(0, 8)}... | ${new Date(p.created_at).toLocaleString('ru-RU')}</p>
+                    ${p.transaction_id ? `<p class="text-xs text-neutral-400">Транзакция: ${p.transaction_id}</p>` : ''}
                     ${p.receipts && p.receipts.length > 0 ? `
-                        <div class="mt-2 text-xs text-gray-500">
+                        <div class="mt-2 text-xs text-neutral-400">
                             <p>🧾 Чек: ${p.receipts[0].status || 'отправлен'}</p>
                             ${p.receipts[0].status === 'failed' ? `
-                                <button onclick="resendReceipt('${p.receipts[0].id}')"
-                                        class="text-blue-600 hover:underline">Переотправить</button>
+                                <button data-receipt-id="${p.receipts[0].id}"
+                                        class="receipt-resend-btn text-primary-500 hover:underline font-medium">Переотправить</button>
                             ` : ''}
                         </div>
                     ` : ''}
                 </div>
             `).join('');
         } else {
-            container.innerHTML = '<p class="text-gray-400 text-sm">Нет платежей</p>';
+            container.innerHTML = '<p class="text-sm text-neutral-400">Нет платежей</p>';
         }
     } catch (e) {
-        document.getElementById('payments-list').innerHTML = '<p class="text-red-400 text-sm">Ошибка загрузки</p>';
+        document.getElementById('payments-list').innerHTML = '<p class="text-sm text-danger">Ошибка загрузки</p>';
     }
 }
 
@@ -146,19 +168,166 @@ async function resendReceipt(receiptId) {
         const resp = await fetch('/api/receipts/' + receiptId + '/resend', { method: 'POST' });
         const data = await resp.json();
         if (data.success) {
-            alert('✅ Чек переотправлен');
+            if (window.showToast) {
+                window.showToast('✅ Чек переотправлен', 'success');
+            } else {
+                alert('✅ Чек переотправлен');
+            }
             loadPayments();
         } else {
-            alert('Ошибка: ' + data.error);
+            if (window.showToast) {
+                window.showToast('❌ Ошибка: ' + data.error, 'error');
+            } else {
+                alert('Ошибка: ' + data.error);
+            }
         }
     } catch (e) {
-        alert('Ошибка соединения');
+        if (window.showToast) {
+            window.showToast('❌ Ошибка соединения', 'error');
+        } else {
+            alert('Ошибка соединения');
+        }
     }
 }
+
+// Делегирование событий для кнопок переотправки чеков
+document.getElementById('payments-list').addEventListener('click', function(e) {
+    const btn = e.target.closest('.receipt-resend-btn');
+    if (btn) {
+        resendReceipt(btn.dataset.receiptId);
+    }
+});
+
+loadSettings();
+loadPayments();
+</script>
+{% endblock %}
+}
+
+async function resendReceipt(receiptId) {
+    try {
+        const resp = await fetch('/api/receipts/' + receiptId + '/resend', { method: 'POST' });
+        const data = await resp.json();
+        if (data.success) {
+            if (window.showToast) {
+                window.showToast('✅ Чек переотправлен', 'success');
+            } else {
+                alert('✅ Чек переотправлен');
+            }
+            loadPayments();
+        } else {
+            if (window.showToast) {
+                window.showToast('❌ Ошибка: ' + data.error, 'error');
+            } else {
+                alert('Ошибка: ' + data.error);
+            }
+        }
+    } catch (e) {
+        if (window.showToast) {
+            window.showToast('❌ Ошибка соединения', 'error');
+        } else {
+            alert('Ошибка соединения');
+        }
+    }
+}
+
+// Делегирование событий для кнопок переотправки чеков
+document.getElementById('payments-list').addEventListener('click', function(e) {
+    const btn = e.target.closest('.receipt-resend-btn');
+    if (btn) {
+        resendReceipt(btn.dataset.receiptId);
+    }
+});
 
 loadSettings();
 loadPayments();
 </script>
 {% endblock %}
 
+
+async function resendReceipt(receiptId) {
+    try {
+        const resp = await fetch('/api/receipts/' + receiptId + '/resend', { method: 'POST' });
+        const data = await resp.json();
+        if (data.success) {
+            if (window.showToast) {
+                window.showToast('✅ Чек переотправлен', 'success');
+            } else {
+                alert('✅ Чек переотправлен');
+            }
+            loadPayments();
+        } else {
+            if (window.showToast) {
+                window.showToast('❌ Ошибка: ' + data.error, 'error');
+            } else {
+                alert('Ошибка: ' + data.error);
+            }
+        }
+    } catch (e) {
+        if (window.showToast) {
+            window.showToast('❌ Ошибка соединения', 'error');
+        } else {
+            alert('Ошибка соединения');
+        }
+    }
+}
+
+// Делегирование событий для кнопок переотправки чеков
+document.getElementById('payments-list').addEventListener('click', function(e) {
+    const btn = e.target.closest('.receipt-resend-btn');
+    if (btn) {
+        resendReceipt(btn.dataset.receiptId);
+    }
+});
+
+loadSettings();
+loadPayments();
+</script>
+{% endblock %}
+
+        }
+    }
+}
+
+// Делегирование событий для кнопок переотправки чеков
+document.getElementById('payments-list').addEventListener('click', function(e) {
+    const btn = e.target.closest('.receipt-resend-btn');
+    if (btn) {
+        resendReceipt(btn.dataset.receiptId);
+    }
+});
+
+loadSettings();
+loadPayments();
+</script>
+{% endblock %}
+
+            if (window.showToast) {
+                window.showToast('✅ Чек переотправлен', 'success');
+            }
+            loadPayments();
+        } else {
+            if (window.showToast) {
+                window.showToast('❌ Ошибка: ' + data.error, 'error');
+            }
+        }
+    } catch (e) {
+        if (window.showToast) {
+            window.showToast('❌ Ошибка соединения', 'error');
+        }
+    }
+}
+
+// Делегирование событий для кнопок переотправки чеков
+document.getElementById('payments-list').addEventListener('click', function(e) {
+    const btn = e.target.closest('.receipt-resend-btn');
+    if (btn) {
+        resendReceipt(btn.dataset.receiptId);
+    }
+});
+
+loadSettings();
+loadPayments();
+</script>
+{% endblock %}
 

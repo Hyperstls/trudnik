@@ -104,6 +104,8 @@
 
     // Keyboard
     dropZone.addEventListener('keydown', function(e) {
+        // Ignore if target is the remove button (clicked via Enter/Space)
+        if (e.target === removeBtn || removeBtn.contains(e.target)) return;
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             fileInput.click();
@@ -141,6 +143,14 @@
         dropContent.classList.remove('hidden');
         previewArea.classList.add('hidden');
         submitBtn.disabled = true;
+    });
+
+    // Form submit guard (protection against DevTools manipulation)
+    form.addEventListener('submit', function(e) {
+        if (!fileInput.files || !fileInput.files[0]) {
+            e.preventDefault();
+            window.showToast('Выберите файл для загрузки.', 'error');
+        }
     });
 })();
 </script>

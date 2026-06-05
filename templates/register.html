@@ -23,7 +23,7 @@
             <span id="step-label" class="text-xs font-medium text-neutral-500 shrink-0">Шаг 1 из 2</span>
         </div>
 
-        <form method="post" id="register-form" novalidate>
+        <form method="post" id="register-form">
             <!-- ===== Шаг 1: Аккаунт ===== -->
             <div id="step-1" class="space-y-4">
                 <div class="floating-label-group">
@@ -247,6 +247,7 @@
     // Submit validation
     // ==========================================
     form.addEventListener('submit', function(e) {
+        e.preventDefault();  // Подавляем нативную HTML5-валидацию; если JS не загрузится — сработает native validation
         if (!document.querySelector('input[name="role"]:checked')) {
             e.preventDefault();
             window.showToast('Выберите роль', 'warning');

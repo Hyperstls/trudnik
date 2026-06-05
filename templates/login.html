@@ -14,7 +14,7 @@
             <p class="text-sm text-neutral-500 mt-1">Добро пожаловать в Трудник</p>
         </div>
 
-        <form method="post" class="space-y-4" novalidate>
+        <form method="post" class="space-y-4">
             <div class="floating-label-group">
                 <input type="email" name="email" id="email" placeholder=" " required autocomplete="email">
                 <label for="email">Email</label>
@@ -27,7 +27,7 @@
             </div>
 
             <div class="floating-label-group">
-                <input type="password" name="password" id="password" placeholder=" " required autocomplete="current-password">
+                <input type="password" name="password" id="password" placeholder=" " required minlength="6" autocomplete="current-password">
                 <label for="password">Пароль</label>
                 <div class="error-text">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -85,6 +85,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     form.addEventListener('submit', function(e) {
+        e.preventDefault();  // Подавляем нативную HTML5-валидацию; если JS не загрузится — сработает native validation
         var valid = true;
         if (!email.value || !email.value.includes('@')) {
             email.closest('.floating-label-group').classList.add('error');

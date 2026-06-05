@@ -21,6 +21,19 @@ def create_app():
         return {'current_user_id': session.get('user_id')}
 
     @app.context_processor
+    def inject_unread_notifications():
+        """Глобальная переменная для бейджа уведомлений во всех шаблонах."""
+        from app.utils import supabase_request
+        user_id = session.get('user_id')
+        if user_id:
+            resp = supabase_request('GET',
+                f'notifications?user_id=eq.{user_id}&is_read=eq.false&select=id&limit=100')
+            if resp.ok:
+                data = resp.json()
+                return {'unread_notifications': len(data) if isinstance(data, list) else 0}
+        return {'unread_notifications': 0}
+
+    @app.context_processor
     def inject_git_version():
         try:
             version = subprocess.check_output(
