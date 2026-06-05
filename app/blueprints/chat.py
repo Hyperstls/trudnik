@@ -62,3 +62,41 @@ def send_message():
         'shift_id': data['shift_id'], 'sender_id': session['user_id'], 'content': data['content']
     })
     return jsonify({'status': 'ok'})
+
+
+@chat_bp.route('/api/delete-chats', methods=['POST'])
+@login_required
+def delete_chats():
+    """Удаление одного или нескольких чатов (shift_id). Доступно работодателю и труднику."""
+    user_id = session['user_id']
+    data = request.get_json()
+    shift_ids = data.get('shift_ids', [])
+    if not shift_ids:
+        return jsonify({'status': 'error', 'message': 'Не указаны чаты для удаления'}), 400
+
+    deleted = 0
+    errors = []
+    for sid in shift_ids:
+        # Проверяем, что пользователь — участник чата
+        resp = supabase_request('GET', f'shifts?id=eq.{sid}&select=id,worker_id,employer_id')
+        if not resp.ok or not resp.json():
+            errors.append(f'Чат {sid} не найден')
+            continue
+        shift = resp.json()[0]
+        if shift['worker_id'] != user_id and shift['employer_id'] != user_id:
+            errors.append(f'Нет доступа к чату {sid}')
+            continue
+
+        # Удаляем сообщения чата, затем сам shift
+        supabase_request('DELETE', f'messages?shift_id=eq.{sid}')
+        del_resp = supabase_request('DELETE', f'shifts?id=eq.{sid}')
+        if del_resp.ok:
+            deleted += 1
+        else:
+            errors.append(f'Не удалось удалить чат {sid}')
+
+    return jsonify({
+        'status': 'ok',
+        'deleted': deleted,
+        'errors': errors
+    })

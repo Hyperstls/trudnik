@@ -1,12 +1,62 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="p-4">
+    <div class="flex items-center justify-between mb-4">
+        <h1 class="text-xl font-bold">Чаты</h1>
+        <button onclick="deleteSelected()" class="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 disabled:opacity-50" id="delete-btn" disabled>
+            🗑 Удалить выбранные
+        </button>
+    </div>
+
     {% for chat in chats %}
-    <a href="/chat/{{ chat.id }}" class="block p-3 border rounded mb-2">
-        Чат: {{ chat.job.organization_name or 'Без названия' }}
-    </a>
+    <div class="flex items-center gap-3 p-3 border rounded mb-2">
+        <input type="checkbox" class="chat-checkbox rounded border-gray-300 text-red-500" value="{{ chat.id }}"
+               onchange="toggleDeleteBtn()">
+        <a href="/chat/{{ chat.id }}" class="flex-1 block">
+            Чат: {{ chat.job.organization_name or 'Без названия' }}
+        </a>
+    </div>
     {% else %}
-    <p>Нет чатов</p>
+    <p class="text-gray-500">Нет чатов</p>
     {% endfor %}
 </div>
+
+<script>
+function toggleDeleteBtn() {
+    const checked = document.querySelectorAll('.chat-checkbox:checked').length;
+    document.getElementById('delete-btn').disabled = checked === 0;
+}
+
+async function deleteSelected() {
+    const checkboxes = document.querySelectorAll('.chat-checkbox:checked');
+    const shiftIds = Array.from(checkboxes).map(cb => cb.value);
+
+    if (!shiftIds.length) return;
+    if (!confirm(`Удалить ${shiftIds.length} чат(ов)? Сообщения будут безвозвратно удалены.`)) return;
+
+    const btn = document.getElementById('delete-btn');
+    btn.disabled = true;
+    btn.textContent = 'Удаление...';
+
+    const resp = await fetch('/api/delete-chats', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ shift_ids: shiftIds })
+    });
+    const data = await resp.json();
+
+    if (data.deleted > 0) {
+        // Убираем удалённые чаты из DOM
+        checkboxes.forEach(cb => {
+            cb.closest('.flex.items-center').remove();
+        });
+        alert(`✅ Удалено чатов: ${data.deleted}` + (data.errors.length ? `\nОшибки: ${data.errors.join(', ')}` : ''));
+    } else {
+        alert('❌ Не удалось удалить чаты.\n' + (data.errors ? data.errors.join('\n') : ''));
+    }
+
+    btn.textContent = '🗑 Удалить выбранные';
+    toggleDeleteBtn();
+}
+</script>
 {% endblock %}
