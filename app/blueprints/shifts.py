@@ -28,13 +28,13 @@ def shift_checkin(shift_id):
     shift_resp = supabase_request('GET', f'shifts?id=eq.{shift_id}&select=worker_id,job_id,status')
     if not shift_resp.ok or not shift_resp.json():
         flash('Смена не найдена', 'danger')
-        return redirect(url_for('shifts'))
+        return redirect(url_for('shifts.shifts'))
 
     shift = shift_resp.json()[0]
 
     if session.get('user_id') != shift['worker_id']:
         flash('Нет прав для чек-ина', 'danger')
-        return redirect(url_for('shifts'))
+        return redirect(url_for('shifts.shifts'))
 
     supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={
         'worker_checkin': True,
@@ -49,7 +49,7 @@ def shift_checkin(shift_id):
             supabase_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'active'})
 
     flash('Чек-ин успешно выполнен', 'success')
-    return redirect(url_for('shifts'))
+    return redirect(url_for('shifts.shifts'))
 
 
 @shifts_bp.route('/shift/<shift_id>/complete', methods=['POST'])
@@ -59,17 +59,17 @@ def shift_complete(shift_id):
     shift_resp = supabase_request('GET', f'shifts?id=eq.{shift_id}&select=worker_id,employer_id,job_id,status')
     if not shift_resp.ok or not shift_resp.json():
         flash('Смена не найдена', 'danger')
-        return redirect(url_for('shifts'))
+        return redirect(url_for('shifts.shifts'))
 
     shift = shift_resp.json()[0]
 
     if session.get('user_id') != shift['worker_id']:
         flash('Нет прав для завершения', 'danger')
-        return redirect(url_for('shifts'))
+        return redirect(url_for('shifts.shifts'))
 
     if shift['status'] != 'active':
         flash('Только активные смены можно завершить', 'danger')
-        return redirect(url_for('shifts'))
+        return redirect(url_for('shifts.shifts'))
 
     supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={
         'worker_complete': True,
@@ -80,7 +80,7 @@ def shift_complete(shift_id):
     supabase_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'payment_pending'})
 
     flash('Смена завершена, ожидание подтверждения оплаты', 'success')
-    return redirect(url_for('shifts'))
+    return redirect(url_for('shifts.shifts'))
 
 
 @shifts_bp.route('/shift/<shift_id>/confirm-payment', methods=['POST'])
@@ -93,7 +93,7 @@ def confirm_payment(shift_id):
         f'shifts?id=eq.{shift_id}&select=employer_id,worker_id,job_id,employer_payment_confirmed,worker_payment_confirmed,status')
     if not shift_resp.ok or not shift_resp.json():
         flash('Смена не найдена', 'danger')
-        return redirect(url_for('shifts'))
+        return redirect(url_for('shifts.shifts'))
 
     shift = shift_resp.json()[0]
 
@@ -103,11 +103,11 @@ def confirm_payment(shift_id):
 
     if action == 'confirm_employer' and not is_employer:
         flash('Только работодатель может подтвердить оплату', 'danger')
-        return redirect(url_for('shifts'))
+        return redirect(url_for('shifts.shifts'))
 
     if action == 'confirm_worker' and not is_worker:
         flash('Только работник может подтвердить получение оплаты', 'danger')
-        return redirect(url_for('shifts'))
+        return redirect(url_for('shifts.shifts'))
 
     # Обновить статус подтверждения
     if action == 'confirm_employer':
@@ -133,7 +133,7 @@ def confirm_payment(shift_id):
             add_notification(shift['worker_id'], 'payment_received', 'Оплата подтверждена',
                              f'Оплата по смене #{shift_id} подтверждена обеими сторонами')
 
-    return redirect(url_for('shifts'))
+    return redirect(url_for('shifts.shifts'))
 
 
 @shifts_bp.route('/rate-worker/<worker_id>/<job_id>', methods=['POST'])
@@ -148,21 +148,21 @@ def rate_worker(worker_id, job_id):
         f'shifts?worker_id=eq.{worker_id}&job_id=eq.{job_id}&select=id,employer_id,worker_id,job_id,status')
     if not shift_resp.ok or not shift_resp.json():
         flash('Смена не найдена', 'danger')
-        return redirect(url_for('index'))
+        return redirect(url_for('jobs.index'))
 
     shift = shift_resp.json()[0]
 
     # Проверить статус (только для paid)
     if shift['status'] != 'paid':
         flash('Оценить можно только после завершения оплаты', 'danger')
-        return redirect(url_for('shifts'))
+        return redirect(url_for('shifts.shifts'))
 
     # Проверить, что оценка оставляется только один раз
     existing = supabase_request('GET',
         f'ratings?rated_user_id=eq.{worker_id}&rater_user_id=eq.{session["user_id"]}&job_id=eq.{job_id}')
     if existing.ok and existing.json():
         flash('Вы уже оценили этого работника', 'info')
-        return redirect(url_for('shifts'))
+        return redirect(url_for('shifts.shifts'))
 
     # Создать запись оценки
     rating_data = {
@@ -180,7 +180,7 @@ def rate_worker(worker_id, job_id):
     update_rating(worker_id, rating)
 
     flash(f'Оценка работника: {rating}⭐', 'success')
-    return redirect(url_for('shifts'))
+    return redirect(url_for('shifts.shifts'))
 
 
 @shifts_bp.route('/shift/<shift_id>/dispute', methods=['POST'])
@@ -190,14 +190,14 @@ def dispute_shift(shift_id):
     shift_resp = supabase_request('GET', f'shifts?id=eq.{shift_id}&select=employer_id,worker_id')
     if not shift_resp.ok or not shift_resp.json():
         flash('Смена не найдена', 'danger')
-        return redirect(url_for('index'))
+        return redirect(url_for('jobs.index'))
 
     shift = shift_resp.json()[0]
 
     # Проверить, что пользователь имеет отношение к смене
     if session['user_id'] not in [shift['employer_id'], shift['worker_id']]:
         flash('Нет прав на спор по этой смене', 'danger')
-        return redirect(url_for('index'))
+        return redirect(url_for('jobs.index'))
 
     # Обновить статус на 'disputed'
     supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={'status': 'disputed'})
@@ -216,4 +216,4 @@ def dispute_shift(shift_id):
                      f'Ваш спор по смене #{shift_id} открыт на рассмотрении')
 
     flash('Спор открыт на рассмотрение', 'warning')
-    return redirect(url_for('shifts'))
+    return redirect(url_for('shifts.shifts'))

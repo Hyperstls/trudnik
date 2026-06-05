@@ -26,4 +26,4 @@ def notifications():
 def mark_read(notification_id):
     supabase_request('PATCH', f'notifications?id=eq.{notification_id}',
         json={'is_read': True})
-    return redirect(url_for('notifications'))
+    return redirect(url_for('notifications.notifications'))

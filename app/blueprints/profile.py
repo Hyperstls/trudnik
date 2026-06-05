@@ -101,10 +101,10 @@ def delete_account():
     if resp.ok:
         session.clear()
         flash('Ваш аккаунт полностью удалён.', 'success')
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
     else:
         flash(f'Ошибка удаления аккаунта: {resp.text}', 'danger')
-        return redirect(url_for('profile'))
+        return redirect(url_for('profile.profile'))
 
 
 @profile_bp.route('/profile/change-password', methods=['POST'])
@@ -115,11 +115,12 @@ def change_password():
 
     if not new_password or len(new_password) < 6:
         flash('Пароль должен содержать минимум 6 символов', 'danger')
-        return redirect(url_for('profile'))
+        return redirect(url_for('profile.profile'))
+
 
     if new_password != confirm_password:
         flash('Новые пароли не совпадают', 'danger')
-        return redirect(url_for('profile'))
+        return redirect(url_for('profile.profile'))
 
     auth_update_url = f'{SUPABASE_URL}/auth/v1/user'
     headers = {
@@ -138,7 +139,7 @@ def change_password():
     except requests.RequestException:
         flash('Ошибка соединения с сервером', 'danger')
 
-    return redirect(url_for('profile'))
+    return redirect(url_for('profile.profile'))
 
 
 @profile_bp.route('/verify-employer', methods=['GET', 'POST'])
@@ -148,7 +149,7 @@ def verify_employer():
         supabase_request('PATCH', f'profiles?id=eq.{session["user_id"]}',
                          json={'verification_status': 'pending'})
         flash('Документ отправлен на проверку', 'success')
-        return redirect(url_for('profile'))
+        return redirect(url_for('profile.profile'))
     return render_template('verify_employer.html')
 
 
@@ -158,5 +159,5 @@ def public_profile(user_id):
     profile_user = resp.json()[0] if resp.ok and resp.json() else None
     if not profile_user:
         flash('Пользователь не найден', 'danger')
-        return redirect(url_for('index'))
+        return redirect(url_for('jobs.index'))
     return render_template('profile_worker.html', profile_user=profile_user)

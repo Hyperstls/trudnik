@@ -16,25 +16,25 @@ def apply_job(job_id):
     check = supabase_request('GET', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
     if check.ok and check.json():
         flash('Вы уже откликались на это задание', 'info')
-        return redirect(url_for('index'))
+        return redirect(url_for('jobs.index'))
 
     # Проверить статус задания
     job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status,current_workers,max_workers,employer_id')
     if not job_resp.ok or not job_resp.json():
         flash('Задание не найдено', 'danger')
-        return redirect(url_for('index'))
+        return redirect(url_for('jobs.index'))
 
     job = job_resp.json()[0]
 
     # Проверить, что задание не собственное
     if job['employer_id'] == user_id:
         flash('Вы не можете откликаться на собственное задание', 'danger')
-        return redirect(url_for('index'))
+        return redirect(url_for('jobs.index'))
 
     # Проверить статус задания
     if job['status'] != 'open':
         flash('На это задание нельзя откликаться (не open)', 'danger')
-        return redirect(url_for('index'))
+        return redirect(url_for('jobs.index'))
 
     # Проверить количество мест
     current_workers = job.get('current_workers', 0)
@@ -42,11 +42,11 @@ def apply_job(job_id):
 
     if current_workers >= max_workers:
         flash(f'Места в задании заполнены (максимум {max_workers})', 'info')
-        return redirect(url_for('index'))
+        return redirect(url_for('jobs.index'))
 
     supabase_request('POST', 'applications', json={'job_id': job_id, 'worker_id': user_id})
     flash('Отклик отправлен', 'success')
-    return redirect(url_for('index'))
+    return redirect(url_for('jobs.index'))
 
 
 @applications_bp.route('/apply-selected', methods=['POST'])
@@ -55,7 +55,7 @@ def apply_selected():
     job_ids = request.form.getlist('job_ids')
     if not job_ids:
         flash('Не выбрано ни одного задания', 'danger')
-        return redirect(url_for('index'))
+        return redirect(url_for('jobs.index'))
 
     user_id = session['user_id']
     applied = 0
@@ -69,7 +69,7 @@ def apply_selected():
         flash(f'Отклик отправлен на {applied} заданий', 'success')
     else:
         flash('Вы уже откликались на все выбранные задания', 'info')
-    return redirect(url_for('index'))
+    return redirect(url_for('jobs.index'))
 
 
 @applications_bp.route('/unapply/<job_id>', methods=['POST'])
@@ -81,7 +81,7 @@ def unapply_job(job_id):
         flash('Отклик отозван', 'success')
     else:
         flash('Не удалось отозвать отклик (возможно, он уже удалён)', 'danger')
-    return redirect(url_for('index'))
+    return redirect(url_for('jobs.index'))
 
 
 @applications_bp.route('/unapply-selected', methods=['POST'])
@@ -90,7 +90,7 @@ def unapply_selected():
     job_ids = request.form.getlist('job_ids')
     if not job_ids:
         flash('Не выбрано ни одного задания', 'danger')
-        return redirect(url_for('index'))
+        return redirect(url_for('jobs.index'))
     user_id = session['user_id']
     removed = 0
     for job_id in job_ids:
@@ -101,7 +101,7 @@ def unapply_selected():
         flash(f'Отклики отозваны ({removed} заданий)', 'success')
     else:
         flash('Ни один отклик не был удалён', 'info')
-    return redirect(url_for('index'))
+    return redirect(url_for('jobs.index'))
 
 
 @applications_bp.route('/my-applications')
@@ -110,7 +110,7 @@ def my_applications():
     """Отображение откликов на задания работодателя"""
     if session.get('role') != 'employer':
         flash('Доступ только для работодателей', 'danger')
-        return redirect(url_for('index'))
+        return redirect(url_for('jobs.index'))
 
     user_id = session['user_id']
     resp = supabase_request('GET',
@@ -154,7 +154,7 @@ def handle_application(app_id, action):
     app_resp = supabase_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id')
     if not app_resp.ok or not app_resp.json():
         flash('Отклик не найден', 'danger')
-        return redirect(url_for('index'))
+        return redirect(url_for('jobs.index'))
 
     app_data = app_resp.json()[0]
     job_id = app_data['job_id']
@@ -165,7 +165,7 @@ def handle_application(app_id, action):
         job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=current_workers,max_workers')
         if not job_resp.ok or not job_resp.json():
             flash('Ошибка: задание не найдено', 'danger')
-            return redirect(url_for('my_applications'))
+            return redirect(url_for('applications.my_applications'))
 
         job = job_resp.json()[0]
         current_workers = job.get('current_workers', 0)
@@ -173,7 +173,7 @@ def handle_application(app_id, action):
 
         if current_workers >= max_workers:
             flash(f'Ошибка: все места в задании уже заняты (максимум {max_workers})', 'danger')
-            return redirect(url_for('my_applications'))
+            return redirect(url_for('applications.my_applications'))
 
         # Принять отклик и увеличить счетчик
         supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'accepted'})
@@ -190,7 +190,7 @@ def handle_application(app_id, action):
     else:
         supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'rejected'})
         flash('Отклик отклонён', 'info')
-    return redirect(url_for('my_applications'))
+    return redirect(url_for('applications.my_applications'))
 
 
 @applications_bp.route('/application/<app_id>/cancel', methods=['POST'])
@@ -200,7 +200,7 @@ def cancel_application(app_id):
     app_resp = supabase_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id,shift_id')
     if not app_resp.ok or not app_resp.json():
         flash('Отклик не найден', 'danger')
-        return redirect(url_for('my_applications'))
+        return redirect(url_for('applications.my_applications'))
 
     app_data = app_resp.json()[0]
     job_id = app_data['job_id']
@@ -211,14 +211,14 @@ def cancel_application(app_id):
     job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status,start_time')
     if not job_resp.ok or not job_resp.json():
         flash('Задание не найдено', 'danger')
-        return redirect(url_for('my_applications'))
+        return redirect(url_for('applications.my_applications'))
 
     job = job_resp.json()[0]
 
     # Проверить статус задания (можно отменить только до начала)
     if job['status'] in ['active', 'payment_pending', 'paid', 'completed']:
         flash('Нельзя отменить работника после начала смены', 'danger')
-        return redirect(url_for('my_applications'))
+        return redirect(url_for('applications.my_applications'))
 
     # Проверить время (если статус in_progress - проверить 12 часов)
     if job['status'] == 'in_progress' and shift_id:
@@ -229,7 +229,7 @@ def cancel_application(app_id):
             hours_before = (start_time - now).total_seconds() / 3600
             if hours_before < 12:
                 flash(f'Нельзя отменить работника менее чем за 12 часов до начала (осталось {hours_before:.1f} ч)', 'danger')
-                return redirect(url_for('my_applications'))
+                return redirect(url_for('applications.my_applications'))
 
     # Уменьшить счетчик работников
     job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=current_workers,max_workers')
@@ -254,4 +254,4 @@ def cancel_application(app_id):
                      f'Ваш отклик на задание {job.get("organization_name", "#" + job_id)} был отменен')
 
     flash('Работник отменен', 'success')
-    return redirect(url_for('my_applications'))
+    return redirect(url_for('applications.my_applications'))

@@ -25,9 +25,9 @@ def login():
                 session['role'] = role_resp.json()[0]['role'] if role_resp.ok and role_resp.json() else 'worker'
                 session.modified = True
                 if session.get('role') == 'employer':
-                    return redirect(url_for('my_jobs'))
+                    return redirect(url_for('jobs.my_jobs'))
                 else:
-                    return redirect(url_for('index'))
+                    return redirect(url_for('jobs.index'))
             else:
                 flash('Ошибка входа: неверный email или пароль', 'danger')
         except requests.RequestException:
@@ -115,7 +115,7 @@ def register():
                     supabase_request('PATCH', f'profiles?id=eq.{user["id"]}', json=update_data)
 
                 flash('Регистрация успешна. Теперь войдите.', 'success')
-                return redirect(url_for('login'))
+                return redirect(url_for('auth.login'))
             else:
                 flash('Ошибка регистрации', 'danger')
         except requests.RequestException:
@@ -126,4 +126,4 @@ def register():
 @auth_bp.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('login'))
+    return redirect(url_for('auth.login'))

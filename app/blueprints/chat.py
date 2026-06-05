@@ -32,12 +32,12 @@ def chat_new(worker_id):
     user_id = session['user_id']
     if session.get('role') != 'employer':
         flash('Только работодатели могут создавать чаты', 'danger')
-        return redirect(url_for('index'))
+        return redirect(url_for('jobs.index'))
 
     resp = supabase_request('GET', f'shifts?employer_id=eq.{user_id}&worker_id=eq.{worker_id}&select=id')
     if resp.ok and resp.json():
         shift_id = resp.json()[0]['id']
-        return redirect(url_for('chat', shift_id=shift_id))
+        return redirect(url_for('chat.chat', shift_id=shift_id))
 
     shift_data = {
         'employer_id': user_id,
@@ -48,10 +48,10 @@ def chat_new(worker_id):
     resp = supabase_request('POST', 'shifts', json=shift_data)
     if resp.ok:
         shift_id = resp.json()[0]['id'] if isinstance(resp.json(), list) else resp.json().get('id')
-        return redirect(url_for('chat', shift_id=shift_id))
+        return redirect(url_for('chat.chat', shift_id=shift_id))
 
     flash('Не удалось создать чат', 'danger')
-    return redirect(url_for('index'))
+    return redirect(url_for('jobs.index'))
 
 
 @chat_bp.route('/api/send_message', methods=['POST'])

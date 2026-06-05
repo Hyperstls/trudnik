@@ -18,11 +18,11 @@ def blacklist():
 @login_required
 def block_user(user_id):
     supabase_request('POST', 'blacklists', json={'user_id': session['user_id'], 'blocked_user_id': user_id})
-    return redirect(request.referrer or url_for('index'))
+    return redirect(request.referrer or url_for('jobs.index'))
 
 
 @blacklist_bp.route('/unblock/<user_id>', methods=['POST'])
 @login_required
 def unblock_user(user_id):
     supabase_request('DELETE', f'blacklists?user_id=eq.{session["user_id"]}&blocked_user_id=eq.{user_id}')
-    return redirect(url_for('blacklist'))
+    return redirect(url_for('blacklist.blacklist'))

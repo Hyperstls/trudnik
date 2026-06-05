@@ -125,7 +125,7 @@ def job_detail(job_id):
     job = resp.json()[0] if resp.ok and resp.json() else None
     if not job:
         flash('Задание не найдено', 'danger')
-        return redirect(url_for('index'))
+        return redirect(url_for('jobs.index'))
 
     if session.get('role') == 'employer' and job['employer_id'] == session.get('user_id'):
         app_resp = supabase_request('GET', f'applications?job_id=eq.{job_id}&select=id')
@@ -198,7 +198,7 @@ def job_new():
 
             if resp.ok:
                 flash('Задание опубликовано', 'success')
-                return redirect(url_for('my_jobs'))
+                return redirect(url_for('jobs.my_jobs'))
             else:
                 flash(f'Ошибка создания задания: {resp.text}', 'danger')
         except Exception as e:
@@ -216,7 +216,7 @@ def job_new():
 def my_jobs():
     if session.get('role') != 'employer':
         flash('Доступ только для работодателей', 'danger')
-        return redirect(url_for('index'))
+        return redirect(url_for('jobs.index'))
 
     user_id = session['user_id']
     status_filter = request.args.get('status', 'all')
@@ -240,7 +240,7 @@ def my_jobs():
 def my_jobs_action():
     if session.get('role') != 'employer':
         flash('Доступ только для работодателей', 'danger')
-        return redirect(url_for('index'))
+        return redirect(url_for('jobs.index'))
 
     user_id = session['user_id']
     action = request.form.get('action')
@@ -248,7 +248,7 @@ def my_jobs_action():
 
     if not job_ids:
         flash('Не выбрано ни одного задания', 'danger')
-        return redirect(url_for('my_jobs'))
+        return redirect(url_for('jobs.my_jobs'))
 
     for job_id in job_ids:
         if action == 'restore':
@@ -264,7 +264,7 @@ def my_jobs_action():
                 supabase_request('POST', 'jobs', json=new_job)
 
     flash(f'Операция выполнена для {len(job_ids)} заданий', 'success')
-    return redirect(url_for('my_jobs'))
+    return redirect(url_for('jobs.my_jobs'))
 
 
 # ──────────────────────────────────────────────
@@ -289,7 +289,7 @@ def repost_job(job_id):
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True})
-    return redirect(url_for('my_jobs'))
+    return redirect(url_for('jobs.my_jobs'))
 
 
 @jobs_bp.route('/cancel-job/<job_id>', methods=['GET', 'POST'])
@@ -302,7 +302,7 @@ def cancel_job(job_id):
     flash('Задание отозвано', 'success')
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True})
-    return redirect(url_for('my_jobs'))
+    return redirect(url_for('jobs.my_jobs'))
 
 
 @jobs_bp.route('/restore-job/<job_id>', methods=['GET', 'POST'])
@@ -315,7 +315,7 @@ def restore_job(job_id):
     flash('Задание восстановлено', 'success')
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True})
-    return redirect(url_for('my_jobs'))
+    return redirect(url_for('jobs.my_jobs'))
 
 
 @jobs_bp.route('/delete-job/<job_id>', methods=['GET', 'POST'])
@@ -328,7 +328,7 @@ def delete_job(job_id):
     flash('Задание удалено', 'success')
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True})
-    return redirect(url_for('my_jobs'))
+    return redirect(url_for('jobs.my_jobs'))
 
 
 # ──────────────────────────────────────────────
@@ -340,7 +340,7 @@ def delete_job(job_id):
 def add_favorite_job(job_id):
     supabase_request('POST', 'job_favorites', json={'user_id': session['user_id'], 'job_id': job_id})
     flash('Задание добавлено в избранное', 'success')
-    return redirect(request.referrer or url_for('index'))
+    return redirect(request.referrer or url_for('jobs.index'))
 
 
 @jobs_bp.route('/unfavorite-job/<job_id>', methods=['POST'])
@@ -348,4 +348,4 @@ def add_favorite_job(job_id):
 def remove_favorite_job(job_id):
     supabase_request('DELETE', f'job_favorites?user_id=eq.{session["user_id"]}&job_id=eq.{job_id}')
     flash('Задание удалено из избранного', 'success')
-    return redirect(request.referrer or url_for('favorites'))
+    return redirect(request.referrer or url_for('favorites.favorites'))

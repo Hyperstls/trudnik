@@ -27,14 +27,14 @@ def favorites():
 @login_required
 def add_favorite(target_id):
     supabase_request('POST', 'favorites', json={'user_id': session['user_id'], 'target_id': target_id})
-    return redirect(request.referrer or url_for('index'))
+    return redirect(request.referrer or url_for('jobs.index'))
 
 
 @favorites_bp.route('/unfavorite/<target_id>', methods=['POST'])
 @login_required
 def remove_favorite(target_id):
     supabase_request('DELETE', f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{target_id}')
-    return redirect(url_for('favorites'))
+    return redirect(url_for('favorites.favorites'))
 
 
 # ──────────────────────────────────────────────
