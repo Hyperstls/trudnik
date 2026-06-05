@@ -1,10 +1,12 @@
 {% extends "base.html" %}
+{% from '_icons.html' import trash %}
 {% block content %}
 <div class="p-4">
     <div class="flex items-center justify-between mb-4">
         <h1 class="text-xl font-bold">Чаты</h1>
-        <button onclick="deleteSelected()" class="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 disabled:opacity-50" id="delete-btn" disabled>
-            🗑 Удалить выбранные
+        <button onclick="deleteSelected()" class="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 disabled:opacity-50 flex items-center gap-1.5" id="delete-btn" disabled>
+            {{ trash(16) }}
+            Удалить выбранные
         </button>
     </div>
 
@@ -35,6 +37,7 @@ async function deleteSelected() {
     if (!confirm(`Удалить ${shiftIds.length} чат(ов)? Сообщения будут безвозвратно удалены.`)) return;
 
     const btn = document.getElementById('delete-btn');
+    const originalHTML = btn.innerHTML;
     btn.disabled = true;
     btn.textContent = 'Удаление...';
 
@@ -55,7 +58,7 @@ async function deleteSelected() {
         alert('❌ Не удалось удалить чаты.\n' + (data.errors ? data.errors.join('\n') : ''));
     }
 
-    btn.textContent = '🗑 Удалить выбранные';
+    btn.innerHTML = originalHTML;
     toggleDeleteBtn();
 }
 </script>

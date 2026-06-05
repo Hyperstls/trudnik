@@ -43,8 +43,9 @@
                 <p class="text-xs text-gray-500 mt-1">ИНН для формирования чеков через «Мой налог»</p>
             </div>
             <button type="submit"
-                    class="bg-burgundy text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-[#4A1720] transition-colors">
-                💾 Сохранить
+                    class="bg-burgundy text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-[#4A1720] transition-colors flex items-center gap-2">
+                {{ save(16) }}
+                Сохранить
             </button>
             <span id="save-status" class="text-sm text-green-600 ml-2 hidden">✓ Сохранено</span>
         </form>
@@ -76,8 +77,9 @@ async function loadSettings() {
 async function saveSettings(event) {
     event.preventDefault();
     const btn = event.target.querySelector('button[type="submit"]');
+    const originalHTML = btn.innerHTML;
     btn.disabled = true;
-    btn.textContent = 'Сохранение...';
+    btn.innerHTML = 'Сохранение...';
 
     try {
         const resp = await fetch('/api/admin/monetization-settings', {
@@ -101,7 +103,7 @@ async function saveSettings(event) {
     }
 
     btn.disabled = false;
-    btn.textContent = '💾 Сохранить';
+    btn.innerHTML = originalHTML;
 }
 
 // Загрузить историю платежей
@@ -158,3 +160,5 @@ loadSettings();
 loadPayments();
 </script>
 {% endblock %}
+
+

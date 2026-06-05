@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from '_icons.html' import star, heart, trash, map_pin, dollar %}
 {% block content %}
 <div class="p-4">
     <h2 class="text-2xl font-bold text-gray-900 mb-5">Избранное</h2>
@@ -7,8 +8,9 @@
     <div class="space-y-4">
         <div class="bg-gray-50 p-4 rounded-xl mb-4 flex justify-between items-center">
             <span class="text-gray-700 font-medium" id="selected-count">0 трудников выбрано</span>
-            <button type="button" onclick="removeSelectedFavorites()" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors text-sm">
-                Удалить выбранные
+            <button type="button" onclick="removeSelectedFavorites()" class="action-icon-btn reject-btn" title="Удалить выбранные">
+                {{ trash(18) }}
+                <span class="text-xs ml-1.5 font-medium">Удалить выбранные</span>
             </button>
         </div>
         
@@ -36,7 +38,10 @@
                             {% endif %}
                         </div>
                         {% if item.city %}
-                        <p class="text-sm text-gray-600 mt-1">📍 {{ item.city }}</p>
+                        <p class="text-sm text-gray-600 mt-1 flex items-center gap-1">
+                            {{ map_pin(14) }}
+                            {{ item.city }}
+                        </p>
                         {% endif %}
                         {% if item.skills %}
                         <div class="mt-2 flex flex-wrap gap-1">
@@ -54,13 +59,18 @@
                         </div>
                         {% endif %}
                         {% if item.desired_payment %}
-                        <p class="text-green-600 text-sm mt-1 font-medium">💰 {{ item.desired_payment }} ₽/час</p>
+                        <p class="text-green-600 text-sm mt-1 font-medium flex items-center gap-1">
+                            {{ dollar(14) }}
+                            {{ item.desired_payment }} ₽/час
+                        </p>
                         {% endif %}
                     </a>
                     <div class="mt-3">
-                        <button onclick="toggleFavorite('{{ item.id }}', this)" class="favorite-btn bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors text-sm flex items-center space-x-2" data-worker-id="{{ item.id }}" data-favorited="true">
-                            <span class="favorite-icon">❤️</span>
-                            <span class="favorite-text">Удалить из избранного</span>
+                        <button onclick="toggleFavorite('{{ item.id }}', this, event)" class="favorite-btn action-icon-btn reject-btn" data-worker-id="{{ item.id }}" data-favorited="true">
+                            <span class="favorite-icon flex items-center gap-1.5">
+                                {{ heart(18) }}
+                            </span>
+                            <span class="favorite-text text-xs font-medium">Удалить из избранного</span>
                         </button>
                     </div>
                 </div>

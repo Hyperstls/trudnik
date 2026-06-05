@@ -1,8 +1,8 @@
-flask
-python-dotenv
-requests
-gunicorn
-supabase
-postgrest
-fpdf2
-openai
+flask>=3.1.0,<3.2
+python-dotenv>=1.0.0,<2
+requests>=2.32.0,<3
+gunicorn>=23.0.0,<27
+supabase>=2.30.0,<3
+postgrest>=2.30.0,<3
+fpdf2>=2.8.0,<3
+openai>=2.41.0,<3

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from '_icons.html' import star, chat %}
 {% block content %}
 <div class="p-4 max-w-2xl mx-auto">
     {% if profile_user is none %}
@@ -24,14 +25,16 @@
         
         <div class="flex gap-2 mt-4">
             <a href="/chat/new/{{ profile_user.id }}"
-               class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm flex items-center gap-1">
-                <span>✉️</span>
-                <span>Написать</span>
+               class="action-icon-btn chat-btn" title="Написать сообщение">
+                {{ chat(20) }}
+                <span class="text-sm ml-2 font-medium">Написать</span>
             </a>
-            <button onclick="addToFavorites('{{ profile_user.id }}')"
-                    class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors text-sm flex items-center gap-1">
-                <span>⭐</span>
-                <span>В избранное</span>
+            <button onclick="toggleFavorite('{{ profile_user.id }}', this, event)"
+                    class="favorite-btn action-icon-btn contact-btn"
+                    data-worker-id="{{ profile_user.id }}"
+                    data-favorited="false" title="В избранное">
+                {{ star(20) }}
+                <span class="text-sm ml-2 font-medium">В избранное</span>
             </button>
         </div>
     </div>
@@ -97,36 +100,21 @@
     {% if profile_user.id != current_user_id %}
     <div class="mt-6 flex flex-wrap gap-3">
         <a href="/chat/new/{{ profile_user.id }}"
-           class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-2">
-            <span>✉️</span>
-            <span>Написать сообщение</span>
+           class="action-icon-btn chat-btn" title="Написать сообщение">
+            {{ chat(20) }}
+            <span class="text-sm ml-2 font-medium">Написать</span>
         </a>
-        <button onclick="addToFavorites('{{ profile_user.id }}')"
-                class="bg-yellow-500 text-white px-6 py-2 rounded-lg hover:bg-yellow-600 transition-colors flex items-center space-x-2">
-            <span>⭐</span>
-            <span>В избранное</span>
+        <button onclick="toggleFavorite('{{ profile_user.id }}', this, event)"
+                class="favorite-btn action-icon-btn contact-btn"
+                data-worker-id="{{ profile_user.id }}"
+                data-favorited="false" title="В избранное">
+            {{ star(20) }}
+            <span class="text-sm ml-2 font-medium">В избранное</span>
         </button>
     </div>
     {% endif %}
     {% endif %}
 </div>
 
-<script>
-function addToFavorites(workerId) {
-    fetch('/api/favorites/add', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ worker_id: workerId })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('Работник добавлен в избранное!');
-        } else {
-            alert('Ошибка: ' + (data.error || 'Не удалось добавить'));
-        }
-    })
-    .catch(error => { alert('Ошибка сети'); });
-}
-</script>
+<script src="{{ url_for('static', filename='js/favorites.js') }}"></script>
 {% endblock %}

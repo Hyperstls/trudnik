@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from '_icons.html' import star, chat, users %}
 
 {% block title %}Трудники{% endblock %}
 
@@ -56,17 +57,19 @@
 
                 <div class="mt-4 pt-3 border-t border-gray-100 flex space-x-2">
                     <button onclick="event.stopPropagation(); window.location.href='/chat/new/{{ worker.id }}'"
-                            class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm flex items-center space-x-1">
-                        <span>✉️</span>
-                        <span>Написать</span>
+                            class="action-icon-btn chat-btn" title="Написать сообщение">
+                        {{ chat(18) }}
+                        <span class="text-xs ml-1.5 font-medium">Написать</span>
                     </button>
-                    <button onclick="toggleFavorite('{{ worker.id }}', this)"
-                            class="favorite-btn bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition-colors text-sm flex items-center space-x-1"
+                    <button onclick="toggleFavorite('{{ worker.id }}', this, event)"
+                            class="favorite-btn action-icon-btn contact-btn"
                             data-worker-id="{{ worker.id }}"
                             data-favorited="false"
                             data-initial-status="not-favorited">
-                        <span class="favorite-icon">⭐</span>
-                        <span class="favorite-text">В избранное</span>
+                        <span class="favorite-icon flex items-center gap-1.5">
+                            {{ star(18) }}
+                        </span>
+                        <span class="favorite-text text-xs font-medium">В избранное</span>
                     </button>
                 </div>
             </div>
@@ -74,7 +77,9 @@
         </div>
     {% else %}
         <div class="text-center py-16">
-            <div class="text-6xl mb-4">👥</div>
+            <div class="flex justify-center mb-4">
+                {{ users(64) }}
+            </div>
             <p class="text-gray-500 text-lg">Пока нет зарегистрированных трудников</p>
         </div>
     {% endif %}

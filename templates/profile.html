@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from '_icons.html' import star, chat, trash, shield, camera %}
 {% block content %}
 <div class="p-4 max-w-lg mx-auto">
     {% if error_message %}
@@ -30,13 +31,15 @@
         <div class="flex gap-2 mt-4">
             {% if profile_user.get('photo_url') %}
             <form action="/profile/delete-photo" method="post" onsubmit="return confirm('Удалить фото?');">
-                <button type="submit" class="text-xs bg-red-50 text-red-600 px-4 py-2 rounded-full hover:bg-red-100 active:scale-95 transition-all font-medium">
-                    🗑️ Удалить
+                <button type="submit" class="action-icon-btn reject-btn" title="Удалить фото">
+                    {{ trash(18) }}
+                    <span class="text-xs ml-1.5 font-medium">Удалить</span>
                 </button>
             </form>
             {% endif %}
-            <label for="photo-input" class="text-xs bg-gold text-white px-4 py-2 rounded-full cursor-pointer hover:bg-yellow-600 active:scale-95 transition-all font-medium shadow-sm">
-                📷 {% if profile_user.get('photo_url') %}Заменить{% else %}Загрузить{% endif %}
+            <label for="photo-input" class="action-icon-btn chat-btn cursor-pointer" title="Загрузить фото">
+                {{ camera(18) }}
+                <span class="text-xs ml-1.5 font-medium">{% if profile_user.get('photo_url') %}Заменить{% else %}Загрузить{% endif %}</span>
             </label>
         </div>
     </div>
@@ -113,8 +116,9 @@
 
     {% if profile_user.get('role') == 'employer' and profile_user.get('verification_status') != 'approved' %}
     <div class="mt-5 text-center">
-        <a href="/verify-employer" class="inline-block bg-gold/10 text-gold font-semibold px-6 py-2.5 rounded-full hover:bg-gold/20 active:scale-95 transition-all duration-200">
-            ✨ Пройти верификацию
+        <a href="/verify-employer" class="inline-flex items-center gap-2 bg-gold/10 text-gold font-semibold px-6 py-2.5 rounded-full hover:bg-gold/20 active:scale-95 transition-all duration-200">
+            {{ shield(16) }}
+            Пройти верификацию
         </a>
     </div>
     {% endif %}
@@ -154,16 +158,18 @@
 {% if current_user_role == 'employer' and profile_user.id != current_user_id %}
 <div class="mt-6 flex flex-wrap gap-3">
     <a href="/chat/new/{{ profile_user.id }}"
-       class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center space-x-2">
-        <span>✉️</span>
-        <span>Написать сообщение</span>
+       class="action-icon-btn chat-btn" title="Написать сообщение">
+        {{ chat(20) }}
+        <span class="text-sm ml-2 font-medium">Написать</span>
     </a>
-    <button onclick="toggleFavorite('{{ profile_user.id }}', this)"
-            class="favorite-btn bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition-colors flex items-center space-x-2"
+    <button onclick="toggleFavorite('{{ profile_user.id }}', this, event)"
+            class="favorite-btn action-icon-btn contact-btn font-medium"
             data-worker-id="{{ profile_user.id }}"
             data-favorited="false">
-        <span class="favorite-icon">❤️</span>
-        <span class="favorite-text">Удалить из избранного</span>
+        <span class="favorite-icon flex items-center gap-2">
+            {{ star(20) }}
+        </span>
+        <span class="favorite-text text-sm font-medium">В избранное</span>
     </button>
 </div>
 <script src="{{ url_for('static', filename='js/favorites.js') }}"></script>

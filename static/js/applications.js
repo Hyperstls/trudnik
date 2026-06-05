@@ -168,7 +168,7 @@
                 showToast(data.message, 'success');
                 // Обновить UI для успешных
                 const results = data.results;
-                if (results && results.success) {
+                if (results && results.success && results.success.length > 0) {
                     results.success.forEach(item => {
                         const id = typeof item === 'string' ? item : item.id;
                         const newStatus = typeof item === 'string'

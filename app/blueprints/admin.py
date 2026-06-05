@@ -16,7 +16,7 @@ def admin_panel():
     return render_template('admin.html', pending=resp.json() if resp.ok else [])
 
 
-@admin_bp.route('/admin/approve/<user_id>', methods=['GET', 'POST'])
+@admin_bp.route('/admin/approve/<user_id>', methods=['POST'])
 @login_required
 @role_required('admin')
 def approve_employer(user_id):
@@ -26,7 +26,7 @@ def approve_employer(user_id):
     return redirect(url_for('admin.admin_panel'))
 
 
-@admin_bp.route('/admin/reject/<user_id>', methods=['GET', 'POST'])
+@admin_bp.route('/admin/reject/<user_id>', methods=['POST'])
 @login_required
 @role_required('admin')
 def reject_employer(user_id):

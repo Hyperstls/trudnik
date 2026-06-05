@@ -14,9 +14,11 @@ def notifications():
     items = resp.json() if resp.ok else []
 
     # Пометить все как прочитанные
-    unread_ids = [n['id'] for n in items if not n.get('is_read')]
-    if unread_ids:
-        supabase_request('PATCH', f'notifications?id=in.({",".join(unread_ids)})', json={'is_read': True})
+    import re
+    unread_ids = [str(n['id']) for n in items if not n.get('is_read')]
+    safe_ids = [uid for uid in unread_ids if re.match(r'^[a-zA-Z0-9_-]+$', uid)]
+    if safe_ids:
+        supabase_request('PATCH', f'notifications?id=in.({",".join(safe_ids)})', json={'is_read': True})
 
     return render_template('notifications.html', items=items, unread=len(unread_ids))
 

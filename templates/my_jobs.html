@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from '_icons.html' import select_all, restore, x_close, duplicate, trash_detailed %}
 {% block content %}
 <div class="p-4">
     <div class="flex justify-between items-center mb-5">
@@ -18,15 +19,28 @@
 
     <form method="POST" action="/my-jobs/action" id="bulk-form">
         <div class="mb-4 flex flex-wrap items-center gap-2">
-            <button type="button" id="select-all-btn" class="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors">
-                Выбрать все
+            <button type="button" id="select-all-btn" class="action-icon-btn reopen-btn" title="Выбрать все">
+                {{ select_all(18) }}
+                <span class="text-xs ml-1.5 font-medium">Выбрать все</span>
             </button>
             <span id="selected-count" class="text-sm text-gray-500 ml-2 hidden">Выбрано: <strong id="count">0</strong></span>
             <div class="flex gap-2 ml-auto">
-                <button type="submit" name="action" value="restore" class="bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-600 transition-colors">Вернуть</button>
-                <button type="submit" name="action" value="cancel" class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-yellow-600 transition-colors">Отозвать</button>
-                <button type="submit" name="action" value="duplicate" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">Дублировать</button>
-                <button type="submit" name="action" value="delete" class="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition-colors">Удалить</button>
+                <button type="submit" name="action" value="restore" class="action-icon-btn accept-btn" title="Вернуть">
+                    {{ restore(18) }}
+                    <span class="text-xs ml-1.5 font-medium">Вернуть</span>
+                </button>
+                <button type="submit" name="action" value="cancel" class="action-icon-btn contact-btn" title="Отозвать">
+                    {{ x_close(18) }}
+                    <span class="text-xs ml-1.5 font-medium">Отозвать</span>
+                </button>
+                <button type="submit" name="action" value="duplicate" class="action-icon-btn chat-btn" title="Дублировать">
+                    {{ duplicate(18) }}
+                    <span class="text-xs ml-1.5 font-medium">Дублировать</span>
+                </button>
+                <button type="submit" name="action" value="delete" class="action-icon-btn reject-btn" title="Удалить">
+                    {{ trash_detailed(18) }}
+                    <span class="text-xs ml-1.5 font-medium">Удалить</span>
+                </button>
             </div>
         </div>
 
@@ -60,24 +74,28 @@
                             </a>
                         </div>
                         <!-- Row 2: Кнопки действий -->
-                        <div class="flex flex-wrap gap-2 mt-3 ml-6">
+                        <div class="flex flex-wrap gap-2 mt-3">
                             {% if job.status in ['open', 'cancelled'] %}
-                            <button type="button" onclick="duplicateJob('{{ job.id }}')" class="text-sm text-green-600 hover:text-green-800 font-medium px-3 py-1.5 rounded hover:bg-green-50 transition-colors">
-                                Дублировать
+                            <button type="button" onclick="duplicateJob('{{ job.id }}')" class="action-icon-btn chat-btn" title="Дублировать">
+                                {{ duplicate(18) }}
+                                <span class="text-xs ml-1.5 font-medium">Дублировать</span>
                             </button>
                             {% endif %}
                             {% if job.status == 'open' %}
-                            <button type="button" onclick="cancelJob('{{ job.id }}')" class="text-sm text-yellow-600 hover:text-yellow-800 font-medium px-3 py-1.5 rounded hover:bg-yellow-50 transition-colors">
-                                Отозвать
+                            <button type="button" onclick="cancelJob('{{ job.id }}')" class="action-icon-btn contact-btn" title="Отозвать">
+                                {{ x_close(18) }}
+                                <span class="text-xs ml-1.5 font-medium">Отозвать</span>
                             </button>
                             {% elif job.status == 'cancelled' %}
-                            <button type="button" onclick="restoreJob('{{ job.id }}')" class="text-sm text-emerald-600 hover:text-emerald-800 font-medium px-3 py-1.5 rounded hover:bg-emerald-50 transition-colors">
-                                Вернуть
+                            <button type="button" onclick="restoreJob('{{ job.id }}')" class="action-icon-btn accept-btn" title="Вернуть">
+                                {{ restore(18) }}
+                                <span class="text-xs ml-1.5 font-medium">Вернуть</span>
                             </button>
                             {% endif %}
                             {% if job.status in ['open', 'cancelled'] %}
-                            <button type="button" onclick="deleteJob('{{ job.id }}')" class="text-sm text-red-500 hover:text-red-700 font-medium px-3 py-1.5 rounded hover:bg-red-50 transition-colors">
-                                Удалить
+                            <button type="button" onclick="deleteJob('{{ job.id }}')" class="action-icon-btn reject-btn" title="Удалить">
+                                {{ trash_detailed(18) }}
+                                <span class="text-xs ml-1.5 font-medium">Удалить</span>
                             </button>
                             {% endif %}
                         </div>

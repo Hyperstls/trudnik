@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from '_icons.html' import star, alert, trash %}
 {% block content %}
 <div class="p-4">
     {% for shift in shifts %}
@@ -39,12 +40,18 @@
             <div class="mt-2 space-y-1">
                 {% if session.user_id == shift.worker_id %}
                 <form action="/rate-worker/{{ shift.worker_id }}/{{ shift.job_id }}" method="post" class="inline">
-                    <button class="text-yellow-600 hover:text-yellow-800 font-medium">⭐ Оценить работодателя</button>
+                    <button class="action-icon-btn contact-btn" title="Оценить работодателя">
+                        {{ star(18) }}
+                        <span class="text-xs ml-1.5 font-medium">Оценить работодателя</span>
+                    </button>
                 </form>
                 {% endif %}
                 {% if session.user_id == shift.employer_id %}
                 <form action="/rate-worker/{{ shift.worker_id }}/{{ shift.job_id }}" method="post" class="inline">
-                    <button class="text-yellow-600 hover:text-yellow-800 font-medium">⭐ Оценить работника</button>
+                    <button class="action-icon-btn contact-btn" title="Оценить работника">
+                        {{ star(18) }}
+                        <span class="text-xs ml-1.5 font-medium">Оценить работника</span>
+                    </button>
                 </form>
                 {% endif %}
             </div>
@@ -52,7 +59,10 @@
         {% if shift.status == 'payment_pending' %}
             {% if session.user_id == shift.worker_id or session.user_id == shift.employer_id %}
             <form action="/shift/{{ shift.id }}/dispute" method="post" class="inline" onclick="return confirm('Запросить спор?');">
-                <button class="text-red-500 hover:text-red-700 font-medium">⚠️ Спор</button>
+                <button class="action-icon-btn reject-btn" title="Спор">
+                    {{ alert(18) }}
+                    <span class="text-xs ml-1.5 font-medium">Спор</span>
+                </button>
             </form>
             {% endif %}
         {% endif %}

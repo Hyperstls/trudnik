@@ -300,8 +300,6 @@ def cancel_job(job_id):
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True, 'message': 'Задание отозвано'})
     flash('Задание отозвано', 'success')
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({'success': True})
     return redirect(url_for('jobs.my_jobs'))
 
 
@@ -313,8 +311,6 @@ def restore_job(job_id):
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True, 'message': 'Задание восстановлено'})
     flash('Задание восстановлено', 'success')
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({'success': True})
     return redirect(url_for('jobs.my_jobs'))
 
 
@@ -326,8 +322,6 @@ def delete_job(job_id):
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True, 'message': 'Задание удалено'})
     flash('Задание удалено', 'success')
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({'success': True})
     return redirect(url_for('jobs.my_jobs'))
 
 
