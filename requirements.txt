@@ -5,3 +5,4 @@ gunicorn
 supabase
 postgrest
 fpdf2
+openai

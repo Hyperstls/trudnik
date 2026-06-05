@@ -1,3 +1,22 @@
+"""
+AI-агент для управления Supabase через естественный язык (DeepSeek + Supabase REST API).
+
+ВНИМАНИЕ: Для выполнения произвольных SQL-запросов через REST API Supabase требуется
+создать в базе данных PL/pgSQL-функцию execute_sql:
+
+    CREATE OR REPLACE FUNCTION execute_sql(sql text)
+    RETURNS SETOF jsonb
+    LANGUAGE plpgsql
+    SECURITY DEFINER
+    AS $$
+    BEGIN
+        RETURN QUERY EXECUTE sql;
+    END;
+    $$;
+
+Без этой функции все SQL-запросы будут возвращать ошибку 404.
+"""
+
 import os
 import sys
 from openai import OpenAI
@@ -10,32 +29,6 @@ try:
 except ImportError:
     pass
 
-# --- Конфигурация ---
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-if not DEEPSEEK_API_KEY:
-    print("Ошибка: не задана переменная окружения DEEPSEEK_API_KEY", file=sys.stderr)
-    sys.exit(1)
-
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-if not SUPABASE_URL:
-    print("Ошибка: не задана переменная окружения SUPABASE_URL", file=sys.stderr)
-    sys.exit(1)
-
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-if not SUPABASE_SERVICE_KEY:
-    print("Ошибка: не задана переменная окружения SUPABASE_SERVICE_ROLE_KEY", file=sys.stderr)
-    sys.exit(1)
-
-client = OpenAI(
-    api_key=DEEPSEEK_API_KEY,
-    base_url="https://api.deepseek.com/v1"
-)
-
-HEADERS = {
-    "apikey": SUPABASE_SERVICE_KEY,
-    "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-    "Content-Type": "application/json"
-}
 
 # --- SQL-безопасность: недопустимые операции ---
 DESTRUCTIVE_KEYWORDS = [
@@ -45,6 +38,37 @@ DESTRUCTIVE_KEYWORDS = [
     "REINDEX", "CLUSTER", "VACUUM", "REASSIGN", "REVOKE",
     "GRANT ALL", "GRANT ALL PRIVILEGES",
 ]
+
+
+def _require_env(name: str) -> str:
+    """Получить значение переменной окружения или завершить с ошибкой."""
+    value = os.getenv(name)
+    if not value:
+        print(f"Ошибка: не задана переменная окружения {name}", file=sys.stderr)
+        sys.exit(1)
+    return value
+
+
+def _init_client():
+    """Инициализировать OpenAI-клиент для DeepSeek."""
+    api_key = _require_env("DEEPSEEK_API_KEY")
+    return OpenAI(
+        api_key=api_key,
+        base_url="https://api.deepseek.com/v1"
+    )
+
+
+def _init_headers():
+    """Инициализировать HTTP-заголовки для Supabase REST API."""
+    supabase_url = _require_env("SUPABASE_URL")
+    service_key = _require_env("SUPABASE_SERVICE_ROLE_KEY")
+    headers = {
+        "apikey": service_key,
+        "Authorization": f"Bearer {service_key}",
+        "Content-Type": "application/json"
+    }
+    return supabase_url, headers
+
 
 def validate_sql_safe(sql: str) -> tuple[bool, str]:
     """Проверяет SQL на наличие деструктивных операций. Возвращает (OK, сообщение)."""
@@ -57,7 +81,7 @@ def validate_sql_safe(sql: str) -> tuple[bool, str]:
 
 # --- Функции ---
 
-def get_db_schema():
+def get_db_schema(supabase_url: str, headers: dict):
     """Получить список таблиц и политик для контекста."""
     tables = []
     policies = []
@@ -69,8 +93,8 @@ def get_db_schema():
         WHERE table_schema = 'public' AND table_type = 'BASE TABLE';
         """
         resp = requests.post(
-            f"{SUPABASE_URL}/rest/v1/rpc/execute_sql",
-            headers=HEADERS,
+            f"{supabase_url}/rest/v1/rpc/execute_sql",
+            headers=headers,
             json={"sql": sql},
             timeout=30
         )
@@ -86,8 +110,8 @@ def get_db_schema():
         SELECT policyname, tablename FROM pg_policies WHERE schemaname = 'public';
         """
         resp = requests.post(
-            f"{SUPABASE_URL}/rest/v1/rpc/execute_sql",
-            headers=HEADERS,
+            f"{supabase_url}/rest/v1/rpc/execute_sql",
+            headers=headers,
             json={"sql": policies_sql},
             timeout=30
         )
@@ -103,15 +127,15 @@ def get_db_schema():
     }
 
 
-def execute_sql(sql: str) -> tuple[bool, str]:
+def execute_sql(supabase_url: str, headers: dict, sql: str) -> tuple[bool, str]:
     """Выполнить произвольный SQL-запрос через REST API Supabase."""
     ok, msg = validate_sql_safe(sql)
     if not ok:
         return False, msg
 
-    url = f"{SUPABASE_URL}/rest/v1/rpc/execute_sql"
+    url = f"{supabase_url}/rest/v1/rpc/execute_sql"
     try:
-        resp = requests.post(url, headers=HEADERS, json={"sql": sql}, timeout=30)
+        resp = requests.post(url, headers=headers, json={"sql": sql}, timeout=30)
         if resp.status_code in (200, 201, 204):
             return True, resp.text[:200]
         else:
@@ -122,9 +146,10 @@ def execute_sql(sql: str) -> tuple[bool, str]:
         return False, str(e)
 
 
-def run_command(command: str, dry_run: bool = False, confirm: bool = True):
+def run_command(command: str, client: OpenAI, supabase_url: str, headers: dict,
+                dry_run: bool = False, confirm: bool = True):
     """Основная логика: получить SQL от DeepSeek и выполнить его."""
-    schema = get_db_schema()
+    schema = get_db_schema(supabase_url, headers)
 
     tables_str = ', '.join(schema['tables']) if schema['tables'] else '(не удалось получить)'
     policies_str = ', '.join(schema['policies']) if schema['policies'] else 'нет'
@@ -184,7 +209,7 @@ def run_command(command: str, dry_run: bool = False, confirm: bool = True):
         if not stmt:
             continue
         print(f"\n▶ Выполняю [{i}/{len(statements)}]: {stmt[:80]}...")
-        success, message = execute_sql(stmt)
+        success, message = execute_sql(supabase_url, headers, stmt)
         if success:
             print(f"  ✅ Успешно: {message[:100]}")
         else:
@@ -229,6 +254,10 @@ def _split_sql_statements(sql: str) -> list[str]:
 if __name__ == "__main__":
     import argparse
 
+    # Инициализация (только при прямом запуске, чтобы не блокировать импорт)
+    client = _init_client()
+    supabase_url, headers = _init_headers()
+
     parser = argparse.ArgumentParser(
         description="AI-агент для управления Supabase через естественный язык"
     )
@@ -245,4 +274,5 @@ if __name__ == "__main__":
         sys.exit(1)
 
     user_cmd = " ".join(args.command)
-    run_command(user_cmd, dry_run=args.dry_run, confirm=not args.yes)
+    run_command(user_cmd, client=client, supabase_url=supabase_url, headers=headers,
+                dry_run=args.dry_run, confirm=not args.yes)
