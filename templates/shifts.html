@@ -131,10 +131,18 @@
 function confirmDispute(event, form) {
     event.preventDefault();
     if (window.showToast) {
-        window.showToast('⏳ Спор будет отправлен после подтверждения', 'warning');
+        // Показываем toast с кнопкой подтверждения
+        var confirmed = confirm('Вы уверены, что хотите открыть спор? Это действие нельзя отменить.');
+        if (confirmed) {
+            window.showToast('⏳ Спор отправлен', 'info');
+            setTimeout(function() { form.submit(); }, 300);
+        }
+    } else {
+        // Fallback: стандартный confirm
+        if (confirm('Вы уверены, что хотите открыть спор? Это действие нельзя отменить.')) {
+            form.submit();
+        }
     }
-    // Submit after a brief delay
-    setTimeout(() => form.submit(), 800);
     return false;
 }
 </script>

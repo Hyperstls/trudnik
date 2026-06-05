@@ -553,18 +553,19 @@
             var flashContainer = document.getElementById('flash-toasts');
             if (!flashContainer) return;
             var items = flashContainer.querySelectorAll('[data-toast-message]');
+            // Queue flash messages for deferred delivery (showToast defined below)
+            window._toastQueue = window._toastQueue || [];
             items.forEach(function(item) {
-                var category = item.dataset.toastCategory || 'info';
-                var message = item.dataset.toastMessage || '';
-                if (window.showToast) {
-                    window.showToast(message, category);
-                } else {
-                    // Fallback if showToast not yet defined
-                    setTimeout(function() {
-                        if (window.showToast) window.showToast(message, category);
-                    }, 500);
-                }
+                window._toastQueue.push({
+                    message: item.dataset.toastMessage || '',
+                    category: item.dataset.toastCategory || 'info'
+                });
             });
+            // Try immediate delivery if showToast already available
+            if (window.showToast && window._toastQueue.length) {
+                window._toastQueue.forEach(function(t) { window.showToast(t.message, t.category); });
+                window._toastQueue = [];
+            }
         })();
         </script>
         {% endif %}
@@ -745,6 +746,12 @@
                 setTimeout(function() { toast.remove(); }, 300);
             }, 3500);
         };
+
+        // Process queued flash messages (from flash-toasts block above)
+        if (window._toastQueue && window._toastQueue.length) {
+            window._toastQueue.forEach(function(t) { window.showToast(t.message, t.category); });
+            window._toastQueue = [];
+        }
 
         // Service Worker
         if ('serviceWorker' in navigator) {

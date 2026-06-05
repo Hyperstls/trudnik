@@ -247,11 +247,11 @@
     // Submit validation
     // ==========================================
     form.addEventListener('submit', function(e) {
-        e.preventDefault();  // Подавляем нативную HTML5-валидацию; если JS не загрузится — сработает native validation
         if (!document.querySelector('input[name="role"]:checked')) {
             e.preventDefault();
             window.showToast('Выберите роль', 'warning');
         }
+        // Если роль выбрана — форма отправляется штатно
     });
 
     // ==========================================

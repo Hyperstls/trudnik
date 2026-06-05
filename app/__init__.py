@@ -22,15 +22,25 @@ def create_app():
 
     @app.context_processor
     def inject_unread_notifications():
-        """Глобальная переменная для бейджа уведомлений во всех шаблонах."""
+        """Глобальная переменная для бейджа уведомлений во всех шаблонах.
+        Результат кешируется в сессии на 30 секунд для снижения нагрузки на Supabase."""
         from app.utils import supabase_request
+        from time import time
         user_id = session.get('user_id')
         if user_id:
+            cache_key = f'_notif_cache_{user_id}'
+            cached = session.get(cache_key)
+            now = time()
+            if cached and (now - cached.get('ts', 0)) < 30:
+                return {'unread_notifications': cached.get('count', 0)}
             resp = supabase_request('GET',
                 f'notifications?user_id=eq.{user_id}&is_read=eq.false&select=id&limit=100')
             if resp.ok:
                 data = resp.json()
-                return {'unread_notifications': len(data) if isinstance(data, list) else 0}
+                count = len(data) if isinstance(data, list) else 0
+                session[cache_key] = {'count': count, 'ts': now}
+                return {'unread_notifications': count}
+            session[cache_key] = {'count': 0, 'ts': now}
         return {'unread_notifications': 0}
 
     @app.context_processor

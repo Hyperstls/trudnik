@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from '_icons.html' import save, check, x %}
+{% from '_icons.html' import save, check, close %}
 {% block content %}
 <div class="px-4 pb-24 max-w-2xl mx-auto">
     <h2 class="text-2xl font-bold text-neutral-900 mb-6">Панель администратора</h2>
@@ -22,7 +22,7 @@
                     <span class="text-xs font-medium">Одобрить</span>
                 </a>
                 <a href="/admin/reject/{{ user.id }}" class="action-icon-btn reject-btn px-3 py-1.5">
-                    {{ x(14) }}
+                    {{ close(14) }}
                     <span class="text-xs font-medium">Отклонить</span>
                 </a>
             </div>

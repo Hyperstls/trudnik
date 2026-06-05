@@ -14,7 +14,7 @@
             <p class="text-sm text-neutral-500 mt-1">Добро пожаловать в Трудник</p>
         </div>
 
-        <form method="post" class="space-y-4">
+        <form method="post" class="space-y-4" novalidate>
             <div class="floating-label-group">
                 <input type="email" name="email" id="email" placeholder=" " required autocomplete="email">
                 <label for="email">Email</label>
@@ -85,7 +85,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     form.addEventListener('submit', function(e) {
-        e.preventDefault();  // Подавляем нативную HTML5-валидацию; если JS не загрузится — сработает native validation
         var valid = true;
         if (!email.value || !email.value.includes('@')) {
             email.closest('.floating-label-group').classList.add('error');
@@ -95,7 +94,11 @@ document.addEventListener('DOMContentLoaded', function() {
             password.closest('.floating-label-group').classList.add('error');
             valid = false;
         }
-        if (!valid) e.preventDefault();
+        if (!valid) {
+            e.preventDefault();  // Блокируем отправку только при ошибках валидации
+        }
+        // Если валидация пройдена — форма отправляется штатно,
+        // нативная HTML5-валидация подавлена атрибутом novalidate (см. <form>)
     });
 });
 </script>

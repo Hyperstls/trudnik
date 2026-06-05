@@ -20,8 +20,8 @@ client = OpenAI(
     base_url="https://api.deepseek.com/v1"
 )
 
-# 🔗 Адрес вашего сайта (можно заменить на PythonAnywhere-ссылку)
-BASE_URL = os.getenv("BASE_URL", "https://hyperstls.pythonanywhere.com")
+# 🔗 Адрес вашего сайта (настраивается через переменную окружения)
+BASE_URL = os.getenv("BASE_URL", "http://localhost:5000")
 
 def ask_deepseek(prompt):
     """Отправляем вопрос в DeepSeek и возвращаем ответ."""
@@ -37,15 +37,15 @@ def execute_command(command):
     """Выполняет одну команду: открывает сайт, отправляет контекст + команду в DeepSeek,
     получает действие и исполняет его через Playwright."""
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)  # False = показывать браузер
-        page = browser.new_page()
-        page.goto(BASE_URL)
-        page.wait_for_timeout(2000)  # ждём загрузки
+        browser = p.chromium.launch(headless=True)
+        try:
+            page = browser.new_page()
+            page.goto(BASE_URL, wait_until="networkidle", timeout=30000)
 
-        # Получаем фрагмент HTML-кода (первые 3000 символов)
-        html_snippet = page.content()[:3000]
+            # Получаем фрагмент HTML-кода (первые 3000 символов)
+            html_snippet = page.content()[:3000]
 
-        prompt = f"""
+            prompt = f"""
 You are a browser agent managing the "Trudnik" website.
 Current page: {page.url}
 HTML snippet: {html_snippet}
@@ -62,45 +62,52 @@ Return response in JSON format (use ONLY English keys and values):
 
 If multiple actions needed, execute one at a time.
 """
-        # Запрашиваем DeepSeek
-        ai_response = ask_deepseek(prompt)
-        print("[DEEPSEEK] Ответ received:", ai_response)
+            # Запрашиваем DeepSeek
+            ai_response = ask_deepseek(prompt)
+            print("[DEEPSEEK] Ответ received:", ai_response)
 
-        # Пробуем распарсить JSON
-        try:
-            action_data = json.loads(ai_response)
-        except Exception:
-            print("[ERROR] Failed to parse DeepSeek response. Response:")
-            print(ai_response)
+            # Пробуем распарсить JSON
+            try:
+                # Извлекаем JSON из ответа (может быть обёрнут в ```json ... ```)
+                clean = ai_response.strip()
+                if clean.startswith("```"):
+                    clean = clean.split("\n", 1)[-1]
+                    if clean.endswith("```"):
+                        clean = clean[:-3]
+                    clean = clean.strip()
+                action_data = json.loads(clean)
+            except Exception:
+                print("[ERROR] Failed to parse DeepSeek response. Response:")
+                print(ai_response)
+                return
+
+            action = action_data.get("action")
+            selector = action_data.get("selector")
+            value = action_data.get("value")
+            message = action_data.get("message", "")
+
+            print(f"[INFO] {message}")
+
+            # Выполняем действие
+            try:
+                if action == "click":
+                    page.click(selector)
+                    page.wait_for_timeout(1000)
+                elif action == "fill":
+                    page.fill(selector, value)
+                elif action == "goto":
+                    target_url = value if value else f"{BASE_URL}/job/new"
+                    page.goto(target_url)
+                    page.wait_for_timeout(2000)
+                elif action == "done":
+                    pass
+                else:
+                    print(f"[WARN] Unknown action: {action}")
+            except Exception as e:
+                print(f"[ERROR] Ошибка выполнения: {e}")
+
+        finally:
             browser.close()
-            return
-
-        action = action_data.get("action")
-        selector = action_data.get("selector")
-        value = action_data.get("value")
-        message = action_data.get("message", "")
-
-        print(f"[INFO] {message}")
-
-        # Выполняем действие
-        try:
-            if action == "click":
-                page.click(selector)
-                page.wait_for_timeout(1000)
-            elif action == "fill":
-                page.fill(selector, value)
-            elif action == "goto":
-                target_url = value if value else f"{BASE_URL}/job/new"
-                page.goto(target_url)
-                page.wait_for_timeout(2000)
-            elif action == "done":
-                pass
-            else:
-                print(f"[WARN] Unknown action: {action}")
-        except Exception as e:
-            print(f"[ERROR] Ошибка выполнения: {e}")
-
-        browser.close()
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
