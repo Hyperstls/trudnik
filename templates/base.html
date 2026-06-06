@@ -602,8 +602,10 @@
     <!-- ================================ -->
     <!-- Bottom Navigation (mobile)        -->
     <!-- ================================ -->
-    {% if session.get('user_id') %}
-    <nav class="bottom-nav fixed bottom-0 left-0 right-0 border-t border-neutral-200 flex justify-around items-center pt-2 pb-1 z-50 md:hidden" role="navigation" aria-label="Основная навигация">
+    {% set _auth_endpoints = ('auth.login', 'auth.register') %}
+    {% set _profile_endpoints = ('profile.profile', 'profile.profile_edit', 'profile.public_profile', 'profile.verify_employer') %}
+    {% if session.get('user_id') and request.endpoint not in _profile_endpoints %}
+    <nav class="bottom-nav fixed bottom-0 left-0 right-0 border-t border-neutral-200 flex justify-around items-center pt-2 pb-1 z-50" role="navigation" aria-label="Основная навигация">
         {% if session.get('role') == 'employer' %}
         <!-- Работодатель -->
         <a href="/my-jobs"
@@ -702,9 +704,9 @@
         </a>
         {% endif %}
     </nav>
-    {% else %}
+    {% elif not session.get('user_id') and request.endpoint not in _auth_endpoints %}
     <!-- Приглашение для незарегистрированных -->
-    <div class="bottom-nav fixed bottom-0 left-0 right-0 border-t border-neutral-200 flex justify-center items-center gap-4 pt-3 pb-2 z-50 md:relative md:border-t-0 md:pt-0 md:pb-0">
+    <div class="bottom-nav fixed bottom-0 left-0 right-0 border-t border-neutral-200 flex justify-center items-center gap-4 pt-3 pb-2 z-50">
         <a href="/login" class="bg-primary-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-primary-600 active:scale-95 transition-all duration-200 shadow-md flex items-center gap-2 touch-target">
             {{ login_icon(16) }}
             Войти
