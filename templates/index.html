@@ -15,7 +15,7 @@
     <div id="filter-backdrop" class="fixed inset-0 bg-black/40 z-40 hidden opacity-0 transition-opacity duration-300" style="backdrop-filter: blur(2px);"></div>
 
     <!-- ===== Filter drawer (right side) ===== -->
-    <div id="filter-drawer" class="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-out overflow-y-auto safe-area-inset-bottom">
+    <div id="filter-drawer" class="filter-drawer-hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white shadow-2xl z-50 transition-transform duration-300 ease-out overflow-y-auto" style="transform: translateX(100%);">
         <div class="sticky top-0 bg-white border-b border-neutral-200 px-5 py-4 flex items-center justify-between z-10">
             <h3 class="font-bold text-neutral-800">Фильтры</h3>
             <button type="button" id="close-filters" class="w-8 h-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-500 transition-colors" aria-label="Закрыть фильтры">
@@ -196,14 +196,14 @@
 
     if (openBtn && drawer && backdrop) {
         function openDrawer() {
-            drawer.classList.remove('translate-x-full');
+            drawer.style.transform = 'translateX(0)';
             backdrop.classList.remove('hidden');
             setTimeout(function() { backdrop.classList.remove('opacity-0'); }, 10);
             document.body.style.overflow = 'hidden';
         }
 
         function closeDrawer() {
-            drawer.classList.add('translate-x-full');
+            drawer.style.transform = 'translateX(100%)';
             backdrop.classList.add('opacity-0');
             setTimeout(function() {
                 backdrop.classList.add('hidden');
