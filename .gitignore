@@ -4,3 +4,12 @@ __pycache__/
 .idea/
 original_app.py
 *_screenshot.png
+
+# Android / TWA
+*.keystore
+*.jks
+twa-project/
+app-release*.apk
+app-release*.aab
+*.apk
+*.aab
