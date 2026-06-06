@@ -1,8 +1,8 @@
-# План реализации редизайна из UXUI_NEW.md
+# План реализации редизайна из FINAL_NEW_UXUI.md
 
 Дата: 06.06.2026
 Ветка: `redesign-uxui`
-Источник: [`UXUI_NEW.md`](../UXUI_NEW.md)
+Источник: [`FINAL_NEW_UXUI.md`](../FINAL_NEW_UXUI.md)
 
 ---
 
