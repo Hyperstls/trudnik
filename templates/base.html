@@ -7,11 +7,19 @@
     <title>{% block title %}Трудник{% endblock %}</title>
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Трудник">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
+    <link rel="apple-touch-icon" sizes="512x512" href="{{ url_for('static', filename='icons/icon-512x512.png') }}">
     <meta name="theme-color" content="#d97706">
     <meta name="description" content="Платформа для поиска разовой подработки. Работодатели публикуют задания, исполнители откликаются и выполняют работу.">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Трудник">
+    <meta name="msapplication-tap-highlight" content="no">
+    <meta name="msapplication-TileColor" content="#d97706">
+    <meta name="msapplication-TileImage" content="{{ url_for('static', filename='icons/icon-144x144.png') }}">
+    <!-- Splash screen for iOS (iPhone 14/15 Pro) -->
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" href="{{ url_for('static', filename='icons/icon-512x512.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

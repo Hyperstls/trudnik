@@ -79,6 +79,23 @@ def create_app():
     app.register_blueprint(admin_bp)
     app.register_blueprint(monetization_bp)
 
+    # ================================
+    # PWA / Google Play routes
+    # ================================
+
+    from flask import render_template, send_from_directory
+
+    @app.route('/offline')
+    def offline():
+        """Offline fallback page for PWA service worker."""
+        return render_template('offline.html')
+
+    @app.route('/.well-known/assetlinks.json')
+    def assetlinks():
+        """Digital Asset Links for Trusted Web Activity (Google Play)."""
+        return send_from_directory('static/.well-known', 'assetlinks.json',
+                                   mimetype='application/json')
+
     return app
 
 

@@ -1,0 +1,32 @@
+{
+  "packageId": "ru.trudnik.app",
+  "host": "trudnik.onrender.com",
+  "name": "Трудник",
+  "launcherName": "Трудник",
+  "display": "standalone",
+  "backgroundColor": "#ffffff",
+  "themeColor": "#d97706",
+  "startUrl": "/?utm_source=twa",
+  "icon": "static/icons/icon-512x512.png",
+  "maskableIcon": "static/icons/icon-512x512.png",
+  "monochromeIcon": "static/icons/icon-192x192.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "trudnik-release.keystore",
+    "alias": "trudnik"
+  },
+  "enableNotifications": true,
+  "navigationColor": "#ffffff",
+  "navigationColorDark": "#171717",
+  "navigationDividerColor": "#e5e5e5",
+  "navigationDividerColorDark": "#262626",
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": {
+      "enabled": true
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  }
+}
