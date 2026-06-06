@@ -69,12 +69,17 @@ If multiple actions needed, execute one at a time.
             # Пробуем распарсить JSON
             try:
                 # Извлекаем JSON из ответа (может быть обёрнут в ```json ... ```)
+                import re
                 clean = ai_response.strip()
-                if clean.startswith("```"):
-                    clean = clean.split("\n", 1)[-1]
-                    if clean.endswith("```"):
-                        clean = clean[:-3]
-                    clean = clean.strip()
+                # Try to extract JSON from markdown code block
+                match = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', clean, re.DOTALL)
+                if match:
+                    clean = match.group(1).strip()
+                # Fallback: try to find first { ... } block
+                if not clean or clean[0] != '{':
+                    brace_match = re.search(r'\{.*\}', clean, re.DOTALL)
+                    if brace_match:
+                        clean = brace_match.group(0)
                 action_data = json.loads(clean)
             except Exception:
                 print("[ERROR] Failed to parse DeepSeek response. Response:")

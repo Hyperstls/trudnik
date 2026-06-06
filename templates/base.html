@@ -342,7 +342,7 @@
         .floating-label-group textarea:focus ~ label,
         .floating-label-group textarea:not(:placeholder-shown) ~ label,
         .floating-label-group select:focus ~ label,
-        .floating-label-group select:not([value=""]) ~ label {
+        .floating-label-group select[data-has-value] ~ label {
             top: 0.35rem;
             font-size: 0.7rem;
             color: #d97706;
@@ -498,13 +498,13 @@
             <!-- Поиск (только ПК) -->
             {% if session.get('user_id') and request.endpoint != 'auth.login' and request.endpoint != 'auth.register' %}
             <div class="hidden md:flex flex-1 max-w-md mx-4">
-                <div class="relative w-full">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <form action="/jobs" method="get" class="relative w-full" onsubmit="return handleSearchSubmit(this)">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
-                    <input type="text" placeholder="Поиск заданий, трудников..." class="w-full pl-9 pr-4 py-2 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
-                </div>
+                    <input type="text" name="city" placeholder="Поиск заданий, трудников..." class="w-full pl-9 pr-4 py-2 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                </form>
             </div>
             {% endif %}
 
@@ -549,7 +549,8 @@
                     <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
             </button>
-            <input type="text" id="mobile-search-input" placeholder="Поиск заданий, трудников..." class="flex-1 px-4 py-2.5 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+            <input type="text" id="mobile-search-input" name="city" placeholder="Поиск заданий, трудников..." class="flex-1 px-4 py-2.5 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                   onkeydown="if(event.key==='Enter'){var v=this.value.trim();if(v){window.location.href='/jobs?city='+encodeURIComponent(v);}toggleMobileSearch();}">
         </div>
     </div>
 
@@ -720,6 +721,17 @@
     <!-- ================================ -->
     <script>
         /**
+         * Handle search form submit (desktop)
+         */
+        function handleSearchSubmit(form) {
+            var input = form.querySelector('input');
+            var value = input ? input.value.trim() : '';
+            if (!value) return false;
+            // Already navigating via form action, let form submit naturally
+            return true;
+        }
+
+        /**
          * Toggle mobile search bar
          */
         function toggleMobileSearch() {
@@ -794,6 +806,43 @@
                     .catch(function(err) { console.log('SW error', err); });
             });
         }
+
+        // Floating-label for select elements
+        (function() {
+            function updateSelectLabel(select) {
+                var hasValue = select.value && select.value !== '';
+                if (hasValue) {
+                    select.setAttribute('data-has-value', '');
+                } else {
+                    select.removeAttribute('data-has-value');
+                }
+            }
+            // Init all existing selects on DOM ready
+            document.addEventListener('DOMContentLoaded', function() {
+                var selects = document.querySelectorAll('.floating-label-group select');
+                for (var i = 0; i < selects.length; i++) {
+                    updateSelectLabel(selects[i]);
+                    selects[i].addEventListener('change', function() { updateSelectLabel(this); });
+                }
+            });
+            // Also handle dynamically added selects via MutationObserver
+            if (window.MutationObserver) {
+                var observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        mutation.addedNodes.forEach(function(node) {
+                            if (node.nodeType === 1 && node.tagName === 'SELECT') {
+                                var group = node.closest('.floating-label-group');
+                                if (group) {
+                                    updateSelectLabel(node);
+                                    node.addEventListener('change', function() { updateSelectLabel(this); });
+                                }
+                            }
+                        });
+                    });
+                });
+                observer.observe(document.documentElement, { childList: true, subtree: true });
+            }
+        })();
 
         // Version toast (click on logo)
         document.addEventListener('DOMContentLoaded', function() {
