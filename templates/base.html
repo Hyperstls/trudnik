@@ -511,6 +511,13 @@
             <!-- Правая часть -->
             <div class="flex items-center gap-2">
                 {% if session.get('user_id') %}
+                <!-- Поиск (мобильные) -->
+                <button id="mobile-search-btn" class="md:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors touch-target" aria-label="Поиск" onclick="toggleMobileSearch()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </button>
                 <!-- Уведомления -->
                 <a href="/notifications" class="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors touch-target" aria-label="Уведомления">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -532,6 +539,19 @@
             </div>
         </div>
     </header>
+
+    <!-- Мобильная строка поиска (скрыта по умолчанию) -->
+    <div id="mobile-search-bar" class="fixed top-0 left-0 right-0 z-[60] bg-white shadow-sm hidden"
+         style="padding-top: env(safe-area-inset-top, 0px);">
+        <div class="flex items-center gap-3 px-4 h-14">
+            <button onclick="toggleMobileSearch()" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors shrink-0 touch-target" aria-label="Закрыть поиск">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            <input type="text" id="mobile-search-input" placeholder="Поиск заданий, трудников..." class="flex-1 px-4 py-2.5 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+        </div>
+    </div>
 
     <!-- ================================ -->
     <!-- Toast Container                   -->
@@ -618,14 +638,13 @@
             </svg>
             <span>Трудники</span>
         </a>
-        <a href="/shifts"
-           class="nav-item flex flex-col items-center text-[10px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'shifts' in request.endpoint }}"
-           aria-label="Смены">
+        <a href="/favorites"
+           class="nav-item flex flex-col items-center text-[10px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'favorites' in request.endpoint }}"
+           aria-label="Избранное">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
             </svg>
-            <span>Смены</span>
+            <span>Избранное</span>
         </a>
         <a href="/chats"
            class="nav-item flex flex-col items-center text-[10px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'chats' in request.endpoint }}"
@@ -700,6 +719,20 @@
     <!-- Global JavaScript                 -->
     <!-- ================================ -->
     <script>
+        /**
+         * Toggle mobile search bar
+         */
+        function toggleMobileSearch() {
+            var bar = document.getElementById('mobile-search-bar');
+            var input = document.getElementById('mobile-search-input');
+            if (bar && input) {
+                bar.classList.toggle('hidden');
+                if (!bar.classList.contains('hidden')) {
+                    input.focus();
+                }
+            }
+        }
+
         /**
          * Show a toast notification
          * @param {string} message - text

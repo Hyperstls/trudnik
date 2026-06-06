@@ -84,13 +84,45 @@
     }
 
     // ============================================
+    // Custom confirm dialog (replaces native confirm)
+    // ============================================
+    function customConfirm(message) {
+        return new Promise(function(resolve) {
+            var overlay = document.createElement('div');
+            overlay.className = 'modal-backdrop';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-modal', 'true');
+            overlay.innerHTML = '<div class="modal-content animate-scale-in max-w-sm">' +
+                '<p class="text-neutral-800 text-sm mb-4">' + message + '</p>' +
+                '<div class="flex gap-3">' +
+                '<button id="confirm-cancel" class="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-medium py-2.5 rounded-xl transition-colors">Отмена</button>' +
+                '<button id="confirm-ok" class="flex-1 bg-danger hover:bg-danger-dark text-white font-medium py-2.5 rounded-xl transition-colors">Подтвердить</button>' +
+                '</div></div>';
+            document.body.appendChild(overlay);
+
+            overlay.querySelector('#confirm-cancel').addEventListener('click', function() {
+                overlay.remove();
+                resolve(false);
+            });
+            overlay.querySelector('#confirm-ok').addEventListener('click', function() {
+                overlay.remove();
+                resolve(true);
+            });
+            overlay.addEventListener('click', function(e) {
+                if (e.target === overlay) { overlay.remove(); resolve(false); }
+            });
+        });
+    }
+
+    // ============================================
     // Индивидуальное действие (AJAX)
     // ============================================
     async function singleAction(appId, action, btnElement) {
         // Подтверждение для отклонения принятого отклика
         const card = document.querySelector(`.app-card[data-app-id="${appId}"]`);
         if (action === 'reject' && card && card.dataset.status === 'accepted') {
-            if (!confirm('Вы уверены, что хотите отклонить принятого работника? Контактные данные будут скрыты.')) {
+            const confirmed = await customConfirm('Вы уверены, что хотите отклонить принятого работника? Контактные данные будут скрыты.');
+            if (!confirmed) {
                 return;
             }
         }
