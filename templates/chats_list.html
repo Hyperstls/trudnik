@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from '_icons.html' import trash, chat, home %}
+{% from '_icons.html' import trash, chat as chat_icon, home %}
 {% block content %}
 <div class="px-4 pb-24 max-w-lg mx-auto">
     <div class="flex items-center justify-between mb-5">
@@ -18,10 +18,10 @@
                    value="{{ chat.id }}" onchange="toggleDeleteBtn()">
             <a href="/chat/{{ chat.id }}" class="flex-1 flex items-center gap-3 min-w-0">
                 <div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
-                    {{ chat(18) }}
+                    {{ chat_icon(18) }}
                 </div>
                 <div class="min-w-0">
-                    <p class="font-medium text-neutral-900 truncate">{{ chat.job.organization_name or 'Без названия' }}</p>
+                    <p class="font-medium text-neutral-900 truncate">{{ chat.job.organization_name if chat.job else 'Без названия' }}</p>
                     <p class="text-sm text-neutral-500 truncate">{{ chat.last_message or 'Нет сообщений' }}</p>
                 </div>
             </a>
