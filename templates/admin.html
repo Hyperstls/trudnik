@@ -1,30 +1,238 @@
 {% extends "base.html" %}
-{% from '_icons.html' import save, check, close %}
+{% from '_icons.html' import save, check, close, search, filter_icon %}
 {% block content %}
-<div class="px-4 pb-24 max-w-2xl mx-auto">
-    <h2 class="text-2xl font-bold text-neutral-900 mb-6">Панель администратора</h2>
+<div class="px-4 pb-24 max-w-4xl mx-auto">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold text-neutral-900">Панель администратора</h2>
+        <span class="text-xs bg-primary-100 text-primary-700 px-3 py-1 rounded-full font-medium">admin</span>
+    </div>
 
-    <!-- Заявки на верификацию -->
+    <!-- Вкладки -->
+    <nav class="flex gap-1 mb-6 border-b border-neutral-200 overflow-x-auto">
+        {% set tabs = [
+            ('dashboard', 'Дашборд'),
+            ('users', 'Пользователи'),
+            ('jobs', 'Задания'),
+            ('verification', 'Верификация'),
+            ('monetization', 'Монетизация'),
+            ('payments', 'Платежи'),
+        ] %}
+        {% for tid, tlabel in tabs %}
+        <a href="?tab={{ tid }}"
+           class="px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors
+                  {% if tab == tid %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:text-neutral-700{% endif %}">
+            {{ tlabel }}
+        </a>
+        {% endfor %}
+    </nav>
+
+    {# ============================================================ #}
+    {# ДАШБОРД                                                        #}
+    {# ============================================================ #}
+    {% if tab == 'dashboard' %}
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div class="bg-white rounded-xl border border-neutral-100 p-4 shadow-sm">
+            <p class="text-2xl font-bold text-neutral-900">{{ stats.get('total_users', 0) }}</p>
+            <p class="text-xs text-neutral-500 mt-1">Пользователей</p>
+            <p class="text-xs text-neutral-400">{{ stats.get('workers', 0) }} работников / {{ stats.get('employers', 0) }} храмов</p>
+        </div>
+        <div class="bg-white rounded-xl border border-neutral-100 p-4 shadow-sm">
+            <p class="text-2xl font-bold text-neutral-900">{{ stats.get('total_jobs', 0) }}</p>
+            <p class="text-xs text-neutral-500 mt-1">Заданий</p>
+            <p class="text-xs text-neutral-400">{{ stats.get('open_jobs', 0) }} открыто</p>
+        </div>
+        <div class="bg-white rounded-xl border border-neutral-100 p-4 shadow-sm">
+            <p class="text-2xl font-bold text-neutral-900">{{ stats.get('total_payments', 0) }}</p>
+            <p class="text-xs text-neutral-500 mt-1">Платежей</p>
+            <p class="text-xs text-success font-medium">{{ stats.get('total_revenue', 0) }} ₽ выручка</p>
+        </div>
+        <div class="bg-white rounded-xl border border-neutral-100 p-4 shadow-sm">
+            <p class="text-2xl font-bold text-neutral-900">{{ stats.get('pending_verifications', 0) }}</p>
+            <p class="text-xs text-neutral-500 mt-1">На верификации</p>
+            <a href="?tab=verification" class="text-xs text-primary-500 hover:underline">Рассмотреть →</a>
+        </div>
+    </div>
+    <div class="bg-white rounded-xl border border-neutral-100 p-5 shadow-sm">
+        <h3 class="font-semibold text-neutral-800 mb-3">Быстрые действия</h3>
+        <div class="flex flex-wrap gap-2">
+            <a href="?tab=users" class="action-icon-btn px-4 py-2 text-sm">👥 Пользователи</a>
+            <a href="?tab=jobs" class="action-icon-btn px-4 py-2 text-sm">📋 Задания</a>
+            <a href="?tab=monetization" class="action-icon-btn px-4 py-2 text-sm">💰 Настройки</a>
+            <a href="?tab=payments" class="action-icon-btn px-4 py-2 text-sm">🧾 Платежи</a>
+        </div>
+    </div>
+    {% endif %}
+
+    {# ============================================================ #}
+    {# ПОЛЬЗОВАТЕЛИ                                                   #}
+    {# ============================================================ #}
+    {% if tab == 'users' %}
+    <div class="flex gap-2 mb-4">
+        <form method="get" class="flex gap-2 flex-1">
+            <input type="hidden" name="tab" value="users">
+            <input type="text" name="search" value="{{ request.args.get('search', '') }}" placeholder="Поиск по имени..."
+                   class="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm">
+            <select name="role" class="px-3 py-2 border border-neutral-200 rounded-lg text-sm">
+                <option value="">Все роли</option>
+                <option value="worker" {% if request.args.get('role') == 'worker' %}selected{% endif %}>Работник</option>
+                <option value="employer" {% if request.args.get('role') == 'employer' %}selected{% endif %}>Храм</option>
+                <option value="admin" {% if request.args.get('role') == 'admin' %}selected{% endif %}>Админ</option>
+            </select>
+            <button type="submit" class="px-4 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600">
+                {{ search(14) }} Найти
+            </button>
+        </form>
+    </div>
+    <div class="bg-white rounded-xl border border-neutral-100 shadow-sm overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-neutral-50 text-neutral-600">
+                <tr>
+                    <th class="text-left px-4 py-3 font-medium">Имя</th>
+                    <th class="text-left px-4 py-3 font-medium">Email</th>
+                    <th class="text-left px-4 py-3 font-medium">Роль</th>
+                    <th class="text-left px-4 py-3 font-medium">Город</th>
+                    <th class="text-right px-4 py-3 font-medium">Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr class="border-t border-neutral-100 hover:bg-neutral-50">
+                    <td class="px-4 py-3 font-medium text-neutral-900">{{ u.get('full_name', '—') }}</td>
+                    <td class="px-4 py-3 text-neutral-600">{{ u.get('email', '—') }}</td>
+                    <td class="px-4 py-3">
+                        <span class="text-xs px-2 py-0.5 rounded-full font-medium
+                            {% if u.get('role') == 'admin' %}bg-purple-100 text-purple-700
+                            {% elif u.get('role') == 'employer' %}bg-amber-100 text-amber-700
+                            {% else %}bg-green-100 text-green-700{% endif %}">
+                            {{ u.get('role', 'worker') }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-neutral-600">{{ u.get('city', '—') }}</td>
+                    <td class="px-4 py-3 text-right">
+                        <div class="flex gap-1 justify-end">
+                            <form method="post" action="/admin/users/{{ u.id }}/role" class="inline-flex gap-1">
+                                <select name="role" class="text-xs border border-neutral-200 rounded px-1.5 py-1">
+                                    <option value="worker" {% if u.get('role') == 'worker' %}selected{% endif %}>Работник</option>
+                                    <option value="employer" {% if u.get('role') == 'employer' %}selected{% endif %}>Храм</option>
+                                    <option value="admin" {% if u.get('role') == 'admin' %}selected{% endif %}>Админ</option>
+                                </select>
+                                <button class="text-xs text-primary-600 hover:underline px-1">Сменить</button>
+                            </form>
+                            <form method="post" action="/admin/users/{{ u.id }}/delete" onsubmit="return confirm('Удалить пользователя {{ u.get('full_name', '') }}?')">
+                                <button class="text-xs text-danger hover:underline px-1">Удалить</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="px-4 py-8 text-center text-neutral-400">Пользователи не найдены</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {# ============================================================ #}
+    {# ЗАДАНИЯ                                                        #}
+    {# ============================================================ #}
+    {% if tab == 'jobs' %}
+    <div class="flex gap-2 mb-4">
+        <form method="get" class="flex gap-2 flex-1">
+            <input type="hidden" name="tab" value="jobs">
+            <input type="text" name="search" value="{{ request.args.get('search', '') }}" placeholder="Поиск по названию..."
+                   class="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm">
+            <select name="status" class="px-3 py-2 border border-neutral-200 rounded-lg text-sm">
+                <option value="">Все статусы</option>
+                <option value="open" {% if request.args.get('status') == 'open' %}selected{% endif %}>Открыто</option>
+                <option value="in_progress" {% if request.args.get('status') == 'in_progress' %}selected{% endif %}>В работе</option>
+                <option value="cancelled" {% if request.args.get('status') == 'cancelled' %}selected{% endif %}>Отменено</option>
+                <option value="paid" {% if request.args.get('status') == 'paid' %}selected{% endif %}>Оплачено</option>
+            </select>
+            <button type="submit" class="px-4 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600">
+                {{ search(14) }} Найти
+            </button>
+        </form>
+    </div>
+    <div class="bg-white rounded-xl border border-neutral-100 shadow-sm overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead class="bg-neutral-50 text-neutral-600">
+                <tr>
+                    <th class="text-left px-4 py-3 font-medium">Название</th>
+                    <th class="text-left px-4 py-3 font-medium">Храм</th>
+                    <th class="text-left px-4 py-3 font-medium">Статус</th>
+                    <th class="text-left px-4 py-3 font-medium">Оплата</th>
+                    <th class="text-right px-4 py-3 font-medium">Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for j in jobs %}
+                <tr class="border-t border-neutral-100 hover:bg-neutral-50">
+                    <td class="px-4 py-3 font-medium text-neutral-900">{{ j.get('organization_name', '—')[:40] }}</td>
+                    <td class="px-4 py-3 text-neutral-600">{{ j.get('employer', {}).get('full_name', '—') }}</td>
+                    <td class="px-4 py-3">
+                        <span class="text-xs px-2 py-0.5 rounded-full font-medium
+                            {% if j.get('status') == 'open' %}bg-green-100 text-green-700
+                            {% elif j.get('status') == 'in_progress' %}bg-blue-100 text-blue-700
+                            {% elif j.get('status') == 'paid' %}bg-purple-100 text-purple-700
+                            {% else %}bg-neutral-100 text-neutral-600{% endif %}">
+                            {{ j.get('status', '—') }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-neutral-600">{{ j.get('payment_amount', 0) }} ₽</td>
+                    <td class="px-4 py-3 text-right">
+                        <div class="flex gap-1 justify-end">
+                            <form method="post" action="/admin/jobs/{{ j.id }}/status" class="inline-flex gap-1">
+                                <select name="status" class="text-xs border border-neutral-200 rounded px-1.5 py-1">
+                                    <option value="open" {% if j.get('status') == 'open' %}selected{% endif %}>open</option>
+                                    <option value="in_progress" {% if j.get('status') == 'in_progress' %}selected{% endif %}>in_progress</option>
+                                    <option value="cancelled" {% if j.get('status') == 'cancelled' %}selected{% endif %}>cancelled</option>
+                                    <option value="paid" {% if j.get('status') == 'paid' %}selected{% endif %}>paid</option>
+                                </select>
+                                <button class="text-xs text-primary-600 hover:underline px-1">Сменить</button>
+                            </form>
+                            <form method="post" action="/admin/jobs/{{ j.id }}/delete" onsubmit="return confirm('Удалить задание {{ j.get('organization_name', '') }}?')">
+                                <button class="text-xs text-danger hover:underline px-1">Удалить</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="px-4 py-8 text-center text-neutral-400">Задания не найдены</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {# ============================================================ #}
+    {# ВЕРИФИКАЦИЯ                                                    #}
+    {# ============================================================ #}
+    {% if tab == 'verification' %}
     <h3 class="text-lg font-semibold text-neutral-800 mb-3">Заявки на верификацию</h3>
     {% if pending %}
     <div class="space-y-2 mb-8">
         {% for user in pending %}
-        <div class="app-card bg-white rounded-xl border border-neutral-100 p-3 flex justify-between items-center gap-3 shadow-sm">
+        <div class="bg-white rounded-xl border border-neutral-100 p-3 flex justify-between items-center gap-3 shadow-sm">
             <div class="min-w-0">
                 <p class="font-medium text-neutral-900">{{ user.full_name }}</p>
+                <p class="text-xs text-neutral-500">{{ user.get('city', '') }}{% if user.get('city') and user.get('email') %} · {% endif %}{{ user.get('email', '') }}</p>
                 {% if user.verification_doc_url %}
-                <a href="{{ user.verification_doc_url }}" target="_blank" class="text-primary-500 text-sm hover:underline">Документ</a>
+                <a href="{{ user.verification_doc_url }}" target="_blank" class="text-primary-500 text-xs hover:underline">Документ</a>
                 {% endif %}
             </div>
             <div class="flex gap-2 shrink-0">
-                <a href="/admin/approve/{{ user.id }}" class="action-icon-btn accept-btn px-3 py-1.5">
-                    {{ check(14) }}
-                    <span class="text-xs font-medium">Одобрить</span>
-                </a>
-                <a href="/admin/reject/{{ user.id }}" class="action-icon-btn reject-btn px-3 py-1.5">
-                    {{ close(14) }}
-                    <span class="text-xs font-medium">Отклонить</span>
-                </a>
+                <form method="post" action="/admin/approve/{{ user.id }}">
+                    <button class="action-icon-btn accept-btn px-3 py-1.5">
+                        {{ check(14) }}
+                        <span class="text-xs font-medium">Одобрить</span>
+                    </button>
+                </form>
+                <form method="post" action="/admin/reject/{{ user.id }}">
+                    <button class="action-icon-btn reject-btn px-3 py-1.5">
+                        {{ close(14) }}
+                        <span class="text-xs font-medium">Отклонить</span>
+                    </button>
+                </form>
             </div>
         </div>
         {% endfor %}
@@ -32,10 +240,14 @@
     {% else %}
     <p class="text-sm text-neutral-400 mb-8">Нет заявок на верификацию</p>
     {% endif %}
+    {% endif %}
 
-    <!-- Настройки монетизации -->
+    {# ============================================================ #}
+    {# МОНЕТИЗАЦИЯ (НАСТРОЙКИ)                                        #}
+    {# ============================================================ #}
+    {% if tab == 'monetization' %}
     <h3 class="text-lg font-semibold text-neutral-800 mb-3">Настройки монетизации</h3>
-    <div class="app-card bg-white rounded-2xl border border-neutral-100 p-5 shadow-sm">
+    <div class="bg-white rounded-2xl border border-neutral-100 p-5 shadow-sm">
         <form id="monetization-form" class="space-y-5" onsubmit="saveSettings(event)">
             <div class="floating-label-group">
                 <input type="number" id="contact-price" value="290" min="1"
@@ -56,19 +268,25 @@
                 {{ save(16) }}
                 Сохранить
             </button>
-            <span id="save-status" class="text-sm text-success font-medium text-center block hidden">✓ Сохранено</span>
+            <span id="save-status" class="text-sm text-success font-medium text-center block hidden">Сохранено</span>
         </form>
     </div>
+    {% endif %}
 
-    <!-- История платежей -->
-    <h3 class="text-lg font-semibold text-neutral-800 mb-3 mt-8">История платежей</h3>
+    {# ============================================================ #}
+    {# ПЛАТЕЖИ (ИСТОРИЯ)                                              #}
+    {# ============================================================ #}
+    {% if tab == 'payments' %}
+    <h3 class="text-lg font-semibold text-neutral-800 mb-3">История платежей</h3>
     <div id="payments-list" class="space-y-2">
         <p class="text-sm text-neutral-400">Загрузка...</p>
     </div>
+    {% endif %}
 </div>
 
 <script>
-// Загрузить настройки монетизации при загрузке страницы
+// ── Монетизация: загрузка и сохранение настроек ──
+{% if tab == 'monetization' %}
 async function loadSettings() {
     try {
         const resp = await fetch('/api/admin/monetization-settings');
@@ -77,19 +295,15 @@ async function loadSettings() {
             document.getElementById('contact-price').value = data.contact_price || '290';
             document.getElementById('owner-inn').value = data.owner_inn || '';
         }
-    } catch (e) {
-        console.error('Failed to load settings');
-    }
+    } catch (e) { console.error('Failed to load settings'); }
 }
 
-// Сохранить настройки монетизации
 async function saveSettings(event) {
     event.preventDefault();
     const btn = event.target.querySelector('button[type="submit"]');
     const originalHTML = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = 'Сохранение...';
-
     try {
         const resp = await fetch('/api/admin/monetization-settings', {
             method: 'POST',
@@ -104,49 +318,40 @@ async function saveSettings(event) {
             const status = document.getElementById('save-status');
             status.classList.remove('hidden');
             setTimeout(() => status.classList.add('hidden'), 3000);
-            if (window.showToast) {
-                window.showToast('✅ Настройки сохранены', 'success');
-            } else {
-                alert('✅ Настройки сохранены');
-            }
+            if (window.showToast) window.showToast('Настройки сохранены', 'success');
         } else {
-            if (window.showToast) {
-                window.showToast('❌ Ошибка: ' + (data.error || 'Не удалось сохранить'), 'error');
-            } else {
-                alert('Ошибка: ' + (data.error || 'Не удалось сохранить'));
-            }
+            if (window.showToast) window.showToast('Ошибка: ' + (data.error || 'Не удалось сохранить'), 'error');
         }
     } catch (e) {
-        if (window.showToast) {
-            window.showToast('❌ Ошибка соединения', 'error');
-        } else {
-            alert('Ошибка соединения');
-        }
+        if (window.showToast) window.showToast('Ошибка соединения', 'error');
     }
-
     btn.disabled = false;
     btn.innerHTML = originalHTML;
 }
+loadSettings();
+{% endif %}
 
-// Загрузить историю платежей
+// ── Платежи: загрузка истории ──
+{% if tab == 'payments' %}
 async function loadPayments() {
     try {
         const resp = await fetch('/api/admin/payments');
         const data = await resp.json();
         const container = document.getElementById('payments-list');
-
         if (data.success && data.payments && data.payments.length > 0) {
             container.innerHTML = data.payments.map(p => `
-                <div class="app-card bg-white rounded-xl border border-neutral-100 p-3 text-sm shadow-sm">
+                <div class="bg-white rounded-xl border border-neutral-100 p-3 text-sm shadow-sm">
                     <div class="flex justify-between">
-                        <span class="font-medium text-neutral-900">${p.amount} ₽</span>
-                        <span class="text-${p.status === 'paid' ? 'success' : 'warning'} font-medium">${p.status === 'paid' ? 'Оплачено' : 'Ожидает'}</span>
+                        <span class="font-medium text-neutral-900">${p.amount} руб</span>
+                        <span class="text-${p.status === 'paid' ? 'success' : 'warning'} font-medium">
+                            ${p.status === 'paid' ? 'Оплачено' : 'Ожидает'}
+                        </span>
                     </div>
                     <p class="text-xs text-neutral-400 mt-1">ID: ${p.id.slice(0, 8)}... | ${new Date(p.created_at).toLocaleString('ru-RU')}</p>
                     ${p.transaction_id ? `<p class="text-xs text-neutral-400">Транзакция: ${p.transaction_id}</p>` : ''}
                     ${p.receipts && p.receipts.length > 0 ? `
                         <div class="mt-2 text-xs text-neutral-400">
-                            <p>🧾 Чек: ${p.receipts[0].status || 'отправлен'}</p>
+                            <p>Чек: ${p.receipts[0].status || 'отправлен'}</p>
                             ${p.receipts[0].status === 'failed' ? `
                                 <button data-receipt-id="${p.receipts[0].id}"
                                         class="receipt-resend-btn text-primary-500 hover:underline font-medium">Переотправить</button>
@@ -167,39 +372,19 @@ async function resendReceipt(receiptId) {
     try {
         const resp = await fetch('/api/receipts/' + receiptId + '/resend', { method: 'POST' });
         const data = await resp.json();
-        if (data.success) {
-            if (window.showToast) {
-                window.showToast('✅ Чек переотправлен', 'success');
-            } else {
-                alert('✅ Чек переотправлен');
-            }
-            loadPayments();
-        } else {
-            if (window.showToast) {
-                window.showToast('❌ Ошибка: ' + data.error, 'error');
-            } else {
-                alert('Ошибка: ' + data.error);
-            }
-        }
-    } catch (e) {
         if (window.showToast) {
-            window.showToast('❌ Ошибка соединения', 'error');
-        } else {
-            alert('Ошибка соединения');
+            window.showToast(data.success ? 'Чек переотправлен' : 'Ошибка: ' + data.error, data.success ? 'success' : 'error');
         }
-    }
+        loadPayments();
+    } catch (e) {}
 }
 
-// Делегирование событий для кнопок переотправки чеков
 document.getElementById('payments-list').addEventListener('click', function(e) {
     const btn = e.target.closest('.receipt-resend-btn');
-    if (btn) {
-        resendReceipt(btn.dataset.receiptId);
-    }
+    if (btn) resendReceipt(btn.dataset.receiptId);
 });
 
-loadSettings();
 loadPayments();
+{% endif %}
 </script>
 {% endblock %}
-
