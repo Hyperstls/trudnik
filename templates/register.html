@@ -93,15 +93,9 @@
                 <!-- Вероисповедание -->
                 <div class="floating-label-group">
                     <select name="religion" id="religion">
-                        <option value="не указано">Не указано</option>
-                        <option value="православие">Православие</option>
-                        <option value="католицизм">Католицизм</option>
-                        <option value="протестантизм">Протестантизм</option>
-                        <option value="ислам">Ислам</option>
-                        <option value="иудаизм">Иудаизм</option>
-                        <option value="буддизм">Буддизм</option>
-                        <option value="не важно">Не важно</option>
+                        <option value="">Загрузка...</option>
                     </select>
+                    <input type="hidden" name="religion_id" id="religion_id" value="">
                     <label for="religion">Вероисповедание</label>
                 </div>
 
@@ -110,9 +104,12 @@
                     <label for="city">Город</label>
                 </div>
 
+                <!-- Навыки (чекбоксы, загружаются из справочника) -->
                 <div class="floating-label-group">
-                    <input type="text" name="skills" id="skills" placeholder=" ">
-                    <label for="skills">Навыки (через запятую)</label>
+                    <label class="text-sm text-neutral-500 mb-2 block">Навыки</label>
+                    <div id="skills-checkboxes" class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border border-neutral-200 rounded-lg">
+                        <span class="text-sm text-neutral-400 col-span-2">Загрузка...</span>
+                    </div>
                 </div>
 
                 <div class="floating-label-group">
@@ -271,5 +268,45 @@
     // Initial validation
     validateStep1();
 })();
+
+// Загрузка справочников (навыки и вероисповедания)
+async function loadDictionaries() {
+    try {
+        const [skillsResp, religionsResp] = await Promise.all([
+            fetch('/api/skills'),
+            fetch('/api/religions')
+        ]);
+        const skillsData = await skillsResp.json();
+        const religionsData = await religionsResp.json();
+
+        // Заполняем чекбоксы навыков
+        const skillsDiv = document.getElementById('skills-checkboxes');
+        if (skillsDiv && skillsData.skills) {
+            skillsDiv.innerHTML = skillsData.skills.map(s =>
+                `<label class="flex items-center gap-2 p-1 hover:bg-neutral-50 rounded cursor-pointer">
+                    <input type="checkbox" name="skill_ids" value="${s.id}" class="rounded border-neutral-300 text-primary-500 focus:ring-primary-500">
+                    <span class="text-sm text-neutral-700">${s.name}</span>
+                </label>`
+            ).join('');
+        }
+
+        // Заполняем селект вероисповеданий
+        const religionSelect = document.getElementById('religion');
+        if (religionSelect && religionsData.religions) {
+            religionSelect.innerHTML = '<option value="">Не указано</option>' +
+                religionsData.religions.map(r =>
+                    `<option value="${r.name}" data-id="${r.id}">${r.name}</option>`
+                ).join('');
+            religionSelect.addEventListener('change', function() {
+                const opt = this.selectedOptions[0];
+                document.getElementById('religion_id').value = opt?.dataset?.id || '';
+            });
+        }
+    } catch (e) {
+        console.error('Failed to load dictionaries:', e);
+    }
+}
+document.addEventListener('DOMContentLoaded', loadDictionaries);
+
 </script>
 {% endblock %}
