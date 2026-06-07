@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-{% from '_icons.html' import login_icon, register_icon, star, heart, chat, trash, check, users, map_pin, dollar, alert, camera, bell, home, briefcase, search, filter_icon, menu_icon, plus, clock, chevron_left, info, settings %}
+{% from '_icons.html' import trudnik_logo, login_icon, register_icon, star, heart, chat, trash, check, users, map_pin, dollar, alert, camera, bell, home, briefcase, search, filter_icon, menu_icon, plus, clock, chevron_left, info, settings %}
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -422,6 +422,18 @@
         }
 
         /* ============================= */
+        /* Logo assemble animation        */
+        /* ============================= */
+        @keyframes logo-assemble {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .logo-animate {
+            animation: logo-assemble 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* ============================= */
         /* Scale in modal                 */
         /* ============================= */
         @keyframes scaleIn {
@@ -494,15 +506,8 @@
     <header class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-neutral-200 shadow-sm">
         <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
             <!-- Логотип -->
-            <a href="/" class="flex items-center gap-2.5 shrink-0" aria-label="На главную">
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-sm">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
-                        <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
-                        <line x1="9" y1="9" x2="9.01" y2="9"/>
-                        <line x1="15" y1="9" x2="15.01" y2="9"/>
-                    </svg>
-                </div>
+            <a href="/" class="flex items-center space-x-2 shrink-0" aria-label="На главную">
+                {{ trudnik_logo(36) }}
                 <span class="text-lg font-bold tracking-tight text-neutral-800 hidden sm:inline">Трудник</span>
                 <span class="text-lg font-bold tracking-tight text-neutral-800 sm:hidden">Трудник</span>
             </a>
