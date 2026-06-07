@@ -60,6 +60,8 @@ def register():
             return render_template('register.html')
 
         religion = request.form.get('religion', 'не указано')
+        religion_id = request.form.get('religion_id', '')  # новый формат — ID из справочника
+        skill_ids = request.form.getlist('skill_ids')  # новый формат — список ID навыков
         portfolio_link = request.form.get('portfolio_link', '')
         skills_str = request.form.get('skills', '')
 
@@ -127,6 +129,13 @@ def register():
                                    }, timeout=10)
                 else:
                     supabase_request('PATCH', f'profiles?id=eq.{user["id"]}', json=update_data)
+
+                # Сохраняем навыки через user_skills
+                if role == 'worker' and skill_ids:
+                    for sid in skill_ids:
+                        supabase_request('POST', 'user_skills', json={
+                            'user_id': user['id'], 'skill_id': sid.strip()
+                        })
 
                 flash('Регистрация успешна. Теперь войдите.', 'success')
                 return redirect(url_for('auth.login'))
