@@ -362,7 +362,7 @@ def cancel_application(app_id):
     shift_id = app_data.get('shift_id')
 
     # Получить информацию о задании
-    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status,start_time')
+    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status,start_time,organization_name')
     if not job_resp.ok or not job_resp.json():
         flash('Задание не найдено', 'danger')
         return redirect(url_for('applications.my_applications'))

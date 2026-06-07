@@ -43,16 +43,19 @@ def create_app():
             session[cache_key] = {'count': 0, 'ts': now}
         return {'unread_notifications': 0}
 
+    # Кешируем git-версию при старте приложения (ранее вычислялась на каждый запрос)
+    _git_version = 'dev'
+    try:
+        _git_version = subprocess.check_output(
+            ['git', 'log', '-1', '--format=%h %s (%ai)'],
+            cwd=project_root, stderr=subprocess.DEVNULL, text=True
+        ).strip()
+    except Exception:
+        pass
+
     @app.context_processor
     def inject_git_version():
-        try:
-            version = subprocess.check_output(
-                ['git', 'log', '-1', '--format=%h %s (%ai)'],
-                cwd=project_root, stderr=subprocess.DEVNULL, text=True
-            ).strip()
-        except Exception:
-            version = 'dev'
-        return {'git_version': version}
+        return {'git_version': _git_version}
 
     # Регистрация blueprints
     from app.blueprints.auth import auth_bp

@@ -41,9 +41,7 @@ def inject_user_role():
     return {'current_user_role': session.get('role')}
 
 
-# @jobs_bp.app_context_processor
-# def inject_user_id():
-#     return {'current_user_id': session.get('user_id')}
+
 
 
 # ──────────────────────────────────────────────
@@ -194,7 +192,7 @@ def job_new():
             resp = supabase_request('POST', 'jobs', json=job_data)
 
             if not resp.ok:
-                pass  # log handled in utils
+                current_app.logger.error(f'Failed to create job: {resp.text}')
 
             if resp.ok:
                 flash('Задание опубликовано', 'success')
