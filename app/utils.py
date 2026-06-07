@@ -1,7 +1,9 @@
+"""Утилиты: HTTP-запросы к Supabase, вычисления, уведомления."""
 import math
 import time
 import uuid
 from datetime import datetime
+from typing import Any, Optional
 
 import requests
 from flask import current_app, session
@@ -13,7 +15,21 @@ SUPABASE_KEY = Config.SUPABASE_ANON_KEY
 SERVICE_KEY = Config.SUPABASE_SERVICE_ROLE_KEY
 
 
-def calculate_distance(lat1, lon1, lat2, lon2):
+class SupabaseResponse:
+    """Типизированный ответ от Supabase REST API."""
+    def __init__(self, ok: bool = False, status_code: int = 0,
+                 data: Any = None, text: str = ''):
+        self.ok = ok
+        self.status_code = status_code
+        self._data = data
+        self.text = text
+
+    def json(self) -> Any:
+        return self._data
+
+
+def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Вычислить расстояние (км) между двумя точками по формуле гаверсинусов."""
     R = 6371
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
@@ -67,10 +83,10 @@ def supabase_request(method, endpoint, **kwargs):
         return resp
     except requests.RequestException as e:
         current_app.logger.error(f"Supabase request error: {e}")
-        return type('obj', (object,), {'ok': False, 'status_code': 0, 'text': str(e)})()
+        return SupabaseResponse(ok=False, status_code=0, text=str(e))
     except Exception as e:
         current_app.logger.error(f"Unexpected error in supabase_request: {e}")
-        return type('obj', (object,), {'ok': False, 'status_code': 0, 'text': str(e)})()
+        return SupabaseResponse(ok=False, status_code=0, text=str(e))
 
 
 def upload_to_storage(bucket, file_path, file_data, content_type):

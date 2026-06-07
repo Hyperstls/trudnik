@@ -99,6 +99,19 @@ def create_app():
         return send_from_directory('static/.well-known', 'assetlinks.json',
                                    mimetype='application/json')
 
+    # ── Обработчики ошибок ──────────────────────────────
+
+    @app.errorhandler(404)
+    def not_found(_e):
+        return render_template('error.html', code=404,
+                               message='Страница не найдена'), 404
+
+    @app.errorhandler(500)
+    def internal_error(_e):
+        app.logger.exception('Internal server error')
+        return render_template('error.html', code=500,
+                               message='Внутренняя ошибка сервера'), 500
+
     return app
 
 
