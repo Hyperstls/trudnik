@@ -142,6 +142,94 @@ def delete_job_admin(job_id):
     return redirect(url_for('admin.admin_panel', tab='jobs'))
 
 
+# ── Справочники: навыки и вероисповедания ──────────────
+
+@admin_bp.route('/admin/skills', methods=['GET'])
+@login_required
+def get_skills():
+    if not _require_admin():
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    resp = supabase_request('GET', 'skills?select=*&order=name.asc')
+    return jsonify({'success': True, 'skills': resp.json() if resp.ok else []})
+
+@admin_bp.route('/admin/skills', methods=['POST'])
+@login_required
+def add_skill():
+    if not _require_admin():
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    data = request.get_json() or {}
+    name = (data.get('name', '')).strip()
+    if not name:
+        return jsonify({'success': False, 'error': 'Name required'}), 400
+    resp = supabase_request('POST', 'skills', json={'name': name})
+    if resp.ok:
+        return jsonify({'success': True, 'skill': resp.json()[0] if isinstance(resp.json(), list) else resp.json()})
+    return jsonify({'success': False, 'error': resp.text}), 400
+
+@admin_bp.route('/admin/skills/<skill_id>', methods=['PUT'])
+@login_required
+def update_skill(skill_id):
+    if not _require_admin():
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    data = request.get_json() or {}
+    name = (data.get('name', '')).strip()
+    if not name:
+        return jsonify({'success': False, 'error': 'Name required'}), 400
+    resp = supabase_request('PATCH', f'skills?id=eq.{skill_id}', json={'name': name})
+    return jsonify({'success': resp.ok})
+
+@admin_bp.route('/admin/skills/<skill_id>', methods=['DELETE'])
+@login_required
+def delete_skill(skill_id):
+    if not _require_admin():
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    supabase_request('DELETE', f'user_skills?skill_id=eq.{skill_id}')
+    supabase_request('DELETE', f'job_skills?skill_id=eq.{skill_id}')
+    resp = supabase_request('DELETE', f'skills?id=eq.{skill_id}')
+    return jsonify({'success': resp.ok})
+
+@admin_bp.route('/admin/religions', methods=['GET'])
+@login_required
+def get_religions():
+    if not _require_admin():
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    resp = supabase_request('GET', 'religions?select=*&order=name.asc')
+    return jsonify({'success': True, 'religions': resp.json() if resp.ok else []})
+
+@admin_bp.route('/admin/religions', methods=['POST'])
+@login_required
+def add_religion():
+    if not _require_admin():
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    data = request.get_json() or {}
+    name = (data.get('name', '')).strip()
+    if not name:
+        return jsonify({'success': False, 'error': 'Name required'}), 400
+    resp = supabase_request('POST', 'religions', json={'name': name})
+    if resp.ok:
+        return jsonify({'success': True, 'religion': resp.json()[0] if isinstance(resp.json(), list) else resp.json()})
+    return jsonify({'success': False, 'error': resp.text}), 400
+
+@admin_bp.route('/admin/religions/<religion_id>', methods=['PUT'])
+@login_required
+def update_religion(religion_id):
+    if not _require_admin():
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    data = request.get_json() or {}
+    name = (data.get('name', '')).strip()
+    if not name:
+        return jsonify({'success': False, 'error': 'Name required'}), 400
+    resp = supabase_request('PATCH', f'religions?id=eq.{religion_id}', json={'name': name})
+    return jsonify({'success': resp.ok})
+
+@admin_bp.route('/admin/religions/<religion_id>', methods=['DELETE'])
+@login_required
+def delete_religion(religion_id):
+    if not _require_admin():
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+    resp = supabase_request('DELETE', f'religions?id=eq.{religion_id}')
+    return jsonify({'success': resp.ok})
+
 # ── Верификация работодателей ──────────────────────────
 
 @admin_bp.route('/admin/approve/<user_id>', methods=['POST'])

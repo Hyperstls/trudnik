@@ -14,6 +14,8 @@
             ('users', 'Пользователи'),
             ('jobs', 'Задания'),
             ('verification', 'Верификация'),
+            ('skills', 'Навыки'),
+            ('religions', 'Вероисповедания'),
             ('monetization', 'Монетизация'),
             ('payments', 'Платежи'),
         ] %}
@@ -243,8 +245,38 @@
     {% endif %}
 
     {# ============================================================ #}
-    {# МОНЕТИЗАЦИЯ (НАСТРОЙКИ)                                        #}
+    {# НАВЫКИ                                                         #}
     {# ============================================================ #}
+    {% if tab == 'skills' %}
+    <h3 class="text-lg font-semibold text-neutral-800 mb-3">Справочник навыков</h3>
+    <div class="bg-white rounded-2xl border border-neutral-100 p-5 shadow-sm">
+        <div class="flex gap-2 mb-4">
+            <input type="text" id="skill-name-input" placeholder="Новый навык..."
+                   class="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm">
+            <button onclick="addSkill()" class="px-4 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600">Добавить</button>
+        </div>
+        <div id="skills-list" class="space-y-2">
+            <p class="text-sm text-neutral-400">Загрузка...</p>
+        </div>
+    </div>
+    {% endif %}
+
+    {# ============================================================ #}
+    {# ВЕРОИСПОВЕДАНИЯ                                                #}
+    {# ============================================================ #}
+    {% if tab == 'religions' %}
+    <h3 class="text-lg font-semibold text-neutral-800 mb-3">Справочник вероисповеданий</h3>
+    <div class="bg-white rounded-2xl border border-neutral-100 p-5 shadow-sm">
+        <div class="flex gap-2 mb-4">
+            <input type="text" id="religion-name-input" placeholder="Новое вероисповедание..."
+                   class="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm">
+            <button onclick="addReligion()" class="px-4 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600">Добавить</button>
+        </div>
+        <div id="religions-list" class="space-y-2">
+            <p class="text-sm text-neutral-400">Загрузка...</p>
+        </div>
+    </div>
+    {% endif %}
     {% if tab == 'monetization' %}
     <h3 class="text-lg font-semibold text-neutral-800 mb-3">Настройки монетизации</h3>
     <div class="bg-white rounded-2xl border border-neutral-100 p-5 shadow-sm">
@@ -285,6 +317,124 @@
 </div>
 
 <script>
+// ── Навыки: CRUD ──
+{% if tab == 'skills' %}
+async function loadSkills() {
+    try {
+        const resp = await fetch('/admin/skills');
+        const data = await resp.json();
+        const list = document.getElementById('skills-list');
+        if (data.success && data.skills.length > 0) {
+            list.innerHTML = data.skills.map(s => `
+                <div class="flex items-center gap-2 p-2 border border-neutral-100 rounded-lg" id="skill-${s.id}">
+                    <input type="text" value="${s.name}" data-id="${s.id}"
+                           class="flex-1 px-2 py-1 border border-neutral-200 rounded text-sm skill-edit">
+                    <button onclick="saveSkill('${s.id}')" class="text-xs text-primary-600 hover:underline px-1">Сохранить</button>
+                    <button onclick="removeSkill('${s.id}')" class="text-xs text-danger hover:underline px-1">Удалить</button>
+                </div>
+            `).join('');
+        } else {
+            list.innerHTML = '<p class="text-sm text-neutral-400">Нет навыков</p>';
+        }
+    } catch (e) { document.getElementById('skills-list').innerHTML = '<p class="text-sm text-danger">Ошибка загрузки</p>'; }
+}
+
+async function addSkill() {
+    const input = document.getElementById('skill-name-input');
+    const name = input.value.trim();
+    if (!name) return;
+    try {
+        const resp = await fetch('/admin/skills', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name})
+        });
+        if ((await resp.json()).success) { input.value = ''; loadSkills(); }
+    } catch (e) {}
+}
+
+async function saveSkill(id) {
+    const input = document.querySelector(`#skill-${id} .skill-edit`);
+    if (!input) return;
+    try {
+        await fetch(`/admin/skills/${id}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name: input.value.trim()})
+        });
+        if (window.showToast) window.showToast('Сохранено', 'success');
+    } catch (e) {}
+}
+
+async function removeSkill(id) {
+    if (!confirm('Удалить навык?')) return;
+    try {
+        await fetch(`/admin/skills/${id}`, { method: 'DELETE' });
+        loadSkills();
+    } catch (e) {}
+}
+loadSkills();
+{% endif %}
+
+// ── Вероисповедания: CRUD ──
+{% if tab == 'religions' %}
+async function loadReligions() {
+    try {
+        const resp = await fetch('/admin/religions');
+        const data = await resp.json();
+        const list = document.getElementById('religions-list');
+        if (data.success && data.religions.length > 0) {
+            list.innerHTML = data.religions.map(r => `
+                <div class="flex items-center gap-2 p-2 border border-neutral-100 rounded-lg" id="religion-${r.id}">
+                    <input type="text" value="${r.name}" data-id="${r.id}"
+                           class="flex-1 px-2 py-1 border border-neutral-200 rounded text-sm religion-edit">
+                    <button onclick="saveReligion('${r.id}')" class="text-xs text-primary-600 hover:underline px-1">Сохранить</button>
+                    <button onclick="removeReligion('${r.id}')" class="text-xs text-danger hover:underline px-1">Удалить</button>
+                </div>
+            `).join('');
+        } else {
+            list.innerHTML = '<p class="text-sm text-neutral-400">Нет вероисповеданий</p>';
+        }
+    } catch (e) { document.getElementById('religions-list').innerHTML = '<p class="text-sm text-danger">Ошибка загрузки</p>'; }
+}
+
+async function addReligion() {
+    const input = document.getElementById('religion-name-input');
+    const name = input.value.trim();
+    if (!name) return;
+    try {
+        const resp = await fetch('/admin/religions', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name})
+        });
+        if ((await resp.json()).success) { input.value = ''; loadReligions(); }
+    } catch (e) {}
+}
+
+async function saveReligion(id) {
+    const input = document.querySelector(`#religion-${id} .religion-edit`);
+    if (!input) return;
+    try {
+        await fetch(`/admin/religions/${id}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name: input.value.trim()})
+        });
+        if (window.showToast) window.showToast('Сохранено', 'success');
+    } catch (e) {}
+}
+
+async function removeReligion(id) {
+    if (!confirm('Удалить вероисповедание?')) return;
+    try {
+        await fetch(`/admin/religions/${id}`, { method: 'DELETE' });
+        loadReligions();
+    } catch (e) {}
+}
+loadReligions();
+{% endif %}
+
 // ── Монетизация: загрузка и сохранение настроек ──
 {% if tab == 'monetization' %}
 async function loadSettings() {
