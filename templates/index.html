@@ -15,26 +15,8 @@
     <div id="filter-backdrop" class="fixed inset-0 bg-black/40 z-40 hidden opacity-0 transition-opacity duration-300" style="backdrop-filter: blur(2px);"></div>
 
     <!-- ===== Filter drawer (right side) ===== -->
-    <div id="filter-drawer" class="filter-drawer-hidden fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white shadow-2xl z-50 transition-transform duration-300 ease-out overflow-y-auto" style="transform: translateX(100%);">
-        <!-- Filter toggle button -->
-    <button type="button" id="filter-toggle-btn" onclick="toggleFilter()"
-            class="flex items-center gap-2 px-4 py-2.5 bg-white border border-neutral-200 rounded-xl text-sm font-medium text-neutral-700 hover:bg-neutral-50 active:scale-[0.98] transition-all shadow-sm">
-        {{ filter_icon(16) }}
-        Фильтр
-    </button>
-
-    <!-- Filter overlay panel (hidden by default) -->
-    <div id="filter-overlay" class="fixed inset-0 z-50 hidden">
-        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="toggleFilter()"></div>
-        <div class="absolute top-0 right-0 h-full w-full max-w-sm bg-white shadow-2xl overflow-y-auto">
-            <div class="sticky top-0 bg-white border-b border-neutral-200 px-4 py-3 flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-neutral-900">Фильтр</h3>
-                <button onclick="toggleFilter()" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors">
-                    {{ x_close(20) }}
-                </button>
-            </div>
-            <div class="p-4">
-<div class="sticky top-0 bg-white border-b border-neutral-200 px-5 py-4 flex items-center justify-between z-10">
+    <div id="filter-drawer" class="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white shadow-2xl z-50 transition-transform duration-300 ease-out overflow-y-auto" style="transform: translateX(100%);">
+        <div class="sticky top-0 bg-white border-b border-neutral-200 px-5 py-4 flex items-center justify-between z-10">
             <h3 class="font-bold text-neutral-800">Фильтры</h3>
             <button type="button" id="close-filters" class="w-8 h-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-500 transition-colors" aria-label="Закрыть фильтры">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -66,6 +48,13 @@
                 </select>
                 <label for="f-sort">Сортировка</label>
             </div>
+            <div class="border-t border-neutral-100 pt-3">
+                <label class="text-sm font-medium text-neutral-700 mb-2 block">Навыки</label>
+                <div id="filter-skills-list" class="max-h-44 overflow-y-auto space-y-0.5 mb-2">
+                    <span class="text-sm text-neutral-400">Загрузка...</span>
+                </div>
+                <input type="hidden" name="skills" id="f-skills" value="{{ request.args.get('skills','') }}">
+            </div>
             <input type="hidden" name="lat" id="f-lat" value="{{ lat or '' }}">
             <input type="hidden" name="lng" id="f-lng" value="{{ lng or '' }}">
             <input type="hidden" name="radius" value="{{ radius or '' }}">
@@ -82,16 +71,7 @@
             </button>
         </form>
     </div>
-            </div>
-        </div>
-    </div>
 
-    <script>
-    function toggleFilter() {
-        var overlay = document.getElementById('filter-overlay');
-        overlay.classList.toggle('hidden');
-    }
-    </script>
 
 
     {% if session.get('role') == 'worker' %}
@@ -223,12 +203,40 @@
     var drawer = document.getElementById('filter-drawer');
     var backdrop = document.getElementById('filter-backdrop');
 
+    // Загрузка чекбоксов навыков в форму фильтра
+    var skillsList = document.getElementById('filter-skills-list');
+    var skillsHidden = document.getElementById('f-skills');
+    if (skillsList && skillsHidden) {
+        var selectedSkills = skillsHidden.value ? skillsHidden.value.split(',').map(function(s){return s.trim();}).filter(Boolean) : [];
+        fetch('/api/skills')
+            .then(function(r){return r.json();})
+            .then(function(data){
+                var skills = data.skills || [];
+                if (!skills.length) { skillsList.innerHTML = '<span class="text-sm text-neutral-400">Нет навыков</span>'; return; }
+                skillsList.innerHTML = skills.map(function(s){
+                    return '<label class="flex items-center gap-2 px-1 py-1 hover:bg-neutral-50 rounded cursor-pointer text-sm">' +
+                        '<input type="checkbox" value="'+s.name+'" class="skill-cb rounded border-neutral-300 text-primary-500 focus:ring-primary-500" '+(selectedSkills.indexOf(s.name)!==-1?'checked':'')+'>' +
+                        '<span class="text-neutral-700">'+s.name+'</span></label>';
+                }).join('');
+                skillsList.querySelectorAll('.skill-cb').forEach(function(cb){
+                    cb.addEventListener('change', function(){
+                        var checked = [];
+                        skillsList.querySelectorAll('.skill-cb:checked').forEach(function(c){checked.push(c.value);});
+                        skillsHidden.value = checked.join(',');
+                    });
+                });
+            })
+            .catch(function(){ skillsList.innerHTML = '<span class="text-sm text-red-400">Ошибка</span>'; });
+    }
+
     if (openBtn && drawer && backdrop) {
         function openDrawer() {
+            var scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
             drawer.style.transform = 'translateX(0)';
             backdrop.classList.remove('hidden');
             setTimeout(function() { backdrop.classList.remove('opacity-0'); }, 10);
             document.body.style.overflow = 'hidden';
+            document.body.style.paddingRight = scrollbarWidth + 'px';
         }
 
         function closeDrawer() {
@@ -237,6 +245,7 @@
             setTimeout(function() {
                 backdrop.classList.add('hidden');
                 document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
             }, 300);
         }
 

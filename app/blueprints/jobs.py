@@ -72,6 +72,7 @@ def index():
     lng = request.args.get('lng', type=float)
     radius = request.args.get('radius', 20, type=float)
     sort = request.args.get('sort', '')
+    skills_filter = request.args.get('skills', '')
 
     query = 'status=eq.open&select=*,photos:job_photos(*)'
     if city: query += f'&city=ilike.*{city}*'
@@ -80,6 +81,15 @@ def index():
 
     resp = supabase_request('GET', f'jobs?{query}&order=created_at.desc')
     jobs = resp.json() if resp.ok else []
+
+    # Фильтрация по навыкам (поиск в work_type, object_description, detailed_description)
+    if skills_filter:
+        selected_skills = [s.strip().lower() for s in skills_filter.split(',') if s.strip()]
+        if selected_skills:
+            jobs = [j for j in jobs if any(
+                sk in (j.get('work_type', '') + ' ' + j.get('object_description', '') + ' ' + j.get('detailed_description', '')).lower()
+                for sk in selected_skills
+            )]
 
     if lat is not None and lng is not None:
         for job in jobs:
@@ -101,8 +111,10 @@ def index():
         if app_resp.ok and app_resp.json():
             applied_job_ids = [a['job_id'] for a in app_resp.json()]
 
+    selected_skills_list = [s.strip() for s in skills_filter.split(',') if s.strip()] if skills_filter else []
     return render_template('index.html', jobs=jobs, applied_job_ids=applied_job_ids,
-                           lat=lat, lng=lng, radius=radius, sort=sort)
+                           lat=lat, lng=lng, radius=radius, sort=sort,
+                           selected_skills=selected_skills_list)
 
 
 @jobs_bp.route('/workers')
@@ -129,7 +141,9 @@ def workers():
         query += f'&religion=eq.{filters["religion"]}'
 
     resp = supabase_request('GET', f'profiles?{query}&order=rating.desc')
-    return render_template('workers.html', workers=resp.json() if resp.ok else [])
+    workers_list = resp.json() if resp.ok else []
+    selected_skills_list = [s.strip() for s in filters['skills'].split(',') if s.strip()] if filters['skills'] else []
+    return render_template('workers.html', workers=workers_list, selected_skills=selected_skills_list)
 
 
 @jobs_bp.route('/jobs/<job_id>')

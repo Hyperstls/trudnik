@@ -3,7 +3,12 @@
 {% block title %}Трудники{% endblock %}
 {% block content %}
 <div class="px-4 pb-24 max-w-6xl mx-auto">
-    <h1 class="text-2xl font-bold text-neutral-900 mb-6">Трудники</h1>
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold text-neutral-900">Трудники</h1>
+        {% with filter_id='workers-filter', selected_skills=selected_skills|default([]) %}
+        {% include '_filter_skills.html' %}
+        {% endwith %}
+    </div>
 
     {% if workers %}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

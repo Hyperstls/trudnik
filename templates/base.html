@@ -52,6 +52,10 @@
         }
     </script>
     <style>
+        html {
+            scrollbar-gutter: stable;
+            overflow-x: hidden;
+        }
         body {
             font-family: 'Inter', system-ui, sans-serif;
             -webkit-font-smoothing: antialiased;
@@ -433,25 +437,24 @@
         }
 
         /* ============================= */
-        /* Filter drawer                  */
+        /* Filter drawer (right-side)      */
         /* ============================= */
         .filter-drawer {
             position: fixed;
-            bottom: 0;
-            left: 0;
+            top: 0;
             right: 0;
-            z-index: 60;
+            height: 100%;
+            width: 320px;
+            max-width: 85vw;
+            z-index: 50;
             background: white;
-            border-radius: 20px 20px 0 0;
-            box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.1);
-            transform: translateY(100%);
+            box-shadow: -8px 0 32px rgba(0, 0, 0, 0.12);
+            transform: translateX(100%);
             transition: transform 0.3s ease;
-            max-height: 80vh;
             overflow-y: auto;
-            padding-bottom: max(env(safe-area-inset-bottom, 0px), 1rem);
         }
         .filter-drawer.open {
-            transform: translateY(0);
+            transform: translateX(0);
         }
 
         /* ============================= */
@@ -713,15 +716,6 @@
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
             </svg>
             <span>Избранное</span>
-        </a>
-        <a href="/profile"
-           class="nav-item flex flex-col items-center text-[10px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'profile' in request.endpoint }}"
-           aria-label="Профиль">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-            <span>Профиль</span>
         </a>
         {% endif %}
     </nav>

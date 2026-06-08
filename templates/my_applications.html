@@ -6,7 +6,12 @@
     {# ============================================ #}
     {# Заголовок                                    #}
     {# ============================================ #}
-    <h2 class="text-2xl font-bold text-neutral-900 mb-5">Отклики на ваши задания</h2>
+    <div class="flex items-center justify-between mb-5">
+        <h2 class="text-2xl font-bold text-neutral-900">Отклики на ваши задания</h2>
+        {% with filter_id='apps-filter', selected_skills=selected_skills|default([]) %}
+        {% include '_filter_skills.html' %}
+        {% endwith %}
+    </div>
 
     {# ============================================ #}
     {# Панель массовых операций (фиксированная снизу) #}

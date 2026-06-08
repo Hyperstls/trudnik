@@ -73,11 +73,23 @@
             <label class="floating-label">Вероисповедание</label>
         </div>
 
-        <div class="floating-label-group">
-            <input type="text" name="skills" value="{{ profile.get('skills', [])|join(', ') if profile.get('skills') else '' }}"
-                   class="floating-input" placeholder=" ">
-            <label class="floating-label">Навыки (через запятую)</label>
+        {% if profile.get('role') == 'worker' %}
+        <div class="mb-4">
+            <label class="text-sm font-medium text-neutral-700 mb-2 block">Навыки</label>
+            <div class="skills-multiselect relative">
+                <div class="selected-skills flex flex-wrap gap-1 mb-2 min-h-[28px]" id="selected-skills"></div>
+                <button type="button" id="skills-dropdown-btn"
+                        class="w-full flex items-center justify-between px-3 py-2.5 border border-neutral-200 rounded-lg bg-white text-sm text-neutral-500 hover:border-neutral-300 transition-colors focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15">
+                    <span id="skills-placeholder">Выберите навыки</span>
+                    <svg id="skills-arrow" class="w-4 h-4 text-neutral-400 transition-transform duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                <div id="skills-dropdown" class="absolute top-full left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg z-20 max-h-52 overflow-y-auto hidden">
+                    <div id="skills-list" class="p-2 text-sm text-neutral-400">Загрузка...</div>
+                </div>
+                <input type="hidden" name="skills" id="skills-hidden" value="{{ profile.get('skills', [])|join(',') if profile.get('skills') else '' }}">
+            </div>
         </div>
+        {% endif %}
 
         {% if profile.get('role') == 'worker' %}
         <div class="floating-label-group">
@@ -119,4 +131,99 @@
     </div>
     {% endif %}
 </div>
+
+{% if profile and profile.get('role') == 'worker' %}
+<script>
+(function() {
+    var skillsHidden = document.getElementById('skills-hidden');
+    if (!skillsHidden) return;
+
+    var selectedContainer = document.getElementById('selected-skills');
+    var dropdownBtn = document.getElementById('skills-dropdown-btn');
+    var dropdown = document.getElementById('skills-dropdown');
+    var skillsList = document.getElementById('skills-list');
+    var placeholder = document.getElementById('skills-placeholder');
+    var arrow = document.getElementById('skills-arrow');
+
+    var selectedSkills = skillsHidden.value ? skillsHidden.value.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
+
+    function updateUI() {
+        skillsHidden.value = selectedSkills.join(',');
+        if (selectedSkills.length === 0) {
+            selectedContainer.innerHTML = '';
+            placeholder.textContent = 'Выберите навыки';
+            placeholder.classList.remove('text-neutral-700');
+            placeholder.classList.add('text-neutral-500');
+        } else {
+            placeholder.textContent = 'Выбрано: ' + selectedSkills.length;
+            placeholder.classList.remove('text-neutral-500');
+            placeholder.classList.add('text-neutral-700');
+            selectedContainer.innerHTML = selectedSkills.map(function(skill) {
+                return '<span class="inline-flex items-center gap-1 bg-primary-50 text-primary-700 px-2.5 py-1 rounded-lg text-xs font-medium">' +
+                    skill +
+                    '<button type="button" class="remove-skill ml-0.5 hover:text-danger transition-colors" data-skill="' + skill + '">&times;</button>' +
+                    '</span>';
+            }).join('');
+        }
+        var checkboxes = skillsList.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(function(cb) {
+            cb.checked = selectedSkills.indexOf(cb.value) !== -1;
+        });
+    }
+
+    fetch('/api/skills')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var skills = data.skills || [];
+            if (skills.length === 0) {
+                skillsList.innerHTML = '<span class="text-neutral-400">Нет доступных навыков</span>';
+                return;
+            }
+            skillsList.innerHTML = skills.map(function(s) {
+                return '<label class="flex items-center gap-2 px-2 py-1.5 hover:bg-neutral-50 rounded cursor-pointer text-sm">' +
+                    '<input type="checkbox" value="' + s.name + '" class="skill-checkbox rounded border-neutral-300 text-primary-500 focus:ring-primary-500">' +
+                    '<span class="text-neutral-700">' + s.name + '</span>' +
+                    '</label>';
+            }).join('');
+
+            skillsList.querySelectorAll('.skill-checkbox').forEach(function(cb) {
+                cb.addEventListener('change', function() {
+                    if (this.checked) {
+                        if (selectedSkills.indexOf(this.value) === -1) selectedSkills.push(this.value);
+                    } else {
+                        selectedSkills = selectedSkills.filter(function(s) { return s !== cb.value; });
+                    }
+                    updateUI();
+                });
+            });
+            updateUI();
+        })
+        .catch(function() {
+            skillsList.innerHTML = '<span class="text-red-400">Ошибка загрузки</span>';
+        });
+
+    dropdownBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var isOpen = !dropdown.classList.contains('hidden');
+        dropdown.classList.toggle('hidden');
+        arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!dropdownBtn.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.add('hidden');
+            arrow.style.transform = 'rotate(0deg)';
+        }
+    });
+
+    selectedContainer.addEventListener('click', function(e) {
+        var removeBtn = e.target.closest('.remove-skill');
+        if (!removeBtn) return;
+        var skillName = removeBtn.getAttribute('data-skill');
+        selectedSkills = selectedSkills.filter(function(s) { return s !== skillName; });
+        updateUI();
+    });
+})();
+</script>
+{% endif %}
 {% endblock %}

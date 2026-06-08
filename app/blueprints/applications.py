@@ -113,9 +113,20 @@ def my_applications():
         return redirect(url_for('jobs.index'))
 
     user_id = session['user_id']
+    skills_filter = request.args.get('skills', '')
+
     resp = supabase_request('GET',
         f'applications?job.employer_id=eq.{user_id}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,skills,desired_payment,inn,phone,email_public),job:jobs(organization_name,date_time,payment_amount,status,current_workers,max_workers)')
     applications = resp.json() if resp.ok else []
+
+    # Фильтрация по навыкам (AND — все выбранные навыки должны быть у трудника)
+    if skills_filter:
+        selected_skills = [s.strip().lower() for s in skills_filter.split(',') if s.strip()]
+        if selected_skills:
+            applications = [a for a in applications if a.get('worker') and a['worker'].get('skills') and
+                           all(any(sk.lower() in (ws.lower() if ws else '') for ws in a['worker']['skills']) for sk in selected_skills)]
+
+    selected_skills_list = [s.strip() for s in skills_filter.split(',') if s.strip()] if skills_filter else []
 
     worker_ids = [app.get('worker', {}).get('id') for app in applications if app.get('worker', {}).get('id')]
     jobs = {}
@@ -145,7 +156,7 @@ def my_applications():
                 app_data['worker']['inn'] = '***'
 
     return render_template('my_applications.html', applications=applications, jobs=jobs,
-                           contact_price=contact_price)
+                           contact_price=contact_price, selected_skills=selected_skills_list)
 
 
 @applications_bp.route('/api/applications/<app_id>/<action>', methods=['POST'])
