@@ -6,7 +6,7 @@
   "display": "standalone",
   "backgroundColor": "#ffffff",
   "themeColor": "#d97706",
-  "startUrl": "/?utm_source=twa",
+  "startUrl": "/",
   "icon": "static/icons/icon-512x512.png",
   "maskableIcon": "static/icons/icon-512x512.png",
   "monochromeIcon": "static/icons/icon-192x192.png",
