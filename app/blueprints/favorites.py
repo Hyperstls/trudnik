@@ -11,7 +11,7 @@ favorites_bp = Blueprint('favorites', __name__)
 def favorites():
     resp = supabase_request('GET',
         f'favorites?user_id=eq.{session["user_id"]}&select=target:profiles!favorites_target_id_fkey(id,full_name,photo_url,rating,city,skills,experience,desired_payment)')
-    items = resp.json() if resp.ok else []
+    items = [item['target'] for item in resp.json()] if resp.ok else []
 
     favorite_jobs = []
     if session.get('role') == 'worker':

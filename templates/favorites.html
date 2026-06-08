@@ -117,8 +117,8 @@ document.addEventListener('change', function(e) {
 
 // Переопределяем toggleFavorite для страницы избранного — добавляем удаление карточки из DOM
 const _originalToggleFavorite = toggleFavorite;
-toggleFavorite = function(workerId, btn) {
-    _originalToggleFavorite(workerId, btn);
+toggleFavorite = function(workerId, btn, event) {
+    _originalToggleFavorite(workerId, btn, event);
     setTimeout(() => {
         const card = btn.closest('.app-card');
         if (card && btn.dataset.favorited === 'false') {
