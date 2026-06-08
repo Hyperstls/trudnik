@@ -51,7 +51,7 @@ def update_profile():
     if inn:
         if not inn.isdigit() or len(inn) != 12:
             flash('ИНН должен содержать ровно 12 цифр', 'danger')
-            return redirect(url_for('profile'))
+            return redirect(url_for('profile.profile'))
         data['inn'] = inn
     is_self_employed = request.form.get('is_self_employed')
     if is_self_employed is not None:
@@ -73,7 +73,7 @@ def update_profile():
         flash('Профиль обновлён', 'success')
     except:
         flash('Не удалось обновить профиль', 'danger')
-    return redirect(url_for('profile'))
+    return redirect(url_for('profile.profile'))
 
 
 @profile_bp.route('/profile/delete-photo', methods=['POST'])
@@ -82,7 +82,7 @@ def delete_photo():
     user_id = session['user_id']
     supabase_request('PATCH', f'profiles?id=eq.{user_id}', json={'photo_url': None})
     flash('Фото удалено', 'success')
-    return redirect(url_for('profile'))
+    return redirect(url_for('profile.profile'))
 
 
 @profile_bp.route('/profile/delete-account', methods=['POST'])
@@ -91,7 +91,7 @@ def delete_account():
     user_id = session['user_id']
     if not SERVICE_KEY:
         flash('Сервисный ключ не настроен. Удаление невозможно.', 'danger')
-        return redirect(url_for('profile'))
+        return redirect(url_for('profile.profile'))
     delete_url = f'{SUPABASE_URL}/auth/v1/admin/users/{user_id}'
     resp = requests.delete(delete_url, headers={
         'apikey': SERVICE_KEY,
