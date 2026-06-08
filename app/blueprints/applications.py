@@ -158,8 +158,21 @@ def my_applications():
                            contact_price=contact_price, selected_skills=selected_skills_list)
 
 
-@applications_bp.route('/api/applications/<app_id>/<action>', methods=['POST'])
+@applications_bp.route('/api/applications/<app_id>/accept', methods=['POST'])
 @login_required
+def api_accept_application(app_id):
+    return api_handle_application(app_id, 'accept')
+
+@applications_bp.route('/api/applications/<app_id>/reject', methods=['POST'])
+@login_required
+def api_reject_application(app_id):
+    return api_handle_application(app_id, 'reject')
+
+@applications_bp.route('/api/applications/<app_id>/reopen', methods=['POST'])
+@login_required
+def api_reopen_application(app_id):
+    return api_handle_application(app_id, 'reopen')
+
 def api_handle_application(app_id, action):
     """AJAX-эндпоинт: принять / отклонить / повторно принять отклик"""
     app_resp = supabase_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id,status,shift_id')
