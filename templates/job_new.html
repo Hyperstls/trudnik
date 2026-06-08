@@ -266,7 +266,8 @@
         // Fill preview
         document.getElementById('preview-title').textContent = document.getElementById('title').value;
         document.getElementById('preview-desc').textContent = descTextarea.value;
-        document.getElementById('preview-work').textContent = document.getElementById('work_type').value || 'Не указан';
+        var workSelect = document.getElementById('work_type');
+        document.getElementById('preview-work').textContent = workSelect.selectedOptions[0] ? workSelect.selectedOptions[0].textContent : 'Не указан';
         document.getElementById('preview-city').textContent = document.getElementById('city').value;
         document.getElementById('preview-payment').textContent = document.getElementById('payment').value + ' ₽';
         document.getElementById('preview-workers').textContent = document.getElementById('max_workers').value;
