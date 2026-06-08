@@ -134,7 +134,7 @@ def delete_job_admin(job_id):
 @login_required
 @role_required('admin')
 def get_skills():
-    resp = supabase_request('GET', 'skills?select=*&order=name.asc')
+    resp = supabase_request('GET', 'skills?select=*&order=sort_order.asc,name.asc')
     return jsonify({'success': True, 'skills': resp.json() if resp.ok else []})
 
 @admin_bp.route('/admin/skills', methods=['POST'])
@@ -145,10 +145,28 @@ def add_skill():
     name = (data.get('name', '')).strip()
     if not name:
         return jsonify({'success': False, 'error': 'Name required'}), 400
-    resp = supabase_request('POST', 'skills', json={'name': name})
+    # Находим максимальный sort_order и добавляем +1
+    existing = supabase_request('GET', 'skills?select=sort_order&order=sort_order.desc&limit=1')
+    max_order = 0
+    if existing.ok and existing.json():
+        max_order = existing.json()[0].get('sort_order', 0) if existing.json() else 0
+    resp = supabase_request('POST', 'skills', json={'name': name, 'sort_order': max_order + 1})
     if resp.ok:
         return jsonify({'success': True, 'skill': resp.json()[0] if isinstance(resp.json(), list) else resp.json()})
     return jsonify({'success': False, 'error': resp.text}), 400
+
+@admin_bp.route('/admin/skills/reorder', methods=['POST'])
+@login_required
+@role_required('admin')
+def reorder_skills():
+    """Принять новый порядок навыков: массив [{id, sort_order}, ...]"""
+    data = request.get_json() or {}
+    items = data.get('items', [])
+    if not items:
+        return jsonify({'success': False, 'error': 'items required'}), 400
+    for item in items:
+        supabase_request('PATCH', f'skills?id=eq.{item["id"]}', json={'sort_order': item['sort_order']})
+    return jsonify({'success': True})
 
 @admin_bp.route('/admin/skills/<skill_id>', methods=['PUT'])
 @login_required
@@ -174,7 +192,7 @@ def delete_skill(skill_id):
 @login_required
 @role_required('admin')
 def get_religions():
-    resp = supabase_request('GET', 'religions?select=*&order=name.asc')
+    resp = supabase_request('GET', 'religions?select=*&order=sort_order.asc,name.asc')
     return jsonify({'success': True, 'religions': resp.json() if resp.ok else []})
 
 @admin_bp.route('/admin/religions', methods=['POST'])
@@ -185,10 +203,27 @@ def add_religion():
     name = (data.get('name', '')).strip()
     if not name:
         return jsonify({'success': False, 'error': 'Name required'}), 400
-    resp = supabase_request('POST', 'religions', json={'name': name})
+    existing = supabase_request('GET', 'religions?select=sort_order&order=sort_order.desc&limit=1')
+    max_order = 0
+    if existing.ok and existing.json():
+        max_order = existing.json()[0].get('sort_order', 0) if existing.json() else 0
+    resp = supabase_request('POST', 'religions', json={'name': name, 'sort_order': max_order + 1})
     if resp.ok:
         return jsonify({'success': True, 'religion': resp.json()[0] if isinstance(resp.json(), list) else resp.json()})
     return jsonify({'success': False, 'error': resp.text}), 400
+
+@admin_bp.route('/admin/religions/reorder', methods=['POST'])
+@login_required
+@role_required('admin')
+def reorder_religions():
+    """Принять новый порядок вероисповеданий: массив [{id, sort_order}, ...]"""
+    data = request.get_json() or {}
+    items = data.get('items', [])
+    if not items:
+        return jsonify({'success': False, 'error': 'items required'}), 400
+    for item in items:
+        supabase_request('PATCH', f'religions?id=eq.{item["id"]}', json={'sort_order': item['sort_order']})
+    return jsonify({'success': True})
 
 @admin_bp.route('/admin/religions/<religion_id>', methods=['PUT'])
 @login_required

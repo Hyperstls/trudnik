@@ -317,26 +317,58 @@
 </div>
 
 <script>
-// ── Навыки: CRUD ──
+// ── Навыки: CRUD + перестановка ──
 {% if tab == 'skills' %}
+let skillsData = [];
+
 async function loadSkills() {
     try {
         const resp = await fetch('/admin/skills');
         const data = await resp.json();
         const list = document.getElementById('skills-list');
         if (data.success && data.skills.length > 0) {
-            list.innerHTML = data.skills.map(s => `
-                <div class="flex items-center gap-2 p-2 border border-neutral-100 rounded-lg" id="skill-${s.id}">
-                    <input type="text" value="${s.name}" data-id="${s.id}"
-                           class="flex-1 px-2 py-1 border border-neutral-200 rounded text-sm skill-edit">
-                    <button onclick="saveSkill('${s.id}')" class="text-xs text-primary-600 hover:underline px-1">Сохранить</button>
-                    <button onclick="removeSkill('${s.id}')" class="text-xs text-danger hover:underline px-1">Удалить</button>
-                </div>
-            `).join('');
+            skillsData = data.skills;
+            renderSkills();
         } else {
             list.innerHTML = '<p class="text-sm text-neutral-400">Нет навыков</p>';
         }
     } catch (e) { document.getElementById('skills-list').innerHTML = '<p class="text-sm text-danger">Ошибка загрузки</p>'; }
+}
+
+function renderSkills() {
+    const list = document.getElementById('skills-list');
+    list.innerHTML = skillsData.map((s, i) => `
+        <div class="flex items-center gap-1.5 p-2 border border-neutral-100 rounded-lg bg-white" id="skill-${s.id}">
+            <div class="flex flex-col gap-0.5 mr-1">
+                <button onclick="moveSkill(${i}, -1)" ${i === 0 ? 'disabled' : ''}
+                        class="text-xs text-neutral-400 hover:text-primary-600 disabled:opacity-30 leading-none" title="Поднять">▲</button>
+                <button onclick="moveSkill(${i}, 1)" ${i === skillsData.length - 1 ? 'disabled' : ''}
+                        class="text-xs text-neutral-400 hover:text-primary-600 disabled:opacity-30 leading-none" title="Опустить">▼</button>
+            </div>
+            <span class="text-xs text-neutral-400 w-6 text-center">${i + 1}</span>
+            <input type="text" value="${s.name}" data-id="${s.id}"
+                   class="flex-1 px-2 py-1 border border-neutral-200 rounded text-sm skill-edit">
+            <button onclick="saveSkill('${s.id}')" class="text-xs text-primary-600 hover:underline px-1">Сохранить</button>
+            <button onclick="removeSkill('${s.id}')" class="text-xs text-danger hover:underline px-1">Удалить</button>
+        </div>
+    `).join('');
+}
+
+async function moveSkill(index, direction) {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= skillsData.length) return;
+    // Меняем местами в локальном массиве
+    [skillsData[index], skillsData[newIndex]] = [skillsData[newIndex], skillsData[index]];
+    // Обновляем sort_order
+    const items = skillsData.map((s, i) => ({id: s.id, sort_order: i + 1}));
+    renderSkills();
+    try {
+        await fetch('/admin/skills/reorder', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({items})
+        });
+    } catch (e) { loadSkills(); }
 }
 
 async function addSkill() {
@@ -376,26 +408,60 @@ async function removeSkill(id) {
 loadSkills();
 {% endif %}
 
-// ── Вероисповедания: CRUD ──
+// ── Вероисповедания: CRUD + перестановка ──
 {% if tab == 'religions' %}
+let religionsData = [];
+
 async function loadReligions() {
     try {
         const resp = await fetch('/admin/religions');
         const data = await resp.json();
         const list = document.getElementById('religions-list');
         if (data.success && data.religions.length > 0) {
-            list.innerHTML = data.religions.map(r => `
-                <div class="flex items-center gap-2 p-2 border border-neutral-100 rounded-lg" id="religion-${r.id}">
-                    <input type="text" value="${r.name}" data-id="${r.id}"
-                           class="flex-1 px-2 py-1 border border-neutral-200 rounded text-sm religion-edit">
-                    <button onclick="saveReligion('${r.id}')" class="text-xs text-primary-600 hover:underline px-1">Сохранить</button>
-                    <button onclick="removeReligion('${r.id}')" class="text-xs text-danger hover:underline px-1">Удалить</button>
-                </div>
-            `).join('');
+            religionsData = data.religions;
+            renderReligions();
         } else {
             list.innerHTML = '<p class="text-sm text-neutral-400">Нет вероисповеданий</p>';
         }
     } catch (e) { document.getElementById('religions-list').innerHTML = '<p class="text-sm text-danger">Ошибка загрузки</p>'; }
+}
+
+function renderReligions() {
+    const list = document.getElementById('religions-list');
+    list.innerHTML = religionsData.map((r, i) => `
+        <div class="flex items-center gap-1.5 p-2 border border-neutral-100 rounded-lg bg-white" id="religion-${r.id}">
+            <div class="flex flex-col gap-0.5 mr-1">
+                <button onclick="moveReligion(${i}, -1)" ${i === 0 ? 'disabled' : ''}
+                        class="text-xs text-neutral-400 hover:text-primary-600 disabled:opacity-30 leading-none" title="Поднять">▲</button>
+                <button onclick="moveReligion(${i}, 1)" ${i === religionsData.length - 1 ? 'disabled' : ''}
+                        class="text-xs text-neutral-400 hover:text-primary-600 disabled:opacity-30 leading-none" title="Опустить">▼</button>
+            </div>
+            <span class="text-xs text-neutral-400 w-6 text-center">${i + 1}</span>
+            <input type="text" value="${r.name}" data-id="${r.id}"
+                   class="flex-1 px-2 py-1 border border-neutral-200 rounded text-sm religion-edit">
+            <button onclick="saveReligion('${r.id}')" class="text-xs text-primary-600 hover:underline px-1">Сохранить</button>
+            <button onclick="removeReligion('${r.id}')" class="text-xs text-danger hover:underline px-1">Удалить</button>
+        </div>
+    `).join('');
+        } else {
+            list.innerHTML = '<p class="text-sm text-neutral-400">Нет вероисповеданий</p>';
+        }
+    } catch (e) { document.getElementById('religions-list').innerHTML = '<p class="text-sm text-danger">Ошибка загрузки</p>'; }
+}
+
+async function moveReligion(index, direction) {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= religionsData.length) return;
+    [religionsData[index], religionsData[newIndex]] = [religionsData[newIndex], religionsData[index]];
+    const items = religionsData.map((r, i) => ({id: r.id, sort_order: i + 1}));
+    renderReligions();
+    try {
+        await fetch('/admin/religions/reorder', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({items})
+        });
+    } catch (e) { loadReligions(); }
 }
 
 async function addReligion() {
