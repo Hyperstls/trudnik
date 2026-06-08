@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from '_icons.html' import star, heart, trash, map_pin, dollar, clock %}
+{% from '_icons.html' import star, heart, trash, map_pin, dollar, clock, smiley %}
 {% block content %}
 <div class="px-4 pb-24 max-w-lg mx-auto">
     <h2 class="text-2xl font-bold text-neutral-900 mb-5">Избранное</h2>
@@ -25,10 +25,14 @@
             <div class="flex items-start gap-3">
                 <input type="checkbox" class="favorite-checkbox w-5 h-5 text-primary-500 rounded border-neutral-300 mt-1" value="{{ item.id }}">
                 <a href="/profile/{{ item.id }}" class="flex-1 min-w-0 flex gap-3">
-                    <img src="{{ item.photo_url or url_for('static', filename='default-avatar.png') }}"
-                         alt="{{ item.full_name }}"
+                    {% if item.photo_url %}
+                    <img src="{{ item.photo_url }}" alt="{{ item.full_name }}"
                          class="w-14 h-14 rounded-full object-cover border-2 border-neutral-200 shrink-0"
-                         onerror="this.onerror=null;this.src='{{ url_for('static', filename='default-avatar.png') }}';">
+                         onerror="var p=this.parentElement;var s=p.querySelector('.avatar-smiley');if(s){s.style.display=''};this.style.display='none';">
+                    <div class="avatar-smiley w-14 h-14 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400" style="display:none">{{ smiley(32) }}</div>
+                    {% else %}
+                    <div class="w-14 h-14 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400">{{ smiley(32) }}</div>
+                    {% endif %}
                     <div class="min-w-0">
                         <h3 class="font-semibold text-neutral-900 truncate">{{ item.full_name }}</h3>
                         <div class="flex items-center gap-0.5 mt-0.5">

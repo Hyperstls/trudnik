@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from '_icons.html' import star, chat, users %}
+{% from '_icons.html' import star, chat, users, smiley %}
 {% block title %}Трудники{% endblock %}
 {% block content %}
 <div class="px-4 pb-24 max-w-6xl mx-auto">
@@ -18,10 +18,14 @@
                  onclick="window.location.href='/profile/{{ worker.id }}'">
 
                 <div class="flex items-center gap-3">
-                    <img src="{{ worker.photo_url or url_for('static', filename='default-avatar.png') }}"
-                         alt="{{ worker.full_name }}"
+                    {% if worker.photo_url %}
+                    <img src="{{ worker.photo_url }}" alt="{{ worker.full_name }}"
                          class="w-14 h-14 rounded-full object-cover border-2 border-neutral-200 shrink-0"
-                         onerror="this.onerror=null;this.src='{{ url_for('static', filename='default-avatar.png') }}';">
+                         onerror="var p=this.parentElement;var s=p.querySelector('.avatar-smiley');if(s){s.style.display=''};this.style.display='none';">
+                    <div class="avatar-smiley w-14 h-14 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400" style="display:none">{{ smiley(32) }}</div>
+                    {% else %}
+                    <div class="w-14 h-14 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400">{{ smiley(32) }}</div>
+                    {% endif %}
                     <div class="flex-1 min-w-0">
                         <h3 class="font-semibold text-neutral-900 truncate">{{ worker.full_name }}</h3>
                         <div class="flex items-center gap-0.5 mt-0.5">

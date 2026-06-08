@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from '_icons.html' import star, chat, mail, phone, map_pin, info, briefcase, award, link_icon %}
+{% from '_icons.html' import star, chat, mail, phone, map_pin, info, briefcase, award, link_icon, smiley %}
 {% block content %}
 <div class="px-4 pb-24 max-w-2xl mx-auto">
     {% if profile_user is none %}
@@ -19,11 +19,16 @@
     {# ============================================ #}
     <div class="flex flex-col items-center mb-6">
         <div class="relative">
-            <img src="{{ profile_user.get('photo_url') or url_for('static', filename='default-avatar.png') }}"
+            {% if profile_user.get('photo_url') %}
+            <img src="{{ profile_user.get('photo_url') }}"
                  class="w-24 h-24 rounded-full object-cover border-4 border-primary-500 shadow-lg"
                  alt="Фото {{ profile_user.get('full_name') or profile_user.get('name') }}"
                  crossorigin="anonymous"
-                 onerror="this.onerror=null;this.src='{{ url_for('static', filename='default-avatar.png') }}';">
+                 onerror="var p=this.parentElement;var s=p.querySelector('.avatar-smiley');if(s){s.style.display=''};this.style.display='none';">
+            <div class="avatar-smiley w-24 h-24 rounded-full border-4 border-primary-500 shadow-lg bg-primary-50 flex items-center justify-center text-primary-400" style="display:none">{{ smiley(48) }}</div>
+            {% else %}
+            <div class="w-24 h-24 rounded-full border-4 border-primary-500 shadow-lg bg-primary-50 flex items-center justify-center text-primary-400">{{ smiley(48) }}</div>
+            {% endif %}
             {% if profile_user.get('rating', 0) >= 4.5 %}
             <div class="absolute -bottom-1 -right-1 w-7 h-7 bg-warning rounded-full flex items-center justify-center border-2 border-white shadow-sm" title="Высокий рейтинг">
                 <span class="text-white text-xs font-bold">★</span>

@@ -169,6 +169,15 @@
 <svg width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
 {%- endmacro %}
 
+{% macro avatar(photo_url, alt='', size_class='w-14 h-14', extra_class='') -%}
+{% if photo_url %}
+<img src="{{ photo_url }}" alt="{{ alt }}" class="{{ size_class }} rounded-full object-cover {{ extra_class }}" onerror="var p=this.parentElement;var s=p.querySelector('.avatar-smiley');if(s){s.style.display=''};this.style.display='none';">
+<div class="avatar-smiley {{ size_class }} rounded-full {{ extra_class }} bg-primary-50 flex items-center justify-center text-primary-400" style="display:none">{{ smiley(24) }}</div>
+{% else %}
+<div class="{{ size_class }} rounded-full {{ extra_class }} bg-primary-50 flex items-center justify-center text-primary-400">{{ smiley(24) }}</div>
+{% endif %}
+{%- endmacro %}
+
 {% macro award(size=18) -%}
 <svg width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
 {%- endmacro %}
