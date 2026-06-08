@@ -113,10 +113,11 @@
                 <div id="worker-fields" class="space-y-4" style="display:none;">
                     <!-- Навыки (чекбоксы) — только для трудников -->
                     <div class="floating-label-group">
-                        <span class="text-sm text-neutral-500 mb-2 block">Навыки</span>
-                        <div id="skills-checkboxes" class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border border-neutral-200 rounded-lg" role="group" aria-label="Навыки">
-                            <span class="text-sm text-neutral-400 col-span-2">Загрузка...</span>
+                        <span class="text-sm text-neutral-500 mb-2 block">Навыки <span class="text-neutral-400">(выберите один или несколько)</span></span>
+                        <div id="skills-checkboxes" class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2" role="group" aria-label="Навыки">
+                            <span class="text-sm text-neutral-400 col-span-full">Загрузка...</span>
                         </div>
+                        <p id="skills-warning" class="text-sm text-amber-600 mt-2 hidden" role="alert">Рекомендуем выбрать хотя бы один навык для лучшего поиска работы</p>
                     </div>
 
                     <div class="floating-label-group">
@@ -248,7 +249,17 @@
             e.preventDefault();
             window.showToast('Выберите роль', 'warning');
         }
-        // Если роль выбрана — форма отправляется штатно
+        // Мягкая проверка: если трудник не выбрал навыки — показать предупреждение (не блокировать)
+        const roleInput = document.querySelector('input[name="role"]:checked');
+        if (roleInput && roleInput.value === 'worker') {
+            const checkedSkills = document.querySelectorAll('input[name="skill_ids"]:checked');
+            const warningEl = document.getElementById('skills-warning');
+            if (checkedSkills.length === 0 && warningEl) {
+                warningEl.classList.remove('hidden');
+            } else if (warningEl) {
+                warningEl.classList.add('hidden');
+            }
+        }
     });
 
     // ==========================================
@@ -283,9 +294,9 @@ async function loadDictionaries() {
         const skillsDiv = document.getElementById('skills-checkboxes');
         if (skillsDiv && skillsData.skills) {
             skillsDiv.innerHTML = skillsData.skills.map(s =>
-                `<label class="flex items-center gap-2 p-1 hover:bg-neutral-50 rounded cursor-pointer">
-                    <input type="checkbox" name="skill_ids" value="${s.id}" class="rounded border-neutral-300 text-primary-500 focus:ring-primary-500">
-                    <span class="text-sm text-neutral-700">${s.name}</span>
+                `<label class="flex items-center space-x-3 p-3 bg-neutral-50 border border-neutral-200 rounded-xl cursor-pointer hover:bg-neutral-100 transition-colors">
+                    <input type="checkbox" name="skill_ids" value="${s.id}" class="w-5 h-5 text-primary-500 rounded border-neutral-300 focus:ring-primary-500">
+                    <span class="text-sm text-neutral-700 font-medium">${s.name}</span>
                 </label>`
             ).join('');
         }
