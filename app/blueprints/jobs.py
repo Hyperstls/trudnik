@@ -154,6 +154,16 @@ def job_detail(job_id):
         flash('Задание не найдено', 'danger')
         return redirect(url_for('jobs.index'))
 
+    # Резолвим UUID полей work_type и preferred_religion в читаемые названия
+    if job.get('work_type') and '-' in str(job['work_type']):
+        skill_resp = supabase_request('GET', f'skills?id=eq.{job["work_type"]}&select=name')
+        if skill_resp.ok and skill_resp.json():
+            job['work_type'] = skill_resp.json()[0]['name']
+    if job.get('preferred_religion') and '-' in str(job['preferred_religion']):
+        rel_resp = supabase_request('GET', f'religions?id=eq.{job["preferred_religion"]}&select=name')
+        if rel_resp.ok and rel_resp.json():
+            job['preferred_religion'] = rel_resp.json()[0]['name']
+
     if session.get('role') == 'employer' and job['employer_id'] == session.get('user_id'):
         app_resp = supabase_request('GET', f'applications?job_id=eq.{job_id}&select=id')
         job['application_count'] = len(app_resp.json()) if app_resp.ok and app_resp.json() else 0
