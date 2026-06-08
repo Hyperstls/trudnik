@@ -24,11 +24,11 @@
         {# Мобильный backdrop #}
         <div id="{{ filter_id }}-backdrop" class="md:hidden absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
         {# Содержимое панели #}
-        <div class="absolute md:relative bottom-0 left-0 right-0 md:bottom-auto md:left-auto md:right-auto
-                    bg-white rounded-t-2xl md:rounded-xl md:border md:border-neutral-200 md:shadow-sm
+        <div class="absolute md:relative top-0 left-0 right-0 md:top-auto md:left-auto md:right-auto
+                    bg-white rounded-b-2xl md:rounded-xl md:border md:border-neutral-200 md:shadow-sm
                     max-h-[70vh] md:max-h-none overflow-y-auto
                     transition-transform duration-300 ease-out
-                    translate-y-full md:translate-y-0"
+                    -translate-y-full md:translate-y-0"
              id="{{ filter_id }}-content">
             {# Заголовок (только мобильный) #}
             <div class="md:hidden sticky top-0 bg-white border-b border-neutral-200 px-4 py-3 flex items-center justify-between z-10">
@@ -157,7 +157,7 @@
     }
 
     function closePanel() {
-        content.style.transform = 'translateY(100%)';
+        content.style.transform = 'translateY(-100%)';
         setTimeout(function() {
             panel.classList.add('hidden');
             document.body.style.overflow = '';
