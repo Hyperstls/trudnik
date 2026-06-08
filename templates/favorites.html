@@ -1,110 +1,92 @@
 {% extends "base.html" %}
-{% from '_icons.html' import star, heart, trash, map_pin, dollar, users %}
+{% from '_icons.html' import star, heart, trash, map_pin, dollar %}
 {% block content %}
-<div class="px-4 pb-24 max-w-6xl mx-auto">
-    <h2 class="text-2xl md:text-3xl font-bold text-neutral-900 mb-5">Избранное</h2>
-
+<div class="px-4 pb-24 max-w-lg mx-auto">
+    <h2 class="text-2xl font-bold text-neutral-900 mb-5">Избранное</h2>
+    
     {% if items %}
     {# Панель массовых действий #}
-    <div class="sticky top-0 z-20 bg-white/95 backdrop-blur-lg p-4 rounded-2xl mb-5 border border-neutral-200 shadow-sm flex flex-wrap justify-between items-center gap-3">
+    <div class="bg-neutral-50 p-4 rounded-2xl mb-4 flex justify-between items-center">
         <span class="text-neutral-700 font-medium text-sm" id="selected-count">0 трудников выбрано</span>
-        <button type="button" onclick="removeSelectedFavorites()"
-                class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center gap-1.5 bg-red-500 text-white hover:bg-red-600 transition-colors px-4"
-                title="Удалить выбранные" aria-label="Удалить выбранные">
+        <button type="button" onclick="removeSelectedFavorites()" class="action-icon-btn reject-btn" title="Удалить выбранные">
             {{ trash(18) }}
-            <span class="text-sm font-medium">Удалить выбранные</span>
+            <span class="text-xs ml-1.5 font-medium">Удалить выбранные</span>
         </button>
     </div>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    
+    <div class="space-y-3">
         {% for item in items %}
-        <div class="app-card bg-white rounded-2xl shadow-sm border border-neutral-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
-             data-worker-id="{{ item.id }}">
-
-            <div class="p-4 sm:p-5">
-                <div class="flex items-start gap-3">
-                    <input type="checkbox" class="favorite-checkbox w-5 h-5 rounded border-neutral-300 text-primary-500 focus:ring-primary-500 mt-1 shrink-0"
-                           value="{{ item.id }}" aria-label="Выбрать {{ item.full_name }}">
-                    <a href="/profile/{{ item.id }}" class="flex-1 min-w-0 flex gap-3">
-                        <img src="{{ item.photo_url or url_for('static', filename='default-avatar.png') }}"
-                             alt="{{ item.full_name }}"
-                             class="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-neutral-200 shrink-0"
-                             onerror="this.onerror=null;this.src='{{ url_for('static', filename='default-avatar.png') }}';">
-                        <div class="min-w-0 flex-1">
-                            <h3 class="font-semibold text-neutral-900 truncate">{{ item.full_name }}</h3>
-                            <div class="flex items-center gap-0.5 mt-0.5">
-                                {% set rating = item.rating|default(0) %}
-                                {% for i in range(5) %}
-                                    {% if i < rating|int %}
-                                        <span class="text-amber-400 text-xs">★</span>
-                                    {% else %}
-                                        <span class="text-neutral-300 text-xs">★</span>
-                                    {% endif %}
-                                {% endfor %}
-                                {% if rating > 0 %}
-                                    <span class="text-neutral-500 text-xs ml-1">({{ rating|round(1) }})</span>
-                                {% endif %}
-                            </div>
-                            {% if item.city %}
-                            <p class="text-sm text-neutral-500 mt-1 flex items-center gap-1">
-                                {{ map_pin(14) }}
-                                {{ item.city }}
-                            </p>
-                            {% endif %}
-                            {% if item.skills %}
-                            <div class="mt-2 flex flex-wrap gap-1">
-                                {% if item.skills is string %}
-                                    {% set skills_list = item.skills|replace('[', '')|replace(']', '')|replace('"', '')|split(',') %}
+        <div class="app-card bg-white rounded-2xl shadow-sm border border-neutral-100 p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 worker-item-{{ item.id }}" data-worker-id="{{ item.id }}">
+            <div class="flex items-start gap-3">
+                <input type="checkbox" class="favorite-checkbox w-5 h-5 text-primary-500 rounded border-neutral-300 mt-1" value="{{ item.id }}">
+                <a href="/profile/{{ item.id }}" class="flex-1 min-w-0 flex gap-3">
+                    <img src="{{ item.photo_url or url_for('static', filename='default-avatar.png') }}"
+                         alt="{{ item.full_name }}"
+                         class="w-14 h-14 rounded-full object-cover border-2 border-neutral-200 shrink-0"
+                         onerror="this.onerror=null;this.src='{{ url_for('static', filename='default-avatar.png') }}';">
+                    <div class="min-w-0">
+                        <h3 class="font-semibold text-neutral-900 truncate">{{ item.full_name }}</h3>
+                        <div class="flex items-center gap-0.5 mt-0.5">
+                            {% set rating = item.rating|default(0) %}
+                            {% for i in range(5) %}
+                                {% if i < rating|int %}
+                                    <span class="text-warning text-xs">★</span>
                                 {% else %}
-                                    {% set skills_list = item.skills %}
+                                    <span class="text-neutral-300 text-xs">★</span>
                                 {% endif %}
-                                {% for skill in skills_list[:3] %}
-                                    <span class="bg-neutral-100 text-neutral-700 text-xs px-2 py-0.5 rounded-full font-medium">{{ skill|trim }}</span>
-                                {% endfor %}
-                                {% if skills_list|length > 3 %}
-                                    <span class="text-neutral-400 text-xs">+{{ skills_list|length - 3 }}</span>
-                                {% endif %}
-                            </div>
-                            {% endif %}
-                            {% if item.desired_payment %}
-                            <p class="text-primary-600 text-sm font-bold mt-1.5 flex items-center gap-1">
-                                {{ dollar(14) }}
-                                {{ item.desired_payment }} ₽
-                            </p>
+                            {% endfor %}
+                            {% if rating > 0 %}
+                                <span class="text-neutral-500 text-[11px] ml-1">({{ rating|round(1) }})</span>
                             {% endif %}
                         </div>
-                    </a>
-                </div>
-                <div class="mt-4 pt-3 border-t border-neutral-100">
-                    <button onclick="toggleFavorite('{{ item.id }}', this, event)"
-                            class="favorite-btn w-full min-h-[44px] rounded-xl flex items-center justify-center gap-2 bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                            data-worker-id="{{ item.id }}" data-favorited="true" aria-label="Удалить из избранного">
-                        <span class="favorite-icon flex items-center gap-2">
-                            {{ heart(18) }}
-                        </span>
-                        <span class="favorite-text text-sm font-medium">Удалить из избранного</span>
-                    </button>
-                </div>
+                        {% if item.city %}
+                        <p class="text-sm text-neutral-500 mt-1 flex items-center gap-1">
+                            {{ map_pin(14) }}
+                            {{ item.city }}
+                        </p>
+                        {% endif %}
+                        {% if item.skills %}
+                        <div class="mt-2 flex flex-wrap gap-1">
+                            {% if item.skills is string %}
+                                {% set skills_list = item.skills|replace('[', '')|replace(']', '')|replace('"', '')|split(',') %}
+                            {% else %}
+                                {% set skills_list = item.skills %}
+                            {% endif %}
+                            {% for skill in skills_list[:3] %}
+                                <span class="bg-neutral-100 text-neutral-700 text-[11px] px-2 py-1 rounded-lg">{{ skill|trim }}</span>
+                            {% endfor %}
+                            {% if skills_list|length > 3 %}
+                                <span class="text-neutral-400 text-[11px]">+{{ skills_list|length - 3 }}</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        {% if item.desired_payment %}
+                        <p class="text-success text-sm font-semibold mt-1 flex items-center gap-1">
+                            {{ dollar(14) }}
+                            {{ item.desired_payment }} ₽
+                        </p>
+                        {% endif %}
+                    </div>
+                </a>
+            </div>
+            <div class="mt-3 pt-3 border-t border-neutral-100">
+                <button onclick="toggleFavorite('{{ item.id }}', this, event)" class="favorite-btn action-icon-btn reject-btn" data-worker-id="{{ item.id }}" data-favorited="true">
+                    <span class="favorite-icon flex items-center gap-1.5">
+                        {{ heart(18) }}
+                    </span>
+                    <span class="favorite-text text-xs font-medium">Удалить из избранного</span>
+                </button>
             </div>
         </div>
         {% endfor %}
     </div>
     {% else %}
-    {# Пустое состояние #}
-    <div class="flex flex-col items-center justify-center py-20 text-center">
-        <div class="w-24 h-24 rounded-full bg-neutral-100 flex items-center justify-center mb-5">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-300">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-            </svg>
+    <div class="flex flex-col items-center justify-center py-16 text-center">
+        <div class="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
+            {{ heart(36) }}
         </div>
-        <h3 class="text-xl font-semibold text-neutral-700 mb-2">В избранном пока пусто</h3>
-        <p class="text-neutral-400 mb-6 max-w-sm">
-            Добавляйте трудников и задания, чтобы быстро находить их здесь
-        </p>
-        <a href="/workers"
-           class="inline-flex items-center gap-1.5 bg-primary-500 text-white px-6 py-3 rounded-full text-sm font-semibold shadow-md hover:bg-primary-600 active:scale-[0.97] transition-all duration-200">
-            Перейти к трудникам
-        </a>
+        <p class="text-lg font-semibold text-neutral-700">Пока нет избранных трудников</p>
+        <a href="/workers" class="text-primary-600 hover:text-primary-700 font-medium text-sm mt-2">Перейти к трудникам</a>
     </div>
     {% endif %}
 </div>
@@ -145,5 +127,49 @@ toggleFavorite = function(workerId, btn) {
         }
     }, 500);
 };
+
+function removeSelectedFavorites() {
+    const checkboxes = document.querySelectorAll('.favorite-checkbox:checked');
+    const workerIds = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (workerIds.length === 0) {
+        if (window.showToast) {
+            window.showToast('Не выбрано ни одного трудника', 'warning');
+        }
+        return;
+    }
+    
+    fetch('/api/favorites/remove-selected', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ worker_ids: workerIds })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            workerIds.forEach(workerId => {
+                const card = document.querySelector('.worker-item-' + workerId);
+                if (card) {
+                    card.style.opacity = '0';
+                    card.style.transition = 'opacity 0.3s';
+                    setTimeout(() => card.remove(), 300);
+                }
+            });
+            updateSelectedCount();
+            if (window.showToast) {
+                window.showToast(data.message || 'Удалено из избранного', 'success');
+            }
+        } else {
+            if (window.showToast) {
+                window.showToast('Ошибка: ' + (data.error || 'Не удалось удалить'), 'error');
+            }
+        }
+    })
+    .catch(() => {
+        if (window.showToast) {
+            window.showToast('Ошибка сети', 'error');
+        }
+    });
+}
 </script>
 {% endblock %}
