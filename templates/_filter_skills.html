@@ -6,7 +6,7 @@
 {#                (через запятую, из GET-параметров) #}
 {#   placeholder — текст кнопки по умолчанию      #}
 {# ============================================ #}
-<div id="{{ filter_id }}-container" class="skills-filter-container">
+<div id="{{ filter_id }}-container" class="skills-filter-container relative">
     {# Кнопка-триггер (видна на всех разрешениях) #}
     <button type="button" id="{{ filter_id }}-toggle"
             class="action-icon-btn inline-flex items-center gap-1.5 py-2 px-3 bg-neutral-100 hover:bg-neutral-200 rounded-xl text-sm font-medium text-neutral-700 transition-all duration-200 active:scale-95"
@@ -22,17 +22,17 @@
 
     {# Overlay-панель фильтров (скрыта изначально) #}
     <div id="{{ filter_id }}-panel"
-         class="skills-filter-panel fixed inset-0 z-50 hidden"
+         class="skills-filter-panel fixed inset-0 z-50 hidden md:absolute md:right-0 md:top-full md:inset-auto"
          role="dialog"
          aria-modal="true"
          aria-label="Фильтр по навыкам">
-        {# Backdrop #}
-        <div id="{{ filter_id }}-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+        {# Backdrop (только на мобильных) #}
+        <div id="{{ filter_id }}-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm md:hidden"></div>
         {# Обёртка для позиционирования #}
         <div id="{{ filter_id }}-content-wrapper"
              class="absolute inset-x-0 bottom-0
-                    md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2
-                    md:max-w-lg md:w-[calc(100vw-2rem)]">
+                    md:relative md:inset-auto md:mt-2
+                    md:w-80">
             {# Содержимое панели #}
             <div id="{{ filter_id }}-content"
                  class="bg-white rounded-t-2xl md:rounded-2xl
@@ -209,6 +209,7 @@
             panel.classList.add('hidden');
             content.style.opacity = '';
             content.style.transform = '';
+            content.style.transformOrigin = '';
             document.body.style.overflow = '';
             document.body.style.paddingRight = '';
             // Возвращаем фокус на кнопку
@@ -223,7 +224,8 @@
             content.style.transform = 'translateY(100%) scale(1)';
         } else {
             content.style.opacity = '0';
-            content.style.transform = 'translateY(0) scale(0.95)';
+            content.style.transform = 'scale(0.95)';
+            content.style.transformOrigin = 'top right';
         }
     }
 
@@ -249,6 +251,16 @@
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && isOpen) {
             e.preventDefault();
+            closePanel();
+        }
+    });
+
+    // Закрытие по клику вне панели (десктоп)
+    document.addEventListener('click', function(e) {
+        if (!isOpen) return;
+        var isDesktop = window.innerWidth >= 768;
+        if (!isDesktop) return;
+        if (!panel.contains(e.target) && !toggle.contains(e.target)) {
             closePanel();
         }
     });
