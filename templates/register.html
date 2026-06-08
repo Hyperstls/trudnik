@@ -104,14 +104,6 @@
                     <label for="city">Город</label>
                 </div>
 
-                <!-- Навыки (чекбоксы, загружаются из справочника) -->
-                <div class="floating-label-group">
-                    <span class="text-sm text-neutral-500 mb-2 block">Навыки</span>
-                    <div id="skills-checkboxes" class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border border-neutral-200 rounded-lg" role="group" aria-label="Навыки">
-                        <span class="text-sm text-neutral-400 col-span-2">Загрузка...</span>
-                    </div>
-                </div>
-
                 <div class="floating-label-group">
                     <input type="url" name="portfolio_link" id="portfolio_link" placeholder=" ">
                     <label for="portfolio_link">Ссылка на портфолио</label>
@@ -119,6 +111,14 @@
 
                 <!-- Worker-specific fields -->
                 <div id="worker-fields" class="space-y-4" style="display:none;">
+                    <!-- Навыки (чекбоксы) — только для трудников -->
+                    <div class="floating-label-group">
+                        <span class="text-sm text-neutral-500 mb-2 block">Навыки</span>
+                        <div id="skills-checkboxes" class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border border-neutral-200 rounded-lg" role="group" aria-label="Навыки">
+                            <span class="text-sm text-neutral-400 col-span-2">Загрузка...</span>
+                        </div>
+                    </div>
+
                     <div class="floating-label-group">
                         <input type="text" name="inn" id="inn" placeholder=" " maxlength="12">
                         <label for="inn">ИНН (12 цифр, опционально)</label>

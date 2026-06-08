@@ -89,7 +89,13 @@ def supabase_request(method, endpoint, **kwargs):
         return SupabaseResponse(ok=False, status_code=0, text=str(e))
 
 
+MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5 MB
+
 def upload_to_storage(bucket, file_path, file_data, content_type):
+    # Проверка размера файла
+    if file_data and len(file_data) > MAX_UPLOAD_SIZE:
+        current_app.logger.warning('Upload rejected: file too large (%d bytes)', len(file_data))
+        return None
     url = f'{SUPABASE_URL}/storage/v1/object/{bucket}/{file_path}'
     headers = {
         'apikey': SUPABASE_KEY,
