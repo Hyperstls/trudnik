@@ -158,6 +158,10 @@ def my_applications():
                            contact_price=contact_price, selected_skills=selected_skills_list)
 
 
+@applications_bp.route('/api/applications/test', methods=['GET', 'POST'])
+def api_test():
+    return jsonify({'success': True, 'message': 'applications blueprint is alive'})
+
 @applications_bp.route('/api/applications/<app_id>/accept', methods=['POST'])
 @login_required
 def api_accept_application(app_id):
