@@ -11,6 +11,79 @@
     let selectedIds = new Set();
 
     // ============================================
+    // Offline Request Queue (retry on reconnect)
+    // ============================================
+    const OFFLINE_QUEUE_KEY = 'trudnik_offline_queue';
+    let offlineQueue = [];
+
+    // Load saved queue from localStorage
+    try {
+        const saved = localStorage.getItem(OFFLINE_QUEUE_KEY);
+        if (saved) offlineQueue = JSON.parse(saved);
+    } catch (e) { offlineQueue = []; }
+
+    function saveOfflineQueue() {
+        try {
+            localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(offlineQueue));
+        } catch (e) { /* storage full - ignore */ }
+    }
+
+    function enqueueOffline(url, options) {
+        offlineQueue.push({ url: url, options: options, timestamp: Date.now() });
+        saveOfflineQueue();
+        showToast('Запрос сохранён. Будет отправлен при восстановлении сети.', 'info');
+    }
+
+    async function processOfflineQueue() {
+        if (offlineQueue.length === 0 || !navigator.onLine) return;
+        showToast('Отправка отложенных запросов (' + offlineQueue.length + ')...', 'info');
+        const queue = [...offlineQueue];
+        offlineQueue = [];
+        saveOfflineQueue();
+
+        let successCount = 0, failCount = 0;
+        for (const item of queue) {
+            try {
+                const resp = await fetch(item.url, item.options);
+                if (resp.ok) {
+                    successCount++;
+                } else {
+                    // Re-queue on server error
+                    offlineQueue.push(item);
+                    failCount++;
+                }
+            } catch (e) {
+                // Re-queue on network failure
+                offlineQueue.push(item);
+                failCount++;
+            }
+        }
+        saveOfflineQueue();
+
+        if (successCount > 0 && failCount === 0) {
+            showToast('Все отложенные запросы отправлены (' + successCount + ')', 'success');
+        } else if (successCount > 0) {
+            showToast('Отправлено: ' + successCount + ', не удалось: ' + failCount, 'warning');
+        } else if (failCount > 0) {
+            showToast('Не удалось отправить отложенные запросы. Попробуем позже.', 'warning');
+        }
+        // Reload page to reflect changes if queue was processed
+        if (successCount > 0 && offlineQueue.length === 0) {
+            setTimeout(() => location.reload(), 1500);
+        }
+    }
+
+    // Listen for online event to process queue
+    window.addEventListener('online', () => {
+        processOfflineQueue();
+    });
+
+    // Process any pending queue on page load
+    if (offlineQueue.length > 0 && navigator.onLine) {
+        setTimeout(() => processOfflineQueue(), 1000);
+    }
+
+    // ============================================
     // DOM-ссылки
     // ============================================
     const $ = (s) => document.querySelector(s);
@@ -84,33 +157,15 @@
     }
 
     // ============================================
-    // Custom confirm dialog (replaces native confirm)
+    // Custom confirm dialog (uses global showConfirm from base.html)
     // ============================================
     function customConfirm(message) {
         return new Promise(function(resolve) {
-            var overlay = document.createElement('div');
-            overlay.className = 'modal-backdrop';
-            overlay.setAttribute('role', 'dialog');
-            overlay.setAttribute('aria-modal', 'true');
-            overlay.innerHTML = '<div class="modal-content animate-scale-in max-w-sm">' +
-                '<p class="text-neutral-800 text-sm mb-4">' + message + '</p>' +
-                '<div class="flex gap-3">' +
-                '<button id="confirm-cancel" class="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-medium py-2.5 rounded-xl transition-colors">Отмена</button>' +
-                '<button id="confirm-ok" class="flex-1 bg-danger hover:bg-danger-dark text-white font-medium py-2.5 rounded-xl transition-colors">Подтвердить</button>' +
-                '</div></div>';
-            document.body.appendChild(overlay);
-
-            overlay.querySelector('#confirm-cancel').addEventListener('click', function() {
-                overlay.remove();
-                resolve(false);
-            });
-            overlay.querySelector('#confirm-ok').addEventListener('click', function() {
-                overlay.remove();
-                resolve(true);
-            });
-            overlay.addEventListener('click', function(e) {
-                if (e.target === overlay) { overlay.remove(); resolve(false); }
-            });
+            if (window.showConfirm) {
+                window.showConfirm(message, function() { resolve(true); });
+            } else {
+                resolve(confirm(message));
+            }
         });
     }
 
@@ -148,7 +203,14 @@
                 showToast(data.error || 'Ошибка', 'error');
             }
         } catch (e) {
-            showToast('Ошибка соединения с сервером', 'error');
+            if (!navigator.onLine) {
+                enqueueOffline('/api/applications/' + appId + '/' + action, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } else {
+                showToast('Ошибка соединения с сервером', 'error');
+            }
         } finally {
             // Разблокируем кнопку
             if (btnElement) {
@@ -210,7 +272,16 @@
                 }
             }
         } catch (e) {
-            showToast('Ошибка соединения с сервером', 'error');
+            if (!navigator.onLine) {
+                enqueueOffline('/api/applications/batch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ app_ids: Array.from(selectedIds), action: action })
+                });
+                clearSelection();
+            } else {
+                showToast('Ошибка соединения с сервером', 'error');
+            }
         } finally {
             $$('.mass-action-btn').forEach(b => b.disabled = false);
         }

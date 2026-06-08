@@ -584,6 +584,53 @@
     <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <!-- ================================ -->
+    <!-- Custom Confirm Modal              -->
+    <!-- ================================ -->
+    <div id="confirm-modal-backdrop" class="modal-backdrop hidden z-[100]" style="display:none;">
+        <div class="modal-content animate-scale-in">
+            <h3 id="confirm-modal-title" class="text-lg font-bold text-neutral-800 mb-2">Подтвердите действие</h3>
+            <p id="confirm-modal-message" class="text-neutral-600 text-sm mb-6"></p>
+            <div class="flex gap-3 justify-end">
+                <button id="confirm-modal-cancel" class="px-5 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-sm font-medium transition-colors">Отмена</button>
+                <button id="confirm-modal-ok" class="px-5 py-2.5 bg-danger hover:bg-red-700 text-white rounded-xl text-sm font-medium transition-colors">Подтвердить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================ -->
+    <!-- Offline Status Bar                -->
+    <!-- ================================ -->
+    <div id="offline-bar" class="fixed top-0 left-0 right-0 z-[101] bg-warning text-neutral-800 text-xs text-center py-1.5 font-medium hidden" style="padding-top: max(env(safe-area-inset-top, 0px), 0.25rem);">
+        ⚠ Нет соединения с интернетом
+    </div>
+
+    <!-- ================================ -->
+    <!-- PWA Install Banner                -->
+    <!-- ================================ -->
+    <div id="install-banner" class="fixed bottom-20 left-4 right-4 z-[90] bg-white rounded-2xl shadow-xl border border-neutral-200 px-5 py-4 hidden sm:left-auto sm:right-4 sm:w-80" style="display:none;">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shrink-0 shadow-sm">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+                    <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                    <line x1="9" y1="9" x2="9.01" y2="9"/>
+                    <line x1="15" y1="9" x2="15.01" y2="9"/>
+                </svg>
+            </div>
+            <div class="flex-1">
+                <p class="text-sm font-semibold text-neutral-800">Установите приложение</p>
+                <p class="text-xs text-neutral-500">Быстрый доступ без браузера</p>
+            </div>
+            <button id="install-banner-close" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-neutral-100 text-neutral-400">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        <button id="install-banner-btn" class="w-full mt-3 bg-primary-500 hover:bg-primary-600 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors active:scale-[0.98]">
+            Установить
+        </button>
+    </div>
+
+    <!-- ================================ -->
     <!-- Flash messages → toasts          -->
     <!-- ================================ -->
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -814,6 +861,120 @@
             window._toastQueue.forEach(function(t) { window.showToast(t.message, t.category); });
             window._toastQueue = [];
         }
+
+        // ========================================
+        // Custom Confirm Modal (replaces confirm())
+        // ========================================
+        window.showConfirm = function(message, onConfirm, options) {
+            options = options || {};
+            var backdrop = document.getElementById('confirm-modal-backdrop');
+            var msgEl = document.getElementById('confirm-modal-message');
+            var titleEl = document.getElementById('confirm-modal-title');
+            var okBtn = document.getElementById('confirm-modal-ok');
+            var cancelBtn = document.getElementById('confirm-modal-cancel');
+
+            if (!backdrop || !msgEl) {
+                if (confirm(message)) onConfirm();
+                return;
+            }
+
+            titleEl.textContent = options.title || 'Подтвердите действие';
+            msgEl.textContent = message;
+            okBtn.textContent = options.okText || 'Подтвердить';
+            okBtn.className = (options.danger !== false ? 'bg-danger hover:bg-red-700' : 'bg-primary-500 hover:bg-primary-600') + ' text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors';
+
+            function close() {
+                backdrop.style.display = 'none';
+                backdrop.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+
+            okBtn.onclick = function() { close(); if (onConfirm) onConfirm(); };
+            cancelBtn.onclick = close;
+            backdrop.onclick = function(e) { if (e.target === backdrop) close(); };
+
+            backdrop.style.display = 'flex';
+            backdrop.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            document.addEventListener('keydown', function handler(e) {
+                if (e.key === 'Escape') { close(); document.removeEventListener('keydown', handler); }
+            });
+        };
+
+        // ========================================
+        // PWA Install Prompt
+        // ========================================
+        (function() {
+            var deferredPrompt;
+            var banner = document.getElementById('install-banner');
+            var installBtn = document.getElementById('install-banner-btn');
+            var closeBtn = document.getElementById('install-banner-close');
+
+            window.addEventListener('beforeinstallprompt', function(e) {
+                e.preventDefault();
+                deferredPrompt = e;
+                if (banner) {
+                    banner.style.display = 'block';
+                    banner.classList.remove('hidden');
+                }
+            });
+
+            if (installBtn) {
+                installBtn.addEventListener('click', function() {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        deferredPrompt.userChoice.then(function(result) {
+                            console.log('PWA install:', result.outcome);
+                            deferredPrompt = null;
+                            if (banner) { banner.style.display = 'none'; banner.classList.add('hidden'); }
+                        });
+                    } else if (banner) {
+                        banner.style.display = 'none';
+                        banner.classList.add('hidden');
+                    }
+                });
+            }
+
+            if (closeBtn && banner) {
+                closeBtn.addEventListener('click', function() {
+                    banner.style.display = 'none';
+                    banner.classList.add('hidden');
+                });
+            }
+
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                if (banner) { banner.style.display = 'none'; banner.classList.add('hidden'); }
+            }
+        })();
+
+        // ========================================
+        // Offline/Online Status Detection
+        // ========================================
+        (function() {
+            var offlineBar = document.getElementById('offline-bar');
+
+            function setOffline(offline) {
+                if (offlineBar) {
+                    if (offline) {
+                        offlineBar.classList.remove('hidden');
+                        offlineBar.style.display = 'block';
+                    } else {
+                        offlineBar.classList.add('hidden');
+                        offlineBar.style.display = 'none';
+                        if (!offline) window.showToast && window.showToast('Соединение восстановлено', 'success');
+                    }
+                }
+                var main = document.querySelector('main');
+                if (main) {
+                    main.style.paddingTop = offline ? '2.5rem' : '';
+                }
+            }
+
+            window.addEventListener('online', function() { setOffline(false); });
+            window.addEventListener('offline', function() { setOffline(true); });
+            if (!navigator.onLine) setOffline(true);
+        })();
 
         // Service Worker
         if ('serviceWorker' in navigator) {
