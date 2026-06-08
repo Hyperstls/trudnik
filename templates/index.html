@@ -5,10 +5,15 @@
     <!-- Header row -->
     <div class="flex items-center justify-between mb-4">
         <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">Задания</h2>
-        <button type="button" id="open-filters" class="action-icon-btn inline-flex items-center gap-1.5 py-2 px-3 bg-neutral-100 hover:bg-neutral-200 rounded-xl text-sm font-medium text-neutral-700 transition-all duration-200 active:scale-95">
-            {{ filter_icon(16) }}
-            Фильтры
-        </button>
+        <div class="flex items-center gap-2">
+            {% with filter_id='jobs-filter', selected_skills=selected_skills|default([]) %}
+            {% include '_filter_skills.html' %}
+            {% endwith %}
+            <button type="button" id="open-filters" class="action-icon-btn inline-flex items-center gap-1.5 py-2 px-3 bg-neutral-100 hover:bg-neutral-200 rounded-xl text-sm font-medium text-neutral-700 transition-all duration-200 active:scale-95">
+                {{ filter_icon(16) }}
+                Фильтры
+            </button>
+        </div>
     </div>
 
     <!-- ===== Filter drawer backdrop ===== -->
@@ -47,13 +52,6 @@
                     <option value="payment_desc" {% if sort == 'payment_desc' %}selected{% endif %}>Оплата ↓</option>
                 </select>
                 <label for="f-sort">Сортировка</label>
-            </div>
-            <div class="border-t border-neutral-100 pt-3">
-                <label class="text-sm font-medium text-neutral-700 mb-2 block">Навыки</label>
-                <div id="filter-skills-list" class="max-h-44 overflow-y-auto space-y-0.5 mb-2">
-                    <span class="text-sm text-neutral-400">Загрузка...</span>
-                </div>
-                <input type="hidden" name="skills" id="f-skills" value="{{ request.args.get('skills','') }}">
             </div>
             <input type="hidden" name="lat" id="f-lat" value="{{ lat or '' }}">
             <input type="hidden" name="lng" id="f-lng" value="{{ lng or '' }}">
@@ -202,32 +200,6 @@
     var closeBtn = document.getElementById('close-filters');
     var drawer = document.getElementById('filter-drawer');
     var backdrop = document.getElementById('filter-backdrop');
-
-    // Загрузка чекбоксов навыков в форму фильтра
-    var skillsList = document.getElementById('filter-skills-list');
-    var skillsHidden = document.getElementById('f-skills');
-    if (skillsList && skillsHidden) {
-        var selectedSkills = skillsHidden.value ? skillsHidden.value.split(',').map(function(s){return s.trim();}).filter(Boolean) : [];
-        fetch('/api/skills')
-            .then(function(r){return r.json();})
-            .then(function(data){
-                var skills = data.skills || [];
-                if (!skills.length) { skillsList.innerHTML = '<span class="text-sm text-neutral-400">Нет навыков</span>'; return; }
-                skillsList.innerHTML = skills.map(function(s){
-                    return '<label class="flex items-center gap-2 px-1 py-1 hover:bg-neutral-50 rounded cursor-pointer text-sm">' +
-                        '<input type="checkbox" value="'+s.name+'" class="skill-cb rounded border-neutral-300 text-primary-500 focus:ring-primary-500" '+(selectedSkills.indexOf(s.name)!==-1?'checked':'')+'>' +
-                        '<span class="text-neutral-700">'+s.name+'</span></label>';
-                }).join('');
-                skillsList.querySelectorAll('.skill-cb').forEach(function(cb){
-                    cb.addEventListener('change', function(){
-                        var checked = [];
-                        skillsList.querySelectorAll('.skill-cb:checked').forEach(function(c){checked.push(c.value);});
-                        skillsHidden.value = checked.join(',');
-                    });
-                });
-            })
-            .catch(function(){ skillsList.innerHTML = '<span class="text-sm text-red-400">Ошибка</span>'; });
-    }
 
     if (openBtn && drawer && backdrop) {
         function openDrawer() {
