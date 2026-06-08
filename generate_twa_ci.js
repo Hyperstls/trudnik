@@ -1,24 +1,51 @@
 'use strict';
 // CI-friendly TWA project generator (non-interactive, Linux-compatible)
+// Uses auto-discovery of bubblewrap module paths (no hardcoded paths)
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
-const npmGlobal = '/usr/local/lib/node_modules';
-const corePath = path.join(npmGlobal, '@bubblewrap', 'cli', 'node_modules', '@bubblewrap', 'core');
-const cliPath = path.join(npmGlobal, '@bubblewrap', 'cli');
-const colorPath = path.join(npmGlobal, '@bubblewrap', 'cli', 'node_modules', 'color');
+function findBubblewrapModule(moduleName) {
+  try {
+    // Try to resolve from global node_modules
+    const globalRoot = execSync('npm root -g', { encoding: 'utf8' }).trim();
+    const modulePath = path.join(globalRoot, moduleName);
+    if (fs.existsSync(modulePath)) return modulePath;
 
-const core = require(corePath);
-const shared = require(path.join(cliPath, 'dist', 'lib', 'cmds', 'shared'));
-const Color = require(colorPath);
+    // Try nested in @bubblewrap/cli
+    const cliPath = path.join(globalRoot, '@bubblewrap', 'cli');
+    if (fs.existsSync(cliPath)) {
+      const nestedPath = path.join(cliPath, 'node_modules', moduleName);
+      if (fs.existsSync(nestedPath)) return nestedPath;
+    }
+
+    // Try require.resolve as last resort
+    return require.resolve(moduleName);
+  } catch (e) {
+    console.error('Cannot find module:', moduleName);
+    console.error('Global npm root:', execSync('npm root -g', { encoding: 'utf8' }).trim());
+    throw e;
+  }
+}
 
 async function main() {
   const projectDir = path.resolve(process.cwd(), 'twa-project');
   const twaConfig = JSON.parse(fs.readFileSync('twa-config.json', 'utf8'));
 
+  // Auto-discover bubblewrap paths
+  const corePath = findBubblewrapModule('@bubblewrap/core');
+  const cliPath = findBubblewrapModule('@bubblewrap/cli');
+  const colorPath = findBubblewrapModule('color');
+
+  const core = require(corePath);
+  const shared = require(path.join(cliPath, 'dist', 'lib', 'cmds', 'shared'));
+  const Color = require(colorPath);
+
   console.log('Fetching web manifest...');
   const manifestUrl = 'https://trudnik.onrender.com/static/manifest.json';
   let m = await core.TwaManifest.fromWebManifest(manifestUrl);
+
+  console.log('Manifest loaded:', m.name, '| display:', m.display, '| theme:', m.themeColor);
 
   console.log('Applying config...');
   m.packageId = twaConfig.packageId;
@@ -52,13 +79,25 @@ async function main() {
   await m.saveToFile(manifestPath);
 
   const gen = new core.TwaGenerator();
-  const mp = { printMessage: () => {}, promptConfirm: async (_, d) => d, promptInput: async (_, d) => d, promptChoice: async (_, __, d) => d, promptPassword: async () => 'x', promptRawList: async (_, __, d) => d };
+  const mp = {
+    printMessage: () => {},
+    promptConfirm: async (_, d) => d,
+    promptInput: async (_, d) => d,
+    promptChoice: async (_, __, d) => d,
+    promptPassword: async () => 'x',
+    promptRawList: async (_, __, d) => d
+  };
   await shared.generateTwaProject(mp, gen, projectDir, m);
   await shared.generateManifestChecksumFile(manifestPath, projectDir);
 
   const ks = 'trudnik-release.keystore';
   if (fs.existsSync(ks)) fs.copyFileSync(ks, path.join(projectDir, ks));
 
-  console.log('OK');
+  console.log('TWA project generated successfully');
 }
-main().catch(e => { console.error(e.message); process.exit(1); });
+
+main().catch(e => {
+  console.error('FATAL:', e.message);
+  console.error(e.stack);
+  process.exit(1);
+});
