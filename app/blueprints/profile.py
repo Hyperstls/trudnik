@@ -116,8 +116,6 @@ def change_password():
     if not new_password or len(new_password) < 6:
         flash('Пароль должен содержать минимум 6 символов', 'danger')
         return redirect(url_for('profile.profile'))
-
-
     if new_password != confirm_password:
         flash('Новые пароли не совпадают', 'danger')
         return redirect(url_for('profile.profile'))

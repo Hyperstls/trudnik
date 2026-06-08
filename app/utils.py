@@ -62,6 +62,7 @@ def refresh_access_token():
 
 
 def supabase_request(method, endpoint, **kwargs):
+    extra_headers = kwargs.pop('headers', None)
     def _make_request():
         headers = {
             'apikey': SUPABASE_KEY,
@@ -69,9 +70,8 @@ def supabase_request(method, endpoint, **kwargs):
             'Content-Type': 'application/json',
             'Prefer': 'return=representation',
         }
-        if 'headers' in kwargs:
-            extra = kwargs.pop('headers')
-            headers.update(extra)
+        if extra_headers:
+            headers.update(extra_headers)
         url = f'{SUPABASE_URL}/rest/v1/{endpoint}'
         return requests.request(method, url, headers=headers, timeout=15, **kwargs)
 

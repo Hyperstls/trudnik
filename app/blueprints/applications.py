@@ -128,14 +128,13 @@ def my_applications():
 
     selected_skills_list = [s.strip() for s in skills_filter.split(',') if s.strip()] if skills_filter else []
 
-    worker_ids = [app.get('worker', {}).get('id') for app in applications if app.get('worker', {}).get('id')]
+    # Используем встроенные данные заданий из запроса (job:jobs(...))
+    # вместо повторного запроса к API
     jobs = {}
-    if worker_ids:
-        job_ids = list(set([app.get('job_id') for app in applications]))
-        if job_ids:
-            job_resp = supabase_request('GET', f'jobs?id=in.({",".join(job_ids)})&select=id,organization_name,date_time,payment_amount,status,application_count,current_workers,max_workers')
-            if job_resp.ok and job_resp.json():
-                jobs = {job['id']: job for job in job_resp.json()}
+    for app in applications:
+        job_data = app.get('job')
+        if job_data and job_data.get('id'):
+            jobs[job_data['id']] = job_data
 
     # Получить настройки монетизации
     from app.services.payment_service import PaymentService

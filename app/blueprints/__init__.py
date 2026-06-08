@@ -10,9 +10,10 @@ from app.blueprints.favorites import favorites_bp
 from app.blueprints.blacklist import blacklist_bp
 from app.blueprints.notifications import notifications_bp
 from app.blueprints.admin import admin_bp
+from app.blueprints.monetization import monetization_bp
 
 __all__ = [
     'auth_bp', 'profile_bp', 'jobs_bp', 'applications_bp',
     'shifts_bp', 'chat_bp', 'favorites_bp', 'blacklist_bp',
-    'notifications_bp', 'admin_bp',
+    'notifications_bp', 'admin_bp', 'monetization_bp',
 ]

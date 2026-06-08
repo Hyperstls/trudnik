@@ -255,9 +255,18 @@ def my_jobs():
 
     jobs = resp.json() if resp.ok else []
 
-    for job in jobs:
-        app_resp = supabase_request('GET', f'applications?job_id=eq.{job["id"]}&select=id')
-        job['application_count'] = len(app_resp.json()) if app_resp.ok and app_resp.json() else 0
+    # Batch query: получаем количество откликов для всех заданий одним запросом
+    if jobs:
+        job_ids = [j['id'] for j in jobs]
+        ids_filter = ','.join(job_ids)
+        app_resp = supabase_request('GET', f'applications?job_id=in.({ids_filter})&select=job_id')
+        app_counts = {}
+        if app_resp.ok and app_resp.json():
+            for a in app_resp.json():
+                jid = a['job_id']
+                app_counts[jid] = app_counts.get(jid, 0) + 1
+        for job in jobs:
+            job['application_count'] = app_counts.get(job['id'], 0)
 
     return render_template('my_jobs.html', jobs=jobs, current_status=status_filter)
 
@@ -303,19 +312,18 @@ def my_jobs_action():
 @role_required('employer')
 def repost_job(job_id):
     resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=*')
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     if resp.ok and resp.json():
         new_job = copy_job(resp.json()[0])
         supabase_request('POST', 'jobs', json=new_job)
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        if is_ajax:
             return jsonify({'success': True, 'message': 'Задание дублировано'})
         flash('Задание дублировано', 'success')
     else:
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        if is_ajax:
             return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
         flash('Задание не найдено', 'danger')
 
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({'success': True})
     return redirect(url_for('jobs.my_jobs'))
 
 
