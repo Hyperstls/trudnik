@@ -7,64 +7,74 @@
 {#   placeholder — текст кнопки по умолчанию      #}
 {# ============================================ #}
 <div id="{{ filter_id }}-container" class="skills-filter-container">
-    {# Мобильная кнопка-триггер #}
+    {# Кнопка-триггер (видна на всех разрешениях) #}
     <button type="button" id="{{ filter_id }}-toggle"
-            class="md:hidden action-icon-btn inline-flex items-center gap-1.5 py-2 px-3 bg-neutral-100 hover:bg-neutral-200 rounded-xl text-sm font-medium text-neutral-700 transition-all duration-200 active:scale-95"
-            aria-label="Открыть фильтр навыков">
+            class="action-icon-btn inline-flex items-center gap-1.5 py-2 px-3 bg-neutral-100 hover:bg-neutral-200 rounded-xl text-sm font-medium text-neutral-700 transition-all duration-200 active:scale-95"
+            aria-label="Открыть фильтр навыков"
+            aria-expanded="false"
+            aria-haspopup="dialog">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
         </svg>
-        Фильтр
+        <span>Фильтр</span>
         <span id="{{ filter_id }}-badge" class="hidden bg-primary-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">0</span>
     </button>
 
-    {# Панель фильтров #}
+    {# Overlay-панель фильтров (скрыта изначально) #}
     <div id="{{ filter_id }}-panel"
-         class="skills-filter-panel fixed inset-0 z-50 hidden md:relative md:inset-auto md:z-auto md:block">
-        {# Мобильный backdrop #}
-        <div id="{{ filter_id }}-backdrop" class="md:hidden absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-        {# Содержимое панели #}
-        <div class="absolute md:relative top-0 left-0 right-0 md:top-auto md:left-auto md:right-auto
-                    bg-white rounded-b-2xl md:rounded-xl md:border md:border-neutral-200 md:shadow-sm
-                    max-h-[70vh] md:max-h-none overflow-y-auto
-                    transition-transform duration-300 ease-out
-                    -translate-y-full md:translate-y-0"
-             id="{{ filter_id }}-content">
-            {# Заголовок (только мобильный) #}
-            <div class="md:hidden sticky top-0 bg-white border-b border-neutral-200 px-4 py-3 flex items-center justify-between z-10">
-                <h3 class="font-semibold text-neutral-800">Фильтр по навыкам</h3>
-                <button type="button" id="{{ filter_id }}-close" class="w-8 h-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-500">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                </button>
-            </div>
-
-            <div class="p-4 space-y-3">
-                {# Заголовок (десктоп) #}
-                <h4 class="hidden md:block text-sm font-semibold text-neutral-700">Навыки</h4>
-
-                {# Поиск навыков #}
-                <div class="relative">
-                    <input type="text" id="{{ filter_id }}-search"
-                           class="w-full pl-8 pr-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15"
-                           placeholder="Поиск навыка...">
-                    <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+         class="skills-filter-panel fixed inset-0 z-50 hidden"
+         role="dialog"
+         aria-modal="true"
+         aria-label="Фильтр по навыкам">
+        {# Backdrop #}
+        <div id="{{ filter_id }}-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+        {# Обёртка для позиционирования #}
+        <div id="{{ filter_id }}-content-wrapper"
+             class="absolute inset-x-0 bottom-0
+                    md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2
+                    md:max-w-lg md:w-[calc(100vw-2rem)]">
+            {# Содержимое панели #}
+            <div id="{{ filter_id }}-content"
+                 class="bg-white rounded-t-2xl md:rounded-2xl
+                        max-h-[70vh] md:max-h-[80vh] overflow-y-auto
+                        shadow-2xl md:shadow-2xl
+                        transition-all duration-300 ease-out
+                        translate-y-0 opacity-100 scale-100">
+                {# Заголовок #}
+                <div class="sticky top-0 bg-white border-b border-neutral-200 px-4 py-3 flex items-center justify-between z-10 rounded-t-2xl">
+                    <h3 class="font-semibold text-neutral-800">Фильтр по навыкам</h3>
+                    <button type="button" id="{{ filter_id }}-close"
+                            class="w-8 h-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-500 transition-colors"
+                            aria-label="Закрыть фильтр">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
                 </div>
 
-                {# Список чекбоксов #}
-                <div id="{{ filter_id }}-list" class="max-h-60 overflow-y-auto space-y-0.5">
-                    <span class="text-sm text-neutral-400">Загрузка...</span>
-                </div>
+                <div class="p-4 space-y-3">
+                    {# Поиск навыков #}
+                    <div class="relative">
+                        <input type="text" id="{{ filter_id }}-search"
+                               class="w-full pl-8 pr-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15"
+                               placeholder="Поиск навыка...">
+                        <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    </div>
 
-                {# Кнопки действий #}
-                <div class="flex gap-2 pt-2 border-t border-neutral-100">
-                    <button type="button" id="{{ filter_id }}-apply"
-                            class="flex-1 bg-primary-500 hover:bg-primary-600 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors active:scale-[0.98]">
-                        Применить
-                    </button>
-                    <button type="button" id="{{ filter_id }}-reset"
-                            class="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 font-medium py-2.5 rounded-lg text-sm transition-colors active:scale-[0.98]">
-                        Сбросить
-                    </button>
+                    {# Список чекбоксов #}
+                    <div id="{{ filter_id }}-list" class="max-h-60 overflow-y-auto space-y-0.5">
+                        <span class="text-sm text-neutral-400">Загрузка...</span>
+                    </div>
+
+                    {# Кнопки действий #}
+                    <div class="flex gap-2 pt-2 border-t border-neutral-100">
+                        <button type="button" id="{{ filter_id }}-apply"
+                                class="flex-1 bg-primary-500 hover:bg-primary-600 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors active:scale-[0.98]">
+                            Применить
+                        </button>
+                        <button type="button" id="{{ filter_id }}-reset"
+                                class="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 font-medium py-2.5 rounded-lg text-sm transition-colors active:scale-[0.98]">
+                            Сбросить
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -87,6 +97,9 @@
     var applyBtn = document.getElementById(filterId + '-apply');
     var resetBtn = document.getElementById(filterId + '-reset');
     var badge = document.getElementById(filterId + '-badge');
+
+    var isOpen = false;
+    var savedScrollY = 0;
 
     // Загрузка списка навыков
     fetch('/api/skills')
@@ -147,29 +160,100 @@
         });
     }
 
-    // Открытие/закрытие панели (мобильные)
+    // ── Открытие панели ──
     function openPanel() {
-        panel.classList.remove('hidden');
-        content.style.transform = 'translateY(0)';
-        document.body.style.overflow = 'hidden';
+        if (isOpen) return;
+        isOpen = true;
+
+        // Сохраняем позицию скролла и блокируем body
+        savedScrollY = window.scrollY;
         var scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+        document.body.style.overflow = 'hidden';
         document.body.style.paddingRight = scrollbarWidth + 'px';
+
+        // Показываем панель
+        panel.classList.remove('hidden');
+        toggle.setAttribute('aria-expanded', 'true');
+
+        // Запускаем анимацию (после кадра, чтобы transition сработал)
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+                content.style.opacity = '1';
+                content.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+
+        // Фокус в поле поиска
+        setTimeout(function() {
+            if (searchInput) searchInput.focus();
+        }, 350);
     }
 
+    // ── Закрытие панели ──
     function closePanel() {
-        content.style.transform = 'translateY(-100%)';
+        if (!isOpen) return;
+        isOpen = false;
+
+        // Анимация скрытия
+        var isMobile = window.innerWidth < 768;
+        if (isMobile) {
+            content.style.transform = 'translateY(100%) scale(1)';
+        } else {
+            content.style.opacity = '0';
+            content.style.transform = 'translateY(0) scale(0.95)';
+        }
+
+        toggle.setAttribute('aria-expanded', 'false');
+
         setTimeout(function() {
             panel.classList.add('hidden');
+            content.style.opacity = '';
+            content.style.transform = '';
             document.body.style.overflow = '';
             document.body.style.paddingRight = '';
+            // Возвращаем фокус на кнопку
+            toggle.focus();
         }, 300);
     }
 
-    if (toggle) toggle.addEventListener('click', openPanel);
+    // Начальное состояние для анимации открытия
+    function setInitialClosedState() {
+        var isMobile = window.innerWidth < 768;
+        if (isMobile) {
+            content.style.transform = 'translateY(100%) scale(1)';
+        } else {
+            content.style.opacity = '0';
+            content.style.transform = 'translateY(0) scale(0.95)';
+        }
+    }
+
+    // Перехватываем открытие — устанавливаем начальное состояние перед показом
+    var originalOpenPanel = openPanel;
+    openPanel = function() {
+        if (isOpen) return;
+        setInitialClosedState();
+        originalOpenPanel();
+    };
+
+    // ── Обработчики событий ──
+    if (toggle) toggle.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        openPanel();
+    });
+
     if (closeBtn) closeBtn.addEventListener('click', closePanel);
     if (backdrop) backdrop.addEventListener('click', closePanel);
 
-    // Применить фильтр
+    // Закрытие по Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && isOpen) {
+            e.preventDefault();
+            closePanel();
+        }
+    });
+
+    // ── Применить фильтр ──
     if (applyBtn) {
         applyBtn.addEventListener('click', function() {
             var url = new URL(window.location.href);
@@ -182,7 +266,7 @@
         });
     }
 
-    // Сбросить фильтр
+    // ── Сбросить фильтр ──
     if (resetBtn) {
         resetBtn.addEventListener('click', function() {
             var url = new URL(window.location.href);
