@@ -335,8 +335,12 @@ def api_batch_applications():
 
             # Выполняем действие через общий обработчик
             # (он сам делает все проверки: авторизацию, места, атомарный PATCH)
-            resp = api_handle_application(app_id, action)
-            data = resp.get_json()
+            result = api_handle_application(app_id, action)
+            # api_handle_application может вернуть Response или tuple (Response, status)
+            if isinstance(result, tuple):
+                data = result[0].get_json()
+            else:
+                data = result.get_json()
             if data.get('success'):
                 results['success'].append({
                     'id': app_id,
