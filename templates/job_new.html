@@ -47,14 +47,9 @@
             <div class="floating-label-group">
                 <select name="work_type" id="work_type">
                     <option value="">Выберите вид работы</option>
-                    <option value="уборка">Уборка</option>
-                    <option value="строительство">Строительство</option>
-                    <option value="ремонт">Ремонт</option>
-                    <option value="кухня">Кухня / Приготовление пищи</option>
-                    <option value="водитель">Водитель</option>
-                    <option value="помощник">Помощник</option>
-                    <option value="охрана">Охрана</option>
-                    <option value="другое">Другое</option>
+                    {% for skill in skills_list %}
+                    <option value="{{ skill.id }}">{{ skill.name }}</option>
+                    {% endfor %}
                 </select>
                 <label for="work_type">Вид работы</label>
             </div>
@@ -62,10 +57,9 @@
             <div class="floating-label-group">
                 <select name="preferred_religion" id="preferred_religion">
                     <option value="">Не указано</option>
-                    <option value="православие">Православие</option>
-                    <option value="католицизм">Католицизм</option>
-                    <option value="протестантизм">Протестантизм</option>
-                    <option value="не важно">Не важно</option>
+                    {% for religion in religions_list %}
+                    <option value="{{ religion.id }}">{{ religion.name }}</option>
+                    {% endfor %}
                 </select>
                 <label for="preferred_religion">Предпочтительное вероисповедание</label>
             </div>

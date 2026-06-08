@@ -181,6 +181,18 @@ def job_detail(job_id):
 @role_required('employer')
 def job_new():
     """Создание задания (единственный маршрут, заменяет /create-job)"""
+    # Загружаем справочники из БД
+    skills_resp = supabase_request('GET', 'skills?select=id,name&order=name.asc')
+    skills_list = skills_resp.json() if skills_resp.ok else []
+    religions_resp = supabase_request('GET', 'religions?select=id,name&order=name.asc')
+    religions_list = religions_resp.json() if religions_resp.ok else []
+
+    template_data = {
+        'yandex_api_key': current_app.config['YANDEX_MAPS_API_KEY'],
+        'skills_list': skills_list,
+        'religions_list': religions_list,
+    }
+
     if request.method == 'POST':
         try:
             title = request.form.get('title') or 'Храм'
@@ -198,14 +210,14 @@ def job_new():
                     f'Пожалуйста, опишите разовую услугу.',
                     'danger'
                 )
-                return render_template('job_new.html', yandex_api_key=current_app.config['YANDEX_MAPS_API_KEY'])
+                return render_template('job_new.html', **template_data)
 
             job_data = {
                 'employer_id': session['user_id'],
                 'organization_name': title,
                 'org_description': '',
                 'object_description': '',
-                'work_type': '',
+                'work_type': request.form.get('work_type', ''),
                 'detailed_description': description,
                 'date_time': datetime.now().isoformat(),
                 'payment_amount': float(request.form.get('payment') or 0),
@@ -213,7 +225,7 @@ def job_new():
                 'city': request.form.get('city', ''),
                 'lat': float(request.form.get('latitude') or 55.75),
                 'lng': float(request.form.get('longitude') or 37.61),
-                'preferred_religion': 'не важно',
+                'preferred_religion': request.form.get('preferred_religion', ''),
                 'max_workers': int(request.form.get('max_workers', 1)),
                 'current_workers': 0,
             }
@@ -231,7 +243,7 @@ def job_new():
         except Exception as e:
             flash('Ошибка сервера', 'danger')
 
-    return render_template('job_new.html', yandex_api_key=current_app.config['YANDEX_MAPS_API_KEY'])
+    return render_template('job_new.html', **template_data)
 
 
 # ──────────────────────────────────────────────
