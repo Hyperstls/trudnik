@@ -7,18 +7,18 @@
     {# Заголовок                                    #}
     {# ============================================ #}
     <div class="flex items-center justify-between mb-5">
-        <h2 class="text-2xl font-bold text-neutral-900">Отклики на ваши задания</h2>
+        <h2 class="text-2xl md:text-3xl font-bold text-neutral-900">Отклики на ваши задания</h2>
         {% with filter_id='apps-filter', selected_skills=selected_skills|default([]) %}
         {% include '_filter_skills.html' %}
         {% endwith %}
     </div>
 
     {# ============================================ #}
-    {# Панель массовых операций (фиксированная снизу) #}
+    {# Панель массовых операций (фиксированная сверху) #}
     {# ============================================ #}
     <div id="mass-actions-bar"
-         class="hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-lg border-t border-neutral-200 shadow-2xl px-4 py-3 flex items-center justify-between gap-3 transition-all duration-300 slide-in"
-         style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));">
+         class="hidden sticky top-0 z-40 bg-white/95 backdrop-blur-lg border-b border-neutral-200 shadow-lg rounded-b-2xl px-4 py-3 mb-4 flex items-center justify-between gap-3 transition-all duration-300"
+         style="padding-top: calc(0.75rem + env(safe-area-inset-top, 0px));">
         <div class="flex items-center gap-3">
             <span class="text-sm text-neutral-600">
                 Выбрано: <strong id="selected-count" class="text-neutral-900">0</strong>
@@ -30,14 +30,14 @@
         </div>
         <div class="flex items-center gap-2">
             <button type="button" data-action="accept"
-                    class="mass-action-btn w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 bg-success text-white hover:bg-success/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="mass-action-btn min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center transition-all duration-200 bg-green-500 text-white hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Принять выбранные" aria-label="Принять выбранные">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
             </button>
             <button type="button" data-action="reject"
-                    class="mass-action-btn w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 bg-danger text-white hover:bg-danger/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="mass-action-btn min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center transition-all duration-200 bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Отклонить выбранные" aria-label="Отклонить выбранные">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -45,7 +45,7 @@
                 </svg>
             </button>
             <button type="button" data-action="reopen"
-                    class="mass-action-btn w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 bg-info text-white hover:bg-info/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="mass-action-btn min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center transition-all duration-200 bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Повторно принять выбранные" aria-label="Повторно принять выбранные">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="23 4 23 10 17 10"></polyline>
@@ -59,149 +59,329 @@
     {# Список откликов                              #}
     {# ============================================ #}
     {% if applications %}
-    <div class="space-y-3">
+    <div class="space-y-4">
         {# Шапка с Select All #}
         <div class="flex items-center gap-3 px-1 pb-2 border-b border-neutral-100">
             <label class="flex items-center gap-2 text-sm text-neutral-500 cursor-pointer select-none">
                 <input type="checkbox" id="select-all"
-                       class="app-checkbox">
+                       class="w-5 h-5 rounded border-neutral-300 text-primary-500 focus:ring-primary-500">
                 Выбрать все
             </label>
         </div>
 
         {% for app in applications %}
-        <div class="app-card animate-fade-in"
+        {# ============================================ #}
+        {# Карточка отклика                            #}
+        {# ============================================ #}
+        <div class="app-card animate-fade-in bg-white rounded-2xl shadow-sm border border-neutral-200 hover:shadow-md transition-shadow duration-200 overflow-hidden"
              data-app-id="{{ app.id }}" data-status="{{ app.status }}">
 
-            <div class="flex items-start gap-3">
-                {# Чекбокс для массовых операций #}
-                <input type="checkbox" name="app_ids" value="{{ app.id }}"
-                       class="app-checkbox mt-1.5">
+            {# Mobile/Tablet: 1-колоночный layout #}
+            <div class="lg:hidden p-4">
+                <div class="flex items-start gap-3">
+                    {# Чекбокс #}
+                    <input type="checkbox" name="app_ids" value="{{ app.id }}"
+                           class="app-checkbox w-5 h-5 rounded border-neutral-300 text-primary-500 focus:ring-primary-500 mt-1 shrink-0">
 
-                <div class="flex-1 min-w-0">
-                    <div class="flex justify-between items-start gap-2">
-                        <a href="/profile/{{ app.worker.id }}" class="flex-1 block min-w-0">
-                            <div class="flex items-center gap-3">
-                                <img src="{{ app.worker.photo_url or url_for('static', filename='default-avatar.png') }}"
-                                     class="w-12 h-12 rounded-full object-cover border-2 border-neutral-200 flex-shrink-0"
-                                     alt="{{ app.worker.full_name }}"
-                                     onerror="this.src='{{ url_for('static', filename='default-avatar.png') }}'">
-                                <div class="min-w-0">
-                                    <h3 class="font-semibold text-base text-neutral-900 truncate">{{ app.worker.full_name }}</h3>
-                                    <div class="flex items-center gap-1">
-                                        <span class="text-warning text-sm">★</span>
-                                        <span class="text-neutral-700 text-sm font-medium">{{ "%.1f"|format(app.worker.rating or 0) }}</span>
-                                    </div>
+                    {# Аватар #}
+                    <a href="/profile/{{ app.worker.id }}" class="shrink-0">
+                        <img src="{{ app.worker.photo_url or url_for('static', filename='default-avatar.png') }}"
+                             class="w-12 h-12 rounded-full object-cover border-2 border-neutral-200"
+                             alt="{{ app.worker.full_name }}"
+                             onerror="this.src='{{ url_for('static', filename='default-avatar.png') }}'">
+                    </a>
+
+                    {# Информация #}
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-start gap-2">
+                            <a href="/profile/{{ app.worker.id }}" class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-base text-neutral-900 truncate">{{ app.worker.full_name }}</h3>
+                                <div class="flex items-center gap-1 mt-0.5">
+                                    <span class="text-amber-400 text-sm">★</span>
+                                    <span class="text-neutral-700 text-sm font-medium">{{ "%.1f"|format(app.worker.rating or 0) }}</span>
                                 </div>
-                            </div>
-
-                            {% if app.worker.skills %}
-                            <div class="flex flex-wrap gap-1 mt-2">
-                                {% for skill in app.worker.skills[:3] %}
-                                <span class="bg-neutral-100 text-neutral-700 px-2 py-0.5 rounded-full text-xs">{{ skill }}</span>
-                                {% endfor %}
-                                {% if app.worker.skills|length > 3 %}
-                                <span class="text-xs text-neutral-400">+{{ app.worker.skills|length - 3 }}</span>
+                                {% if app.worker.skills %}
+                                <div class="flex flex-wrap gap-1 mt-1.5">
+                                    {% for skill in app.worker.skills[:2] %}
+                                    <span class="bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded-full text-xs font-medium">{{ skill }}</span>
+                                    {% endfor %}
+                                    {% if app.worker.skills|length > 2 %}
+                                    <span class="text-xs text-neutral-400">+{{ app.worker.skills|length - 2 }}</span>
+                                    {% endif %}
+                                </div>
                                 {% endif %}
-                            </div>
-                            {% endif %}
+                                <p class="text-sm text-primary-600 font-semibold mt-1.5">
+                                    {{ app.worker.desired_payment or '—' }} ₽
+                                </p>
+                            </a>
 
-                            <p class="text-sm text-neutral-500 mt-1.5">
-                                <span class="text-primary-600 font-medium">{{ app.worker.desired_payment or '—' }} ₽</span>
-                                {% if app.job.organization_name %}
-                                · {{ app.job.organization_name }}
-                                {% endif %}
-                            </p>
-                        </a>
-
-                        {# Статус-бейдж #}
-                        <div class="flex-shrink-0 text-right">
-                            <span class="status-badge
-                                {% if app.status == 'pending' %}status-pending
-                                {% elif app.status == 'accepted' %}status-accepted
-                                {% elif app.status == 'rejected' %}status-rejected
+                            {# Статус-бейдж #}
+                            <span class="shrink-0 px-3 py-1 rounded-full text-xs font-semibold
+                                {% if app.status == 'pending' %}bg-yellow-100 text-yellow-800 border border-yellow-200
+                                {% elif app.status == 'accepted' %}bg-green-100 text-green-800 border border-green-200
+                                {% elif app.status == 'rejected' %}bg-red-100 text-red-800 border border-red-200
                                 {% endif %}">
                                 {% if app.status == 'pending' %}Ожидает
                                 {% elif app.status == 'accepted' %}Принят
                                 {% elif app.status == 'rejected' %}Отклонён
                                 {% endif %}
                             </span>
-                            {% if app.job.max_workers %}
-                            <div class="text-xs text-neutral-400 mt-1">
-                                {{ app.job.current_workers or 0 }}/{{ app.job.max_workers }}
-                            </div>
+                        </div>
+
+                        {# Кнопки действий #}
+                        <div class="action-buttons mt-3 flex items-center gap-2 flex-wrap">
+                            {% if app.status == 'pending' %}
+                                <button type="button" data-app-id="{{ app.id }}" data-action="accept"
+                                        class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center gap-1.5 bg-green-500 text-white hover:bg-green-600 transition-colors px-3"
+                                        title="Принять" aria-label="Принять">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                    <span class="text-sm font-medium">Принять</span>
+                                </button>
+                                <button type="button" data-app-id="{{ app.id }}" data-action="reject"
+                                        class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center gap-1.5 bg-red-500 text-white hover:bg-red-600 transition-colors px-3"
+                                        title="Отклонить" aria-label="Отклонить">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                    <span class="text-sm font-medium">Отклонить</span>
+                                </button>
+
+                                {# Контакт-пейволл #}
+                                <div id="contact-section-{{ app.id }}" class="ml-auto">
+                                    {% if app.contact_paid %}
+                                        <div class="p-3 bg-green-50 border border-green-200 rounded-xl">
+                                            <p class="text-sm font-semibold text-green-700">📞 Контакты открыты</p>
+                                            <div id="worker-contacts-{{ app.id }}">
+                                                {% if app.worker_contacts %}
+                                                <p class="text-sm text-neutral-700 mt-1"><span class="font-medium">ФИО:</span> {{ app.worker_contacts.full_name or '—' }}</p>
+                                                <p class="text-sm text-neutral-700"><span class="font-medium">Тел.:</span> {{ app.worker_contacts.phone or '—' }}</p>
+                                                <p class="text-sm text-neutral-700"><span class="font-medium">Email:</span> {{ app.worker_contacts.email or '—' }}</p>
+                                                {% else %}
+                                                <p class="text-sm text-neutral-400 mt-1">Загрузка контактов...</p>
+                                                {% endif %}
+                                            </div>
+                                            <div class="mt-2">
+                                                <a href="/api/act/generate/{{ app.id }}"
+                                                   class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center gap-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors px-3"
+                                                   title="Скачать акт ГПХ" aria-label="Скачать акт ГПХ">
+                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                                                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <button type="button"
+                                                onclick="openPayment('{{ app.id }}', '{{ app.worker.id }}', '{{ app.job_id }}', {{ contact_price }})"
+                                                class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center gap-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors px-3"
+                                                title="Открыть контакт за {{ contact_price }} ₽" aria-label="Открыть контакт за {{ contact_price }} ₽">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                <circle cx="12" cy="12" r="3"></circle>
+                                            </svg>
+                                            <span class="text-sm font-medium">{{ contact_price }} ₽</span>
+                                        </button>
+                                    {% endif %}
+                                </div>
+
+                            {% elif app.status == 'accepted' %}
+                                <span class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center bg-green-100 text-green-700 px-3" title="Принят">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                    </svg>
+                                </span>
+                                {% if app.shift_id %}
+                                <a href="/chat/{{ app.shift_id }}"
+                                   class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center gap-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors px-3"
+                                   title="Чат" aria-label="Чат">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                    </svg>
+                                </a>
+                                {% endif %}
+
+                                {% if app.contact_paid %}
+                                <a href="/api/act/generate/{{ app.id }}"
+                                   class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center gap-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors px-3"
+                                   title="Скачать акт ГПХ" aria-label="Скачать акт ГПХ">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                                    </svg>
+                                </a>
+                                {% endif %}
+                                <button type="button" data-app-id="{{ app.id }}" data-action="reject"
+                                        class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center gap-1.5 bg-red-500 text-white hover:bg-red-600 transition-colors px-3"
+                                        title="Отклонить" aria-label="Отклонить">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                    <span class="text-sm font-medium">Отклонить</span>
+                                </button>
+
+                            {% elif app.status == 'rejected' %}
+                                <span class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center bg-red-100 text-red-700 px-3" title="Отклонён">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                                    </svg>
+                                </span>
+                                <button type="button" data-app-id="{{ app.id }}" data-action="reopen"
+                                        class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center gap-1.5 bg-blue-500 text-white hover:bg-blue-600 transition-colors px-3"
+                                        title="Повторно принять" aria-label="Повторно принять">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="23 4 23 10 17 10"></polyline>
+                                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                    </svg>
+                                    <span class="text-sm font-medium">Вернуть</span>
+                                </button>
                             {% endif %}
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    {# ============================================ #}
-                    {# Кнопки действий                              #}
-                    {# ============================================ #}
-                    <div class="action-buttons mt-3 flex items-center gap-1.5 flex-wrap">
+            {# Desktop (>1024px): 2-колоночный layout #}
+            <div class="hidden lg:flex items-start gap-4 p-5">
+                {# Чекбокс #}
+                <input type="checkbox" name="app_ids" value="{{ app.id }}"
+                       class="app-checkbox w-5 h-5 rounded border-neutral-300 text-primary-500 focus:ring-primary-500 mt-6 shrink-0">
+
+                {# Левая колонка: информация #}
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-start gap-4">
+                        <a href="/profile/{{ app.worker.id }}" class="shrink-0">
+                            <img src="{{ app.worker.photo_url or url_for('static', filename='default-avatar.png') }}"
+                                 class="w-14 h-14 rounded-full object-cover border-2 border-neutral-200"
+                                 alt="{{ app.worker.full_name }}"
+                                 onerror="this.src='{{ url_for('static', filename='default-avatar.png') }}'">
+                        </a>
+                        <div class="flex-1 min-w-0">
+                            <a href="/profile/{{ app.worker.id }}">
+                                <h3 class="font-semibold text-lg text-neutral-900 truncate">{{ app.worker.full_name }}</h3>
+                                <div class="flex items-center gap-1 mt-0.5">
+                                    <span class="text-amber-400">★</span>
+                                    <span class="text-neutral-700 text-sm font-medium">{{ "%.1f"|format(app.worker.rating or 0) }}</span>
+                                </div>
+                            </a>
+
+                            {% if app.worker.skills %}
+                            <div class="flex flex-wrap gap-1.5 mt-2">
+                                {% for skill in app.worker.skills[:4] %}
+                                <span class="bg-neutral-100 text-neutral-600 px-2.5 py-1 rounded-full text-xs font-medium">{{ skill }}</span>
+                                {% endfor %}
+                                {% if app.worker.skills|length > 4 %}
+                                <span class="text-xs text-neutral-400">+{{ app.worker.skills|length - 4 }}</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+
+                            <p class="text-sm text-neutral-600 mt-2">
+                                <span class="text-primary-600 font-semibold text-base">{{ app.worker.desired_payment or '—' }} ₽</span>
+                                {% if app.job.organization_name %}
+                                <span class="text-neutral-400">·</span> {{ app.job.organization_name }}
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    {# Контакт-пейволл (desktop: под информацией) #}
+                    {% if app.status == 'pending' %}
+                    <div id="contact-section-{{ app.id }}" class="mt-3">
+                        {% if app.contact_paid %}
+                            <div class="p-3 bg-green-50 border border-green-200 rounded-xl">
+                                <p class="text-sm font-semibold text-green-700">📞 Контакты открыты</p>
+                                <div id="worker-contacts-{{ app.id }}">
+                                    {% if app.worker_contacts %}
+                                    <p class="text-sm text-neutral-700 mt-1"><span class="font-medium">ФИО:</span> {{ app.worker_contacts.full_name or '—' }}</p>
+                                    <p class="text-sm text-neutral-700"><span class="font-medium">Тел.:</span> {{ app.worker_contacts.phone or '—' }}</p>
+                                    <p class="text-sm text-neutral-700"><span class="font-medium">Email:</span> {{ app.worker_contacts.email or '—' }}</p>
+                                    {% else %}
+                                    <p class="text-sm text-neutral-400 mt-1">Загрузка контактов...</p>
+                                    {% endif %}
+                                </div>
+                                <div class="mt-2">
+                                    <a href="/api/act/generate/{{ app.id }}"
+                                       class="inline-flex items-center gap-1.5 min-h-[36px] bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors px-3 py-1.5 rounded-lg text-sm font-medium"
+                                       title="Скачать акт ГПХ" aria-label="Скачать акт ГПХ">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                            <polyline points="14 2 14 8 20 8"></polyline>
+                                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                                        </svg>
+                                    </a>
+                                </div>
+                            </div>
+                        {% else %}
+                            <button type="button"
+                                    onclick="openPayment('{{ app.id }}', '{{ app.worker.id }}', '{{ app.job_id }}', {{ contact_price }})"
+                                    class="inline-flex items-center gap-1.5 min-h-[36px] bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors px-3 py-1.5 rounded-lg text-sm font-medium"
+                                    title="Открыть контакт за {{ contact_price }} ₽" aria-label="Открыть контакт за {{ contact_price }} ₽">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                                <span>{{ contact_price }} ₽</span>
+                            </button>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                {# Правая колонка: статус + действия #}
+                <div class="shrink-0 flex flex-col items-end gap-3 min-w-[160px]">
+                    {# Статус-бейдж #}
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold
+                        {% if app.status == 'pending' %}bg-yellow-100 text-yellow-800 border border-yellow-200
+                        {% elif app.status == 'accepted' %}bg-green-100 text-green-800 border border-green-200
+                        {% elif app.status == 'rejected' %}bg-red-100 text-red-800 border border-red-200
+                        {% endif %}">
+                        {% if app.status == 'pending' %}Ожидает
+                        {% elif app.status == 'accepted' %}Принят
+                        {% elif app.status == 'rejected' %}Отклонён
+                        {% endif %}
+                    </span>
+                    {% if app.job.max_workers %}
+                    <div class="text-xs text-neutral-400">
+                        {{ app.job.current_workers or 0 }}/{{ app.job.max_workers }} мест
+                    </div>
+                    {% endif %}
+
+                    {# Кнопки действий #}
+                    <div class="action-buttons flex flex-col gap-2 mt-1">
                         {% if app.status == 'pending' %}
                             <button type="button" data-app-id="{{ app.id }}" data-action="accept"
-                                    class="action-icon-btn accept-btn" title="Принять">
+                                    class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center gap-2 bg-green-500 text-white hover:bg-green-600 transition-colors px-4"
+                                    title="Принять" aria-label="Принять">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <polyline points="20 6 9 17 4 12"></polyline>
                                 </svg>
+                                <span class="text-sm font-medium">Принять</span>
                             </button>
                             <button type="button" data-app-id="{{ app.id }}" data-action="reject"
-                                    class="action-icon-btn reject-btn" title="Отклонить">
+                                    class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center gap-2 bg-red-500 text-white hover:bg-red-600 transition-colors px-4"
+                                    title="Отклонить" aria-label="Отклонить">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <line x1="18" y1="6" x2="6" y2="18"></line>
                                     <line x1="6" y1="6" x2="18" y2="18"></line>
                                 </svg>
+                                <span class="text-sm font-medium">Отклонить</span>
                             </button>
 
-                            {# Контакт-пейволл #}
-                            <div id="contact-section-{{ app.id }}" class="ml-auto">
-                                {% if app.contact_paid %}
-                                    <div class="p-3 bg-success/10 border border-success/20 rounded-xl">
-                                        <p class="text-sm font-semibold text-success">Контакты открыты</p>
-                                        <div id="worker-contacts-{{ app.id }}">
-                                            {% if app.worker_contacts %}
-                                            <p class="text-sm text-neutral-700 mt-1">
-                                                <span class="font-medium">ФИО:</span> {{ app.worker_contacts.full_name or '—' }}
-                                            </p>
-                                            <p class="text-sm text-neutral-700">
-                                                <span class="font-medium">Тел.:</span> {{ app.worker_contacts.phone or '—' }}
-                                            </p>
-                                            <p class="text-sm text-neutral-700">
-                                                <span class="font-medium">Email:</span> {{ app.worker_contacts.email or '—' }}
-                                            </p>
-                                            {% else %}
-                                            <p class="text-sm text-neutral-400 mt-1">Загрузка контактов...</p>
-                                            {% endif %}
-                                        </div>
-                                        <div class="mt-2">
-                                            <a href="/api/act/generate/{{ app.id }}"
-                                               class="action-icon-btn chat-btn"
-                                               title="Скачать акт ГПХ">
-                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                                    <polyline points="14 2 14 8 20 8"></polyline>
-                                                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                                                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                                                </svg>
-                                            </a>
-                                        </div>
-                                    </div>
-                                {% else %}
-                                    <button type="button"
-                                            onclick="openPayment('{{ app.id }}', '{{ app.worker.id }}', '{{ app.job_id }}', {{ contact_price }})"
-                                            class="action-icon-btn contact-btn"
-                                            title="Открыть контакт за {{ contact_price }} ₽">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                            <circle cx="12" cy="12" r="3"></circle>
-                                        </svg>
-                                        <span class="text-xs font-medium ml-1">{{ contact_price }} ₽</span>
-                                    </button>
-                                {% endif %}
-                            </div>
-
                         {% elif app.status == 'accepted' %}
-                            <span class="action-icon-btn accepted-badge" title="Принят">
+                            <span class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center gap-2 bg-green-100 text-green-700 px-4" title="Принят">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                                     <polyline points="22 4 12 14.01 9 11.01"></polyline>
@@ -209,16 +389,17 @@
                             </span>
                             {% if app.shift_id %}
                             <a href="/chat/{{ app.shift_id }}"
-                               class="action-icon-btn chat-btn" title="Чат">
+                               class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center gap-2 bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors px-4"
+                               title="Чат" aria-label="Чат">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                                 </svg>
                             </a>
                             {% endif %}
-
                             {% if app.contact_paid %}
                             <a href="/api/act/generate/{{ app.id }}"
-                               class="action-icon-btn chat-btn" title="Скачать акт ГПХ">
+                               class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center gap-2 bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors px-4"
+                               title="Скачать акт ГПХ" aria-label="Скачать акт ГПХ">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                     <polyline points="14 2 14 8 20 8"></polyline>
@@ -228,15 +409,17 @@
                             </a>
                             {% endif %}
                             <button type="button" data-app-id="{{ app.id }}" data-action="reject"
-                                    class="action-icon-btn reject-btn" title="Отклонить">
+                                    class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center gap-2 bg-red-500 text-white hover:bg-red-600 transition-colors px-4"
+                                    title="Отклонить" aria-label="Отклонить">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <line x1="18" y1="6" x2="6" y2="18"></line>
                                     <line x1="6" y1="6" x2="18" y2="18"></line>
                                 </svg>
+                                <span class="text-sm font-medium">Отклонить</span>
                             </button>
 
                         {% elif app.status == 'rejected' %}
-                            <span class="action-icon-btn rejected-badge" title="Отклонён">
+                            <span class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center gap-2 bg-red-100 text-red-700 px-4" title="Отклонён">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                     <circle cx="12" cy="12" r="10"></circle>
                                     <line x1="15" y1="9" x2="9" y2="15"></line>
@@ -244,11 +427,13 @@
                                 </svg>
                             </span>
                             <button type="button" data-app-id="{{ app.id }}" data-action="reopen"
-                                    class="action-icon-btn reopen-btn" title="Повторно принять">
+                                    class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center gap-2 bg-blue-500 text-white hover:bg-blue-600 transition-colors px-4"
+                                    title="Повторно принять" aria-label="Повторно принять">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <polyline points="23 4 23 10 17 10"></polyline>
                                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                                 </svg>
+                                <span class="text-sm font-medium">Вернуть</span>
                             </button>
                         {% endif %}
                     </div>
@@ -261,14 +446,14 @@
     {# ============================================ #}
     {# Пустое состояние                             #}
     {# ============================================ #}
-    <div class="flex flex-col items-center justify-center py-16 text-center">
-        <div class="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-300">
+    <div class="flex flex-col items-center justify-center py-20 text-center">
+        <div class="w-24 h-24 rounded-full bg-neutral-100 flex items-center justify-center mb-5">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-300">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
             </svg>
         </div>
-        <h3 class="text-lg font-semibold text-neutral-700 mb-1">Нет откликов</h3>
-        <p class="text-sm text-neutral-400 mb-6">
+        <h3 class="text-xl font-semibold text-neutral-700 mb-2">Нет откликов</h3>
+        <p class="text-neutral-400 mb-6 max-w-sm">
             Когда исполнители откликнутся на ваши задания, они появятся здесь
         </p>
         <a href="/my-jobs"
@@ -378,8 +563,8 @@ async function confirmPayment() {
             const contactSection = document.getElementById('contact-section-' + currentPaymentAppId);
             if (contactSection && confirmData.worker) {
                 contactSection.innerHTML = `
-                    <div class="mt-3 p-3 bg-success/10 border border-success/20 rounded-xl">
-                        <p class="text-sm font-semibold text-success">📞 Контакты открыты</p>
+                    <div class="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl">
+                        <p class="text-sm font-semibold text-green-700">📞 Контакты открыты</p>
                         <div id="worker-contacts-${currentPaymentAppId}">
                             <p class="text-sm text-neutral-700 mt-1"><strong>ФИО:</strong> ${confirmData.worker.full_name || '—'}</p>
                             <p class="text-sm text-neutral-700"><strong>Тел.:</strong> ${confirmData.worker.phone || '—'}</p>
@@ -387,8 +572,8 @@ async function confirmPayment() {
                         </div>
                         <div class="mt-2">
                             <a href="/api/act/generate/${currentPaymentAppId}"
-                               class="action-icon-btn chat-btn"
-                               title="Скачать акт ГПХ">
+                               class="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center gap-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors px-3"
+                               title="Скачать акт ГПХ" aria-label="Скачать акт ГПХ">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                     <polyline points="14 2 14 8 20 8"></polyline>
