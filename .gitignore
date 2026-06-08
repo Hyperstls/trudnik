@@ -13,3 +13,6 @@ app-release*.apk
 app-release*.aab
 *.apk
 *.aab
+
+# Tailwind CLI binary (downloaded during Render build)
+tailwindcss-linux-x64

@@ -3,7 +3,7 @@ services:
     name: trudnik
     runtime: python-3.14
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements.txt && curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/v3.4.17/tailwindcss-linux-x64 && chmod +x tailwindcss-linux-x64 && ./tailwindcss-linux-x64 -i static/css/tailwind.css -o static/css/tailwind.min.css --minify
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
     envVars:
       - key: SECRET_KEY

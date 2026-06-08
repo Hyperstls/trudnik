@@ -20,37 +20,10 @@
     <meta name="msapplication-TileImage" content="{{ url_for('static', filename='icons/icon-144x144.png') }}">
     <!-- Splash screen for iOS (iPhone 14/15 Pro) -->
     <link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" href="{{ url_for('static', filename='icons/icon-512x512.png') }}">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        neutral: {
-                            50: '#fafafa', 100: '#f5f5f5', 200: '#e5e5e5',
-                            300: '#d4d4d4', 400: '#a3a3a3', 500: '#737373',
-                            600: '#525252', 700: '#404040', 800: '#262626', 900: '#171717'
-                        },
-                        primary: {
-                            50: '#fef3c7', 100: '#fde68a', 200: '#fcd34d',
-                            300: '#fbbf24', 400: '#f59e0b', 500: '#d97706',
-                            600: '#b45309', 700: '#92400e'
-                        },
-                        success: { light: '#d1fae5', DEFAULT: '#10b981', dark: '#047857' },
-                        warning: { light: '#fef3c7', DEFAULT: '#f59e0b', dark: '#d97706' },
-                        danger:  { light: '#fee2e2', DEFAULT: '#ef4444', dark: '#dc2626' },
-                        info:    { light: '#dbeafe', DEFAULT: '#3b82f6', dark: '#2563eb' },
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'system-ui', 'sans-serif'],
-                    },
-                }
-            }
-        }
-    </script>
     <style>
         html {
             scrollbar-gutter: stable;
@@ -975,15 +948,6 @@
             window.addEventListener('offline', function() { setOffline(true); });
             if (!navigator.onLine) setOffline(true);
         })();
-
-        // Service Worker
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}")
-                    .then(function(reg) { console.log('SW registered'); })
-                    .catch(function(err) { console.log('SW error', err); });
-            });
-        }
 
         // Floating-label for select elements
         (function() {

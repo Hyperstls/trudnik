@@ -130,6 +130,21 @@ def create_app():
 
     # ── Обработчики ошибок ──────────────────────────────
 
+    @app.before_request
+    def log_static_requests():
+        """Диагностический лог: отслеживание запросов к /static/ для поиска 500."""
+        if request.path.startswith('/static/'):
+            app.logger.info('Static request: %s | method=%s | user_agent=%s',
+                            request.path, request.method,
+                            request.headers.get('User-Agent', 'unknown')[:120])
+
+    @app.route('/static/')
+    def static_directory_redirect():
+        """Запрос /static/ без имени файла → 404 вместо 500.
+        Предотвращает внутреннюю ошибку Flask при попытке открыть директорию как файл."""
+        app.logger.warning('Static directory listing requested: %s', request.path)
+        abort(404)
+
     @app.errorhandler(404)
     def not_found(_e):
         return render_template('error.html', code=404,
