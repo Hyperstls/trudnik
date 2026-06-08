@@ -85,8 +85,12 @@
         <div class="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
             {{ heart(36) }}
         </div>
-        <p class="text-lg font-semibold text-neutral-700">Пока нет избранных трудников</p>
-        <a href="/workers" class="text-primary-600 hover:text-primary-700 font-medium text-sm mt-2">Перейти к трудникам</a>
+        <h3 class="text-lg font-semibold text-neutral-700 mb-1">В избранном пока пусто</h3>
+        <p class="text-sm text-neutral-400 mb-6">Добавляйте трудников, чтобы быстро находить их здесь</p>
+        <a href="/workers"
+           class="inline-flex items-center gap-1.5 bg-primary-500 text-white px-6 py-3 rounded-full text-sm font-semibold shadow-md hover:bg-primary-600 active:scale-[0.97] transition-all duration-200">
+            Перейти к трудникам
+        </a>
     </div>
     {% endif %}
 </div>
