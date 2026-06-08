@@ -67,7 +67,7 @@ def admin_panel():
             query += f'&organization_name=ilike.*{search}*'
         if status_filter:
             query += f'&status=eq.{status_filter}'
-        query += '&order=date_time.desc'
+        query += '&order=created_at.desc'
         jobs_resp = supabase_request('GET', query)
         jobs = jobs_resp.json() if jobs_resp.ok else []
 
