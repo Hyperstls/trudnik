@@ -31,17 +31,18 @@ def create_app():
     @app.before_request
     def csrf_check():
         """Глобальная CSRF-защита: проверка токена для всех мутирующих запросов.
-        Пропускаем: GET/HEAD/OPTIONS, тестовые запросы, API-запросы с JSON (X-CSRF-Token)."""
+        Пропускаем: GET/HEAD/OPTIONS, тестовые запросы.
+        Приоритет: 1) X-CSRF-Token заголовок (fetch/AJAX), 2) _csrf_token в форме."""
         if request.method in ('GET', 'HEAD', 'OPTIONS'):
             return
         # В режиме тестирования CSRF отключён
         if app.config.get('TESTING'):
             return
-        # API-запросы с JSON проверяют заголовок X-CSRF-Token
-        if request.is_json:
-            token = request.headers.get('X-CSRF-Token')
-            if not token or token != session.get('_csrf_token'):
-                abort(400, description='CSRF-токен отсутствует или недействителен')
+        # Проверяем заголовок X-CSRF-Token (для fetch/AJAX-запросов)
+        header_token = request.headers.get('X-CSRF-Token')
+        if header_token:
+            if header_token != session.get('_csrf_token'):
+                abort(400, description='CSRF-токен недействителен')
             return
         # Для обычных форм
         token = request.form.get('_csrf_token')
