@@ -1,3 +1,4 @@
+import uuid as _uuid
 import requests
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
@@ -130,11 +131,18 @@ def register():
                 else:
                     supabase_request('PATCH', f'profiles?id=eq.{user["id"]}', json=update_data)
 
-                # Сохраняем навыки через user_skills
+                # Сохраняем навыки через user_skills (с валидацией UUID)
                 if role == 'worker' and skill_ids:
                     for sid in skill_ids:
+                        sid = sid.strip()
+                        if not sid:
+                            continue
+                        try:
+                            _uuid.UUID(sid)
+                        except (ValueError, AttributeError):
+                            continue
                         supabase_request('POST', 'user_skills', json={
-                            'user_id': user['id'], 'skill_id': sid.strip()
+                            'user_id': user['id'], 'skill_id': sid
                         })
 
                 flash('Регистрация успешна. Теперь войдите.', 'success')

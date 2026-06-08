@@ -7,12 +7,6 @@ from app.utils import supabase_request
 admin_bp = Blueprint('admin', __name__)
 
 
-def _require_admin():
-    """Проверить, что текущий пользователь — админ. Возвращает True/False."""
-    resp = supabase_request('GET', f'profiles?id=eq.{session.get("user_id")}&select=role')
-    return resp.ok and resp.json() and resp.json()[0].get('role') == 'admin'
-
-
 @admin_bp.route('/admin')
 @login_required
 @role_required('admin')
@@ -92,10 +86,8 @@ def admin_panel():
 
 @admin_bp.route('/admin/users/<user_id>/role', methods=['POST'])
 @login_required
+@role_required('admin')
 def update_user_role(user_id):
-    if not _require_admin():
-        flash('Доступ запрещён', 'danger')
-        return redirect(url_for('admin.admin_panel'))
     new_role = request.form.get('role', '')
     if new_role in ('worker', 'employer', 'admin'):
         supabase_request('PATCH', f'profiles?id=eq.{user_id}', json={'role': new_role})
@@ -107,10 +99,8 @@ def update_user_role(user_id):
 
 @admin_bp.route('/admin/users/<user_id>/delete', methods=['POST'])
 @login_required
+@role_required('admin')
 def delete_user(user_id):
-    if not _require_admin():
-        flash('Доступ запрещён', 'danger')
-        return redirect(url_for('admin.admin_panel'))
     supabase_request('DELETE', f'profiles?id=eq.{user_id}')
     flash('Пользователь удалён', 'success')
     return redirect(url_for('admin.admin_panel', tab='users'))
@@ -120,10 +110,8 @@ def delete_user(user_id):
 
 @admin_bp.route('/admin/jobs/<job_id>/status', methods=['POST'])
 @login_required
+@role_required('admin')
 def update_job_status(job_id):
-    if not _require_admin():
-        flash('Доступ запрещён', 'danger')
-        return redirect(url_for('admin.admin_panel'))
     new_status = request.form.get('status', '')
     if new_status in ('open', 'in_progress', 'cancelled', 'completed', 'paid'):
         supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': new_status})
@@ -133,10 +121,8 @@ def update_job_status(job_id):
 
 @admin_bp.route('/admin/jobs/<job_id>/delete', methods=['POST'])
 @login_required
+@role_required('admin')
 def delete_job_admin(job_id):
-    if not _require_admin():
-        flash('Доступ запрещён', 'danger')
-        return redirect(url_for('admin.admin_panel'))
     supabase_request('DELETE', f'jobs?id=eq.{job_id}')
     flash('Задание удалено', 'success')
     return redirect(url_for('admin.admin_panel', tab='jobs'))
@@ -146,17 +132,15 @@ def delete_job_admin(job_id):
 
 @admin_bp.route('/admin/skills', methods=['GET'])
 @login_required
+@role_required('admin')
 def get_skills():
-    if not _require_admin():
-        return jsonify({'success': False, 'error': 'Access denied'}), 403
     resp = supabase_request('GET', 'skills?select=*&order=name.asc')
     return jsonify({'success': True, 'skills': resp.json() if resp.ok else []})
 
 @admin_bp.route('/admin/skills', methods=['POST'])
 @login_required
+@role_required('admin')
 def add_skill():
-    if not _require_admin():
-        return jsonify({'success': False, 'error': 'Access denied'}), 403
     data = request.get_json() or {}
     name = (data.get('name', '')).strip()
     if not name:
@@ -168,9 +152,8 @@ def add_skill():
 
 @admin_bp.route('/admin/skills/<skill_id>', methods=['PUT'])
 @login_required
+@role_required('admin')
 def update_skill(skill_id):
-    if not _require_admin():
-        return jsonify({'success': False, 'error': 'Access denied'}), 403
     data = request.get_json() or {}
     name = (data.get('name', '')).strip()
     if not name:
@@ -180,9 +163,8 @@ def update_skill(skill_id):
 
 @admin_bp.route('/admin/skills/<skill_id>', methods=['DELETE'])
 @login_required
+@role_required('admin')
 def delete_skill(skill_id):
-    if not _require_admin():
-        return jsonify({'success': False, 'error': 'Access denied'}), 403
     supabase_request('DELETE', f'user_skills?skill_id=eq.{skill_id}')
     supabase_request('DELETE', f'job_skills?skill_id=eq.{skill_id}')
     resp = supabase_request('DELETE', f'skills?id=eq.{skill_id}')
@@ -190,17 +172,15 @@ def delete_skill(skill_id):
 
 @admin_bp.route('/admin/religions', methods=['GET'])
 @login_required
+@role_required('admin')
 def get_religions():
-    if not _require_admin():
-        return jsonify({'success': False, 'error': 'Access denied'}), 403
     resp = supabase_request('GET', 'religions?select=*&order=name.asc')
     return jsonify({'success': True, 'religions': resp.json() if resp.ok else []})
 
 @admin_bp.route('/admin/religions', methods=['POST'])
 @login_required
+@role_required('admin')
 def add_religion():
-    if not _require_admin():
-        return jsonify({'success': False, 'error': 'Access denied'}), 403
     data = request.get_json() or {}
     name = (data.get('name', '')).strip()
     if not name:
@@ -212,9 +192,8 @@ def add_religion():
 
 @admin_bp.route('/admin/religions/<religion_id>', methods=['PUT'])
 @login_required
+@role_required('admin')
 def update_religion(religion_id):
-    if not _require_admin():
-        return jsonify({'success': False, 'error': 'Access denied'}), 403
     data = request.get_json() or {}
     name = (data.get('name', '')).strip()
     if not name:
@@ -224,9 +203,8 @@ def update_religion(religion_id):
 
 @admin_bp.route('/admin/religions/<religion_id>', methods=['DELETE'])
 @login_required
+@role_required('admin')
 def delete_religion(religion_id):
-    if not _require_admin():
-        return jsonify({'success': False, 'error': 'Access denied'}), 403
     resp = supabase_request('DELETE', f'religions?id=eq.{religion_id}')
     return jsonify({'success': resp.ok})
 

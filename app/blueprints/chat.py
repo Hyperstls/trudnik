@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required
@@ -28,7 +26,7 @@ def chat(shift_id):
 @chat_bp.route('/chat/new/<worker_id>', methods=['GET'])
 @login_required
 def chat_new(worker_id):
-    """Создание нового чата с работником"""
+    """Поиск существующего чата с работником или редирект на список чатов."""
     user_id = session['user_id']
     if session.get('role') != 'employer':
         flash('Только работодатели могут создавать чаты', 'danger')
@@ -39,19 +37,8 @@ def chat_new(worker_id):
         shift_id = resp.json()[0]['id']
         return redirect(url_for('chat.chat', shift_id=shift_id))
 
-    shift_data = {
-        'employer_id': user_id,
-        'worker_id': worker_id,
-        'status': 'pending',
-        'created_at': datetime.now().isoformat()
-    }
-    resp = supabase_request('POST', 'shifts', json=shift_data)
-    if resp.ok:
-        shift_id = resp.json()[0]['id'] if isinstance(resp.json(), list) else resp.json().get('id')
-        return redirect(url_for('chat.chat', shift_id=shift_id))
-
-    flash('Не удалось создать чат', 'danger')
-    return redirect(url_for('jobs.index'))
+    flash('Чат недоступен — сначала примите отклик этого работника на ваше задание', 'warning')
+    return redirect(url_for('chat.chats_list'))
 
 
 @chat_bp.route('/api/send_message', methods=['POST'])

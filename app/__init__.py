@@ -1,5 +1,6 @@
 import subprocess
-from flask import Flask, session
+import secrets
+from flask import Flask, session, request, abort
 
 from app.config import Config
 
@@ -19,6 +20,33 @@ def create_app():
     @app.context_processor
     def inject_global_user():
         return {'current_user_id': session.get('user_id')}
+
+    @app.context_processor
+    def inject_csrf_token():
+        """Внедрение CSRF-токена во все шаблоны."""
+        if '_csrf_token' not in session:
+            session['_csrf_token'] = secrets.token_hex(32)
+        return {'csrf_token': session['_csrf_token']}
+
+    @app.before_request
+    def csrf_check():
+        """Глобальная CSRF-защита: проверка токена для всех мутирующих запросов.
+        Пропускаем: GET/HEAD/OPTIONS, тестовые запросы, API-запросы с JSON (X-CSRF-Token)."""
+        if request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return
+        # В режиме тестирования CSRF отключён
+        if app.config.get('TESTING'):
+            return
+        # API-запросы с JSON проверяют заголовок X-CSRF-Token
+        if request.is_json:
+            token = request.headers.get('X-CSRF-Token')
+            if not token or token != session.get('_csrf_token'):
+                abort(400, description='CSRF-токен отсутствует или недействителен')
+            return
+        # Для обычных форм
+        token = request.form.get('_csrf_token')
+        if not token or token != session.get('_csrf_token'):
+            abort(400, description='CSRF-токен отсутствует или недействителен')
 
     @app.context_processor
     def inject_unread_notifications():
