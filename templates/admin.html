@@ -443,10 +443,6 @@ function renderReligions() {
             <button onclick="removeReligion('${r.id}')" class="text-xs text-danger hover:underline px-1">Удалить</button>
         </div>
     `).join('');
-        } else {
-            list.innerHTML = '<p class="text-sm text-neutral-400">Нет вероисповеданий</p>';
-        }
-    } catch (e) { document.getElementById('religions-list').innerHTML = '<p class="text-sm text-danger">Ошибка загрузки</p>'; }
 }
 
 async function moveReligion(index, direction) {
