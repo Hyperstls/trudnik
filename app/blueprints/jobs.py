@@ -51,11 +51,15 @@ def inject_user_role():
 @jobs_bp.route('/api/skills')
 def api_skills():
     resp = supabase_request('GET', 'skills?select=*&order=sort_order.asc,name.asc')
+    if not resp.ok:
+        resp = supabase_request('GET', 'skills?select=*&order=name.asc')
     return {'skills': resp.json() if resp.ok else []}
 
 @jobs_bp.route('/api/religions')
 def api_religions():
     resp = supabase_request('GET', 'religions?select=*&order=sort_order.asc,name.asc')
+    if not resp.ok:
+        resp = supabase_request('GET', 'religions?select=*&order=name.asc')
     return {'religions': resp.json() if resp.ok else []}
 
 
