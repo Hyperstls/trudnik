@@ -1,10 +1,15 @@
 {% extends "base.html" %}
-{% from '_icons.html' import star, heart, trash, map_pin, dollar %}
+{% from '_icons.html' import star, heart, trash, map_pin, dollar, clock %}
 {% block content %}
 <div class="px-4 pb-24 max-w-lg mx-auto">
     <h2 class="text-2xl font-bold text-neutral-900 mb-5">Избранное</h2>
     
+    {% if items or favorite_jobs %}
+    
+    {# ── Секция: Избранные трудники (для работодателя) ── #}
     {% if items %}
+    <h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-3">Трудники</h3>
+    
     {# Панель массовых действий #}
     <div class="bg-neutral-50 p-4 rounded-2xl mb-4 flex justify-between items-center">
         <span class="text-neutral-700 font-medium text-sm" id="selected-count">0 трудников выбрано</span>
@@ -14,7 +19,7 @@
         </button>
     </div>
     
-    <div class="space-y-3">
+    <div class="space-y-3 mb-6">
         {% for item in items %}
         <div class="app-card bg-white rounded-2xl shadow-sm border border-neutral-100 p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 worker-item-{{ item.id }}" data-worker-id="{{ item.id }}">
             <div class="flex items-start gap-3">
@@ -80,17 +85,90 @@
         </div>
         {% endfor %}
     </div>
+    {% endif %}
+    
+    {# ── Секция: Избранные задания (для трудника) ── #}
+    {% if session.get('role') == 'worker' and favorite_jobs %}
+    <h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-3">Задания</h3>
+    <div class="space-y-3">
+        {% for job in favorite_jobs %}
+        <div class="app-card bg-white rounded-2xl shadow-sm border border-neutral-100 p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+            <a href="/jobs/{{ job.id }}" class="block">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0 flex-1">
+                        <h3 class="font-semibold text-neutral-900 truncate">{{ job.organization_name or 'Без названия' }}</h3>
+                        {% if job.city or job.date_time %}
+                        <p class="text-xs text-neutral-400 mt-1 flex items-center gap-1 flex-wrap">
+                            {% if job.city %}
+                            <span class="inline-flex items-center gap-0.5">{{ map_pin(12) }}{{ job.city }}</span>
+                            {% endif %}
+                            {% if job.city and job.date_time %}
+                            <span class="w-1 h-1 rounded-full bg-neutral-300"></span>
+                            {% endif %}
+                            {% if job.date_time %}
+                            <span class="inline-flex items-center gap-0.5">{{ clock(12) }}{{ job.date_time[:10] }}</span>
+                            {% endif %}
+                        </p>
+                        {% endif %}
+                        {% if job.object_description %}
+                        <p class="mt-1.5 text-sm text-neutral-600 line-clamp-2 leading-relaxed">{{ job.object_description }}</p>
+                        {% endif %}
+                        {% if job.status %}
+                        <span class="inline-block mt-2 text-[11px] font-semibold px-2.5 py-0.5 rounded-full
+                            {% if job.status == 'open' %}bg-green-100 text-green-700
+                            {% elif job.status == 'in_progress' %}bg-blue-100 text-blue-700
+                            {% elif job.status == 'completed' %}bg-neutral-200 text-neutral-600
+                            {% else %}bg-red-100 text-red-700{% endif %}">
+                            {% if job.status == 'open' %}Открыто
+                            {% elif job.status == 'in_progress' %}В работе
+                            {% elif job.status == 'completed' %}Завершено
+                            {% elif job.status == 'cancelled' %}Отменено
+                            {% else %}{{ job.status }}{% endif %}
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% if job.payment_amount %}
+                    <div class="bg-primary-500 text-white text-sm font-bold px-3 py-1 rounded-lg shadow-sm shrink-0">
+                        {{ job.payment_amount }} ₽
+                    </div>
+                    {% endif %}
+                </div>
+            </a>
+            <div class="mt-3 pt-3 border-t border-neutral-100">
+                <form action="/unfavorite-job/{{ job.id }}" method="post" class="inline">
+                    <button type="submit" class="action-icon-btn reject-btn">
+                        <span class="flex items-center gap-1.5">
+                            {{ heart(18) }}
+                        </span>
+                        <span class="text-xs font-medium">Удалить из избранного</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
     {% else %}
+    {# ── Пустое состояние (role-aware) ── #}
     <div class="flex flex-col items-center justify-center py-16 text-center">
         <div class="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
             {{ heart(36) }}
         </div>
         <h3 class="text-lg font-semibold text-neutral-700 mb-1">В избранном пока пусто</h3>
+        {% if session.get('role') == 'worker' %}
+        <p class="text-sm text-neutral-400 mb-6">Добавляйте задания, чтобы быстро находить их здесь</p>
+        <a href="/"
+           class="inline-flex items-center gap-1.5 bg-primary-500 text-white px-6 py-3 rounded-full text-sm font-semibold shadow-md hover:bg-primary-600 active:scale-[0.97] transition-all duration-200">
+            Перейти к заданиям
+        </a>
+        {% else %}
         <p class="text-sm text-neutral-400 mb-6">Добавляйте трудников, чтобы быстро находить их здесь</p>
         <a href="/workers"
            class="inline-flex items-center gap-1.5 bg-primary-500 text-white px-6 py-3 rounded-full text-sm font-semibold shadow-md hover:bg-primary-600 active:scale-[0.97] transition-all duration-200">
             Перейти к трудникам
         </a>
+        {% endif %}
     </div>
     {% endif %}
 </div>
