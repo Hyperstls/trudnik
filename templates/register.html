@@ -27,7 +27,7 @@
             <!-- ===== Шаг 1: Аккаунт ===== -->
             <div id="step-1" class="space-y-4">
                 <div class="floating-label-group">
-                    <input type="text" name="full_name" id="full_name" placeholder=" " required>
+                    <input type="text" name="full_name" id="full_name" placeholder=" " required maxlength="100">
                     <label for="full_name">Полное имя <span class="text-danger">*</span></label>
                     <div class="error-text">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -100,7 +100,7 @@
                 </div>
 
                 <div class="floating-label-group">
-                    <input type="text" name="city" id="city" placeholder=" ">
+                    <input type="text" name="city" id="city" placeholder=" " maxlength="50">
                     <label for="city">Город</label>
                 </div>
 
@@ -131,7 +131,7 @@
                     </label>
 
                     <div class="floating-label-group">
-                        <input type="text" name="experience" id="experience" placeholder=" ">
+                        <input type="text" name="experience" id="experience" placeholder=" " maxlength="200">
                         <label for="experience">Опыт (кратко)</label>
                     </div>
 

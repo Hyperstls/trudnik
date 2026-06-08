@@ -3,12 +3,13 @@ import requests
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
 from app.config import Config
-from app.utils import SUPABASE_KEY, SUPABASE_URL, SERVICE_KEY, supabase_request
+from app.utils import SUPABASE_KEY, SUPABASE_URL, SERVICE_KEY, rate_limit, supabase_request
 
 auth_bp = Blueprint('auth', __name__)
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
+@rate_limit
 def login():
     if request.method == 'POST':
         email = request.form.get('email')
@@ -37,6 +38,7 @@ def login():
 
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
+@rate_limit
 def register():
     if request.method == 'POST':
         full_name = request.form.get('full_name', '').strip()

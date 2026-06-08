@@ -1,12 +1,14 @@
-"""Утилиты: HTTP-запросы к Supabase, вычисления, уведомления."""
+"""Утилиты: HTTP-запросы к Supabase, вычисления, уведомления, rate limiting."""
 import math
 import time
 import uuid
+from collections import defaultdict
 from datetime import datetime
+from functools import wraps
 from typing import Any, Optional
 
 import requests
-from flask import current_app, session
+from flask import current_app, flash, redirect, request, session, url_for
 
 from app.config import Config
 
@@ -155,3 +157,30 @@ def update_rating(user_id, new_rating):
     avg = round(total / len(ratings_list), 1)
 
     supabase_request('PATCH', f'profiles?id=eq.{user_id}', json={'rating': avg})
+
+
+# ============================================================
+# Rate Limiting (in-memory, per-IP)
+# ============================================================
+
+_rate_limits = defaultdict(list)
+_RATE_WINDOW = 60       # секунд
+_RATE_MAX_REQUESTS = 10  # запросов в окне
+
+def rate_limit(f):
+    """Декоратор: ограничение частоты POST-запросов по IP (10 попыток в минуту)."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if request.method != 'POST':
+            return f(*args, **kwargs)
+        if current_app.config.get('TESTING'):
+            return f(*args, **kwargs)
+        ip = request.remote_addr or '127.0.0.1'
+        now = time.time()
+        _rate_limits[ip] = [t for t in _rate_limits[ip] if now - t < _RATE_WINDOW]
+        if len(_rate_limits[ip]) >= _RATE_MAX_REQUESTS:
+            flash('Слишком много попыток. Подождите минуту.', 'danger')
+            return redirect(url_for('auth.login'))
+        _rate_limits[ip].append(now)
+        return f(*args, **kwargs)
+    return decorated
