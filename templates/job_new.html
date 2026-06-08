@@ -31,12 +31,12 @@
         <!-- ===== Шаг 1: Информация ===== -->
         <div id="step-1" class="space-y-4">
             <div class="floating-label-group">
-                <input type="text" name="title" id="title" placeholder=" " required value="{{ job.get('organization_name', '') if job else '' }}">
+                <input type="text" name="title" id="title" placeholder=" " required value="{{ job.get('organization_name') or '' if job else '' }}">
                 <label for="title">Название организации/задания <span class="text-danger">*</span></label>
             </div>
 
             <div class="floating-label-group">
-                <textarea name="description" id="job-description" rows="4" placeholder=" " required>{{ job.get('detailed_description', '') if job else '' }}</textarea>
+                <textarea name="description" id="job-description" rows="4" placeholder=" " required>{{ job.get('detailed_description') or '' if job else '' }}</textarea>
                 <label for="job-description">Описание задания <span class="text-danger">*</span></label>
             </div>
             <div id="stop-words-warning" class="hidden bg-danger-light/50 border border-danger/20 text-danger-dark px-3 py-2 rounded-lg text-xs flex items-center gap-2">
@@ -72,12 +72,12 @@
         <!-- ===== Шаг 2: Локация ===== -->
         <div id="step-2" class="space-y-4" style="display:none;">
             <div class="floating-label-group">
-                <input type="text" name="city" id="city" placeholder=" " required value="{{ job.get('city', '') if job else '' }}">
+                <input type="text" name="city" id="city" placeholder=" " required value="{{ (job.get('city') or '') if job else '' }}">
                 <label for="city">Город <span class="text-danger">*</span></label>
             </div>
 
             <div class="floating-label-group">
-                <input type="text" name="address" id="address" placeholder=" " value="{{ job.get('address', '') if job else '' }}">
+                <input type="text" name="address" id="address" placeholder=" " value="{{ (job.get('address') or '') if job else '' }}">
                 <label for="address">Адрес</label>
             </div>
 
@@ -102,7 +102,7 @@
         <!-- ===== Шаг 3: Условия ===== -->
         <div id="step-3" class="space-y-4" style="display:none;">
             <div class="floating-label-group">
-                <input type="number" name="payment" id="payment" min="0" placeholder=" " value="{{ job.get('payment_amount', '') if job else '' }}">
+                <input type="number" name="payment" id="payment" min="0" placeholder=" " value="{{ (job.get('payment_amount') or '') if job else '' }}">
                 <label for="payment">Оплата (₽) <span class="text-danger">*</span></label>
             </div>
 

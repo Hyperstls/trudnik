@@ -55,7 +55,7 @@
         </div>
 
         <div class="floating-label-group">
-            <textarea name="bio" rows="3" class="floating-input resize-none" placeholder=" ">{{ profile.get('bio', '') }}</textarea>
+            <textarea name="bio" rows="3" class="floating-input resize-none" placeholder=" ">{{ profile.get('bio') or '' }}</textarea>
             <label class="floating-label">О себе</label>
         </div>
 
@@ -99,7 +99,7 @@
 
         {% if profile.get('role') == 'worker' %}
         <div class="floating-label-group">
-            <input type="text" name="inn" value="{{ profile.get('inn', '') }}" maxlength="12"
+            <input type="text" name="inn" value="{{ profile.get('inn') or '' }}" maxlength="12"
                    class="floating-input" placeholder=" ">
             <label class="floating-label">ИНН (12 цифр)</label>
             <p class="text-xs text-neutral-400 mt-1">ИНН для формирования чеков (самозанятые). Будет скрыт до оплаты заказчиком.</p>
@@ -112,7 +112,7 @@
         </label>
 
         <div class="floating-label-group">
-            <input type="text" name="experience" value="{{ profile.get('experience', '') }}"
+            <input type="text" name="experience" value="{{ profile.get('experience') or '' }}"
                    class="floating-input" placeholder=" ">
             <label class="floating-label">Опыт</label>
         </div>

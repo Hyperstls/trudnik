@@ -78,24 +78,24 @@
         <input type="file" id="photo-input" name="photo" accept="image/*" class="hidden" onchange="this.form.submit();">
 
         <div class="floating-label-group">
-            <input type="text" name="full_name" value="{{ profile_user.get('full_name', '') }}"
+            <input type="text" name="full_name" value="{{ profile_user.get('full_name') or '' }}"
                    class="floating-input" placeholder=" " required>
             <label class="floating-label">Имя</label>
         </div>
 
         <div class="floating-label-group">
-            <input type="text" name="phone" value="{{ profile_user.get('phone', '') }}"
+            <input type="text" name="phone" value="{{ profile_user.get('phone') or '' }}"
                    class="floating-input" placeholder=" ">
             <label class="floating-label">Телефон</label>
         </div>
 
         <div class="floating-label-group">
-            <textarea name="bio" rows="3" class="floating-input resize-none" placeholder=" ">{{ profile_user.get('bio', '') }}</textarea>
+            <textarea name="bio" rows="3" class="floating-input resize-none" placeholder=" ">{{ profile_user.get('bio') or '' }}</textarea>
             <label class="floating-label">О себе</label>
         </div>
 
         <div class="floating-label-group">
-            <input type="text" name="city" value="{{ profile_user.get('city', '') }}"
+            <input type="text" name="city" value="{{ profile_user.get('city') or '' }}"
                    class="floating-input" placeholder=" ">
             <label class="floating-label">Город</label>
         </div>
@@ -133,19 +133,19 @@
         {% endif %}
 
         <div class="floating-label-group">
-            <input type="url" name="portfolio_link" value="{{ profile_user.get('portfolio_link', '') }}"
+            <input type="url" name="portfolio_link" value="{{ profile_user.get('portfolio_link') or '' }}"
                    class="floating-input" placeholder=" ">
             <label class="floating-label">Ссылка на портфолио</label>
         </div>
 
         {% if profile_user.get('role') == 'worker' %}
         <div class="floating-label-group">
-            <input type="text" name="experience" value="{{ profile_user.get('experience', '') }}"
+            <input type="text" name="experience" value="{{ profile_user.get('experience') or '' }}"
                    class="floating-input" placeholder=" ">
             <label class="floating-label">Опыт</label>
         </div>
         <div class="floating-label-group">
-            <input type="number" name="desired_payment" value="{{ profile_user.get('desired_payment', '') }}"
+            <input type="number" name="desired_payment" value="{{ profile_user.get('desired_payment') or '' }}"
                    class="floating-input" placeholder=" ">
             <label class="floating-label">Желаемая оплата (₽)</label>
         </div>
