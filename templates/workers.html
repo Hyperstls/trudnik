@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from '_icons.html' import star, chat, users %}
+{% from '_icons.html' import star, chat, users_icon %}
 {% block title %}Трудники{% endblock %}
 {% block content %}
 <div class="px-4 pb-24 max-w-6xl mx-auto">
@@ -88,7 +88,7 @@
     {% else %}
         <div class="flex flex-col items-center justify-center py-20 text-center">
             <div class="w-24 h-24 rounded-full bg-neutral-100 flex items-center justify-center mb-5">
-                {{ users(64) }}
+                {{ users_icon(64) }}
             </div>
             <h3 class="text-xl font-semibold text-neutral-700 mb-2">Пока нет зарегистрированных трудников</h3>
             <p class="text-neutral-400">Проверьте позже</p>
