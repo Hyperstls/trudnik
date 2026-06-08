@@ -382,6 +382,52 @@ def delete_job(job_id):
     return redirect(url_for('jobs.my_jobs'))
 
 
+@jobs_bp.route('/jobs/<job_id>/edit', methods=['GET', 'POST'])
+@login_required
+@role_required('employer')
+def edit_job(job_id):
+    # Проверить владельца
+    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=*')
+    if not job_resp.ok or not job_resp.json():
+        flash('Задание не найдено', 'danger')
+        return redirect(url_for('jobs.my_jobs'))
+    job = job_resp.json()[0]
+    if job['employer_id'] != session['user_id']:
+        flash('Нет доступа', 'danger')
+        return redirect(url_for('jobs.my_jobs'))
+
+    # Загружаем справочники
+    skills_resp = supabase_request('GET', 'skills?select=id,name&order=name.asc')
+    skills_list = skills_resp.json() if skills_resp.ok else []
+    religions_resp = supabase_request('GET', 'religions?select=id,name&order=name.asc')
+    religions_list = religions_resp.json() if religions_resp.ok else []
+
+    if request.method == 'POST':
+        data = {
+            'organization_name': request.form.get('title', job['organization_name']),
+            'detailed_description': request.form.get('description', job.get('detailed_description', '')),
+            'work_type': request.form.get('work_type', job.get('work_type', '')),
+            'payment_amount': float(request.form.get('payment') or job.get('payment_amount', 0)),
+            'city': request.form.get('city', job.get('city', '')),
+            'address': request.form.get('address', job.get('address', '')),
+            'max_workers': int(request.form.get('max_workers', job.get('max_workers', 1))),
+            'preferred_religion': request.form.get('preferred_religion', job.get('preferred_religion', '')),
+        }
+        resp = supabase_request('PATCH', f'jobs?id=eq.{job_id}', json=data)
+        if resp.ok:
+            flash('Задание обновлено', 'success')
+            return redirect(url_for('jobs.job_detail', job_id=job_id))
+        else:
+            flash('Ошибка обновления', 'danger')
+
+    return render_template('job_new.html',
+        job=job,
+        is_edit=True,
+        skills_list=skills_list,
+        religions_list=religions_list,
+        yandex_api_key=current_app.config['YANDEX_MAPS_API_KEY'])
+
+
 # ──────────────────────────────────────────────
 # Избранные задания
 # ──────────────────────────────────────────────

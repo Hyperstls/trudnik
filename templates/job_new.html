@@ -2,7 +2,7 @@
 {% from '_icons.html' import info, map_pin, clock, eye, check, help_circle %}
 {% block content %}
 <div class="max-w-2xl mx-auto px-4 py-4 fade-in">
-    <h1 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-6">Создать задание</h1>
+    <h1 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-6">{% if is_edit %}Редактирование задания{% else %}Создать задание{% endif %}</h1>
 
     {% if error_message %}
     <div class="bg-danger-light/50 border border-danger/20 text-danger-dark px-4 py-3 rounded-xl mb-4 text-sm flex items-center gap-2">
@@ -27,16 +27,16 @@
         <span id="step-ind-4">Проверка</span>
     </div>
 
-    <form method="post" id="job-form" class="space-y-5" novalidate>
+    <form method="post" id="job-form" class="space-y-5" {% if is_edit %}action="/jobs/{{ job.id }}/edit"{% endif %} novalidate>
         <!-- ===== Шаг 1: Информация ===== -->
         <div id="step-1" class="space-y-4">
             <div class="floating-label-group">
-                <input type="text" name="title" id="title" placeholder=" " required>
+                <input type="text" name="title" id="title" placeholder=" " required value="{{ job.get('organization_name', '') if job else '' }}">
                 <label for="title">Название организации/задания <span class="text-danger">*</span></label>
             </div>
 
             <div class="floating-label-group">
-                <textarea name="description" id="job-description" rows="4" placeholder=" " required></textarea>
+                <textarea name="description" id="job-description" rows="4" placeholder=" " required>{{ job.get('detailed_description', '') if job else '' }}</textarea>
                 <label for="job-description">Описание задания <span class="text-danger">*</span></label>
             </div>
             <div id="stop-words-warning" class="hidden bg-danger-light/50 border border-danger/20 text-danger-dark px-3 py-2 rounded-lg text-xs flex items-center gap-2">
@@ -48,7 +48,7 @@
                 <select name="work_type" id="work_type">
                     <option value="">Выберите вид работы</option>
                     {% for skill in skills_list %}
-                    <option value="{{ skill.id }}">{{ skill.name }}</option>
+                    <option value="{{ skill.id }}" {% if job and job.get('work_type') == skill.id %}selected{% endif %}>{{ skill.name }}</option>
                     {% endfor %}
                 </select>
                 <label for="work_type">Вид работы</label>
@@ -58,7 +58,7 @@
                 <select name="preferred_religion" id="preferred_religion">
                     <option value="">Не указано</option>
                     {% for religion in religions_list %}
-                    <option value="{{ religion.id }}">{{ religion.name }}</option>
+                    <option value="{{ religion.id }}" {% if job and job.get('preferred_religion') == religion.id %}selected{% endif %}>{{ religion.name }}</option>
                     {% endfor %}
                 </select>
                 <label for="preferred_religion">Предпочтительное вероисповедание</label>
@@ -72,12 +72,12 @@
         <!-- ===== Шаг 2: Локация ===== -->
         <div id="step-2" class="space-y-4" style="display:none;">
             <div class="floating-label-group">
-                <input type="text" name="city" id="city" placeholder=" " required>
+                <input type="text" name="city" id="city" placeholder=" " required value="{{ job.get('city', '') if job else '' }}">
                 <label for="city">Город <span class="text-danger">*</span></label>
             </div>
 
             <div class="floating-label-group">
-                <input type="text" name="address" id="address" placeholder=" ">
+                <input type="text" name="address" id="address" placeholder=" " value="{{ job.get('address', '') if job else '' }}">
                 <label for="address">Адрес</label>
             </div>
 
@@ -102,7 +102,7 @@
         <!-- ===== Шаг 3: Условия ===== -->
         <div id="step-3" class="space-y-4" style="display:none;">
             <div class="floating-label-group">
-                <input type="number" name="payment" id="payment" min="0" placeholder=" ">
+                <input type="number" name="payment" id="payment" min="0" placeholder=" " value="{{ job.get('payment_amount', '') if job else '' }}">
                 <label for="payment">Оплата (₽) <span class="text-danger">*</span></label>
             </div>
 
@@ -112,7 +112,7 @@
             </div>
 
             <div class="floating-label-group">
-                <input type="number" name="max_workers" id="max_workers" value="1" min="1" placeholder=" ">
+                <input type="number" name="max_workers" id="max_workers" value="{{ job.get('max_workers', 1) if job else 1 }}" min="1" placeholder=" ">
                 <label for="max_workers">Максимум работников</label>
             </div>
 
@@ -161,7 +161,7 @@
                 </button>
                 <button type="submit" class="flex-1 bg-primary-500 hover:bg-primary-600 active:scale-[0.98] text-white font-bold py-3.5 rounded-xl shadow-md transition-all duration-200">
                     {{ check(18) }}
-                    Создать задание
+                    {% if is_edit %}Сохранить изменения{% else %}Создать задание{% endif %}
                 </button>
             </div>
         </div>
