@@ -53,7 +53,7 @@ def admin_panel():
             query += f'&full_name=ilike.*{search}*'
         if role_filter:
             query += f'&role=eq.{role_filter}'
-        query += '&order=created_at.desc'
+        query += '&order=full_name.asc'
         users_resp = supabase_request('GET', query)
         users = users_resp.json() if users_resp.ok else []
 
@@ -67,7 +67,7 @@ def admin_panel():
             query += f'&organization_name=ilike.*{search}*'
         if status_filter:
             query += f'&status=eq.{status_filter}'
-        query += '&order=created_at.desc'
+        query += '&order=date_time.desc'
         jobs_resp = supabase_request('GET', query)
         jobs = jobs_resp.json() if jobs_resp.ok else []
 

@@ -23,7 +23,10 @@ def role_required(role):
                 return redirect(url_for('auth.login'))
             resp = supabase_request('GET', f'profiles?id=eq.{session["user_id"]}&select=role')
             data = resp.json()
-            if not data or data[0]['role'] != role:
+            if not data or not isinstance(data, list) or not data:
+                flash('Ошибка проверки прав доступа', 'danger')
+                return redirect(url_for('jobs.index'))
+            if data[0].get('role') != role:
                 flash('Доступ запрещён', 'danger')
                 return redirect(url_for('jobs.index'))
             return f(*args, **kwargs)
