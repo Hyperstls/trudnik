@@ -634,7 +634,10 @@ def respond_invitation(invitation_id):
     if action not in ('accept', 'reject'):
         return jsonify({'success': False, 'error': 'Укажите действие: accept или reject'}), 400
 
-    inv_resp = supabase_request('GET', f'invitations?id=eq.{invitation_id}&select=worker_id,job_id,employer_id')
+    if session.get('role') != 'worker':
+        return jsonify({'success': False, 'error': 'Только трудник может отвечать на приглашения'}), 403
+
+    inv_resp = supabase_request('GET', f'invitations?id=eq.{invitation_id}&select=worker_id,job_id,employer_id,status')
     if not inv_resp.ok or not inv_resp.json():
         return jsonify({'success': False, 'error': 'Приглашение не найдено'}), 404
 
@@ -642,12 +645,14 @@ def respond_invitation(invitation_id):
     if inv['worker_id'] != session['user_id']:
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
 
-    status = 'accepted' if action == 'accept' else 'rejected'
+    if inv['status'] != 'pending':
+        return jsonify({'success': False, 'error': f'Приглашение уже {inv["status"]}'}), 409
+
+    new_status = 'accepted' if action == 'accept' else 'rejected'
     supabase_request('PATCH', f'invitations?id=eq.{invitation_id}',
-                     json={'status': status, 'responded_at': 'now()'})
+                     json={'status': new_status, 'responded_at': 'now()'})
 
     if action == 'accept':
-        # Создать отклик (application)
         supabase_request('POST', 'applications', json={
             'job_id': inv['job_id'],
             'worker_id': inv['worker_id'],
