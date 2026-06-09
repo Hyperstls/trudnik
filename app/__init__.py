@@ -3,6 +3,7 @@ import secrets
 from flask import Flask, session, request, abort
 
 from app.config import Config
+from app.decorators import login_required
 
 
 import os
