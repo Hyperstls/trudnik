@@ -70,6 +70,23 @@ def send_message():
     return jsonify({'status': 'ok'})
 
 
+@chat_bp.route('/api/messages/<shift_id>/poll')
+@login_required
+def poll_messages(shift_id):
+    """Polling-эндпоинт: вернуть сообщения новее указанного ID."""
+    since_id = request.args.get('since_id', '')
+    query = f'messages?shift_id=eq.{shift_id}&select=id,sender_id,content,created_at&order=created_at.asc'
+    if since_id:
+        # Запрашиваем сообщения после указанного ID по времени
+        since_resp = supabase_request('GET', f'messages?id=eq.{since_id}&select=created_at')
+        if since_resp.ok and since_resp.json():
+            since_time = since_resp.json()[0]['created_at']
+            query += f'&created_at=gt.{since_time}'
+    resp = supabase_request('GET', query)
+    messages = resp.json() if resp.ok else []
+    return jsonify({'messages': messages, 'user_id': session['user_id']})
+
+
 @chat_bp.route('/api/delete-chats', methods=['POST'])
 @login_required
 def delete_chats():

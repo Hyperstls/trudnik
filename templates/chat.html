@@ -65,6 +65,55 @@
 </div>
 
 <script>
+const shiftId = "{{ shift_id }}";
+const currentUserId = "{{ user_id }}";
+let lastMessageId = "{{ messages[-1].id if messages else '' }}";
+const POLL_INTERVAL = 3000;
+
+function addMessage(msg, isMine) {
+    const messagesDiv = document.getElementById('messages');
+    const existing = document.getElementById('msg-' + msg.id);
+    if (existing) return;
+
+    const time = (msg.created_at || '').substring(11, 16);
+    const bubble = document.createElement('div');
+    bubble.id = 'msg-' + msg.id;
+    bubble.className = 'flex ' + (isMine ? 'justify-end' : 'justify-start') + ' animate-fade-in';
+    bubble.innerHTML = `
+        <div class="max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words
+            ${isMine ? 'bg-primary-500 text-white rounded-br-md' : 'bg-neutral-100 text-neutral-800 rounded-bl-md'}">
+            ${msg.content.replace(/</g, '<')}
+            <div class="text-[10px] mt-1 ${isMine ? 'text-white/60' : 'text-neutral-400'} text-right">${time}</div>
+        </div>
+    `;
+    messagesDiv.appendChild(bubble);
+
+    // Highlight new message
+    bubble.querySelector('div').style.transition = 'box-shadow 0.5s ease';
+    bubble.querySelector('div').style.boxShadow = '0 0 0 3px rgba(217,119,6,0.3)';
+    setTimeout(() => {
+        bubble.querySelector('div').style.boxShadow = '';
+    }, 1500);
+
+    // Smooth scroll
+    messagesDiv.scrollTo({ top: messagesDiv.scrollHeight, behavior: 'smooth' });
+}
+
+async function pollMessages() {
+    try {
+        const url = `/api/messages/${shiftId}/poll${lastMessageId ? '?since_id=' + lastMessageId : ''}`;
+        const resp = await fetch(url);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        for (const msg of data.messages) {
+            if (msg.id !== lastMessageId) {
+                addMessage(msg, msg.sender_id === currentUserId);
+                lastMessageId = msg.id;
+            }
+        }
+    } catch (e) { /* silent */ }
+}
+
 async function sendMessage(event) {
     event.preventDefault();
     const input = document.getElementById('message-input');
@@ -79,27 +128,11 @@ async function sendMessage(event) {
         const resp = await fetch('/api/send_message', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ shift_id: "{{ shift_id }}", content: content })
+            body: JSON.stringify({ shift_id: shiftId, content: content })
         });
         if (!resp.ok) throw new Error('Ошибка отправки');
-
-        // Add message to DOM optimistically
-        const messagesDiv = document.getElementById('messages');
-        const now = new Date();
-        const time = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
-
-        const bubble = document.createElement('div');
-        bubble.className = 'flex justify-end animate-fade-in';
-        bubble.innerHTML = `
-            <div class="max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words bg-primary-500 text-white rounded-br-md">
-                ${content.replace(/</g, '<')}
-                <div class="text-[10px] mt-1 text-white/60 text-right">${time}</div>
-            </div>
-        `;
-        messagesDiv.appendChild(bubble);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
         input.value = '';
+        await pollMessages();
     } catch (e) {
         if (window.showToast) {
             window.showToast('❌ Ошибка отправки сообщения', 'error');
@@ -113,6 +146,7 @@ async function sendMessage(event) {
 window.onload = () => {
     const msgs = document.getElementById('messages');
     msgs.scrollTop = msgs.scrollHeight;
+    setInterval(pollMessages, POLL_INTERVAL);
 };
 </script>
 {% endblock %}
