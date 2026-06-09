@@ -18,9 +18,15 @@ def chats_list():
 @chat_bp.route('/chat/<shift_id>')
 @login_required
 def chat(shift_id):
-    resp = supabase_request('GET', f'messages?shift_id=eq.{shift_id}&select=*&order=created_at.asc')
+    try:
+        resp = supabase_request('GET', f'messages?shift_id=eq.{shift_id}&select=id,sender_id,content,created_at&order=created_at.asc')
+        messages = resp.json() if resp.ok else []
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.error('[CHAT] Error loading messages for shift %s: %s', shift_id, str(e))
+        messages = []
     return render_template('chat.html', shift_id=shift_id,
-                           messages=resp.json() if resp.ok else [], user_id=session['user_id'])
+                           messages=messages, user_id=session['user_id'])
 
 
 @chat_bp.route('/chat/new/<worker_id>', methods=['GET'])
