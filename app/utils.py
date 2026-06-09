@@ -143,7 +143,10 @@ def add_notification(user_id, notification_type, title, message):
         'message': message,
         'is_read': False
     }
-    supabase_request('POST', 'notifications', json=notification_data)
+    resp = supabase_request('POST', 'notifications', json=notification_data)
+    if not resp.ok:
+        current_app.logger.error('[NOTIFICATION] Failed to create: user=%s type=%s status=%s',
+                                 user_id, notification_type, resp.status_code)
 
 
 def update_rating(user_id, new_rating):

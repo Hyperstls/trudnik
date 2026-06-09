@@ -459,6 +459,14 @@ def my_jobs():
     return render_template('my_jobs.html', jobs=jobs, current_status=status_filter)
 
 
+def _check_job_owner(job_id, user_id):
+    """Проверить, что задание принадлежит пользователю. Возвращает True/False."""
+    resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=employer_id')
+    if resp.ok and resp.json():
+        return resp.json()[0].get('employer_id') == user_id
+    return False
+
+
 @jobs_bp.route('/my-jobs/action', methods=['POST'])
 @login_required
 def my_jobs_action():
@@ -475,6 +483,8 @@ def my_jobs_action():
         return redirect(url_for('jobs.my_jobs'))
 
     for job_id in job_ids:
+        if not _check_job_owner(job_id, user_id):
+            continue
         if action == 'restore':
             supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'open'})
         elif action == 'cancel':
@@ -499,6 +509,8 @@ def my_jobs_action():
 @login_required
 @role_required('employer')
 def repost_job(job_id):
+    if not _check_job_owner(job_id, session['user_id']):
+        return jsonify({'success': False, 'error': 'Нет доступа'}), 403
     resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=*')
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     if resp.ok and resp.json():
@@ -519,6 +531,8 @@ def repost_job(job_id):
 @login_required
 @role_required('employer')
 def cancel_job(job_id):
+    if not _check_job_owner(job_id, session['user_id']):
+        return jsonify({'success': False, 'error': 'Нет доступа'}), 403
     supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True, 'message': 'Задание отозвано'})
@@ -530,6 +544,8 @@ def cancel_job(job_id):
 @login_required
 @role_required('employer')
 def restore_job(job_id):
+    if not _check_job_owner(job_id, session['user_id']):
+        return jsonify({'success': False, 'error': 'Нет доступа'}), 403
     supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'open'})
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True, 'message': 'Задание восстановлено'})
@@ -541,6 +557,8 @@ def restore_job(job_id):
 @login_required
 @role_required('employer')
 def delete_job(job_id):
+    if not _check_job_owner(job_id, session['user_id']):
+        return jsonify({'success': False, 'error': 'Нет доступа'}), 403
     supabase_request('DELETE', f'jobs?id=eq.{job_id}')
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True, 'message': 'Задание удалено'})

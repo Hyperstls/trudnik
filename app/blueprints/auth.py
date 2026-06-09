@@ -103,25 +103,6 @@ def register():
                         update_data['desired_payment'] = 0
                     update_data['experience'] = request.form.get('experience', '')
 
-                # Для тестовых аккаунтов работодателя обновляем роль через анонимный ключ
-                if 'test' in email.lower() and role == 'employer':
-                    update_data['role'] = 'employer'
-                    if not SERVICE_KEY:
-                        try:
-                            rls_headers = {
-                                'apikey': SUPABASE_KEY,
-                                'Authorization': f'Bearer {SUPABASE_KEY}',
-                                'Content-Type': 'application/json',
-                                'Prefer': 'return=representation',
-                                'Accept-Profile': 'public'
-                            }
-                            resp_rls = requests.patch(f"{SUPABASE_URL}/rest/v1/profiles?id=eq.{user['id']}",
-                                                       json={'role': 'employer'}, headers=rls_headers, timeout=10)
-                            if resp_rls.status_code != 200:
-                                flash('Не удалось установить роль работодателя (RLS активен). Обратитесь к администратору.', 'warning')
-                        except:
-                            pass
-
                 if SERVICE_KEY:
                     patch_url = f"{SUPABASE_URL}/rest/v1/profiles?id=eq.{user['id']}"
                     requests.patch(patch_url, json=update_data,
