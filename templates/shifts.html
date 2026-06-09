@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from '_icons.html' import star, alert, trash, clock, check_circle %}
+{% from '_icons.html' import star, alert, trash, clock, check %}
 {% set status_labels = {
     'pending': 'Ожидает',
     'active': 'Активна',
@@ -55,7 +55,7 @@
                 <form action="/shift/{{ shift.id }}/action" method="post" class="inline">
                     <input type="hidden" name="action" value="complete">
                     <button type="submit" class="action-icon-btn accept-btn">
-                        {{ check_circle(16) }}
+                        {{ check(16) }}
                         <span class="text-xs font-medium">Завершить</span>
                     </button>
                 </form>
@@ -82,7 +82,7 @@
                     {% endif %}
                     {% if shift.employer_payment_confirmed and shift.worker_payment_confirmed %}
                     <span class="text-sm font-medium text-success flex items-center gap-1">
-                        {{ check_circle(16) }}
+                        {{ check(16) }}
                         Оплата подтверждена
                     </span>
                     {% endif %}
