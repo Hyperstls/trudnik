@@ -17,11 +17,12 @@ CREATE INDEX IF NOT EXISTS idx_jobs_search ON jobs USING GIN(search_vector);
 
 -- ============================================
 -- 2. Таблица profiles: поиск трудников по имени, навыкам, био, городу
+--    skills — text[] массив, преобразуем через array_to_string
 -- ============================================
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS search_vector tsvector
     GENERATED ALWAYS AS (
         setweight(to_tsvector('russian', coalesce(full_name, '')), 'A') ||
-        setweight(to_tsvector('russian', coalesce(skills, '')), 'B') ||
+        setweight(to_tsvector('russian', coalesce(array_to_string(skills, ' '), '')), 'B') ||
         setweight(to_tsvector('russian', coalesce(bio, '')), 'C') ||
         setweight(to_tsvector('russian', coalesce(city, '')), 'D')
     ) STORED;
