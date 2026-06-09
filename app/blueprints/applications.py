@@ -372,7 +372,7 @@ def api_batch_applications():
 @login_required
 def cancel_application(app_id):
     """Отмена принятого работника"""
-    app_resp = supabase_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id,shift_id')
+    app_resp = supabase_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id,status')
     if not app_resp.ok or not app_resp.json():
         flash('Отклик не найден', 'danger')
         return redirect(url_for('applications.my_applications'))
@@ -380,7 +380,11 @@ def cancel_application(app_id):
     app_data = app_resp.json()[0]
     job_id = app_data['job_id']
     worker_id = app_data['worker_id']
-    shift_id = app_data.get('shift_id')
+    # Ищем смену в таблице shifts (т.к. shift_id нет в applications)
+    shift_id = None
+    shift_resp = supabase_request('GET', f'shifts?job_id=eq.{job_id}&worker_id=eq.{worker_id}&select=id')
+    if shift_resp.ok and shift_resp.json():
+        shift_id = shift_resp.json()[0].get('id')
 
     # Получить информацию о задании
     job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status,start_time,organization_name')
