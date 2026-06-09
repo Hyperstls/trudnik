@@ -162,20 +162,20 @@ def my_applications():
 def api_test():
     return jsonify({'success': True, 'message': 'applications blueprint is alive'})
 
-@applications_bp.route('/api/applications/<app_id>/accept', methods=['POST'])
+@applications_bp.route('/api/applications/accept', methods=['POST'])
 @login_required
-def api_accept_application(app_id):
-    return api_handle_application(app_id, 'accept')
+def api_accept_application():
+    return api_handle_application(request.get_json().get('app_id'), 'accept')
 
-@applications_bp.route('/api/applications/<app_id>/reject', methods=['POST'])
+@applications_bp.route('/api/applications/reject', methods=['POST'])
 @login_required
-def api_reject_application(app_id):
-    return api_handle_application(app_id, 'reject')
+def api_reject_application():
+    return api_handle_application(request.get_json().get('app_id'), 'reject')
 
-@applications_bp.route('/api/applications/<app_id>/reopen', methods=['POST'])
+@applications_bp.route('/api/applications/reopen', methods=['POST'])
 @login_required
-def api_reopen_application(app_id):
-    return api_handle_application(app_id, 'reopen')
+def api_reopen_application():
+    return api_handle_application(request.get_json().get('app_id'), 'reopen')
 
 def api_handle_application(app_id, action):
     """AJAX-эндпоинт: принять / отклонить / повторно принять отклик"""

@@ -190,9 +190,10 @@
         }
 
         try {
-            const resp = await fetch('/api/applications/' + appId + '/' + action, {
+            const resp = await fetch('/api/applications/' + action, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ app_id: appId })
             });
             const data = await resp.json();
 
@@ -204,9 +205,10 @@
             }
         } catch (e) {
             if (!navigator.onLine) {
-                enqueueOffline('/api/applications/' + appId + '/' + action, {
+                enqueueOffline('/api/applications/' + action, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ app_id: appId })
                 });
             } else {
                 showToast('Ошибка соединения с сервером', 'error');
