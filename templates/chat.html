@@ -29,7 +29,7 @@
                 {% endif %}">
                 {{ msg.content }}
                 <div class="text-[10px] mt-1 {% if is_mine %}text-white/60{% else %}text-neutral-400{% endif %} text-right">
-                    {{ msg.created_at.strftime('%H:%M') if msg.created_at else '' }}
+                    {{ msg.created_at[11:16] if msg.created_at else '' }}
                 </div>
             </div>
         </div>
