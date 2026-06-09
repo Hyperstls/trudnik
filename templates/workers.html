@@ -71,6 +71,13 @@
                         {{ chat(16) }}
                         <span class="text-[11px] ml-1.5 font-medium">Написать</span>
                     </button>
+                    {% if session.get('role') == 'employer' %}
+                    <button onclick="event.stopPropagation(); inviteWorker('{{ worker.id }}', '{{ worker.full_name|default('') }}')"
+                            class="action-icon-btn accept-btn" title="Пригласить на задание">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                        <span class="text-[11px] ml-1.5 font-medium">Пригласить</span>
+                    </button>
+                    {% endif %}
                     <button onclick="event.stopPropagation(); toggleFavorite('{{ worker.id }}', this, event)"
                             class="favorite-btn action-icon-btn contact-btn"
                             data-worker-id="{{ worker.id }}"
@@ -99,4 +106,28 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/favorites.js') }}"></script>
+{% if session.get('role') == 'employer' %}
+<script>
+async function inviteWorker(workerId, workerName) {
+    const jobId = prompt(`Пригласить ${workerName || 'трудника'} на задание.\nВведите ID задания:`);
+    if (!jobId) return;
+
+    try {
+        const resp = await fetch(`/api/invite/${jobId}/${workerId}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({message: ''})
+        });
+        const data = await resp.json();
+        if (data.success) {
+            if (window.showToast) window.showToast('✅ Приглашение отправлено', 'success');
+        } else {
+            if (window.showToast) window.showToast('❌ ' + (data.error || 'Ошибка'), 'error');
+        }
+    } catch (e) {
+        if (window.showToast) window.showToast('❌ Ошибка соединения', 'error');
+    }
+}
+</script>
+{% endif %}
 {% endblock %}

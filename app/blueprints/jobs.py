@@ -566,6 +566,101 @@ def delete_job(job_id):
     return redirect(url_for('jobs.my_jobs'))
 
 
+# ──────────────────────────────────────────────
+# Приглашения (employer → worker)
+# ──────────────────────────────────────────────
+
+@jobs_bp.route('/api/invite/<job_id>/<worker_id>', methods=['POST'])
+@login_required
+@role_required('employer')
+def invite_worker(job_id, worker_id):
+    """Работодатель приглашает трудника на задание."""
+    if not _check_job_owner(job_id, session['user_id']):
+        return jsonify({'success': False, 'error': 'Нет доступа'}), 403
+
+    # Проверить, не приглашён ли уже
+    check = supabase_request('GET', f'invitations?job_id=eq.{job_id}&worker_id=eq.{worker_id}&select=id')
+    if check.ok and check.json():
+        return jsonify({'success': False, 'error': 'Приглашение уже отправлено'}), 409
+
+    # Проверить, есть ли свободные места
+    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=current_workers,max_workers')
+    if job_resp.ok and job_resp.json():
+        job = job_resp.json()[0]
+        if job['current_workers'] >= job['max_workers']:
+            return jsonify({'success': False, 'error': 'Все места заняты'}), 409
+
+    msg = request.get_json(silent=True) or {}
+    inv = supabase_request('POST', 'invitations', json={
+        'job_id': job_id,
+        'employer_id': session['user_id'],
+        'worker_id': worker_id,
+        'message': msg.get('message', '')
+    })
+    if not inv.ok:
+        return jsonify({'success': False, 'error': 'Ошибка при создании приглашения'}), 500
+
+    # Уведомить трудника
+    from app.services.notification_service import create as notify
+    job_name = job_resp.json()[0].get('organization_name', job_id) if job_resp.ok else job_id
+    notify(worker_id, 'application_received', 'Вас пригласили на задание',
+           f'Работодатель приглашает вас на задание «{job_name}»',
+           data={'job_id': job_id, 'type': 'invitation'})
+
+    return jsonify({'success': True, 'message': 'Приглашение отправлено'})
+
+
+@jobs_bp.route('/api/invitations')
+@login_required
+def list_invitations():
+    """Список приглашений для текущего пользователя."""
+    user_id = session['user_id']
+    role = session.get('role', 'worker')
+    if role == 'worker':
+        resp = supabase_request('GET',
+            f'invitations?worker_id=eq.{user_id}&select=*,job:jobs(organization_name,payment_amount)&order=created_at.desc')
+    else:
+        resp = supabase_request('GET',
+            f'invitations?employer_id=eq.{user_id}&select=*,job:jobs(organization_name),worker:profiles!invitations_worker_id_fkey(full_name)&order=created_at.desc')
+    return jsonify({'invitations': resp.json() if resp.ok else []})
+
+
+@jobs_bp.route('/api/invitations/<invitation_id>/respond', methods=['POST'])
+@login_required
+def respond_invitation(invitation_id):
+    """Трудник принимает или отклоняет приглашение."""
+    data = request.get_json(silent=True) or {}
+    action = data.get('action')
+    if action not in ('accept', 'reject'):
+        return jsonify({'success': False, 'error': 'Укажите действие: accept или reject'}), 400
+
+    inv_resp = supabase_request('GET', f'invitations?id=eq.{invitation_id}&select=worker_id,job_id,employer_id')
+    if not inv_resp.ok or not inv_resp.json():
+        return jsonify({'success': False, 'error': 'Приглашение не найдено'}), 404
+
+    inv = inv_resp.json()[0]
+    if inv['worker_id'] != session['user_id']:
+        return jsonify({'success': False, 'error': 'Нет доступа'}), 403
+
+    status = 'accepted' if action == 'accept' else 'rejected'
+    supabase_request('PATCH', f'invitations?id=eq.{invitation_id}',
+                     json={'status': status, 'responded_at': 'now()'})
+
+    if action == 'accept':
+        # Создать отклик (application)
+        supabase_request('POST', 'applications', json={
+            'job_id': inv['job_id'],
+            'worker_id': inv['worker_id'],
+            'status': 'pending'
+        })
+        from app.services.notification_service import create as notify
+        notify(inv['employer_id'], 'application_received', 'Приглашение принято',
+               f'Трудник принял ваше приглашение на задание',
+               data={'job_id': inv['job_id']})
+
+    return jsonify({'success': True, 'new_status': status})
+
+
 @jobs_bp.route('/jobs/<job_id>/edit', methods=['GET', 'POST'])
 @login_required
 @role_required('employer')
