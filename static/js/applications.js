@@ -190,25 +190,28 @@
         }
 
         try {
-            const resp = await fetch('/api/applications/' + action, {
+            const resp = await fetch('/api/applications/batch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ app_id: appId })
+                body: JSON.stringify({ app_ids: [appId], action: action })
             });
             const data = await resp.json();
 
-            if (data.success) {
+            if (data.results && data.results.success && data.results.success.length > 0) {
+                const item = data.results.success[0];
                 showToast(data.message || 'Готово', 'success');
-                updateCardUI(card, appId, data.new_status, data.shift_id);
+                updateCardUI(card, appId, item.new_status, item.shift_id);
+            } else if (data.results && data.results.errors && data.results.errors.length > 0) {
+                showToast(data.results.errors[0].error || 'Ошибка', 'error');
             } else {
                 showToast(data.error || 'Ошибка', 'error');
             }
         } catch (e) {
             if (!navigator.onLine) {
-                enqueueOffline('/api/applications/' + action, {
+                enqueueOffline('/api/applications/batch', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ app_id: appId })
+                    body: JSON.stringify({ app_ids: [appId], action: action })
                 });
             } else {
                 showToast('Ошибка соединения с сервером', 'error');
