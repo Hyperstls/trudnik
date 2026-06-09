@@ -1,5 +1,12 @@
 {% extends "base.html" %}
 {% from '_icons.html' import star, alert, trash, clock, check_circle %}
+{% set status_labels = {
+    'pending': 'Ожидает',
+    'active': 'Активна',
+    'payment_pending': 'Ожидает оплаты',
+    'paid': 'Оплачена',
+    'disputed': 'Спор'
+} %}
 {% block content %}
 <div class="px-4 pb-24 max-w-lg mx-auto">
     <div class="flex items-center justify-between mb-5">
@@ -29,7 +36,7 @@
                         {% endif %}
                     </p>
                 </div>
-                <span class="status-badge status-{{ shift.status }}">{{ shift.status }}</span>
+                <span class="status-badge status-{{ shift.status }}">{{ status_labels.get(shift.status, shift.status) }}</span>
             </div>
 
             <!-- Actions -->

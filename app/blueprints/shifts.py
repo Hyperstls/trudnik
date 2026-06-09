@@ -52,6 +52,126 @@ def shift_checkin(shift_id):
     return redirect(url_for('shifts.shifts'))
 
 
+@shifts_bp.route('/shift/<shift_id>/action', methods=['POST'])
+@login_required
+def shift_action(shift_id):
+    """Унифицированный маршрут для действий над сменой: checkin, complete, confirm_payment_employer, confirm_payment_worker"""
+    action = request.form.get('action', '')
+
+    if action == 'checkin':
+        return _handle_checkin(shift_id)
+    elif action == 'complete':
+        return _handle_complete(shift_id)
+    elif action in ('confirm_payment_employer', 'confirm_payment_worker'):
+        return _handle_confirm_payment(shift_id, action)
+    else:
+        flash('Неизвестное действие', 'danger')
+        return redirect(url_for('shifts.shifts'))
+
+
+def _handle_checkin(shift_id):
+    """Чек-ин работника"""
+    shift_resp = supabase_request('GET', f'shifts?id=eq.{shift_id}&select=worker_id,job_id,status')
+    if not shift_resp.ok or not shift_resp.json():
+        flash('Смена не найдена', 'danger')
+        return redirect(url_for('shifts.shifts'))
+
+    shift = shift_resp.json()[0]
+
+    if session.get('user_id') != shift['worker_id']:
+        flash('Нет прав для чек-ина', 'danger')
+        return redirect(url_for('shifts.shifts'))
+
+    supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={
+        'worker_checkin': True,
+        'start_time': datetime.now().isoformat(),
+        'status': 'active'
+    })
+
+    job_resp = supabase_request('GET', f'jobs?id=eq.{shift["job_id"]}&select=status')
+    if job_resp.ok and job_resp.json():
+        job = job_resp.json()[0]
+        if job['status'] == 'in_progress':
+            supabase_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'active'})
+
+    flash('Чек-ин успешно выполнен', 'success')
+    return redirect(url_for('shifts.shifts'))
+
+
+def _handle_complete(shift_id):
+    """Завершение смены работником"""
+    shift_resp = supabase_request('GET', f'shifts?id=eq.{shift_id}&select=worker_id,employer_id,job_id,status')
+    if not shift_resp.ok or not shift_resp.json():
+        flash('Смена не найдена', 'danger')
+        return redirect(url_for('shifts.shifts'))
+
+    shift = shift_resp.json()[0]
+
+    if session.get('user_id') != shift['worker_id']:
+        flash('Нет прав для завершения', 'danger')
+        return redirect(url_for('shifts.shifts'))
+
+    if shift['status'] != 'active':
+        flash('Только активные смены можно завершить', 'danger')
+        return redirect(url_for('shifts.shifts'))
+
+    supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={
+        'worker_complete': True,
+        'complete_time': datetime.now().isoformat(),
+        'status': 'payment_pending'
+    })
+
+    supabase_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'payment_pending'})
+
+    flash('Смена завершена, ожидание подтверждения оплаты', 'success')
+    return redirect(url_for('shifts.shifts'))
+
+
+def _handle_confirm_payment(shift_id, action):
+    """Подтверждение оплаты (работодателем или работником)"""
+    shift_resp = supabase_request('GET',
+        f'shifts?id=eq.{shift_id}&select=employer_id,worker_id,job_id,employer_payment_confirmed,worker_payment_confirmed,status')
+    if not shift_resp.ok or not shift_resp.json():
+        flash('Смена не найдена', 'danger')
+        return redirect(url_for('shifts.shifts'))
+
+    shift = shift_resp.json()[0]
+
+    is_employer = session.get('user_id') == shift['employer_id']
+    is_worker = session.get('user_id') == shift['worker_id']
+
+    if action == 'confirm_payment_employer' and not is_employer:
+        flash('Только работодатель может подтвердить оплату', 'danger')
+        return redirect(url_for('shifts.shifts'))
+
+    if action == 'confirm_payment_worker' and not is_worker:
+        flash('Только работник может подтвердить получение оплаты', 'danger')
+        return redirect(url_for('shifts.shifts'))
+
+    if action == 'confirm_payment_employer':
+        supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={'employer_payment_confirmed': True})
+        flash('Оплата подтверждена работодателем', 'success')
+    elif action == 'confirm_payment_worker':
+        supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={'worker_payment_confirmed': True})
+        flash('Оплата подтверждена работником', 'success')
+
+    # Проверить, подтвердили ли обе стороны
+    shift_resp = supabase_request('GET',
+        f'shifts?id=eq.{shift_id}&select=employer_payment_confirmed,worker_payment_confirmed')
+    if shift_resp.ok and shift_resp.json():
+        shift = shift_resp.json()[0]
+        if shift.get('employer_payment_confirmed') and shift.get('worker_payment_confirmed'):
+            supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={'status': 'paid'})
+            supabase_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'paid'})
+
+            add_notification(shift['employer_id'], 'payment_sent', 'Оплата подтверждена',
+                             f'Оплата по смене #{shift_id} подтверждена обеими сторонами')
+            add_notification(shift['worker_id'], 'payment_received', 'Оплата подтверждена',
+                             f'Оплата по смене #{shift_id} подтверждена обеими сторонами')
+
+    return redirect(url_for('shifts.shifts'))
+
+
 @shifts_bp.route('/shift/<shift_id>/complete', methods=['POST'])
 @login_required
 def shift_complete(shift_id):
