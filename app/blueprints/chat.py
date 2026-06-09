@@ -2,6 +2,7 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 
 from app.decorators import login_required
 from app.utils import supabase_request
+from app.services.notification_service import create as create_notification
 
 chat_bp = Blueprint('chat', __name__)
 
@@ -51,9 +52,21 @@ def chat_new(worker_id):
 @login_required
 def send_message():
     data = request.get_json()
+    sender_id = session['user_id']
+    shift_id = data['shift_id']
+
     supabase_request('POST', 'messages', json={
-        'shift_id': data['shift_id'], 'sender_id': session['user_id'], 'content': data['content']
+        'shift_id': shift_id, 'sender_id': sender_id, 'content': data['content']
     })
+
+    # Уведомить получателя
+    shift_resp = supabase_request('GET', f'shifts?id=eq.{shift_id}&select=worker_id,employer_id')
+    if shift_resp.ok and shift_resp.json():
+        shift = shift_resp.json()[0]
+        recipient = shift['worker_id'] if sender_id == shift['employer_id'] else shift['employer_id']
+        create_notification(recipient, 'new_message', 'Новое сообщение',
+                           data['content'][:100], data={'shift_id': shift_id})
+
     return jsonify({'status': 'ok'})
 
 
