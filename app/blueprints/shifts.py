@@ -117,7 +117,6 @@ def _handle_complete(shift_id):
 
     from flask import current_app as _app_log
     complete_resp = supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={
-        'complete_time': datetime.now().isoformat(),
         'status': 'payment_pending'
     })
 
@@ -199,7 +198,6 @@ def shift_complete(shift_id):
 
     from flask import current_app as app_logger
     complete_resp = supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={
-        'complete_time': datetime.now().isoformat(),
         'status': 'payment_pending'
     })
 
