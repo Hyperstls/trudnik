@@ -165,17 +165,29 @@ def api_test():
 @applications_bp.route('/api/applications/accept', methods=['POST'])
 @login_required
 def api_accept_application():
-    return api_handle_application(request.get_json().get('app_id'), 'accept')
+    data = request.get_json(silent=True) or {}
+    app_id = data.get('app_id')
+    if not app_id:
+        return jsonify({'success': False, 'error': 'Не указан app_id'}), 400
+    return api_handle_application(app_id, 'accept')
 
 @applications_bp.route('/api/applications/reject', methods=['POST'])
 @login_required
 def api_reject_application():
-    return api_handle_application(request.get_json().get('app_id'), 'reject')
+    data = request.get_json(silent=True) or {}
+    app_id = data.get('app_id')
+    if not app_id:
+        return jsonify({'success': False, 'error': 'Не указан app_id'}), 400
+    return api_handle_application(app_id, 'reject')
 
 @applications_bp.route('/api/applications/reopen', methods=['POST'])
 @login_required
 def api_reopen_application():
-    return api_handle_application(request.get_json().get('app_id'), 'reopen')
+    data = request.get_json(silent=True) or {}
+    app_id = data.get('app_id')
+    if not app_id:
+        return jsonify({'success': False, 'error': 'Не указан app_id'}), 400
+    return api_handle_application(app_id, 'reopen')
 
 def api_handle_application(app_id, action):
     """AJAX-эндпоинт: принять / отклонить / повторно принять отклик"""
