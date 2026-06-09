@@ -161,33 +161,9 @@ def my_applications():
 @applications_bp.route('/api/applications/test', methods=['GET', 'POST'])
 def api_test():
     return jsonify({'success': True, 'message': 'applications blueprint is alive'})
-
-@applications_bp.route('/api/applications/accept', methods=['POST'])
-@login_required
-def api_accept_application():
-    data = request.get_json(silent=True) or {}
-    app_id = data.get('app_id')
-    if not app_id:
-        return jsonify({'success': False, 'error': 'Не указан app_id'}), 400
-    return api_handle_application(app_id, 'accept')
-
-@applications_bp.route('/api/applications/reject', methods=['POST'])
-@login_required
-def api_reject_application():
-    data = request.get_json(silent=True) or {}
-    app_id = data.get('app_id')
-    if not app_id:
-        return jsonify({'success': False, 'error': 'Не указан app_id'}), 400
-    return api_handle_application(app_id, 'reject')
-
-@applications_bp.route('/api/applications/reopen', methods=['POST'])
-@login_required
-def api_reopen_application():
-    data = request.get_json(silent=True) or {}
-    app_id = data.get('app_id')
-    if not app_id:
-        return jsonify({'success': False, 'error': 'Не указан app_id'}), 400
-    return api_handle_application(app_id, 'reopen')
+# Маршруты accept/reject/reopen вынесены в app/__init__.py (на объект app)
+# из-за проблем с blueprint-роутингом на production (Render).
+# Функция api_handle_application импортируется оттуда.
 
 def api_handle_application(app_id, action):
     """AJAX-эндпоинт: принять / отклонить / повторно принять отклик"""

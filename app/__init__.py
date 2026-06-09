@@ -112,6 +112,39 @@ def create_app():
     app.register_blueprint(monetization_bp)
 
     # ================================
+    # Индивидуальные действия с откликами (accept/reject/reopen)
+    # Вынесены на app для обхода проблем с blueprint-роутингом на Render
+    # ================================
+    from app.blueprints.applications import api_handle_application
+
+    @app.route('/api/applications/accept', methods=['POST'])
+    @login_required
+    def api_app_accept():
+        data = request.get_json(silent=True) or {}
+        app_id = data.get('app_id')
+        if not app_id:
+            return jsonify({'success': False, 'error': 'Не указан app_id'}), 400
+        return api_handle_application(app_id, 'accept')
+
+    @app.route('/api/applications/reject', methods=['POST'])
+    @login_required
+    def api_app_reject():
+        data = request.get_json(silent=True) or {}
+        app_id = data.get('app_id')
+        if not app_id:
+            return jsonify({'success': False, 'error': 'Не указан app_id'}), 400
+        return api_handle_application(app_id, 'reject')
+
+    @app.route('/api/applications/reopen', methods=['POST'])
+    @login_required
+    def api_app_reopen():
+        data = request.get_json(silent=True) or {}
+        app_id = data.get('app_id')
+        if not app_id:
+            return jsonify({'success': False, 'error': 'Не указан app_id'}), 400
+        return api_handle_application(app_id, 'reopen')
+
+    # ================================
     # PWA / Google Play routes
     # ================================
 
