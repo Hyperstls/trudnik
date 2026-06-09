@@ -57,6 +57,9 @@ def update_profile():
     if is_self_employed is not None:
         data['is_self_employed'] = is_self_employed == 'on'
 
+    contact = request.form.get('contact', '').strip()
+    data['contact'] = contact if len(contact) >= 3 else None
+
     photo = request.files.get('photo')
     if photo and photo.filename:
         safe_name = photo.filename.replace(' ', '_')

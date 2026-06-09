@@ -124,6 +124,12 @@
         </div>
         {% endif %}
 
+        <div class="floating-label-group">
+            <input type="text" name="contact" value="{{ profile.get('contact') or '' }}"
+                   maxlength="255" class="floating-input" placeholder=" ">
+            <label class="floating-label">Email, Telegram или другой контакт</label>
+        </div>
+
         <button type="submit"
                 class="w-full bg-primary-500 text-white py-3.5 rounded-xl font-bold text-base hover:bg-primary-600 active:scale-[0.97] transition-all duration-200 shadow-md mt-2">
             Сохранить изменения

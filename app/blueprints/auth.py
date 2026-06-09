@@ -102,6 +102,8 @@ def register():
                     except ValueError:
                         update_data['desired_payment'] = 0
                     update_data['experience'] = request.form.get('experience', '')
+                    contact = request.form.get('contact', '').strip()
+                    update_data['contact'] = contact if len(contact) >= 3 else None
 
                 if SERVICE_KEY:
                     patch_url = f"{SUPABASE_URL}/rest/v1/profiles?id=eq.{user['id']}"
