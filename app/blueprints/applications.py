@@ -168,7 +168,7 @@ def api_test():
 def api_handle_application(app_id, action):
     """AJAX-эндпоинт: принять / отклонить / повторно принять отклик"""
     current_app.logger.info('[APPLICATIONS] action=%s app_id=%s user_id=%s', action, app_id, session.get('user_id'))
-    app_resp = supabase_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id,status,shift_id')
+    app_resp = supabase_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id,status')
     if not app_resp.ok or not app_resp.json():
         current_app.logger.warning('[APPLICATIONS] app_id=%s FAILED: ok=%s status=%s text=%s', app_id, app_resp.ok, app_resp.status_code, (app_resp.text or '')[:200])
         return jsonify({'success': False, 'error': 'Отклик не найден'}), 404
