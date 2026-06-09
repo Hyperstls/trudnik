@@ -4,7 +4,8 @@ from flask import Blueprint, current_app, flash, jsonify, redirect, render_templ
 
 from app.config import Config
 from app.decorators import login_required
-from app.utils import add_notification, supabase_request
+from app.utils import supabase_request
+from app.services.notification_service import create as notify
 
 applications_bp = Blueprint('applications', __name__)
 
@@ -243,7 +244,7 @@ def api_handle_application(app_id, action):
                 shift_id = created[0].get('id') if isinstance(created, list) else created.get('id')
 
         # Уведомить работника
-        add_notification(worker_id, 'application_accepted', 'Отклик принят',
+        notify(worker_id, 'application_accepted', 'Отклик принят',
                          f'Ваш отклик на задание #{job_id} был принят')
 
         return jsonify({
@@ -283,7 +284,7 @@ def api_handle_application(app_id, action):
             })
 
             # 5. Уведомить работника
-            add_notification(worker_id, 'application_rejected', 'Отклик отклонён',
+            notify(worker_id, 'application_rejected', 'Отклик отклонён',
                              f'Ваш отклик на задание #{job_id} был отклонён работодателем')
 
             return jsonify({
@@ -297,7 +298,7 @@ def api_handle_application(app_id, action):
 
         # === ОБЫЧНОЕ ОТКЛОНЕНИЕ (pending → rejected) ===
         supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'rejected'})
-        add_notification(worker_id, 'application_rejected', 'Отклик отклонён',
+        notify(worker_id, 'application_rejected', 'Отклик отклонён',
                          f'Ваш отклик на задание #{job_id} был отклонён')
 
         return jsonify({
@@ -436,7 +437,7 @@ def cancel_application(app_id):
         supabase_request('DELETE', f'shifts?id=eq.{shift_id}')
 
     # Отправить уведомления
-    add_notification(worker_id, 'application_rejected', 'Отклик отменен',
+    notify(worker_id, 'application_rejected', 'Отклик отменен',
                      f'Ваш отклик на задание {job.get("organization_name", "#" + job_id)} был отменен')
 
     flash('Работник отменен', 'success')

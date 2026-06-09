@@ -16,7 +16,8 @@ from flask import Blueprint, jsonify, request, session, send_file, render_templa
 from app.decorators import login_required
 from app.services.payment_service import PaymentService
 from app.services.receipt_service import ReceiptService
-from app.utils import supabase_request, add_notification
+from app.utils import supabase_request
+from app.services.notification_service import create as notify
 
 monetization_bp = Blueprint('monetization', __name__, url_prefix='/api')
 
@@ -119,13 +120,13 @@ def confirm_payment():
             worker_info = worker_resp.json()[0]
 
         # Юридически значимое действие: уведомление сторон о раскрытии контактов
-        add_notification(
+        notify(
             employer_id, 'contacts_revealed',
             'Контакты открыты',
             f'Контакты исполнителя {worker_info.get("full_name", "—")} раскрыты. '
             f'Оплатите работу напрямую и не забудьте чек самозанятого!'
         )
-        add_notification(
+        notify(
             payment['worker_id'], 'contacts_revealed',
             'Контакты открыты',
             f'Храм "{church_name}" оплатил раскрытие ваших контактов. '
@@ -409,7 +410,7 @@ def remind_cheque(application_id):
         return jsonify({'success': False, 'error': 'Only the worker can send this reminder'}), 403
 
     # Отправить уведомление (всплывающее сообщение)
-    add_notification(
+    notify(
         worker_id, 'cheque_reminder',
         'Напоминание о чеке',
         f'Не забудьте выставить чек храму "{org_name}" в приложении '
@@ -505,13 +506,13 @@ def _check_hire_limit(employer_id, worker_id):
         )
 
         # Уведомить обе стороны и администратора
-        add_notification(employer_id, 'hire_limit_warning', 'Внимание: переквалификация', warning_msg)
-        add_notification(worker_id, 'hire_limit_warning', 'Внимание: переквалификация', warning_msg)
+        notify(employer_id, 'hire_limit_warning', 'Внимание: переквалификация', warning_msg)
+        notify(worker_id, 'hire_limit_warning', 'Внимание: переквалификация', warning_msg)
 
         admin_resp = supabase_request('GET', 'profiles?role=eq.admin&select=id')
         if admin_resp.ok and admin_resp.json():
             for admin in admin_resp.json():
-                add_notification(admin['id'], 'hire_limit_warning', 'Внимание: частая пара наймов', warning_msg)
+                notify(admin['id'], 'hire_limit_warning', 'Внимание: частая пара наймов', warning_msg)
 
         return {
             'warning': True,

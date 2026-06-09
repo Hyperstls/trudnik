@@ -3,7 +3,8 @@ from datetime import datetime
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required
-from app.utils import add_notification, supabase_request, update_rating
+from app.utils import supabase_request, update_rating
+from app.services.notification_service import create as notify
 
 shifts_bp = Blueprint('shifts', __name__)
 
@@ -24,32 +25,7 @@ def shifts():
 @shifts_bp.route('/shift/<shift_id>/checkin', methods=['POST'])
 @login_required
 def shift_checkin(shift_id):
-    """Чек-ин работника"""
-    shift_resp = supabase_request('GET', f'shifts?id=eq.{shift_id}&select=worker_id,job_id,status')
-    if not shift_resp.ok or not shift_resp.json():
-        flash('Смена не найдена', 'danger')
-        return redirect(url_for('shifts.shifts'))
-
-    shift = shift_resp.json()[0]
-
-    if session.get('user_id') != shift['worker_id']:
-        flash('Нет прав для чек-ина', 'danger')
-        return redirect(url_for('shifts.shifts'))
-
-    supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={
-        'worker_checkin': True,
-        'start_time': datetime.now().isoformat(),
-        'status': 'active'
-    })
-
-    job_resp = supabase_request('GET', f'jobs?id=eq.{shift["job_id"]}&select=status')
-    if job_resp.ok and job_resp.json():
-        job = job_resp.json()[0]
-        if job['status'] in ('open', 'in_progress'):
-            supabase_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'active'})
-
-    flash('Чек-ин успешно выполнен', 'success')
-    return redirect(url_for('shifts.shifts'))
+    return _handle_checkin(shift_id)
 
 
 @shifts_bp.route('/shift/<shift_id>/action', methods=['POST'])
@@ -193,9 +169,9 @@ def _handle_confirm_payment(shift_id, action):
                 if not job_done.ok:
                     current_app.logger.error('[CONFIRM PAYMENT] PATCH jobs failed: job_id=%s status=%s', shift["job_id"], job_done.status_code)
 
-            add_notification(shift['employer_id'], 'payment_sent', 'Оплата подтверждена',
+            notify(shift['employer_id'], 'payment_sent', 'Оплата подтверждена',
                              f'Оплата по смене #{shift_id} подтверждена обеими сторонами')
-            add_notification(shift['worker_id'], 'payment_received', 'Оплата подтверждена',
+            notify(shift['worker_id'], 'payment_received', 'Оплата подтверждена',
                              f'Оплата по смене #{shift_id} подтверждена обеими сторонами')
 
     return redirect(url_for('shifts.shifts'))
@@ -204,90 +180,21 @@ def _handle_confirm_payment(shift_id, action):
 @shifts_bp.route('/shift/<shift_id>/complete', methods=['POST'])
 @login_required
 def shift_complete(shift_id):
-    """Завершение смены работником"""
-    shift_resp = supabase_request('GET', f'shifts?id=eq.{shift_id}&select=worker_id,employer_id,job_id,status')
-    if not shift_resp.ok or not shift_resp.json():
-        flash('Смена не найдена', 'danger')
-        return redirect(url_for('shifts.shifts'))
-
-    shift = shift_resp.json()[0]
-
-    if session.get('user_id') != shift['worker_id']:
-        flash('Нет прав для завершения', 'danger')
-        return redirect(url_for('shifts.shifts'))
-
-    if shift['status'] != 'active':
-        flash('Только активные смены можно завершить', 'danger')
-        return redirect(url_for('shifts.shifts'))
-
-    from flask import current_app as app_logger
-    complete_resp = supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={
-        'status': 'payment_pending'
-    })
-
-    if not complete_resp.ok:
-        app_logger.logger.error('[SHIFT COMPLETE] PATCH shifts failed: shift_id=%s status=%s text=%s',
-                                shift_id, complete_resp.status_code, (complete_resp.text or '')[:200])
-        flash('Ошибка при завершении смены. Попробуйте позже.', 'danger')
-        return redirect(url_for('shifts.shifts'))
-
-    _maybe_set_job_payment_pending(shift["job_id"])
-
-    flash('Смена завершена, ожидание подтверждения оплаты', 'success')
-    return redirect(url_for('shifts.shifts'))
+    return _handle_complete(shift_id)
 
 
 @shifts_bp.route('/shift/<shift_id>/confirm-payment', methods=['POST'])
 @login_required
 def confirm_payment(shift_id):
-    """Подтверждение оплаты (работодателем или работником)"""
+    """Подтверждение оплаты — делегирует _handle_confirm_payment."""
     action = request.form.get('action', '')
-
-    shift_resp = supabase_request('GET',
-        f'shifts?id=eq.{shift_id}&select=employer_id,worker_id,job_id,employer_payment_confirmed,worker_payment_confirmed,status')
-    if not shift_resp.ok or not shift_resp.json():
-        flash('Смена не найдена', 'danger')
-        return redirect(url_for('shifts.shifts'))
-
-    shift = shift_resp.json()[0]
-
-    # Проверить права доступа
-    is_employer = session.get('user_id') == shift['employer_id']
-    is_worker = session.get('user_id') == shift['worker_id']
-
-    if action == 'confirm_employer' and not is_employer:
-        flash('Только работодатель может подтвердить оплату', 'danger')
-        return redirect(url_for('shifts.shifts'))
-
-    if action == 'confirm_worker' and not is_worker:
-        flash('Только работник может подтвердить получение оплаты', 'danger')
-        return redirect(url_for('shifts.shifts'))
-
-    # Обновить статус подтверждения
-    if action == 'confirm_employer':
-        supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={'employer_payment_confirmed': True})
-        flash('Оплата подтверждена работодателем', 'success')
-    elif action == 'confirm_worker':
-        supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={'worker_payment_confirmed': True})
-        flash('Оплата подтверждена работником', 'success')
-
-    # Проверить, подтвердили ли обе стороны
-    shift_resp = supabase_request('GET',
-        f'shifts?id=eq.{shift_id}&select=employer_payment_confirmed,worker_payment_confirmed')
-    if shift_resp.ok and shift_resp.json():
-        shift = shift_resp.json()[0]
-        if shift.get('employer_payment_confirmed') and shift.get('worker_payment_confirmed'):
-            # Обе стороны подтвердили — установить статус paid
-            supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={'status': 'paid'})
-            supabase_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'paid'})
-
-            # Отправить уведомления
-            add_notification(shift['employer_id'], 'payment_sent', 'Оплата подтверждена',
-                             f'Оплата по смене #{shift_id} подтверждена обеими сторонами')
-            add_notification(shift['worker_id'], 'payment_received', 'Оплата подтверждена',
-                             f'Оплата по смене #{shift_id} подтверждена обеими сторонами')
-
-    return redirect(url_for('shifts.shifts'))
+    # Маппинг старых названий действий на новые
+    action_map = {
+        'confirm_employer': 'confirm_payment_employer',
+        'confirm_worker': 'confirm_payment_worker',
+    }
+    mapped = action_map.get(action, action)
+    return _handle_confirm_payment(shift_id, mapped)
 
 
 @shifts_bp.route('/rate-worker/<worker_id>/<job_id>', methods=['POST'])
@@ -360,13 +267,13 @@ def dispute_shift(shift_id):
     admin_resp = supabase_request('GET', f'profiles?role=eq.admin&select=id')
     if admin_resp.ok and admin_resp.json():
         admin_id = admin_resp.json()[0]['id']
-        add_notification(admin_id, 'dispute_started', 'Новый спор',
+        notify(admin_id, 'dispute_started', 'Новый спор',
                          f'Пользователь запросил спор по смене #{shift_id}')
 
     # Добавить уведомления участникам
-    add_notification(shift['employer_id'], 'dispute_started', 'Спор открыт',
+    notify(shift['employer_id'], 'dispute_started', 'Спор открыт',
                      f'Ваш спор по смене #{shift_id} открыт на рассмотрении')
-    add_notification(shift['worker_id'], 'dispute_started', 'Спор открыт',
+    notify(shift['worker_id'], 'dispute_started', 'Спор открыт',
                      f'Ваш спор по смене #{shift_id} открыт на рассмотрении')
 
     flash('Спор открыт на рассмотрение', 'warning')
