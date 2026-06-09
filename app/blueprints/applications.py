@@ -208,9 +208,11 @@ def api_handle_application(app_id, action):
         # Атомарный PATCH с условием: обновляем только если current_workers < max_workers
         # PostgREST выполняет UPDATE с WHERE current_workers < {max_workers} атомарно на уровне БД
         # Благодаря Prefer: return=representation, при успехе возвращается обновлённая запись
+        new_count = current_workers + 1
+        new_status = 'in_progress' if new_count >= max_workers else 'open'
         patch_resp = supabase_request('PATCH', f'jobs?id=eq.{job_id}&current_workers=lt.{max_workers}', json={
-            'status': 'in_progress',
-            'current_workers': current_workers + 1
+            'status': new_status,
+            'current_workers': new_count
         })
         current_app.logger.info(
             '[ACCEPT] atomic PATCH: job_id=%s current=%s max=%s ok=%s status=%s json=%s text=%s',
