@@ -114,7 +114,173 @@ def index():
     selected_skills_list = [s.strip() for s in skills_filter.split(',') if s.strip()] if skills_filter else []
     return render_template('index.html', jobs=jobs, applied_job_ids=applied_job_ids,
                            lat=lat, lng=lng, radius=radius, sort=sort,
-                           selected_skills=selected_skills_list)
+                            selected_skills=selected_skills_list)
+
+
+# ──────────────────────────────────────────────
+# API поиска (полнотекстовый + фильтры + пагинация)
+# ──────────────────────────────────────────────
+
+def _build_search_params(params, prefix=''):
+    """Собрать строку параметров PostgREST из словаря, исключая пустые."""
+    parts = []
+    for key, val in params.items():
+        if val is not None and val != '' and val != []:
+            parts.append(f'{key}={val}')
+    return '&'.join(parts)
+
+
+@jobs_bp.route('/api/search/jobs')
+def api_search_jobs():
+    """Поиск заданий с полнотекстовым поиском, фильтрами и пагинацией."""
+    q = request.args.get('q', '')
+    status = request.args.get('status', 'open')
+    lat = request.args.get('lat', type=float)
+    lng = request.args.get('lng', type=float)
+    radius = request.args.get('radius', 20, type=float)
+    min_pay = request.args.get('min_pay', type=int)
+    max_pay = request.args.get('max_pay', type=int)
+    skills = request.args.get('skills', '')
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+    available_slots = request.args.get('available_slots', 'false').lower() == 'true'
+    page = max(1, request.args.get('page', 1, type=int))
+    per_page = min(100, max(1, request.args.get('per_page', 20, type=int)))
+    sort = request.args.get('sort', '')
+
+    # Базовые поля
+    select = '*,photos:job_photos(*)'
+    query_parts = [f'select={select}']
+
+    # Статус
+    if status:
+        query_parts.append(f'status=eq.{status}')
+
+    # Полнотекстовый поиск
+    if q:
+        query_parts.append(f'search_vector=fts.russian.{q}')
+
+    # Фильтры
+    if min_pay is not None:
+        query_parts.append(f'payment_amount=gte.{min_pay}')
+    if max_pay is not None:
+        query_parts.append(f'payment_amount=lte.{max_pay}')
+    if date_from:
+        query_parts.append(f'date_time=gte.{date_from}')
+    if date_to:
+        query_parts.append(f'date_time=lte.{date_to}')
+    if available_slots:
+        query_parts.append('current_workers=lt.max_workers')
+
+    # Пагинация
+    offset = (page - 1) * per_page
+    query_parts.append(f'limit={per_page}')
+    query_parts.append(f'offset={offset}')
+
+    # Сортировка
+    if sort == 'date_desc':
+        query_parts.append('order=date_time.desc')
+    elif sort == 'payment_asc':
+        query_parts.append('order=payment_amount.asc')
+    elif sort == 'payment_desc':
+        query_parts.append('order=payment_amount.desc')
+    else:
+        query_parts.append('order=created_at.desc')
+
+    query = '&'.join(query_parts)
+
+    # Запрос с подсчётом общего количества
+    headers = {'Prefer': 'count=exact'}
+    resp = supabase_request('GET', f'jobs?{query}', headers=headers)
+    jobs_list = resp.json() if resp.ok else []
+    total = int(resp.headers.get('Content-Range', '0-0/0').split('/')[-1]) if resp.ok else 0
+
+    # Гео-фильтрация и расчёт расстояния (клиентская)
+    if lat is not None and lng is not None:
+        for job in jobs_list:
+            if job.get('lat') and job.get('lng'):
+                job['distance'] = calculate_distance(lat, lng, job['lat'], job['lng'])
+        if radius:
+            jobs_list = [j for j in jobs_list if j.get('distance', float('inf')) <= radius]
+        if sort == 'distance':
+            jobs_list.sort(key=lambda x: x.get('distance', float('inf')))
+
+    # Фильтрация по навыкам (если не использовался FTS)
+    if skills and not q:
+        selected = [s.strip().lower() for s in skills.split(',') if s.strip()]
+        if selected:
+            jobs_list = [j for j in jobs_list if any(
+                sk in (j.get('work_type', '') + ' ' + j.get('object_description', '') + ' ' + j.get('detailed_description', '')).lower()
+                for sk in selected
+            )]
+
+    return {
+        'results': jobs_list,
+        'total': total,
+        'page': page,
+        'per_page': per_page,
+        'pages': max(1, (total + per_page - 1) // per_page) if total else 1
+    }
+
+
+@jobs_bp.route('/api/search/workers')
+def api_search_workers():
+    """Поиск трудников с полнотекстовым поиском, фильтрами и пагинацией."""
+    q = request.args.get('q', '')
+    skills = request.args.get('skills', '')
+    rating_min = request.args.get('rating_min', type=float)
+    lat = request.args.get('lat', type=float)
+    lng = request.args.get('lng', type=float)
+    radius = request.args.get('radius', 20, type=float)
+    page = max(1, request.args.get('page', 1, type=int))
+    per_page = min(100, max(1, request.args.get('per_page', 20, type=int)))
+    sort = request.args.get('sort', '')
+
+    query_parts = ['select=*', 'role=eq.worker']
+
+    if q:
+        query_parts.append(f'search_vector=fts.russian.{q}')
+    if rating_min is not None:
+        query_parts.append(f'rating=gte.{rating_min}')
+    if skills:
+        for sk in skills.split(','):
+            sk = sk.strip()
+            if sk:
+                query_parts.append(f'skills=cs.{{{sk}}}')
+
+    offset = (page - 1) * per_page
+    query_parts.append(f'limit={per_page}')
+    query_parts.append(f'offset={offset}')
+
+    if sort == 'rating_desc':
+        query_parts.append('order=rating.desc')
+    elif sort == 'payment_asc':
+        query_parts.append('order=desired_payment.asc')
+    else:
+        query_parts.append('order=rating.desc')
+
+    query = '&'.join(query_parts)
+    headers = {'Prefer': 'count=exact'}
+    resp = supabase_request('GET', f'profiles?{query}', headers=headers)
+    workers_list = resp.json() if resp.ok else []
+    total = int(resp.headers.get('Content-Range', '0-0/0').split('/')[-1]) if resp.ok else 0
+
+    if lat is not None and lng is not None:
+        for w in workers_list:
+            if w.get('lat') and w.get('lng'):
+                w['distance'] = calculate_distance(lat, lng, w['lat'], w['lng'])
+        if radius:
+            workers_list = [w for w in workers_list if w.get('distance', float('inf')) <= radius]
+        if sort == 'distance':
+            workers_list.sort(key=lambda x: x.get('distance', float('inf')))
+
+    return {
+        'results': workers_list,
+        'total': total,
+        'page': page,
+        'per_page': per_page,
+        'pages': max(1, (total + per_page - 1) // per_page) if total else 1
+    }
 
 
 @jobs_bp.route('/workers')
