@@ -1,17 +1,79 @@
-Selenium Report - Trudnik
+Trudnik Selenium Full Report
 Server: https://trudnik.onrender.com
-Time:   2026-06-09 23:47:51
+Time: 2026-06-10 00:20:21
 ============================================================
-[23:46:57] PASS | Login employer -- email=org@test.ru
-[23:47:00] PASS | My Jobs page loaded
-[23:47:03] PASS | Create Job form opened
-[23:47:17] PASS | Login worker -- email=trud3@test.ru
-[23:47:20] PASS | Main page (worker) loaded
-[23:47:22] PASS | My Applications page loaded
-[23:47:36] PASS | Login worker (contact) -- email=trud3@test.ru
-[23:47:39] PASS | Contact field found -- selector: By.NAME
-[23:47:42] PASS | Contact field: save -- telegram: @testuser
-[23:47:46] PASS | Contact field: clear
-[23:47:50] PASS | URL sanitization -- Only open jobs shown (sanitization works)
+[00:09:44] PASS | Login employer -- org@test.ru
+[00:09:57] PASS | Login worker -- trud3@test.ru
+[00:10:05] PASS | Login wrong password -- Still on login page (expected)
+[00:10:05] PASS | Error message shown -- Error text present
+[00:10:16] PASS | Login employer -- org@test.ru
+[00:10:20] PASS | Logout redirect -- Redirected to login
+[00:10:31] PASS | Login worker -- trud3@test.ru
+[00:10:34] PASS | Worker on /jobs/new -- Access blocked
+[00:10:47] PASS | Login employer -- org@test.ru
+[00:10:49] PASS | Profile page loaded -- OK
+[00:10:49] PASS | Field full_name present
+[00:10:49] PASS | Field phone present
+[00:10:49] PASS | Field contact present
+[00:10:49] PASS | Field bio present
+[00:11:02] PASS | Login employer -- org@test.ru
+[00:11:09] FAIL | Profile updated -- Alert Text: Удалить фото?
+Message: unexpected alert open: {Alert text : Удалить фото?}
+  (Session in
+[00:11:22] PASS | Login worker -- trud3@test.ru
+[00:11:24] PASS | Profile loaded -- OK
+[00:11:24] PASS | Field full_name
+[00:11:24] PASS | Field phone
+[00:11:24] PASS | Field contact
+[00:11:24] PASS | Field bio
+[00:11:24] PASS | Field city
+[00:11:24] PASS | Field experience
+[00:11:24] PASS | Field desired_payment
+[00:11:37] PASS | Login worker -- trud3@test.ru
+[00:11:42] PASS | Contact saved -- telegram: @testuser
+[00:11:47] PASS | Contact cleared
+[00:12:00] PASS | Login employer -- org@test.ru
+[00:13:14] FAIL | Job created -- Message: Not found: title (name=title); For documentation on this error, please visit: https://www.s
+[00:13:27] PASS | Login employer -- org@test.ru
+[00:14:42] FAIL | Stop words blocked -- Message: Not found: title (name=title); For documentation on this error, please visit: https://www.s
+[00:14:54] PASS | Login employer -- org@test.ru
+[00:14:57] PASS | My jobs loaded -- OK
+[00:15:10] PASS | Login employer -- org@test.ru
+[00:15:13] PASS | Job cancelled -- No open jobs to cancel
+[00:15:26] PASS | Login worker -- trud3@test.ru
+[00:15:28] PASS | Jobs page loaded -- OK
+[00:15:33] PASS | City filter applied -- Navigated to filtered URL
+[00:15:37] PASS | Payment filter applied -- Navigated to filtered URL
+[00:15:40] PASS | Search API works -- JSON response
+[00:15:43] PASS | 404 for bad UUID -- OK
+[00:15:54] PASS | Login worker -- trud3@test.ru
+[00:15:57] PASS | Applications page loaded -- OK
+[00:16:10] PASS | Login employer -- org@test.ru
+[00:16:13] PASS | Applications page loaded -- OK
+[00:16:26] PASS | Login employer -- org@test.ru
+[00:16:28] PASS | Shifts page loaded -- OK
+[00:16:41] PASS | Login worker -- trud3@test.ru
+[00:16:44] PASS | Shifts page loaded -- OK
+[00:16:56] PASS | Login worker -- trud3@test.ru
+[00:16:59] PASS | Favorites loaded -- OK
+[00:17:12] PASS | Login worker -- trud3@test.ru
+[00:17:14] PASS | Blacklist loaded -- OK
+[00:17:27] PASS | Login worker -- trud3@test.ru
+[00:17:29] PASS | Chat list loaded -- OK
+[00:17:42] PASS | Login worker -- trud3@test.ru
+[00:17:44] PASS | Notifications loaded -- OK
+[00:17:48] PASS | Workers page loaded -- OK
+[00:17:51] PASS | City injection blocked -- Only open jobs
+[00:18:03] PASS | Login employer -- org@test.ru
+[00:18:06] PASS | Admin search sanitized -- Navigated (access may be restricted)
+[00:18:18] PASS | Login employer -- org@test.ru
+[00:18:30] FAIL | Required fields enforced -- Submitted without required fields!
+[00:18:42] PASS | Login employer -- org@test.ru
+[00:19:56] FAIL | Invalid payment rejected -- Message: Not found: title (name=title); For documentation on this error, please visit: https://www.s
+[00:20:00] PASS | 404 handled -- OK
+[00:20:11] PASS | Login worker -- trud3@test.ru
+[00:20:14] PASS | Empty applications -- page loaded
+[00:20:17] PASS | Empty shifts -- page loaded
+[00:20:19] PASS | Empty chat -- page loaded
 
-Total: 11 passed, 0 failed
+Total: 66 passed, 5 failed
