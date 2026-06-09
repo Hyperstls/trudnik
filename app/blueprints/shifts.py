@@ -126,7 +126,9 @@ def _handle_complete(shift_id):
         flash('Ошибка при завершении смены. Попробуйте позже.', 'danger')
         return redirect(url_for('shifts.shifts'))
 
-    supabase_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'payment_pending'})
+    job_patch = supabase_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'payment_pending'})
+    if not job_patch.ok:
+        _app_log.logger.error('[SHIFT COMPLETE] PATCH jobs failed: job_id=%s status=%s', shift["job_id"], job_patch.status_code)
 
     flash('Смена завершена, ожидание подтверждения оплаты', 'success')
     return redirect(url_for('shifts.shifts'))
@@ -166,8 +168,12 @@ def _handle_confirm_payment(shift_id, action):
     if shift_resp.ok and shift_resp.json():
         shift = shift_resp.json()[0]
         if shift.get('employer_payment_confirmed') and shift.get('worker_payment_confirmed'):
-            supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={'status': 'paid'})
-            supabase_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'paid'})
+            shift_paid = supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={'status': 'paid'})
+            if not shift_paid.ok:
+                current_app.logger.error('[CONFIRM PAYMENT] PATCH shifts failed: shift_id=%s status=%s', shift_id, shift_paid.status_code)
+            job_done = supabase_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'completed'})
+            if not job_done.ok:
+                current_app.logger.error('[CONFIRM PAYMENT] PATCH jobs failed: job_id=%s status=%s', shift["job_id"], job_done.status_code)
 
             add_notification(shift['employer_id'], 'payment_sent', 'Оплата подтверждена',
                              f'Оплата по смене #{shift_id} подтверждена обеими сторонами')
@@ -207,7 +213,9 @@ def shift_complete(shift_id):
         flash('Ошибка при завершении смены. Попробуйте позже.', 'danger')
         return redirect(url_for('shifts.shifts'))
 
-    supabase_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'payment_pending'})
+    job_patch = supabase_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'payment_pending'})
+    if not job_patch.ok:
+        app_logger.logger.error('[SHIFT COMPLETE v2] PATCH jobs failed: job_id=%s status=%s', shift["job_id"], job_patch.status_code)
 
     flash('Смена завершена, ожидание подтверждения оплаты', 'success')
     return redirect(url_for('shifts.shifts'))
