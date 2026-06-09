@@ -75,9 +75,9 @@ def index():
     skills_filter = request.args.get('skills', '')
 
     query = 'status=eq.open&select=*,photos:job_photos(*)'
-    if city: query += f'&city=ilike.*{city}*'
-    if payment_min: query += f'&payment_amount=gte.{payment_min}'
-    if payment_max: query += f'&payment_amount=lte.{payment_max}'
+    if city: query += f'&city=ilike.*{_sanitize_postgrest(city)}*'
+    if payment_min: query += f'&payment_amount=gte.{_sanitize_postgrest(payment_min)}'
+    if payment_max: query += f'&payment_amount=lte.{_sanitize_postgrest(payment_max)}'
 
     resp = supabase_request('GET', f'jobs?{query}&order=created_at.desc')
     jobs = resp.json() if resp.ok else []
@@ -121,13 +121,11 @@ def index():
 # API поиска (полнотекстовый + фильтры + пагинация)
 # ──────────────────────────────────────────────
 
-def _build_search_params(params, prefix=''):
-    """Собрать строку параметров PostgREST из словаря, исключая пустые."""
-    parts = []
-    for key, val in params.items():
-        if val is not None and val != '' and val != []:
-            parts.append(f'{key}={val}')
-    return '&'.join(parts)
+def _sanitize_postgrest(value):
+    """Экранировать спецсимволы PostgREST в пользовательском вводе."""
+    if not isinstance(value, str):
+        return value
+    return value.replace('&', '').replace('*', '\\*').replace('.', '\\.').strip()
 
 
 @jobs_bp.route('/api/search/jobs')
