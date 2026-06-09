@@ -2,7 +2,7 @@ from collections import Counter
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for, jsonify
 
 from app.decorators import login_required, role_required
-from app.utils import supabase_request
+from app.utils import sanitize_postgrest, supabase_request
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -50,9 +50,9 @@ def admin_panel():
         role_filter = request.args.get('role', '')
         query = 'profiles?select=*&limit=100'
         if search:
-            query += f'&full_name=ilike.*{search}*'
+            query += f'&full_name=ilike.*{sanitize_postgrest(search)}*'
         if role_filter:
-            query += f'&role=eq.{role_filter}'
+            query += f'&role=eq.{sanitize_postgrest(role_filter)}'
         query += '&order=full_name.asc'
         users_resp = supabase_request('GET', query)
         users = users_resp.json() if users_resp.ok else []
@@ -64,9 +64,9 @@ def admin_panel():
         status_filter = request.args.get('status', '')
         query = 'jobs?select=*,employer:profiles!employer_id(full_name)&limit=100'
         if search:
-            query += f'&organization_name=ilike.*{search}*'
+            query += f'&organization_name=ilike.*{sanitize_postgrest(search)}*'
         if status_filter:
-            query += f'&status=eq.{status_filter}'
+            query += f'&status=eq.{sanitize_postgrest(status_filter)}'
         query += '&order=created_at.desc'
         jobs_resp = supabase_request('GET', query)
         jobs = jobs_resp.json() if jobs_resp.ok else []

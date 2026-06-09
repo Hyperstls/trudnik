@@ -187,3 +187,10 @@ def rate_limit(f):
         _rate_limits[ip].append(now)
         return f(*args, **kwargs)
     return decorated
+
+
+def sanitize_postgrest(value):
+    """Экранировать спецсимволы PostgREST в пользовательском вводе."""
+    if not isinstance(value, str):
+        return value
+    return value.replace('&', '').replace('*', '\\*').replace('.', '\\.').strip()

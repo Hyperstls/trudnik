@@ -4,7 +4,7 @@ from flask import Blueprint, current_app, jsonify, flash, redirect, render_templ
 
 from app.config import Config
 from app.decorators import login_required, role_required
-from app.utils import calculate_distance, copy_job, supabase_request
+from app.utils import calculate_distance, copy_job, sanitize_postgrest, supabase_request
 
 jobs_bp = Blueprint('jobs', __name__)
 
@@ -75,9 +75,9 @@ def index():
     skills_filter = request.args.get('skills', '')
 
     query = 'status=eq.open&select=*,photos:job_photos(*)'
-    if city: query += f'&city=ilike.*{_sanitize_postgrest(city)}*'
-    if payment_min: query += f'&payment_amount=gte.{_sanitize_postgrest(payment_min)}'
-    if payment_max: query += f'&payment_amount=lte.{_sanitize_postgrest(payment_max)}'
+    if city: query += f'&city=ilike.*{sanitize_postgrest(city)}*'
+    if payment_min: query += f'&payment_amount=gte.{sanitize_postgrest(payment_min)}'
+    if payment_max: query += f'&payment_amount=lte.{sanitize_postgrest(payment_max)}'
 
     resp = supabase_request('GET', f'jobs?{query}&order=created_at.desc')
     jobs = resp.json() if resp.ok else []
@@ -121,13 +121,6 @@ def index():
 # API поиска (полнотекстовый + фильтры + пагинация)
 # ──────────────────────────────────────────────
 
-def _sanitize_postgrest(value):
-    """Экранировать спецсимволы PostgREST в пользовательском вводе."""
-    if not isinstance(value, str):
-        return value
-    return value.replace('&', '').replace('*', '\\*').replace('.', '\\.').strip()
-
-
 @jobs_bp.route('/api/search/jobs')
 def api_search_jobs():
     """Поиск заданий с полнотекстовым поиском, фильтрами и пагинацией."""
@@ -152,11 +145,11 @@ def api_search_jobs():
 
     # Статус
     if status:
-        query_parts.append(f'status=eq.{status}')
+        query_parts.append(f'status=eq.{sanitize_postgrest(status)}')
 
     # Полнотекстовый поиск
     if q:
-        query_parts.append(f'search_vector=fts.russian.{q}')
+        query_parts.append(f'search_vector=fts.russian.{sanitize_postgrest(q)}')
 
     # Фильтры
     if min_pay is not None:
@@ -164,9 +157,9 @@ def api_search_jobs():
     if max_pay is not None:
         query_parts.append(f'payment_amount=lte.{max_pay}')
     if date_from:
-        query_parts.append(f'date_time=gte.{date_from}')
+        query_parts.append(f'date_time=gte.{sanitize_postgrest(date_from)}')
     if date_to:
-        query_parts.append(f'date_time=lte.{date_to}')
+        query_parts.append(f'date_time=lte.{sanitize_postgrest(date_to)}')
     if available_slots:
         query_parts.append('current_workers=lt.max_workers')
 
@@ -237,14 +230,14 @@ def api_search_workers():
     query_parts = ['select=*', 'role=eq.worker']
 
     if q:
-        query_parts.append(f'search_vector=fts.russian.{q}')
+        query_parts.append(f'search_vector=fts.russian.{sanitize_postgrest(q)}')
     if rating_min is not None:
         query_parts.append(f'rating=gte.{rating_min}')
     if skills:
         for sk in skills.split(','):
             sk = sk.strip()
             if sk:
-                query_parts.append(f'skills=cs.{{{sk}}}')
+                query_parts.append(f'skills=cs.{{{sanitize_postgrest(sk)}}}')
 
     offset = (page - 1) * per_page
     query_parts.append(f'limit={per_page}')
@@ -293,16 +286,16 @@ def workers():
         'religion': request.args.get('religion', ''),
     }
     query = 'role=eq.worker'
-    if filters['city']: query += f'&city=ilike.*{filters["city"]}*'
-    if filters['experience']: query += f'&experience=ilike.*{filters["experience"]}*'
+    if filters['city']: query += f'&city=ilike.*{sanitize_postgrest(filters["city"])}*'
+    if filters['experience']: query += f'&experience=ilike.*{sanitize_postgrest(filters["experience"])}*'
     if filters['payment_from']: query += f'&desired_payment=gte.{filters["payment_from"]}'
     if filters['payment_to']: query += f'&desired_payment=lte.{filters["payment_to"]}'
     if filters['rating_min']: query += f'&rating=gte.{filters["rating_min"]}'
     if filters['skills']:
         for skill in filters['skills'].split(','):
-            query += f'&skills=cs.{{{skill.strip()}}}'
+            query += f'&skills=cs.{{{sanitize_postgrest(skill.strip())}}}'
     if filters['religion']:
-        query += f'&religion=eq.{filters["religion"]}'
+        query += f'&religion=eq.{sanitize_postgrest(filters["religion"])}'
 
     resp = supabase_request('GET', f'profiles?{query}&order=rating.desc')
     workers_list = resp.json() if resp.ok else []
