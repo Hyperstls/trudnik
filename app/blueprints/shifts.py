@@ -115,11 +115,17 @@ def _handle_complete(shift_id):
         flash('Только активные смены можно завершить', 'danger')
         return redirect(url_for('shifts.shifts'))
 
-    supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={
-        'worker_complete': True,
+    from flask import current_app as _app_log
+    complete_resp = supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={
         'complete_time': datetime.now().isoformat(),
         'status': 'payment_pending'
     })
+
+    if not complete_resp.ok:
+        _app_log.logger.error('[SHIFT COMPLETE] PATCH shifts failed: shift_id=%s status=%s text=%s',
+                              shift_id, complete_resp.status_code, (complete_resp.text or '')[:200])
+        flash('Ошибка при завершении смены. Попробуйте позже.', 'danger')
+        return redirect(url_for('shifts.shifts'))
 
     supabase_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'payment_pending'})
 
@@ -191,11 +197,17 @@ def shift_complete(shift_id):
         flash('Только активные смены можно завершить', 'danger')
         return redirect(url_for('shifts.shifts'))
 
-    supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={
-        'worker_complete': True,
+    from flask import current_app as app_logger
+    complete_resp = supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={
         'complete_time': datetime.now().isoformat(),
         'status': 'payment_pending'
     })
+
+    if not complete_resp.ok:
+        app_logger.logger.error('[SHIFT COMPLETE] PATCH shifts failed: shift_id=%s status=%s text=%s',
+                                shift_id, complete_resp.status_code, (complete_resp.text or '')[:200])
+        flash('Ошибка при завершении смены. Попробуйте позже.', 'danger')
+        return redirect(url_for('shifts.shifts'))
 
     supabase_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'payment_pending'})
 

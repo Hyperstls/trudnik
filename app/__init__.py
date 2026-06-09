@@ -112,6 +112,28 @@ def create_app():
     app.register_blueprint(monetization_bp)
 
     # ================================
+    # API-роуты accept/reject/reopen (вынесены на объект app
+    # из-за проблем с blueprint-роутингом на production/Render)
+    # ================================
+    from app.blueprints.applications import api_handle_application
+    from app.decorators import login_required
+
+    @app.route('/api/applications/<app_id>/accept', methods=['POST'])
+    @login_required
+    def api_accept_application(app_id):
+        return api_handle_application(app_id, 'accept')
+
+    @app.route('/api/applications/<app_id>/reject', methods=['POST'])
+    @login_required
+    def api_reject_application(app_id):
+        return api_handle_application(app_id, 'reject')
+
+    @app.route('/api/applications/<app_id>/reopen', methods=['POST'])
+    @login_required
+    def api_reopen_application(app_id):
+        return api_handle_application(app_id, 'reopen')
+
+    # ================================
     # PWA / Google Play routes
     # ================================
 

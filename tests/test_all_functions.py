@@ -690,12 +690,20 @@ class TestApplicationsBlueprint(BaseBlueprintTest):
 
     def test_cancel_application(self):
         self._login()
+        # Порядок API-вызовов в cancel_application():
+        # 1. GET applications?select=job_id,worker_id,status
+        # 2. GET shifts?select=id (между applications и jobs!)
+        # 3. GET jobs?select=status,start_time,organization_name
+        # 4. GET jobs?select=current_workers,max_workers
+        # 5. PATCH jobs
+        # 6. PATCH applications
         responses = [
-            MagicMock(ok=True, json=lambda: [{'job_id': 'job-1', 'worker_id': 'w-1', 'shift_id': None}]),
-            MagicMock(ok=True, json=lambda: [{'status': 'in_progress', 'start_time': None}]),
+            MagicMock(ok=True, json=lambda: [{'job_id': 'job-1', 'worker_id': 'w-1', 'status': 'accepted'}]),
+            MagicMock(ok=True, json=lambda: []),  # shifts: пусто, shift_id=None
+            MagicMock(ok=True, json=lambda: [{'status': 'open', 'start_time': None, 'organization_name': 'Test Org'}]),
             MagicMock(ok=True, json=lambda: [{'current_workers': 2, 'max_workers': 5}]),
-            MagicMock(ok=True),
-            MagicMock(ok=True),
+            MagicMock(ok=True),  # PATCH jobs
+            MagicMock(ok=True),  # PATCH applications
         ]
         with patch('app.blueprints.applications.supabase_request', side_effect=responses):
             resp = self.client.post('/application/app-1/cancel')
