@@ -212,6 +212,11 @@ def api_handle_application(app_id, action):
             'status': 'in_progress',
             'current_workers': current_workers + 1
         })
+        current_app.logger.info(
+            '[ACCEPT] atomic PATCH: job_id=%s current=%s max=%s ok=%s status=%s json=%s text=%s',
+            job_id, current_workers, max_workers, patch_resp.ok, patch_resp.status_code,
+            (patch_resp.json() if patch_resp.ok else None), (patch_resp.text or '')[:200]
+        )
         if not (patch_resp.ok and patch_resp.json()):
             return jsonify({'success': False, 'error': 'Не удалось забронировать место (конкуренция запросов)'}), 409
 
