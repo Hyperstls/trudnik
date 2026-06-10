@@ -147,9 +147,30 @@ def change_password():
 @login_required
 def verify_employer():
     if request.method == 'POST':
-        supabase_request('PATCH', f'profiles?id=eq.{session["user_id"]}',
-                         json={'verification_status': 'pending'})
-        flash('Документ отправлен на проверку', 'success')
+        user_id = session['user_id']
+        data = {'verification_status': 'pending'}
+
+        # Upload document if provided
+        file = request.files.get('document')
+        if file and file.filename:
+            try:
+                ext = file.filename.rsplit('.', 1)[-1].lower()
+                if ext not in ('pdf', 'jpg', 'jpeg', 'png'):
+                    flash('Недопустимый формат файла. Разрешены PDF, JPG, PNG.', 'danger')
+                    return redirect(url_for('profile.verify_employer'))
+                path = f'verification/{user_id}/{uuid.uuid4().hex}.{ext}'
+                url = upload_to_storage('verification-docs', path, file)
+                if url:
+                    data['verification_doc_url'] = url
+                else:
+                    flash('Ошибка загрузки документа', 'danger')
+                    return redirect(url_for('profile.verify_employer'))
+            except Exception as e:
+                flash(f'Ошибка при загрузке: {str(e)}', 'danger')
+                return redirect(url_for('profile.verify_employer'))
+
+        supabase_request('PATCH', f'profiles?id=eq.{user_id}', json=data)
+        flash('Заявка на верификацию отправлена', 'success')
         return redirect(url_for('profile.profile'))
     return render_template('verify_employer.html')
 

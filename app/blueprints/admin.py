@@ -71,14 +71,14 @@ def admin_panel():
         jobs_resp = supabase_request('GET', query)
         jobs = jobs_resp.json() if jobs_resp.ok else []
 
-    # Верификация
+    # Верификация — все работодатели с любым статусом
     pending = []
     verified = []
     if tab == 'verification':
-        resp = supabase_request('GET', 'profiles?verification_status=eq.pending&select=*')
-        pending = resp.json() if resp.ok else []
-        resp2 = supabase_request('GET', 'profiles?verification_status=in.(approved,rejected)&select=*&order=updated_at.desc&limit=20')
-        verified = resp2.json() if resp2.ok else []
+        resp = supabase_request('GET', 'profiles?verification_status=not.is.null&select=*&order=updated_at.desc&limit=50')
+        all_verify = resp.json() if resp.ok else []
+        pending = [u for u in all_verify if u.get('verification_status') == 'pending']
+        verified = [u for u in all_verify if u.get('verification_status') in ('approved', 'rejected')]
 
     return render_template('admin.html',
                            tab=tab, stats=stats, users=users,

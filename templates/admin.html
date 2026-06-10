@@ -258,18 +258,54 @@
 
     {% if verified %}
     <h3 class="text-lg font-semibold text-neutral-800 mb-3 mt-6">История верификаций</h3>
-    <div class="space-y-1 mb-8">
+    <div class="space-y-2 mb-8">
         {% for user in verified %}
-        <div class="flex items-center justify-between px-4 py-2 bg-white rounded-lg border border-neutral-100">
-            <div>
-                <span class="font-medium text-neutral-900 text-sm">{{ user.full_name }}</span>
-                <span class="text-xs text-neutral-500 ml-2">{{ user.get('email', '') }}</span>
+        <div class="bg-white rounded-xl border border-neutral-100 p-4 shadow-sm">
+            <div class="flex justify-between items-start gap-3">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2">
+                        <p class="font-medium text-neutral-900">{{ user.full_name }}</p>
+                        <span class="text-xs px-2 py-0.5 rounded-full font-medium
+                            {% if user.verification_status == 'approved' %}bg-green-100 text-green-700
+                            {% else %}bg-red-100 text-red-700{% endif %}">
+                            {{ 'Одобрен' if user.verification_status == 'approved' else 'Отклонён' }}
+                        </span>
+                    </div>
+                    <p class="text-xs text-neutral-500">{{ user.get('city', '') }}{% if user.get('city') and user.get('email') %} · {% endif %}{{ user.get('email', '') }}</p>
+                    {% if user.verification_doc_url %}
+                    <a href="{{ user.verification_doc_url }}" target="_blank" rel="noopener"
+                       class="inline-flex items-center gap-1 text-primary-500 text-xs hover:underline mt-1">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        Документ
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="flex gap-2 shrink-0">
+                    {% if user.verification_status == 'approved' %}
+                    <button class="action-icon-btn accept-btn px-3 py-1.5 opacity-50 cursor-not-allowed" disabled title="Уже одобрен">
+                        {{ check(14) }}
+                        <span class="text-xs font-medium">Одобрено</span>
+                    </button>
+                    <form method="post" action="/admin/reject/{{ user.id }}">
+                        <button class="action-icon-btn reject-btn px-3 py-1.5">
+                            {{ close(14) }}
+                            <span class="text-xs font-medium">Отклонить</span>
+                        </button>
+                    </form>
+                    {% else %}
+                    <form method="post" action="/admin/approve/{{ user.id }}">
+                        <button class="action-icon-btn accept-btn px-3 py-1.5">
+                            {{ check(14) }}
+                            <span class="text-xs font-medium">Одобрить</span>
+                        </button>
+                    </form>
+                    <button class="action-icon-btn reject-btn px-3 py-1.5 opacity-50 cursor-not-allowed" disabled title="Уже отклонён">
+                        {{ close(14) }}
+                        <span class="text-xs font-medium">Отклонено</span>
+                    </button>
+                    {% endif %}
+                </div>
             </div>
-            <span class="text-xs px-2 py-0.5 rounded-full font-medium
-                {% if user.verification_status == 'approved' %}bg-green-100 text-green-700
-                {% else %}bg-red-100 text-red-700{% endif %}">
-                {{ 'Одобрен' if user.verification_status == 'approved' else 'Отклонён' }}
-            </span>
         </div>
         {% endfor %}
     </div>

@@ -29,7 +29,7 @@ E_EMAIL, E_PASS = "org@test.ru", "Step@1986"
 W_EMAIL, W_PASS = "trud3@test.ru", "Step@1986"
 PAGE_TIMEOUT = 90
 EL_TIMEOUT = 45
-JOB_FORM_TIMEOUT = 70  # /jobs/new can be slow due to Supabase cold start
+JOB_FORM_TIMEOUT = 70  # /job/new can be slow due to Supabase cold start
 
 results = []
 
@@ -135,10 +135,10 @@ def test_A04_logout(driver):
 def test_A05_access_control(driver):
     print("\n--- A05: Access control (worker -> employer page) ---")
     if not login(driver, W_EMAIL, W_PASS, "worker"): return
-    nav(driver, "%s/jobs/new" % BASE); time.sleep(2)
+    nav(driver, "%s/job/new" % BASE); time.sleep(2)
     b = body_text(driver)
     has_create = "Создать" in b and "задание" in b.lower()
-    rep("Worker on /jobs/new", not has_create, "Access blocked" if not has_create else "Should be blocked but form visible")
+    rep("Worker on /job/new", not has_create, "Access blocked" if not has_create else "Should be blocked but form visible")
     logout(driver)
 
 # ═══════════════════════════════════════════════════════════════
@@ -242,7 +242,7 @@ def test_W02_contact_save_clear(driver):
 def test_J01_create_job(driver):
     print("\n--- J01: Create job ---")
     if not login(driver, E_EMAIL, E_PASS, "employer"): return
-    nav(driver, "%s/jobs/new" % BASE); time.sleep(3)
+    nav(driver, "%s/job/new" % BASE); time.sleep(3)
     ok, msg = _job_form_available(driver)
     if not ok:
         rep("Create job", True, "Skipped: %s" % msg)
@@ -263,7 +263,7 @@ def test_J01_create_job(driver):
 def test_J02_create_job_stop_words(driver):
     print("\n--- J02: Stop words validation ---")
     if not login(driver, E_EMAIL, E_PASS, "employer"): return
-    nav(driver, "%s/jobs/new" % BASE); time.sleep(3)
+    nav(driver, "%s/job/new" % BASE); time.sleep(3)
     ok, msg = _job_form_available(driver)
     if not ok:
         rep("Stop words check", True, "Skipped: %s" % msg)
@@ -461,7 +461,7 @@ def test_SN02_url_sanitize_admin(driver):
 def test_VL01_required_fields(driver):
     print("\n--- VL01: Required fields ---")
     if not login(driver, E_EMAIL, E_PASS, "employer"): return
-    nav(driver, "%s/jobs/new" % BASE); time.sleep(3)
+    nav(driver, "%s/job/new" % BASE); time.sleep(3)
     ok, msg = _job_form_available(driver)
     if not ok:
         rep("Required fields enforced", True, "Skipped: %s" % msg)
@@ -478,7 +478,7 @@ def test_VL01_required_fields(driver):
 def test_VL02_invalid_input(driver):
     print("\n--- VL02: Invalid input ---")
     if not login(driver, E_EMAIL, E_PASS, "employer"): return
-    nav(driver, "%s/jobs/new" % BASE); time.sleep(3)
+    nav(driver, "%s/job/new" % BASE); time.sleep(3)
     ok, msg = _job_form_available(driver)
     if not ok:
         rep("Invalid input rejected", True, "Skipped: %s" % msg)
