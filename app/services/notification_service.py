@@ -88,3 +88,39 @@ def create(user_id, notification_type, title, message, data=None):
                      user_id, notification_type, resp.status_code)
         return False
     return True
+
+
+def get_notifications(user_id, page=1, per_page=20):
+    """Получить уведомления пользователя с пагинацией (JSON-ready)."""
+    offset = (page - 1) * per_page
+    headers = {'Prefer': 'count=exact'}
+    resp = supabase_request('GET',
+        f'notifications?user_id=eq.{user_id}&order=created_at.desc'
+        f'&limit={per_page}&offset={offset}', headers=headers)
+    items = resp.json() if resp.ok else []
+    total = int(resp.headers.get('Content-Range', '0-0/0').split('/')[-1]) if resp.ok else 0
+    return {
+        'results': items, 'total': total, 'page': page,
+        'per_page': per_page,
+        'pages': max(1, (total + per_page - 1) // per_page) if total else 1
+    }
+
+
+def get_unread_count(user_id):
+    """Быстрый счётчик непрочитанных уведомлений."""
+    resp = supabase_request('GET',
+        f'notifications?user_id=eq.{user_id}&is_read=eq.false&select=id&limit=100')
+    return len(resp.json()) if resp.ok else 0
+
+
+def mark_all_read(user_id):
+    """Пометить все уведомления пользователя прочитанными."""
+    supabase_request('PATCH',
+        f'notifications?user_id=eq.{user_id}&is_read=eq.false',
+        json={'is_read': True})
+
+
+def mark_read(notification_id):
+    """Пометить одно уведомление прочитанным."""
+    supabase_request('PATCH', f'notifications?id=eq.{notification_id}',
+        json={'is_read': True})

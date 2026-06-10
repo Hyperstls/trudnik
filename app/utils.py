@@ -194,3 +194,21 @@ def sanitize_postgrest(value):
     if not isinstance(value, str):
         return value
     return value.replace('&', '').replace('*', '\\*').replace('.', '\\.').strip()
+
+
+def uid():
+    """Короткий доступ к ID текущего пользователя из сессии."""
+    from flask import session
+    return session.get('user_id')
+
+
+def my_query(table, field='user_id', extra=''):
+    """Построить PostgREST-запрос для текущего пользователя.
+    Пример: my_query('notifications') -> 'notifications?user_id=eq.{uid}'
+            my_query('jobs', 'employer_id', '&status=eq.open') -> 'jobs?employer_id=eq.{uid}&status=eq.open'
+    """
+    u = uid()
+    q = f'{table}?{field}=eq.{u}'
+    if extra:
+        q += extra
+    return q
