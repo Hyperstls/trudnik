@@ -148,6 +148,14 @@
                             <span>{{ job.current_workers }}/{{ job.max_workers }} {{ 'место' if job.max_workers == 1 else 'мест' }}</span>
                             {% endif %}
                         </div>
+                        {# ID задания + копирование #}
+                        <div class="mt-1.5 flex items-center gap-1.5">
+                            <code class="text-[11px] font-mono text-neutral-300 select-all" title="ID задания">{{ job.id }}</code>
+                            <button type="button" onclick="copyJobId(this, '{{ job.id }}')"
+                                    class="text-neutral-300 hover:text-primary-500 transition-colors p-0.5" title="Скопировать ID задания">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            </button>
+                        </div>
                         {# Кнопки действий #}
                         <div class="flex flex-wrap gap-1.5 mt-2">
                             {% if job.status in ['open', 'cancelled'] %}
@@ -333,6 +341,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(() => window.showToast('Ошибка соединения', 'error'));
+        }
+    };
+
+    window.copyJobId = function(btn, text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(function() {
+                var original = btn.innerHTML;
+                btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+                btn.classList.add('text-success');
+                setTimeout(function() {
+                    btn.innerHTML = original;
+                    btn.classList.remove('text-success');
+                }, 1800);
+            }).catch(function() {
+                window.showToast('Не удалось скопировать', 'error');
+            });
+        } else {
+            // Fallback: выделяем текст в <code> рядом
+            var code = btn.parentElement.querySelector('code');
+            if (code) {
+                var range = document.createRange();
+                range.selectNodeContents(code);
+                var sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+            window.showToast('Выделено. Нажмите Ctrl+C', 'info');
         }
     };
 });
