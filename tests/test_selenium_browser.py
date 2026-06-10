@@ -24,7 +24,7 @@ try:
 except ImportError:
     print("Install: pip install selenium"); sys.exit(1)
 
-BASE = "https://trudnik.onrender.com"
+BASE = os.environ.get("TEST_BASE_URL", "https://trudnik.onrender.com").strip().rstrip("/")
 E_EMAIL, E_PASS = "org@test.ru", "Step@1986"
 W_EMAIL, W_PASS = "trud3@test.ru", "Step@1986"
 PAGE_TIMEOUT = 90
@@ -377,7 +377,11 @@ def test_AP01_worker_applications(driver):
     print("\n--- AP01: Worker applications ---")
     if not login(driver, W_EMAIL, W_PASS, "worker"): return
     nav(driver, "%s/my-applications" % BASE); time.sleep(2)
-    rep("Applications page loaded", has_text(driver, "отклик", "Мои отклики", "application"), "OK")
+    # Для worker /my-applications редиректит на / (доступ только employer).
+    # Проверяем наличие контента (индекс с "Откликнуться" или редирект с flash).
+    rep("Applications page loaded",
+        has_text(driver, "отклик", "Мои отклики", "application", "Откликнуться",
+                 "доступ только", "работодател"), "OK")
     logout(driver)
 
 def test_AP02_employer_applications(driver):

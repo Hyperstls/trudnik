@@ -22,7 +22,7 @@ try:
 except ImportError:
     print("Install: pip install selenium"); sys.exit(1)
 
-BASE = "https://trudnik.onrender.com"
+BASE = os.environ.get("TEST_BASE_URL", "https://trudnik.onrender.com").strip().rstrip("/")
 ADMIN = "admin@test.ru"
 ADMIN_PASS = "Step@1986"
 PAGE_TOUT = 90

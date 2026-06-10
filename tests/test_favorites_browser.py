@@ -99,8 +99,12 @@ def run_favorites_test():
             wait_and_fill(page, 'input[name="full_name"]', TEST_NAME)
             wait_and_fill(page, 'input[name="email"]', TEST_EMAIL)
             wait_and_fill(page, 'input[name="password"]', TEST_PASSWORD)
-            page.select_option('select[name="role"]', 'employer')
+            # Роль — радио-кнопки sr-only (register.html редизайн), клик через label
+            page.locator('input[name="role"][value="employer"]').check(force=True)
             page.wait_for_timeout(500)
+            # Переход на шаг 2
+            page.click('button#to-step-2')
+            page.wait_for_timeout(1000)
             wait_and_fill(page, 'input[name="city"]', 'Moscow')
 
             page.click('button[type="submit"]')
@@ -225,7 +229,7 @@ def run_favorites_test():
                 print("  [FAIL] Favorites page is empty (worker was not added)")
                 errors.append("Favorites page is empty")
             else:
-                fav_cards = page.query_selector_all('.card')
+                fav_cards = page.query_selector_all('.app-card')
                 print(f"  Favorite cards found: {len(fav_cards)}")
 
                 if len(fav_cards) > 0:
@@ -288,7 +292,7 @@ def run_favorites_test():
                 print("  [OK] Favorites is empty - all clean")
                 results["confirm_removed"] = True
             else:
-                fav_cards = page.query_selector_all('.card')
+                fav_cards = page.query_selector_all('.app-card')
                 if len(fav_cards) == 0:
                     print("  [OK] Favorites is empty (no cards)")
                     results["confirm_removed"] = True
