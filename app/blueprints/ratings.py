@@ -168,8 +168,44 @@ def upsert_rating():
     # Обновить средний рейтинг пользователя
     update_rating(rated_user_id, rating)
 
+    # Проверить, все ли участники оценили задание (paid → completed)
+    _auto_complete_job_if_rated(job_id, rater_user_id)
+
     return jsonify({
         'success': True,
         'is_new': is_new,
         'message': 'Оценка сохранена' if is_new else 'Оценка обновлена'
     })
+
+
+def _auto_complete_job_if_rated(job_id, rater_user_id):
+    """Если обе стороны оценили задание — перевести его в completed (матрица: paid → completed)."""
+    job_resp = supabase_admin_request('GET', f'jobs?id=eq.{job_id}&select=status,employer_id')
+    if not job_resp.ok or not job_resp.json():
+        return
+
+    job = job_resp.json()[0]
+    if job['status'] != 'paid':
+        return
+
+    # Получить всех участников (работодатель + все трудники из смен)
+    shifts_resp = supabase_admin_request('GET', f'shifts?job_id=eq.{job_id}&select=worker_id,employer_id')
+    if not shifts_resp.ok or not shifts_resp.json():
+        return
+
+    participants = set()
+    for s in shifts_resp.json():
+        participants.add(s['employer_id'])
+        participants.add(s['worker_id'])
+
+    # Сколько участников уже оценили?
+    ratings_resp = supabase_admin_request('GET', f'ratings?job_id=eq.{job_id}&select=rater_user_id')
+    if not ratings_resp.ok:
+        return
+
+    raters = set()
+    if ratings_resp.json():
+        raters = set(r['rater_user_id'] for r in ratings_resp.json())
+
+    if participants.issubset(raters):
+        supabase_admin_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'completed'})

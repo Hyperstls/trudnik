@@ -156,8 +156,9 @@
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                             </button>
                         </div>
-                        {# Кнопки действий #}
+                        {# Кнопки действий (матрица секция 3.1) #}
                         <div class="flex flex-wrap gap-1.5 mt-2">
+                            {# Редактировать: только open и cancelled #}
                             {% if job.status in ['open', 'cancelled'] %}
                             <a href="/jobs/{{ job.id }}/edit"
                                class="action-icon-btn chat-btn" title="Редактировать">
@@ -165,32 +166,55 @@
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Редактировать</span>
                             </a>
                             {% endif %}
-                            {% if job.status in ['cancelled', 'completed'] %}
+
+                            {# Дублировать: все статусы кроме open (матрица) #}
                             <button type="button" onclick="duplicateJob('{{ job.id }}')"
                                     class="action-icon-btn chat-btn" title="Дублировать">
                                 {{ duplicate(16) }}
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Дублировать</span>
                             </button>
-                            {% endif %}
+
+                            {# Отозвать: только open, in_progress, active #}
                             {% if job.status in ['open', 'in_progress', 'active'] %}
                             <button type="button" onclick="cancelJob('{{ job.id }}')"
                                     class="action-icon-btn contact-btn" title="Отозвать">
                                 {{ x_close(16) }}
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Отозвать</span>
                             </button>
-                            {% elif job.status == 'cancelled' %}
+                            {% endif %}
+
+                            {# Вернуть: только cancelled #}
+                            {% if job.status == 'cancelled' %}
                             <button type="button" onclick="restoreJob('{{ job.id }}')"
                                     class="action-icon-btn accept-btn" title="Вернуть">
                                 {{ restore(16) }}
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Вернуть</span>
                             </button>
                             {% endif %}
-                            {% if job.status in ['open', 'cancelled'] %}
+
+                            {# Удалить: все статусы #}
                             <button type="button" onclick="deleteJob('{{ job.id }}')"
                                     class="action-icon-btn reject-btn" title="Удалить">
                                 {{ trash_detailed(16) }}
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Удалить</span>
                             </button>
+
+                            {# Подтвердить оплату: payment_pending #}
+                            {% if job.status == 'payment_pending' %}
+                            <a href="/shifts"
+                               class="action-icon-btn accept-btn" title="Подтвердить оплату (на странице смен)">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span class="text-xs ml-1 font-medium hidden sm:inline">Оплатить</span>
+                            </a>
+                            {% endif %}
+
+                            {# Оценить трудника: paid #}
+                            {% if job.status == 'paid' %}
+                            <a href="/jobs/{{ job.id }}#ratings-section"
+                               class="action-icon-btn chat-btn" title="Оценить трудника">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                <span class="text-xs ml-1 font-medium hidden sm:inline">Оценить</span>
+                            </a>
                             {% endif %}
                         </div>
                     </div>
