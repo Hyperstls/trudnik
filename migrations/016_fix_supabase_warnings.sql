@@ -12,17 +12,30 @@ ALTER FUNCTION public.profiles_search_update SET search_path = '';
 ALTER FUNCTION public.handle_new_user SET search_path = '';
 
 -- 3. Storage buckets: убрать широкий SELECT
+-- avatars и jobs ДОЛЖНЫ быть публичными (фото профилей и заданий)
+-- verification-docs: только аутентифицированные пользователи
 DROP POLICY IF EXISTS "Public read 1oj01fe_0" ON storage.objects;
+DROP POLICY IF EXISTS "Public read avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Public read jobs photos" ON storage.objects;
+DROP POLICY IF EXISTS "Public read verification docs" ON storage.objects;
 CREATE POLICY "Public read avatars" ON storage.objects
     FOR SELECT USING (bucket_id = 'avatars');
 CREATE POLICY "Public read jobs photos" ON storage.objects
     FOR SELECT USING (bucket_id = 'jobs');
-CREATE POLICY "Public read verification docs" ON storage.objects
-    FOR SELECT USING (bucket_id = 'verification-docs');
+CREATE POLICY "Auth read verification docs" ON storage.objects
+    FOR SELECT USING (bucket_id = 'verification-docs' AND auth.role() = 'authenticated');
 
--- 4. Запретить anon/authenticated выполнение SECURITY DEFINER функций
-REVOKE EXECUTE ON FUNCTION public.execute_sql(text) FROM anon, authenticated;
-REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM anon, authenticated;
+-- 4. Запретить выполнение SECURITY DEFINER функций (повторно, с проверкой)
+DO $$
+BEGIN
+    REVOKE EXECUTE ON FUNCTION public.execute_sql(text) FROM anon, authenticated;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
+DO $$
+BEGIN
+    REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM anon, authenticated;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
 
 -- 5. RLS политики для таблиц без политик
 -- push_subscriptions
