@@ -20,6 +20,9 @@
     {% set total = jobs|length %}
     {% set open_count = jobs|selectattr('status', 'equalto', 'open')|list|length %}
     {% set in_progress_count = jobs|selectattr('status', 'equalto', 'in_progress')|list|length %}
+    {% set active_count = jobs|selectattr('status', 'equalto', 'active')|list|length %}
+    {% set payment_pending_count = jobs|selectattr('status', 'equalto', 'payment_pending')|list|length %}
+    {% set paid_count = jobs|selectattr('status', 'equalto', 'paid')|list|length %}
     {% set completed_count = jobs|selectattr('status', 'equalto', 'completed')|list|length %}
     {% set cancelled_count = jobs|selectattr('status', 'equalto', 'cancelled')|list|length %}
     {% if total > 0 %}
@@ -29,6 +32,12 @@
         <span class="text-success font-medium">{{ open_count }} открыто</span>{% endif %}
         {% if in_progress_count > 0 %}<span class="text-neutral-300">·</span>
         <span class="text-info font-medium">{{ in_progress_count }} в работе</span>{% endif %}
+        {% if active_count > 0 %}<span class="text-neutral-300">·</span>
+        <span class="text-warning font-medium">{{ active_count }} активно</span>{% endif %}
+        {% if payment_pending_count > 0 %}<span class="text-neutral-300">·</span>
+        <span class="text-accent font-medium">{{ payment_pending_count }} ожидает оплаты</span>{% endif %}
+        {% if paid_count > 0 %}<span class="text-neutral-300">·</span>
+        <span class="text-primary-600 font-medium">{{ paid_count }} оплачено</span>{% endif %}
         {% if completed_count > 0 %}<span class="text-neutral-300">·</span>
         <span class="text-neutral-500">{{ completed_count }} завершено</span>{% endif %}
         {% if cancelled_count > 0 %}<span class="text-neutral-300">·</span>
@@ -51,6 +60,18 @@
         <a href="/my-jobs?status=in_progress"
            class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if current_status == 'in_progress' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">
             В работе
+        </a>
+        <a href="/my-jobs?status=active"
+           class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if current_status == 'active' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">
+            Активные
+        </a>
+        <a href="/my-jobs?status=payment_pending"
+           class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if current_status == 'payment_pending' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">
+            Ожидают оплаты
+        </a>
+        <a href="/my-jobs?status=paid"
+           class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if current_status == 'paid' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">
+            Оплаченные
         </a>
         <a href="/my-jobs?status=completed"
            class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if current_status == 'completed' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">
@@ -174,8 +195,8 @@
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Дублировать</span>
                             </button>
 
-                            {# Отозвать: только open, in_progress, active #}
-                            {% if job.status in ['open', 'in_progress', 'active'] %}
+                            {# Отозвать: только open, in_progress (matrix: active блокируется бэкендом) #}
+                            {% if job.status in ['open', 'in_progress'] %}
                             <button type="button" onclick="cancelJob('{{ job.id }}')"
                                     class="action-icon-btn contact-btn" title="Отозвать">
                                 {{ x_close(16) }}
@@ -201,7 +222,7 @@
 
                             {# Подтвердить оплату: payment_pending #}
                             {% if job.status == 'payment_pending' %}
-                            <a href="/shifts"
+                            <a href="/shifts?job_id={{ job.id }}"
                                class="action-icon-btn accept-btn" title="Подтвердить оплату (на странице смен)">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Оплатить</span>
@@ -349,17 +370,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    window.deleteJob = function(jobId) {
-        if (confirm('Удалить задание безвозвратно?')) {
+    window.deleteJob = function(jobId, forceConfirm) {
+        var msg = forceConfirm ? 'У задания есть принятые отклики. Всё равно удалить?' : 'Удалить задание безвозвратно?';
+        if (confirm(msg)) {
+            var body = forceConfirm ? JSON.stringify({ confirm: true }) : undefined;
+            var headers = { 'X-Requested-With': 'XMLHttpRequest' };
+            if (body) { headers['Content-Type'] = 'application/json'; }
             fetch('/delete-job/' + jobId, {
                 method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                headers: headers,
+                body: body
             })
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
                     window.showToast('Задание удалено', 'success');
                     setTimeout(() => location.reload(), 1200);
+                } else if (data.needs_confirm) {
+                    window.deleteJob(jobId, true);
                 } else {
                     window.showToast(data.error || 'Ошибка при удалении', 'error');
                 }

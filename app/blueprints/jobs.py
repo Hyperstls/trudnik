@@ -4,7 +4,7 @@ from flask import Blueprint, current_app, jsonify, flash, redirect, render_templ
 
 from app.config import Config
 from app.decorators import login_required, role_required
-from app.utils import calculate_distance, copy_job, sanitize_postgrest, supabase_request
+from app.utils import calculate_distance, copy_job, sanitize_postgrest, supabase_admin_request, supabase_request
 
 jobs_bp = Blueprint('jobs', __name__)
 
@@ -524,7 +524,18 @@ def repost_job(job_id):
 def cancel_job(job_id):
     if not _check_job_owner(job_id, session['user_id']):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
-    supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
+
+    # Блокировка: нельзя отозвать задание с активными сменами (матрица секция 6.1)
+    shifts_resp = supabase_request('GET', f'shifts?job_id=eq.{job_id}&status=eq.active&select=id')
+    if shifts_resp.ok and shifts_resp.json():
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        msg = 'Нельзя отозвать задание с активными сменами. Дождитесь завершения смен.'
+        if is_ajax:
+            return jsonify({'success': False, 'error': msg}), 409
+        flash(msg, 'danger')
+        return redirect(url_for('jobs.my_jobs'))
+
+    supabase_admin_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True, 'message': 'Задание отозвано'})
     flash('Задание отозвано', 'success')
@@ -550,7 +561,18 @@ def restore_job(job_id):
 def delete_job(job_id):
     if not _check_job_owner(job_id, session['user_id']):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
-    supabase_request('DELETE', f'jobs?id=eq.{job_id}')
+
+    # Блокировка: предупреждение при наличии принятых откликов (матрица секция 6.1)
+    apps_resp = supabase_request('GET', f'applications?job_id=eq.{job_id}&status=eq.accepted&select=id')
+    has_accepted = apps_resp.ok and apps_resp.json()
+
+    if has_accepted:
+        # Требуем явный параметр подтверждения через AJAX
+        data = request.get_json(silent=True) or {}
+        if not data.get('confirm'):
+            return jsonify({'success': False, 'error': 'У задания есть принятые отклики. Подтвердите удаление.', 'needs_confirm': True}), 409
+
+    supabase_admin_request('DELETE', f'jobs?id=eq.{job_id}')
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True, 'message': 'Задание удалено'})
     flash('Задание удалено', 'success')

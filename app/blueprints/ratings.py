@@ -102,8 +102,8 @@ def upsert_rating():
         return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
 
     job = job_resp.json()[0]
-    if job['status'] != 'completed':
-        return jsonify({'success': False, 'error': 'Оценить можно только завершённое задание'}), 400
+    if job['status'] not in ('paid', 'completed'):
+        return jsonify({'success': False, 'error': 'Оценить можно только оплаченное или завершённое задание'}), 400
 
     # Определить rating_type (роль оценивающего)
     if rater_user_id == job['employer_id']:

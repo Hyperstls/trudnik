@@ -243,6 +243,11 @@ def api_handle_application(app_id, action):
                 created = create_resp.json()
                 shift_id = created[0].get('id') if isinstance(created, list) else created.get('id')
 
+        # Уведомить работника о создании смены (матрица секция 9)
+        if shift_id:
+            notify(worker_id, 'shift_created', 'Смена создана',
+                   f'Смена #{shift_id} создана. Отметьте начало смены.')
+
         # Уведомить работника
         notify(worker_id, 'application_accepted', 'Отклик принят',
                          f'Ваш отклик на задание #{job_id} был принят')
