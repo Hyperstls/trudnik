@@ -174,8 +174,9 @@ def add_notification(user_id, notification_type, title, message):
 
 
 def update_rating(user_id, new_rating):
-    """Обновить средний рейтинг пользователя"""
-    ratings_resp = supabase_request('GET', f'ratings?rated_user_id=eq.{user_id}&select=rating')
+    """Обновить средний рейтинг пользователя.
+    Использует admin_request для обхода RLS (вызывается от лица rat'ера, не владельца профиля)."""
+    ratings_resp = supabase_admin_request('GET', f'ratings?rated_user_id=eq.{user_id}&select=rating')
     if not ratings_resp.ok or not ratings_resp.json():
         return
 
@@ -183,7 +184,7 @@ def update_rating(user_id, new_rating):
     total = sum(r['rating'] for r in ratings_list)
     avg = round(total / len(ratings_list), 1)
 
-    supabase_request('PATCH', f'profiles?id=eq.{user_id}', json={'rating': avg})
+    supabase_admin_request('PATCH', f'profiles?id=eq.{user_id}', json={'rating': avg})
 
 
 # ============================================================

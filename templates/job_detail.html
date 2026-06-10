@@ -119,6 +119,21 @@
     </div>
     {% endif %}
 
+    {# ============================================ #}
+    {# Рейтинги и отзывы                             #}
+    {# ============================================ #}
+    <div id="ratings-section" class="mt-6" data-job-id="{{ job.id }}" data-status="{{ job.status }}" data-employer-id="{{ job.employer_id }}">
+        <div class="bg-white rounded-2xl border border-neutral-200 p-4">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-semibold text-neutral-800">Отзывы и оценки</h3>
+                <span id="rating-average" class="text-sm text-neutral-500">—</span>
+            </div>
+            <div id="ratings-list" class="space-y-3">
+                <p class="text-sm text-neutral-400 text-center py-4">Загрузка...</p>
+            </div>
+        </div>
+    </div>
+
     {% if current_user_role == 'worker' %}
     <div class="mt-4">
         <a href="/chat/new/{{ job.employer_id }}" class="action-icon-btn chat-btn w-full justify-center py-3.5" title="Написать работодателю">
@@ -146,6 +161,213 @@ ymaps.ready(function() {
 {% endif %}
 </script>
 <script>
+// ── Рейтинги ─────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+    var section = document.getElementById('ratings-section');
+    if (!section) return;
+    var jobId = section.dataset.jobId;
+    var status = section.dataset.status;
+    var employerId = section.dataset.employerId;
+    var userId = '{{ session.get("user_id", "") }}';
+
+    function loadRatings() {
+        fetch('/api/ratings/' + jobId)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success) return;
+                renderRatings(data);
+            })
+            .catch(function() {});
+    }
+
+    function renderRatings(data) {
+        var list = document.getElementById('ratings-list');
+        var avgEl = document.getElementById('rating-average');
+        if (data.count > 0) {
+            avgEl.textContent = '★ ' + data.average + ' (' + data.count + ')';
+        } else {
+            avgEl.textContent = 'Нет оценок';
+        }
+
+        var html = '';
+        // Форма для новой оценки (если задание завершено и пользователь авторизован)
+        if (status === 'completed' && userId && data.count > 0) {
+            var myRating = null;
+            for (var i = 0; i < data.ratings.length; i++) {
+                if (data.ratings[i].rater_user_id === userId) {
+                    myRating = data.ratings[i];
+                    break;
+                }
+            }
+        }
+
+        // Список оценок
+        if (data.ratings.length === 0) {
+            html += '<p class="text-sm text-neutral-400 text-center py-4">Пока нет оценок</p>';
+        } else {
+            for (var i = 0; i < data.ratings.length; i++) {
+                var r = data.ratings[i];
+                var raterName = (r.rater && r.rater.full_name) || 'Пользователь';
+                var stars = '';
+                for (var s = 1; s <= 5; s++) {
+                    stars += s <= r.rating ? '★' : '☆';
+                }
+                html += '<div class="flex gap-3 items-start pb-3 border-b border-neutral-100 last:border-0">';
+                html += '   <div class="flex-1 min-w-0">';
+                html += '       <div class="flex items-center gap-2">';
+                html += '           <span class="text-sm font-medium text-neutral-700">' + raterName + '</span>';
+                html += '           <span class="text-sm text-amber-500">' + stars + '</span>';
+                html += '       </div>';
+                if (r.comment) {
+                    html += '   <p class="text-sm text-neutral-500 mt-1">' + escapeHtml(r.comment) + '</p>';
+                }
+                html += '   </div>';
+                html += '</div>';
+            }
+        }
+
+        list.innerHTML = html;
+
+        // Форма оценивания для авторизованных
+        if (status === 'completed' && userId) {
+            addRatingForm(list, data);
+        }
+    }
+
+    function addRatingForm(list, data) {
+        // Определяем, кого оценивать
+        var ratedUserId = '';
+        var targetType = '';
+        var role = '{{ session.get("role", "") }}';
+        if (userId === employerId) {
+            // Работодатель оценивает трудника — ищем worker_id среди смен
+            ratedUserId = '';
+            targetType = 'worker';
+        } else {
+            // Трудник оценивает работодателя
+            ratedUserId = employerId;
+            targetType = 'employer';
+        }
+
+        if (!ratedUserId) return;
+
+        // Проверяем, есть ли уже оценка
+        var existingRating = 0;
+        var existingComment = '';
+        for (var i = 0; i < data.ratings.length; i++) {
+            if (data.ratings[i].rater_user_id === userId) {
+                existingRating = data.ratings[i].rating;
+                existingComment = data.ratings[i].comment || '';
+                break;
+            }
+        }
+
+        var btnText = existingRating ? 'Изменить оценку' : 'Оценить';
+        var starsHtml = '';
+        for (var s = 1; s <= 5; s++) {
+            var filled = s <= existingRating ? 'text-amber-500' : 'text-neutral-300';
+            starsHtml += '<button type="button" class="star-btn ' + filled + ' text-2xl hover:text-amber-400 transition-colors" data-value="' + s + '">★</button>';
+        }
+
+        var formHtml =
+            '<div class="mt-4 pt-3 border-t border-neutral-200">' +
+            '   <p class="text-sm font-medium text-neutral-700 mb-2">' + btnText + '</p>' +
+            '   <div class="flex gap-1 mb-2" id="star-rating">' + starsHtml + '</div>' +
+            '   <textarea id="rating-comment" class="w-full text-sm border border-neutral-200 rounded-lg p-2 resize-none" rows="2" placeholder="Ваш отзыв (необязательно)">' + escapeHtml(existingComment) + '</textarea>' +
+            '   <button type="button" id="submit-rating" class="mt-2 px-4 py-2 bg-primary-500 text-white text-sm font-semibold rounded-lg hover:bg-primary-600 transition-colors" disabled>' + btnText + '</button>' +
+            '   <span id="rating-feedback" class="text-sm ml-2"></span>' +
+            '</div>';
+
+        list.insertAdjacentHTML('beforeend', formHtml);
+
+        // Логика звёзд
+        var selectedRating = existingRating;
+        var starBtns = document.querySelectorAll('#star-rating .star-btn');
+        var submitBtn = document.getElementById('submit-rating');
+
+        function updateStars(val) {
+            starBtns.forEach(function(btn, idx) {
+                var starVal = parseInt(btn.dataset.value);
+                if (starVal <= val) {
+                    btn.className = 'star-btn text-amber-500 text-2xl hover:text-amber-400 transition-colors';
+                } else {
+                    btn.className = 'star-btn text-neutral-300 text-2xl hover:text-amber-400 transition-colors';
+                }
+            });
+        }
+
+        starBtns.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                selectedRating = parseInt(this.dataset.value);
+                updateStars(selectedRating);
+                submitBtn.disabled = false;
+            });
+            btn.addEventListener('mouseenter', function() {
+                updateStars(parseInt(this.dataset.value));
+            });
+            btn.addEventListener('mouseleave', function() {
+                updateStars(selectedRating);
+            });
+        });
+
+        if (existingRating) {
+            submitBtn.disabled = false;
+        }
+
+        // Отправка
+        submitBtn.addEventListener('click', function() {
+            if (selectedRating < 1) return;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Сохранение...';
+
+            fetch('/api/ratings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({
+                    job_id: jobId,
+                    rated_user_id: ratedUserId,
+                    rating: selectedRating,
+                    comment: document.getElementById('rating-comment').value,
+                    target_type: targetType,
+                })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var fb = document.getElementById('rating-feedback');
+                if (data.success) {
+                    fb.textContent = '✓ ' + data.message;
+                    fb.className = 'text-sm text-success ml-2';
+                    setTimeout(function() { loadRatings(); }, 1000);
+                } else {
+                    fb.textContent = '✗ ' + (data.error || 'Ошибка');
+                    fb.className = 'text-sm text-danger ml-2';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = btnText;
+                }
+            })
+            .catch(function() {
+                var fb = document.getElementById('rating-feedback');
+                fb.textContent = '✗ Ошибка соединения';
+                fb.className = 'text-sm text-danger ml-2';
+                submitBtn.disabled = false;
+                submitBtn.textContent = btnText;
+            });
+        });
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(text));
+        return div.innerHTML;
+    }
+
+    loadRatings();
+});
+
 window.copyText = function(btn, text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(function() {
