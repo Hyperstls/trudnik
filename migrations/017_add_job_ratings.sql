@@ -36,7 +36,11 @@ CREATE POLICY "Anyone can read ratings" ON public.ratings
     FOR SELECT USING (true);
 
 -- Авторизованные пользователи могут вставлять/обновлять свои оценки
+-- (сначала удаляем старые политики, если существуют из предыдущих миграций)
 DROP POLICY IF EXISTS "Users can upsert own ratings" ON public.ratings;
+DROP POLICY IF EXISTS "Users can update own ratings" ON public.ratings;
+DROP POLICY IF EXISTS "Users can insert ratings" ON public.ratings;
+
 CREATE POLICY "Users can upsert own ratings" ON public.ratings
     FOR INSERT WITH CHECK (auth.uid() = rater_user_id);
 
