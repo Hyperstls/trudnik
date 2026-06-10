@@ -209,15 +209,15 @@ class TestUtils(unittest.TestCase):
                   'is_read': False}
         )
 
-    @patch('app.utils.supabase_request')
-    def test_update_rating(self, mock_supabase):
-        mock_supabase.side_effect = [
+    @patch('app.utils.supabase_admin_request')
+    def test_update_rating(self, mock_admin):
+        mock_admin.side_effect = [
             MagicMock(ok=True, json=lambda: [{'rating': 5}, {'rating': 4}, {'rating': 3}]),
             MagicMock(ok=True),
         ]
         update_rating('user-1', 4)
-        self.assertEqual(mock_supabase.call_count, 2)
-        patch_call = mock_supabase.call_args_list[1]
+        self.assertEqual(mock_admin.call_count, 2)
+        patch_call = mock_admin.call_args_list[1]
         self.assertEqual(patch_call[0][0], 'PATCH')
         self.assertEqual(patch_call[0][1], 'profiles?id=eq.user-1')
         self.assertEqual(patch_call[1]['json']['rating'], 4.0)
