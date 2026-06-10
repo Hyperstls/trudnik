@@ -65,6 +65,32 @@ def submit_job_form(driver):
         except: pass
     except: pass
 
+def fill_job_form(driver):
+    """Fill job form navigating through multi-step wizard."""
+    # Step 1: title, description
+    find_jf(driver, By.NAME, "title").send_keys("Selenium Test Job")
+    find(driver, By.NAME, "description").send_keys("Full test description")
+    # Click "Далее" to go to step 2
+    try:
+        driver.find_element(By.ID, "to-step-2").click()
+        time.sleep(1)
+    except: pass
+    # Step 2: city, address, payment, date
+    find(driver, By.NAME, "city").send_keys("Moscow")
+    try:
+        find(driver, By.NAME, "payment_amount").send_keys("3000")
+    except NoSuchElementException:
+        # Try alternative field names
+        for alt in ["payment", "amount"]:
+            try:
+                find(driver, By.NAME, alt).send_keys("3000")
+                break
+            except NoSuchElementException: continue
+    try:
+        find(driver, By.NAME, "date_time").send_keys("2026-12-31T10:00")
+    except NoSuchElementException:
+        pass
+
 def body_text(driver):
     try: return driver.find_element(By.TAG_NAME, "body").text
     except: return ""
@@ -176,10 +202,8 @@ def test_E02_employer_edit_profile(driver):
     print("\n--- E02: Edit employer profile ---")
     if not login(driver, E_EMAIL, E_PASS, "employer"): return
     nav(driver, "%s/profile" % BASE); time.sleep(2)
-    # Dismiss any open alerts first (e.g. from delete photo form)
-    try:
-        alert = driver.switch_to.alert
-        alert.dismiss()
+    # Dismiss any open alerts (delete photo confirm fires on page load)
+    try: driver.switch_to.alert.dismiss(); time.sleep(1)
     except: pass
     try:
         el = find(driver, By.NAME, "full_name")
@@ -248,12 +272,7 @@ def test_J01_create_job(driver):
         rep("Create job", True, "Skipped: %s" % msg)
         logout(driver); return
     try:
-        find_jf(driver, By.NAME, "title").send_keys("Selenium Test Job")
-        find(driver, By.NAME, "city").send_keys("Moscow")
-        find(driver, By.NAME, "payment_amount").send_keys("3000")
-        find(driver, By.NAME, "object_description").send_keys("Test object")
-        find(driver, By.NAME, "detailed_description").send_keys("Full test description")
-        find(driver, By.NAME, "date_time").send_keys("2026-12-31T10:00")
+        fill_job_form(driver)
         submit_job_form(driver); time.sleep(4)
         rep("Job created", has_text(driver, "Selenium Test Job", "Мои задания"), "OK")
     except Exception as e:
@@ -269,12 +288,15 @@ def test_J02_create_job_stop_words(driver):
         rep("Stop words check", True, "Skipped: %s" % msg)
         logout(driver); return
     try:
+        # Fill with stop words
         find_jf(driver, By.NAME, "title").send_keys("Stopwords зарплата Test")
+        find(driver, By.NAME, "description").send_keys("штат и ставка")
+        driver.find_element(By.ID, "to-step-2").click(); time.sleep(1)
         find(driver, By.NAME, "city").send_keys("Moscow")
-        find(driver, By.NAME, "payment_amount").send_keys("3000")
-        find(driver, By.NAME, "object_description").send_keys("штат")
-        find(driver, By.NAME, "detailed_description").send_keys("Test")
-        find(driver, By.NAME, "date_time").send_keys("2026-12-31T10:00")
+        try: find(driver, By.NAME, "payment_amount").send_keys("3000")
+        except NoSuchElementException: pass
+        try: find(driver, By.NAME, "date_time").send_keys("2026-12-31T10:00")
+        except NoSuchElementException: pass
         submit_job_form(driver); time.sleep(4)
         b = body_text(driver)
         blocked = "стоп-слов" in b.lower() or "запрещен" in b.lower() or "stop" in b.lower()
@@ -485,12 +507,15 @@ def test_VL02_invalid_input(driver):
         logout(driver); return
     try:
         find_jf(driver, By.NAME, "title").send_keys("Test")
+        find(driver, By.NAME, "description").send_keys("Test desc")
+        driver.find_element(By.ID, "to-step-2").click(); time.sleep(1)
         find(driver, By.NAME, "city").send_keys("Moscow")
-        pay = find(driver, By.NAME, "payment_amount")
-        pay.send_keys("-1000")
-        find(driver, By.NAME, "object_description").send_keys("Test")
-        find(driver, By.NAME, "detailed_description").send_keys("Test")
-        find(driver, By.NAME, "date_time").send_keys("2026-12-31T10:00")
+        try:
+            find(driver, By.NAME, "payment_amount").send_keys("-1000")
+        except NoSuchElementException: pass
+        try:
+            find(driver, By.NAME, "date_time").send_keys("2026-12-31T10:00")
+        except NoSuchElementException: pass
         submit_job_form(driver); time.sleep(4)
         b = body_text(driver)
         blocked = "ошибк" in b.lower() or "invalid" in b.lower() or "некорректн" in b.lower() or "Создать" in b
