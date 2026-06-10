@@ -3,10 +3,7 @@
 -- Выполнить в Supabase SQL Editor
 -- ============================================================
 
--- 1. RLS на spatial_ref_sys
-ALTER TABLE IF EXISTS public.spatial_ref_sys ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow all" ON public.spatial_ref_sys;
-CREATE POLICY "Allow all" ON public.spatial_ref_sys FOR ALL USING (true);
+-- 1. spatial_ref_sys — системная таблица PostGIS, нельзя менять (пропускаем)
 
 -- 2. Mutable search_path в функциях
 ALTER FUNCTION public.nearby_jobs SET search_path = '';
