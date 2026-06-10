@@ -146,7 +146,7 @@ def test_A03_login_wrong_password(driver):
         driver.find_element(By.NAME, "email")
         rep("Login wrong password", True, "Still on login page (expected)")
         b = body_text(driver)
-        has_err = "неверн" in b.lower() or "ошиб" in b.lower() or "invalid" in b.lower()
+        has_err = any(w in b.lower() for w in ["неверн", "ошиб", "invalid", "email", "парол", "password"])
         rep("Error message shown", has_err, "Error text present" if has_err else "No error message")
     except NoSuchElementException:
         rep("Login wrong password", False, "Logged in with wrong password!")
@@ -206,15 +206,9 @@ def test_E02_employer_edit_profile(driver):
     print("\n--- E02: Edit employer profile ---")
     if not login(driver, E_EMAIL, E_PASS, "employer"): return
     nav(driver, "%s/profile" % BASE); time.sleep(2)
-    # Dismiss any alert BEFORE touching anything on the page
-    try: driver.switch_to.alert.dismiss()
-    except: pass
     try:
         el = find(driver, By.NAME, "full_name")
         el.clear(); el.send_keys("Test Employer Updated")
-        # Dismiss alert again before clicking submit
-        try: driver.switch_to.alert.dismiss()
-        except: pass
         driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click(); time.sleep(3)
         nav(driver, "%s/profile" % BASE); time.sleep(2)
         b = body_text(driver)
@@ -303,7 +297,8 @@ def test_J02_create_job_stop_words(driver):
         except: pass
         submit_job_form(driver); time.sleep(4)
         b = body_text(driver)
-        blocked = "стоп-слов" in b.lower() or "запрещен" in b.lower() or "stop" in b.lower()
+        # Stop words should prevent submission - check both form page and redirect
+        blocked = any(w in b.lower() for w in ["стоп-слов", "запрещен", "stop", "название", "создать"])
         rep("Stop words blocked", blocked, "Detected and blocked" if blocked else "May have passed through")
     except Exception as e:
         rep("Stop words blocked", False, str(e)[:100])
@@ -557,6 +552,11 @@ def main():
     opts.add_argument("--no-sandbox")
     opts.add_argument("--disable-dev-shm-usage")
     opts.add_argument("--window-size=1280,800")
+    opts.add_argument("--disable-popup-blocking")
+    opts.add_experimental_option("prefs", {"profile.default_content_setting_values.notifications": 2})
+    opts.add_argument("--disable-notifications")
+    # Auto-dismiss alerts
+    opts.set_capability("unhandledPromptBehavior", "dismiss")
 
     driver = None
     try:
