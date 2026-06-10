@@ -109,7 +109,9 @@ def _handle_complete(shift_id):
 
 
 def _maybe_set_job_payment_pending(job_id):
-    """Проверяет, все ли смены задания завершены. Если да — ставит payment_pending."""
+    """Проверяет, все ли смены задания завершены.
+    Если нет активных смен — автоматически завершает задание (completed),
+    пропуская ручное подтверждение оплаты."""
     shifts_resp = supabase_request('GET', f'shifts?job_id=eq.{job_id}&select=status')
     if not shifts_resp.ok or not shifts_resp.json():
         return
@@ -117,9 +119,10 @@ def _maybe_set_job_payment_pending(job_id):
     active_count = sum(1 for s in statuses if s in ('active', 'in_progress'))
     if active_count == 0:
         from flask import current_app as _app2
-        patch = supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'payment_pending'})
+        # Все смены выполнены — автоматически завершаем задание
+        patch = supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'completed'})
         if not patch.ok:
-            _app2.logger.error('[MAYBE PAYMENT PENDING] PATCH jobs failed: job_id=%s status=%s', job_id, patch.status_code)
+            _app2.logger.error('[AUTO COMPLETE] PATCH jobs failed: job_id=%s status=%s', job_id, patch.status_code)
 
 
 def _handle_confirm_payment(shift_id, action):
