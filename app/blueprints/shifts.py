@@ -3,7 +3,7 @@ from datetime import datetime
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required
-from app.utils import supabase_request, update_rating
+from app.utils import supabase_request, supabase_admin_request, update_rating
 from app.services.notification_service import create as notify
 
 shifts_bp = Blueprint('shifts', __name__)
@@ -64,11 +64,11 @@ def _handle_checkin(shift_id):
         'status': 'active'
     })
 
-    job_resp = supabase_request('GET', f'jobs?id=eq.{shift["job_id"]}&select=status')
+    job_resp = supabase_admin_request('GET', f'jobs?id=eq.{shift["job_id"]}&select=status')
     if job_resp.ok and job_resp.json():
         job = job_resp.json()[0]
         if job['status'] in ('open', 'in_progress'):
-            supabase_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'active'})
+            supabase_admin_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'active'})
 
     flash('Чек-ин успешно выполнен', 'success')
     return redirect(url_for('shifts.shifts'))
@@ -111,8 +111,10 @@ def _handle_complete(shift_id):
 def _maybe_set_job_payment_pending(job_id):
     """Проверяет, все ли смены задания завершены.
     Если нет активных смен — автоматически завершает задание (completed),
-    пропуская ручное подтверждение оплаты."""
-    shifts_resp = supabase_request('GET', f'shifts?job_id=eq.{job_id}&select=status')
+    пропуская ручное подтверждение оплаты.
+    Использует service_role_key, т.к. вызывается от лица работника,
+    а UPDATE на jobs разрешён только работодателю."""
+    shifts_resp = supabase_admin_request('GET', f'shifts?job_id=eq.{job_id}&select=status')
     if not shifts_resp.ok or not shifts_resp.json():
         return
     statuses = [s['status'] for s in shifts_resp.json()]
@@ -120,7 +122,7 @@ def _maybe_set_job_payment_pending(job_id):
     if active_count == 0:
         from flask import current_app as _app2
         # Все смены выполнены — автоматически завершаем задание
-        patch = supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'completed'})
+        patch = supabase_admin_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'completed'})
         if not patch.ok:
             _app2.logger.error('[AUTO COMPLETE] PATCH jobs failed: job_id=%s status=%s', job_id, patch.status_code)
 
@@ -163,12 +165,13 @@ def _handle_confirm_payment(shift_id, action):
             if not shift_paid.ok:
                 current_app.logger.error('[CONFIRM PAYMENT] PATCH shifts failed: shift_id=%s status=%s', shift_id, shift_paid.status_code)
             # Проверить, все ли смены задания оплачены
-            all_shifts = supabase_request('GET', f'shifts?job_id=eq.{shift["job_id"]}&select=status')
+            all_shifts = supabase_admin_request('GET', f'shifts?job_id=eq.{shift["job_id"]}&select=status')
             all_paid = True
             if all_shifts.ok and all_shifts.json():
                 all_paid = all(s.get('status') == 'paid' for s in all_shifts.json())
             if all_paid:
-                job_done = supabase_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'completed'})
+                # Используем admin_request, т.к. вызывается от лица любой из сторон (RLS разрешает UPDATE jobs только работодателю)
+                job_done = supabase_admin_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'completed'})
                 if not job_done.ok:
                     current_app.logger.error('[CONFIRM PAYMENT] PATCH jobs failed: job_id=%s status=%s', shift["job_id"], job_done.status_code)
 
