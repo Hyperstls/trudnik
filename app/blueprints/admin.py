@@ -73,13 +73,16 @@ def admin_panel():
 
     # Верификация
     pending = []
+    verified = []
     if tab == 'verification':
         resp = supabase_request('GET', 'profiles?verification_status=eq.pending&select=*')
         pending = resp.json() if resp.ok else []
+        resp2 = supabase_request('GET', 'profiles?verification_status=in.(approved,rejected)&select=*&order=updated_at.desc&limit=20')
+        verified = resp2.json() if resp2.ok else []
 
     return render_template('admin.html',
                            tab=tab, stats=stats, users=users,
-                           jobs=jobs, pending=pending)
+                           jobs=jobs, pending=pending, verified=verified)
 
 
 # ── Управление пользователями ──────────────────────────
@@ -260,9 +263,12 @@ def delete_religion(religion_id):
 @login_required
 @role_required('admin')
 def approve_employer(user_id):
-    supabase_request('PATCH', f'profiles?id=eq.{user_id}',
+    resp = supabase_request('PATCH', f'profiles?id=eq.{user_id}',
                      json={'verification_status': 'approved'})
-    flash('Работодатель верифицирован', 'success')
+    if resp and resp.ok:
+        flash('Работодатель верифицирован', 'success')
+    else:
+        flash('Ошибка при верификации', 'danger')
     return redirect(url_for('admin.admin_panel', tab='verification'))
 
 
@@ -270,7 +276,10 @@ def approve_employer(user_id):
 @login_required
 @role_required('admin')
 def reject_employer(user_id):
-    supabase_request('PATCH', f'profiles?id=eq.{user_id}',
+    resp = supabase_request('PATCH', f'profiles?id=eq.{user_id}',
                      json={'verification_status': 'rejected'})
-    flash('Верификация отклонена', 'warning')
+    if resp and resp.ok:
+        flash('Верификация отклонена', 'warning')
+    else:
+        flash('Ошибка при отклонении', 'danger')
     return redirect(url_for('admin.admin_panel', tab='verification'))

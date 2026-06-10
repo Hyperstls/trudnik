@@ -27,7 +27,7 @@
         <span id="step-ind-4">Проверка</span>
     </div>
 
-    <form method="post" id="job-form" class="space-y-5" {% if is_edit %}action="/jobs/{{ job.id }}/edit"{% endif %} novalidate>
+    <form method="post" id="job-form" class="space-y-5" {% if is_edit %}action="/jobs/{{ job.id }}/edit"{% endif %}>
         <!-- ===== Шаг 1: Информация ===== -->
         <div id="step-1" class="space-y-4">
             <div class="floating-label-group">
