@@ -91,6 +91,30 @@ def supabase_request(method, endpoint, **kwargs):
         return SupabaseResponse(ok=False, status_code=0, text=str(e))
 
 
+def supabase_admin_request(method, endpoint, **kwargs):
+    """Сделать запрос к Supabase REST API с service_role_key (обход RLS).
+    Используется только для административных операций (удаление пользователей, заданий)."""
+    extra_headers = kwargs.pop('headers', None)
+    headers = {
+        'apikey': SUPABASE_KEY,
+        'Authorization': f'Bearer {SERVICE_KEY}',
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation',
+    }
+    if extra_headers:
+        headers.update(extra_headers)
+    url = f'{SUPABASE_URL}/rest/v1/{endpoint}'
+    try:
+        resp = requests.request(method, url, headers=headers, timeout=15, **kwargs)
+        return resp
+    except requests.RequestException as e:
+        current_app.logger.error(f"Supabase admin request error: {e}")
+        return SupabaseResponse(ok=False, status_code=0, text=str(e))
+    except Exception as e:
+        current_app.logger.error(f"Unexpected error in supabase_admin_request: {e}")
+        return SupabaseResponse(ok=False, status_code=0, text=str(e))
+
+
 MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5 MB
 
 def upload_to_storage(bucket, file_path, file_data, content_type):
