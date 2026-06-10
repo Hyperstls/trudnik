@@ -1,0 +1,21 @@
+Admin Panel Report
+Server: https://trudnik.onrender.com
+Time: 2026-06-10 18:13:12
+============================================================
+[18:11:34] PASS | Login admin -- admin@test.ru
+[18:11:42] PASS | Wrong password blocked -- Still on login page
+[18:11:58] PASS | Login admin -- admin@test.ru
+[18:12:02] PASS | Dashboard loaded -- OK
+[18:12:09] PASS | Users tab loaded -- OK
+[18:12:16] PASS | Users search works -- search=org
+[18:12:23] PASS | Jobs tab loaded -- OK
+[18:12:30] PASS | Jobs filter works -- status=open
+[18:12:37] PASS | Verification tab loaded -- OK
+[18:12:43] PASS | Skills tab loaded -- OK
+[18:12:46] PASS | Skills API works -- JSON response
+[18:12:52] PASS | Religions tab loaded -- OK
+[18:12:55] PASS | Religions API works -- JSON response
+[18:12:59] FAIL | Admin redirects to login -- OK
+[18:13:09] PASS | Access blocked for worker -- OK
+
+Total: 14 passed, 1 failed
