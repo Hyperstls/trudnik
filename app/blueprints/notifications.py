@@ -67,6 +67,29 @@ def api_read_all():
     return jsonify({'success': True})
 
 
+@notifications_bp.route('/api/notifications/<notification_id>/delete', methods=['POST'])
+@login_required
+def api_delete_notification(notification_id):
+    """Удалить одно уведомление."""
+    user_id = session['user_id']
+    resp = supabase_admin_request('DELETE',
+        f'notifications?id=eq.{notification_id}&user_id=eq.{user_id}')
+    if resp.ok:
+        return jsonify({'success': True})
+    return jsonify({'success': False, 'error': 'Ошибка удаления'}), 400
+
+
+@notifications_bp.route('/api/notifications/delete-all', methods=['POST'])
+@login_required
+def api_delete_all_notifications():
+    """Удалить все уведомления пользователя (кроме приглашений)."""
+    user_id = session['user_id']
+    # Удаляем все уведомления, кроме тех что содержат "приглаш"
+    supabase_admin_request('DELETE',
+        f'notifications?user_id=eq.{user_id}&message=not.ilike.*приглаш*')
+    return jsonify({'success': True})
+
+
 @notifications_bp.route('/notification/<notification_id>/read', methods=['POST'])
 @login_required
 def mark_read_route(notification_id):

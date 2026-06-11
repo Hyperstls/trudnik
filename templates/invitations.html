@@ -1,14 +1,29 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="px-4 pb-24 max-w-lg mx-auto">
-    <h2 class="text-2xl font-bold text-neutral-900 mb-5">Приглашения</h2>
+    <div class="flex items-center justify-between mb-5">
+        <h2 class="text-2xl font-bold text-neutral-900">Приглашения</h2>
+        {% if invitations %}
+        <button onclick="rejectAllInvites()"
+            class="text-sm text-danger hover:text-red-700 font-medium transition-colors">
+            Отклонить все
+        </button>
+        {% endif %}
+    </div>
 
     {% if invitations %}
     <div class="space-y-3">
         {% for inv in invitations %}
-        <div class="app-card bg-white rounded-2xl shadow-sm border p-4 transition-all duration-200
+        <div class="app-card bg-white rounded-2xl shadow-sm border p-4 transition-all duration-200 relative
             {% if inv.status == 'pending' %}border-primary-200 bg-primary-50/60{% else %}border-neutral-100{% endif %}">
-            <div class="flex items-start gap-3">
+            {% if inv.status == 'pending' %}
+            <button onclick="rejectInvite('{{ inv.id }}')"
+                class="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full hover:bg-neutral-200 text-neutral-400 hover:text-danger transition-colors"
+                title="Отклонить приглашение">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+            {% endif %}
+            <div class="flex items-start gap-3 pr-8">
                 <div class="w-9 h-9 rounded-full {% if inv.status == 'pending' %}bg-primary-100{% else %}bg-neutral-100{% endif %} flex items-center justify-center shrink-0 mt-0.5">
                     <span class="{% if inv.status == 'pending' %}text-primary-600{% else %}text-neutral-400{% endif %} font-semibold text-sm">@</span>
                 </div>
@@ -76,6 +91,25 @@ function respondInvite(invitationId, action) {
         } else {
             alert(data.error || 'Ошибка');
         }
+    })
+    .catch(e => alert('Ошибка: ' + e.message));
+}
+
+function rejectInvite(invitationId) {
+    if (!confirm('Отклонить приглашение?')) return;
+    respondInvite(invitationId, 'reject');
+}
+
+function rejectAllInvites() {
+    if (!confirm('Отклонить все приглашения?')) return;
+    fetch('/api/invitations/reject-all', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) location.reload();
+        else alert(data.error || 'Ошибка');
     })
     .catch(e => alert('Ошибка: ' + e.message));
 }

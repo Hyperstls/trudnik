@@ -2,7 +2,15 @@
 {% from '_icons.html' import bell %}
 {% block content %}
 <div class="px-4 pb-24 max-w-lg mx-auto">
-    <h2 class="text-2xl font-bold text-neutral-900 mb-5">Уведомления</h2>
+    <div class="flex items-center justify-between mb-5">
+        <h2 class="text-2xl font-bold text-neutral-900">Уведомления</h2>
+        {% if items %}
+        <button onclick="deleteAllNotifications()"
+            class="text-sm text-danger hover:text-red-700 font-medium transition-colors">
+            Удалить все
+        </button>
+        {% endif %}
+    </div>
 
     {% if items %}
     <div class="space-y-3">
@@ -25,12 +33,17 @@
             'system': 'Системное',
         }.get(notification.type, notification.type or 'Уведомление') %}
         {% set is_invitation = notification.type == 'application_received' and 'Вас пригласили' in (notification.message or '') %}
-        <div class="app-card bg-white rounded-2xl shadow-sm border p-4 transition-all duration-200
+        <div class="app-card bg-white rounded-2xl shadow-sm border p-4 transition-all duration-200 relative
             {% if not notification.is_read %}border-primary-200 bg-primary-50/60{% else %}border-neutral-100{% endif %}">
+            <button onclick="deleteNotification('{{ notification.id }}')"
+                class="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full hover:bg-neutral-200 text-neutral-400 hover:text-danger transition-colors"
+                title="Удалить уведомление">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
             {% if is_invitation %}
-            <a href="/invitations" class="flex items-start gap-3 no-underline text-inherit">
+            <a href="/invitations" class="flex items-start gap-3 no-underline text-inherit pr-8">
             {% else %}
-            <div class="flex items-start gap-3">
+            <div class="flex items-start gap-3 pr-8">
             {% endif %}
                 <div class="w-9 h-9 rounded-full {% if not notification.is_read %}bg-primary-100{% else %}bg-neutral-100{% endif %} flex items-center justify-center shrink-0 mt-0.5">
                     <span class="{% if not notification.is_read %}text-primary-600{% else %}text-neutral-400{% endif %} font-semibold text-sm">!</span>
@@ -61,4 +74,25 @@
     </div>
     {% endif %}
 </div>
+
+<script>
+function deleteNotification(id) {
+    if (!confirm('Удалить уведомление?')) return;
+    fetch('/api/notifications/' + id + '/delete', {method: 'POST'})
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) location.reload();
+        else alert(data.error || 'Ошибка');
+    });
+}
+function deleteAllNotifications() {
+    if (!confirm('Удалить все уведомления?')) return;
+    fetch('/api/notifications/delete-all', {method: 'POST'})
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) location.reload();
+        else alert(data.error || 'Ошибка');
+    });
+}
+</script>
 {% endblock %}

@@ -739,6 +739,17 @@ def respond_invitation(invitation_id):
     return jsonify({'success': True, 'new_status': new_status})
 
 
+@jobs_bp.route('/api/invitations/reject-all', methods=['POST'])
+@login_required
+def reject_all_invitations():
+    """Отклонить все ожидающие приглашения текущего пользователя."""
+    user_id = session['user_id']
+    supabase_admin_request('PATCH',
+        f'invitations?worker_id=eq.{user_id}&status=eq.pending',
+        json={'status': 'rejected', 'responded_at': 'now()'})
+    return jsonify({'success': True})
+
+
 @jobs_bp.route('/jobs/<job_id>/edit', methods=['GET', 'POST'])
 @login_required
 @role_required('employer')
