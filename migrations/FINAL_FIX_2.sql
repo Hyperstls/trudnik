@@ -54,9 +54,16 @@ CREATE POLICY "Workers can delete own applications" ON public.applications
     FOR DELETE USING ((select auth.uid()) = worker_id);
 
 -- messages: Shift participants can view messages
+-- (нет колонки recipient_id, участники определяются через shifts)
 DROP POLICY IF EXISTS "Shift participants can view messages" ON public.messages;
 CREATE POLICY "Shift participants can view messages" ON public.messages
-    FOR SELECT USING ((select auth.uid()) IN (sender_id, recipient_id));
+    FOR SELECT USING (
+        (select auth.uid()) IN (
+            SELECT worker_id FROM shifts WHERE shifts.id = messages.shift_id
+            UNION
+            SELECT employer_id FROM shifts WHERE shifts.id = messages.shift_id
+        )
+    );
 
 -- messages: Shift participants can insert messages
 DROP POLICY IF EXISTS "Shift participants can insert messages" ON public.messages;
