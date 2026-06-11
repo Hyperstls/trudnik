@@ -7,21 +7,47 @@
     {% if items %}
     <div class="space-y-3">
         {% for notification in items %}
+        {% set type_label = {
+            'application_received': 'Новый отклик',
+            'application_accepted': 'Отклик принят',
+            'application_rejected': 'Отклик отклонён',
+            'application_cancelled': 'Отклик отменён',
+            'shift_checkin': 'Чек-ин',
+            'shift_complete': 'Смена завершена',
+            'shift_reminder': 'Напоминание о смене',
+            'payment_confirmed': 'Оплата подтверждена',
+            'payment_received': 'Оплата получена',
+            'new_message': 'Новое сообщение',
+            'new_rating': 'Новая оценка',
+            'job_filled': 'Задание укомплектовано',
+            'job_completed': 'Задание завершено',
+            'job_cancelled': 'Задание отменено',
+            'system': 'Системное',
+        }.get(notification.type, notification.type or 'Уведомление') %}
+        {% set is_invitation = notification.type == 'application_received' and 'Вас пригласили' in (notification.message or '') %}
         <div class="app-card bg-white rounded-2xl shadow-sm border p-4 transition-all duration-200
             {% if not notification.is_read %}border-primary-200 bg-primary-50/60{% else %}border-neutral-100{% endif %}">
+            {% if is_invitation %}
+            <a href="/invitations" class="flex items-start gap-3 no-underline text-inherit">
+            {% else %}
             <div class="flex items-start gap-3">
+            {% endif %}
                 <div class="w-9 h-9 rounded-full {% if not notification.is_read %}bg-primary-100{% else %}bg-neutral-100{% endif %} flex items-center justify-center shrink-0 mt-0.5">
                     <span class="{% if not notification.is_read %}text-primary-600{% else %}text-neutral-400{% endif %} font-semibold text-sm">!</span>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="font-semibold text-neutral-900 text-sm">{{ notification.title }}</p>
+                    <p class="font-semibold text-neutral-900 text-sm">{{ type_label }}</p>
                     <p class="text-sm text-neutral-600 mt-0.5">{{ notification.message }}</p>
                     <p class="text-xs text-neutral-400 mt-1.5">{{ notification.created_at[:16] if notification.created_at else '' }}</p>
                 </div>
                 {% if not notification.is_read %}
                 <span class="w-2 h-2 rounded-full bg-primary-500 shrink-0 mt-2"></span>
                 {% endif %}
+            {% if is_invitation %}
+            </a>
+            {% else %}
             </div>
+            {% endif %}
         </div>
         {% endfor %}
     </div>

@@ -214,8 +214,9 @@ def _delete_job_cascade(job_id):
     for table, condition in cascade_tables:
         supabase_admin_request('DELETE', f'{table}?{condition}')
 
-    # Уведомления, связанные с заданием
-    supabase_admin_request('DELETE', f'notifications?job_id=eq.{job_id}')
+    # Уведомления, связанные с заданием (колонки job_id нет в production,
+    # ищем job_id в тексте сообщения через ilike)
+    supabase_admin_request('DELETE', f'notifications?message=ilike.*{job_id}*')
 
     # Само задание
     job_del = supabase_admin_request('DELETE', f'jobs?id=eq.{job_id}')

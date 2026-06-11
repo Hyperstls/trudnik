@@ -572,6 +572,21 @@ def delete_job(job_id):
         if not data.get('confirm'):
             return jsonify({'success': False, 'error': 'У задания есть принятые отклики. Подтвердите удаление.', 'needs_confirm': True}), 409
 
+    # Каскадное удаление связанных записей (через service_role для обхода RLS)
+    cascade_tables = [
+        ('applications', f'job_id=eq.{job_id}'),
+        ('job_skills', f'job_id=eq.{job_id}'),
+        ('job_photos', f'job_id=eq.{job_id}'),
+        ('job_favorites', f'job_id=eq.{job_id}'),
+        ('shifts', f'job_id=eq.{job_id}'),
+        ('contact_payments', f'job_id=eq.{job_id}'),
+        ('invitations', f'job_id=eq.{job_id}'),
+    ]
+    for table, condition in cascade_tables:
+        supabase_admin_request('DELETE', f'{table}?{condition}')
+    # Уведомления — ищем job_id в тексте (колонки job_id нет в production)
+    supabase_admin_request('DELETE', f'notifications?message=ilike.*{job_id}*')
+
     supabase_admin_request('DELETE', f'jobs?id=eq.{job_id}')
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True, 'message': 'Задание удалено'})
