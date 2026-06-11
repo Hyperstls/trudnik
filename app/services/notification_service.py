@@ -77,11 +77,17 @@ def create(user_id, notification_type, title, message, data=None):
     payload = {
         'user_id': user_id,
         'type': notification_type,
-        'title': title,
-        'message': message,
-        'data': data or {},
+        'message': f'{title}: {message}' if title else message,
         'is_read': False,
     }
+    # Добавляем контекстные поля (job_id, shift_id) если они есть в data
+    if data:
+        if data.get('job_id'):
+            payload['job_id'] = data['job_id']
+        if data.get('shift_id'):
+            payload['shift_id'] = data['shift_id']
+        if data.get('application_id'):
+            payload['application_id'] = data['application_id']
 
     # Используем admin_request для обхода RLS:
     # уведомления создаются системой (не владельцем), user_id может не совпадать с auth.uid()
