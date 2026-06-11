@@ -20,12 +20,10 @@ DO $$ BEGIN
         FOR INSERT WITH CHECK ((select auth.uid()) IN (SELECT employer_id FROM jobs WHERE jobs.id = job_id));
 EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'job_photos: %', SQLERRM; END $$;
 
--- monetization_settings: EXISTS + auth.uid()
-DO $$ BEGIN
-    DROP POLICY IF EXISTS "monetization_settings_insert" ON public.monetization_settings;
-    CREATE POLICY "monetization_settings_insert" ON public.monetization_settings
-        FOR INSERT WITH CHECK ((select auth.uid()) = user_id);
-EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'monetization_settings_insert: %', SQLERRM; END $$;
+-- monetization_settings: INSERT без auth.uid() в with_check
+DROP POLICY IF EXISTS "monetization_settings_insert" ON public.monetization_settings;
+CREATE POLICY "monetization_settings_insert" ON public.monetization_settings
+    FOR INSERT WITH CHECK (true);
 
 DROP POLICY IF EXISTS "monetization_settings_update" ON public.monetization_settings;
 CREATE POLICY "monetization_settings_update" ON public.monetization_settings
@@ -52,7 +50,7 @@ CREATE POLICY "receipts_select" ON public.receipts
 
 DROP POLICY IF EXISTS "receipts_insert" ON public.receipts;
 CREATE POLICY "receipts_insert" ON public.receipts
-    FOR INSERT WITH CHECK ((select auth.uid()) = user_id);
+    FOR INSERT WITH CHECK (true);
 
 DROP POLICY IF EXISTS "receipts_update" ON public.receipts;
 CREATE POLICY "receipts_update" ON public.receipts
