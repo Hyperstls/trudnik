@@ -50,6 +50,13 @@
                         <span class="text-xs font-medium">Отметить начало</span>
                     </button>
                 </form>
+                <form action="/shift/{{ shift.id }}/action" method="post" class="inline">
+                    <input type="hidden" name="action" value="checkin_and_complete">
+                    <button type="submit" class="action-icon-btn accept-btn">
+                        {{ check(16) }}
+                        <span class="text-xs font-medium">Завершить</span>
+                    </button>
+                </form>
                 {% endif %}
 
                 {% if shift.status == 'active' and session.user_id == shift.worker_id %}

@@ -38,6 +38,9 @@ def shift_action(shift_id):
         return _handle_checkin(shift_id)
     elif action == 'complete':
         return _handle_complete(shift_id)
+    elif action == 'checkin_and_complete':
+        _handle_checkin(shift_id)
+        return _handle_complete(shift_id)
     elif action in ('confirm_payment_employer', 'confirm_payment_worker'):
         return _handle_confirm_payment(shift_id, action)
     else:
