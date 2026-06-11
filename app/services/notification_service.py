@@ -43,8 +43,9 @@ DEFAULT_ENABLED_TYPES = {
 
 
 def get_user_prefs(user_id):
-    """Получить настройки уведомлений пользователя."""
-    resp = supabase_request('GET', f'profiles?id=eq.{user_id}&select=notification_prefs')
+    """Получить настройки уведомлений пользователя.
+    Используем admin_request — вызывается из любого контекста (не только владельцем)."""
+    resp = supabase_admin_request('GET', f'profiles?id=eq.{user_id}&select=notification_prefs')
     if resp.ok and resp.json():
         prefs = resp.json()[0].get('notification_prefs')
         if prefs and isinstance(prefs, dict):

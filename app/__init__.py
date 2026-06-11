@@ -77,8 +77,9 @@ def create_app():
 
     @app.context_processor
     def inject_pending_invitations():
-        """Счётчик непрочитанных приглашений для трудника."""
-        from app.utils import supabase_request
+        """Счётчик непрочитанных приглашений для трудника.
+        Используем admin_request для обхода RLS (контекст выполняется до проверки роли)."""
+        from app.utils import supabase_admin_request
         from time import time
         user_id = session.get('user_id')
         if user_id and session.get('role') == 'worker':
@@ -87,7 +88,7 @@ def create_app():
             now = time()
             if cached and (now - cached.get('ts', 0)) < 30:
                 return {'pending_invitations': cached.get('count', 0)}
-            resp = supabase_request('GET',
+            resp = supabase_admin_request('GET',
                 f'invitations?worker_id=eq.{user_id}&status=eq.pending&select=id&limit=100')
             count = len(resp.json()) if resp.ok and resp.json() else 0
             session[cache_key] = {'count': count, 'ts': now}
