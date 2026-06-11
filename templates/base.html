@@ -540,13 +540,16 @@
                 </a>
                 <!-- Приглашения (только для трудника) -->
                 {% if session.get('role') == 'worker' %}
-                <a href="/invitations" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-blue-100 transition-colors touch-target" aria-label="Приглашения" title="Приглашения">
+                <a href="/invitations" class="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-blue-100 transition-colors touch-target" aria-label="Приглашения" title="Приглашения">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
                         <circle cx="9" cy="7" r="4"></circle>
                         <line x1="19" y1="8" x2="19" y2="14"></line>
                         <line x1="22" y1="11" x2="16" y2="11"></line>
                     </svg>
+                    {% if pending_invitations is defined and pending_invitations > 0 %}
+                    <span class="absolute -top-0.5 -right-0.5 bg-blue-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border-2 border-white">{{ '99+' if pending_invitations > 99 else pending_invitations }}</span>
+                    {% endif %}
                 </a>
                 {% endif %}
                 <!-- Админка (только для admin) -->

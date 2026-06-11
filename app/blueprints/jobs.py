@@ -688,6 +688,17 @@ def respond_invitation(invitation_id):
             'worker_id': inv['worker_id'],
             'status': 'accepted'
         })
+        # Обновить счётчик занятых мест
+        job_resp = supabase_request('GET', f'jobs?id=eq.{inv["job_id"]}&select=current_workers,max_workers,status')
+        if job_resp.ok and job_resp.json():
+            job = job_resp.json()[0]
+            new_count = job['current_workers'] + 1
+            new_status = 'in_progress' if new_count >= job['max_workers'] else job['status']
+            supabase_request('PATCH', f'jobs?id=eq.{inv["job_id"]}', json={
+                'current_workers': new_count,
+                'status': new_status
+            })
+        # Уведомить работодателя
         from app.services.notification_service import create as notify
         notify(inv['employer_id'], 'application_received', 'Приглашение принято',
                f'Трудник принял ваше приглашение на задание',

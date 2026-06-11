@@ -75,6 +75,25 @@ def create_app():
             session[cache_key] = {'count': 0, 'ts': now}
         return {'unread_notifications': 0}
 
+    @app.context_processor
+    def inject_pending_invitations():
+        """Счётчик непрочитанных приглашений для трудника."""
+        from app.utils import supabase_request
+        from time import time
+        user_id = session.get('user_id')
+        if user_id and session.get('role') == 'worker':
+            cache_key = f'_inv_cache_{user_id}'
+            cached = session.get(cache_key)
+            now = time()
+            if cached and (now - cached.get('ts', 0)) < 30:
+                return {'pending_invitations': cached.get('count', 0)}
+            resp = supabase_request('GET',
+                f'invitations?worker_id=eq.{user_id}&status=eq.pending&select=id&limit=100')
+            count = len(resp.json()) if resp.ok and resp.json() else 0
+            session[cache_key] = {'count': count, 'ts': now}
+            return {'pending_invitations': count}
+        return {'pending_invitations': 0}
+
     # Кешируем git-версию при старте приложения (ранее вычислялась на каждый запрос)
     _git_version = 'dev'
     try:
