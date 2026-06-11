@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="px-4 pb-24 max-w-lg mx-auto">
+    <h2 class="text-2xl font-bold text-neutral-900 mb-5">Приглашения</h2>
+
+    {% if invitations %}
+    <div class="space-y-3">
+        {% for inv in invitations %}
+        <div class="app-card bg-white rounded-2xl shadow-sm border p-4 transition-all duration-200
+            {% if inv.status == 'pending' %}border-primary-200 bg-primary-50/60{% else %}border-neutral-100{% endif %}">
+            <div class="flex items-start gap-3">
+                <div class="w-9 h-9 rounded-full {% if inv.status == 'pending' %}bg-primary-100{% else %}bg-neutral-100{% endif %} flex items-center justify-center shrink-0 mt-0.5">
+                    <span class="{% if inv.status == 'pending' %}text-primary-600{% else %}text-neutral-400{% endif %} font-semibold text-sm">@</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="font-semibold text-neutral-900 text-sm">
+                        {{ inv.job.organization_name if inv.job else 'Задание #' + inv.job_id[:8] }}
+                    </p>
+                    {% if session.get('role') == 'worker' %}
+                    <p class="text-sm text-neutral-600 mt-0.5">Вас пригласили на задание</p>
+                    {% else %}
+                    <p class="text-sm text-neutral-600 mt-0.5">
+                        Приглашён: {{ inv.worker.full_name if inv.worker else 'Трудник' }}
+                    </p>
+                    {% endif %}
+                    <p class="text-xs text-neutral-400 mt-1.5">
+                        {{ inv.created_at[:16] if inv.created_at else '' }}
+                        {% if inv.status != 'pending' %}
+                        · <span class="{% if inv.status == 'accepted' %}text-success{% else %}text-neutral-500{% endif %}">
+                            {% if inv.status == 'accepted' %}Принято{% elif inv.status == 'rejected' %}Отклонено{% else %}{{ inv.status }}{% endif %}
+                        </span>
+                        {% endif %}
+                    </p>
+                    {% if inv.status == 'pending' and session.get('role') == 'worker' %}
+                    <div class="flex gap-2 mt-3">
+                        <button onclick="respondInvite('{{ inv.id }}','accept')"
+                            class="px-4 py-2 bg-success text-white text-sm font-medium rounded-lg hover:bg-green-600 transition-colors">
+                            Принять
+                        </button>
+                        <button onclick="respondInvite('{{ inv.id }}','reject')"
+                            class="px-4 py-2 bg-neutral-200 text-neutral-700 text-sm font-medium rounded-lg hover:bg-neutral-300 transition-colors">
+                            Отклонить
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if inv.status == 'pending' %}
+                <span class="w-2 h-2 rounded-full bg-primary-500 shrink-0 mt-2"></span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="flex flex-col items-center justify-center py-16 text-center">
+        <div class="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        </div>
+        <p class="text-lg font-semibold text-neutral-700">Нет приглашений</p>
+        <p class="text-sm text-neutral-400 mt-1">У вас пока нет приглашений</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function respondInvite(invitationId, action) {
+    fetch('/api/invitations/' + invitationId + '/respond', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: action})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.error || 'Ошибка');
+        }
+    })
+    .catch(e => alert('Ошибка: ' + e.message));
+}
+</script>
+{% endblock %}

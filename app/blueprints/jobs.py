@@ -623,10 +623,26 @@ def invite_worker(job_id, worker_id):
     return jsonify({'success': True, 'message': 'Приглашение отправлено'})
 
 
+@jobs_bp.route('/invitations')
+@login_required
+def invitations_page():
+    """HTML-страница приглашений."""
+    user_id = session['user_id']
+    role = session.get('role', 'worker')
+    if role == 'worker':
+        resp = supabase_request('GET',
+            f'invitations?worker_id=eq.{user_id}&select=*,job:jobs(organization_name,payment_amount)&order=created_at.desc')
+    else:
+        resp = supabase_request('GET',
+            f'invitations?employer_id=eq.{user_id}&select=*,job:jobs(organization_name),worker:profiles!invitations_worker_id_fkey(full_name)&order=created_at.desc')
+    invitations = resp.json() if resp.ok else []
+    return render_template('invitations.html', invitations=invitations)
+
+
 @jobs_bp.route('/api/invitations')
 @login_required
 def list_invitations():
-    """Список приглашений для текущего пользователя."""
+    """JSON API: список приглашений."""
     user_id = session['user_id']
     role = session.get('role', 'worker')
     if role == 'worker':
@@ -676,7 +692,7 @@ def respond_invitation(invitation_id):
                f'Трудник принял ваше приглашение на задание',
                data={'job_id': inv['job_id']})
 
-    return jsonify({'success': True, 'new_status': status})
+    return jsonify({'success': True, 'new_status': new_status})
 
 
 @jobs_bp.route('/jobs/<job_id>/edit', methods=['GET', 'POST'])

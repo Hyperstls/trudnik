@@ -4,9 +4,9 @@
 <div class="px-4 pb-24 max-w-lg mx-auto">
     <h2 class="text-2xl font-bold text-neutral-900 mb-5">Уведомления</h2>
 
-    {% if notifications %}
+    {% if items %}
     <div class="space-y-3">
-        {% for notification in notifications %}
+        {% for notification in items %}
         <div class="app-card bg-white rounded-2xl shadow-sm border p-4 transition-all duration-200
             {% if not notification.is_read %}border-primary-200 bg-primary-50/60{% else %}border-neutral-100{% endif %}">
             <div class="flex items-start gap-3">
