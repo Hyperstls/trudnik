@@ -683,18 +683,18 @@ def respond_invitation(invitation_id):
 
     if action == 'accept':
         # При принятии приглашения отклик сразу accepted (работодатель уже выбрал трудника)
-        supabase_request('POST', 'applications', json={
+        supabase_admin_request('POST', 'applications', json={
             'job_id': inv['job_id'],
             'worker_id': inv['worker_id'],
             'status': 'accepted'
         })
-        # Обновить счётчик занятых мест
-        job_resp = supabase_request('GET', f'jobs?id=eq.{inv["job_id"]}&select=current_workers,max_workers,status')
+        # Обновить счётчик занятых мест (admin_request — worker не может PATCH jobs)
+        job_resp = supabase_admin_request('GET', f'jobs?id=eq.{inv["job_id"]}&select=current_workers,max_workers,status')
         if job_resp.ok and job_resp.json():
             job = job_resp.json()[0]
             new_count = job['current_workers'] + 1
             new_status = 'in_progress' if new_count >= job['max_workers'] else job['status']
-            supabase_request('PATCH', f'jobs?id=eq.{inv["job_id"]}', json={
+            supabase_admin_request('PATCH', f'jobs?id=eq.{inv["job_id"]}', json={
                 'current_workers': new_count,
                 'status': new_status
             })
