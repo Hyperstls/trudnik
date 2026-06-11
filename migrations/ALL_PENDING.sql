@@ -30,183 +30,162 @@ CREATE POLICY "Public read jobs photos" ON storage.objects
 
 -- ============================================================
 -- 020: Performance — RLS initplan + duplicate policies
+-- Все операции обёрнуты в DO блоки для обработки ошибок
+-- (некоторые таблицы/колонки могут отсутствовать)
 -- ============================================================
 
--- profiles
-DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
-CREATE POLICY "Users can insert own profile" ON public.profiles
-    FOR INSERT WITH CHECK ((select auth.uid()) = id);
-DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
-CREATE POLICY "Users can update own profile" ON public.profiles
-    FOR UPDATE USING ((select auth.uid()) = id);
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+    CREATE POLICY "Users can insert own profile" ON public.profiles FOR INSERT WITH CHECK ((select auth.uid()) = id);
+    DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+    CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING ((select auth.uid()) = id);
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'profiles: %', SQLERRM; END $$;
 
--- employer_details
-DROP POLICY IF EXISTS "Employers can update own details" ON public.employer_details;
-CREATE POLICY "Employers can update own details" ON public.employer_details
-    FOR UPDATE USING ((select auth.uid()) = employer_id);
-DROP POLICY IF EXISTS "Employers can insert own details" ON public.employer_details;
-CREATE POLICY "Employers can insert own details" ON public.employer_details
-    FOR INSERT WITH CHECK ((select auth.uid()) = employer_id);
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Employers can update own details" ON public.employer_details;
+    CREATE POLICY "Employers can update own details" ON public.employer_details FOR UPDATE USING ((select auth.uid()) = employer_id);
+    DROP POLICY IF EXISTS "Employers can insert own details" ON public.employer_details;
+    CREATE POLICY "Employers can insert own details" ON public.employer_details FOR INSERT WITH CHECK ((select auth.uid()) = employer_id);
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'employer_details: %', SQLERRM; END $$;
 
--- jobs
-DROP POLICY IF EXISTS "Employers can update own jobs" ON public.jobs;
-CREATE POLICY "Employers can update own jobs" ON public.jobs
-    FOR UPDATE USING ((select auth.uid()) = employer_id);
-DROP POLICY IF EXISTS "Employers can delete own jobs" ON public.jobs;
-CREATE POLICY "Employers can delete own jobs" ON public.jobs
-    FOR DELETE USING ((select auth.uid()) = employer_id);
-DROP POLICY IF EXISTS "Employers can insert jobs" ON public.jobs;
-CREATE POLICY "Employers can insert jobs" ON public.jobs
-    FOR INSERT WITH CHECK ((select auth.uid()) = employer_id);
-DROP POLICY IF EXISTS "Users can read jobs" ON public.jobs;
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Employers can update own jobs" ON public.jobs;
+    CREATE POLICY "Employers can update own jobs" ON public.jobs FOR UPDATE USING ((select auth.uid()) = employer_id);
+    DROP POLICY IF EXISTS "Employers can delete own jobs" ON public.jobs;
+    CREATE POLICY "Employers can delete own jobs" ON public.jobs FOR DELETE USING ((select auth.uid()) = employer_id);
+    DROP POLICY IF EXISTS "Employers can insert jobs" ON public.jobs;
+    CREATE POLICY "Employers can insert jobs" ON public.jobs FOR INSERT WITH CHECK ((select auth.uid()) = employer_id);
+    DROP POLICY IF EXISTS "Users can read jobs" ON public.jobs;
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'jobs: %', SQLERRM; END $$;
 
--- job_photos
-DROP POLICY IF EXISTS "Employers can insert job photos" ON public.job_photos;
-CREATE POLICY "Employers can insert job photos" ON public.job_photos
-    FOR INSERT WITH CHECK ((select auth.uid()) = employer_id);
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Employers can insert job photos" ON public.job_photos;
+    CREATE POLICY "Employers can insert job photos" ON public.job_photos FOR INSERT WITH CHECK ((select auth.uid()) = employer_id);
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'job_photos: %', SQLERRM; END $$;
 
--- job_favorites
-DROP POLICY IF EXISTS "Users manage own job favorites" ON public.job_favorites;
-CREATE POLICY "Users manage own job favorites" ON public.job_favorites
-    FOR ALL USING ((select auth.uid()) = user_id);
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Users manage own job favorites" ON public.job_favorites;
+    CREATE POLICY "Users manage own job favorites" ON public.job_favorites FOR ALL USING ((select auth.uid()) = user_id);
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'job_favorites: %', SQLERRM; END $$;
 
--- applications
-DROP POLICY IF EXISTS "Workers can insert applications" ON public.applications;
-CREATE POLICY "Workers can insert applications" ON public.applications
-    FOR INSERT WITH CHECK ((select auth.uid()) = worker_id);
-DROP POLICY IF EXISTS "Users can view own applications" ON public.applications;
-CREATE POLICY "Users can view own applications" ON public.applications
-    FOR SELECT USING ((select auth.uid()) IN (worker_id, employer_id));
-DROP POLICY IF EXISTS "Employers can update applications" ON public.applications;
-CREATE POLICY "Employers can update applications" ON public.applications
-    FOR UPDATE USING ((select auth.uid()) = employer_id);
-DROP POLICY IF EXISTS "Workers can delete own applications" ON public.applications;
-CREATE POLICY "Workers can delete own applications" ON public.applications
-    FOR DELETE USING ((select auth.uid()) = worker_id);
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Workers can insert applications" ON public.applications;
+    CREATE POLICY "Workers can insert applications" ON public.applications FOR INSERT WITH CHECK ((select auth.uid()) = worker_id);
+    DROP POLICY IF EXISTS "Users can view own applications" ON public.applications;
+    CREATE POLICY "Users can view own applications" ON public.applications FOR SELECT USING ((select auth.uid()) IN (worker_id, employer_id));
+    DROP POLICY IF EXISTS "Employers can update applications" ON public.applications;
+    CREATE POLICY "Employers can update applications" ON public.applications FOR UPDATE USING ((select auth.uid()) = employer_id);
+    DROP POLICY IF EXISTS "Workers can delete own applications" ON public.applications;
+    CREATE POLICY "Workers can delete own applications" ON public.applications FOR DELETE USING ((select auth.uid()) = worker_id);
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'applications: %', SQLERRM; END $$;
 
--- shifts
-DROP POLICY IF EXISTS "Shift participants can view shifts" ON public.shifts;
-CREATE POLICY "Shift participants can view shifts" ON public.shifts
-    FOR SELECT USING ((select auth.uid()) IN (worker_id, employer_id));
-DROP POLICY IF EXISTS "Shift participants can update shifts" ON public.shifts;
-CREATE POLICY "Shift participants can update shifts" ON public.shifts
-    FOR UPDATE USING ((select auth.uid()) IN (worker_id, employer_id));
-DROP POLICY IF EXISTS "Employers can insert shifts" ON public.shifts;
-CREATE POLICY "Employers can insert shifts" ON public.shifts
-    FOR INSERT WITH CHECK ((select auth.uid()) = employer_id);
-DROP POLICY IF EXISTS "Users can update their own shifts" ON public.shifts;
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Shift participants can view shifts" ON public.shifts;
+    CREATE POLICY "Shift participants can view shifts" ON public.shifts FOR SELECT USING ((select auth.uid()) IN (worker_id, employer_id));
+    DROP POLICY IF EXISTS "Shift participants can update shifts" ON public.shifts;
+    CREATE POLICY "Shift participants can update shifts" ON public.shifts FOR UPDATE USING ((select auth.uid()) IN (worker_id, employer_id));
+    DROP POLICY IF EXISTS "Employers can insert shifts" ON public.shifts;
+    CREATE POLICY "Employers can insert shifts" ON public.shifts FOR INSERT WITH CHECK ((select auth.uid()) = employer_id);
+    DROP POLICY IF EXISTS "Users can update their own shifts" ON public.shifts;
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'shifts: %', SQLERRM; END $$;
 
--- messages
-DROP POLICY IF EXISTS "Shift participants can view messages" ON public.messages;
-CREATE POLICY "Shift participants can view messages" ON public.messages
-    FOR SELECT USING ((select auth.uid()) IN (sender_id, recipient_id));
-DROP POLICY IF EXISTS "Shift participants can insert messages" ON public.messages;
-CREATE POLICY "Shift participants can insert messages" ON public.messages
-    FOR INSERT WITH CHECK ((select auth.uid()) = sender_id);
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Shift participants can view messages" ON public.messages;
+    CREATE POLICY "Shift participants can view messages" ON public.messages FOR SELECT USING ((select auth.uid()) IN (sender_id, recipient_id));
+    DROP POLICY IF EXISTS "Shift participants can insert messages" ON public.messages;
+    CREATE POLICY "Shift participants can insert messages" ON public.messages FOR INSERT WITH CHECK ((select auth.uid()) = sender_id);
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'messages: %', SQLERRM; END $$;
 
--- reviews
-DROP POLICY IF EXISTS "Users can insert reviews" ON public.reviews;
-CREATE POLICY "Users can insert reviews" ON public.reviews
-    FOR INSERT WITH CHECK ((select auth.uid()) = rater_id);
-DROP POLICY IF EXISTS "Users can update own reviews" ON public.reviews;
-CREATE POLICY "Users can update own reviews" ON public.reviews
-    FOR UPDATE USING ((select auth.uid()) = rater_id);
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Users can insert reviews" ON public.reviews;
+    CREATE POLICY "Users can insert reviews" ON public.reviews FOR INSERT WITH CHECK ((select auth.uid()) = rater_id);
+    DROP POLICY IF EXISTS "Users can update own reviews" ON public.reviews;
+    CREATE POLICY "Users can update own reviews" ON public.reviews FOR UPDATE USING ((select auth.uid()) = rater_id);
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'reviews: %', SQLERRM; END $$;
 
--- favorites
-DROP POLICY IF EXISTS "Users manage own favorites" ON public.favorites;
-CREATE POLICY "Users manage own favorites" ON public.favorites
-    FOR ALL USING ((select auth.uid()) = user_id);
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Users manage own favorites" ON public.favorites;
+    CREATE POLICY "Users manage own favorites" ON public.favorites FOR ALL USING ((select auth.uid()) = user_id);
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'favorites: %', SQLERRM; END $$;
 
--- blacklists
-DROP POLICY IF EXISTS "Users manage own blacklists" ON public.blacklists;
-CREATE POLICY "Users manage own blacklists" ON public.blacklists
-    FOR ALL USING ((select auth.uid()) = user_id);
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Users manage own blacklists" ON public.blacklists;
+    CREATE POLICY "Users manage own blacklists" ON public.blacklists FOR ALL USING ((select auth.uid()) = user_id);
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'blacklists: %', SQLERRM; END $$;
 
--- notifications
-DROP POLICY IF EXISTS "Users can view own notifications" ON public.notifications;
-CREATE POLICY "Users can view own notifications" ON public.notifications
-    FOR SELECT USING ((select auth.uid()) = user_id);
-DROP POLICY IF EXISTS "Users can update own notifications" ON public.notifications;
-CREATE POLICY "Users can update own notifications" ON public.notifications
-    FOR UPDATE USING ((select auth.uid()) = user_id);
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Users can view own notifications" ON public.notifications;
+    CREATE POLICY "Users can view own notifications" ON public.notifications FOR SELECT USING ((select auth.uid()) = user_id);
+    DROP POLICY IF EXISTS "Users can update own notifications" ON public.notifications;
+    CREATE POLICY "Users can update own notifications" ON public.notifications FOR UPDATE USING ((select auth.uid()) = user_id);
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'notifications: %', SQLERRM; END $$;
 
--- monetization_settings
-DROP POLICY IF EXISTS "monetization_settings_insert" ON public.monetization_settings;
-CREATE POLICY "monetization_settings_insert" ON public.monetization_settings
-    FOR INSERT WITH CHECK ((select auth.uid()) = employer_id);
-DROP POLICY IF EXISTS "monetization_settings_update" ON public.monetization_settings;
-CREATE POLICY "monetization_settings_update" ON public.monetization_settings
-    FOR UPDATE USING ((select auth.uid()) = employer_id);
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "monetization_settings_insert" ON public.monetization_settings;
+    CREATE POLICY "monetization_settings_insert" ON public.monetization_settings FOR INSERT WITH CHECK ((select auth.uid()) = employer_id);
+    DROP POLICY IF EXISTS "monetization_settings_update" ON public.monetization_settings;
+    CREATE POLICY "monetization_settings_update" ON public.monetization_settings FOR UPDATE USING ((select auth.uid()) = employer_id);
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'monetization_settings: %', SQLERRM; END $$;
 
--- contact_payments
-DROP POLICY IF EXISTS "contact_payments_select" ON public.contact_payments;
-CREATE POLICY "contact_payments_select" ON public.contact_payments
-    FOR SELECT USING ((select auth.uid()) IN (employer_id, worker_id));
-DROP POLICY IF EXISTS "contact_payments_insert" ON public.contact_payments;
-CREATE POLICY "contact_payments_insert" ON public.contact_payments
-    FOR INSERT WITH CHECK ((select auth.uid()) = employer_id);
-DROP POLICY IF EXISTS "contact_payments_update" ON public.contact_payments;
-CREATE POLICY "contact_payments_update" ON public.contact_payments
-    FOR UPDATE USING ((select auth.uid()) = employer_id);
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "contact_payments_select" ON public.contact_payments;
+    CREATE POLICY "contact_payments_select" ON public.contact_payments FOR SELECT USING ((select auth.uid()) IN (employer_id, worker_id));
+    DROP POLICY IF EXISTS "contact_payments_insert" ON public.contact_payments;
+    CREATE POLICY "contact_payments_insert" ON public.contact_payments FOR INSERT WITH CHECK ((select auth.uid()) = employer_id);
+    DROP POLICY IF EXISTS "contact_payments_update" ON public.contact_payments;
+    CREATE POLICY "contact_payments_update" ON public.contact_payments FOR UPDATE USING ((select auth.uid()) = employer_id);
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'contact_payments: %', SQLERRM; END $$;
 
--- receipts
-DROP POLICY IF EXISTS "receipts_select" ON public.receipts;
-CREATE POLICY "receipts_select" ON public.receipts
-    FOR SELECT USING ((select auth.uid()) = user_id);
-DROP POLICY IF EXISTS "receipts_insert" ON public.receipts;
-CREATE POLICY "receipts_insert" ON public.receipts
-    FOR INSERT WITH CHECK ((select auth.uid()) = user_id);
-DROP POLICY IF EXISTS "receipts_update" ON public.receipts;
-CREATE POLICY "receipts_update" ON public.receipts
-    FOR UPDATE USING ((select auth.uid()) = user_id);
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "receipts_select" ON public.receipts;
+    CREATE POLICY "receipts_select" ON public.receipts FOR SELECT USING ((select auth.uid()) = user_id);
+    DROP POLICY IF EXISTS "receipts_insert" ON public.receipts;
+    CREATE POLICY "receipts_insert" ON public.receipts FOR INSERT WITH CHECK ((select auth.uid()) = user_id);
+    DROP POLICY IF EXISTS "receipts_update" ON public.receipts;
+    CREATE POLICY "receipts_update" ON public.receipts FOR UPDATE USING ((select auth.uid()) = user_id);
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'receipts: %', SQLERRM; END $$;
 
--- hires
-DROP POLICY IF EXISTS "hires_select" ON public.hires;
-CREATE POLICY "hires_select" ON public.hires
-    FOR SELECT USING ((select auth.uid()) IN (employer_id, worker_id));
-DROP POLICY IF EXISTS "hires_insert" ON public.hires;
-CREATE POLICY "hires_insert" ON public.hires
-    FOR INSERT WITH CHECK ((select auth.uid()) = employer_id);
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "hires_select" ON public.hires;
+    CREATE POLICY "hires_select" ON public.hires FOR SELECT USING ((select auth.uid()) IN (employer_id, worker_id));
+    DROP POLICY IF EXISTS "hires_insert" ON public.hires;
+    CREATE POLICY "hires_insert" ON public.hires FOR INSERT WITH CHECK ((select auth.uid()) = employer_id);
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'hires: %', SQLERRM; END $$;
 
--- invitations
-DROP POLICY IF EXISTS "Employers can insert invitations" ON public.invitations;
-CREATE POLICY "Employers can insert invitations" ON public.invitations
-    FOR INSERT WITH CHECK ((select auth.uid()) = employer_id);
-DROP POLICY IF EXISTS "Users can read their invitations" ON public.invitations;
-CREATE POLICY "Users can read their invitations" ON public.invitations
-    FOR SELECT USING ((select auth.uid()) IN (employer_id, worker_id));
-DROP POLICY IF EXISTS "Workers can update invitations" ON public.invitations;
-CREATE POLICY "Workers can update invitations" ON public.invitations
-    FOR UPDATE USING ((select auth.uid()) = worker_id);
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Employers can insert invitations" ON public.invitations;
+    CREATE POLICY "Employers can insert invitations" ON public.invitations FOR INSERT WITH CHECK ((select auth.uid()) = employer_id);
+    DROP POLICY IF EXISTS "Users can read their invitations" ON public.invitations;
+    CREATE POLICY "Users can read their invitations" ON public.invitations FOR SELECT USING ((select auth.uid()) IN (employer_id, worker_id));
+    DROP POLICY IF EXISTS "Workers can update invitations" ON public.invitations;
+    CREATE POLICY "Workers can update invitations" ON public.invitations FOR UPDATE USING ((select auth.uid()) = worker_id);
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'invitations: %', SQLERRM; END $$;
 
--- ratings
-DROP POLICY IF EXISTS "Users can insert own ratings" ON public.ratings;
-CREATE POLICY "Users can insert own ratings" ON public.ratings
-    FOR INSERT WITH CHECK ((select auth.uid()) = rater_user_id);
-DROP POLICY IF EXISTS "Users can update own ratings" ON public.ratings;
-CREATE POLICY "Users can update own ratings" ON public.ratings
-    FOR UPDATE USING ((select auth.uid()) = rater_user_id);
-DROP POLICY IF EXISTS "Users can upsert own ratings" ON public.ratings;
-DROP POLICY IF EXISTS "Users can view ratings" ON public.ratings;
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Users can insert own ratings" ON public.ratings;
+    CREATE POLICY "Users can insert own ratings" ON public.ratings FOR INSERT WITH CHECK ((select auth.uid()) = rater_user_id);
+    DROP POLICY IF EXISTS "Users can update own ratings" ON public.ratings;
+    CREATE POLICY "Users can update own ratings" ON public.ratings FOR UPDATE USING ((select auth.uid()) = rater_user_id);
+    DROP POLICY IF EXISTS "Users can upsert own ratings" ON public.ratings;
+    DROP POLICY IF EXISTS "Users can view ratings" ON public.ratings;
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'ratings: %', SQLERRM; END $$;
 
--- push_subscriptions
-DROP POLICY IF EXISTS "Users can view own push subscriptions" ON public.push_subscriptions;
-CREATE POLICY "Users can view own push subscriptions" ON public.push_subscriptions
-    FOR SELECT USING ((select auth.uid()) = user_id);
-DROP POLICY IF EXISTS "Users can insert own push subscriptions" ON public.push_subscriptions;
-CREATE POLICY "Users can insert own push subscriptions" ON public.push_subscriptions
-    FOR INSERT WITH CHECK ((select auth.uid()) = user_id);
-DROP POLICY IF EXISTS "Users can delete own push subscriptions" ON public.push_subscriptions;
-CREATE POLICY "Users can delete own push subscriptions" ON public.push_subscriptions
-    FOR DELETE USING ((select auth.uid()) = user_id);
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Users can view own push subscriptions" ON public.push_subscriptions;
+    CREATE POLICY "Users can view own push subscriptions" ON public.push_subscriptions FOR SELECT USING ((select auth.uid()) = user_id);
+    DROP POLICY IF EXISTS "Users can insert own push subscriptions" ON public.push_subscriptions;
+    CREATE POLICY "Users can insert own push subscriptions" ON public.push_subscriptions FOR INSERT WITH CHECK ((select auth.uid()) = user_id);
+    DROP POLICY IF EXISTS "Users can delete own push subscriptions" ON public.push_subscriptions;
+    CREATE POLICY "Users can delete own push subscriptions" ON public.push_subscriptions FOR DELETE USING ((select auth.uid()) = user_id);
+EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'push_subscriptions: %', SQLERRM; END $$;
 
 -- Remove duplicate policies (multiple_permissive_policies fix)
-DROP POLICY IF EXISTS "employer_job_skills" ON public.job_skills;
-DROP POLICY IF EXISTS "Users can upsert own ratings" ON public.ratings;
-DROP POLICY IF EXISTS "Users can view ratings" ON public.ratings;
-DROP POLICY IF EXISTS "admin_religions" ON public.religions;
-DROP POLICY IF EXISTS "admin_skills" ON public.skills;
-DROP POLICY IF EXISTS "user_own_skills" ON public.user_skills;
+DO $$ BEGIN DROP POLICY IF EXISTS "employer_job_skills" ON public.job_skills; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN DROP POLICY IF EXISTS "Users can upsert own ratings" ON public.ratings; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN DROP POLICY IF EXISTS "Users can view ratings" ON public.ratings; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN DROP POLICY IF EXISTS "admin_religions" ON public.religions; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN DROP POLICY IF EXISTS "admin_skills" ON public.skills; EXCEPTION WHEN OTHERS THEN NULL; END $$;
+DO $$ BEGIN DROP POLICY IF EXISTS "user_own_skills" ON public.user_skills; EXCEPTION WHEN OTHERS THEN NULL; END $$;
 
 -- ============================================================
 -- 021: Performance — indexes
