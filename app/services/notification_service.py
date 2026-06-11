@@ -1,7 +1,7 @@
 """Сервис уведомлений: типизация, создание, проверка настроек."""
 
 import logging
-from app.utils import supabase_request
+from app.utils import supabase_admin_request, supabase_request
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +82,9 @@ def create(user_id, notification_type, title, message, data=None):
         'is_read': False,
     }
 
-    resp = supabase_request('POST', 'notifications', json=payload)
+    # Используем admin_request для обхода RLS:
+    # уведомления создаются системой (не владельцем), user_id может не совпадать с auth.uid()
+    resp = supabase_admin_request('POST', 'notifications', json=payload)
     if not resp.ok:
         logger.error('Failed to create notification: user=%s type=%s status=%s',
                      user_id, notification_type, resp.status_code)
