@@ -77,22 +77,36 @@ def create_app():
 
     @app.context_processor
     def inject_pending_invitations():
-        """Счётчик непрочитанных приглашений для трудника.
-        Используем admin_request для обхода RLS (контекст выполняется до проверки роли)."""
+        """Счётчик непрочитанных приглашений для трудника."""
         from app.utils import supabase_admin_request
         from time import time
         user_id = session.get('user_id')
-        if user_id and session.get('role') == 'worker':
+        role = session.get('role')
+        # Логируем при каждом вызове (первые 5 минут после деплоя)
+        current_app.logger.info(
+            '[INV_CTX] user_id=%s role=%s',
+            str(user_id)[:12] if user_id else 'None', role
+        )
+        if user_id and role == 'worker':
             cache_key = f'_inv_cache_{user_id}'
             cached = session.get(cache_key)
             now = time()
             if cached and (now - cached.get('ts', 0)) < 30:
+                current_app.logger.info('[INV_CTX] cached count=%d', cached.get('count', 0))
                 return {'pending_invitations': cached.get('count', 0)}
             resp = supabase_admin_request('GET',
                 f'invitations?worker_id=eq.{user_id}&status=eq.pending&select=id&limit=100')
-            count = len(resp.json()) if resp.ok and resp.json() else 0
+            if resp.ok:
+                data = resp.json()
+                count = len(data) if isinstance(data, list) else 0
+                current_app.logger.info('[INV_CTX] query ok, count=%d', count)
+            else:
+                count = 0
+                current_app.logger.error('[INV_CTX] query FAILED: status=%s body=%s',
+                                         resp.status_code, (resp.text or '')[:200])
             session[cache_key] = {'count': count, 'ts': now}
             return {'pending_invitations': count}
+        current_app.logger.info('[INV_CTX] skip: no user_id or not worker')
         return {'pending_invitations': 0}
 
     # Кешируем git-версию при старте приложения (ранее вычислялась на каждый запрос)
