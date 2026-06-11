@@ -14,7 +14,7 @@
     {% if invitations %}
     <div class="space-y-3">
         {% for inv in invitations %}
-        <div class="relative group">
+        <div class="relative">
             <div class="app-card bg-white rounded-2xl shadow-sm border p-4 transition-all duration-200
                 {% if inv.status == 'pending' %}border-primary-200 bg-primary-50/60{% else %}border-neutral-100{% endif %}">
                 <div class="flex items-start gap-3">
@@ -60,7 +60,7 @@
             </div>
             {% if inv.status == 'pending' %}
             <button onclick="rejectInvite('{{ inv.id }}')"
-                class="absolute -top-2 -right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white border border-neutral-200 text-neutral-400 hover:text-danger hover:border-danger shadow-sm opacity-0 group-hover:opacity-100 transition-all"
+                class="absolute -top-2 -right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white border border-neutral-200 text-neutral-400 hover:text-danger hover:border-danger shadow-sm transition-all"
                 title="Отклонить приглашение">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
