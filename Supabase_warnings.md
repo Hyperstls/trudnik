@@ -2,12 +2,12 @@
 
 - **Дата:** 2026-06-10
 - **Источник:** Supabase Database Linter
-- **Статус:** До применения миграции `016_fix_supabase_warnings.sql`
+- **Статус:** После миграций `016_fix_supabase_warnings.sql` + `018_fix_spatial_ref_sys_rls.sql`
 - **Ссылки на remediation:** колонка `remediation`
 
-| name | title | level | categories | description | detail | remediation |
-|------|-------|-------|------------|-------------|--------|-------------|
-| `rls_disabled_in_public` | RLS Disabled in Public | `ERROR` | SECURITY | RLS не включён на таблицах в схеме, доступной через PostgREST | Таблица `public.spatial_ref_sys` — системная таблица PostGIS, не подлежит изменению | [документация](https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public) |
+| name | title | level | categories | description | detail | remediation | status |
+|------|-------|-------|------------|-------------|--------|-------------|--------|
+| ~~`rls_disabled_in_public`~~ | ~~RLS Disabled in Public~~ | ~~`ERROR`~~ | ~~SECURITY~~ | ~~RLS не включён на таблицах в схеме, доступной через PostgREST~~ | ~~Таблица `public.spatial_ref_sys` — системная таблица PostGIS, не подлежит изменению~~ | ~~[документация](https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public)~~ | ✅ **FIXED** в `018_fix_spatial_ref_sys_rls.sql` |
 | `extension_in_public` | Extension in Public | `WARN` | SECURITY | Расширения, установленные в схеме `public` | Расширение `postgis` в public-схеме. Перенести в другую схему | [документация](https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public) |
 | `extension_in_public` | Extension in Public | `WARN` | SECURITY | Расширения, установленные в схеме `public` | Расширение `cube` в public-схеме. Перенести в другую схему | [документация](https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public) |
 | `extension_in_public` | Extension in Public | `WARN` | SECURITY | Расширения, установленные в схеме `public` | Расширение `earthdistance` в public-схеме. Перенести в другую схему | [документация](https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public) |
