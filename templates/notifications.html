@@ -22,6 +22,7 @@
             'application_cancelled': 'Отклик отменён',
             'shift_checkin': 'Чек-ин',
             'shift_complete': 'Смена завершена',
+            'shift_created': 'Смена создана',
             'shift_reminder': 'Напоминание о смене',
             'payment_confirmed': 'Оплата подтверждена',
             'payment_received': 'Оплата получена',
@@ -30,6 +31,8 @@
             'job_filled': 'Задание укомплектовано',
             'job_completed': 'Задание завершено',
             'job_cancelled': 'Задание отменено',
+            'dispute_started': 'Спор открыт',
+            'hire_limit_warning': 'Предупреждение',
             'system': 'Системное',
         }.get(notification.type, notification.type or 'Уведомление') %}
         {% set is_invitation = notification.type == 'application_received' and 'Вас пригласили' in (notification.message or '') %}

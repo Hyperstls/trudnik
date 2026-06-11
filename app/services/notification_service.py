@@ -12,6 +12,7 @@ NOTIFICATION_TYPES = {
     'application_cancelled': 'Отклик отменён',
     'shift_checkin':         'Чек-ин',
     'shift_complete':        'Смена завершена',
+    'shift_created':         'Смена создана',
     'shift_reminder':        'Напоминание о смене',
     'payment_confirmed':     'Оплата подтверждена',
     'payment_received':      'Оплата получена',
@@ -20,6 +21,8 @@ NOTIFICATION_TYPES = {
     'job_filled':            'Задание укомплектовано',
     'job_completed':         'Задание завершено',
     'job_cancelled':         'Задание отменено',
+    'dispute_started':       'Спор открыт',
+    'hire_limit_warning':    'Предупреждение',
     'system':                'Системное',
 }
 
@@ -30,6 +33,7 @@ DEFAULT_ENABLED_TYPES = {
     'application_cancelled': True,
     'shift_checkin': True,
     'shift_complete': True,
+    'shift_created': True,
     'shift_reminder': True,
     'payment_confirmed': True,
     'payment_received': True,
@@ -38,6 +42,8 @@ DEFAULT_ENABLED_TYPES = {
     'job_filled': True,
     'job_completed': True,
     'job_cancelled': True,
+    'dispute_started': True,
+    'hire_limit_warning': True,
     'system': True,
 }
 

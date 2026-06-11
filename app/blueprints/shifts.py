@@ -38,9 +38,6 @@ def shift_action(shift_id):
         return _handle_checkin(shift_id)
     elif action == 'complete':
         return _handle_complete(shift_id)
-    elif action == 'checkin_and_complete':
-        _handle_checkin(shift_id)
-        return _handle_complete(shift_id)
     elif action in ('confirm_payment_employer', 'confirm_payment_worker'):
         return _handle_confirm_payment(shift_id, action)
     else:
@@ -73,7 +70,7 @@ def _handle_checkin(shift_id):
         if job['status'] in ('open', 'in_progress'):
             supabase_admin_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'active'})
         # Уведомить работодателя о чек-ине (матрица секция 9)
-        notify(job['employer_id'], 'checkin', 'Трудник начал смену',
+        notify(job['employer_id'], 'shift_checkin', 'Трудник начал смену',
                f'Трудник отметил начало смены #{shift_id}')
 
     flash('Чек-ин успешно выполнен', 'success')
@@ -111,7 +108,7 @@ def _handle_complete(shift_id):
     _maybe_set_job_payment_pending(shift["job_id"])
 
     # Уведомить работодателя о завершении смены (матрица секция 9)
-    notify(shift['employer_id'], 'shift_completed', 'Смена завершена',
+    notify(shift['employer_id'], 'shift_complete', 'Смена завершена',
            f'Трудник завершил смену #{shift_id}. Подтвердите оплату.')
 
     flash('Смена завершена, ожидание подтверждения оплаты', 'success')
@@ -174,27 +171,26 @@ def _handle_confirm_payment(shift_id, action):
 
     # Проверить, подтвердили ли обе стороны
     shift_resp = supabase_request('GET',
-        f'shifts?id=eq.{shift_id}&select=employer_payment_confirmed,worker_payment_confirmed')
+        f'shifts?id=eq.{shift_id}&select=employer_id,worker_id,job_id,employer_payment_confirmed,worker_payment_confirmed')
     if shift_resp.ok and shift_resp.json():
-        shift = shift_resp.json()[0]
-        if shift.get('employer_payment_confirmed') and shift.get('worker_payment_confirmed'):
+        paid_shift = shift_resp.json()[0]
+        if paid_shift.get('employer_payment_confirmed') and paid_shift.get('worker_payment_confirmed'):
             shift_paid = supabase_request('PATCH', f'shifts?id=eq.{shift_id}', json={'status': 'paid'})
             if not shift_paid.ok:
                 current_app.logger.error('[CONFIRM PAYMENT] PATCH shifts failed: shift_id=%s status=%s', shift_id, shift_paid.status_code)
             # Проверить, все ли смены задания оплачены
-            all_shifts = supabase_admin_request('GET', f'shifts?job_id=eq.{shift["job_id"]}&select=status')
+            all_shifts = supabase_admin_request('GET', f'shifts?job_id=eq.{paid_shift["job_id"]}&select=status')
             all_paid = True
             if all_shifts.ok and all_shifts.json():
                 all_paid = all(s.get('status') == 'paid' for s in all_shifts.json())
             if all_paid:
                 # Используем admin_request, т.к. вызывается от лица любой из сторон (RLS разрешает UPDATE jobs только работодателю)
                 # Матрица: payment_pending → paid → completed
-                # Сначала ставим paid (оплата подтверждена), completed будет после оценок
-                job_paid = supabase_admin_request('PATCH', f'jobs?id=eq.{shift["job_id"]}', json={'status': 'paid'})
+                job_paid = supabase_admin_request('PATCH', f'jobs?id=eq.{paid_shift["job_id"]}', json={'status': 'paid'})
                 if not job_paid.ok:
-                    current_app.logger.error('[CONFIRM PAYMENT] PATCH jobs failed: job_id=%s status=%s', shift["job_id"], job_paid.status_code)
+                    current_app.logger.error('[CONFIRM PAYMENT] PATCH jobs failed: job_id=%s status=%s', paid_shift["job_id"], job_paid.status_code)
 
-            notify(shift['employer_id'], 'payment_sent', 'Оплата подтверждена',
+            notify(paid_shift['employer_id'], 'payment_confirmed', 'Оплата подтверждена',
                              f'Оплата по смене #{shift_id} подтверждена обеими сторонами')
             notify(shift['worker_id'], 'payment_received', 'Оплата подтверждена',
                              f'Оплата по смене #{shift_id} подтверждена обеими сторонами')
