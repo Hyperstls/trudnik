@@ -1,27 +1,29 @@
 # Supabase Linter Warnings
 
-- **Дата:** 2026-06-10
-- **Источник:** Supabase Database Linter
-- **Статус:** После миграций `016_fix_supabase_warnings.sql` + `018_fix_spatial_ref_sys_rls.sql`
+- **Дата:** 2026-06-11
+- **Источник:** Supabase Database Linter (Security Advisor)
+- **Статус:** После миграций `015`–`019`
 - **Ссылки на remediation:** колонка `remediation`
 
-| name | title | level | categories | description | detail | remediation | status |
-|------|-------|-------|------------|-------------|--------|-------------|--------|
-| ~~`rls_disabled_in_public`~~ | ~~RLS Disabled in Public~~ | ~~`ERROR`~~ | ~~SECURITY~~ | ~~RLS не включён на таблицах в схеме, доступной через PostgREST~~ | ~~Таблица `public.spatial_ref_sys` — системная таблица PostGIS~~ | ~~[документация](https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public)~~ | ✅ **FIXED** в `018_fix_spatial_ref_sys_rls.sql` (сначала `OWNER TO postgres`, затем `ENABLE RLS`) |
-| `extension_in_public` | Extension in Public | `WARN` | SECURITY | Расширения, установленные в схеме `public` | Расширение `postgis` в public-схеме. Перенести в другую схему | [документация](https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public) |
-| `extension_in_public` | Extension in Public | `WARN` | SECURITY | Расширения, установленные в схеме `public` | Расширение `cube` в public-схеме. Перенести в другую схему | [документация](https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public) |
-| `extension_in_public` | Extension in Public | `WARN` | SECURITY | Расширения, установленные в схеме `public` | Расширение `earthdistance` в public-схеме. Перенести в другую схему | [документация](https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public) |
-| `public_bucket_allows_listing` | Public Bucket Allows Listing | `WARN` | SECURITY | Публичные bucket'ы с широкой SELECT-политикой на `storage.objects` | Bucket `avatars` — избыточная политика "Public read avatars" позволяет листинг всех файлов | [документация](https://supabase.com/docs/guides/database/database-linter?lint=0025_public_bucket_allows_listing) |
-| `public_bucket_allows_listing` | Public Bucket Allows Listing | `WARN` | SECURITY | Публичные bucket'ы с широкой SELECT-политикой на `storage.objects` | Bucket `jobs` — избыточная политика "Public read jobs photos" позволяет листинг всех файлов | [документация](https://supabase.com/docs/guides/database/database-linter?lint=0025_public_bucket_allows_listing) |
-| `public_bucket_allows_listing` | Public Bucket Allows Listing | `WARN` | SECURITY | Публичные bucket'ы с широкой SELECT-политикой на `storage.objects` | Bucket `verification-docs` — избыточная политика "Public read verification docs" позволяет листинг всех файлов | [документация](https://supabase.com/docs/guides/database/database-linter?lint=0025_public_bucket_allows_listing) |
-| `anon_security_definer_function_executable` | Public Can Execute SECURITY DEFINER Function | `WARN` | SECURITY | `SECURITY DEFINER` функции, доступные анонимному пользователю (role `anon`) | `public.execute_sql(sql text)` — выполняется анонимно через `/rest/v1/rpc/execute_sql` | [документация](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable) |
-| `anon_security_definer_function_executable` | Public Can Execute SECURITY DEFINER Function | `WARN` | SECURITY | `SECURITY DEFINER` функции, доступные анонимному пользователю (role `anon`) | `public.handle_new_user()` — выполняется анонимно через `/rest/v1/rpc/handle_new_user` | [документация](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable) |
-| `anon_security_definer_function_executable` | Public Can Execute SECURITY DEFINER Function | `WARN` | SECURITY | `SECURITY DEFINER` функции, доступные анонимному пользователю (role `anon`) | `public.st_estimatedextent(text, text)` — PostGIS-функция, выполняется анонимно | [документация](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable) |
-| `anon_security_definer_function_executable` | Public Can Execute SECURITY DEFINER Function | `WARN` | SECURITY | `SECURITY DEFINER` функции, доступные анонимному пользователю (role `anon`) | `public.st_estimatedextent(text, text, text)` — PostGIS-функция, выполняется анонимно | [документация](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable) |
-| `anon_security_definer_function_executable` | Public Can Execute SECURITY DEFINER Function | `WARN` | SECURITY | `SECURITY DEFINER` функции, доступные анонимному пользователю (role `anon`) | `public.st_estimatedextent(text, text, text, boolean)` — PostGIS-функция, выполняется анонимно | [документация](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable) |
-| `authenticated_security_definer_function_executable` | Signed-In Users Can Execute SECURITY DEFINER Function | `WARN` | SECURITY | `SECURITY DEFINER` функции, доступные авторизованным пользователям (role `authenticated`) | `public.execute_sql(sql text)` — выполняется авторизованными через `/rest/v1/rpc/execute_sql` | [документация](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable) |
-| `authenticated_security_definer_function_executable` | Signed-In Users Can Execute SECURITY DEFINER Function | `WARN` | SECURITY | `SECURITY DEFINER` функции, доступные авторизованным пользователям (role `authenticated`) | `public.handle_new_user()` — выполняется авторизованными через `/rest/v1/rpc/handle_new_user` | [документация](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable) |
-| `authenticated_security_definer_function_executable` | Signed-In Users Can Execute SECURITY DEFINER Function | `WARN` | SECURITY | `SECURITY DEFINER` функции, доступные авторизованным пользователям (role `authenticated`) | `public.st_estimatedextent(text, text)` — PostGIS-функция, выполняется авторизованными | [документация](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable) |
-| `authenticated_security_definer_function_executable` | Signed-In Users Can Execute SECURITY DEFINER Function | `WARN` | SECURITY | `SECURITY DEFINER` функции, доступные авторизованным пользователям (role `authenticated`) | `public.st_estimatedextent(text, text, text)` — PostGIS-функция, выполняется авторизованными | [документация](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable) |
-| `authenticated_security_definer_function_executable` | Signed-In Users Can Execute SECURITY DEFINER Function | `WARN` | SECURITY | `SECURITY DEFINER` функции, доступные авторизованным пользователям (role `authenticated`) | `public.st_estimatedextent(text, text, text, boolean)` — PostGIS-функция, выполняется авторизованными | [документация](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable) |
-| `auth_leaked_password_protection` | Leaked Password Protection Disabled | `WARN` | SECURITY | Защита от скомпрометированных паролей отключена | Supabase Auth сверяет пароли с HaveIBeenPwned.org. Рекомендуется включить | [документация](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) |
+| name | title | level | categories | detail | status |
+|------|-------|-------|------------|--------|--------|
+| ~~`rls_disabled_in_public`~~ | ~~RLS Disabled~~ | ~~ERROR~~ | SECURITY | ~~`public.spatial_ref_sys`~~ | ✅ **FIXED** — `018_fix_spatial_ref_sys_rls.sql` |
+| `extension_in_public` | Extension in Public | WARN | SECURITY | Расширение `postgis` в public-схеме | ❌ **IGNORE** — PostGIS обязателен в `public` для near by search |
+| `extension_in_public` | Extension in Public | WARN | SECURITY | Расширение `cube` в public-схеме | ❌ **IGNORE** — зависимость earthdistance |
+| `extension_in_public` | Extension in Public | WARN | SECURITY | Расширение `earthdistance` в public-схеме | ❌ **IGNORE** — используется функциями поиска по городу |
+| `public_bucket_allows_listing` | Bucket Listing | WARN | SECURITY | Bucket `avatars` — широкая SELECT политика | ✅ **FIXED** — `019_fix_security_warnings.sql` |
+| `public_bucket_allows_listing` | Bucket Listing | WARN | SECURITY | Bucket `jobs` — широкая SELECT политика | ✅ **FIXED** — `019_fix_security_warnings.sql` |
+| `public_bucket_allows_listing` | Bucket Listing | WARN | SECURITY | Bucket `verification-docs` SELECT политика | ✅ **FIXED** — `016_fix_supabase_warnings.sql` |
+| ~~`anon_security_definer_function_executable`~~ | Public Can Execute | WARN | SECURITY | ~~`execute_sql` — критичная уязвимость~~ | ✅ **FIXED** — функция удалена в `019` |
+| ~~`anon_security_definer_function_executable`~~ | Public Can Execute | WARN | SECURITY | ~~`handle_new_user`~~ | ✅ **FIXED** — EXECUTE revoked в `019` |
+| ~~`anon_security_definer_function_executable`~~ | Public Can Execute | WARN | SECURITY | ~~`st_estimatedextent` (PostGIS)~~ | ✅ **FIXED** — EXECUTE revoked в `019` |
+| ~~`authenticated_security_definer_function_executable`~~ | Auth Can Execute | WARN | SECURITY | ~~`execute_sql` — критичная уязвимость~~ | ✅ **FIXED** — функция удалена в `019` |
+| ~~`authenticated_security_definer_function_executable`~~ | Auth Can Execute | WARN | SECURITY | ~~`handle_new_user`~~ | ✅ **FIXED** — EXECUTE revoked в `019` |
+| ~~`authenticated_security_definer_function_executable`~~ | Auth Can Execute | WARN | SECURITY | ~~`st_estimatedextent` (PostGIS)~~ | ✅ **FIXED** — EXECUTE revoked в `019` |
+| `auth_leaked_password_protection` | Leaked Password Protection | WARN | SECURITY | Защита от скомпрометированных паролей выключена | 🔧 **Включить вручную** — Auth → Settings → Leaked Password Protection |
+
+## Инструкция: включить Leaked Password Protection
+
+1. Supabase Dashboard → **Authentication** → **Settings**
+2. Найти **Leaked Password Protection**
+3. Включить тумблер (использует HaveIBeenPwned.org)
