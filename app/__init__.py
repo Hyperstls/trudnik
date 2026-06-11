@@ -71,8 +71,8 @@ def create_app():
             if resp.ok:
                 data = resp.json()
                 if isinstance(data, list):
-                    # Исключаем уведомления-приглашения (содержат "приглаш")
-                    non_inv = [n for n in data if 'приглаш' not in (n.get('message') or '').lower()]
+                    # Исключаем уведомления "Вас пригласили" (приглашения трудника)
+                    non_inv = [n for n in data if 'вас пригласили' not in (n.get('message') or '').lower()]
                     count = len(non_inv)
                 else:
                     count = 0

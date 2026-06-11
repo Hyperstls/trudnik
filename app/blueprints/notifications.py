@@ -18,11 +18,12 @@ def notifications():
         my_query('notifications', extra='&order=created_at.desc&limit=50'))
     items = resp.json() if resp.ok else []
 
-    # Отделяем приглашения — они показываются на странице /invitations
-    general_items = [n for n in items if 'приглаш' not in (n.get('message') or '').lower()]
+    # Отделяем приглашения трудника — они на странице /invitations
+    # Фильтруем только "Вас пригласили", а "Приглашение принято" остаётся у работодателя
+    general_items = [n for n in items if 'вас пригласили' not in (n.get('message') or '').lower()]
 
-    # Очистка: удаляем уведомления-приглашения, чьи задания уже удалены
-    invitation_items = [n for n in items if 'приглаш' in (n.get('message') or '').lower()]
+    # Очистка: удаляем уведомления-приглашения трудника, чьи задания уже удалены
+    invitation_items = [n for n in items if 'вас пригласили' in (n.get('message') or '').lower()]
     if invitation_items:
         import re as re_cleanup
         job_ids_in_notifications = set()
@@ -84,9 +85,9 @@ def api_delete_notification(notification_id):
 def api_delete_all_notifications():
     """Удалить все уведомления пользователя (кроме приглашений)."""
     user_id = session['user_id']
-    # Удаляем все уведомления, кроме тех что содержат "приглаш"
+    # Удаляем все уведомления, кроме "Вас пригласили" (приглашения трудника)
     supabase_admin_request('DELETE',
-        f'notifications?user_id=eq.{user_id}&message=not.ilike.*приглаш*')
+        f'notifications?user_id=eq.{user_id}&message=not.ilike.*вас пригласили*')
     return jsonify({'success': True})
 
 
