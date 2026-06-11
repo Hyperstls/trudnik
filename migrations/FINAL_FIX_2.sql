@@ -36,9 +36,12 @@ CREATE POLICY "Users can view own applications" ON public.applications
     FOR SELECT USING ((select auth.uid()) IN (worker_id, employer_id));
 
 -- applications: Employers can update applications
+-- (employer_id берётся через jobs, а не из applications)
 DROP POLICY IF EXISTS "Employers can update applications" ON public.applications;
 CREATE POLICY "Employers can update applications" ON public.applications
-    FOR UPDATE USING ((select auth.uid()) = employer_id);
+    FOR UPDATE USING (
+        (select auth.uid()) IN (SELECT employer_id FROM jobs WHERE jobs.id = applications.job_id)
+    );
 
 -- applications: Workers can delete own applications
 DROP POLICY IF EXISTS "Workers can delete own applications" ON public.applications;
