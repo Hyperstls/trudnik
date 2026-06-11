@@ -80,33 +80,32 @@ def create_app():
         """Счётчик непрочитанных приглашений для трудника."""
         from app.utils import supabase_admin_request
         from time import time
+        import logging
+        log = logging.getLogger(__name__)
         user_id = session.get('user_id')
         role = session.get('role')
-        # Логируем при каждом вызове (первые 5 минут после деплоя)
-        current_app.logger.info(
-            '[INV_CTX] user_id=%s role=%s',
-            str(user_id)[:12] if user_id else 'None', role
-        )
+        log.info('[INV_CTX] user_id=%s role=%s',
+            str(user_id)[:12] if user_id else 'None', role)
         if user_id and role == 'worker':
             cache_key = f'_inv_cache_{user_id}'
             cached = session.get(cache_key)
             now = time()
             if cached and (now - cached.get('ts', 0)) < 30:
-                current_app.logger.info('[INV_CTX] cached count=%d', cached.get('count', 0))
+                log.info('[INV_CTX] cached count=%d', cached.get('count', 0))
                 return {'pending_invitations': cached.get('count', 0)}
             resp = supabase_admin_request('GET',
                 f'invitations?worker_id=eq.{user_id}&status=eq.pending&select=id&limit=100')
             if resp.ok:
                 data = resp.json()
                 count = len(data) if isinstance(data, list) else 0
-                current_app.logger.info('[INV_CTX] query ok, count=%d', count)
+                log.info('[INV_CTX] query ok, count=%d', count)
             else:
                 count = 0
-                current_app.logger.error('[INV_CTX] query FAILED: status=%s body=%s',
-                                         resp.status_code, (resp.text or '')[:200])
+                log.error('[INV_CTX] query FAILED: status=%s body=%s',
+                          resp.status_code, (resp.text or '')[:200])
             session[cache_key] = {'count': count, 'ts': now}
             return {'pending_invitations': count}
-        current_app.logger.info('[INV_CTX] skip: no user_id or not worker')
+        log.info('[INV_CTX] skip: no user_id or not worker')
         return {'pending_invitations': 0}
 
     # Кешируем git-версию при старте приложения (ранее вычислялась на каждый запрос)
