@@ -74,28 +74,36 @@ def create(user_id, notification_type, title, message, data=None):
     if not prefs.get(notification_type, True):
         return False
 
-    payload = {
+    base_payload = {
         'user_id': user_id,
         'type': notification_type,
         'message': f'{title}: {message}' if title else message,
         'is_read': False,
     }
-    # Добавляем контекстные поля (job_id, shift_id) если они есть в data
+    optional_fields = {}
     if data:
         if data.get('job_id'):
-            payload['job_id'] = data['job_id']
+            optional_fields['job_id'] = data['job_id']
         if data.get('shift_id'):
-            payload['shift_id'] = data['shift_id']
+            optional_fields['shift_id'] = data['shift_id']
         if data.get('application_id'):
-            payload['application_id'] = data['application_id']
+            optional_fields['application_id'] = data['application_id']
 
     # Используем admin_request для обхода RLS:
     # уведомления создаются системой (не владельцем), user_id может не совпадать с auth.uid()
+    payload = {**base_payload, **optional_fields}
     resp = supabase_admin_request('POST', 'notifications', json=payload)
     if not resp.ok:
-        logger.error('Failed to create notification: user=%s type=%s status=%s',
-                     user_id, notification_type, resp.status_code)
-        return False
+        # Если 400 — возможно, в таблице нет колонок job_id/shift_id/application_id.
+        # Пробуем без опциональных полей.
+        if resp.status_code == 400 and optional_fields:
+            logger.warning('Notification 400 with optional fields, retrying without: %s',
+                          list(optional_fields.keys()))
+            resp = supabase_admin_request('POST', 'notifications', json=base_payload)
+        if not resp.ok:
+            logger.error('Failed to create notification: user=%s type=%s status=%s body=%s',
+                         user_id, notification_type, resp.status_code, resp.text)
+            return False
     return True
 
 
