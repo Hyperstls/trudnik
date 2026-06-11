@@ -121,17 +121,24 @@ def _maybe_set_job_payment_pending(job_id):
     (согласно матрице: active → payment_pending → paid → completed).
     Использует service_role_key, т.к. вызывается от лица работника,
     а UPDATE на jobs разрешён только работодателю."""
+    import logging
+    log = logging.getLogger(__name__)
     shifts_resp = supabase_admin_request('GET', f'shifts?job_id=eq.{job_id}&select=status')
     if not shifts_resp.ok or not shifts_resp.json():
+        log.warning('[PAYMENT_PENDING] shifts query failed: job_id=%s ok=%s', job_id, shifts_resp.ok)
         return
     statuses = [s['status'] for s in shifts_resp.json()]
-    active_count = sum(1 for s in statuses if s in ('active', 'in_progress'))
+    log.warning('[PAYMENT_PENDING] job_id=%s shift_statuses=%s', job_id, statuses)
+    active_count = sum(1 for s in statuses if s in ('active', 'in_progress', 'pending'))
     if active_count == 0:
         from flask import current_app as _app2
         # Все смены выполнены — задание ожидает подтверждения оплаты
         patch = supabase_admin_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'payment_pending'})
         if not patch.ok:
-            _app2.logger.error('[PAYMENT PENDING] PATCH jobs failed: job_id=%s status=%s', job_id, patch.status_code)
+            _app2.logger.error('[PAYMENT PENDING] PATCH jobs failed: job_id=%s status=%s body=%s',
+                               job_id, patch.status_code, (patch.text or '')[:200])
+        else:
+            log.warning('[PAYMENT_PENDING] job %s set to payment_pending', job_id)
 
 
 def _handle_confirm_payment(shift_id, action):
