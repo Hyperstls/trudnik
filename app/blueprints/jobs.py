@@ -682,10 +682,11 @@ def respond_invitation(invitation_id):
                      json={'status': new_status, 'responded_at': 'now()'})
 
     if action == 'accept':
+        # При принятии приглашения отклик сразу accepted (работодатель уже выбрал трудника)
         supabase_request('POST', 'applications', json={
             'job_id': inv['job_id'],
             'worker_id': inv['worker_id'],
-            'status': 'pending'
+            'status': 'accepted'
         })
         from app.services.notification_service import create as notify
         notify(inv['employer_id'], 'application_received', 'Приглашение принято',
