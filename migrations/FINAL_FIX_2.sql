@@ -31,9 +31,14 @@ CREATE POLICY "Workers can insert applications" ON public.applications
     FOR INSERT WITH CHECK ((select auth.uid()) = worker_id);
 
 -- applications: Users can view own applications
+-- (работник видит свои отклики, работодатель — через jobs)
 DROP POLICY IF EXISTS "Users can view own applications" ON public.applications;
 CREATE POLICY "Users can view own applications" ON public.applications
-    FOR SELECT USING ((select auth.uid()) IN (worker_id, employer_id));
+    FOR SELECT USING (
+        (select auth.uid()) = worker_id
+        OR
+        (select auth.uid()) IN (SELECT employer_id FROM jobs WHERE jobs.id = applications.job_id)
+    );
 
 -- applications: Employers can update applications
 -- (employer_id берётся через jobs, а не из applications)
