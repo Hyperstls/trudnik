@@ -6,7 +6,7 @@ from app.decorators import login_required
 from app.services.notification_service import (
     get_notifications, get_unread_count, mark_all_read, mark_read
 )
-from app.utils import my_query, supabase_request
+from app.utils import my_query, supabase_request, supabase_admin_request
 
 notifications_bp = Blueprint('notifications', __name__)
 
@@ -18,13 +18,32 @@ def notifications():
         my_query('notifications', extra='&order=created_at.desc&limit=50'))
     items = resp.json() if resp.ok else []
 
+    # Отделяем приглашения — они показываются на странице /invitations
+    general_items = [n for n in items if 'приглаш' not in (n.get('message') or '').lower()]
+
+    # Очистка: удаляем уведомления-приглашения, чьи задания уже удалены
+    invitation_items = [n for n in items if 'приглаш' in (n.get('message') or '').lower()]
+    if invitation_items:
+        import re as re_cleanup
+        job_ids_in_notifications = set()
+        for n in invitation_items:
+            match = re_cleanup.search(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', n.get('message') or '')
+            if match:
+                job_ids_in_notifications.add(match.group(0))
+        if job_ids_in_notifications:
+            ids_filter = ','.join(job_ids_in_notifications)
+            jobs_check = supabase_admin_request('GET', f'jobs?id=in.({ids_filter})&select=id')
+            existing_ids = {j['id'] for j in (jobs_check.json() or [])} if jobs_check.ok else set()
+            for job_id in (job_ids_in_notifications - existing_ids):
+                supabase_admin_request('DELETE', f'notifications?message=ilike.*{job_id}*')
+
     import re
-    unread_ids = [str(n['id']) for n in items if not n.get('is_read')]
+    unread_ids = [str(n['id']) for n in general_items if not n.get('is_read')]
     safe_ids = [uid for uid in unread_ids if re.match(r'^[a-zA-Z0-9_-]+$', uid)]
     if safe_ids:
         supabase_request('PATCH', f'notifications?id=in.({",".join(safe_ids)})', json={'is_read': True})
 
-    return render_template('notifications.html', items=items, unread=len(unread_ids))
+    return render_template('notifications.html', items=general_items, unread=len(unread_ids))
 
 
 @notifications_bp.route('/api/notifications/unread-count')
