@@ -171,9 +171,10 @@
                         </div>
                         {# ID задания + копирование #}
                         <div class="mt-1.5 flex items-center gap-1.5">
-                            <code class="text-[11px] font-mono text-neutral-300 select-all" title="ID задания">{{ job.id }}</code>
+                            <span class="text-[11px] text-neutral-400 mr-0.5">ID:</span>
+                            <code class="text-[11px] font-mono text-neutral-300 select-all">{{ job.id }}</code>
                             <button type="button" onclick="copyJobId(this, '{{ job.id }}')"
-                                    class="text-neutral-300 hover:text-primary-500 transition-colors p-0.5" title="Скопировать ID задания">
+                                    class="text-neutral-300 hover:text-primary-500 transition-colors p-0.5" title="Скопировать ID">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                             </button>
                         </div>
