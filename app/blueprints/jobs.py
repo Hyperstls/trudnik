@@ -713,8 +713,25 @@ def respond_invitation(invitation_id):
                 'current_workers': new_count,
                 'status': new_status
             })
-        # Уведомить работодателя
+        # Создать смену (если ещё нет) — worker не может POST shifts, используем admin
         from app.services.notification_service import create as notify
+        shift_check = supabase_admin_request('GET',
+            f'shifts?job_id=eq.{inv["job_id"]}&worker_id=eq.{inv["worker_id"]}&select=id')
+        if shift_check.ok and shift_check.json():
+            shift_id = shift_check.json()[0].get('id')
+        else:
+            create_shift = supabase_admin_request('POST', 'shifts', json={
+                'job_id': inv['job_id'],
+                'worker_id': inv['worker_id'],
+                'employer_id': inv['employer_id']
+            })
+            if create_shift.ok and create_shift.json():
+                created = create_shift.json()
+                shift_id = created[0].get('id') if isinstance(created, list) else created.get('id')
+                if shift_id:
+                    notify(inv['worker_id'], 'shift_created', 'Смена создана',
+                           f'Смена #{shift_id} создана. Отметьте начало смены.')
+        # Уведомить работодателя
         notify(inv['employer_id'], 'application_received', 'Приглашение принято',
                f'Трудник принял ваше приглашение на задание',
                data={'job_id': inv['job_id']})
