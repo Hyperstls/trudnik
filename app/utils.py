@@ -5,7 +5,7 @@ import uuid
 from collections import defaultdict
 from datetime import datetime
 from functools import wraps
-from typing import Any, Optional
+from typing import Any
 
 import requests
 from flask import current_app, flash, redirect, request, session, url_for

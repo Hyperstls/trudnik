@@ -2,7 +2,6 @@ from datetime import datetime, timezone, timedelta
 
 from flask import Blueprint, current_app, jsonify, flash, redirect, render_template, request, session, url_for
 
-from app.config import Config
 from app.decorators import login_required, role_required
 from app.utils import calculate_distance, copy_job, sanitize_postgrest, supabase_admin_request, supabase_request
 
