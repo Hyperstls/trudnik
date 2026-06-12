@@ -109,3 +109,68 @@ class ReceiptService:
             return True
 
         return False
+
+    @staticmethod
+    def issue_job_publication_receipt(employer_name, employer_inn, job_id, tariff, amount):
+        """
+        Сформировать чек за публикацию задания.
+
+        Args:
+            employer_name: Название храма (заказчик)
+            employer_inn: ИНН храма
+            job_id: ID задания
+            tariff: Ключ тарифа
+            amount: Сумма (руб.)
+
+        Returns:
+            str: receipt_id или пустая строка
+        """
+        from app.services.payment_service import PaymentService
+        settings = PaymentService.get_settings()
+        owner_inn = settings.get('owner_inn', '')
+
+        service_description = f"Публикация задания №{job_id[:8]}... на платформе Трудник (тариф {tariff})"
+
+        receipt_data = {
+            'receipt_type': 'income',
+            'owner_inn': owner_inn,
+            'client': {
+                'name': employer_name,
+                'inn': employer_inn,
+                'type': 'legal_entity',
+            },
+            'services': [
+                {
+                    'name': service_description,
+                    'amount': amount,
+                    'quantity': 1,
+                }
+            ],
+            'total_amount': amount,
+            'taxation_type': 'npd',
+            'created_at': datetime.now(timezone.utc).isoformat(),
+        }
+
+        resp = supabase_request('POST', 'receipts', json={
+            'church_name': employer_name,
+            'church_inn': employer_inn,
+            'service_description': service_description,
+            'amount': amount,
+            'status': 'sent',
+            'receipt_type': 'job_publication',
+            'receipt_json': receipt_data,
+        })
+
+        receipt_id = ''
+        if resp.ok and resp.json():
+            receipt_data_resp = resp.json()[0] if isinstance(resp.json(), list) else resp.json()
+            receipt_id = receipt_data_resp.get('id', '')
+
+        print(f"[ЧЕК] Сформирован чек за публикацию #{receipt_id[:8] if receipt_id else 'N/A'}")
+        print(f"[ЧЕК] Отправитель (самозанятый): ИНН {owner_inn}")
+        print(f"[ЧЕК] Получатель: {employer_name} (ИНН {employer_inn})")
+        print(f"[ЧЕК] Услуга: {service_description}")
+        print(f"[ЧЕК] Сумма: {amount} руб.")
+        print(f"[ЧЕК] JSON: {json.dumps(receipt_data, ensure_ascii=False, indent=2)}")
+
+        return receipt_id

@@ -137,26 +137,15 @@ def my_applications():
         if job_data and job_data.get('id'):
             jobs[job_data['id']] = job_data
 
-    # Получить настройки монетизации
-    from app.services.payment_service import PaymentService
-    monetization_settings = PaymentService.get_settings()
-    contact_price = int(monetization_settings.get('contact_price', 290))
-
-    # Добавить контактные данные для оплаченных откликов (если контакт оплачен)
+    # Контакты видны сразу (новая модель pay-per-job)
     for app_data in applications:
-        if app_data.get('contact_paid') and app_data.get('worker'):
-            # Контакты уже раскрыты — передаём их в шаблон
+        if app_data.get('worker'):
             app_data['worker_contacts'] = app_data['worker']
         else:
             app_data['worker_contacts'] = None
-            # Маскируем контакты в данных worker для оплаченных
-            if app_data.get('worker'):
-                app_data['worker']['phone'] = '***'
-                app_data['worker']['email_public'] = '***'
-                app_data['worker']['inn'] = '***'
 
     return render_template('my_applications.html', applications=applications, jobs=jobs,
-                           contact_price=contact_price, selected_skills=selected_skills_list)
+                           selected_skills=selected_skills_list)
 
 
 @applications_bp.route('/api/applications/test', methods=['GET', 'POST'])
@@ -281,11 +270,10 @@ def api_handle_application(app_id, action):
             if shift_id:
                 supabase_request('DELETE', f'shifts?id=eq.{shift_id}')
 
-            # 4. Отклонить отклик: сбросить status, shift_id и contact_paid
+            # 4. Отклонить отклик: сбросить status и shift_id
             supabase_request('PATCH', f'applications?id=eq.{app_id}', json={
                 'status': 'rejected',
                 'shift_id': None,
-                'contact_paid': False
             })
 
             # 5. Уведомить работника

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 from flask import Blueprint, current_app, jsonify, flash, redirect, render_template, request, session, url_for
 
@@ -74,13 +74,22 @@ def index():
     sort = request.args.get('sort', '')
     skills_filter = request.args.get('skills', '')
 
-    query = 'status=eq.open&select=*,photos:job_photos(*)'
+    # Проверить истёкшие задания (перевести open -> expired)
+    now = datetime.now(timezone.utc).isoformat()
+    supabase_request('PATCH', f'jobs?status=eq.open&expires_at=lt.{now}', json={'status': 'expired'})
+
+    # Запрос только оплаченных открытых заданий
+    query = 'status=eq.open&is_paid=eq.true&select=*,photos:job_photos(*)'
     if city: query += f'&city=ilike.*{sanitize_postgrest(city)}*'
     if payment_min: query += f'&payment_amount=gte.{sanitize_postgrest(payment_min)}'
     if payment_max: query += f'&payment_amount=lte.{sanitize_postgrest(payment_max)}'
 
     resp = supabase_request('GET', f'jobs?{query}&order=created_at.desc')
     jobs = resp.json() if resp.ok else []
+
+    # Фильтрация: только открытые, оплаченные, не истёкшие
+    jobs = [j for j in jobs if j.get('status') == 'open' and j.get('is_paid')]
+    jobs = [j for j in jobs if not j.get('expires_at') or j['expires_at'] > now]
 
     # Фильтрация по навыкам (поиск в work_type, object_description, detailed_description)
     if skills_filter:
@@ -407,6 +416,8 @@ def job_new():
                 'preferred_religion': request.form.get('preferred_religion', ''),
                 'max_workers': int(request.form.get('max_workers', 1)),
                 'current_workers': 0,
+                'status': 'draft',
+                'is_paid': False,
             }
 
             resp = supabase_request('POST', 'jobs', json=job_data)
@@ -415,8 +426,10 @@ def job_new():
                 current_app.logger.error(f'Failed to create job: {resp.text}')
 
             if resp.ok:
-                flash('Задание опубликовано', 'success')
-                return redirect(url_for('jobs.my_jobs'))
+                created_job = resp.json()
+                if isinstance(created_job, list):
+                    created_job = created_job[0]
+                return redirect(url_for('jobs.publish_job', job_id=created_job['id']))
             else:
                 flash(f'Ошибка создания задания: {resp.text}', 'danger')
         except Exception as e:
@@ -591,7 +604,8 @@ def delete_job(job_id):
         ('job_photos', f'job_id=eq.{job_id}'),
         ('job_favorites', f'job_id=eq.{job_id}'),
         ('shifts', f'job_id=eq.{job_id}'),
-        ('contact_payments', f'job_id=eq.{job_id}'),
+        ('_archive_contact_payments', f'job_id=eq.{job_id}'),
+        ('job_payments', f'job_id=eq.{job_id}'),
         ('invitations', f'job_id=eq.{job_id}'),
     ]
     for table, condition in cascade_tables:
@@ -826,3 +840,91 @@ def remove_favorite_job(job_id):
     supabase_request('DELETE', f'job_favorites?user_id=eq.{session["user_id"]}&job_id=eq.{job_id}')
     flash('Задание удалено из избранного', 'success')
     return redirect(request.referrer or url_for('favorites.favorites'))
+
+
+# ──────────────────────────────────────────────
+# Публикация и оплата заданий (новая модель)
+# ──────────────────────────────────────────────
+
+@jobs_bp.route('/job/<job_id>/publish')
+@login_required
+@role_required('employer')
+def publish_job(job_id):
+    """Страница оплаты публикации задания."""
+    resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=*')
+    job = resp.json()[0] if resp.ok and resp.json() else None
+    if not job or job['employer_id'] != session['user_id']:
+        flash('Нет доступа', 'danger')
+        return redirect(url_for('jobs.my_jobs'))
+    if job['status'] != 'draft':
+        flash('Задание уже опубликовано', 'warning')
+        return redirect(url_for('jobs.my_jobs'))
+    from app.services.payment_service import PaymentService
+    tariffs = PaymentService.get_tariffs()
+    tariff = tariffs[0] if tariffs else {'tariff_key': 'standard', 'price': 490, 'duration_days': 30, 'renewal_price': 290}
+    return render_template('job_publish.html', job=job, tariffs=tariffs, tariff=tariff)
+
+
+@jobs_bp.route('/api/jobs/<job_id>/publish', methods=['POST'])
+@login_required
+@role_required('employer')
+def api_publish_job(job_id):
+    """API: оплатить и опубликовать задание."""
+    from app.services.payment_service import PaymentService
+    data = request.get_json() or {}
+    tariff = data.get('tariff', 'standard')
+
+    if not _check_job_owner(job_id, session['user_id']):
+        return jsonify({'success': False, 'error': 'Нет доступа'}), 403
+
+    result = PaymentService.create_job_payment(
+        employer_id=session['user_id'], job_id=job_id, tariff=tariff
+    )
+    if not result:
+        return jsonify({'success': False, 'error': 'Не удалось создать платёж'}), 500
+
+    # Обработать платёж
+    payment_result = PaymentService.process_job_payment(
+        payment_id=result['payment_id'], employer_id=session['user_id']
+    )
+    if payment_result.get('success'):
+        return jsonify({
+            'success': True,
+            'message': 'Задание опубликовано',
+            'redirect': url_for('jobs.my_jobs'),
+        })
+    return jsonify({'success': False, 'error': 'Ошибка оплаты'}), 500
+
+
+@jobs_bp.route('/api/jobs/<job_id>/renew', methods=['POST'])
+@login_required
+@role_required('employer')
+def api_renew_job(job_id):
+    """API: продлить публикацию задания."""
+    from app.services.payment_service import PaymentService
+    tariffs = PaymentService.get_tariffs()
+    renewal_price = tariffs[0].get('renewal_price', 290) if tariffs else 290
+
+    # Создать платёж типа renewal
+    resp = supabase_request('POST', 'job_payments', json={
+        'job_id': job_id,
+        'employer_id': session['user_id'],
+        'amount': renewal_price,
+        'tariff': 'standard',
+        'type': 'renewal',
+        'status': 'pending',
+    })
+    # Эмуляция оплаты
+    now = datetime.now(timezone.utc).isoformat()
+    expires_at = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+    payment = resp.json()[0] if resp.ok and resp.json() else None
+    if payment:
+        supabase_request('PATCH', f'job_payments?id=eq.{payment["id"]}', json={
+            'status': 'paid',
+            'paid_at': now,
+        })
+    supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={
+        'status': 'open',
+        'expires_at': expires_at,
+    })
+    return jsonify({'success': True, 'message': 'Публикация продлена на 30 дней'})

@@ -22,168 +22,6 @@ from app.services.notification_service import create as notify
 monetization_bp = Blueprint('monetization', __name__, url_prefix='/api')
 
 
-# ============================================================
-# 1. ПЛАТЕЖИ
-# ============================================================
-
-@monetization_bp.route('/payments/create', methods=['POST'])
-@login_required
-def create_payment():
-    """
-    Создать платёжное намерение за раскрытие контакта.
-
-    Юридически значимое действие: фиксация намерения оплатить
-    информационную услугу (раскрытие контакта исполнителя).
-    """
-    employer_id = session['user_id']
-    data = request.get_json() or {}
-    application_id = data.get('application_id')
-    job_id = data.get('job_id')
-    worker_id = data.get('worker_id')
-
-    if not all([application_id, job_id, worker_id]):
-        return jsonify({'success': False, 'error': 'Missing required fields'}), 400
-
-    # Проверить, что пользователь — владелец задания
-    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=employer_id')
-    if not job_resp.ok or not job_resp.json():
-        return jsonify({'success': False, 'error': 'Job not found'}), 404
-
-    if job_resp.json()[0]['employer_id'] != employer_id:
-        return jsonify({'success': False, 'error': 'Access denied'}), 403
-
-    result = PaymentService.create_payment_intent(
-        employer_id=employer_id,
-        worker_id=worker_id,
-        job_id=job_id,
-        application_id=application_id,
-    )
-
-    if result:
-        return jsonify({'success': True, **result})
-
-    return jsonify({'success': False, 'error': 'Failed to create payment'}), 500
-
-
-@monetization_bp.route('/payments/confirm', methods=['POST'])
-@login_required
-def confirm_payment():
-    """
-    Подтвердить платёж за раскрытие контакта.
-
-    Юридически значимое действие: успешная оплата информационной услуги.
-    Автоматически формируется чек самозанятого.
-    """
-    employer_id = session['user_id']
-    data = request.get_json() or {}
-    payment_id = data.get('payment_id')
-
-    if not payment_id:
-        return jsonify({'success': False, 'error': 'payment_id required'}), 400
-
-    # Получить данные платежа
-    payment_resp = supabase_request(
-        'GET',
-        f'contact_payments?id=eq.{payment_id}&select=*,job:jobs(organization_name)'
-    )
-    if not payment_resp.ok or not payment_resp.json():
-        return jsonify({'success': False, 'error': 'Payment not found'}), 404
-
-    payment = payment_resp.json()[0]
-
-    if payment['employer_id'] != employer_id:
-        return jsonify({'success': False, 'error': 'Access denied'}), 403
-
-    if payment['status'] != 'pending':
-        return jsonify({'success': False, 'error': f'Invalid status: {payment["status"]}'}), 400
-
-    # Получить ИНН храма (из профиля работодателя)
-    employer_resp = supabase_request('GET', f'profiles?id=eq.{employer_id}&select=inn,full_name')
-    church_inn = employer_resp.json()[0].get('inn', '') if employer_resp.ok and employer_resp.json() else ''
-    church_name = payment.get('job', {}).get('organization_name', 'Храм')
-
-    # Обработать платёж
-    result = PaymentService.process_contact_payment(
-        payment=payment,
-        church_name=church_name,
-        church_inn=church_inn,
-    )
-
-    if result['success']:
-        # Получить контактные данные исполнителя
-        worker_resp = supabase_request(
-            'GET',
-            f'profiles?id=eq.{payment["worker_id"]}&select=full_name,phone,email_public'
-        )
-        worker_info = {}
-        if worker_resp.ok and worker_resp.json():
-            worker_info = worker_resp.json()[0]
-
-        # Юридически значимое действие: уведомление сторон о раскрытии контактов
-        notify(
-            employer_id, 'contacts_revealed',
-            'Контакты открыты',
-            f'Контакты исполнителя {worker_info.get("full_name", "—")} раскрыты. '
-            f'Оплатите работу напрямую и не забудьте чек самозанятого!'
-        )
-        notify(
-            payment['worker_id'], 'contacts_revealed',
-            'Контакты открыты',
-            f'Храм "{church_name}" оплатил раскрытие ваших контактов. '
-            f'Свяжитесь с заказчиком напрямую.'
-        )
-
-        # Юридически значимое действие: запись в hires для защиты от переквалификации
-        supabase_request('POST', 'hires', json={
-            'employer_id': employer_id,
-            'worker_id': payment['worker_id'],
-            'job_id': payment['job_id'],
-        })
-
-        # Проверить лимит наймов
-        hire_warning = _check_hire_limit(employer_id, payment['worker_id'])
-
-        return jsonify({
-            'success': True,
-            'transaction_id': result['transactionId'],
-            'worker': {
-                'full_name': worker_info.get('full_name', ''),
-                'phone': worker_info.get('phone', ''),
-                'email': worker_info.get('email_public', ''),
-            },
-            'hire_warning': hire_warning,
-        })
-
-    return jsonify({'success': False, 'error': 'Payment failed'}), 500
-
-
-@monetization_bp.route('/payments/status/<application_id>', methods=['GET'])
-def payment_status(application_id):
-    """Проверить, оплачен ли контакт по отклику."""
-    resp = supabase_request(
-        'GET',
-        f'applications?id=eq.{application_id}&select=contact_paid,worker_id,job_id'
-    )
-
-    if not resp.ok or not resp.json():
-        return jsonify({'success': False, 'error': 'Application not found'}), 404
-
-    app_data = resp.json()[0]
-    worker_info = {}
-
-    if app_data.get('contact_paid'):
-        worker_resp = supabase_request(
-            'GET',
-            f'profiles?id=eq.{app_data["worker_id"]}&select=full_name,phone,email_public'
-        )
-        if worker_resp.ok and worker_resp.json():
-            worker_info = worker_resp.json()[0]
-
-    return jsonify({
-        'success': True,
-        'paid': app_data.get('contact_paid', False),
-        'worker': worker_info if app_data.get('contact_paid') else None,
-    })
 
 
 # ============================================================
@@ -427,7 +265,7 @@ def remind_cheque(application_id):
 @monetization_bp.route('/admin/monetization-settings', methods=['GET', 'POST'])
 @login_required
 def admin_monetization_settings():
-    """Получить или сохранить настройки монетизации."""
+    """Получить или сохранить настройки монетизации (тарифы + owner_inn)."""
     # Проверка роли администратора
     role_resp = supabase_request('GET', f'profiles?id=eq.{session["user_id"]}&select=role')
     if not role_resp.ok or not role_resp.json() or role_resp.json()[0]['role'] != 'admin':
@@ -435,37 +273,75 @@ def admin_monetization_settings():
 
     if request.method == 'POST':
         data = request.get_json() or {}
-        contact_price = data.get('contact_price', '290')
-        owner_inn = data.get('owner_inn', '')
+        tariff_key = data.get('tariff_key')
+        price = data.get('price')
+        renewal_price = data.get('renewal_price')
+        owner_inn = data.get('owner_inn')
 
-        # Обновить настройки
-        try:
-            int(contact_price)
-        except ValueError:
-            return jsonify({'success': False, 'error': 'contact_price must be a number'}), 400
+        # Обновить тариф
+        if tariff_key and price is not None:
+            try:
+                price = int(price)
+            except (ValueError, TypeError):
+                return jsonify({'success': False, 'error': 'price must be a number'}), 400
 
-        supabase_request('PATCH', 'monetization_settings?key=eq.contact_price', json={'value': str(contact_price)})
-        supabase_request('PATCH', 'monetization_settings?key=eq.owner_inn', json={'value': owner_inn})
+            update_data = {'price': price}
+            if renewal_price is not None:
+                try:
+                    update_data['renewal_price'] = int(renewal_price)
+                except (ValueError, TypeError):
+                    pass
+            supabase_request('PATCH', f'tariff_settings?tariff_key=eq.{tariff_key}', json=update_data)
+
+        # Обновить ИНН владельца
+        if owner_inn is not None:
+            supabase_request('PATCH', 'monetization_settings?key=eq.owner_inn', json={'value': owner_inn})
 
         return jsonify({'success': True})
 
     # GET — получить настройки
     settings = PaymentService.get_settings()
-    return jsonify({'success': True, **settings})
+    tariffs = PaymentService.get_tariffs()
+    return jsonify({'success': True, 'tariffs': tariffs, 'owner_inn': settings.get('owner_inn', '')})
 
 
 @monetization_bp.route('/admin/payments', methods=['GET'])
 @login_required
 def admin_payments_list():
-    """Список всех контактных платежей (для админа)."""
+    """Список всех платежей за публикацию (для админа)."""
     role_resp = supabase_request('GET', f'profiles?id=eq.{session["user_id"]}&select=role')
     if not role_resp.ok or not role_resp.json() or role_resp.json()[0]['role'] != 'admin':
         return jsonify({'success': False, 'error': 'Access denied'}), 403
 
-    resp = supabase_request('GET', 'contact_payments?select=*,receipts(*)&order=created_at.desc')
+    resp = supabase_request('GET', 'job_payments?select=*&order=created_at.desc')
     payments = resp.json() if resp.ok else []
 
     return jsonify({'success': True, 'payments': payments})
+
+
+@monetization_bp.route('/admin/job-stats', methods=['GET'])
+@login_required
+def admin_job_stats():
+    """Статистика по оплаченным публикациям."""
+    role_resp = supabase_request('GET', f'profiles?id=eq.{session["user_id"]}&select=role')
+    if not role_resp.ok or not role_resp.json() or role_resp.json()[0]['role'] != 'admin':
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+
+    stats_resp = supabase_request('GET',
+        'job_payments?status=eq.paid&select=amount,tariff,paid_at')
+    payments = stats_resp.json() if stats_resp.ok else []
+    total_revenue = sum(p['amount'] for p in payments)
+    by_tariff = {}
+    for p in payments:
+        t = p.get('tariff', 'standard')
+        by_tariff[t] = by_tariff.get(t, 0) + p['amount']
+
+    return jsonify({
+        'success': True,
+        'total_paid_publications': len(payments),
+        'total_revenue': total_revenue,
+        'by_tariff': by_tariff,
+    })
 
 
 # ============================================================

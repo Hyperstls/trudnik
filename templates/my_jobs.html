@@ -230,6 +230,24 @@
                             </a>
                             {% endif %}
 
+                            {# Оплатить и опубликовать: draft #}
+                            {% if job.status == 'draft' %}
+                            <a href="/job/{{ job.id }}/publish"
+                               class="action-icon-btn accept-btn" title="Оплатить и опубликовать">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span class="text-xs ml-1 font-medium hidden sm:inline">Опубликовать</span>
+                            </a>
+                            {% endif %}
+
+                            {# Продлить: expired #}
+                            {% if job.status == 'expired' %}
+                            <button type="button" onclick="renewJob('{{ job.id }}')"
+                                    class="action-icon-btn accept-btn" title="Продлить за 290 ₽">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                                <span class="text-xs ml-1 font-medium hidden sm:inline">Продлить</span>
+                            </button>
+                            {% endif %}
+
                             {# Оценить трудника: paid #}
                             {% if job.status == 'paid' %}
                             <a href="/jobs/{{ job.id }}#ratings-section"
@@ -421,6 +439,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 sel.addRange(range);
             }
             window.showToast('Выделено. Нажмите Ctrl+C', 'info');
+        }
+    };
+
+    window.renewJob = function(jobId) {
+        if (confirm('Продлить публикацию на 30 дней за 290 ₽?')) {
+            fetch('/api/jobs/' + jobId + '/renew', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': '{{ csrf_token }}'
+                }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    window.showToast(data.message || 'Публикация продлена', 'success');
+                    setTimeout(() => location.reload(), 1200);
+                } else {
+                    window.showToast(data.error || 'Ошибка при продлении', 'error');
+                }
+            })
+            .catch(() => window.showToast('Ошибка соединения', 'error'));
         }
     };
 });

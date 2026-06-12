@@ -157,51 +157,38 @@
                                 </svg>
                             </button>
 
-                            {# Контакт-пейволл #}
+                            {# Контакты (видны сразу, новая модель) #}
                             <div id="contact-section-{{ app.id }}" class="ml-auto">
-                                {% if app.contact_paid %}
-                                    <div class="p-3 bg-success/10 border border-success/20 rounded-xl">
-                                        <p class="text-sm font-semibold text-success">Контакты открыты</p>
-                                        <div id="worker-contacts-{{ app.id }}">
-                                            {% if app.worker_contacts %}
-                                            <p class="text-sm text-neutral-700 mt-1">
-                                                <span class="font-medium">ФИО:</span> {{ app.worker_contacts.full_name or '—' }}
-                                            </p>
-                                            <p class="text-sm text-neutral-700">
-                                                <span class="font-medium">Тел.:</span> {{ app.worker_contacts.phone or '—' }}
-                                            </p>
-                                            <p class="text-sm text-neutral-700">
-                                                <span class="font-medium">Email:</span> {{ app.worker_contacts.email or '—' }}
-                                            </p>
-                                            {% else %}
-                                            <p class="text-sm text-neutral-400 mt-1">Загрузка контактов...</p>
-                                            {% endif %}
-                                        </div>
-                                        <div class="mt-2">
-                                            <a href="/api/act/generate/{{ app.id }}"
-                                               class="action-icon-btn chat-btn"
-                                               title="Скачать акт ГПХ">
-                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                                    <polyline points="14 2 14 8 20 8"></polyline>
-                                                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                                                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                                                </svg>
-                                            </a>
-                                        </div>
+                                <div class="p-3 bg-success/10 border border-success/20 rounded-xl">
+                                    <p class="text-sm font-semibold text-success">Контакты</p>
+                                    <div id="worker-contacts-{{ app.id }}">
+                                        {% if app.worker_contacts %}
+                                        <p class="text-sm text-neutral-700 mt-1">
+                                            <span class="font-medium">ФИО:</span> {{ app.worker_contacts.full_name or '—' }}
+                                        </p>
+                                        <p class="text-sm text-neutral-700">
+                                            <span class="font-medium">Тел.:</span> {{ app.worker_contacts.phone or '—' }}
+                                        </p>
+                                        <p class="text-sm text-neutral-700">
+                                            <span class="font-medium">Email:</span> {{ app.worker_contacts.email or '—' }}
+                                        </p>
+                                        {% else %}
+                                        <p class="text-sm text-neutral-400 mt-1">Контакты не указаны</p>
+                                        {% endif %}
                                     </div>
-                                {% else %}
-                                    <button type="button"
-                                            onclick="openPayment('{{ app.id }}', '{{ app.worker.id }}', '{{ app.job_id }}', {{ contact_price }})"
-                                            class="action-icon-btn contact-btn"
-                                            title="Открыть контакт за {{ contact_price }} ₽">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                            <circle cx="12" cy="12" r="3"></circle>
-                                        </svg>
-                                        <span class="text-xs font-medium ml-1">{{ contact_price }} ₽</span>
-                                    </button>
-                                {% endif %}
+                                    <div class="mt-2">
+                                        <a href="/api/act/generate/{{ app.id }}"
+                                           class="action-icon-btn chat-btn"
+                                           title="Скачать акт ГПХ">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                <polyline points="14 2 14 8 20 8"></polyline>
+                                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                            </svg>
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
 
                         {% elif app.status == 'accepted' %}
@@ -220,7 +207,6 @@
                             </a>
                             {% endif %}
 
-                            {% if app.contact_paid %}
                             <a href="/api/act/generate/{{ app.id }}"
                                class="action-icon-btn chat-btn" title="Скачать акт ГПХ">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -230,7 +216,6 @@
                                     <line x1="16" y1="17" x2="8" y2="17"></line>
                                 </svg>
                             </a>
-                            {% endif %}
                             <button type="button" data-app-id="{{ app.id }}" data-action="reject"
                                     class="action-icon-btn reject-btn" title="Отклонить">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
