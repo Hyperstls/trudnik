@@ -16,3 +16,6 @@ app-release*.aab
 
 # Tailwind CLI binary (downloaded during Render build)
 tailwindcss-linux-x64
+
+# Generated test reports
+*_report.txt
