@@ -182,11 +182,21 @@
             }
         }
 
+        // Сохраняем исходное состояние для отката
+        const originalStatus = card ? card.dataset.status : null;
+        const actionButtonsHTML = card ? card.querySelector('.action-buttons')?.innerHTML : null;
+
         // Блокируем кнопку на время запроса (защита от двойного клика)
         if (btnElement) {
             btnElement.disabled = true;
             btnElement.style.opacity = '0.5';
             btnElement.style.cursor = 'not-allowed';
+        }
+
+        // Оптимистичное обновление: мгновенно показываем результат
+        const optimisticStatus = action === 'accept' ? 'accepted' : (action === 'reject' ? 'rejected' : (action === 'reopen' ? 'pending' : null));
+        if (optimisticStatus && card) {
+            updateCardUI(card, appId, optimisticStatus, null);
         }
 
         try {
@@ -200,10 +210,25 @@
             if (data.results && data.results.success && data.results.success.length > 0) {
                 const item = data.results.success[0];
                 showToast(data.message || 'Готово', 'success');
+                // Актуализируем UI с серверным статусом (на случай расхождений)
                 updateCardUI(card, appId, item.new_status, item.shift_id);
             } else if (data.results && data.results.errors && data.results.errors.length > 0) {
+                // Откат оптимистичного обновления
+                if (originalStatus && card) {
+                    updateCardUI(card, appId, originalStatus, null);
+                    if (actionButtonsHTML && card.querySelector('.action-buttons')) {
+                        card.querySelector('.action-buttons').innerHTML = actionButtonsHTML;
+                    }
+                }
                 showToast(data.results.errors[0].error || 'Ошибка', 'error');
             } else {
+                // Откат
+                if (originalStatus && card) {
+                    updateCardUI(card, appId, originalStatus, null);
+                    if (actionButtonsHTML && card.querySelector('.action-buttons')) {
+                        card.querySelector('.action-buttons').innerHTML = actionButtonsHTML;
+                    }
+                }
                 showToast(data.error || 'Ошибка', 'error');
             }
         } catch (e) {
@@ -214,6 +239,13 @@
                     body: JSON.stringify({ app_ids: [appId], action: action })
                 });
             } else {
+                // Откат оптимистичного обновления
+                if (originalStatus && card) {
+                    updateCardUI(card, appId, originalStatus, null);
+                    if (actionButtonsHTML && card.querySelector('.action-buttons')) {
+                        card.querySelector('.action-buttons').innerHTML = actionButtonsHTML;
+                    }
+                }
                 showToast('Ошибка соединения с сервером', 'error');
             }
         } finally {

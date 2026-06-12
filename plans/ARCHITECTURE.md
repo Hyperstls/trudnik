@@ -1,7 +1,7 @@
 # Архитектура приложения «Трудник»
 
 **Актуально на:** 12.06.2026
-**Версия документа:** 1.1 — обновлено после перехода на модель «плата за публикацию»
+**Версия документа:** 2.0 — полная переработка после удаления shifts/reviews/hires и внедрения новой state machine
 
 ---
 
@@ -29,8 +29,8 @@
    - 6.4 [PWA](#64-pwa)
 7. [API-маршруты](#7-api-маршруты)
 8. [Бизнес-процессы](#8-бизнес-процессы)
-   - 8.1 [Жизненный цикл задания](#81-жизненный-цикл-задания)
-   - 8.2 [Жизненный цикл отклика/смены](#82-жизненный-цикл-откликасмены)
+   - 8.1 [Жизненный цикл задания (State Machine)](#81-жизненный-цикл-задания-state-machine)
+   - 8.2 [Жизненный цикл отклика](#82-жизненный-цикл-отклика)
    - 8.3 [Система приглашений](#83-система-приглашений)
    - 8.4 [Система оценок](#84-система-оценок)
    - 8.5 [Монетизация (платежи)](#85-монетизация-платежи)
@@ -46,11 +46,18 @@
 «Трудник» — веб-приложение (PWA) для быстрого поиска временной подработки в религиозных организациях (храмы, церкви, мечети). Две роли пользователей:
 
 - **Работодатель (employer)** — публикует задания, управляет откликами, приглашает трудников
-- **Трудник (worker)** — ищет задания, откликается, выполняет смены, получает оплату
+- **Трудник (worker)** — ищет задания, откликается, выполняет работу, получает оплату
 
 **Модель монетизации:** плата за публикацию задания (490 ₽, 30 дней). Работодатель оплачивает размещение один раз — все контакты исполнителей видны сразу. Продление публикации — 290 ₽.
 
 Архитектурный стиль: **монолитное Flask-приложение**, разбитое на модульные Blueprint'ы, с внешней базой данных Supabase (PostgreSQL) через REST API.
+
+### Упрощённая модель (без shifts)
+
+После миграций 027-028 таблицы `shifts`, `reviews`, `hires` удалены. Модель стала проще:
+- **Задание** → **Отклики** → **Чат (через application_id)**
+- Нет промежуточной сущности «смена» между откликом и выполнением
+- Жизненный цикл задания: 5 статусов (open → in_progress → active → completed + cancelled)
 
 ---
 
@@ -78,57 +85,57 @@ trudnik/
 ├── render.yaml                     # Конфигурация деплоя на Render
 ├── .env                            # Переменные окружения (секреты)
 ├── .gitignore
-├── PROJECT_CONTEXT.md              # Контекст проекта (устаревший)
+├── PROJECT_CONTEXT.md              # Контекст проекта
 ├── README.md
 ├── generate_twa_ci.js              # Генерация Trusted Web Activity
 ├── tailwind.config.js              # Конфигурация Tailwind
 ├── twa-config.json                 # Конфигурация TWA для Google Play
 ├── Supabase_warnings.md            # Предупреждения Supabase
+├── matrix_jobs.md                  # Матрица действий над заданиями
 │
 ├── app/                            # Основной код приложения
-│   ├── __init__.py                 # create_app() — фабрика приложения
+│   ├── __init__.py                 # create_app() — фабрика приложения (11 blueprint'ов)
 │   ├── config.py                   # Config class (загрузка из .env)
 │   ├── decorators.py               # @login_required, @role_required, @csrf_protect
 │   ├── utils.py                    # Утилиты: HTTP, хранилище, рейтинг, rate limit
 │   ├── blueprints/
-│   │   ├── __init__.py             # Реэкспорт всех Blueprint'ов
+│   │   ├── __init__.py             # Реэкспорт Blueprint'ов
 │   │   ├── auth.py                 # /login, /register, /logout
 │   │   ├── profile.py              # /profile, /verify-employer, управление профилем
 │   │   ├── jobs.py                 # /, /workers, /jobs/*, /invitations, /api/invite/*
-│   │   ├── applications.py         # /apply, /my-applications, принятие/отклонение
-│   │   ├── shifts.py               # /shifts, чек-ин, завершение, подтверждение
-│   │   ├── chat.py                 # /chats, /chat/<shift_id>, /api/send_message
+│   │   ├── applications.py         # /apply, /my-applications, принятие/отклонение/отзыв
+│   │   ├── chat.py                 # /chats, /chat/<application_id>, /api/send_message
 │   │   ├── favorites.py            # /favorites, API избранного
 │   │   ├── blacklist.py            # /blacklist, блокировка/разблокировка
 │   │   ├── notifications.py        # /notifications, API уведомлений
 │   │   ├── admin.py                # /admin, управление пользователями, верификация
-│   │   ├── monetization.py         # /monetization, платежи за контакты
+│   │   ├── monetization.py         # /api/*, платежи, чеки, проверка переквалификации
 │   │   └── ratings.py              # /api/ratings, создание/получение оценок
 │   └── services/
 │       ├── __init__.py
-│       ├── notification_service.py # Сервис уведомлений (типы, настройки, CRUD)
+│       ├── notification_service.py # Сервис уведомлений (14 типов, настройки, CRUD)
 │       ├── payment_service.py      # Сервис платежей (интеграция с эквайрингом)
 │       └── receipt_service.py      # Сервис чеков самозанятого (ФНС)
 │
 ├── templates/                      # Jinja2-шаблоны
-│   ├── base.html                   # Базовый шаблон (шапка, нижнее меню, скрипты)
+│   ├── base.html                   # Базовый шаблон (шапка, нижнее меню, toast, скрипты)
 │   ├── _icons.html                 # SVG-иконки (макросы Jinja2)
 │   ├── _filter_skills.html         # Фильтр по навыкам (include)
 │   ├── index.html                  # Лента заданий (главная)
 │   ├── workers.html                # Список трудников + фильтры
 │   ├── job_new.html                # Создание/редактирование задания
 │   ├── job_detail.html             # Детальная страница задания
+│   ├── job_publish.html            # Страница оплаты публикации
 │   ├── login.html / register.html  # Аутентификация
 │   ├── profile*.html               # Профили (свой, чужой, редактирование)
 │   ├── my_applications.html        # Мои отклики (работодатель/трудник)
+│   ├── my_jobs.html                # Мои задания (работодатель)
 │   ├── favorites.html              # Избранное (трудники + задания)
 │   ├── blacklist.html              # Чёрный список
 │   ├── notifications.html          # Уведомления
 │   ├── invitations.html            # Приглашения
-│   ├── shifts.html                 # Смены
 │   ├── chat.html / chats_list.html # Чат и список чатов
 │   ├── admin.html                  # Панель администратора
-│   ├── monetization.html           # Монетизация (админ)
 │   ├── error.html                  # Страницы ошибок (404, 500)
 │   └── offline.html                # Офлайн-страница PWA
 │
@@ -146,7 +153,7 @@ trudnik/
 │   └── .well-known/
 │       └── assetlinks.json         # Digital Asset Links (Trusted Web Activity)
 │
-├── migrations/                     # SQL-миграции (001-021 + финальные фиксы)
+├── migrations/                     # SQL-миграции (001-028)
 ├── archive/                        # Архив старых скриптов и документации
 └── plans/                          # Планы и документация (.md)
 ```
@@ -160,10 +167,10 @@ trudnik/
 [`create_app()`](app/__init__.py:10) — центральная фабрика приложения. Паттерн **Application Factory** обеспечивает:
 
 - Создание Flask-приложения с настройками из [`Config`](app/config.py:8)
-- Регистрация 12 Blueprint'ов
-- 4 глобальных контекст-процессора (`context_processor`)
+- Регистрация **11** Blueprint'ов
+- 5 глобальных контекст-процессоров (`context_processor`)
 - Глобальный CSRF-фильтр (`before_request`)
-- Регистрация дополнительных API-маршрутов на объекте `app` (accept/reject/reopen — вынесены из blueprint'ов из-за проблем с роутингом на Render)
+- Регистрация API-маршрутов accept/reject/reopen на объекте `app` (вынесены из blueprint'ов из-за проблем с роутингом на Render)
 - PWA-маршруты (`/offline`, `/.well-known/assetlinks.json`)
 - Обработчики ошибок (404, 500)
 - Кэширование Git-версии при старте
@@ -172,50 +179,65 @@ trudnik/
 
 | Blueprint | Файл | Маршрутов | Назначение |
 |-----------|------|-----------|------------|
-| `auth` | [`auth.py`](app/blueprints/auth.py:8) | 3 | Логин, регистрация, выход |
-| `profile` | [`profile.py`](app/blueprints/profile.py) | ~10 | Профиль, верификация, загрузка фото, удаление аккаунта |
-| `jobs` | [`jobs.py`](app/blueprints/jobs.py) | ~25 | Задания, трудники, приглашения, поиск |
-| `applications` | [`applications.py`](app/blueprints/applications.py) | ~12 | Отклики, принятие/отклонение, массовые операции |
-| `shifts` | [`shifts.py`](app/blueprints/shifts.py) | ~8 | Смены, чек-ин, завершение, споры |
-| `chat` | [`chat.py`](app/blueprints/chat.py:7) | 7 | Список чатов, чат, отправка сообщений, удаление |
-| `favorites` | [`favorites.py`](app/blueprints/favorites.py:6) | 7 | Избранное (API + страница) |
-| `blacklist` | [`blacklist.py`](app/blueprints/blacklist.py:6) | 3 | Чёрный список |
-| `notifications` | [`notifications.py`](app/blueprints/notifications.py:11) | 7 | Уведомления (страница + API) |
-| `admin` | [`admin.py`](app/blueprints/admin.py) | ~15 | Админ-панель, управление пользователями |
-| `monetization` | [`monetization.py`](app/blueprints/monetization.py) | ~10 | Платежи за контакты, настройки |
-| `ratings` | [`ratings.py`](app/blueprints/ratings.py:7) | 3 | API оценок и отзывов |
+| `auth_bp` | [`auth.py`](app/blueprints/auth.py:8) | 3 | Логин, регистрация, выход |
+| `profile_bp` | [`profile.py`](app/blueprints/profile.py) | ~10 | Профиль, верификация, загрузка фото, удаление аккаунта |
+| `jobs_bp` | [`jobs.py`](app/blueprints/jobs.py) | ~30 | Задания, трудники, приглашения, поиск, force-complete, restore, cancel |
+| `applications_bp` | [`applications.py`](app/blueprints/applications.py) | ~14 | Отклики, принятие/отклонение, отзыв (withdraw), массовые операции |
+| `chat_bp` | [`chat.py`](app/blueprints/chat.py:7) | 7 | Список чатов, чат по application_id, отправка сообщений, удаление |
+| `favorites_bp` | [`favorites.py`](app/blueprints/favorites.py:6) | 7 | Избранное (API + страница) |
+| `blacklist_bp` | [`blacklist.py`](app/blueprints/blacklist.py:6) | 3 | Чёрный список |
+| `notifications_bp` | [`notifications.py`](app/blueprints/notifications.py:11) | 7 | Уведомления (страница + API) |
+| `admin_bp` | [`admin.py`](app/blueprints/admin.py) | ~15 | Админ-панель, управление пользователями |
+| `monetization_bp` | [`monetization.py`](app/blueprints/monetization.py) | ~10 | Платежи за публикацию, чеки, проверка переквалификации |
+| `ratings_bp` | [`ratings.py`](app/blueprints/ratings.py:7) | 3 | API оценок и отзывов |
 
-**Всего:** ~110 маршрутов
+**Всего: 11 blueprint'ов, ~110 маршрутов**
+
+> **Удалён:** [`shifts_bp`](app/blueprints/shifts.py) — таблица shifts удалена (миграция 027), blueprint исключён из регистрации.
 
 #### Ключевые модули подробнее:
 
-**`jobs`** — самый крупный модуль. Содержит:
-- Главную страницу (`/`) — лента заданий с фильтрами
-- [`/workers`](app/blueprints/jobs.py:277) — список трудников с фильтрами (город, навыки, оплата, рейтинг, вероисповедание)
+**`jobs_bp`** — самый крупный модуль. Содержит:
+- Главную страницу (`/`) — лента заданий с фильтрами и автопереходом in_progress→active
+- [`/workers`](templates/workers.html) — список трудников с фильтрами
 - `/jobs/<id>` — детальная страница задания
-- `/job/new` — создание/редактирование задания
-- `/my-jobs` — список заданий работодателя
+- `/job/new` — создание/редактирование задания (публикация сразу в `open`)
+- `/my-jobs` — список заданий работодателя с массовыми действиями
 - `/api/invite/<job_id>/<worker_id>` — приглашение трудника
-- [`/invitations`](app/blueprints/jobs.py:641) — страница приглашений
+- [`/invitations`](templates/invitations.html) — страница приглашений
 - `/api/search/workers` — поиск трудников
-- Контекст-процессор для инжекта `current_job` во все шаблоны
+- **`/api/jobs/<id>/force-complete`** — принудительное завершение (active/in_progress → completed)
+- **`/restore-job/<id>`** — восстановление (cancelled → open)
+- **`/cancel-job/<id>`** — отмена (open/in_progress → cancelled; блокировка для active)
+- **`/delete-job/<id>`** — удаление с каскадным удалением связанных записей
 
-**`applications`** — управление откликами:
+**`chat_bp`** — чат через `application_id`:
+- `/chats` — список чатов (все accepted-заявки пользователя)
+- `/chat/<application_id>` — чат конкретной заявки
+- `/chat/new/<worker_id>` — поиск существующего чата с работником
+- `/api/send_message` — отправка сообщения (`application_id`, `sender_id`, `content`)
+- `/api/messages/<application_id>/poll` — polling новых сообщений
+- `/api/delete-chats` — удаление чатов (сообщений по application_id)
+
+**`applications_bp`** — управление откликами:
 - `/apply/<job_id>` — откликнуться на задание
 - `/apply-selected` — массовый отклик
-- `/my-applications` — страница откликов (разная для работодателя и трудника)
+- `/my-applications` — страница откликов (разная для работодателя/трудника)
+- **`/api/applications/<id>/withdraw`** — отзыв отклика работником (pending/accepted → withdrawn)
 - `/api/applications/<id>/accept|reject|reopen` — API принятия/отклонения (вынесены на `app`)
 
 ### 4.3 Сервисы
 
 | Сервис | Файл | Назначение |
 |--------|------|------------|
-| `NotificationService` | [`notification_service.py`](app/services/notification_service.py) | Типизированные уведомления, настройки пользователя, CRUD |
+| `NotificationService` | [`notification_service.py`](app/services/notification_service.py) | Типизированные уведомления (14 типов), настройки пользователя, CRUD |
 | `PaymentService` | [`payment_service.py`](app/services/payment_service.py) | Обработка платежей за публикацию задания. Методы: `get_tariffs()`, `create_job_payment()`, `process_job_payment()` |
 | `ReceiptService` | [`receipt_service.py`](app/services/receipt_service.py) | Формирование чеков самозанятого. Методы: `issue_receipt()`, `issue_job_publication_receipt()` |
 
-**Типы уведомлений** (18 типов):
-`application_received`, `application_accepted`, `application_rejected`, `application_cancelled`, `shift_checkin`, `shift_complete`, `shift_created`, `shift_reminder`, `payment_confirmed`, `payment_received`, `new_message`, `new_rating`, `job_filled`, `job_completed`, `job_cancelled`, `dispute_started`, `hire_limit_warning`, `system`
+**Типы уведомлений** (14 типов):
+`application_received`, `application_accepted`, `application_rejected`, `application_cancelled`, `new_message`, `new_rating`, `job_filled`, `job_completed`, `job_cancelled`, `job_published`, `job_restored`, `hire_limit_warning`, `cheque_reminder`, `system`
+
+> **Удалены** (после удаления shifts): `shift_checkin`, `shift_complete`, `shift_created`, `shift_reminder`, `payment_confirmed`, `payment_received`, `dispute_started`
 
 ### 4.4 Декораторы
 
@@ -253,10 +275,11 @@ trudnik/
 |-----------|-----------|------------|
 | `inject_global_user` | `current_user_id` | ID текущего пользователя во всех шаблонах |
 | `inject_csrf_token` | `csrf_token` | CSRF-токен для форм |
-| `inject_unread_notifications` | `unread_notifications` | Счётчик непрочитанных уведомлений (кэш 30с) |
+| `inject_unread_notifications` | `unread_notifications` | Счётчик непрочитанных уведомлений (кэш 30с, исключает приглашения) |
 | `inject_pending_invitations` | `pending_invitations` | Счётчик приглашений для трудника (кэш 30с) |
 | `inject_git_version` | `git_version` | Версия коммита (кэшируется при старте) |
-| (в `jobs.py`) | `current_job` | Текущее задание из URL для всех шаблонов |
+| `inject_application_count` | `pending_app_count` | Счётчик pending-откликов работодателя (в `jobs.py`) |
+| `inject_user_role` | `current_user_role` | Роль пользователя (в `jobs.py`) |
 
 ### 4.7 Безопасность
 
@@ -280,70 +303,117 @@ trudnik/
 
 | Таблица | Назначение | Ключевые поля |
 |---------|------------|---------------|
-| **`profiles`** | Пользователи (расширение auth.users) | `id` (PK, FK->auth.users), `role`, `full_name`, `city`, `skills`, `religion`, `rating`, `photo_url`, `verified`, `inn`, `is_self_employed`, `desired_payment`, `experience`, `contact`, `notification_prefs`, `portfolio_link` |
-| **`jobs`** | Задания | `id`, `employer_id` (FK→profiles), `organization_name`, `object_description`, `work_type`, `payment_amount`, `address`, `city`, `lat`, `lng`, `date_time`, `status` (draft/open/in_progress/completed/cancelled/paid/expired), `max_workers`, `current_workers`, `preferred_religion`, `is_paid`, `paid_at`, `expires_at`, `tariff` |
-| **`applications`** | Отклики | `id`, `job_id` (FK→jobs), `worker_id` (FK→profiles), `employer_id`, `status` (pending/accepted/rejected/cancelled) |
-| **`shifts`** | Смены (активные контракты) | `id`, `job_id`, `worker_id`, `employer_id`, `status` (active/completed/paid/disputed), `checkin_time`, `complete_time`, `payment_confirmed` |
-| **`messages`** | Сообщения чата | `id`, `shift_id`, `sender_id`, `content`, `created_at` |
+| **`profiles`** | Пользователи (расширение auth.users) | `id` (PK, FK→auth.users), `role`, `full_name`, `city`, `skills`, `religion`, `rating`, `photo_url`, `verified`, `inn`, `is_self_employed`, `desired_payment`, `experience`, `contact`, `notification_prefs`, `portfolio_link` |
+| **`jobs`** | Задания | `id`, `employer_id` (FK→profiles), `organization_name`, `object_description`, `work_type`, `payment_amount`, `address`, `city`, `lat`, `lng`, `date_time`, `status` (open/in_progress/active/completed/cancelled), `max_workers`, `current_workers`, `preferred_religion`, `is_paid`, `paid_at`, `expires_at`, `tariff` |
+| **`applications`** | Отклики | `id`, `job_id` (FK→jobs), `worker_id` (FK→profiles), `employer_id`, `status` (pending/accepted/rejected/withdrawn) |
+| **`messages`** | Сообщения чата | `id`, `application_id` (FK→applications), `sender_id`, `content`, `created_at` |
 | **`favorites`** | Избранные трудники | `user_id`, `target_id` (FK→profiles) |
 | **`job_favorites`** | Избранные задания | `user_id`, `job_id` (FK→jobs) |
 | **`blacklists`** | Чёрный список | `user_id`, `blocked_user_id` (FK→profiles) |
 | **`ratings`** | Оценки (1-5 звёзд) | `id`, `job_id`, `rater_user_id`, `rated_user_id`, `rating_type`, `target_type`, `rating`, `comment` |
-| **`notifications`** | Уведомления | `id`, `user_id`, `type`, `message`, `is_read`, `job_id`, `shift_id`, `application_id` |
+| **`notifications`** | Уведомления | `id`, `user_id`, `type`, `message`, `is_read`, `job_id`, `application_id` |
 | **`invitations`** | Приглашения | `id`, `job_id`, `employer_id`, `worker_id`, `status` (pending/accepted/rejected), `message`, `created_at`, `responded_at` |
 | **`job_payments`** | Платежи за публикацию | `id`, `job_id`, `employer_id`, `amount`, `tariff`, `type` (publication/renewal), `status` (pending/paid/failed), `transaction_id`, `paid_at` |
 | **`tariff_settings`** | Настройки тарифов | `id`, `tariff_key`, `price`, `duration_days`, `renewal_price`, `is_active` |
-| **`_archive_contact_payments`** | Архив старых платежей | Старая модель (контактные платежи) |
+| **`_archive_contact_payments`** | Архив старых платежей | Старая модель (контактные платежи, pay-per-contact) |
 | **`receipts`** | Чеки самозанятого | `id`, `contact_payment_id`, `church_name`, `church_inn`, `service_description`, `amount`, `status`, `receipt_json` |
 | **`monetization_settings`** | Настройки монетизации | `key`, `value` (owner_inn) |
 | **`skills`** | Справочник навыков | `id`, `name`, `sort_order` |
 | **`religions`** | Справочник вероисповеданий | `id`, `name`, `sort_order` |
-| **`user_skills`** | Связь пользователь<->навыки | `user_id`, `skill_id` |
-| **`job_photos`** | Фото заданий | `id`, `job_id`, `photo_url` |->profiles), `organization_name`, `object_description`, `work_type`, `payment_amount`, `address`, `city`, `lat`, `lng`, `date_time`, `status` (open/in_progress/completed/cancelled/paid), `max_workers`, `current_workers`, `preferred_religion` |
-| **`applications`** | Отклики | `id`, `job_id` (FK->jobs), `worker_id` (FK->profiles), `employer_id`, `status` (pending/accepted/rejected/cancelled), `contact_paid`, `contact_payment_id` |
-| **`shifts`** | Смены (активные контракты) | `id`, `job_id`, `worker_id`, `employer_id`, `status` (active/completed/paid/disputed), `checkin_time`, `complete_time`, `payment_confirmed` |
-| **`messages`** | Сообщения чата | `id`, `shift_id`, `sender_id`, `content`, `created_at` |
-| **`favorites`** | Избранные трудники | `user_id`, `target_id` (FK->profiles) |
-| **`job_favorites`** | Избранные задания | `user_id`, `job_id` (FK->jobs) |
-| **`blacklists`** | Чёрный список | `user_id`, `blocked_user_id` (FK->profiles) |
-| **`ratings`** | Оценки (1-5 звёзд) | `id`, `job_id`, `rater_user_id`, `rated_user_id`, `rating_type`, `target_type`, `rating`, `comment` |
-| **`notifications`** | Уведомления | `id`, `user_id`, `type`, `message`, `is_read`, `job_id`, `shift_id`, `application_id` |
-| **`invitations`** | Приглашения | `id`, `job_id`, `employer_id`, `worker_id`, `status` (pending/accepted/rejected), `message`, `created_at`, `responded_at` |
-| **`contact_payments`** | Платежи за контакты | `id`, `application_id`, `employer_id`, `worker_id`, `job_id`, `amount`, `status`, `transaction_id`, `paid_at` |
-| **`receipts`** | Чеки самозанятого | `id`, `contact_payment_id`, `church_name`, `church_inn`, `service_description`, `amount`, `status`, `receipt_json` |
-| **`monetization_settings`** | Настройки монетизации | `key`, `value` (contact_price, owner_inn) |
-| **`skills`** | Справочник навыков | `id`, `name`, `sort_order` |
-| **`religions`** | Справочник вероисповеданий | `id`, `name`, `sort_order` |
-| **`user_skills`** | Связь пользователь<->навыки | `user_id`, `skill_id` |
+| **`user_skills`** | Связь пользователь↔навыки | `user_id`, `skill_id` |
 | **`job_photos`** | Фото заданий | `id`, `job_id`, `photo_url` |
+
+> **Удалённые таблицы** (миграции 027-028): `shifts`, `reviews`, `hires`
 
 ### 5.2 Row Level Security (RLS)
 
 Все таблицы с пользовательскими данными защищены RLS-политиками. Ключевые принципы:
 
-- **Чтение (SELECT)**: большинство таблиц доступны всем авторизованным пользователям (профили, открытые задания)
-- **Запись (INSERT)**: проверка `auth.uid() = owner_field`
-- **Обновление (UPDATE)**: только владелец записи (или worker_id для приглашений)
+- **Чтение (SELECT)**: большинство таблиц доступны всем авторизованным пользователям
+- **Запись (INSERT)**: проверка `(SELECT auth.uid()) = owner_field`
+- **Обновление (UPDATE)**: только владелец записи
 - **Удаление (DELETE)**: только владелец
+
+#### Ключевые политики (актуальное состояние после миграции 028):
+
+**`jobs` SELECT:**
+```sql
+-- Видны задания в статусах open, in_progress, active, completed
+-- + владелец видит свои cancelled
+-- + admin видит всё
+CREATE POLICY "Jobs are viewable by everyone" ON jobs
+    FOR SELECT USING (
+        status IN ('open', 'in_progress', 'active', 'completed')
+        OR ((SELECT auth.uid()) = employer_id)
+        OR (EXISTS (
+            SELECT 1 FROM profiles
+            WHERE profiles.id = (SELECT auth.uid()) AND profiles.role = 'admin'
+        ))
+    );
+```
+
+**`messages` SELECT (новая — через application_id):**
+```sql
+-- Видны только участникам заявки (worker_id из applications, employer_id через jobs)
+CREATE POLICY "Application participants can view messages" ON messages
+    FOR SELECT USING (
+        (SELECT auth.uid()) IN (
+            SELECT worker_id FROM applications WHERE applications.id = messages.application_id
+            UNION
+            SELECT jobs.employer_id FROM applications
+            JOIN jobs ON jobs.id = applications.job_id
+            WHERE applications.id = messages.application_id
+        )
+    );
+```
+
+**`messages` INSERT:**
+```sql
+CREATE POLICY "Application participants can insert messages" ON messages
+    FOR INSERT WITH CHECK (
+        (SELECT auth.uid()) = sender_id
+    );
+```
+
+**`applications` SELECT:**
+```sql
+CREATE POLICY "Users can view own applications" ON applications
+    FOR SELECT USING (
+        (SELECT auth.uid()) = worker_id
+        OR (SELECT auth.uid()) IN (
+            SELECT employer_id FROM jobs WHERE jobs.id = applications.job_id
+        )
+    );
+```
+
+**`applications` UPDATE:**
+```sql
+CREATE POLICY "Employers can update applications" ON applications
+    FOR UPDATE USING (
+        (SELECT auth.uid()) IN (
+            SELECT employer_id FROM jobs WHERE jobs.id = applications.job_id
+        )
+    );
+```
 
 Административные операции используют `supabase_admin_request()` с `SERVICE_ROLE_KEY` для обхода RLS.
 
 ### 5.3 Миграции
 
-Миграции в [`migrations/`](migrations/) содержат:
+Миграции в [`migrations/`](migrations/): **28 файлов (001-028)**
 
 | # | Файл | Содержание |
 |---|------|------------|
 | 001 | `001_setup_rls.sql` | RLS для profiles и jobs |
 | 002 | `002_apply_rls_policies.sql` | Полный набор RLS-политик для всех таблиц |
 | 003 | `003_add_max_workers.sql` | Поля max_workers/current_workers, индексы |
-| 004 | `004_fix_notifications.sql` | Столбец is_read для notifications |
-| 005 | `005_add_is_read_column.sql` | Альтернативный скрипт для is_read |
+| 004 | `004_fix_notifications.sql` | Исправления notifications |
+| 005 | `005_add_is_read_column.sql` | Столбец is_read для notifications |
 | 006 | `006_add_monetization.sql` | Таблицы монетизации |
 | 007 | `007_add_skills_religions.sql` | Справочники навыков и вероисповеданий |
 | 008 | `008_add_sort_order.sql` | Поле sort_order в справочниках |
 | 009 | `009_fix_user_skills_rls.sql` | RLS для user_skills |
-| 010 | `010_add_shifts_update_rls.sql` | RLS для обновления shifts |
+| 010 | `010_add_shifts_update_rls.sql` | RLS для обновления shifts (устарела) |
 | 011 | `011_add_search_indexes.sql` | Поисковые индексы |
 | 012 | `012_notification_prefs.sql` | Настройки уведомлений |
 | 013 | `013_invitations.sql` | Таблица приглашений |
@@ -352,12 +422,20 @@ trudnik/
 | 016 | `016_fix_supabase_warnings.sql` | Исправление предупреждений Supabase |
 | 017 | `017_add_job_ratings.sql` | Таблица ratings |
 | 018 | `018_fix_spatial_ref_sys_rls.sql` | RLS для spatial_ref_sys |
-| 019 | `019_*.sql` | Дополнительные столбцы и фиксы безопасности |
-| 020-021 | `020_*.sql`, `021_*.sql` | Индексы производительности |
+| 019 | `019_*.sql` (2 файла) | Доп. столбцы и фиксы безопасности |
+| 020 | `020_fix_performance_warnings.sql` | Индексы производительности |
+| 021 | `021_fix_performance_indexes.sql` | Дополнительные индексы |
 | 022 | `022_new_monetization_model.sql` | Поля is_paid/expires_at/tariff в jobs, таблицы job_payments и tariff_settings, архивация contact_payments |
 | 023 | `023_fix_job_payments_rls.sql` | Фикс RLS-политики для job_payments |
-| — | `FINAL_FIX*.sql` | Финальные исправления RLS и безопасности |
-| — | `ALL_PENDING.sql` | Агрегированный скрипт всех pending-миграций |
+| 024 | `024_fix_rls_jobs_and_applications.sql` | Фикс RLS для jobs и applications |
+| 025 | `025_fix_linter_warnings.sql` | Фикс предупреждений линтера Supabase |
+| 026 | `026_fix_active_status_constraint.sql` | Добавление статуса active в CHECK constraint (для state machine) |
+| 027 | `027_drop_shifts_migrate_chat.sql` | Удаление таблицы shifts, миграция чата на application_id |
+| 028 | `028_sync_db_with_code.sql` | Комплексная синхронизация БД с кодом: удаление reviews/hires, обновление RLS для messages (через application_id), CHECK constraints, новые индексы |
+
+Дополнительные скрипты:
+- `FINAL_FIX.sql`, `FINAL_FIX_2.sql`, `FINAL_FIX_3.sql` — финальные исправления RLS и безопасности (поглощены миграцией 028)
+- `ALL_PENDING.sql` — агрегированный скрипт всех pending-миграций
 
 ---
 
@@ -372,20 +450,33 @@ trudnik/
 - **Иконки**: макросы Jinja2 в [`_icons.html`](templates/_icons.html) (SVG inline)
 - **CSRF-токен**: скрытое поле `<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">` во всех формах
 - **AJAX-запросы**: заголовок `X-CSRF-Token` для обхода CSRF-проверки
-- **Уведомления**: JavaScript-функция `window.showToast(message, type)` в `base.html`
+- **Toast-уведомления**: JavaScript-функция `window.showToast(message, type)` в `base.html`
+- **Бейджи**: `unread_notifications` (🔔 иконка), `pending_invitations` (👤+ иконка), `pending_app_count` (💼 иконка)
+
+#### Матрица кнопок в my_jobs.html:
+
+Для каждого задания в `my_jobs.html` отображается набор кнопок, зависящий от статуса:
+
+| Статус | Действия |
+|--------|----------|
+| **open** | Изменить, Отменить (cancel), Дублировать, Удалить |
+| **in_progress** | Изменить, Отменить (cancel), Дублировать, Удалить |
+| **active** | Завершить (force-complete), Дублировать |
+| **completed** | Дублировать, Удалить |
+| **cancelled** | Восстановить (restore), Дублировать, Удалить |
 
 ### 6.2 JavaScript
 
 | Файл | Содержание |
 |------|------------|
-| [`favorites.js`](static/js/favorites.js) | `toggleFavorite()` — единая функция для переключения избранного (оптимистичные обновления UI, откат при ошибке). `updateButtonUI()` — обновление иконки и текста кнопки. Автоматическая проверка статуса при загрузке страницы |
+| [`favorites.js`](static/js/favorites.js) | `toggleFavorite()` — единая функция для переключения избранного (оптимистичные обновления UI, откат при ошибке). `updateButtonUI()` — обновление иконки и текста кнопки |
 | [`applications.js`](static/js/applications.js) | Логика массовых операций над откликами (чекбоксы, «Принять выбранные», «Отклонить выбранные») |
-| Встроенные скрипты в шаблонах | `inviteWorker()` — приглашение трудника (на `/workers` и `/favorites`). `publishJob()` — оплата и публикация задания. `respondInvite()` — ответ на приглашение. Логика чата, оценок, удаления |
+| Встроенные скрипты в шаблонах | `inviteWorker()` — приглашение трудника. `publishJob()` — оплата и публикация задания. `respondInvite()` — ответ на приглашение. Логика чата, оценок, удаления |
 
 ### 6.3 CSS (Tailwind)
 
 - **Tailwind CSS v3** через CDN (Play CDN) — динамическая компиляция в браузере
-- Кастомные стили в [`tailwind.min.css`](static/css/tailwind.min.css) (33 KB) — скомпилированная версия
+- Кастомные стили в [`tailwind.min.css`](static/css/tailwind.min.css) (33 KB)
 - Конфигурация в [`tailwind.config.js`](tailwind.config.js) — кастомные цвета (`primary`, `secondary`, `success`, `danger`, `warning`), шрифты, анимации
 - Компонентные классы: `.app-card`, `.action-icon-btn`, `.accept-btn`, `.reject-btn`, `.contact-btn`, `.chat-btn`
 
@@ -396,7 +487,7 @@ trudnik/
 | Компонент | Файл | Описание |
 |-----------|------|----------|
 | **Manifest** | [`manifest.json`](static/manifest.json) | `"display": "standalone"`, иконки 48-512px, тема `#d97706` (amber-600) |
-| **Service Worker** | [`sw.js`](static/sw.js) | Кэширование shell-ресурсов (`/`, `/offline`, иконки), стратегия Network First для HTML, Cache First для статики |
+| **Service Worker** | [`sw.js`](static/sw.js) | Кэширование shell-ресурсов, стратегия Network First для HTML, Cache First для статики |
 | **Офлайн** | `offline.html` | Страница-заглушка при отсутствии сети |
 | **TWA** | `twa-config.json`, `generate_twa_ci.js` | Конфигурация Trusted Web Activity для Google Play |
 | **Asset Links** | `.well-known/assetlinks.json` | Digital Asset Links для верификации TWA |
@@ -419,12 +510,13 @@ trudnik/
 | POST | `/api/applications/<id>/accept` | app (корень) | Принять отклик |
 | POST | `/api/applications/<id>/reject` | app (корень) | Отклонить отклик |
 | POST | `/api/applications/<id>/reopen` | app (корень) | Переоткрыть отклик |
+| POST | `/api/applications/<id>/withdraw` | applications | Отозвать отклик (pending/accepted → withdrawn) |
 | POST | `/api/favorites/add` | favorites | Добавить в избранное |
 | POST | `/api/favorites/remove` | favorites | Удалить из избранного |
 | POST | `/api/favorites/check` | favorites | Проверить статус избранного |
 | POST | `/api/favorites/remove-selected` | favorites | Массовое удаление |
-| POST | `/api/send_message` | chat | Отправить сообщение |
-| GET | `/api/messages/<shift_id>/poll` | chat | Polling новых сообщений |
+| POST | `/api/send_message` | chat | Отправить сообщение (через application_id) |
+| GET | `/api/messages/<application_id>/poll` | chat | Polling новых сообщений |
 | POST | `/api/delete-chats` | chat | Удалить чаты |
 | GET | `/api/notifications` | notifications | Список уведомлений (пагинация) |
 | GET | `/api/notifications/unread-count` | notifications | Счётчик непрочитанных |
@@ -433,6 +525,9 @@ trudnik/
 | POST | `/api/notifications/delete-all` | notifications | Удалить все |
 | POST | `/api/jobs/<id>/publish` | jobs | Оплатить и опубликовать задание |
 | POST | `/api/jobs/<id>/renew` | jobs | Продлить публикацию на 30 дней |
+| **POST** | **`/api/jobs/<id>/force-complete`** | **jobs** | **Принудительно завершить задание (active/in_progress → completed)** |
+| GET/POST | `/restore-job/<id>` | jobs | Восстановить отменённое задание (cancelled → open) |
+| GET/POST | `/cancel-job/<id>` | jobs | Отменить задание (open/in_progress → cancelled) |
 | GET | `/api/admin/job-stats` | monetization | Статистика по публикациям |
 | GET | `/api/ratings/<job_id>` | ratings | Оценки задания |
 | GET | `/api/ratings/user/<user_id>` | ratings | Рейтинг пользователя |
@@ -445,94 +540,172 @@ trudnik/
 
 ## 8. Бизнес-процессы
 
-### 8.1 Жизненный цикл задания
+### 8.1 Жизненный цикл задания (State Machine)
 
 ```
-draft ──оплата──> open ──принят_отклик──> in_progress ──смены_завершены──> completed
-                     │                                                         │
-                     │ истечение_30_дней                                       │ оплата_подтверждена
-                     ▼                                                         ▼
-                  expired ──продление──> open                                paid ──оценки──> completed
+                          ┌──────────────────────────────────────────────┐
+                          │                                              │
+                          ▼                                              │
+┌──────┐   оплата    ┌──────┐   принят    ┌─────────────┐   date_time   ┌────────┐
+│draft │────────────▶│ open │──отклик────▶│ in_progress │──наступило────▶│ active │
+│  ✗   │            │      │             │             │               │        │
+└──────┘            └──┬───┘             └──────┬──────┘               └───┬────┘
+                      │                        │                          │
+                      │       cancel_job        │      force-complete      │
+                      └──────────┬─────────────┴────────────┬─────────────┘
+                                 │                          │
+                                 ▼                          ▼
+                           ┌──────────┐              ┌───────────┐
+                           │ cancelled│              │ completed │
+                           └────┬─────┘              └───────────┘
+                                │
+                                │ restore_job
+                                ▼
+                           ┌──────┐
+                           │ open │
+                           └──────┘
 ```
 
-- **`draft`**: задание создано, но не оплачено — не видно в публичной ленте, показывается кнопка «Оплатить и опубликовать»
-- **`open`**: оплачено и опубликовано (is_paid=true, expires_at=now+30d), принимаются отклики, контакты исполнителей видны сразу
-- **`in_progress`**: есть принятые отклики, счётчик current_workers увеличивается
-- **`completed`**: все смены по заданию завершены
-- **`paid`**: все оплаты подтверждены
-- **`cancelled`**: задание отменено работодателем
-- **`expired`**: срок публикации истёк — снято с публикации, можно продлить за 290 ₽
+> **Примечание:** `draft` исключён из CHECK constraint`а (миграция 028). Задание публикуется сразу в `open` с `is_paid=true`. Статус `draft` сохранён на диаграмме для иллюстрации потока создания, но в коде не используется.
 
-### 8.2 Жизненный цикл отклика/смены
+**5 статусов задания:**
+
+| Статус | Описание | Видимость |
+|--------|----------|-----------|
+| **`open`** | Опубликовано и оплачено (is_paid=true, expires_at=now+30d). Принимаются отклики. | Всем |
+| **`in_progress`** | Есть принятые отклики (current_workers > 0). | Всем |
+| **`active`** | Дата задания наступила (date_time ≤ now). Автопереход из in_progress. Работа выполняется. | Всем |
+| **`completed`** | Завершено (force-complete работодателем). | Всем |
+| **`cancelled`** | Отменено работодателем. | Только владельцу |
+
+**Правила переходов:**
+
+| Из | В | Условие | Механизм |
+|----|---|---------|----------|
+| `(создание)` | `open` | Оплата через `POST /api/jobs/<id>/publish` | `PaymentService.process_job_payment()` |
+| `open` | `in_progress` | Принят первый отклик (current_workers > 0) | `api_handle_application('accept')` |
+| `in_progress` | `active` | `date_time <= now()` | `_auto_transition_in_progress_to_active()` — вызывается при каждом просмотре |
+| `in_progress` | `completed` | Ручное завершение | `POST /api/jobs/<id>/force-complete` |
+| `active` | `completed` | Ручное завершение | `POST /api/jobs/<id>/force-complete` |
+| `open` | `cancelled` | Отмена работодателем | `POST /cancel-job/<id>` |
+| `in_progress` | `cancelled` | Отмена работодателем | `POST /cancel-job/<id>` |
+| `cancelled` | `open` | Восстановление | `POST /restore-job/<id>` — сбрасывает accepted в rejected, current_workers=0 |
+
+**Блокировки:**
+- Нельзя отменить `active` задание — только `force-complete`
+- При восстановлении все accepted-заявки сбрасываются в rejected
+
+### 8.2 Жизненный цикл отклика
 
 ```
-pending ──> accepted ──> [shift: checked_in ──> completed ──> payment_confirmed]
-  │            │
-  ├── rejected
-  └── cancelled
+                  ┌──────────┐
+                  │ pending  │──отзыв────▶ withdrawn
+                  └────┬─────┘
+                       │
+            ┌──────────┼──────────┐
+            ▼          ▼          ▼
+        accepted   rejected   withdrawn
+            │
+            │ отзыв
+            ▼
+        withdrawn
 ```
+
+**4 статуса отклика:**
+
+| Статус | Описание |
+|--------|----------|
+| **`pending`** | Ожидает решения работодателя |
+| **`accepted`** | Принят работодателем |
+| **`rejected`** | Отклонён работодателем |
+| **`withdrawn`** | Отозван трудником (заменяет старый `cancelled`) |
+
+**Переходы:**
+- `pending` → `accepted`: `POST /api/applications/<id>/accept` (работодатель)
+- `pending` → `rejected`: `POST /api/applications/<id>/reject` (работодатель)
+- `rejected` → `pending`: `POST /api/applications/<id>/reopen` (работодатель)
+- `pending` → `withdrawn`: `POST /api/applications/<id>/withdraw` (трудник)
+- `accepted` → `withdrawn`: `POST /api/applications/<id>/withdraw` (трудник)
 
 ### 8.3 Система приглашений
 
 Работодатель может **пригласить** трудника на конкретное задание:
 
-1. Работодатель нажимает «Пригласить» на странице [`/workers`](templates/workers.html:75) или [`/favorites`](templates/favorites.html:84)
+1. Работодатель нажимает «Пригласить» на странице [`/workers`](templates/workers.html) или [`/favorites`](templates/favorites.html)
 2. Вводит ID задания через `prompt()`
 3. `POST /api/invite/<job_id>/<worker_id>` — создаёт запись в `invitations` (статус `pending`)
-4. Трудник получает уведомление на странице `/invitations`
-5. Трудник может **принять** или **отклонить** приглашение
+4. Трудник получает уведомление-приглашение (отображается на 👤+ иконке, отдельно от основных уведомлений)
+5. Трудник может **принять** или **отклонить** приглашение на [`/invitations`](templates/invitations.html)
 6. При принятии создаётся отклик со статусом `accepted`
 
-**Кросс-страничная синхронизация**: при загрузке любой страницы (`/workers`, `/favorites`) бэкенд проверяет существующие приглашения и отображает «✓ Приглашён» для уже приглашённых трудников.
+**Кросс-страничная синхронизация**: при загрузке любой страницы бэкенд проверяет существующие приглашения и отображает «✓ Приглашён» для уже приглашённых трудников.
 
 ### 8.4 Система оценок
 
-После завершения смены и подтверждения оплаты (статус `paid`):
+После завершения задания (статус `completed`):
 
 1. Обе стороны могут выставить оценку 1-5 звёзд + комментарий
 2. `POST /api/ratings` — UPSERT: одна оценка на пару (rater, job_id)
 3. `update_rating()` пересчитывает средний рейтинг пользователя
-4. Когда все участники оценили друг друга — задание переходит в `completed`
 
-**Ограничения**:
+**Ограничения:**
 - Нельзя оценить самого себя
-- Только для завершённых/оплаченных заданий
-- Тип оценки: `worker` (работодатель->трудник) или `employer` (трудник->работодатель)
+- Только для завершённых заданий (статус `completed`)
+- Тип оценки: `worker` (работодатель→трудник) или `employer` (трудник→работодатель)
 
 ### 8.5 Монетизация (платежи)
 
 Модель: **плата за публикацию задания**.
 
-1. Работодатель заполняет форму задания — сохраняется как `draft`
+1. Работодатель заполняет форму задания — сохраняется сразу в `open` с `is_paid=false`
 2. Редирект на страницу оплаты [`job_publish.html`](templates/job_publish.html) с ценой тарифа (490 ₽)
 3. Кнопка «Оплатить 490 ₽» — `POST /api/jobs/<id>/publish`
 4. `PaymentService.create_job_payment()` — создаёт запись `job_payments` (статус `pending`)
-5. `PaymentService.process_job_payment()` — эмуляция эквайринга -> статус `paid`
-    - Задание: `status=open`, `is_paid=true`, `expires_at=now+30d`
+5. `PaymentService.process_job_payment()` — эмуляция эквайринга → статус `paid`
+    - Задание: `is_paid=true`, `expires_at=now+30d`
     - Чек через `ReceiptService.issue_job_publication_receipt()`
-    - Уведомление «Задание опубликовано»
-6. **Продление**: `POST /api/jobs/<id>/renew` — оплата 290 ₽ -> `expires_at += 30d`
+    - Уведомление «Задание опубликовано» (`job_published`)
+6. **Продление**: `POST /api/jobs/<id>/renew` — оплата 290 ₽ → `expires_at += 30d`
 
 **Настройки** в `tariff_settings`: `tariff_key='standard'`, `price=490`, `duration_days=30`, `renewal_price=290`. `monetization_settings` хранит `owner_inn` для чеков.
 
-**Старая модель** (pay-per-contact) полностью удалена: таблица `contact_payments` заархивирована как `_archive_contact_payments`, paywall из откликов убран.
+**Старая модель** (pay-per-contact) полностью удалена: таблица `contact_payments` заархивирована как `_archive_contact_payments`, paywall из откликов убран (миграция 022).
 
 ### 8.6 Система уведомлений
 
-- **18 типов уведомлений** [`NOTIFICATION_TYPES`](app/services/notification_service.py:8)
+- **14 типов уведомлений** (см. [`NOTIFICATION_TYPES`](app/services/notification_service.py:8))
 - **Настройки пользователя**: поле `notification_prefs` (JSON) в `profiles` — можно отключить отдельные типы
 - **Создание**: через `create()` (сервис) или `add_notification()` (утилита)
-- **Кэширование**: счётчик непрочитанных кэшируется в сессии на 30 секунд
+- **Кэширование**: счётчик непрочитанных кэшируется в сессии на 30 секунд (исключает приглашения)
 - **Очистка**: уведомления-приглашения с удалёнными заданиями автоматически удаляются при просмотре
-- **Фильтрация**: приглашения трудника (`"Вас пригласили"`) исключаются из общего списка уведомлений
+
+**Актуальные типы:**
+
+| Ключ | Название | Триггер |
+|------|----------|---------|
+| `application_received` | Новый отклик | Трудник откликнулся |
+| `application_accepted` | Отклик принят | Работодатель принял |
+| `application_rejected` | Отклик отклонён | Работодатель отклонил |
+| `application_cancelled` | Отклик отменён | Отклик отменён |
+| `new_message` | Новое сообщение | Сообщение в чате |
+| `new_rating` | Новая оценка | Получена оценка |
+| `job_filled` | Задание укомплектовано | current_workers = max_workers |
+| `job_completed` | Задание завершено | force-complete |
+| `job_cancelled` | Задание отменено | cancel |
+| `job_published` | Задание опубликовано | Успешная оплата публикации |
+| `job_restored` | Задание восстановлено | restore |
+| `hire_limit_warning` | Предупреждение | Лимит наймов |
+| `cheque_reminder` | Напоминание о чеке | Напоминание самозанятому |
+| `system` | Системное | Системные события |
 
 ### 8.7 Чат
 
-- Чат привязан к **смене** (`shifts`), а не к заданию
-- Каждая смена = один чат между работодателем и трудником
-- **Отправка**: `POST /api/send_message` -> `messages` + уведомление получателю
-- **Polling**: `GET /api/messages/<shift_id>/poll?since_id=X` — получение новых сообщений
-- **Удаление**: `POST /api/delete-chats` — удаление нескольких чатов (сообщения + shift)
+- Чат привязан к **заявке** (`applications.id`), а не к заданию
+- Каждая accepted-заявка = один чат между работодателем и трудником
+- **Список чатов**: `/chats` — все accepted-заявки пользователя
+- **Отправка**: `POST /api/send_message` → `messages` (с `application_id`) + уведомление получателю
+- **Polling**: `GET /api/messages/<application_id>/poll?since_id=X` — получение новых сообщений
+- **Удаление**: `POST /api/delete-chats` — удаление сообщений чата по `application_id`
 
 ---
 
@@ -541,64 +714,95 @@ pending ──> accepted ──> [shift: checked_in ──> completed ──> pa
 ### Регистрация пользователя
 
 ```
-[Форма регистрации] -> POST /register
-  -> Supabase Auth: POST /auth/v1/signup (создание auth.users)
-  -> Supabase REST: PATCH /profiles (service_role: обновление профиля)
-  -> Supabase REST: POST /user_skills (связь с навыками)
-  -> Редирект на /login
+[Форма регистрации] → POST /register
+  → Supabase Auth: POST /auth/v1/signup (создание auth.users)
+  → Supabase REST: PATCH /profiles (service_role: обновление профиля)
+  → Supabase REST: POST /user_skills (связь с навыками)
+  → Редирект на /login
 ```
 
 ### Логин
 
 ```
-[Форма логина] -> POST /login
-  -> Supabase Auth: POST /auth/v1/token?grant_type=password
-  -> Supabase REST: GET /profiles (получение роли)
-  -> session['access_token'], session['refresh_token'], session['user_id'], session['role']
-  -> Редирект: employer -> /my-jobs, worker -> /
+[Форма логина] → POST /login
+  → Supabase Auth: POST /auth/v1/token?grant_type=password
+  → Supabase REST: GET /profiles (получение роли)
+  → session['access_token'], session['refresh_token'], session['user_id'], session['role']
+  → Редирект: employer → /my-jobs, worker → /
 ```
 
 ### Создание и публикация задания
 
 ```
-[Форма] -> POST /job/new
-  -> Валидация стоп-слов
-  -> Supabase REST: POST /jobs (status='draft', is_paid=false)
-  -> Supabase Storage: POST /storage/v1/object/photo/ (загрузка фото)
-  -> Редирект на /job/<id>/publish
+[Форма] → POST /job/new
+  → Валидация стоп-слов
+  → Supabase REST: POST /jobs (status='open', is_paid=false)
+  → Supabase Storage: POST /storage/v1/object/photo/ (загрузка фото)
+  → Редирект на /job/<id>/publish
 
-[Страница оплаты] -> POST /api/jobs/<id>/publish
-  -> PaymentService.create_job_payment() -> job_payments (pending)
-  -> PaymentService.process_job_payment() -> эмуляция оплаты
-  -> Supabase REST: PATCH /jobs (status='open', is_paid=true, expires_at=now+30d)
-  -> ReceiptService.issue_job_publication_receipt() -> receipts
-  -> NotificationService.create() -> уведомление «Задание опубликовано»
-  -> Редирект на /my-jobs
+[Страница оплаты] → POST /api/jobs/<id>/publish
+  → PaymentService.create_job_payment() → job_payments (pending)
+  → PaymentService.process_job_payment() → эмуляция оплаты
+  → Supabase REST: PATCH /jobs (is_paid=true, expires_at=now+30d)
+  → ReceiptService.issue_job_publication_receipt() → receipts
+  → NotificationService.create() → уведомление job_published
+  → Редирект на /my-jobs
 ```
 
 ### Приглашение трудника
 
 ```
-[Кнопка «Пригласить»] -> inviteWorker()
-  -> prompt("Введите ID задания")
-  -> POST /api/invite/<job_id>/<worker_id>
-    -> Проверка владельца задания (_check_job_owner)
-    -> Проверка дубликата приглашения
-    -> Проверка свободных мест
-    -> Supabase REST: POST /invitations
-    -> NotificationService.create() — уведомление труднику
-  -> JS: кнопка меняется на «✓ Приглашён» (disabled)
+[Кнопка «Пригласить»] → inviteWorker()
+  → prompt("Введите ID задания")
+  → POST /api/invite/<job_id>/<worker_id>
+    → Проверка владельца задания (_check_job_owner)
+    → Проверка дубликата приглашения
+    → Проверка свободных мест
+    → Supabase REST: POST /invitations
+    → NotificationService.create() — уведомление труднику
+  → JS: кнопка меняется на «✓ Приглашён» (disabled)
+```
+
+### Force-complete (принудительное завершение)
+
+```
+POST /api/jobs/<id>/force-complete
+  → Проверка владельца и статуса (active/in_progress)
+  → Массовое отклонение pending-откликов
+  → PATCH jobs: status='completed'
+  → Уведомление всех accepted-работников (job_completed)
+```
+
+### Восстановление задания
+
+```
+POST /restore-job/<id>
+  → Проверка статуса (только cancelled)
+  → Сброс accepted-заявок в rejected
+  → Обнуление current_workers
+  → PATCH jobs: status='open', current_workers=0
+  → Уведомление rejected-заявителей (job_restored)
+```
+
+### Отзыв отклика
+
+```
+POST /api/applications/<id>/withdraw
+  → Проверка авторства (только свой отклик)
+  → Проверка статуса (pending или accepted)
+  → PATCH applications: status='withdrawn'
+  → Уменьшение current_workers (если был accepted)
+  → Проверка автоперехода задания in_progress→open (если current_workers=0)
 ```
 
 ### Оценка
 
 ```
 POST /api/ratings {job_id, rated_user_id, rating, comment, target_type}
-  -> Валидация (rating 1-5, target_type, не сам себе)
-  -> Проверка статуса задания (paid или completed)
-  -> UPSERT: INSERT или PATCH (если уже есть оценка)
-  -> update_rating() — пересчёт среднего рейтинга
-  -> _auto_complete_job_if_rated() — проверка «все ли оценили?»
+  → Валидация (rating 1-5, target_type, не сам себе)
+  → Проверка статуса задания (completed)
+  → UPSERT: INSERT или PATCH (если уже есть оценка)
+  → update_rating() — пересчёт среднего рейтинга
 ```
 
 ---
@@ -634,7 +838,7 @@ POST /api/ratings {job_id, rated_user_id, rating, comment, target_type}
 
 ### PWA / Google Play
 
-- **PWA**: Service Worker + Manifest -> устанавливается как standalone-приложение
+- **PWA**: Service Worker + Manifest → устанавливается как standalone-приложение
 - **TWA**: Trusted Web Activity для публикации в Google Play
 - **Генерация APK**: `generate_twa_ci.js` + Bubblewrap CLI
 
@@ -642,26 +846,36 @@ POST /api/ratings {job_id, rated_user_id, rating, comment, target_type}
 
 ## Приложение: Сводная таблица Blueprint'ов
 
-| # | Blueprint | Маршрутов | Основные URL |
-|---|-----------|-----------|-------------|
-| 1 | `auth_bp` | 3 | `/login`, `/register`, `/logout` |
-| 2 | `profile_bp` | ~10 | `/profile`, `/profile/<id>`, `/profile/update`, `/verify-employer` |
-| 3 | `jobs_bp` | ~25 | `/`, `/workers`, `/jobs/<id>`, `/job/new`, `/my-jobs`, `/invitations`, `/api/invite/*` |
-| 4 | `applications_bp` | ~12 | `/apply`, `/my-applications`, `/applications/<id>/<action>` |
-| 5 | `shifts_bp` | ~8 | `/shifts`, `/shift/<id>/checkin`, `/shift/<id>/complete` |
-| 6 | `chat_bp` | 7 | `/chats`, `/chat/<id>`, `/api/send_message`, `/api/delete-chats` |
-| 7 | `favorites_bp` | 7 | `/favorites`, `/api/favorites/*` |
-| 8 | `blacklist_bp` | 3 | `/blacklist`, `/unblock/<id>` |
-| 9 | `notifications_bp` | 7 | `/notifications`, `/api/notifications/*` |
-| 10 | `admin_bp` | ~15 | `/admin`, управление пользователями, навыками, верификациями |
-| 11 | `monetization_bp` | ~10 | Управление платежами, настройками |
-| 12 | `ratings_bp` | 3 | `/api/ratings`, `/api/ratings/user/<id>` |
+| # | Blueprint | Файл | Маршрутов | Основные URL |
+|---|-----------|------|-----------|-------------|
+| 1 | `auth_bp` | `auth.py` | 3 | `/login`, `/register`, `/logout` |
+| 2 | `profile_bp` | `profile.py` | ~10 | `/profile`, `/profile/<id>`, `/profile/update`, `/verify-employer` |
+| 3 | `jobs_bp` | `jobs.py` | ~30 | `/`, `/workers`, `/jobs/<id>`, `/job/new`, `/my-jobs`, `/invitations`, `/api/invite/*`, `/api/jobs/<id>/force-complete`, `/restore-job/<id>`, `/cancel-job/<id>` |
+| 4 | `applications_bp` | `applications.py` | ~14 | `/apply`, `/my-applications`, `/api/applications/<id>/withdraw` |
+| 5 | `chat_bp` | `chat.py` | 7 | `/chats`, `/chat/<application_id>`, `/api/send_message`, `/api/messages/<application_id>/poll`, `/api/delete-chats` |
+| 6 | `favorites_bp` | `favorites.py` | 7 | `/favorites`, `/api/favorites/*` |
+| 7 | `blacklist_bp` | `blacklist.py` | 3 | `/blacklist`, `/unblock/<id>` |
+| 8 | `notifications_bp` | `notifications.py` | 7 | `/notifications`, `/api/notifications/*` |
+| 9 | `admin_bp` | `admin.py` | ~15 | `/admin`, управление пользователями, навыками, верификациями |
+| 10 | `monetization_bp` | `monetization.py` | ~10 | `/api/*`, платежи, чеки, настройки |
+| 11 | `ratings_bp` | `ratings.py` | 3 | `/api/ratings`, `/api/ratings/user/<id>` |
 
 **Корневые маршруты (на app):**
 - `POST /api/applications/<id>/accept|reject|reopen`
 - `GET /offline`
 - `GET /.well-known/assetlinks.json`
 
+**Изменения относительно предыдущей версии:**
+- ❌ `shifts_bp` — удалён (таблица shifts удалена, миграция 027)
+- ❌ Таблицы `reviews`, `hires` — удалены (миграция 028)
+- ✅ `withdraw` — новый статус отклика (заменяет `cancelled`)
+- ✅ `force-complete` — новый маршрут принудительного завершения
+- ✅ `restore` — восстановление отменённого задания
+- ✅ Чат через `application_id` вместо `shift_id`
+- ✅ 5 статусов заданий вместо 7 (убраны `draft`, `paid`, `expired`)
+- ✅ 14 типов уведомлений вместо 18
+- ✅ 28 миграций (001-028)
+
 ---
 
-*Документ сгенерирован на основе анализа исходного кода 12.06.2026.*
+*Документ сгенерирован на основе анализа исходного кода 12.06.2026. Версия 2.0.*

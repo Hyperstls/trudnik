@@ -32,7 +32,7 @@ def admin_panel():
             stats['total_jobs'] = sum(statuses.values())
             stats['open_jobs'] = statuses.get('open', 0)
             stats['in_progress_jobs'] = statuses.get('in_progress', 0)
-            stats['completed_jobs'] = statuses.get('completed', 0) + statuses.get('paid', 0)
+            stats['completed_jobs'] = statuses.get('completed', 0) + statuses.get('active', 0)
 
         payments_resp = supabase_request('GET', 'job_payments?select=status,amount&limit=1000')
         if payments_resp.ok and payments_resp.json():
@@ -134,10 +134,6 @@ def delete_user(user_id):
         ('invitations', f'employer_id=eq.{user_id}'),
         ('invitations', f'worker_id=eq.{user_id}'),
         ('user_skills', f'user_id=eq.{user_id}'),
-        ('shifts', f'worker_id=eq.{user_id}'),
-        ('shifts', f'employer_id=eq.{user_id}'),
-        ('hires', f'employer_id=eq.{user_id}'),
-        ('hires', f'worker_id=eq.{user_id}'),
         ('_archive_contact_payments', f'employer_id=eq.{user_id}'),
         ('_archive_contact_payments', f'worker_id=eq.{user_id}'),
         ('job_payments', f'employer_id=eq.{user_id}'),
@@ -186,7 +182,7 @@ def delete_user(user_id):
 @role_required('admin')
 def update_job_status(job_id):
     new_status = request.form.get('status', '')
-    if new_status in ('open', 'in_progress', 'cancelled', 'completed', 'paid'):
+    if new_status in ('open', 'in_progress', 'cancelled', 'completed', 'active'):
         supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': new_status})
         flash(f'Статус задания изменён на {new_status}', 'success')
     return redirect(url_for('admin.admin_panel', tab='jobs'))
@@ -208,7 +204,6 @@ def _delete_job_cascade(job_id):
         ('job_skills', f'job_id=eq.{job_id}'),
         ('job_photos', f'job_id=eq.{job_id}'),
         ('job_favorites', f'job_id=eq.{job_id}'),
-        ('shifts', f'job_id=eq.{job_id}'),
         ('_archive_contact_payments', f'job_id=eq.{job_id}'),
         ('job_payments', f'job_id=eq.{job_id}'),
         ('invitations', f'job_id=eq.{job_id}'),

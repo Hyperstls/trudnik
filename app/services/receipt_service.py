@@ -10,6 +10,8 @@
 import json
 from datetime import datetime, timezone
 
+from flask import current_app
+
 from app.utils import supabase_request
 
 
@@ -77,12 +79,12 @@ class ReceiptService:
             receipt_id = receipt_data_resp.get('id', '')
 
         # Логирование (заглушка отправки в ФНС)
-        print(f"[ЧЕК] Сформирован чек #{receipt_id[:8] if receipt_id else 'N/A'}")
-        print(f"[ЧЕК] Отправитель (самозанятый): ИНН {owner_inn}")
-        print(f"[ЧЕК] Получатель: {church_name} (ИНН {church_inn})")
-        print(f"[ЧЕК] Услуга: {service_description}")
-        print(f"[ЧЕК] Сумма: {amount} руб.")
-        print(f"[ЧЕК] JSON: {json.dumps(receipt_data, ensure_ascii=False, indent=2)}")
+        current_app.logger.info("[ЧЕК] Сформирован чек #%s", receipt_id[:8] if receipt_id else 'N/A')
+        current_app.logger.info("[ЧЕК] Отправитель (самозанятый): ИНН %s", owner_inn)
+        current_app.logger.info("[ЧЕК] Получатель: %s (ИНН %s)", church_name, church_inn)
+        current_app.logger.info("[ЧЕК] Услуга: %s", service_description)
+        current_app.logger.info("[ЧЕК] Сумма: %s руб.", amount)
+        current_app.logger.info("[ЧЕК] JSON: %s", json.dumps(receipt_data, ensure_ascii=False, indent=2))
 
         return receipt_id
 
@@ -105,7 +107,7 @@ class ReceiptService:
         })
 
         if resp.ok:
-            print(f"[ЧЕК] Чек #{receipt_id[:8]} переотправлен")
+            current_app.logger.info("[ЧЕК] Чек #%s переотправлен", receipt_id[:8])
             return True
 
         return False
@@ -166,11 +168,11 @@ class ReceiptService:
             receipt_data_resp = resp.json()[0] if isinstance(resp.json(), list) else resp.json()
             receipt_id = receipt_data_resp.get('id', '')
 
-        print(f"[ЧЕК] Сформирован чек за публикацию #{receipt_id[:8] if receipt_id else 'N/A'}")
-        print(f"[ЧЕК] Отправитель (самозанятый): ИНН {owner_inn}")
-        print(f"[ЧЕК] Получатель: {employer_name} (ИНН {employer_inn})")
-        print(f"[ЧЕК] Услуга: {service_description}")
-        print(f"[ЧЕК] Сумма: {amount} руб.")
-        print(f"[ЧЕК] JSON: {json.dumps(receipt_data, ensure_ascii=False, indent=2)}")
+        current_app.logger.info("[ЧЕК] Сформирован чек за публикацию #%s", receipt_id[:8] if receipt_id else 'N/A')
+        current_app.logger.info("[ЧЕК] Отправитель (самозанятый): ИНН %s", owner_inn)
+        current_app.logger.info("[ЧЕК] Получатель: %s (ИНН %s)", employer_name, employer_inn)
+        current_app.logger.info("[ЧЕК] Услуга: %s", service_description)
+        current_app.logger.info("[ЧЕК] Сумма: %s руб.", amount)
+        current_app.logger.info("[ЧЕК] JSON: %s", json.dumps(receipt_data, ensure_ascii=False, indent=2))
 
         return receipt_id

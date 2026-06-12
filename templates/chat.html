@@ -65,7 +65,7 @@
 </div>
 
 <script>
-const shiftId = "{{ shift_id }}";
+const applicationId = "{{ application_id }}";
 const currentUserId = "{{ user_id }}";
 let lastMessageId = "{{ messages[-1].id if messages else '' }}";
 const POLL_INTERVAL = 3000;
@@ -101,7 +101,7 @@ function addMessage(msg, isMine) {
 
 async function pollMessages() {
     try {
-        const url = `/api/messages/${shiftId}/poll${lastMessageId ? '?since_id=' + lastMessageId : ''}`;
+        const url = `/api/messages/${applicationId}/poll${lastMessageId ? '?since_id=' + lastMessageId : ''}`;
         const resp = await fetch(url);
         if (!resp.ok) return;
         const data = await resp.json();
@@ -128,7 +128,7 @@ async function sendMessage(event) {
         const resp = await fetch('/api/send_message', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ shift_id: shiftId, content: content })
+            body: JSON.stringify({ application_id: applicationId, content: content })
         });
         if (!resp.ok) throw new Error('Ошибка отправки');
         input.value = '';

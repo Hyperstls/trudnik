@@ -10,20 +10,15 @@ NOTIFICATION_TYPES = {
     'application_accepted':  'Отклик принят',
     'application_rejected':  'Отклик отклонён',
     'application_cancelled': 'Отклик отменён',
-    'shift_checkin':         'Чек-ин',
-    'shift_complete':        'Смена завершена',
-    'shift_created':         'Смена создана',
-    'shift_reminder':        'Напоминание о смене',
-    'payment_confirmed':     'Оплата подтверждена',
-    'payment_received':      'Оплата получена',
     'new_message':           'Новое сообщение',
     'new_rating':            'Новая оценка',
     'job_filled':            'Задание укомплектовано',
     'job_completed':         'Задание завершено',
     'job_cancelled':         'Задание отменено',
     'job_published':         'Задание опубликовано',
-    'dispute_started':       'Спор открыт',
+    'job_restored':          'Задание восстановлено',
     'hire_limit_warning':    'Предупреждение',
+    'cheque_reminder':       'Напоминание о чеке',
     'system':                'Системное',
 }
 
@@ -32,20 +27,15 @@ DEFAULT_ENABLED_TYPES = {
     'application_accepted': True,
     'application_rejected': True,
     'application_cancelled': True,
-    'shift_checkin': True,
-    'shift_complete': True,
-    'shift_created': True,
-    'shift_reminder': True,
-    'payment_confirmed': True,
-    'payment_received': True,
     'new_message': True,
     'new_rating': True,
     'job_filled': True,
     'job_completed': True,
     'job_cancelled': True,
     'job_published': True,
-    'dispute_started': True,
+    'job_restored': True,
     'hire_limit_warning': True,
+    'cheque_reminder': True,
     'system': True,
 }
 
@@ -69,7 +59,7 @@ def create(user_id, notification_type, title, message, data=None):
         notification_type: ключ из NOTIFICATION_TYPES
         title: заголовок
         message: текст
-        data: dict с доп. данными (job_id, shift_id, application_id)
+        data: dict с доп. данными (job_id, application_id)
 
     Returns:
         bool: True если создано, False если отключено или ошибка
@@ -92,8 +82,6 @@ def create(user_id, notification_type, title, message, data=None):
     if data:
         if data.get('job_id'):
             optional_fields['job_id'] = data['job_id']
-        if data.get('shift_id'):
-            optional_fields['shift_id'] = data['shift_id']
         if data.get('application_id'):
             optional_fields['application_id'] = data['application_id']
 
@@ -102,7 +90,7 @@ def create(user_id, notification_type, title, message, data=None):
     payload = {**base_payload, **optional_fields}
     resp = supabase_admin_request('POST', 'notifications', json=payload)
     if not resp.ok:
-        # Если 400 — возможно, в таблице нет колонок job_id/shift_id/application_id.
+        # Если 400 — возможно, в таблице нет колонок job_id/application_id.
         # Пробуем без опциональных полей.
         if resp.status_code == 400 and optional_fields:
             logger.warning('Notification 400 with optional fields, retrying without: %s',

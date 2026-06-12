@@ -4,6 +4,7 @@ from flask import Blueprint, current_app, jsonify, flash, redirect, render_templ
 
 from app.decorators import login_required, role_required
 from app.utils import calculate_distance, copy_job, sanitize_postgrest, supabase_admin_request, supabase_request
+from app.services.notification_service import create as notify
 
 jobs_bp = Blueprint('jobs', __name__)
 
@@ -73,9 +74,7 @@ def index():
     sort = request.args.get('sort', '')
     skills_filter = request.args.get('skills', '')
 
-    # Проверить истёкшие задания (перевести open -> expired)
     now = datetime.now(timezone.utc).isoformat()
-    supabase_request('PATCH', f'jobs?status=eq.open&expires_at=lt.{now}', json={'status': 'expired'})
 
     # Запрос только оплаченных открытых заданий
     query = 'status=eq.open&is_paid=eq.true&select=*,photos:job_photos(*)'
@@ -85,6 +84,10 @@ def index():
 
     resp = supabase_request('GET', f'jobs?{query}&order=created_at.desc')
     jobs = resp.json() if resp.ok else []
+
+    # Автопереход in_progress → active для каждого задания
+    for job in jobs:
+        _auto_transition_in_progress_to_active(job)
 
     # Фильтрация: только открытые, оплаченные, не истёкшие
     jobs = [j for j in jobs if j.get('status') == 'open' and j.get('is_paid')]
@@ -325,11 +328,26 @@ def workers():
 
 @jobs_bp.route('/jobs/<job_id>')
 def job_detail(job_id):
-    resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=*,photos:job_photos(*)')
+    # Используем admin_request для обхода RLS — фильтрация видимости ниже
+    resp = supabase_admin_request('GET', f'jobs?id=eq.{job_id}&select=*,photos:job_photos(*)')
     job = resp.json()[0] if resp.ok and resp.json() else None
     if not job:
         flash('Задание не найдено', 'danger')
         return redirect(url_for('jobs.index'))
+
+    # Правила видимости:
+    # - Владелец (employer) видит задание в ЛЮБОМ статусе и с любым is_paid
+    # - Админ видит все задания
+    # - Остальные — только оплаченные (is_paid=true) в статусах open, in_progress, active
+    is_owner = session.get('user_id') and job.get('employer_id') == session.get('user_id')
+    is_admin = session.get('role') == 'admin'
+    if not is_owner and not is_admin:
+        if not job.get('is_paid') or job.get('status') not in ('open', 'in_progress', 'active'):
+            flash('Задание не найдено', 'danger')
+            return redirect(url_for('jobs.index'))
+
+    # Автопереход in_progress → active по date_time
+    _auto_transition_in_progress_to_active(job)
 
     # Резолвим UUID полей work_type и preferred_religion в читаемые названия
     if job.get('work_type') and '-' in str(job['work_type']):
@@ -341,21 +359,38 @@ def job_detail(job_id):
         if rel_resp.ok and rel_resp.json():
             job['preferred_religion'] = rel_resp.json()[0]['name']
 
-    if session.get('role') == 'employer' and job['employer_id'] == session.get('user_id'):
+    if is_owner:
         app_resp = supabase_request('GET', f'applications?job_id=eq.{job_id}&select=id')
         job['application_count'] = len(app_resp.json()) if app_resp.ok and app_resp.json() else 0
     else:
         job['application_count'] = 0
 
     already_applied = False
+    my_app_status = None
+    my_app_id = None
+    can_withdraw = True
     if 'user_id' in session:
         app_resp = supabase_request('GET',
-            f'applications?job_id=eq.{job_id}&worker_id=eq.{session["user_id"]}')
-        already_applied = app_resp.ok and len(app_resp.json()) > 0
+            f'applications?job_id=eq.{job_id}&worker_id=eq.{session["user_id"]}&select=id,status')
+        if app_resp.ok and app_resp.json():
+            already_applied = True
+            app_data = app_resp.json()[0]
+            my_app_status = app_data.get('status')
+            my_app_id = app_data.get('id')
+            # Проверить, можно ли отозвать отклик (не позднее 12 часов до начала)
+            if job.get('date_time'):
+                try:
+                    job_dt = datetime.fromisoformat(job['date_time'].replace('Z', '+00:00'))
+                    can_withdraw = (job_dt - datetime.now(timezone.utc)).total_seconds() > 12 * 3600
+                except (ValueError, TypeError):
+                    can_withdraw = True
 
     return render_template('job_detail.html', job=job,
                            yandex_api_key=current_app.config['YANDEX_MAPS_API_KEY'],
                            already_applied=already_applied,
+                           my_app_status=my_app_status,
+                           my_app_id=my_app_id,
+                           can_withdraw=can_withdraw,
                            current_user_role=session.get('role'))
 
 
@@ -415,7 +450,7 @@ def job_new():
                 'preferred_religion': request.form.get('preferred_religion', ''),
                 'max_workers': int(request.form.get('max_workers') or 1),
                 'current_workers': 0,
-                'status': 'draft',
+                'status': 'open',
                 'is_paid': False,
             }
 
@@ -458,6 +493,10 @@ def my_jobs():
 
     jobs = resp.json() if resp.ok else []
 
+    # Автопереход in_progress → active для каждого задания
+    for job in jobs:
+        _auto_transition_in_progress_to_active(job)
+
     # Batch query: получаем количество откликов для всех заданий одним запросом
     if jobs:
         job_ids = [j['id'] for j in jobs]
@@ -480,6 +519,30 @@ def _check_job_owner(job_id, user_id):
     if resp.ok and resp.json():
         return resp.json()[0].get('employer_id') == user_id
     return False
+
+
+def _auto_transition_in_progress_to_active(job):
+    """Если задание в статусе in_progress и его date_time наступило — перевести в active.
+    Возвращает новый статус (или исходный, если переход не нужен).
+    Альтернатива pg_cron, недоступному на бесплатном Supabase."""
+    if job.get('status') != 'in_progress':
+        return job.get('status')
+    date_time_str = job.get('date_time')
+    if not date_time_str:
+        return job.get('status')
+    try:
+        if isinstance(date_time_str, str):
+            date_time = datetime.fromisoformat(date_time_str.replace('Z', '+00:00'))
+        else:
+            return job.get('status')
+    except (ValueError, TypeError):
+        return job.get('status')
+    now = datetime.now(timezone.utc)
+    if date_time <= now:
+        supabase_request('PATCH', f'jobs?id=eq.{job["id"]}', json={'status': 'active'})
+        job['status'] = 'active'
+        return 'active'
+    return 'in_progress'
 
 
 @jobs_bp.route('/my-jobs/action', methods=['POST'])
@@ -549,15 +612,29 @@ def cancel_job(job_id):
     if not _check_job_owner(job_id, session['user_id']):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
 
-    # Блокировка: нельзя отозвать задание с активными сменами (матрица секция 6.1)
-    shifts_resp = supabase_request('GET', f'shifts?job_id=eq.{job_id}&status=eq.active&select=id')
-    if shifts_resp.ok and shifts_resp.json():
-        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-        msg = 'Нельзя отозвать задание с активными сменами. Дождитесь завершения смен.'
-        if is_ajax:
-            return jsonify({'success': False, 'error': msg}), 409
-        flash(msg, 'danger')
-        return redirect(url_for('jobs.my_jobs'))
+    # Блокировка: нельзя отозвать задание в статусе active (уже началось)
+    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status')
+    if job_resp.ok and job_resp.json():
+        job_status = job_resp.json()[0].get('status')
+        if job_status == 'active':
+            is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            msg = 'Нельзя отозвать задание, которое уже началось. Дождитесь завершения.'
+            if is_ajax:
+                return jsonify({'success': False, 'error': msg}), 409
+            flash(msg, 'danger')
+            return redirect(url_for('jobs.my_jobs'))
+
+    # Сбросить все pending отклики в rejected
+    supabase_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.pending',
+                     json={'status': 'rejected'})
+
+    # Уведомить заявителей, что задание отозвано
+    apps_resp = supabase_request('GET',
+        f'applications?job_id=eq.{job_id}&status=eq.rejected&select=worker_id')
+    if apps_resp.ok and apps_resp.json():
+        for app in apps_resp.json():
+            notify(app['worker_id'], 'job_cancelled', 'Задание отозвано',
+                   f'Задание #{job_id} было отозвано работодателем')
 
     supabase_admin_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -572,11 +649,87 @@ def cancel_job(job_id):
 def restore_job(job_id):
     if not _check_job_owner(job_id, session['user_id']):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
-    supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'open'})
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({'success': True, 'message': 'Задание восстановлено'})
+
+    # Получить текущее состояние задания
+    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status,date_time,current_workers')
+    if not job_resp.ok or not job_resp.json():
+        return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
+
+    job = job_resp.json()[0]
+    if job.get('status') != 'cancelled':
+        return jsonify({'success': False, 'error': 'Восстановить можно только отменённое задание'}), 409
+
+    # Определить новый статус: open (если дата в будущем) или сохранить open
+    new_status = 'open'
+
+    # Сбросить все pending заявки в rejected (иначе unique constraint помешает переоткликнуться)
+    supabase_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.pending',
+                     json={'status': 'rejected'})
+
+    # Сбросить все accepted заявки в rejected (работники должны заново откликнуться)
+    supabase_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.accepted',
+                     json={'status': 'rejected'})
+
+    # Обнулить счётчик текущих работников
+    supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={
+        'status': new_status,
+        'current_workers': 0
+    })
+
+    # Уведомить всех rejected-заявителей, что задание восстановлено
+    apps_resp = supabase_request('GET',
+        f'applications?job_id=eq.{job_id}&status=eq.rejected&select=worker_id')
+    if apps_resp.ok and apps_resp.json():
+        for app in apps_resp.json():
+            notify(app['worker_id'], 'job_restored', 'Задание восстановлено',
+                   f'Задание #{job_id} снова открыто для откликов')
+
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    if is_ajax:
+        return jsonify({'success': True, 'message': 'Задание восстановлено', 'new_status': new_status})
     flash('Задание восстановлено', 'success')
     return redirect(url_for('jobs.my_jobs'))
+
+
+@jobs_bp.route('/api/jobs/<job_id>/force-complete', methods=['POST'])
+@login_required
+@role_required('employer')
+def api_force_complete_job(job_id):
+    """Принудительное завершение задания работодателем.
+    Переводит из active/in_progress → completed.
+    Уведомляет всех accepted workers, массово отклоняет pending."""
+    if not _check_job_owner(job_id, session['user_id']):
+        return jsonify({'success': False, 'error': 'Нет доступа'}), 403
+
+    # Получить задание
+    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status,current_workers,max_workers')
+    if not job_resp.ok or not job_resp.json():
+        return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
+
+    job = job_resp.json()[0]
+    if job['status'] not in ('active', 'in_progress'):
+        return jsonify({'success': False, 'error': f'Нельзя завершить задание в статусе «{job["status"]}». Ожидается active или in_progress.'}), 409
+
+    # Массово отклонить все pending отклики
+    supabase_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.pending',
+                     json={'status': 'rejected'})
+
+    # Перевести задание в completed
+    supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'completed'})
+
+    # Уведомить всех accepted работников
+    apps_resp = supabase_request('GET',
+        f'applications?job_id=eq.{job_id}&status=eq.accepted&select=worker_id')
+    if apps_resp.ok and apps_resp.json():
+        for app in apps_resp.json():
+            notify(app['worker_id'], 'job_completed', 'Задание завершено',
+                   f'Работодатель завершил задание #{job_id}')
+
+    return jsonify({
+        'success': True,
+        'message': 'Задание принудительно завершено',
+        'new_status': 'completed'
+    })
 
 
 @jobs_bp.route('/delete-job/<job_id>', methods=['GET', 'POST'])
@@ -602,7 +755,6 @@ def delete_job(job_id):
         ('job_skills', f'job_id=eq.{job_id}'),
         ('job_photos', f'job_id=eq.{job_id}'),
         ('job_favorites', f'job_id=eq.{job_id}'),
-        ('shifts', f'job_id=eq.{job_id}'),
         ('_archive_contact_payments', f'job_id=eq.{job_id}'),
         ('job_payments', f'job_id=eq.{job_id}'),
         ('invitations', f'job_id=eq.{job_id}'),
@@ -654,9 +806,8 @@ def invite_worker(job_id, worker_id):
         return jsonify({'success': False, 'error': 'Ошибка при создании приглашения'}), 500
 
     # Уведомить трудника
-    from app.services.notification_service import create as notify
     job_name = job_resp.json()[0].get('organization_name', job_id) if job_resp.ok else job_id
-    notify(worker_id, 'application_received', 'Вас пригласили на задание',
+    create_notification(worker_id, 'application_received', 'Вас пригласили на задание',
            f'Работодатель приглашает вас на задание «{job_name}»',
            data={'job_id': job_id, 'type': 'invitation'})
 
@@ -738,26 +889,12 @@ def respond_invitation(invitation_id):
                 'current_workers': new_count,
                 'status': new_status
             })
-        # Создать смену (если ещё нет) — worker не может POST shifts, используем admin
-        from app.services.notification_service import create as notify
-        shift_check = supabase_admin_request('GET',
-            f'shifts?job_id=eq.{inv["job_id"]}&worker_id=eq.{inv["worker_id"]}&select=id')
-        if shift_check.ok and shift_check.json():
-            shift_id = shift_check.json()[0].get('id')
-        else:
-            create_shift = supabase_admin_request('POST', 'shifts', json={
-                'job_id': inv['job_id'],
-                'worker_id': inv['worker_id'],
-                'employer_id': inv['employer_id']
-            })
-            if create_shift.ok and create_shift.json():
-                created = create_shift.json()
-                shift_id = created[0].get('id') if isinstance(created, list) else created.get('id')
-                if shift_id:
-                    notify(inv['worker_id'], 'shift_created', 'Смена создана',
-                           f'Смена #{shift_id} создана. Отметьте начало смены.')
+        # Уведомить работника о принятии
+        create_notification(inv['worker_id'], 'application_accepted', 'Приглашение принято',
+               f'Ваша заявка на задание #{inv["job_id"]} принята.',
+               data={'job_id': inv['job_id']})
         # Уведомить работодателя
-        notify(inv['employer_id'], 'application_received', 'Приглашение принято',
+        create_notification(inv['employer_id'], 'application_received', 'Приглашение принято',
                f'Трудник принял ваше приглашение на задание',
                data={'job_id': inv['job_id']})
 
@@ -779,8 +916,9 @@ def reject_all_invitations():
 @login_required
 @role_required('employer')
 def edit_job(job_id):
-    # Проверить владельца
-    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=*')
+    # Используем admin_request для обхода RLS — работодатель должен видеть
+    # своё задание в любом статусе (включая неоплаченные)
+    job_resp = supabase_admin_request('GET', f'jobs?id=eq.{job_id}&select=*')
     if not job_resp.ok or not job_resp.json():
         flash('Задание не найдено', 'danger')
         return redirect(url_for('jobs.my_jobs'))
@@ -789,6 +927,11 @@ def edit_job(job_id):
         flash('Нет доступа', 'danger')
         return redirect(url_for('jobs.my_jobs'))
 
+    # Проверить наличие accepted-откликов (P1: блокировка редактирования)
+    apps_check = supabase_request('GET',
+        f'applications?job_id=eq.{job_id}&status=eq.accepted&select=id')
+    has_accepted = apps_check.ok and apps_check.json()
+
     # Загружаем справочники
     skills_resp = supabase_request('GET', 'skills?select=id,name&order=name.asc')
     skills_list = skills_resp.json() if skills_resp.ok else []
@@ -796,6 +939,20 @@ def edit_job(job_id):
     religions_list = religions_resp.json() if religions_resp.ok else []
 
     if request.method == 'POST':
+        # Если есть accepted-отклики, разрешить редактировать только description и contact_phone
+        if has_accepted:
+            allowed_fields = {'detailed_description', 'contact_phone'}
+            submitted_fields = set(request.form.keys())
+            # Разрешены только description, contact_phone, csrf_token
+            forbidden = submitted_fields - allowed_fields - {'_csrf_token', 'csrf_token'}
+            if forbidden:
+                is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+                msg = 'Нельзя редактировать задание, на которое уже есть принятые отклики. Разрешено изменять только описание и контактный телефон.'
+                if is_ajax:
+                    return jsonify({'success': False, 'error': msg}), 409
+                flash(msg, 'danger')
+                return redirect(url_for('jobs.job_detail', job_id=job_id))
+
         data = {
             'organization_name': request.form.get('title', job['organization_name']),
             'detailed_description': request.form.get('description', job.get('detailed_description', '')),
@@ -855,7 +1012,7 @@ def publish_job(job_id):
     if not job or job['employer_id'] != session['user_id']:
         flash('Нет доступа', 'danger')
         return redirect(url_for('jobs.my_jobs'))
-    if job['status'] != 'draft':
+    if job.get('is_paid'):
         flash('Задание уже опубликовано', 'warning')
         return redirect(url_for('jobs.my_jobs'))
     from app.services.payment_service import PaymentService

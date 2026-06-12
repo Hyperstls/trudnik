@@ -158,21 +158,6 @@ def copy_job(original_job):
     }
 
 
-def add_notification(user_id, notification_type, title, message):
-    """Добавить уведомление пользователю"""
-    notification_data = {
-        'user_id': user_id,
-        'type': notification_type,
-        'title': title,
-        'message': message,
-        'is_read': False
-    }
-    resp = supabase_request('POST', 'notifications', json=notification_data)
-    if not resp.ok:
-        current_app.logger.error('[NOTIFICATION] Failed to create: user=%s type=%s status=%s',
-                                 user_id, notification_type, resp.status_code)
-
-
 def update_rating(user_id, new_rating):
     """Обновить средний рейтинг пользователя.
     Использует admin_request для обхода RLS (вызывается от лица rat'ера, не владельца профиля)."""

@@ -280,7 +280,36 @@
             border-radius: 20px;
             font-size: 0.75rem;
             font-weight: 600;
+            white-space: nowrap;
+            user-select: none;
         }
+        /* Статусы заданий */
+        .status-open {
+            background: #dbeafe;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+        }
+        .status-in-progress {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+        .status-active {
+            background: #d1fae5;
+            color: #047857;
+            border: 1px solid #a7f3d0;
+        }
+        .status-completed {
+            background: #f3f4f6;
+            color: #6b7280;
+            border: 1px solid #e5e7eb;
+        }
+        .status-cancelled {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+        /* Статусы откликов */
         .status-pending {
             background: #fef3c7;
             color: #92400e;
@@ -291,17 +320,22 @@
             color: #047857;
             border: 1px solid #a7f3d0;
         }
+        .status-rejected {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+        .status-withdrawn {
+            background: #f3f4f6;
+            color: #9ca3af;
+            border: 1px solid #e5e7eb;
+        }
         .app-card {
             transition: box-shadow 0.2s ease, transform 0.2s ease;
         }
         .app-card:hover {
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
             transform: translateY(-2px);
-        }
-        .status-rejected {
-            background: #fee2e2;
-            color: #dc2626;
-            border: 1px solid #fecaca;
         }
 
         /* ============================= */
@@ -747,15 +781,6 @@
                 <polyline points="9 22 9 12 15 12 15 22"></polyline>
             </svg>
             <span>Задания</span>
-        </a>
-        <a href="/shifts"
-           class="nav-item flex flex-col items-center text-[10px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'shifts' in request.endpoint }}"
-           aria-label="Смены">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-            <span>Смены</span>
         </a>
         <a href="/chats"
            class="nav-item flex flex-col items-center text-[10px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'chats' in request.endpoint }}"

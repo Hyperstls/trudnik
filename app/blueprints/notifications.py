@@ -25,10 +25,10 @@ def notifications():
     # Очистка: удаляем уведомления-приглашения трудника, чьи задания уже удалены
     invitation_items = [n for n in items if 'вас пригласили' in (n.get('message') or '').lower()]
     if invitation_items:
-        import re as re_cleanup
+        import re as _re_inv
         job_ids_in_notifications = set()
         for n in invitation_items:
-            match = re_cleanup.search(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', n.get('message') or '')
+            match = _re_inv.search(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', n.get('message') or '')
             if match:
                 job_ids_in_notifications.add(match.group(0))
         if job_ids_in_notifications:
@@ -38,9 +38,8 @@ def notifications():
             for job_id in (job_ids_in_notifications - existing_ids):
                 supabase_admin_request('DELETE', f'notifications?message=ilike.*{job_id}*')
 
-    import re
     unread_ids = [str(n['id']) for n in general_items if not n.get('is_read')]
-    safe_ids = [uid for uid in unread_ids if re.match(r'^[a-zA-Z0-9_-]+$', uid)]
+    safe_ids = [uid for uid in unread_ids if _re_inv.match(r'^[a-zA-Z0-9_-]+$', uid)]
     if safe_ids:
         supabase_request('PATCH', f'notifications?id=in.({",".join(safe_ids)})', json={'is_read': True})
 

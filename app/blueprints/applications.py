@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 
@@ -32,9 +32,9 @@ def apply_job(job_id):
         flash('Вы не можете откликаться на собственное задание', 'danger')
         return redirect(url_for('jobs.index'))
 
-    # Проверить статус задания
-    if job['status'] != 'open':
-        flash('На это задание нельзя откликаться (не open)', 'danger')
+    # Проверить статус задания (разрешены open и in_progress, если есть места)
+    if job['status'] not in ('open', 'in_progress'):
+        flash('На это задание нельзя откликаться', 'danger')
         return redirect(url_for('jobs.index'))
 
     # Проверить количество мест
@@ -46,6 +46,11 @@ def apply_job(job_id):
         return redirect(url_for('jobs.index'))
 
     supabase_request('POST', 'applications', json={'job_id': job_id, 'worker_id': user_id})
+
+    # Уведомить работодателя о новом отклике
+    notify(job['employer_id'], 'application_received', 'Новый отклик',
+           f'На ваше задание поступил новый отклик', data={'job_id': job_id})
+
     flash('Отклик отправлен', 'success')
     return redirect(url_for('jobs.index'))
 
@@ -103,6 +108,89 @@ def unapply_selected():
     else:
         flash('Ни один отклик не был удалён', 'info')
     return redirect(url_for('jobs.index'))
+
+
+@applications_bp.route('/api/applications/<app_id>/withdraw', methods=['POST'])
+@login_required
+def api_withdraw_application(app_id):
+    """Отзыв отклика работником (автором).
+    - pending → withdrawn в любое время (без ограничений)
+    - accepted → withdrawn только если > 12 часов до начала задания
+    - Уменьшает current_workers, если accepted
+    - Если current_workers падает до 0 и статус in_progress → open
+    """
+    user_id = session['user_id']
+
+    # Получить отклик
+    app_resp = supabase_request('GET',
+        f'applications?id=eq.{app_id}&select=job_id,worker_id,status')
+    if not app_resp.ok or not app_resp.json():
+        return jsonify({'success': False, 'error': 'Отклик не найден'}), 404
+
+    app_data = app_resp.json()[0]
+    if app_data['worker_id'] != user_id:
+        return jsonify({'success': False, 'error': 'Вы не автор этого отклика'}), 403
+
+    current_status = app_data.get('status', 'pending')
+    if current_status == 'withdrawn':
+        return jsonify({'success': False, 'error': 'Отклик уже отозван'}), 409
+
+    job_id = app_data['job_id']
+
+    # Получить задание
+    job_resp = supabase_request('GET',
+        f'jobs?id=eq.{job_id}&select=status,date_time,current_workers,max_workers,employer_id')
+    if not job_resp.ok or not job_resp.json():
+        return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
+
+    job = job_resp.json()[0]
+
+    # Если accepted — проверить 12-часовой лимит
+    if current_status == 'accepted':
+        date_time_str = job.get('date_time')
+        if date_time_str:
+            try:
+                if isinstance(date_time_str, str):
+                    date_time = datetime.fromisoformat(date_time_str.replace('Z', '+00:00'))
+                else:
+                    date_time = date_time_str
+                now = datetime.now(timezone.utc)
+                hours_before = (date_time - now).total_seconds() / 3600
+                if hours_before < 12:
+                    return jsonify({
+                        'success': False,
+                        'error': f'Нельзя отозвать принятый отклик менее чем за 12 часов до начала задания (осталось {hours_before:.1f} ч)'
+                    }), 409
+            except (ValueError, TypeError):
+                pass  # Если дата невалидна — пропускаем проверку
+
+        # Уменьшить current_workers
+        current_workers = max(0, job.get('current_workers', 1) - 1)
+        new_job_status = job.get('status')
+        if current_workers == 0 and new_job_status == 'in_progress':
+            new_job_status = 'open'
+
+        supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={
+            'current_workers': current_workers,
+            'status': new_job_status
+        })
+
+        # Уведомить работодателя
+        notify(job['employer_id'], 'application_cancelled', 'Работник отозвал отклик',
+               f'Принятый работник отозвал отклик с задания #{job_id}')
+
+    # Поменять статус отклика на withdrawn
+    supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'withdrawn'})
+
+    # Если был pending — просто удаляем отклик (старая логика unapply)
+    if current_status == 'pending':
+        supabase_request('DELETE', f'applications?id=eq.{app_id}')
+
+    return jsonify({
+        'success': True,
+        'message': 'Отклик отозван',
+        'new_status': 'withdrawn'
+    })
 
 
 @applications_bp.route('/my-applications')
@@ -167,7 +255,6 @@ def api_handle_application(app_id, action):
     job_id = app_data['job_id']
     worker_id = app_data['worker_id']
     current_status = app_data.get('status', 'pending')
-    shift_id = app_data.get('shift_id')
     # === AUTHORIZATION: проверяем, что задание принадлежит текущему пользователю ===
     owner_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=employer_id')
     if not (owner_resp.ok and owner_resp.json()):
@@ -219,32 +306,13 @@ def api_handle_application(app_id, action):
         supabase_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.pending&id=neq.{app_id}',
                          json={'status': 'rejected'})
 
-        # Создать смену (если ещё нет) и получить её ID
-        shift_id = None
-        shift_resp = supabase_request('GET', f'shifts?job_id=eq.{job_id}&worker_id=eq.{worker_id}&select=id')
-        if shift_resp.ok and shift_resp.json():
-            shift_id = shift_resp.json()[0].get('id')
-        else:
-            create_resp = supabase_request('POST', 'shifts', json={
-                'job_id': job_id, 'worker_id': worker_id, 'employer_id': session['user_id']
-            })
-            if create_resp.ok and create_resp.json():
-                created = create_resp.json()
-                shift_id = created[0].get('id') if isinstance(created, list) else created.get('id')
-
-        # Уведомить работника о создании смены (матрица секция 9)
-        if shift_id:
-            notify(worker_id, 'shift_created', 'Смена создана',
-                   f'Смена #{shift_id} создана. Отметьте начало смены.')
-
         # Уведомить работника
         notify(worker_id, 'application_accepted', 'Отклик принят',
-                         f'Ваш отклик на задание #{job_id} был принят')
+               f'Ваш отклик на задание #{job_id} был принят')
 
         return jsonify({
             'success': True,
             'new_status': 'accepted',
-            'shift_id': shift_id,
             'message': 'Работник принят'
         })
 
@@ -266,14 +334,9 @@ def api_handle_application(app_id, action):
                 'current_workers': current_workers
             })
 
-            # 3. Удалить смену (shift), если есть
-            if shift_id:
-                supabase_request('DELETE', f'shifts?id=eq.{shift_id}')
-
-            # 4. Отклонить отклик: сбросить status и shift_id
+            # 3. Отклонить отклик
             supabase_request('PATCH', f'applications?id=eq.{app_id}', json={
                 'status': 'rejected',
-                'shift_id': None,
             })
 
             # 5. Уведомить работника
@@ -283,7 +346,6 @@ def api_handle_application(app_id, action):
             return jsonify({
                 'success': True,
                 'new_status': 'rejected',
-                'shift_id': None,
                 'current_workers': current_workers,
                 'job_status': new_job_status,
                 'message': 'Работник отклонён'
@@ -352,8 +414,7 @@ def api_batch_applications():
             if data.get('success'):
                 results['success'].append({
                     'id': app_id,
-                    'new_status': data.get('new_status', action if action != 'reopen' else 'accepted'),
-                    'shift_id': data.get('shift_id')
+                    'new_status': data.get('new_status', action if action != 'reopen' else 'accepted')
                 })
             else:
                 results['errors'].append({'id': app_id, 'error': data.get('error', 'Ошибка')})
@@ -381,14 +442,9 @@ def cancel_application(app_id):
     app_data = app_resp.json()[0]
     job_id = app_data['job_id']
     worker_id = app_data['worker_id']
-    # Ищем смену в таблице shifts (т.к. shift_id нет в applications)
-    shift_id = None
-    shift_resp = supabase_request('GET', f'shifts?job_id=eq.{job_id}&worker_id=eq.{worker_id}&select=id')
-    if shift_resp.ok and shift_resp.json():
-        shift_id = shift_resp.json()[0].get('id')
 
     # Получить информацию о задании
-    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status,start_time,organization_name')
+    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status,date_time,organization_name')
     if not job_resp.ok or not job_resp.json():
         flash('Задание не найдено', 'danger')
         return redirect(url_for('applications.my_applications'))
@@ -396,20 +452,26 @@ def cancel_application(app_id):
     job = job_resp.json()[0]
 
     # Проверить статус задания (можно отменить только до начала)
-    if job['status'] in ['active', 'payment_pending', 'paid', 'completed']:
-        flash('Нельзя отменить работника после начала смены', 'danger')
+    if job['status'] in ('active', 'completed'):
+        flash('Нельзя отменить работника после начала задания', 'danger')
         return redirect(url_for('applications.my_applications'))
 
-    # Проверить время (если статус in_progress - проверить 12 часов)
-    if job['status'] == 'in_progress' and shift_id:
-        shift_resp = supabase_request('GET', f'shifts?id=eq.{shift_id}&select=start_time')
-        if shift_resp.ok and shift_resp.json():
-            start_time = datetime.fromisoformat(shift_resp.json()[0]['start_time'].replace('Z', '+00:00'))
-            now = datetime.now(start_time.tzinfo)
-            hours_before = (start_time - now).total_seconds() / 3600
-            if hours_before < 12:
-                flash(f'Нельзя отменить работника менее чем за 12 часов до начала (осталось {hours_before:.1f} ч)', 'danger')
-                return redirect(url_for('applications.my_applications'))
+    # Проверить время (если статус in_progress - проверить 12 часов до начала)
+    if job['status'] == 'in_progress':
+        date_time_str = job.get('date_time')
+        if date_time_str:
+            try:
+                if isinstance(date_time_str, str):
+                    date_time = datetime.fromisoformat(date_time_str.replace('Z', '+00:00'))
+                else:
+                    date_time = date_time_str
+                now = datetime.now(timezone.utc)
+                hours_before = (date_time - now).total_seconds() / 3600
+                if hours_before < 12:
+                    flash(f'Нельзя отменить работника менее чем за 12 часов до начала (осталось {hours_before:.1f} ч)', 'danger')
+                    return redirect(url_for('applications.my_applications'))
+            except (ValueError, TypeError):
+                pass
 
     # Уменьшить счетчик работников
     job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=current_workers,max_workers')
@@ -424,10 +486,8 @@ def cancel_application(app_id):
             'current_workers': current_workers
         })
 
-    # Отклонить отклик и удалить смену
+    # Отклонить отклик
     supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'rejected'})
-    if shift_id:
-        supabase_request('DELETE', f'shifts?id=eq.{shift_id}')
 
     # Отправить уведомления
     notify(worker_id, 'application_rejected', 'Отклик отменен',

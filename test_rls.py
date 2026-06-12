@@ -153,13 +153,6 @@ def t_tariff_settings():
         data = resp.json()
         assert isinstance(data, list), f"Expected list, got {type(data)}"
 
-def t_shifts_endpoint():
-    """Смены: проверка доступности shifts таблицы."""
-    token = get_token("trud3@test.ru", "test123456")
-    resp = supabase_request("GET", "shifts?select=id&limit=1",
-                            headers={"Authorization": f"Bearer {token}"})
-    assert resp.status_code in (200, 404), f"shifts should be accessible, got {resp.status_code}"
-
 def t_notification_prefs_json():
     """notification_prefs: проверка JSON структуры в profiles."""
     resp = supabase_admin_request("GET", "profiles?select=notification_prefs&limit=3")
@@ -211,7 +204,6 @@ TESTS = [
     ("Worker can't modify job", t_worker_cannot_modify_job),
     ("No USING(true) — anon blocked", t_no_using_true_policy),
     ("Tariff settings exist", t_tariff_settings),
-    ("Shifts accessible", t_shifts_endpoint),
     ("Notification prefs JSON valid", t_notification_prefs_json),
     ("User skills FK constraint", t_user_skills_fk),
     ("Account cascade delete check", t_account_cascade_delete),

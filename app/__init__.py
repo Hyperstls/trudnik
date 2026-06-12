@@ -90,28 +90,28 @@ def create_app():
         log = logging.getLogger(__name__)
         user_id = session.get('user_id')
         role = session.get('role')
-        log.warning('[INV_CTX] user_id=%s role=%s',
+        log.debug('[INV_CTX] user_id=%s role=%s',
             str(user_id)[:12] if user_id else 'None', role)
         if user_id and role == 'worker':
             cache_key = f'_inv_cache_{user_id}'
             cached = session.get(cache_key)
             now = time()
             if cached and (now - cached.get('ts', 0)) < 30:
-                log.warning('[INV_CTX] cached count=%d', cached.get('count', 0))
+                log.debug('[INV_CTX] cached count=%d', cached.get('count', 0))
                 return {'pending_invitations': cached.get('count', 0)}
             resp = supabase_admin_request('GET',
                 f'invitations?worker_id=eq.{user_id}&status=eq.pending&select=id&limit=100')
             if resp.ok:
                 data = resp.json()
                 count = len(data) if isinstance(data, list) else 0
-                log.warning('[INV_CTX] query ok, count=%d', count)
+                log.debug('[INV_CTX] query ok, count=%d', count)
             else:
                 count = 0
                 log.error('[INV_CTX] query FAILED: status=%s body=%s',
                           resp.status_code, (resp.text or '')[:200])
             session[cache_key] = {'count': count, 'ts': now}
             return {'pending_invitations': count}
-        log.warning('[INV_CTX] skip: no user_id or not worker')
+        log.debug('[INV_CTX] skip: no user_id or not worker')
         return {'pending_invitations': 0}
 
     # Кешируем git-версию при старте приложения (ранее вычислялась на каждый запрос)
@@ -133,7 +133,6 @@ def create_app():
     from app.blueprints.profile import profile_bp
     from app.blueprints.jobs import jobs_bp
     from app.blueprints.applications import applications_bp
-    from app.blueprints.shifts import shifts_bp
     from app.blueprints.chat import chat_bp
     from app.blueprints.favorites import favorites_bp
     from app.blueprints.blacklist import blacklist_bp
@@ -146,7 +145,6 @@ def create_app():
     app.register_blueprint(profile_bp)
     app.register_blueprint(jobs_bp)
     app.register_blueprint(applications_bp)
-    app.register_blueprint(shifts_bp)
     app.register_blueprint(chat_bp)
     app.register_blueprint(favorites_bp)
     app.register_blueprint(blacklist_bp)

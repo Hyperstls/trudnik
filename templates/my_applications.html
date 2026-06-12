@@ -124,10 +124,17 @@
                                 {% if app.status == 'pending' %}status-pending
                                 {% elif app.status == 'accepted' %}status-accepted
                                 {% elif app.status == 'rejected' %}status-rejected
-                                {% endif %}">
+                                {% elif app.status == 'withdrawn' %}status-withdrawn
+                                {% elif app.status == 'cancelled' %}status-withdrawn
+                                {% else %}status-pending
+                                {% endif %}"
+                                title="Статус отклика: {{ app.status }}">
                                 {% if app.status == 'pending' %}Ожидает
-                                {% elif app.status == 'accepted' %}Принят
-                                {% elif app.status == 'rejected' %}Отклонён
+                                {% elif app.status == 'accepted' %}Принято ✓
+                                {% elif app.status == 'rejected' %}Отклонено
+                                {% elif app.status == 'withdrawn' %}Отозвано
+                                {% elif app.status == 'cancelled' %}Отозвано
+                                {% else %}{{ app.status }}
                                 {% endif %}
                             </span>
                             {% if app.job.max_workers %}
@@ -198,8 +205,8 @@
                                     <polyline points="22 4 12 14.01 9 11.01"></polyline>
                                 </svg>
                             </span>
-                            {% if app.shift_id %}
-                            <a href="/chat/{{ app.shift_id }}"
+                            {% if app.id %}
+                            <a href="/chat/{{ app.id }}"
                                class="action-icon-btn chat-btn" title="Чат">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>

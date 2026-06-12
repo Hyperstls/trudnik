@@ -10,39 +10,69 @@ chat_bp = Blueprint('chat', __name__)
 @chat_bp.route('/chats')
 @login_required
 def chats_list():
+    """Список чатов пользователя: все принятые заявки, где он участник."""
     user_id = session['user_id']
-    resp = supabase_request('GET',
-        f'shifts?or=(worker_id.eq.{user_id},employer_id.eq.{user_id})&select=id,job:jobs(organization_name)')
+    role = session.get('role', '')
+    if role == 'employer':
+        # Заявки, где пользователь — работодатель задания
+        resp = supabase_request('GET',
+            f'applications?or=(worker_id.eq.{user_id},employer_id.eq.{user_id})'
+            f'&status=eq.accepted&select=id,job:jobs(organization_name)')
+    else:
+        # Заявки, где пользователь — принятый работник
+        resp = supabase_request('GET',
+            f'applications?worker_id=eq.{user_id}&status=eq.accepted'
+            f'&select=id,job:jobs(organization_name)')
     return render_template('chats_list.html', chats=resp.json() if resp.ok else [])
 
 
-@chat_bp.route('/chat/<shift_id>')
+@chat_bp.route('/chat/<application_id>')
 @login_required
-def chat(shift_id):
+def chat(application_id):
+    """Чат по заявке (application_id)."""
+    user_id = session['user_id']
+
+    # Проверить, что пользователь — участник заявки
+    app_resp = supabase_request('GET',
+        f'applications?id=eq.{application_id}&select=worker_id,employer_id,job_id')
+    if not app_resp.ok or not app_resp.json():
+        flash('Чат не найден', 'danger')
+        return redirect(url_for('chat.chats_list'))
+
+    app_data = app_resp.json()[0]
+    if user_id not in (app_data.get('worker_id'), app_data.get('employer_id')):
+        flash('Нет доступа к этому чату', 'danger')
+        return redirect(url_for('chat.chats_list'))
+
     try:
-        resp = supabase_request('GET', f'messages?shift_id=eq.{shift_id}&select=id,sender_id,content,created_at&order=created_at.asc')
+        resp = supabase_request('GET',
+            f'messages?application_id=eq.{application_id}'
+            f'&select=id,sender_id,content,created_at&order=created_at.asc')
         messages = resp.json() if resp.ok else []
     except Exception as e:
         from flask import current_app
-        current_app.logger.error('[CHAT] Error loading messages for shift %s: %s', shift_id, str(e))
+        current_app.logger.error('[CHAT] Error loading messages for app %s: %s', application_id, str(e))
         messages = []
-    return render_template('chat.html', shift_id=shift_id,
+    return render_template('chat.html', application_id=application_id,
                            messages=messages, user_id=session['user_id'])
 
 
 @chat_bp.route('/chat/new/<worker_id>', methods=['GET'])
 @login_required
 def chat_new(worker_id):
-    """Поиск существующего чата с работником или редирект на список чатов."""
+    """Поиск существующего чата с работником (по accepted-заявке) или редирект на список чатов."""
     user_id = session['user_id']
     if session.get('role') != 'employer':
         flash('Только работодатели могут создавать чаты', 'danger')
         return redirect(url_for('jobs.index'))
 
-    resp = supabase_request('GET', f'shifts?employer_id=eq.{user_id}&worker_id=eq.{worker_id}&select=id')
+    # Ищем accepted-заявку от этого работодателя этому работнику
+    resp = supabase_request('GET',
+        f'applications?employer_id=eq.{user_id}&worker_id=eq.{worker_id}'
+        f'&status=eq.accepted&select=id')
     if resp.ok and resp.json():
-        shift_id = resp.json()[0]['id']
-        return redirect(url_for('chat.chat', shift_id=shift_id))
+        application_id = resp.json()[0]['id']
+        return redirect(url_for('chat.chat', application_id=application_id))
 
     flash('Чат недоступен — сначала примите отклик этого работника на ваше задание', 'warning')
     return redirect(url_for('chat.chats_list'))
@@ -51,72 +81,101 @@ def chat_new(worker_id):
 @chat_bp.route('/api/send_message', methods=['POST'])
 @login_required
 def send_message():
+    """Отправить сообщение в чат заявки."""
     data = request.get_json()
     sender_id = session['user_id']
-    shift_id = data['shift_id']
+    application_id = data['application_id']
+
+    # Проверить, что пользователь — участник заявки
+    app_resp = supabase_request('GET',
+        f'applications?id=eq.{application_id}&select=worker_id,employer_id,job_id,status')
+    if not app_resp.ok or not app_resp.json():
+        return jsonify({'status': 'error', 'message': 'Заявка не найдена'}), 404
+
+    app_data = app_resp.json()[0]
+    if sender_id not in (app_data.get('worker_id'), app_data.get('employer_id')):
+        return jsonify({'status': 'error', 'message': 'Нет доступа к этому чату'}), 403
+
+    # Чат доступен только для принятых заявок
+    if app_data.get('status') != 'accepted':
+        return jsonify({'status': 'error', 'message': 'Чат доступен только после принятия отклика'}), 403
+
+    # Блокировка чата после завершения задания
+    job_resp = supabase_request('GET', f'jobs?id=eq.{app_data["job_id"]}&select=status')
+    if job_resp.ok and job_resp.json():
+        job_status = job_resp.json()[0].get('status')
+        if job_status == 'completed':
+            return jsonify({'status': 'error', 'message': 'Чат недоступен — задание завершено'}), 403
 
     supabase_request('POST', 'messages', json={
-        'shift_id': shift_id, 'sender_id': sender_id, 'content': data['content']
+        'application_id': application_id,
+        'sender_id': sender_id,
+        'content': data['content']
     })
 
     # Уведомить получателя
-    shift_resp = supabase_request('GET', f'shifts?id=eq.{shift_id}&select=worker_id,employer_id')
-    if shift_resp.ok and shift_resp.json():
-        shift = shift_resp.json()[0]
-        recipient = shift['worker_id'] if sender_id == shift['employer_id'] else shift['employer_id']
-        create_notification(recipient, 'new_message', 'Новое сообщение',
-                           data['content'][:100], data={'shift_id': shift_id})
+    recipient = app_data['worker_id'] if sender_id == app_data['employer_id'] else app_data['employer_id']
+    create_notification(recipient, 'new_message', 'Новое сообщение',
+                       data['content'][:100], data={'application_id': application_id})
 
     return jsonify({'status': 'ok'})
 
 
-@chat_bp.route('/api/messages/<shift_id>/poll')
+@chat_bp.route('/api/messages/<application_id>/poll')
 @login_required
-def poll_messages(shift_id):
+def poll_messages(application_id):
     """Polling-эндпоинт: вернуть сообщения новее указанного ID."""
+    user_id = session['user_id']
+
+    # Проверить доступ
+    app_resp = supabase_request('GET',
+        f'applications?id=eq.{application_id}&select=worker_id,employer_id')
+    if not app_resp.ok or not app_resp.json():
+        return jsonify({'messages': [], 'user_id': user_id})
+    app_data = app_resp.json()[0]
+    if user_id not in (app_data.get('worker_id'), app_data.get('employer_id')):
+        return jsonify({'messages': [], 'user_id': user_id})
+
     since_id = request.args.get('since_id', '')
-    query = f'messages?shift_id=eq.{shift_id}&select=id,sender_id,content,created_at&order=created_at.asc'
+    query = (f'messages?application_id=eq.{application_id}'
+             f'&select=id,sender_id,content,created_at&order=created_at.asc')
     if since_id:
-        # Запрашиваем сообщения после указанного ID по времени
         since_resp = supabase_request('GET', f'messages?id=eq.{since_id}&select=created_at')
         if since_resp.ok and since_resp.json():
             since_time = since_resp.json()[0]['created_at']
             query += f'&created_at=gt.{since_time}'
     resp = supabase_request('GET', query)
     messages = resp.json() if resp.ok else []
-    return jsonify({'messages': messages, 'user_id': session['user_id']})
+    return jsonify({'messages': messages, 'user_id': user_id})
 
 
 @chat_bp.route('/api/delete-chats', methods=['POST'])
 @login_required
 def delete_chats():
-    """Удаление одного или нескольких чатов (shift_id). Доступно работодателю и труднику."""
+    """Удаление одного или нескольких чатов (application_id). Доступно работодателю и труднику."""
     user_id = session['user_id']
     data = request.get_json()
-    shift_ids = data.get('shift_ids', [])
-    if not shift_ids:
+    application_ids = data.get('application_ids', [])
+    if not application_ids:
         return jsonify({'status': 'error', 'message': 'Не указаны чаты для удаления'}), 400
 
     deleted = 0
     errors = []
-    for sid in shift_ids:
-        # Проверяем, что пользователь — участник чата
-        resp = supabase_request('GET', f'shifts?id=eq.{sid}&select=id,worker_id,employer_id')
+    for aid in application_ids:
+        # Проверяем, что пользователь — участник заявки
+        resp = supabase_request('GET',
+            f'applications?id=eq.{aid}&select=id,worker_id,employer_id')
         if not resp.ok or not resp.json():
-            errors.append(f'Чат {sid} не найден')
+            errors.append(f'Чат {aid} не найден')
             continue
-        shift = resp.json()[0]
-        if shift['worker_id'] != user_id and shift['employer_id'] != user_id:
-            errors.append(f'Нет доступа к чату {sid}')
+        app_data = resp.json()[0]
+        if app_data['worker_id'] != user_id and app_data['employer_id'] != user_id:
+            errors.append(f'Нет доступа к чату {aid}')
             continue
 
-        # Удаляем сообщения чата, затем сам shift
-        supabase_request('DELETE', f'messages?shift_id=eq.{sid}')
-        del_resp = supabase_request('DELETE', f'shifts?id=eq.{sid}')
-        if del_resp.ok:
-            deleted += 1
-        else:
-            errors.append(f'Не удалось удалить чат {sid}')
+        # Удаляем сообщения чата
+        supabase_request('DELETE', f'messages?application_id=eq.{aid}')
+        deleted += 1
 
     return jsonify({
         'status': 'ok',

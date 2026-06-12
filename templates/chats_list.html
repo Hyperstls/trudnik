@@ -54,9 +54,9 @@ function toggleDeleteBtn() {
 
 async function deleteSelected() {
     const checkboxes = document.querySelectorAll('.chat-checkbox:checked');
-    const shiftIds = Array.from(checkboxes).map(cb => cb.value);
+    const applicationIds = Array.from(checkboxes).map(cb => cb.value);
 
-    if (!shiftIds.length) return;
+    if (!applicationIds.length) return;
 
     const btn = document.getElementById('delete-btn');
     btn.disabled = true;
@@ -65,7 +65,7 @@ async function deleteSelected() {
     const resp = await fetch('/api/delete-chats', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ shift_ids: shiftIds })
+        body: JSON.stringify({ application_ids: applicationIds })
     });
     const data = await resp.json();
 
