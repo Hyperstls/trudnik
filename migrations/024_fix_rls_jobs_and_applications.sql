@@ -22,7 +22,6 @@ CREATE POLICY "Workers can insert applications" ON applications
         AND auth.uid() IS NOT NULL
     );
 
--- 3. Удалить устаревшие колонки старой модели монетизации (если они точно не нужны)
--- Раскомментируйте если уверены что код их не использует:
--- ALTER TABLE applications DROP COLUMN IF EXISTS contact_paid;
--- ALTER TABLE applications DROP COLUMN IF EXISTS contact_payment_id;
+-- 3. Удалить устаревшие колонки старой модели монетизации
+ALTER TABLE applications DROP COLUMN IF EXISTS contact_paid;
+ALTER TABLE applications DROP COLUMN IF EXISTS contact_payment_id;
