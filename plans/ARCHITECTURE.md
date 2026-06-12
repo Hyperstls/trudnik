@@ -1,7 +1,7 @@
 # Архитектура приложения «Трудник»
 
 **Актуально на:** 12.06.2026
-**Версия документа:** 1.0
+**Версия документа:** 1.1 — обновлено после перехода на модель «плата за публикацию»
 
 ---
 
@@ -47,6 +47,8 @@
 
 - **Работодатель (employer)** — публикует задания, управляет откликами, приглашает трудников
 - **Трудник (worker)** — ищет задания, откликается, выполняет смены, получает оплату
+
+**Модель монетизации:** плата за публикацию задания (490 ₽, 30 дней). Работодатель оплачивает размещение один раз — все контакты исполнителей видны сразу. Продление публикации — 290 ₽.
 
 Архитектурный стиль: **монолитное Flask-приложение**, разбитое на модульные Blueprint'ы, с внешней базой данных Supabase (PostgreSQL) через REST API.
 
@@ -209,8 +211,8 @@ trudnik/
 | Сервис | Файл | Назначение |
 |--------|------|------------|
 | `NotificationService` | [`notification_service.py`](app/services/notification_service.py) | Типизированные уведомления, настройки пользователя, CRUD |
-| `PaymentService` | [`payment_service.py`](app/services/payment_service.py) | Обработка платежей за раскрытие контакта |
-| `ReceiptService` | [`receipt_service.py`](app/services/receipt_service.py) | Формирование чеков самозанятого (юридически значимые действия) |
+| `PaymentService` | [`payment_service.py`](app/services/payment_service.py) | Обработка платежей за публикацию задания. Методы: `get_tariffs()`, `create_job_payment()`, `process_job_payment()` |
+| `ReceiptService` | [`receipt_service.py`](app/services/receipt_service.py) | Формирование чеков самозанятого. Методы: `issue_receipt()`, `issue_job_publication_receipt()` |
 
 **Типы уведомлений** (18 типов):
 `application_received`, `application_accepted`, `application_rejected`, `application_cancelled`, `shift_checkin`, `shift_complete`, `shift_created`, `shift_reminder`, `payment_confirmed`, `payment_received`, `new_message`, `new_rating`, `job_filled`, `job_completed`, `job_cancelled`, `dispute_started`, `hire_limit_warning`, `system`
@@ -279,7 +281,25 @@ trudnik/
 | Таблица | Назначение | Ключевые поля |
 |---------|------------|---------------|
 | **`profiles`** | Пользователи (расширение auth.users) | `id` (PK, FK->auth.users), `role`, `full_name`, `city`, `skills`, `religion`, `rating`, `photo_url`, `verified`, `inn`, `is_self_employed`, `desired_payment`, `experience`, `contact`, `notification_prefs`, `portfolio_link` |
-| **`jobs`** | Задания | `id`, `employer_id` (FK->profiles), `organization_name`, `object_description`, `work_type`, `payment_amount`, `address`, `city`, `lat`, `lng`, `date_time`, `status` (open/in_progress/completed/cancelled/paid), `max_workers`, `current_workers`, `preferred_religion` |
+| **`jobs`** | Задания | `id`, `employer_id` (FK→profiles), `organization_name`, `object_description`, `work_type`, `payment_amount`, `address`, `city`, `lat`, `lng`, `date_time`, `status` (draft/open/in_progress/completed/cancelled/paid/expired), `max_workers`, `current_workers`, `preferred_religion`, `is_paid`, `paid_at`, `expires_at`, `tariff` |
+| **`applications`** | Отклики | `id`, `job_id` (FK→jobs), `worker_id` (FK→profiles), `employer_id`, `status` (pending/accepted/rejected/cancelled) |
+| **`shifts`** | Смены (активные контракты) | `id`, `job_id`, `worker_id`, `employer_id`, `status` (active/completed/paid/disputed), `checkin_time`, `complete_time`, `payment_confirmed` |
+| **`messages`** | Сообщения чата | `id`, `shift_id`, `sender_id`, `content`, `created_at` |
+| **`favorites`** | Избранные трудники | `user_id`, `target_id` (FK→profiles) |
+| **`job_favorites`** | Избранные задания | `user_id`, `job_id` (FK→jobs) |
+| **`blacklists`** | Чёрный список | `user_id`, `blocked_user_id` (FK→profiles) |
+| **`ratings`** | Оценки (1-5 звёзд) | `id`, `job_id`, `rater_user_id`, `rated_user_id`, `rating_type`, `target_type`, `rating`, `comment` |
+| **`notifications`** | Уведомления | `id`, `user_id`, `type`, `message`, `is_read`, `job_id`, `shift_id`, `application_id` |
+| **`invitations`** | Приглашения | `id`, `job_id`, `employer_id`, `worker_id`, `status` (pending/accepted/rejected), `message`, `created_at`, `responded_at` |
+| **`job_payments`** | Платежи за публикацию | `id`, `job_id`, `employer_id`, `amount`, `tariff`, `type` (publication/renewal), `status` (pending/paid/failed), `transaction_id`, `paid_at` |
+| **`tariff_settings`** | Настройки тарифов | `id`, `tariff_key`, `price`, `duration_days`, `renewal_price`, `is_active` |
+| **`_archive_contact_payments`** | Архив старых платежей | Старая модель (контактные платежи) |
+| **`receipts`** | Чеки самозанятого | `id`, `contact_payment_id`, `church_name`, `church_inn`, `service_description`, `amount`, `status`, `receipt_json` |
+| **`monetization_settings`** | Настройки монетизации | `key`, `value` (owner_inn) |
+| **`skills`** | Справочник навыков | `id`, `name`, `sort_order` |
+| **`religions`** | Справочник вероисповеданий | `id`, `name`, `sort_order` |
+| **`user_skills`** | Связь пользователь<->навыки | `user_id`, `skill_id` |
+| **`job_photos`** | Фото заданий | `id`, `job_id`, `photo_url` |->profiles), `organization_name`, `object_description`, `work_type`, `payment_amount`, `address`, `city`, `lat`, `lng`, `date_time`, `status` (open/in_progress/completed/cancelled/paid), `max_workers`, `current_workers`, `preferred_religion` |
 | **`applications`** | Отклики | `id`, `job_id` (FK->jobs), `worker_id` (FK->profiles), `employer_id`, `status` (pending/accepted/rejected/cancelled), `contact_paid`, `contact_payment_id` |
 | **`shifts`** | Смены (активные контракты) | `id`, `job_id`, `worker_id`, `employer_id`, `status` (active/completed/paid/disputed), `checkin_time`, `complete_time`, `payment_confirmed` |
 | **`messages`** | Сообщения чата | `id`, `shift_id`, `sender_id`, `content`, `created_at` |
@@ -334,6 +354,8 @@ trudnik/
 | 018 | `018_fix_spatial_ref_sys_rls.sql` | RLS для spatial_ref_sys |
 | 019 | `019_*.sql` | Дополнительные столбцы и фиксы безопасности |
 | 020-021 | `020_*.sql`, `021_*.sql` | Индексы производительности |
+| 022 | `022_new_monetization_model.sql` | Поля is_paid/expires_at/tariff в jobs, таблицы job_payments и tariff_settings, архивация contact_payments |
+| 023 | `023_fix_job_payments_rls.sql` | Фикс RLS-политики для job_payments |
 | — | `FINAL_FIX*.sql` | Финальные исправления RLS и безопасности |
 | — | `ALL_PENDING.sql` | Агрегированный скрипт всех pending-миграций |
 
@@ -358,7 +380,7 @@ trudnik/
 |------|------------|
 | [`favorites.js`](static/js/favorites.js) | `toggleFavorite()` — единая функция для переключения избранного (оптимистичные обновления UI, откат при ошибке). `updateButtonUI()` — обновление иконки и текста кнопки. Автоматическая проверка статуса при загрузке страницы |
 | [`applications.js`](static/js/applications.js) | Логика массовых операций над откликами (чекбоксы, «Принять выбранные», «Отклонить выбранные») |
-| Встроенные скрипты в шаблонах | `inviteWorker()` — приглашение трудника (на `/workers` и `/favorites`). `respondInvite()` — ответ на приглашение. Логика чата, оценок, удаления |
+| Встроенные скрипты в шаблонах | `inviteWorker()` — приглашение трудника (на `/workers` и `/favorites`). `publishJob()` — оплата и публикация задания. `respondInvite()` — ответ на приглашение. Логика чата, оценок, удаления |
 
 ### 6.3 CSS (Tailwind)
 
@@ -409,6 +431,9 @@ trudnik/
 | POST | `/api/notifications/read-all` | notifications | Пометить все прочитанными |
 | POST | `/api/notifications/<id>/delete` | notifications | Удалить уведомление |
 | POST | `/api/notifications/delete-all` | notifications | Удалить все |
+| POST | `/api/jobs/<id>/publish` | jobs | Оплатить и опубликовать задание |
+| POST | `/api/jobs/<id>/renew` | jobs | Продлить публикацию на 30 дней |
+| GET | `/api/admin/job-stats` | monetization | Статистика по публикациям |
 | GET | `/api/ratings/<job_id>` | ratings | Оценки задания |
 | GET | `/api/ratings/user/<user_id>` | ratings | Рейтинг пользователя |
 | POST | `/api/ratings` | ratings | Создать/обновить оценку |
@@ -423,16 +448,20 @@ trudnik/
 ### 8.1 Жизненный цикл задания
 
 ```
-open ──> in_progress ──> completed ──> paid ──> completed (rated)
-  │          │               │
-  └──────────┴──> cancelled <─┘
+draft ──оплата──> open ──принят_отклик──> in_progress ──смены_завершены──> completed
+                     │                                                         │
+                     │ истечение_30_дней                                       │ оплата_подтверждена
+                     ▼                                                         ▼
+                  expired ──продление──> open                                paid ──оценки──> completed
 ```
 
-- **`open`**: задание опубликовано, принимаются отклики
-- **`in_progress`**: есть принятые отклики, счётчик `current_workers` увеличивается
+- **`draft`**: задание создано, но не оплачено — не видно в публичной ленте, показывается кнопка «Оплатить и опубликовать»
+- **`open`**: оплачено и опубликовано (is_paid=true, expires_at=now+30d), принимаются отклики, контакты исполнителей видны сразу
+- **`in_progress`**: есть принятые отклики, счётчик current_workers увеличивается
 - **`completed`**: все смены по заданию завершены
 - **`paid`**: все оплаты подтверждены
 - **`cancelled`**: задание отменено работодателем
+- **`expired`**: срок публикации истёк — снято с публикации, можно продлить за 290 ₽
 
 ### 8.2 Жизненный цикл отклика/смены
 
@@ -472,15 +501,21 @@ pending ──> accepted ──> [shift: checked_in ──> completed ──> pa
 
 ### 8.5 Монетизация (платежи)
 
-Модель: **плата за раскрытие контакта** трудника.
+Модель: **плата за публикацию задания**.
 
-1. Работодатель видит отклик, но контакт скрыт
-2. Кнопка «Раскрыть контакт за N ₽»
-3. `PaymentService.create_payment_intent()` — создаёт запись `contact_payments` (статус `pending`)
-4. `PaymentService.process_contact_payment()` — эмуляция платёжного шлюза -> статус `paid`
-5. `ReceiptService.issue_receipt()` — формирует чек самозанятого (юридически значимое действие)
+1. Работодатель заполняет форму задания — сохраняется как `draft`
+2. Редирект на страницу оплаты [`job_publish.html`](templates/job_publish.html) с ценой тарифа (490 ₽)
+3. Кнопка «Оплатить 490 ₽» — `POST /api/jobs/<id>/publish`
+4. `PaymentService.create_job_payment()` — создаёт запись `job_payments` (статус `pending`)
+5. `PaymentService.process_job_payment()` — эмуляция эквайринга -> статус `paid`
+    - Задание: `status=open`, `is_paid=true`, `expires_at=now+30d`
+    - Чек через `ReceiptService.issue_job_publication_receipt()`
+    - Уведомление «Задание опубликовано»
+6. **Продление**: `POST /api/jobs/<id>/renew` — оплата 290 ₽ -> `expires_at += 30d`
 
-**Настройки** в `monetization_settings`: `contact_price` (по умолчанию 290₽), `owner_inn` (ИНН самозанятого).
+**Настройки** в `tariff_settings`: `tariff_key='standard'`, `price=490`, `duration_days=30`, `renewal_price=290`. `monetization_settings` хранит `owner_inn` для чеков.
+
+**Старая модель** (pay-per-contact) полностью удалена: таблица `contact_payments` заархивирована как `_archive_contact_payments`, paywall из откликов убран.
 
 ### 8.6 Система уведомлений
 
@@ -523,14 +558,21 @@ pending ──> accepted ──> [shift: checked_in ──> completed ──> pa
   -> Редирект: employer -> /my-jobs, worker -> /
 ```
 
-### Создание задания
+### Создание и публикация задания
 
 ```
 [Форма] -> POST /job/new
   -> Валидация стоп-слов
-  -> Supabase REST: POST /jobs
+  -> Supabase REST: POST /jobs (status='draft', is_paid=false)
   -> Supabase Storage: POST /storage/v1/object/photo/ (загрузка фото)
-  -> Supabase REST: POST /job_photos (связь фото с заданием)
+  -> Редирект на /job/<id>/publish
+
+[Страница оплаты] -> POST /api/jobs/<id>/publish
+  -> PaymentService.create_job_payment() -> job_payments (pending)
+  -> PaymentService.process_job_payment() -> эмуляция оплаты
+  -> Supabase REST: PATCH /jobs (status='open', is_paid=true, expires_at=now+30d)
+  -> ReceiptService.issue_job_publication_receipt() -> receipts
+  -> NotificationService.create() -> уведомление «Задание опубликовано»
   -> Редирект на /my-jobs
 ```
 

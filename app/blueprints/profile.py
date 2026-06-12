@@ -159,7 +159,7 @@ def verify_employer():
                     flash('Недопустимый формат файла. Разрешены PDF, JPG, PNG.', 'danger')
                     return redirect(url_for('profile.verify_employer'))
                 path = f'verification/{user_id}/{uuid.uuid4().hex}.{ext}'
-                url = upload_to_storage('verification-docs', path, file)
+                url = upload_to_storage('verification-docs', path, file.read(), file.content_type)
                 if url:
                     data['verification_doc_url'] = url
                 else:

@@ -1,4 +1,6 @@
 import uuid as _uuid
+import logging
+import time
 import requests
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
@@ -6,6 +8,7 @@ from app.config import Config
 from app.utils import SUPABASE_KEY, SUPABASE_URL, SERVICE_KEY, rate_limit, supabase_request
 
 auth_bp = Blueprint('auth', __name__)
+log = logging.getLogger(__name__)
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
@@ -15,24 +18,42 @@ def login():
         email = request.form.get('email')
         password = request.form.get('password')
         auth_url = f'{SUPABASE_URL}/auth/v1/token?grant_type=password'
-        try:
-            resp = requests.post(auth_url, json={'email': email, 'password': password},
-                                 headers={'apikey': SUPABASE_KEY}, timeout=10)
-            if resp.ok:
-                data = resp.json()
-                session['access_token'] = data['access_token']
-                session['refresh_token'] = data.get('refresh_token', '')
-                session['user_id'] = data['user']['id']
-                role_resp = supabase_request('GET', f'profiles?id=eq.{data["user"]["id"]}&select=role')
-                session['role'] = role_resp.json()[0]['role'] if role_resp.ok and role_resp.json() else 'worker'
-                session.modified = True
-                if session.get('role') == 'employer':
-                    return redirect(url_for('jobs.my_jobs'))
+        last_error = None
+        for attempt in range(3):
+            try:
+                resp = requests.post(auth_url, json={'email': email, 'password': password},
+                                     headers={'apikey': SUPABASE_KEY}, timeout=10)
+                if resp.ok:
+                    data = resp.json()
+                    session['access_token'] = data['access_token']
+                    session['refresh_token'] = data.get('refresh_token', '')
+                    session['user_id'] = data['user']['id']
+                    role_resp = supabase_request('GET', f'profiles?id=eq.{data["user"]["id"]}&select=role')
+                    session['role'] = role_resp.json()[0]['role'] if role_resp.ok and role_resp.json() else 'worker'
+                    session.modified = True
+                    if session.get('role') == 'employer':
+                        return redirect(url_for('jobs.my_jobs'))
+                    else:
+                        return redirect(url_for('jobs.index'))
+                elif resp.status_code == 429:
+                    # Rate limit — ждём и пробуем снова
+                    log.warning('Auth rate-limited for %s, attempt %d/3', email, attempt + 1)
+                    last_error = 'rate_limited'
+                    time.sleep(1.5 * (attempt + 1))
+                    continue
                 else:
-                    return redirect(url_for('jobs.index'))
-            else:
-                flash('Ошибка входа: неверный email или пароль', 'danger')
-        except requests.RequestException:
+                    # Неверный пароль — не повторяем
+                    flash('Ошибка входа: неверный email или пароль', 'danger')
+                    return render_template('login.html')
+            except requests.RequestException as e:
+                log.warning('Auth connection error for %s, attempt %d/3: %s', email, attempt + 1, e)
+                last_error = str(e)
+                time.sleep(1.0 * (attempt + 1))
+                continue
+        # Все попытки исчерпаны
+        if last_error == 'rate_limited':
+            flash('Слишком много попыток входа. Пожалуйста, подождите немного.', 'danger')
+        else:
             flash('Ошибка соединения с сервером авторизации', 'danger')
     return render_template('login.html')
 

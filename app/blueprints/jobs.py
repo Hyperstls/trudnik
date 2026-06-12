@@ -414,7 +414,7 @@ def job_new():
                 'lat': float(request.form.get('latitude') or 55.75),
                 'lng': float(request.form.get('longitude') or 37.61),
                 'preferred_religion': request.form.get('preferred_religion', ''),
-                'max_workers': int(request.form.get('max_workers', 1)),
+                'max_workers': int(request.form.get('max_workers') or 1),
                 'current_workers': 0,
                 'status': 'draft',
                 'is_paid': False,

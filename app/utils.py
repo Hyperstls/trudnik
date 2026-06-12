@@ -215,10 +215,17 @@ def rate_limit(f):
 
 
 def sanitize_postgrest(value):
-    """Экранировать спецсимволы PostgREST в пользовательском вводе."""
+    """Экранировать спецсимволы PostgREST в пользовательском вводе.
+    Защита от инъекций через операторы PostgREST (or, in, cs, cd, ov, etc.).
+    Безопасные символы: буквы, цифры, пробелы, дефисы, подчёркивания."""
     if not isinstance(value, str):
         return value
-    return value.replace('&', '').replace('*', '\\*').replace('.', '\\.').strip()
+    # Удаляем опасные символы, которые могут изменить структуру запроса
+    for ch in '(),;"\'&':
+        value = value.replace(ch, '')
+    # Экранируем спецсимволы PostgREST (удвоение точки, звёздочка через backslash)
+    value = value.replace('.', '\\.').replace('*', '\\*')
+    return value.strip()
 
 
 def uid():

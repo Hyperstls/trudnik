@@ -213,14 +213,14 @@ def create_app():
 
     @app.errorhandler(404)
     def not_found(_e):
-        return render_template('error.html', code=404,
-                               message='Страница не найдена'), 404
+        return render_template('error.html', error_code='404',
+                               error='Страница не найдена'), 404
 
     @app.errorhandler(500)
     def internal_error(_e):
         app.logger.exception('Internal server error')
-        return render_template('error.html', code=500,
-                               message='Внутренняя ошибка сервера'), 500
+        return render_template('error.html', error_code='500',
+                               error='Внутренняя ошибка сервера'), 500
 
     return app
 
