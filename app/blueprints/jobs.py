@@ -299,8 +299,20 @@ def workers():
 
     resp = supabase_request('GET', f'profiles?{query}&order=rating.desc')
     workers_list = resp.json() if resp.ok else []
+
+    # Определяем, какие трудники уже приглашены работодателем
+    invited_worker_ids = set()
+    if session.get('role') == 'employer' and workers_list:
+        worker_ids = [w['id'] for w in workers_list if w.get('id')]
+        if worker_ids:
+            ids_filter = ','.join(worker_ids)
+            inv_resp = supabase_request('GET',
+                f'invitations?employer_id=eq.{session["user_id"]}&worker_id=in.({ids_filter})&status=in.(pending,accepted)&select=worker_id')
+            if inv_resp.ok and inv_resp.json():
+                invited_worker_ids = {inv['worker_id'] for inv in inv_resp.json()}
+
     selected_skills_list = [s.strip() for s in filters['skills'].split(',') if s.strip()] if filters['skills'] else []
-    return render_template('workers.html', workers=workers_list, selected_skills=selected_skills_list)
+    return render_template('workers.html', workers=workers_list, selected_skills=selected_skills_list, invited_worker_ids=invited_worker_ids)
 
 
 @jobs_bp.route('/jobs/<job_id>')
