@@ -18,20 +18,14 @@
     {# Статистика                                   #}
     {# ============================================ #}
     {% set total = jobs|length %}
-    {% set open_count = jobs|selectattr('status', 'equalto', 'open')|list|length %}
+    {% set open_count = jobs|selectattr('status', 'in', ['open', 'in_progress', 'active'])|list|length %}
     {% set completed_count = jobs|selectattr('status', 'equalto', 'completed')|list|length %}
-    {% set in_progress_count = jobs|selectattr('status', 'equalto', 'in_progress')|list|length %}
-    {% set active_count = jobs|selectattr('status', 'equalto', 'active')|list|length %}
     {% set cancelled_count = jobs|selectattr('status', 'equalto', 'cancelled')|list|length %}
     {% if total > 0 %}
     <div class="flex flex-wrap gap-2 mb-4 text-sm">
         <span class="text-neutral-500">Всего: <strong class="text-neutral-800">{{ total }}</strong></span>
         {% if open_count > 0 %}<span class="text-neutral-300">·</span>
         <span class="text-success font-medium">{{ open_count }} идёт набор</span>{% endif %}
-        {% if in_progress_count > 0 %}<span class="text-neutral-300">·</span>
-        <span class="text-warning font-medium">{{ in_progress_count }} в работе</span>{% endif %}
-        {% if active_count > 0 %}<span class="text-neutral-300">·</span>
-        <span class="text-primary font-medium">{{ active_count }} активных</span>{% endif %}
         {% if completed_count > 0 %}<span class="text-neutral-300">·</span>
         <span class="text-neutral-500">{{ completed_count }} набор окончен</span>{% endif %}
         {% if cancelled_count > 0 %}<span class="text-neutral-300">·</span>
@@ -46,14 +40,6 @@
         <a href="/my-jobs"
            class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if current_status == 'all' or not current_status %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">
             Все
-        </a>
-        <a href="/my-jobs?status=in_progress"
-           class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if current_status == 'in_progress' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">
-            В работе
-        </a>
-        <a href="/my-jobs?status=active"
-           class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if current_status == 'active' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">
-            Активные
         </a>
         <a href="/my-jobs?status=open"
            class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if current_status == 'open' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">
@@ -128,15 +114,15 @@
                             {# Статус-бейдж #}
                             <span class="status-badge
                                 {% if job.status == 'open' %}status-open
-                                {% elif job.status == 'in_progress' %}status-in-progress
-                                {% elif job.status == 'active' %}status-active
+                                {% elif job.status == 'in_progress' %}status-open
+                                {% elif job.status == 'active' %}status-open
                                 {% elif job.status == 'completed' %}status-completed
                                 {% elif job.status == 'cancelled' %}status-cancelled
                                 {% endif %}"
                                 title="Статус: {{ job.status }}">
                                 {% if job.status == 'open' %}Идёт набор
-                                {% elif job.status == 'in_progress' %}В работе
-                                {% elif job.status == 'active' %}Активно
+                                {% elif job.status == 'in_progress' %}Идёт набор
+                                {% elif job.status == 'active' %}Идёт набор
                                 {% elif job.status == 'completed' %}Набор окончен
                                 {% elif job.status == 'cancelled' %}Отозвано
                                 {% else %}{{ job.status }}

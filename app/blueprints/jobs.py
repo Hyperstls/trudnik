@@ -513,6 +513,8 @@ def my_jobs():
 
     if status_filter == 'all':
         resp = supabase_request('GET', f'jobs?employer_id=eq.{user_id}&select=*,photos:job_photos(*),applications:applications(count),current_workers,max_workers')
+    elif status_filter == 'open':
+        resp = supabase_request('GET', f'jobs?employer_id=eq.{user_id}&status=in.(open,in_progress,active)&select=*,photos:job_photos(*),applications:applications(count),current_workers,max_workers')
     else:
         resp = supabase_request('GET', f'jobs?employer_id=eq.{user_id}&status=eq.{status_filter}&select=*,photos:job_photos(*),applications:applications(count),current_workers,max_workers')
 
