@@ -159,7 +159,6 @@ class ReceiptService:
             'service_description': service_description,
             'amount': amount,
             'status': 'sent',
-            'receipt_type': 'job_publication',
             'receipt_json': receipt_data,
         })
 

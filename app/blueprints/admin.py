@@ -385,6 +385,6 @@ def reject_employer(user_id):
 @login_required
 @role_required('admin')
 def verify_employer(user_id):
-    supabase_admin_request('PATCH', f'profiles?id=eq.{user_id}', json={'verified': True})
+    supabase_admin_request('PATCH', f'profiles?id=eq.{user_id}', json={'verification_status': 'approved'})
     flash('Работодатель верифицирован', 'success')
     return redirect(url_for('admin.admin_panel', tab='verification'))

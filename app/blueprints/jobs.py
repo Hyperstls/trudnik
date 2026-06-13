@@ -356,7 +356,7 @@ def job_detail(job_id):
     employer = None
     if job.get('employer_id'):
         emp_resp = supabase_admin_request('GET',
-            f'profiles?id=eq.{job["employer_id"]}&select=id,full_name,verified,verification_status')
+            f'profiles?id=eq.{job["employer_id"]}&select=id,full_name,verification_status')
         if emp_resp.ok and emp_resp.json():
             employer = emp_resp.json()[0]
 
@@ -845,7 +845,7 @@ def invite_worker(job_id, worker_id):
 
     # Уведомить трудника
     job_name = job_resp.json()[0].get('organization_name', job_id) if job_resp.ok else job_id
-    create_notification(worker_id, 'application_received', 'Вас пригласили на задание',
+    notify(worker_id, 'application_received', 'Вас пригласили на задание',
            f'Работодатель приглашает вас на задание «{job_name}»',
            data={'job_id': job_id, 'type': 'invitation'})
 
@@ -928,11 +928,11 @@ def respond_invitation(invitation_id):
                 'status': new_status
             })
         # Уведомить работника о принятии
-        create_notification(inv['worker_id'], 'application_accepted', 'Приглашение принято',
+        notify(inv['worker_id'], 'application_accepted', 'Приглашение принято',
                f'Ваша заявка на задание #{inv["job_id"]} принята.',
                data={'job_id': inv['job_id']})
         # Уведомить работодателя
-        create_notification(inv['employer_id'], 'application_received', 'Приглашение принято',
+        notify(inv['employer_id'], 'application_received', 'Приглашение принято',
                f'Трудник принял ваше приглашение на задание',
                data={'job_id': inv['job_id']})
 

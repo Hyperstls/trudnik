@@ -61,16 +61,18 @@ def check_hires():
     thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
 
     if role == 'employer':
-        # Проверить всех работников этого работодателя
+        # Проверить всех работников этого работодателя через accepted-заявки
         hires_resp = supabase_request(
             'GET',
-            f'hires?employer_id=eq.{user_id}&hired_at=gte.{thirty_days_ago}&select=worker_id'
+            f'applications?job.employer_id=eq.{user_id}&status=eq.accepted'
+            f'&select=worker_id,created_at'
         )
     else:
-        # Проверить всех работодателей этого работника
+        # Проверить всех работодателей этого работника через accepted-заявки
         hires_resp = supabase_request(
             'GET',
-            f'hires?worker_id=eq.{user_id}&hired_at=gte.{thirty_days_ago}&select=employer_id'
+            f'applications?worker_id=eq.{user_id}&status=eq.accepted'
+            f'&select=job:jobs(employer_id),created_at'
         )
 
     if not hires_resp.ok or not hires_resp.json():
@@ -78,12 +80,14 @@ def check_hires():
 
     hires = hires_resp.json()
 
-    # Группировать по парам
+    # Группировать по парам (фильтр за 30 дней на клиенте, т.к. created_at может быть разного формата)
     from collections import Counter
     if role == 'employer':
-        pairs = Counter(h['worker_id'] for h in hires)
+        pairs = Counter(h['worker_id'] for h in hires
+                       if h.get('created_at', '') >= thirty_days_ago[:10])
     else:
-        pairs = Counter(h['employer_id'] for h in hires)
+        pairs = Counter((h.get('job') or {}).get('employer_id') for h in hires
+                       if h.get('created_at', '') >= thirty_days_ago[:10] and (h.get('job') or {}).get('employer_id'))
 
     warnings = []
     for partner_id, count in pairs.items():

@@ -15,9 +15,10 @@ def chats_list():
     role = session.get('role', '')
     if role == 'employer':
         # Заявки, где пользователь — работодатель задания
+        # employer_id берётся через join с jobs (нет колонки employer_id в applications)
         resp = supabase_request('GET',
-            f'applications?or=(worker_id.eq.{user_id},employer_id.eq.{user_id})'
-            f'&status=eq.accepted&select=id,job:jobs(organization_name)')
+            f'applications?or=(worker_id.eq.{user_id},job.employer_id.eq.{user_id})'
+            f'&status=eq.accepted&select=id,job:jobs(organization_name,employer_id)')
     else:
         # Заявки, где пользователь — принятый работник
         resp = supabase_request('GET',
@@ -33,14 +34,16 @@ def chat(application_id):
     user_id = session['user_id']
 
     # Проверить, что пользователь — участник заявки
+    # employer_id получаем через join с jobs
     app_resp = supabase_request('GET',
-        f'applications?id=eq.{application_id}&select=worker_id,employer_id,job_id')
+        f'applications?id=eq.{application_id}&select=worker_id,job_id,job:jobs(employer_id)')
     if not app_resp.ok or not app_resp.json():
         flash('Чат не найден', 'danger')
         return redirect(url_for('chat.chats_list'))
 
     app_data = app_resp.json()[0]
-    if user_id not in (app_data.get('worker_id'), app_data.get('employer_id')):
+    employer_id = (app_data.get('job') or {}).get('employer_id')
+    if user_id not in (app_data.get('worker_id'), employer_id):
         flash('Нет доступа к этому чату', 'danger')
         return redirect(url_for('chat.chats_list'))
 
@@ -67,8 +70,9 @@ def chat_new(worker_id):
         return redirect(url_for('jobs.index'))
 
     # Ищем accepted-заявку от этого работодателя этому работнику
+    # employer_id фильтруется через join с jobs (нет колонки employer_id в applications)
     resp = supabase_request('GET',
-        f'applications?employer_id=eq.{user_id}&worker_id=eq.{worker_id}'
+        f'applications?job.employer_id=eq.{user_id}&worker_id=eq.{worker_id}'
         f'&status=eq.accepted&select=id')
     if resp.ok and resp.json():
         application_id = resp.json()[0]['id']
@@ -93,13 +97,15 @@ def send_message():
         return jsonify({'status': 'error', 'message': 'Сообщение слишком длинное (максимум 2000 символов)'}), 400
 
     # Проверить, что пользователь — участник заявки
+    # employer_id получаем через join с jobs
     app_resp = supabase_request('GET',
-        f'applications?id=eq.{application_id}&select=worker_id,employer_id,job_id,status')
+        f'applications?id=eq.{application_id}&select=worker_id,job_id,status,job:jobs(employer_id)')
     if not app_resp.ok or not app_resp.json():
         return jsonify({'status': 'error', 'message': 'Заявка не найдена'}), 404
 
     app_data = app_resp.json()[0]
-    if sender_id not in (app_data.get('worker_id'), app_data.get('employer_id')):
+    employer_id = (app_data.get('job') or {}).get('employer_id')
+    if sender_id not in (app_data.get('worker_id'), employer_id):
         return jsonify({'status': 'error', 'message': 'Нет доступа к этому чату'}), 403
 
     # Чат доступен только для принятых заявок
@@ -127,7 +133,7 @@ def send_message():
     })
 
     # Уведомить получателя
-    recipient = app_data['worker_id'] if sender_id == app_data['employer_id'] else app_data['employer_id']
+    recipient = app_data['worker_id'] if sender_id == employer_id else employer_id
     create_notification(recipient, 'new_message', 'Новое сообщение',
                        data['content'][:100], data={'application_id': application_id})
 
@@ -141,12 +147,14 @@ def poll_messages(application_id):
     user_id = session['user_id']
 
     # Проверить доступ
+    # employer_id получаем через join с jobs
     app_resp = supabase_request('GET',
-        f'applications?id=eq.{application_id}&select=worker_id,employer_id')
+        f'applications?id=eq.{application_id}&select=worker_id,job:jobs(employer_id)')
     if not app_resp.ok or not app_resp.json():
         return jsonify({'messages': [], 'user_id': user_id})
     app_data = app_resp.json()[0]
-    if user_id not in (app_data.get('worker_id'), app_data.get('employer_id')):
+    employer_id = (app_data.get('job') or {}).get('employer_id')
+    if user_id not in (app_data.get('worker_id'), employer_id):
         return jsonify({'messages': [], 'user_id': user_id})
 
     since_id = request.args.get('since_id', '')
@@ -176,13 +184,15 @@ def delete_chats():
     errors = []
     for aid in application_ids:
         # Проверяем, что пользователь — участник заявки
+        # employer_id получаем через join с jobs
         resp = supabase_request('GET',
-            f'applications?id=eq.{aid}&select=id,worker_id,employer_id')
+            f'applications?id=eq.{aid}&select=id,worker_id,job:jobs(employer_id)')
         if not resp.ok or not resp.json():
             errors.append(f'Чат {aid} не найден')
             continue
         app_data = resp.json()[0]
-        if app_data['worker_id'] != user_id and app_data['employer_id'] != user_id:
+        employer_id = (app_data.get('job') or {}).get('employer_id')
+        if app_data['worker_id'] != user_id and employer_id != user_id:
             errors.append(f'Нет доступа к чату {aid}')
             continue
 
