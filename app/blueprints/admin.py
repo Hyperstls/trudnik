@@ -38,8 +38,8 @@ def admin_panel():
             statuses = Counter(j['status'] for j in jobs_resp.json())
             stats['total_jobs'] = sum(statuses.values())
             stats['open_jobs'] = statuses.get('open', 0)
-            stats['in_progress_jobs'] = statuses.get('in_progress', 0)
-            stats['completed_jobs'] = statuses.get('completed', 0) + statuses.get('active', 0)
+            stats['completed_jobs'] = statuses.get('completed', 0)
+            stats['cancelled_jobs'] = statuses.get('cancelled', 0)
 
         payments_resp = supabase_request('GET', 'job_payments?select=status,amount&limit=1000')
         if payments_resp.ok and payments_resp.json():
@@ -188,7 +188,7 @@ def delete_user(user_id):
 @role_required('admin')
 def update_job_status(job_id):
     new_status = request.form.get('status', '')
-    if new_status in ('open', 'in_progress', 'cancelled', 'completed', 'active'):
+    if new_status in ('open', 'completed', 'cancelled'):
         supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': new_status})
         flash(f'Статус задания изменён на {new_status}', 'success')
     return redirect(url_for('admin.admin_panel', tab='jobs'))

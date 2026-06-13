@@ -243,7 +243,13 @@ def rate_workers_page(job_id):
         'GET',
         f'jobs?id=eq.{job_id}&select=id,title,status,employer_id'
     )
-    if not job_resp.ok or not job_resp.json():
+    if not job_resp.ok:
+        if job_resp.status_code == 401:
+            flash('Сессия истекла, пожалуйста войдите снова', 'warning')
+            return redirect(url_for('auth.login'))
+        flash('Ошибка при загрузке задания', 'danger')
+        return redirect(url_for('jobs.my_jobs'))
+    if not job_resp.json():
         flash('Задание не найдено', 'danger')
         return redirect(url_for('jobs.my_jobs'))
 

@@ -1,4 +1,5 @@
 """Утилиты: HTTP-запросы к Supabase, вычисления, уведомления, rate limiting."""
+import json
 import math
 import time
 import uuid
@@ -7,10 +8,17 @@ from datetime import datetime
 from functools import wraps
 from typing import Any
 
-import requests
+import requests as _requests
 from flask import current_app, flash, jsonify, redirect, request, session, url_for
 
 from app.config import Config
+
+# Глобальная сессия для connection pooling (переиспользование TCP-соединений)
+_session = _requests.Session()
+_session.headers.update({
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation',
+})
 
 
 def cache_for(seconds=30):
@@ -48,7 +56,13 @@ class SupabaseResponse:
         self.text = text
 
     def json(self) -> Any:
-        return self._data
+        """Вернуть распарсенные данные. Приоритет: _data, затем парсинг text."""
+        if self._data is not None:
+            return self._data
+        try:
+            return json.loads(self.text)
+        except (json.JSONDecodeError, TypeError):
+            return None
 
 
 def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -68,9 +82,9 @@ def refresh_access_token():
         return False
     url = f'{SUPABASE_URL}/auth/v1/token?grant_type=refresh_token'
     try:
-        resp = requests.post(url, json={'refresh_token': refresh_token},
-                             headers={'apikey': SUPABASE_KEY, 'Content-Type': 'application/json'},
-                             timeout=10)
+        resp = _requests.post(url, json={'refresh_token': refresh_token},
+                              headers={'apikey': SUPABASE_KEY, 'Content-Type': 'application/json'},
+                              timeout=10)
         if resp.ok:
             data = resp.json()
             session['access_token'] = data['access_token']
@@ -80,7 +94,7 @@ def refresh_access_token():
         else:
             session.clear()
             return False
-    except requests.RequestException:
+    except _requests.RequestException:
         return False
 
 
@@ -89,22 +103,25 @@ def supabase_request(method, endpoint, **kwargs):
     def _make_request():
         headers = {
             'apikey': SUPABASE_KEY,
-            'Authorization': f'Bearer {session.get("access_token", SUPABASE_KEY)}',
-            'Content-Type': 'application/json',
-            'Prefer': 'return=representation',
+            'Authorization': f'Bearer {session.get("access_token") or SUPABASE_KEY}',
         }
         if extra_headers:
             headers.update(extra_headers)
         url = f'{SUPABASE_URL}/rest/v1/{endpoint}'
-        return requests.request(method, url, headers=headers, timeout=15, **kwargs)
+        return _session.request(method, url, headers=headers, timeout=15, **kwargs)
 
     try:
         resp = _make_request()
         if resp.status_code == 401 and session.get('refresh_token'):
             if refresh_access_token():
                 resp = _make_request()
-        return resp
-    except requests.RequestException as e:
+        # Унифицированный возврат: всегда SupabaseResponse (совместим с .ok, .json(), .status_code, .text)
+        try:
+            data = resp.json()
+        except Exception:
+            data = None
+        return SupabaseResponse(ok=resp.ok, status_code=resp.status_code, data=data, text=resp.text)
+    except _requests.RequestException as e:
         current_app.logger.error(f"Supabase request error: {e}")
         return SupabaseResponse(ok=False, status_code=0, text=str(e))
     except Exception as e:
@@ -126,9 +143,13 @@ def supabase_admin_request(method, endpoint, **kwargs):
         headers.update(extra_headers)
     url = f'{SUPABASE_URL}/rest/v1/{endpoint}'
     try:
-        resp = requests.request(method, url, headers=headers, timeout=15, **kwargs)
-        return resp
-    except requests.RequestException as e:
+        resp = _requests.request(method, url, headers=headers, timeout=15, **kwargs)
+        try:
+            data = resp.json()
+        except Exception:
+            data = None
+        return SupabaseResponse(ok=resp.ok, status_code=resp.status_code, data=data, text=resp.text)
+    except _requests.RequestException as e:
         current_app.logger.error(f"Supabase admin request error: {e}")
         return SupabaseResponse(ok=False, status_code=0, text=str(e))
     except Exception as e:
@@ -149,12 +170,12 @@ def upload_to_storage(bucket, file_path, file_data, content_type):
         'Authorization': f'Bearer {session["access_token"]}',
     }
     try:
-        resp = requests.post(url, headers=headers,
-                             files={'file': (file_path, file_data, content_type)},
-                             timeout=30)
+        resp = _requests.post(url, headers=headers,
+                              files={'file': (file_path, file_data, content_type)},
+                              timeout=30)
         if resp.status_code in (200, 201):
             return f'{SUPABASE_URL}/storage/v1/object/public/{bucket}/{file_path}?t={int(time.time())}'
-    except requests.RequestException:
+    except _requests.RequestException:
         pass
     return None
 
