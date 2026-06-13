@@ -1,5 +1,7 @@
 """Blueprint уведомлений — тонкие обёртки над NotificationService."""
 
+import re as _re_inv
+
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required
@@ -26,7 +28,6 @@ def notifications():
     # Очистка: удаляем уведомления-приглашения трудника, чьи задания уже удалены
     invitation_items = [n for n in items if 'вас пригласили' in (n.get('message') or '').lower()]
     if invitation_items:
-        import re as _re_inv
         job_ids_in_notifications = set()
         for n in invitation_items:
             match = _re_inv.search(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', n.get('message') or '')
