@@ -149,7 +149,6 @@ def create_app():
     from app.blueprints.blacklist import blacklist_bp
     from app.blueprints.notifications import notifications_bp
     from app.blueprints.admin import admin_bp
-    from app.blueprints.monetization import monetization_bp
     from app.blueprints.ratings import ratings_bp
     from app.blueprints.seo import seo_bp
     from app.blueprints.employers import employers_bp
@@ -163,7 +162,6 @@ def create_app():
     app.register_blueprint(blacklist_bp)
     app.register_blueprint(notifications_bp)
     app.register_blueprint(admin_bp)
-    app.register_blueprint(monetization_bp)
     app.register_blueprint(ratings_bp)
     app.register_blueprint(seo_bp)
     app.register_blueprint(employers_bp)
@@ -213,12 +211,6 @@ def create_app():
         """Digital Asset Links for Trusted Web Activity (Google Play)."""
         return send_from_directory('static/.well-known', 'assetlinks.json',
                                    mimetype='application/json')
-
-    @app.route('/receipts')
-    @login_required
-    def receipts_page():
-        """Страница просмотра чеков пользователя."""
-        return render_template('receipts.html')
 
     # ── Обработчики ошибок ──────────────────────────────
 

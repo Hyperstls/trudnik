@@ -415,27 +415,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    window.renewJob = function(jobId) {
-        window.showConfirm('Продлить публикацию на 30 дней за 290 ₽?', function() {
-            fetch('/api/jobs/' + jobId + '/renew', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': '{{ csrf_token }}'
-                }
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    window.showToast(data.message || 'Публикация продлена', 'success');
-                    setTimeout(() => location.reload(), 1200);
-                } else {
-                    window.showToast(data.error || 'Ошибка при продлении', 'error');
-                }
-            })
-            .catch(() => window.showToast('Ошибка соединения', 'error'));
-        }, {okText: 'Продлить', title: 'Продление публикации'});
-    };
 });
 </script>
 {% endblock %}

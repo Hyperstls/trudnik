@@ -16,8 +16,6 @@
             ('verification', 'Верификация'),
             ('skills', 'Навыки'),
             ('religions', 'Вероисповедания'),
-            ('monetization', 'Монетизация'),
-            ('payments', 'Платежи'),
         ] %}
         {% for tid, tlabel in tabs %}
         <a href="?tab={{ tid }}"
@@ -32,7 +30,7 @@
     {# ДАШБОРД                                                        #}
     {# ============================================================ #}
     {% if tab == 'dashboard' %}
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
         <div class="bg-white rounded-xl border border-neutral-100 p-4 shadow-sm">
             <p class="text-2xl font-bold text-neutral-900">{{ stats.get('total_users', 0) }}</p>
             <p class="text-xs text-neutral-500 mt-1">Пользователей</p>
@@ -42,11 +40,6 @@
             <p class="text-2xl font-bold text-neutral-900">{{ stats.get('total_jobs', 0) }}</p>
             <p class="text-xs text-neutral-500 mt-1">Заданий</p>
             <p class="text-xs text-neutral-400">{{ stats.get('open_jobs', 0) }} открыто</p>
-        </div>
-        <div class="bg-white rounded-xl border border-neutral-100 p-4 shadow-sm">
-            <p class="text-2xl font-bold text-neutral-900">{{ stats.get('total_payments', 0) }}</p>
-            <p class="text-xs text-neutral-500 mt-1">Платежей</p>
-            <p class="text-xs text-success font-medium">{{ stats.get('total_revenue', 0) }} ₽ выручка</p>
         </div>
         <div class="bg-white rounded-xl border border-neutral-100 p-4 shadow-sm">
             <p class="text-2xl font-bold text-neutral-900">{{ stats.get('pending_verifications', 0) }}</p>
@@ -59,8 +52,6 @@
         <div class="flex flex-wrap gap-2">
             <a href="?tab=users" class="action-icon-btn px-4 py-2 text-sm">👥 Пользователи</a>
             <a href="?tab=jobs" class="action-icon-btn px-4 py-2 text-sm">📋 Задания</a>
-            <a href="?tab=monetization" class="action-icon-btn px-4 py-2 text-sm">💰 Тарифы</a>
-            <a href="?tab=payments" class="action-icon-btn px-4 py-2 text-sm">🧾 Платежи</a>
             <a href="?tab=stats" class="action-icon-btn px-4 py-2 text-sm">📊 Статистика</a>
         </div>
     </div>
@@ -343,51 +334,6 @@
         </div>
     </div>
     {% endif %}
-    {% if tab == 'monetization' %}
-    <h3 class="text-lg font-semibold text-neutral-800 mb-3">Тарифы и настройки</h3>
-    <div class="bg-white rounded-2xl border border-neutral-100 p-5 shadow-sm">
-        <form id="monetization-form" class="space-y-5" onsubmit="saveSettings(event)">
-            <div class="floating-label-group">
-                <input type="hidden" id="tariff-key" value="standard">
-                <input type="number" id="tariff-price" value="490" min="1"
-                       class="floating-input peer" placeholder="Цена публикации">
-                <label for="tariff-price" class="floating-label">Цена публикации (₽)</label>
-                <p class="text-xs text-neutral-400 mt-1">Стоимость публикации задания на <span id="tariff-days">30</span> дней</p>
-            </div>
-            <div class="floating-label-group">
-                <input type="number" id="tariff-renewal" value="290" min="1"
-                       class="floating-input peer" placeholder="Цена продления">
-                <label for="tariff-renewal" class="floating-label">Цена продления (₽)</label>
-                <p class="text-xs text-neutral-400 mt-1">Стоимость продления публикации ещё на 30 дней</p>
-            </div>
-            <div class="floating-label-group">
-                <input type="text" id="owner-inn" value="" maxlength="12" pattern="\d{12}"
-                       class="floating-input peer" placeholder="ИНН самозанятого">
-                <label for="owner-inn" class="floating-label">ИНН самозанятого (владельца)</label>
-                <p class="text-xs text-neutral-400 mt-1">ИНН для формирования чеков через «Мой налог»</p>
-            </div>
-            <button type="submit"
-                    class="w-full bg-primary-500 text-white px-6 py-3 rounded-xl text-sm font-bold
-                    hover:bg-primary-600 active:scale-[0.98] transition-all duration-150
-                    flex items-center justify-center gap-2 shadow-sm">
-                {{ save(16) }}
-                Сохранить
-            </button>
-            <span id="save-status" class="text-sm text-success font-medium text-center block hidden">Сохранено</span>
-        </form>
-    </div>
-    {% endif %}
-
-    {# ============================================================ #}
-    {# ПЛАТЕЖИ (ИСТОРИЯ)                                              #}
-    {# ============================================================ #}
-    {% if tab == 'payments' %}
-    <h3 class="text-lg font-semibold text-neutral-800 mb-3">История платежей</h3>
-    <div id="payments-list" class="space-y-2">
-        <p class="text-sm text-neutral-400">Загрузка...</p>
-    </div>
-    {% endif %}
-
     {# ============================================================ #}
     {# СТАТИСТИКА                                                      #}
     {# ============================================================ #}
@@ -593,116 +539,6 @@ async function removeReligion(id) {
 loadReligions();
 {% endif %}
 
-// ── Монетизация: загрузка и сохранение настроек ──
-{% if tab == 'monetization' %}
-async function loadSettings() {
-    try {
-        const resp = await fetch('/api/admin/monetization-settings');
-        const data = await resp.json();
-        if (data.success) {
-            document.getElementById('owner-inn').value = data.owner_inn || '';
-            if (data.tariffs && data.tariffs.length > 0) {
-                const t = data.tariffs[0];
-                document.getElementById('tariff-key').value = t.tariff_key || 'standard';
-                document.getElementById('tariff-price').value = t.price || 490;
-                document.getElementById('tariff-renewal').value = t.renewal_price || 290;
-                document.getElementById('tariff-days').textContent = t.duration_days || 30;
-            }
-        }
-    } catch (e) { console.error('Failed to load settings'); }
-}
-
-async function saveSettings(event) {
-    event.preventDefault();
-    const btn = event.target.querySelector('button[type="submit"]');
-    const originalHTML = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = 'Сохранение...';
-    try {
-        const resp = await fetch('/api/admin/monetization-settings', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                tariff_key: document.getElementById('tariff-key').value,
-                price: document.getElementById('tariff-price').value,
-                renewal_price: document.getElementById('tariff-renewal').value,
-                owner_inn: document.getElementById('owner-inn').value
-            })
-        });
-        const data = await resp.json();
-        if (data.success) {
-            const status = document.getElementById('save-status');
-            status.classList.remove('hidden');
-            setTimeout(() => status.classList.add('hidden'), 3000);
-            if (window.showToast) window.showToast('Настройки сохранены', 'success');
-        } else {
-            if (window.showToast) window.showToast('Ошибка: ' + (data.error || 'Не удалось сохранить'), 'error');
-        }
-    } catch (e) {
-        if (window.showToast) window.showToast('Ошибка соединения', 'error');
-    }
-    btn.disabled = false;
-    btn.innerHTML = originalHTML;
-}
-loadSettings();
-{% endif %}
-
-// ── Платежи: загрузка истории ──
-{% if tab == 'payments' %}
-async function loadPayments() {
-    try {
-        const resp = await fetch('/api/admin/payments');
-        const data = await resp.json();
-        const container = document.getElementById('payments-list');
-        if (data.success && data.payments && data.payments.length > 0) {
-            container.innerHTML = data.payments.map(p => `
-                <div class="bg-white rounded-xl border border-neutral-100 p-3 text-sm shadow-sm">
-                    <div class="flex justify-between">
-                        <span class="font-medium text-neutral-900">${p.amount} руб</span>
-                        <span class="text-${p.status === 'paid' ? 'success' : 'warning'} font-medium">
-                            ${p.status === 'paid' ? 'Оплачено' : 'Ожидает'}
-                        </span>
-                    </div>
-                    <p class="text-xs text-neutral-400 mt-1">ID: ${p.id.slice(0, 8)}... | ${new Date(p.created_at).toLocaleString('ru-RU')}</p>
-                    ${p.transaction_id ? `<p class="text-xs text-neutral-400">Транзакция: ${p.transaction_id}</p>` : ''}
-                    ${p.receipts && p.receipts.length > 0 ? `
-                        <div class="mt-2 text-xs text-neutral-400">
-                            <p>Чек: ${p.receipts[0].status || 'отправлен'}</p>
-                            ${p.receipts[0].status === 'failed' ? `
-                                <button data-receipt-id="${p.receipts[0].id}"
-                                        class="receipt-resend-btn text-primary-500 hover:underline font-medium">Переотправить</button>
-                            ` : ''}
-                        </div>
-                    ` : ''}
-                </div>
-            `).join('');
-        } else {
-            container.innerHTML = '<p class="text-sm text-neutral-400">Нет платежей</p>';
-        }
-    } catch (e) {
-        document.getElementById('payments-list').innerHTML = '<p class="text-sm text-danger">Ошибка загрузки</p>';
-    }
-}
-
-async function resendReceipt(receiptId) {
-    try {
-        const resp = await fetch('/api/receipts/' + receiptId + '/resend', { method: 'POST' });
-        const data = await resp.json();
-        if (window.showToast) {
-            window.showToast(data.success ? 'Чек переотправлен' : 'Ошибка: ' + data.error, data.success ? 'success' : 'error');
-        }
-        loadPayments();
-    } catch (e) {}
-}
-
-document.getElementById('payments-list').addEventListener('click', function(e) {
-    const btn = e.target.closest('.receipt-resend-btn');
-    if (btn) resendReceipt(btn.dataset.receiptId);
-});
-
-loadPayments();
-{% endif %}
-
 // ── Статистика ──
 {% if tab == 'stats' %}
 async function loadStats() {
@@ -711,26 +547,9 @@ async function loadStats() {
         const data = await resp.json();
         const container = document.getElementById('stats-container');
         if (data.success) {
-            let byTariffHtml = '';
-            if (data.by_tariff) {
-                for (const [tariff, amount] of Object.entries(data.by_tariff)) {
-                    byTariffHtml += `<div class="flex justify-between text-sm">
-                        <span class="text-neutral-600">Тариф «${tariff}»</span>
-                        <span class="font-medium text-neutral-900">${amount} ₽</span>
-                    </div>`;
-                }
-            }
             container.innerHTML = `
                 <div class="bg-white rounded-xl border border-neutral-100 p-4 shadow-sm">
-                    <div class="flex justify-between mb-2">
-                        <span class="text-neutral-600">Всего оплаченных публикаций</span>
-                        <span class="font-bold text-neutral-900">${data.total_paid_publications || 0}</span>
-                    </div>
-                    <div class="flex justify-between mb-3">
-                        <span class="text-neutral-600">Общая выручка</span>
-                        <span class="font-bold text-primary-600 text-lg">${data.total_revenue || 0} ₽</span>
-                    </div>
-                    ${byTariffHtml ? '<div class="border-t border-neutral-100 pt-3 mt-2 space-y-1">' + byTariffHtml + '</div>' : ''}
+                    <p class="text-sm text-neutral-400">Статистика загружена</p>
                 </div>
             `;
         } else {

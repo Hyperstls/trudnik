@@ -109,7 +109,6 @@ def delete_account():
         ('messages', f'sender_id=eq.{user_id}'),
         ('job_favorites', f'user_id=eq.{user_id}'),
         ('notifications', f'user_id=eq.{user_id}'),
-        ('job_payments', f'employer_id=eq.{user_id}'),
         ('blacklists', f'user_id=eq.{user_id}'),
         ('blacklists', f'blocked_user_id=eq.{user_id}'),
         ('ratings', f'rated_user_id=eq.{user_id}'),

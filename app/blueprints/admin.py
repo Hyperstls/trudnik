@@ -41,13 +41,6 @@ def admin_panel():
             stats['completed_jobs'] = statuses.get('completed', 0)
             stats['cancelled_jobs'] = statuses.get('cancelled', 0)
 
-        payments_resp = supabase_request('GET', 'job_payments?select=status,amount&limit=1000')
-        if payments_resp.ok and payments_resp.json():
-            payments = payments_resp.json()
-            stats['total_payments'] = len(payments)
-            stats['paid_payments'] = sum(1 for p in payments if p.get('status') == 'paid')
-            stats['total_revenue'] = sum(p.get('amount', 0) for p in payments if p.get('status') == 'paid')
-
         pending_resp = supabase_request('GET', 'profiles?verification_status=eq.pending&select=id')
         stats['pending_verifications'] = len(pending_resp.json()) if pending_resp.ok and pending_resp.json() else 0
 
@@ -141,12 +134,8 @@ def delete_user(user_id):
         ('invitations', f'employer_id=eq.{user_id}'),
         ('invitations', f'worker_id=eq.{user_id}'),
         ('user_skills', f'user_id=eq.{user_id}'),
-        ('_archive_contact_payments', f'employer_id=eq.{user_id}'),
-        ('_archive_contact_payments', f'worker_id=eq.{user_id}'),
-        ('job_payments', f'employer_id=eq.{user_id}'),
         ('push_subscriptions', f'user_id=eq.{user_id}'),
         ('messages', f'sender_id=eq.{user_id}'),
-        ('monetization_settings', None),  # не привязана к пользователю
     ]
     for table, condition in cascade_tables:
         if condition:
@@ -210,8 +199,6 @@ def _delete_job_cascade(job_id):
         ('job_skills', f'job_id=eq.{job_id}'),
         ('job_photos', f'job_id=eq.{job_id}'),
         ('job_favorites', f'job_id=eq.{job_id}'),
-        ('_archive_contact_payments', f'job_id=eq.{job_id}'),
-        ('job_payments', f'job_id=eq.{job_id}'),
         ('invitations', f'job_id=eq.{job_id}'),
     ]
     for table, condition in cascade_tables:
