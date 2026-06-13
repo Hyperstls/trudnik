@@ -816,6 +816,18 @@
             </svg>
             <span>Задания</span>
         </a>
+        <a href="/employers"
+           class="nav-item flex flex-col items-center text-[10px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'employers' in request.endpoint }}"
+           aria-label="Работодатели">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+                <line x1="9" y1="6" x2="15" y2="6"></line>
+                <line x1="9" y1="10" x2="15" y2="10"></line>
+                <line x1="9" y1="14" x2="15" y2="14"></line>
+                <rect x="10" y="16" width="4" height="6"></rect>
+            </svg>
+            <span>Работодатели</span>
+        </a>
         <a href="/chats"
            class="nav-item flex flex-col items-center text-[10px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'chats' in request.endpoint }}"
            aria-label="Чаты">

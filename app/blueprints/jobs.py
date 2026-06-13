@@ -78,8 +78,8 @@ def index():
 
     now = datetime.now(timezone.utc).isoformat()
 
-    # Запрос только оплаченных открытых заданий
-    query = 'status=in.(open,completed)&is_paid=eq.true&select=*,photos:job_photos(*)'
+    # Запрос только оплаченных открытых заданий (без detailed_description — тяжёлое поле)
+    query = 'status=in.(open,completed)&is_paid=eq.true&select=id,employer_id,organization_name,org_description,object_description,work_type,date_time,payment_amount,address,city,lat,lng,status,created_at,preferred_religion,max_workers,current_workers,is_paid,expires_at,tariff,photos:job_photos(*)'
     if city: query += f'&city=ilike.*{sanitize_postgrest(city)}*'
     if payment_min: query += f'&payment_amount=gte.{sanitize_postgrest(payment_min)}'
     if payment_max: query += f'&payment_amount=lte.{sanitize_postgrest(payment_max)}'
