@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+{% from '_icons.html' import star, chevron_left, check %}
+{% block title %}Оценить работников — {{ job.title }} — Трудник{% endblock %}
+{% block content %}
+<div class="px-4 pb-24 max-w-lg mx-auto">
+
+    {# ============================================ #}
+    {# Заголовок + кнопка «Назад»                     #}
+    {# ============================================ #}
+    <div class="flex items-center gap-3 mb-5">
+        <a href="/my-jobs"
+           class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors touch-target"
+           aria-label="Назад к моим заданиям">
+            {{ chevron_left(20) }}
+        </a>
+        <div class="min-w-0">
+            <h2 class="text-2xl font-bold text-neutral-900 truncate">Оценить работников</h2>
+            <p class="text-sm text-neutral-400 truncate">{{ job.title }}</p>
+        </div>
+    </div>
+
+    {# ============================================ #}
+    {# Информация о задании                          #}
+    {# ============================================ #}
+    <div class="bg-white rounded-2xl shadow-sm border border-neutral-100 p-4 mb-5">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-primary-50 flex items-center justify-center shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                     class="text-primary-600">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                </svg>
+            </div>
+            <div class="min-w-0">
+                <p class="text-sm font-semibold text-neutral-900 truncate">{{ job.title }}</p>
+                <p class="text-xs text-neutral-400">
+                    {% set status_labels = {
+                        'open': 'Идёт набор',
+                        'in_progress': 'В работе',
+                        'completed': 'Завершено',
+                        'cancelled': 'Отменено'
+                    } %}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium
+                        {% if job.status == 'completed' %}bg-neutral-100 text-neutral-500
+                        {% elif job.status == 'open' %}bg-blue-50 text-blue-700
+                        {% elif job.status == 'in_progress' %}bg-amber-50 text-amber-700
+                        {% else %}bg-red-50 text-red-700{% endif %}">
+                        {{ status_labels.get(job.status, job.status) }}
+                    </span>
+                    · {{ workers|length }} работник{{ 'ов' if workers|length != 1 else '' }}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    {# ============================================ #}
+    {# Список работников                             #}
+    {# ============================================ #}
+    {% if workers|length == 0 %}
+        <div class="flex flex-col items-center justify-center py-16 text-center">
+            <div class="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
+                <span class="text-3xl">👤</span>
+            </div>
+            <p class="text-lg font-semibold text-neutral-700">Нет принятых работников</p>
+            <p class="text-sm text-neutral-400 mt-1">По этому заданию ещё нет принятых откликов</p>
+        </div>
+    {% else %}
+        <div class="space-y-4" id="workers-list">
+            {% for w in workers %}
+            {% set existing = existing_ratings.get(w.worker_id) %}
+            <div class="app-card bg-white rounded-2xl shadow-sm border border-neutral-100 p-4 transition-all duration-200"
+                 data-worker-id="{{ w.worker_id }}"
+                 id="worker-card-{{ w.worker_id }}">
+
+                {# --- Шапка: фото, имя, рейтинг --- #}
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-12 h-12 rounded-full bg-primary-50 flex items-center justify-center shrink-0 overflow-hidden">
+                        {% if w.photo_url %}
+                        <img src="{{ w.photo_url }}" alt="{{ w.full_name }}"
+                             class="w-full h-full object-cover"
+                             onerror="this.onerror=null;this.parentElement.innerHTML='<span class=\'text-primary-600 font-semibold text-lg\'>{{ w.full_name[:1].upper() }}</span>'">
+                        {% else %}
+                        <span class="text-primary-600 font-semibold text-lg">{{ w.full_name[:1].upper() }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="font-semibold text-neutral-900 text-sm truncate">{{ w.full_name }}</p>
+                        <div class="flex items-center gap-1">
+                            <span class="text-amber-500 text-sm">★</span>
+                            <span class="text-xs text-neutral-400">
+                                {{ '%.1f'|format(w.rating) if w.rating else '—' }}
+                            </span>
+                        </div>
+                    </div>
+                    {# Статус: оценён / не оценён #}
+                    <span class="text-xs font-medium px-2 py-1 rounded-full shrink-0
+                        {% if existing %}bg-green-50 text-green-700{% else %}bg-amber-50 text-amber-700{% endif %}"
+                        id="status-badge-{{ w.worker_id }}">
+                        {% if existing %}✓ Оценён{% else %}Не оценён{% endif %}
+                    </span>
+                </div>
+
+                {# --- Форма оценки --- #}
+                <div class="border-t border-neutral-100 pt-3">
+                    {# Звёзды #}
+                    <div class="flex items-center gap-1 mb-2" id="stars-{{ w.worker_id }}">
+                        {% for s in range(1, 6) %}
+                        <button type="button"
+                                class="star-btn text-2xl hover:scale-110 transition-transform touch-target
+                                    {% if existing and s <= existing.rating %}text-amber-500{% else %}text-neutral-300{% endif %}"
+                                data-value="{{ s }}"
+                                data-worker="{{ w.worker_id }}"
+                                aria-label="Оценка {{ s }}">
+                            ★
+                        </button>
+                        {% endfor %}
+                    </div>
+
+                    {# Комментарий #}
+                    <textarea
+                        id="comment-{{ w.worker_id }}"
+                        class="w-full text-sm border border-neutral-200 rounded-lg p-2.5 resize-none bg-neutral-50 focus:bg-white transition-colors"
+                        rows="2"
+                        placeholder="Ваш отзыв (необязательно)"
+                    >{{ existing.comment if existing else '' }}</textarea>
+
+                    {# Кнопка + обратная связь #}
+                    <div class="flex items-center gap-2 mt-2">
+                        <button type="button"
+                                class="btn-primary text-sm font-semibold px-5 py-2.5 rounded-xl bg-primary-500 text-white hover:bg-primary-600 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
+                                id="save-btn-{{ w.worker_id }}"
+                                onclick="saveRating('{{ w.worker_id }}')"
+                                {% if existing %}disabled{% endif %}>
+                            {% if existing %}
+                                <span class="flex items-center gap-1.5">
+                                    {{ check(16) }}
+                                    Сохранено
+                                </span>
+                            {% else %}
+                                Сохранить оценку
+                            {% endif %}
+                        </button>
+                        <span id="feedback-{{ w.worker_id }}" class="text-sm"></span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+
+{# ============================================ #}
+{# JavaScript                                    #}
+{# ============================================ #}
+<script>
+    var csrfToken = '{{ csrf_token }}';
+    var jobId = '{{ job.id }}';
+    var raterUserId = '{{ session.user_id }}';
+
+    // --- Обработчики звёзд ---
+    document.querySelectorAll('.star-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var workerId = this.dataset.worker;
+            var value = parseInt(this.dataset.value);
+            highlightStars(workerId, value);
+        });
+    });
+
+    function highlightStars(workerId, value) {
+        var starsContainer = document.getElementById('stars-' + workerId);
+        if (!starsContainer) return;
+        var btns = starsContainer.querySelectorAll('.star-btn');
+        btns.forEach(function(b) {
+            var starVal = parseInt(b.dataset.value);
+            if (starVal <= value) {
+                b.className = 'star-btn text-2xl hover:scale-110 transition-transform touch-target text-amber-500';
+            } else {
+                b.className = 'star-btn text-2xl hover:scale-110 transition-transform touch-target text-neutral-300';
+            }
+        });
+        // Сохраняем выбранное значение в dataset контейнера
+        starsContainer.dataset.selectedRating = value;
+    }
+
+    function getSelectedRating(workerId) {
+        var container = document.getElementById('stars-' + workerId);
+        return parseInt(container.dataset.selectedRating) || 0;
+    }
+
+    // --- Сохранение оценки ---
+    function saveRating(workerId) {
+        var rating = getSelectedRating(workerId);
+        if (!rating || rating < 1 || rating > 5) {
+            showFeedback(workerId, 'Выберите оценку от 1 до 5', 'error');
+            return;
+        }
+
+        var comment = document.getElementById('comment-' + workerId).value.trim();
+        var saveBtn = document.getElementById('save-btn-' + workerId);
+        var feedbackEl = document.getElementById('feedback-' + workerId);
+
+        // Блокируем кнопку на время запроса
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Сохранение...';
+        feedbackEl.textContent = '';
+        feedbackEl.className = 'text-sm text-neutral-400';
+
+        fetch('/api/ratings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
+            body: JSON.stringify({
+                job_id: jobId,
+                rated_user_id: workerId,
+                rating: rating,
+                comment: comment,
+                target_type: 'worker'
+            })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                // Успех: показать ✓ и заблокировать кнопку
+                saveBtn.innerHTML = '<span class="flex items-center gap-1.5">' +
+                    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>' +
+                    'Сохранено</span>';
+                saveBtn.classList.add('bg-green-500', 'hover:bg-green-600');
+                saveBtn.classList.remove('bg-primary-500', 'hover:bg-primary-600');
+                showFeedback(workerId, '✓ Оценка сохранена', 'success');
+
+                // Обновить бейдж статуса
+                var badge = document.getElementById('status-badge-' + workerId);
+                if (badge) {
+                    badge.textContent = '✓ Оценён';
+                    badge.className = 'text-xs font-medium px-2 py-1 rounded-full shrink-0 bg-green-50 text-green-700';
+                }
+            } else {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Сохранить оценку';
+                showFeedback(workerId, data.error || 'Ошибка сохранения', 'error');
+            }
+        })
+        .catch(function() {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Сохранить оценку';
+            showFeedback(workerId, 'Ошибка соединения с сервером', 'error');
+        });
+    }
+
+    function showFeedback(workerId, message, type) {
+        var el = document.getElementById('feedback-' + workerId);
+        if (!el) return;
+        el.textContent = message;
+        if (type === 'success') {
+            el.className = 'text-sm text-green-600 font-medium';
+        } else if (type === 'error') {
+            el.className = 'text-sm text-red-500 font-medium';
+        } else {
+            el.className = 'text-sm text-neutral-400';
+        }
+    }
+
+    // --- Инициализация: сохраняем текущие значения звёзд из existing ---
+    document.querySelectorAll('[id^="stars-"]').forEach(function(container) {
+        var workerId = container.id.replace('stars-', '');
+        // Ищем предзаполненное значение по классу text-amber-500
+        var filledStars = container.querySelectorAll('.star-btn.text-amber-500');
+        if (filledStars.length > 0) {
+            container.dataset.selectedRating = filledStars.length;
+        }
+    });
+</script>
+{% endblock %}

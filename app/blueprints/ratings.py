@@ -1,5 +1,5 @@
 """Blueprint для рейтингов и отзывов."""
-from flask import Blueprint, jsonify, request, session, current_app, render_template
+from flask import Blueprint, jsonify, request, session, current_app, render_template, redirect, flash, url_for
 
 from app.decorators import login_required
 from app.utils import rate_limit, supabase_request, supabase_admin_request, update_rating
@@ -222,5 +222,71 @@ def get_user_rating_details(user_id):
 def user_ratings_page(user_id):
     """Страница со списком всех оценок пользователя."""
     return render_template('user_ratings.html', profile_user_id=user_id)
+
+
+@ratings_bp.route('/jobs/<job_id>/rate-workers')
+@login_required
+def rate_workers_page(job_id):
+    """
+    Страница оценки всех принятых работников задания.
+    Доступна только работодателю — владельцу задания.
+    """
+    user_id = session['user_id']
+
+    # --- 1. Проверка роли ---
+    if session.get('role') != 'employer':
+        flash('Только работодатели могут оценивать работников', 'danger')
+        return redirect(url_for('jobs.index'))
+
+    # --- 2. Получить задание и проверить владельца ---
+    job_resp = supabase_request(
+        'GET',
+        f'jobs?id=eq.{job_id}&select=id,title,status,employer_id'
+    )
+    if not job_resp.ok or not job_resp.json():
+        flash('Задание не найдено', 'danger')
+        return redirect(url_for('jobs.my_jobs'))
+
+    job = job_resp.json()[0]
+
+    if job['employer_id'] != user_id:
+        flash('Вы не являетесь работодателем этого задания', 'danger')
+        return redirect(url_for('jobs.my_jobs'))
+
+    # --- 3. Загрузить принятых работников с JOIN к profiles ---
+    workers_resp = supabase_request(
+        'GET',
+        f'applications?job_id=eq.{job_id}&status=eq.accepted'
+        f'&select=worker_id,profiles!worker_id(full_name,photo_url,rating)'
+    )
+    workers = []
+    if workers_resp.ok and workers_resp.json():
+        for app_item in workers_resp.json():
+            profile = app_item.get('profiles') or {}
+            workers.append({
+                'worker_id': app_item['worker_id'],
+                'full_name': profile.get('full_name', 'Пользователь'),
+                'photo_url': profile.get('photo_url', ''),
+                'rating': profile.get('rating', 0),
+            })
+
+    # --- 4. Загрузить существующие оценки (этого работодателя, этого задания) ---
+    ratings_resp = supabase_request(
+        'GET',
+        f'ratings?rater_user_id=eq.{user_id}&job_id=eq.{job_id}'
+        f'&select=rated_user_id,rating,comment'
+    )
+    existing_ratings = {}
+    if ratings_resp.ok and ratings_resp.json():
+        for r in ratings_resp.json():
+            existing_ratings[r['rated_user_id']] = r
+
+    # --- 5. Рендер шаблона ---
+    return render_template(
+        'rate_workers.html',
+        job=job,
+        workers=workers,
+        existing_ratings=existing_ratings
+    )
 
 
