@@ -1,0 +1,442 @@
+"""
+P0-тесты Чата проекта «Трудник».
+Тестируют доступность чата, отправку сообщений, polling и ограничения.
+
+Запуск: python -m pytest test_chat.py -v --tb=short
+"""
+
+import re
+import time
+
+import pytest
+import requests
+
+
+BASE_URL = "http://localhost:5000"
+
+# Тестовые учётные данные (из setup_test_users.py)
+EMPLOYER_EMAIL = "org@test.ru"
+EMPLOYER_PASSWORD = "test123456"
+WORKER_EMAIL = "trud3@test.ru"
+WORKER_PASSWORD = "test123456"
+
+
+# ──────────────────────────────────────────────
+# Вспомогательные функции
+# ──────────────────────────────────────────────
+
+def extract_csrf_token(html: str) -> str | None:
+    """Извлечь CSRF-токен из meta-тега HTML-страницы."""
+    match = re.search(r'<meta name="csrf-token" content="([^"]+)"', html)
+    return match.group(1) if match else None
+
+
+def login_as(session: requests.Session, email: str, password: str) -> str | None:
+    """
+    Войти как пользователь с указанным email/паролем.
+    Возвращает CSRF-токен или None при ошибке.
+    """
+    resp = session.get(f"{BASE_URL}/login", timeout=30)
+    csrf = extract_csrf_token(resp.text)
+
+    resp = session.post(
+        f"{BASE_URL}/login",
+        data={"email": email, "password": password},
+        timeout=30,
+        allow_redirects=True,
+    )
+    if "Ошибка входа" in resp.text:
+        return None
+    fresh_csrf = extract_csrf_token(resp.text)
+    return fresh_csrf or csrf
+
+
+def get_csrf_from_page(session: requests.Session, path: str = "/") -> str | None:
+    """Получить CSRF-токен с любой страницы приложения."""
+    resp = session.get(f"{BASE_URL}{path}", timeout=30)
+    return extract_csrf_token(resp.text)
+
+
+def csrf_headers(session: requests.Session) -> dict:
+    """Получить заголовки с CSRF-токеном для JSON API-запросов."""
+    csrf = get_csrf_from_page(session)
+    return {
+        "X-CSRF-Token": csrf or "",
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+    }
+
+
+def form_with_csrf(session: requests.Session, **extra) -> dict:
+    """Формирует данные формы с CSRF-токеном."""
+    csrf = get_csrf_from_page(session)
+    return {"_csrf_token": csrf or "", **extra}
+
+
+# ──────────────────────────────────────────────
+# Fixtures
+# ──────────────────────────────────────────────
+
+@pytest.fixture(scope="module")
+def employer_session():
+    """Сессия работодателя (org@test.ru)."""
+    sess = requests.Session()
+    csrf = login_as(sess, EMPLOYER_EMAIL, EMPLOYER_PASSWORD)
+    if csrf is None:
+        pytest.fail("Не удалось войти как работодатель. Проверьте учётные данные.")
+    return sess
+
+
+@pytest.fixture(scope="module")
+def worker_session():
+    """Сессия трудника (trud3@test.ru)."""
+    sess = requests.Session()
+    csrf = login_as(sess, WORKER_EMAIL, WORKER_PASSWORD)
+    if csrf is None:
+        pytest.fail("Не удалось войти как трудник. Проверьте учётные данные.")
+    return sess
+
+
+def _get_application_id_for_job(employer_sess, job_id) -> str | None:
+    """Получить ID отклика на задание (от работодателя через my-applications)."""
+    resp = employer_sess.get(f"{BASE_URL}/my-applications", timeout=30)
+    if resp.status_code != 200:
+        return None
+
+    # Ищем application_id в HTML (ссылки вида /chat/<id> или data-app-id)
+    # В HTML могут быть ссылки на чат
+    chat_links = re.findall(r'/chat/([a-f0-9\-]+)', resp.text)
+    if chat_links:
+        return chat_links[0]
+
+    # Альтернативно: ищем data-атрибуты
+    app_ids = re.findall(r'data-app-id="([^"]+)"', resp.text)
+    if app_ids:
+        return app_ids[0]
+
+    # Попробуем найти в JSON-блоках
+    app_ids_json = re.findall(r'"application_id"\s*:\s*"([^"]+)"', resp.text)
+    if app_ids_json:
+        return app_ids_json[0]
+
+    return None
+
+
+# ──────────────────────────────────────────────
+# Тесты Чата
+# ──────────────────────────────────────────────
+
+class TestChatBasic:
+    """P0: Базовые тесты чата (не требуют accepted-отклика)."""
+
+    def test_chat_list_endpoint(self, employer_session):
+        """GET /chats → 200, список чатов пользователя."""
+        resp = employer_session.get(f"{BASE_URL}/chats", timeout=30)
+        assert resp.status_code == 200, (
+            f"Chats list should return 200, got {resp.status_code}"
+        )
+
+    def test_chat_list_endpoint_worker(self, worker_session):
+        """GET /chats → 200 для трудника."""
+        resp = worker_session.get(f"{BASE_URL}/chats", timeout=30)
+        assert resp.status_code == 200, (
+            f"Chats list should return 200 for worker, got {resp.status_code}"
+        )
+
+    def test_chat_not_available_for_nonexistent_application(self, employer_session):
+        """GET /chat/nonexistent-id → редирект на список чатов."""
+        resp = employer_session.get(
+            f"{BASE_URL}/chat/00000000-0000-0000-0000-000000000000",
+            timeout=30,
+            allow_redirects=True,
+        )
+        assert resp.status_code == 200
+        # Должен быть редирект на /chats с сообщением об ошибке
+        assert "Чат не найден" in resp.text or "chats" in resp.url.lower(), (
+            f"Expected redirect to chats list, got URL: {resp.url}"
+        )
+
+    def test_chat_uses_application_id_not_shift_id(self):
+        """Проверить что в коде chat.py все эндпоинты используют application_id, а не shift_id."""
+        with open("app/blueprints/chat.py", "r", encoding="utf-8") as f:
+            code = f.read()
+
+        # Не должно быть упоминаний shift_id в параметрах маршрутов или запросов
+        assert "shift_id" not in code, (
+            "Код chat.py содержит shift_id — должен использовать только application_id"
+        )
+        # Должны быть упоминания application_id
+        assert "application_id" in code, (
+            "Код chat.py не содержит application_id"
+        )
+
+
+class TestChatFullChain:
+    """P0: Тесты чата, требующие полной цепочки: задание → отклик → accept → чат."""
+
+    @pytest.fixture(scope="class")
+    def accepted_application_id(self, employer_session, worker_session):
+        """
+        Создать полную цепочку: задание → publish → apply → accept.
+        Возвращает (application_id, job_id) или (None, None) при ошибке.
+        """
+        e_sess = employer_session
+        w_sess = worker_session
+
+        # 1. Создать задание
+        form = form_with_csrf(
+            e_sess,
+            title="Тестовое задание для чата",
+            description="Описание тестового задания для проверки чата",
+            work_type="Уборка",
+            payment="700",
+            address="Москва, ул. Чатовая, 1",
+            city="Москва",
+            latitude="55.75",
+            longitude="37.61",
+            max_workers="2",
+        )
+        create_resp = e_sess.post(
+            f"{BASE_URL}/job/new", data=form, timeout=30, allow_redirects=False
+        )
+        if create_resp.status_code not in (301, 302):
+            return None, None
+
+        location = create_resp.headers.get("Location", "")
+        parts = location.strip("/").split("/")
+        job_id = parts[1] if len(parts) >= 2 else None
+        if not job_id:
+            return None, None
+
+        # 2. Опубликовать
+        pub_resp = e_sess.post(
+            f"{BASE_URL}/api/jobs/{job_id}/publish",
+            headers=csrf_headers(e_sess),
+            json={"tariff": "standard"},
+            timeout=30,
+        )
+        if not pub_resp.ok:
+            return None, None
+        pub_data = pub_resp.json() if pub_resp.ok else {}
+        if not pub_data.get("success"):
+            return None, None
+
+        # 3. Трудник откликается
+        apply_resp = w_sess.post(
+            f"{BASE_URL}/apply/{job_id}",
+            data=form_with_csrf(w_sess),
+            timeout=30,
+            allow_redirects=True,
+        )
+        if apply_resp.status_code != 200:
+            return None, None
+
+        # 4. Получить ID отклика через страницу my-applications работодателя
+        app_id = _get_application_id_for_job(e_sess, job_id)
+        if not app_id:
+            # Пробуем найти application_id в ответе страницы заданий работодателя
+            my_jobs = e_sess.get(f"{BASE_URL}/my-jobs", timeout=30)
+            # Ищем ссылки на заявки
+            app_links = re.findall(r'/api/applications/([a-f0-9\-]+)/accept', my_jobs.text)
+            if not app_links:
+                app_links = re.findall(r'data-app-id="([^"]+)"', my_jobs.text)
+            if app_links:
+                app_id = app_links[0]
+
+        if not app_id:
+            # Последняя попытка: получить напрямую из API списка заявок
+            my_apps = e_sess.get(f"{BASE_URL}/my-applications", timeout=30)
+            # Ищем ID заявки в HTML
+            import re
+            # Ищем в data-атрибутах или ссылках
+            for pattern in [
+                r'/api/applications/([a-f0-9\-]+)/accept',
+                r'/api/applications/([a-f0-9\-]+)/reject',
+                r'data-application-id="([^"]+)"',
+                r'data-app-id="([^"]+)"',
+            ]:
+                matches = re.findall(pattern, my_apps.text)
+                if matches:
+                    app_id = matches[0]
+                    break
+
+        if not app_id:
+            return None, None
+
+        # 5. Принять отклик
+        accept_resp = e_sess.post(
+            f"{BASE_URL}/api/applications/{app_id}/accept",
+            headers=csrf_headers(e_sess),
+            timeout=30,
+        )
+        if not accept_resp.ok:
+            return None, None
+        accept_data = accept_resp.json() if accept_resp.ok else {}
+        if not accept_data.get("success"):
+            return None, None
+
+        return app_id, job_id
+
+    def test_chat_available_after_accept(self, accepted_application_id):
+        """После accept отклика, GET /chat/<application_id> → 200."""
+        app_id, job_id = accepted_application_id
+        if not app_id:
+            pytest.skip(
+                "Не удалось создать полную цепочку (задание → publish → apply → accept). "
+                "Проверьте тестовые учётные данные и доступность Supabase."
+            )
+
+        # Используем новую сессию работодателя, чтобы видеть актуальный CSRF
+        e_sess = requests.Session()
+        login_as(e_sess, EMPLOYER_EMAIL, EMPLOYER_PASSWORD)
+
+        resp = e_sess.get(f"{BASE_URL}/chat/{app_id}", timeout=30, allow_redirects=False)
+        assert resp.status_code == 200, (
+            f"Chat page should return 200 after accept, got {resp.status_code}. "
+            f"Body: {resp.text[:300]}"
+        )
+
+    def test_chat_available_for_worker_after_accept(self, accepted_application_id):
+        """Трудник также может открыть чат после accept."""
+        app_id, job_id = accepted_application_id
+        if not app_id:
+            pytest.skip(
+                "Не удалось создать полную цепочку (задание → publish → apply → accept)."
+            )
+
+        w_sess = requests.Session()
+        login_as(w_sess, WORKER_EMAIL, WORKER_PASSWORD)
+
+        resp = w_sess.get(f"{BASE_URL}/chat/{app_id}", timeout=30, allow_redirects=False)
+        assert resp.status_code == 200, (
+            f"Chat page should return 200 for worker, got {resp.status_code}"
+        )
+
+    def test_send_message_via_api(self, accepted_application_id):
+        """POST /api/send_message с application_id и message → 200, сообщение сохраняется."""
+        app_id, job_id = accepted_application_id
+        if not app_id:
+            pytest.skip(
+                "Не удалось создать полную цепочку (задание → publish → apply → accept)."
+            )
+
+        e_sess = requests.Session()
+        login_as(e_sess, EMPLOYER_EMAIL, EMPLOYER_PASSWORD)
+
+        test_message = f"Тестовое сообщение чата {int(time.time())}"
+        resp = e_sess.post(
+            f"{BASE_URL}/api/send_message",
+            headers=csrf_headers(e_sess),
+            json={
+                "application_id": app_id,
+                "content": test_message,
+            },
+            timeout=30,
+        )
+        assert resp.status_code == 200, (
+            f"Send message failed: {resp.status_code}, body: {resp.text[:300]}"
+        )
+        data = resp.json()
+        assert data.get("status") == "ok", (
+            f"Expected status=ok, got: {data}"
+        )
+
+    def test_chat_messages_polling(self, accepted_application_id):
+        """GET /api/messages/<application_id>/poll?since_id=0 → возвращает список сообщений."""
+        app_id, job_id = accepted_application_id
+        if not app_id:
+            pytest.skip(
+                "Не удалось создать полную цепочку (задание → publish → apply → accept)."
+            )
+
+        w_sess = requests.Session()
+        login_as(w_sess, WORKER_EMAIL, WORKER_PASSWORD)
+
+        resp = w_sess.get(
+            f"{BASE_URL}/api/messages/{app_id}/poll?since_id=0",
+            timeout=30,
+        )
+        assert resp.status_code == 200, (
+            f"Polling failed: {resp.status_code}, body: {resp.text[:300]}"
+        )
+        data = resp.json()
+        assert "messages" in data, f"Expected 'messages' key, got: {list(data.keys())}"
+        assert isinstance(data["messages"], list), (
+            f"Messages should be a list, got: {type(data['messages'])}"
+        )
+        assert "user_id" in data, f"Expected 'user_id' key, got: {list(data.keys())}"
+
+    def test_chat_not_available_for_pending_application(
+        self, employer_session, worker_session
+    ):
+        """GET /chat/<pending_application_id> → редирект или 403, чат недоступен."""
+        e_sess = employer_session
+        w_sess = worker_session
+
+        # 1. Создать задание
+        form = form_with_csrf(
+            e_sess,
+            title="Задание для pending-чата",
+            description="Тест недоступности чата при pending",
+            work_type="Доставка",
+            payment="400",
+            address="Москва, ул. Pending, 1",
+            city="Москва",
+            latitude="55.75",
+            longitude="37.61",
+            max_workers="1",
+        )
+        create_resp = e_sess.post(
+            f"{BASE_URL}/job/new", data=form, timeout=30, allow_redirects=False
+        )
+        if create_resp.status_code not in (301, 302):
+            pytest.skip("Не удалось создать задание для pending-теста")
+
+        location = create_resp.headers.get("Location", "")
+        parts = location.strip("/").split("/")
+        job_id = parts[1] if len(parts) >= 2 else None
+        if not job_id:
+            pytest.skip("Не удалось извлечь job_id")
+
+        # 2. Опубликовать
+        e_sess.post(
+            f"{BASE_URL}/api/jobs/{job_id}/publish",
+            headers=csrf_headers(e_sess),
+            json={"tariff": "standard"},
+            timeout=30,
+        )
+
+        # 3. Трудник откликается (pending статус)
+        w_sess.post(
+            f"{BASE_URL}/apply/{job_id}",
+            data=form_with_csrf(w_sess),
+            timeout=30,
+            allow_redirects=True,
+        )
+
+        # 4. Получить ID отклика
+        my_apps = e_sess.get(f"{BASE_URL}/my-applications", timeout=30)
+        app_ids = re.findall(r'/api/applications/([a-f0-9\-]+)/accept', my_apps.text)
+        if not app_ids:
+            app_ids = re.findall(r'data-app-id="([^"]+)"', my_apps.text)
+        if not app_ids:
+            pytest.skip("Не удалось получить application_id для pending-отклика")
+
+        app_id = app_ids[0]
+
+        # 5. Пытаемся открыть чат (отклик ещё pending, не accepted)
+        # Пробуем от имени работодателя
+        e_resp = e_sess.get(
+            f"{BASE_URL}/chat/{app_id}",
+            timeout=30,
+            allow_redirects=True,
+        )
+        # Чат должен быть недоступен: либо редирект, либо сообщение об ошибке
+        assert (
+            "Чат не найден" in e_resp.text
+            or "Нет доступа" in e_resp.text
+            or "chats" in e_resp.url.lower()
+        ), (
+            f"Chat should not be available for pending application, "
+            f"got status={e_resp.status_code}, body: {e_resp.text[:300]}"
+        )

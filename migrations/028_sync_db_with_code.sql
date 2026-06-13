@@ -117,14 +117,12 @@ DROP TABLE IF EXISTS shifts CASCADE;
 -- 7a. jobs: open, in_progress, active, completed, cancelled
 --     (draft, paid, expired — не используются в коде)
 ALTER TABLE jobs DROP CONSTRAINT IF EXISTS jobs_status_check;
-ALTER TABLE jobs ADD CONSTRAINT jobs_status_check
-    CHECK (status IN ('open', 'in_progress', 'active', 'completed', 'cancelled'));
+ALTER TABLE jobs ADD CONSTRAINT jobs_status_check CHECK (status IN ('open', 'in_progress', 'active', 'completed', 'cancelled'));
 
 -- 7b. applications: pending, accepted, rejected, withdrawn
 --     (withdrawn нужен для отзыва отклика трудником)
 ALTER TABLE applications DROP CONSTRAINT IF EXISTS applications_status_check;
-ALTER TABLE applications ADD CONSTRAINT applications_status_check
-    CHECK (status IN ('pending', 'accepted', 'rejected', 'withdrawn'));
+ALTER TABLE applications ADD CONSTRAINT applications_status_check CHECK (status IN ('pending', 'accepted', 'rejected', 'withdrawn'));
 
 -- Перевести существующие строки со старыми статусами в актуальные
 UPDATE jobs SET status = 'cancelled' WHERE status IN ('draft', 'expired');

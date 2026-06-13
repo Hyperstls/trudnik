@@ -1,7 +1,7 @@
 # Анализ пробелов: New_logic.md + New_logic2.md vs. текущий код
 
 > **Дата:** 2026-06-12
-> **Основание:** сверка [New_logic.md](../New_logic.md), [New_logic2.md](../New_logic2.md) и [new-logic-implementation-plan.md](new-logic-implementation-plan.md) с актуальным кодом
+> **Основание:** сверка [New_logic.md](../archive/New_logic.md), [New_logic2.md](../archive/New_logic2.md) и [new-logic-implementation-plan.md](new-logic-implementation-plan.md) с актуальным кодом
 > **Статус:** Анализ завершён
 
 ---

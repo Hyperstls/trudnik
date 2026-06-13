@@ -4,7 +4,7 @@ from flask import Blueprint, current_app, flash, jsonify, redirect, render_templ
 
 from app.config import Config
 from app.decorators import login_required
-from app.utils import supabase_request
+from app.utils import rate_limit, supabase_request
 from app.services.notification_service import create as notify
 
 applications_bp = Blueprint('applications', __name__)
@@ -12,6 +12,7 @@ applications_bp = Blueprint('applications', __name__)
 
 @applications_bp.route('/apply/<job_id>', methods=['GET', 'POST'])
 @login_required
+@rate_limit
 def apply_job(job_id):
     user_id = session['user_id']
     check = supabase_request('GET', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
@@ -30,6 +31,17 @@ def apply_job(job_id):
     # Проверить, что задание не собственное
     if job['employer_id'] == user_id:
         flash('Вы не можете откликаться на собственное задание', 'danger')
+        return redirect(url_for('jobs.index'))
+
+    # Проверить, не заблокирован ли работник у этого работодателя
+    blacklist_resp = supabase_request(
+        'GET',
+        f'blacklists?user_id=eq.{job["employer_id"]}&blocked_user_id=eq.{user_id}&select=id'
+    )
+    if blacklist_resp.ok and blacklist_resp.json():
+        if request.method == 'POST':
+            return jsonify({'success': False, 'error': 'Вы не можете откликнуться: работодатель добавил вас в чёрный список'}), 403
+        flash('Вы не можете откликнуться: работодатель добавил вас в чёрный список', 'danger')
         return redirect(url_for('jobs.index'))
 
     # Проверить статус задания (разрешены open и in_progress, если есть места)
@@ -176,7 +188,7 @@ def api_withdraw_application(app_id):
         })
 
         # Уведомить работодателя
-        notify(job['employer_id'], 'application_cancelled', 'Работник отозвал отклик',
+        notify(job['employer_id'], 'withdraw', 'Работник отозвал отклик',
                f'Принятый работник отозвал отклик с задания #{job_id}')
 
     # Поменять статус отклика на withdrawn

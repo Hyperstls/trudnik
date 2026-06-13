@@ -2,7 +2,7 @@
 from flask import Blueprint, jsonify, request, session, current_app
 
 from app.decorators import login_required
-from app.utils import supabase_request, supabase_admin_request, update_rating
+from app.utils import rate_limit, supabase_request, supabase_admin_request, update_rating
 
 ratings_bp = Blueprint('ratings', __name__)
 
@@ -55,6 +55,7 @@ def get_user_rating(user_id):
 
 @ratings_bp.route('/api/ratings', methods=['POST'])
 @login_required
+@rate_limit
 def upsert_rating():
     """Создать или обновить оценку (один пользователь — одна оценка на задание).
     

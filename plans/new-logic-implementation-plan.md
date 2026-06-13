@@ -1,6 +1,6 @@
 # План реализации упрощённой модели жизненного цикла заданий
 
-> **Основание:** [New_logic.md](../New_logic.md) и [New_logic2.md](../New_logic2.md)
+> **Основание:** [New_logic.md](../archive/New_logic.md) и [New_logic2.md](../archive/New_logic2.md)
 > **Дата анализа:** 2026-06-12
 > **Статус:** Ожидает утверждения
 

@@ -31,6 +31,13 @@
         <span id="job-datetime" data-datetime="{{ job.date_time }}">{{ clock(14) }} {{ job.date_time[:16] }}</span>
         <span id="countdown-timer" class="ml-1.5 px-2 py-0.5 rounded-full text-xs font-semibold hidden"></span>
         {% endif %}
+        {% if employer and (employer.verified or employer.verification_status == 'approved') %}
+        <span class="w-1 h-1 rounded-full bg-neutral-300 mx-1"></span>
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Проверенный работодатель
+        </span>
+        {% endif %}
     </p>
 
     {# ID задания с копированием #}

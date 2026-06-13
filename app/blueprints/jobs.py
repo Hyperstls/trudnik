@@ -3,7 +3,8 @@ from datetime import datetime, timezone, timedelta
 from flask import Blueprint, current_app, jsonify, flash, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required, role_required
-from app.utils import calculate_distance, copy_job, sanitize_postgrest, supabase_admin_request, supabase_request
+from app.utils import (calculate_distance, copy_job, rate_limit, sanitize_postgrest,
+                       supabase_admin_request, supabase_request)
 from app.services.notification_service import create as notify
 
 jobs_bp = Blueprint('jobs', __name__)
@@ -73,6 +74,7 @@ def index():
     radius = request.args.get('radius', 20, type=float)
     sort = request.args.get('sort', '')
     skills_filter = request.args.get('skills', '')
+    religion = request.args.get('religion', '')
 
     now = datetime.now(timezone.utc).isoformat()
 
@@ -81,6 +83,7 @@ def index():
     if city: query += f'&city=ilike.*{sanitize_postgrest(city)}*'
     if payment_min: query += f'&payment_amount=gte.{sanitize_postgrest(payment_min)}'
     if payment_max: query += f'&payment_amount=lte.{sanitize_postgrest(payment_max)}'
+    if religion: query += f'&preferred_religion=eq.{sanitize_postgrest(religion)}'
 
     resp = supabase_request('GET', f'jobs?{query}&order=created_at.desc')
     jobs = resp.json() if resp.ok else []
@@ -349,6 +352,14 @@ def job_detail(job_id):
     # Автопереход in_progress → active по date_time
     _auto_transition_in_progress_to_active(job)
 
+    # Загружаем профиль работодателя для проверки верификации
+    employer = None
+    if job.get('employer_id'):
+        emp_resp = supabase_admin_request('GET',
+            f'profiles?id=eq.{job["employer_id"]}&select=id,full_name,verified,verification_status')
+        if emp_resp.ok and emp_resp.json():
+            employer = emp_resp.json()[0]
+
     # Резолвим UUID полей work_type и preferred_religion в читаемые названия
     if job.get('work_type') and '-' in str(job['work_type']):
         skill_resp = supabase_request('GET', f'skills?id=eq.{job["work_type"]}&select=name')
@@ -386,6 +397,7 @@ def job_detail(job_id):
                     can_withdraw = True
 
     return render_template('job_detail.html', job=job,
+                           employer=employer,
                            yandex_api_key=current_app.config['YANDEX_MAPS_API_KEY'],
                            already_applied=already_applied,
                            my_app_status=my_app_status,
@@ -401,6 +413,7 @@ def job_detail(job_id):
 @jobs_bp.route('/job/new', methods=['GET', 'POST'])
 @login_required
 @role_required('employer')
+@rate_limit
 def job_new():
     """Создание задания (единственный маршрут, заменяет /create-job)"""
     # Загружаем справочники из БД
@@ -419,6 +432,18 @@ def job_new():
         try:
             title = request.form.get('title') or 'Храм'
             description = request.form.get('description', '')
+            address = request.form.get('address', '')
+
+            # Серверная валидация длины полей
+            if len(title) > 255:
+                flash('Поле «Название» слишком длинное (максимум 255 символов)', 'danger')
+                return render_template('job_new.html', **template_data)
+            if len(description) > 5000:
+                flash('Поле «Описание» слишком длинное (максимум 5000 символов)', 'danger')
+                return render_template('job_new.html', **template_data)
+            if len(address) > 500:
+                flash('Поле «Адрес» слишком длинное (максимум 500 символов)', 'danger')
+                return render_template('job_new.html', **template_data)
 
             # Юридически значимое действие: проверка стоп-слов для предотвращения
             # переквалификации в трудовые отношения (ст. 15 ТК РФ)
@@ -614,6 +639,7 @@ def cancel_job(job_id):
 
     # Блокировка: нельзя отозвать задание в статусе active (уже началось)
     job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status')
+    job_status = None
     if job_resp.ok and job_resp.json():
         job_status = job_resp.json()[0].get('status')
         if job_status == 'active':
@@ -621,6 +647,18 @@ def cancel_job(job_id):
             msg = 'Нельзя отозвать задание, которое уже началось. Дождитесь завершения.'
             if is_ajax:
                 return jsonify({'success': False, 'error': msg}), 409
+            flash(msg, 'danger')
+            return redirect(url_for('jobs.my_jobs'))
+
+    # Блокировка: нельзя отозвать задание in_progress с принятыми работниками
+    if job_status == 'in_progress':
+        accepted_check = supabase_request('GET',
+            f'applications?job_id=eq.{job_id}&status=eq.accepted&select=id')
+        if accepted_check.ok and accepted_check.json():
+            is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            msg = 'Невозможно отменить задание с принятыми работниками. Сначала завершите задание (force-complete) или попросите работников отозвать отклики.'
+            if is_ajax:
+                return jsonify({'success': False, 'error': msg}), 400
             flash(msg, 'danger')
             return redirect(url_for('jobs.my_jobs'))
 
@@ -681,7 +719,7 @@ def restore_job(job_id):
         f'applications?job_id=eq.{job_id}&status=eq.rejected&select=worker_id')
     if apps_resp.ok and apps_resp.json():
         for app in apps_resp.json():
-            notify(app['worker_id'], 'job_restored', 'Задание восстановлено',
+            notify(app['worker_id'], 'status_change', 'Задание восстановлено',
                    f'Задание #{job_id} снова открыто для откликов')
 
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -722,7 +760,7 @@ def api_force_complete_job(job_id):
         f'applications?job_id=eq.{job_id}&status=eq.accepted&select=worker_id')
     if apps_resp.ok and apps_resp.json():
         for app in apps_resp.json():
-            notify(app['worker_id'], 'job_completed', 'Задание завершено',
+            notify(app['worker_id'], 'force_complete', 'Задание завершено',
                    f'Работодатель завершил задание #{job_id}')
 
     return jsonify({
@@ -915,6 +953,7 @@ def reject_all_invitations():
 @jobs_bp.route('/jobs/<job_id>/edit', methods=['GET', 'POST'])
 @login_required
 @role_required('employer')
+@rate_limit
 def edit_job(job_id):
     # Используем admin_request для обхода RLS — работодатель должен видеть
     # своё задание в любом статусе (включая неоплаченные)
@@ -1024,6 +1063,7 @@ def publish_job(job_id):
 @jobs_bp.route('/api/jobs/<job_id>/publish', methods=['POST'])
 @login_required
 @role_required('employer')
+@rate_limit
 def api_publish_job(job_id):
     """API: оплатить и опубликовать задание."""
     from app.services.payment_service import PaymentService
@@ -1032,6 +1072,12 @@ def api_publish_job(job_id):
 
     if not _check_job_owner(job_id, session['user_id']):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
+
+    # Защита от race condition: проверка, не оплачено ли уже задание
+    paid_check = supabase_request('GET',
+        f'job_payments?job_id=eq.{job_id}&status=eq.paid&select=id')
+    if paid_check.ok and paid_check.json():
+        return jsonify({'success': False, 'error': 'Задание уже оплачено'}), 409
 
     result = PaymentService.create_job_payment(
         employer_id=session['user_id'], job_id=job_id, tariff=tariff

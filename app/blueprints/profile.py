@@ -5,7 +5,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 
 from app.config import Config
 from app.decorators import login_required
-from app.utils import SERVICE_KEY, SUPABASE_KEY, SUPABASE_URL, supabase_request, upload_to_storage
+from app.utils import SERVICE_KEY, SUPABASE_KEY, SUPABASE_URL, supabase_admin_request, supabase_request, upload_to_storage
 
 profile_bp = Blueprint('profile', __name__)
 
@@ -26,10 +26,17 @@ def profile():
 @login_required
 def update_profile():
     user_id = session['user_id']
+    bio = request.form.get('bio', '')
+
+    # Серверная валидация длины поля «О себе»
+    if len(bio) > 1000:
+        flash('Поле «О себе» слишком длинное (максимум 1000 символов)', 'danger')
+        return redirect(url_for('profile.profile'))
+
     data = {
         'full_name': request.form.get('full_name'),
         'phone': request.form.get('phone'),
-        'bio': request.form.get('bio'),
+        'bio': bio,
         'city': request.form.get('city'),
         'religion': request.form.get('religion', 'не указано'),
         'portfolio_link': request.form.get('portfolio_link', ''),
@@ -95,6 +102,25 @@ def delete_account():
     if not SERVICE_KEY:
         flash('Сервисный ключ не настроен. Удаление невозможно.', 'danger')
         return redirect(url_for('profile.profile'))
+
+    # Каскадное удаление связанных записей через service_role (обход RLS)
+    cascade_deletions = [
+        ('applications', f'worker_id=eq.{user_id}'),
+        ('messages', f'sender_id=eq.{user_id}'),
+        ('job_favorites', f'user_id=eq.{user_id}'),
+        ('notifications', f'user_id=eq.{user_id}'),
+        ('job_payments', f'employer_id=eq.{user_id}'),
+        ('blacklists', f'user_id=eq.{user_id}'),
+        ('blacklists', f'blocked_user_id=eq.{user_id}'),
+        ('ratings', f'rated_user_id=eq.{user_id}'),
+        ('ratings', f'rater_user_id=eq.{user_id}'),
+        ('user_skills', f'user_id=eq.{user_id}'),
+        ('invitations', f'worker_id=eq.{user_id}'),
+        ('invitations', f'employer_id=eq.{user_id}'),
+    ]
+    for table, condition in cascade_deletions:
+        supabase_admin_request('DELETE', f'{table}?{condition}')
+
     delete_url = f'{SUPABASE_URL}/auth/v1/admin/users/{user_id}'
     resp = requests.delete(delete_url, headers={
         'apikey': SERVICE_KEY,

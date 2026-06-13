@@ -1,4 +1,5 @@
 from collections import Counter
+from datetime import datetime
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for, jsonify
 import requests
 
@@ -6,6 +7,12 @@ from app.decorators import login_required, role_required
 from app.utils import sanitize_postgrest, supabase_request, supabase_admin_request, SUPABASE_URL, SUPABASE_KEY, SERVICE_KEY
 
 admin_bp = Blueprint('admin', __name__)
+
+
+@admin_bp.route('/api/health')
+def health_check():
+    """Health check endpoint для мониторинга."""
+    return jsonify({'status': 'ok', 'timestamp': datetime.utcnow().isoformat()})
 
 
 @admin_bp.route('/admin')
@@ -125,7 +132,7 @@ def delete_user(user_id):
         ('applications', f'worker_id=eq.{user_id}'),
         ('notifications', f'user_id=eq.{user_id}'),
         ('favorites', f'user_id=eq.{user_id}'),
-        ('favorites', f'favorite_user_id=eq.{user_id}'),
+        ('favorites', f'target_id=eq.{user_id}'),
         ('job_favorites', f'user_id=eq.{user_id}'),
         ('blacklists', f'user_id=eq.{user_id}'),
         ('blacklists', f'blocked_user_id=eq.{user_id}'),
@@ -139,7 +146,6 @@ def delete_user(user_id):
         ('job_payments', f'employer_id=eq.{user_id}'),
         ('push_subscriptions', f'user_id=eq.{user_id}'),
         ('messages', f'sender_id=eq.{user_id}'),
-        ('messages', f'receiver_id=eq.{user_id}'),
         ('monetization_settings', None),  # не привязана к пользователю
     ]
     for table, condition in cascade_tables:
@@ -249,7 +255,7 @@ def add_skill():
     if existing.ok and existing.json():
         item = existing.json()[0] if existing.json() else {}
         max_order = item.get('sort_order', 0)
-    resp = supabase_request('POST', 'skills', json={'name': name, 'sort_order': max_order + 1})
+    resp = supabase_admin_request('POST', 'skills', json={'name': name, 'sort_order': max_order + 1})
     if resp.ok:
         return jsonify({'success': True, 'skill': resp.json()[0] if isinstance(resp.json(), list) else resp.json()})
     return jsonify({'success': False, 'error': resp.text}), 400
@@ -264,7 +270,7 @@ def reorder_skills():
     if not items:
         return jsonify({'success': False, 'error': 'items required'}), 400
     for item in items:
-        supabase_request('PATCH', f'skills?id=eq.{item["id"]}', json={'sort_order': item['sort_order']})
+        supabase_admin_request('PATCH', f'skills?id=eq.{item["id"]}', json={'sort_order': item['sort_order']})
     return jsonify({'success': True})
 
 @admin_bp.route('/admin/skills/<skill_id>', methods=['PUT'])
@@ -275,16 +281,16 @@ def update_skill(skill_id):
     name = (data.get('name', '')).strip()
     if not name:
         return jsonify({'success': False, 'error': 'Name required'}), 400
-    resp = supabase_request('PATCH', f'skills?id=eq.{skill_id}', json={'name': name})
+    resp = supabase_admin_request('PATCH', f'skills?id=eq.{skill_id}', json={'name': name})
     return jsonify({'success': resp.ok})
 
 @admin_bp.route('/admin/skills/<skill_id>', methods=['DELETE'])
 @login_required
 @role_required('admin')
 def delete_skill(skill_id):
-    supabase_request('DELETE', f'user_skills?skill_id=eq.{skill_id}')
-    supabase_request('DELETE', f'job_skills?skill_id=eq.{skill_id}')
-    resp = supabase_request('DELETE', f'skills?id=eq.{skill_id}')
+    supabase_admin_request('DELETE', f'user_skills?skill_id=eq.{skill_id}')
+    supabase_admin_request('DELETE', f'job_skills?skill_id=eq.{skill_id}')
+    resp = supabase_admin_request('DELETE', f'skills?id=eq.{skill_id}')
     return jsonify({'success': resp.ok})
 
 @admin_bp.route('/admin/religions', methods=['GET'])
@@ -311,7 +317,7 @@ def add_religion():
     if existing.ok and existing.json():
         item = existing.json()[0] if existing.json() else {}
         max_order = item.get('sort_order', 0)
-    resp = supabase_request('POST', 'religions', json={'name': name, 'sort_order': max_order + 1})
+    resp = supabase_admin_request('POST', 'religions', json={'name': name, 'sort_order': max_order + 1})
     if resp.ok:
         return jsonify({'success': True, 'religion': resp.json()[0] if isinstance(resp.json(), list) else resp.json()})
     return jsonify({'success': False, 'error': resp.text}), 400
@@ -326,7 +332,7 @@ def reorder_religions():
     if not items:
         return jsonify({'success': False, 'error': 'items required'}), 400
     for item in items:
-        supabase_request('PATCH', f'religions?id=eq.{item["id"]}', json={'sort_order': item['sort_order']})
+        supabase_admin_request('PATCH', f'religions?id=eq.{item["id"]}', json={'sort_order': item['sort_order']})
     return jsonify({'success': True})
 
 @admin_bp.route('/admin/religions/<religion_id>', methods=['PUT'])
@@ -337,14 +343,14 @@ def update_religion(religion_id):
     name = (data.get('name', '')).strip()
     if not name:
         return jsonify({'success': False, 'error': 'Name required'}), 400
-    resp = supabase_request('PATCH', f'religions?id=eq.{religion_id}', json={'name': name})
+    resp = supabase_admin_request('PATCH', f'religions?id=eq.{religion_id}', json={'name': name})
     return jsonify({'success': resp.ok})
 
 @admin_bp.route('/admin/religions/<religion_id>', methods=['DELETE'])
 @login_required
 @role_required('admin')
 def delete_religion(religion_id):
-    resp = supabase_request('DELETE', f'religions?id=eq.{religion_id}')
+    resp = supabase_admin_request('DELETE', f'religions?id=eq.{religion_id}')
     return jsonify({'success': resp.ok})
 
 # ── Верификация работодателей ──────────────────────────
@@ -373,3 +379,12 @@ def reject_employer(user_id):
     else:
         flash('Ошибка при отклонении', 'danger')
     return redirect(url_for('admin.admin_panel', tab='verification'))
+
+
+@admin_bp.route('/admin/verify-employer/<user_id>', methods=['POST'])
+@login_required
+@role_required('admin')
+def verify_employer(user_id):
+    supabase_admin_request('PATCH', f'profiles?id=eq.{user_id}', json={'verified': True})
+    flash('Работодатель верифицирован', 'success')
+    return redirect(url_for('admin.employers'))

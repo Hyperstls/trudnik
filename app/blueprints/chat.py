@@ -1,7 +1,7 @@
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required
-from app.utils import supabase_request
+from app.utils import rate_limit, supabase_request
 from app.services.notification_service import create as create_notification
 
 chat_bp = Blueprint('chat', __name__)
@@ -80,11 +80,17 @@ def chat_new(worker_id):
 
 @chat_bp.route('/api/send_message', methods=['POST'])
 @login_required
+@rate_limit
 def send_message():
     """Отправить сообщение в чат заявки."""
     data = request.get_json()
     sender_id = session['user_id']
     application_id = data['application_id']
+    content = data['content']
+
+    # Серверная валидация длины сообщения
+    if len(content) > 2000:
+        return jsonify({'status': 'error', 'message': 'Сообщение слишком длинное (максимум 2000 символов)'}), 400
 
     # Проверить, что пользователь — участник заявки
     app_resp = supabase_request('GET',
@@ -100,17 +106,24 @@ def send_message():
     if app_data.get('status') != 'accepted':
         return jsonify({'status': 'error', 'message': 'Чат доступен только после принятия отклика'}), 403
 
-    # Блокировка чата после завершения задания
+    # Отправка сообщений разрешена только для заданий в статусе in_progress
     job_resp = supabase_request('GET', f'jobs?id=eq.{app_data["job_id"]}&select=status')
     if job_resp.ok and job_resp.json():
         job_status = job_resp.json()[0].get('status')
-        if job_status == 'completed':
-            return jsonify({'status': 'error', 'message': 'Чат недоступен — задание завершено'}), 403
+        if job_status != 'in_progress':
+            status_labels = {
+                'completed': 'завершено',
+                'cancelled': 'отменено',
+                'active': 'началось',
+                'open': 'открыто',
+            }
+            label = status_labels.get(job_status, job_status)
+            return jsonify({'status': 'error', 'message': f'Отправка сообщений недоступна — задание {label}'}), 403
 
     supabase_request('POST', 'messages', json={
         'application_id': application_id,
         'sender_id': sender_id,
-        'content': data['content']
+        'content': content
     })
 
     # Уведомить получателя

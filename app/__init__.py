@@ -28,6 +28,17 @@ def create_app():
             session['_csrf_token'] = secrets.token_hex(32)
         return {'csrf_token': session['_csrf_token']}
 
+    @app.after_request
+    def add_security_headers(response):
+        """Добавить HTTP Security Headers для защиты от XSS, clickjacking, MIME sniffing."""
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://api-maps.yandex.ru; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co; frame-src 'self'"
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+        return response
+
     @app.before_request
     def csrf_check():
         """Глобальная CSRF-защита: проверка токена для всех мутирующих запросов.
@@ -140,6 +151,7 @@ def create_app():
     from app.blueprints.admin import admin_bp
     from app.blueprints.monetization import monetization_bp
     from app.blueprints.ratings import ratings_bp
+    from app.blueprints.seo import seo_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(profile_bp)
@@ -152,6 +164,7 @@ def create_app():
     app.register_blueprint(admin_bp)
     app.register_blueprint(monetization_bp)
     app.register_blueprint(ratings_bp)
+    app.register_blueprint(seo_bp)
 
     # ================================
     # API-роуты accept/reject/reopen (вынесены на объект app
@@ -159,14 +172,17 @@ def create_app():
     # ================================
     from app.blueprints.applications import api_handle_application
     from app.decorators import login_required
+    from app.utils import rate_limit
 
     @app.route('/api/applications/<app_id>/accept', methods=['POST'])
     @login_required
+    @rate_limit
     def api_accept_application(app_id):
         return api_handle_application(app_id, 'accept')
 
     @app.route('/api/applications/<app_id>/reject', methods=['POST'])
     @login_required
+    @rate_limit
     def api_reject_application(app_id):
         return api_handle_application(app_id, 'reject')
 
@@ -180,6 +196,10 @@ def create_app():
     # ================================
 
     from flask import render_template, send_from_directory
+
+    @app.route('/sw.js')
+    def service_worker():
+        return app.send_static_file('sw.js')
 
     @app.route('/offline')
     def offline():
@@ -219,6 +239,36 @@ def create_app():
         app.logger.exception('Internal server error')
         return render_template('error.html', error_code='500',
                                error='Внутренняя ошибка сервера'), 500
+
+    @app.errorhandler(Exception)
+    def handle_supabase_error(e):
+        import requests as req_lib
+        if isinstance(e, req_lib.ConnectionError):
+            return render_template('error.html', error_code='503',
+                                   error='Сервис временно недоступен. Пожалуйста, попробуйте позже.'), 503
+        if hasattr(e, '__module__') and 'supabase' in str(e.__module__).lower():
+            return render_template('error.html', error_code='503',
+                                   error='Сервис временно недоступен. Пожалуйста, попробуйте позже.'), 503
+        raise e
+
+    # ================================
+    # Health Check Endpoint
+    # ================================
+
+    from flask import jsonify
+    from app.utils import supabase_request
+
+    @app.route('/health')
+    def health_check():
+        """Проверка работоспособности приложения и доступности БД."""
+        try:
+            resp = supabase_request('GET', 'profiles?select=id&limit=1')
+            if resp.ok:
+                return jsonify({"status": "healthy", "database": "connected"}), 200
+            else:
+                return jsonify({"status": "unhealthy", "database": "disconnected"}), 503
+        except Exception:
+            return jsonify({"status": "unhealthy"}), 500
 
     return app
 

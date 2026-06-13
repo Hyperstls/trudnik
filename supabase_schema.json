@@ -1,0 +1,2107 @@
+{
+  "_meta": {
+    "generated_by": "dump_supabase_schema.py",
+    "collection_method": "REST API direct",
+    "notes": ""
+  },
+  "tables": [
+    {
+      "data_type": "uuid",
+      "table_name": "_archive_contact_payments",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "_archive_contact_payments",
+      "column_name": "employer_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "_archive_contact_payments",
+      "column_name": "worker_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "_archive_contact_payments",
+      "column_name": "job_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "_archive_contact_payments",
+      "column_name": "application_id",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "integer",
+      "table_name": "_archive_contact_payments",
+      "column_name": "amount",
+      "is_nullable": "NO",
+      "column_default": "290",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "_archive_contact_payments",
+      "column_name": "status",
+      "is_nullable": "NO",
+      "column_default": "'pending'::text",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "_archive_contact_payments",
+      "column_name": "transaction_id",
+      "is_nullable": "YES",
+      "column_default": "''::text",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "_archive_contact_payments",
+      "column_name": "created_at",
+      "is_nullable": "YES",
+      "column_default": "now()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "_archive_contact_payments",
+      "column_name": "paid_at",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "applications",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "uuid_generate_v4()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "applications",
+      "column_name": "job_id",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "applications",
+      "column_name": "worker_id",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "applications",
+      "column_name": "status",
+      "is_nullable": "YES",
+      "column_default": "'pending'::text",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "applications",
+      "column_name": "created_at",
+      "is_nullable": "YES",
+      "column_default": "now()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "blacklists",
+      "column_name": "user_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "blacklists",
+      "column_name": "blocked_user_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "blacklists",
+      "column_name": "created_at",
+      "is_nullable": "YES",
+      "column_default": "now()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "employer_details",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "employer_details",
+      "column_name": "name",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "employer_details",
+      "column_name": "description",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "employer_details",
+      "column_name": "address",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "employer_details",
+      "column_name": "city",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "double precision",
+      "table_name": "employer_details",
+      "column_name": "lat",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "double precision",
+      "table_name": "employer_details",
+      "column_name": "lng",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "favorites",
+      "column_name": "user_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "favorites",
+      "column_name": "target_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "favorites",
+      "column_name": "created_at",
+      "is_nullable": "YES",
+      "column_default": "now()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "name",
+      "table_name": "geography_columns",
+      "column_name": "f_table_catalog",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "name",
+      "table_name": "geography_columns",
+      "column_name": "f_table_schema",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "name",
+      "table_name": "geography_columns",
+      "column_name": "f_table_name",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "name",
+      "table_name": "geography_columns",
+      "column_name": "f_geography_column",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "integer",
+      "table_name": "geography_columns",
+      "column_name": "coord_dimension",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "integer",
+      "table_name": "geography_columns",
+      "column_name": "srid",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "geography_columns",
+      "column_name": "type",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "character varying",
+      "table_name": "geometry_columns",
+      "column_name": "f_table_catalog",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": 256
+    },
+    {
+      "data_type": "name",
+      "table_name": "geometry_columns",
+      "column_name": "f_table_schema",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "name",
+      "table_name": "geometry_columns",
+      "column_name": "f_table_name",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "name",
+      "table_name": "geometry_columns",
+      "column_name": "f_geometry_column",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "integer",
+      "table_name": "geometry_columns",
+      "column_name": "coord_dimension",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "integer",
+      "table_name": "geometry_columns",
+      "column_name": "srid",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "character varying",
+      "table_name": "geometry_columns",
+      "column_name": "type",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": 30
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "invitations",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "invitations",
+      "column_name": "job_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "invitations",
+      "column_name": "employer_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "invitations",
+      "column_name": "worker_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "character varying",
+      "table_name": "invitations",
+      "column_name": "status",
+      "is_nullable": "YES",
+      "column_default": "'pending'::character varying",
+      "character_maximum_length": 20
+    },
+    {
+      "data_type": "text",
+      "table_name": "invitations",
+      "column_name": "message",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "invitations",
+      "column_name": "created_at",
+      "is_nullable": "YES",
+      "column_default": "now()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "invitations",
+      "column_name": "responded_at",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "job_favorites",
+      "column_name": "user_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "job_favorites",
+      "column_name": "job_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "job_favorites",
+      "column_name": "created_at",
+      "is_nullable": "YES",
+      "column_default": "now()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "job_payments",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "job_payments",
+      "column_name": "job_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "job_payments",
+      "column_name": "employer_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "integer",
+      "table_name": "job_payments",
+      "column_name": "amount",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "character varying",
+      "table_name": "job_payments",
+      "column_name": "tariff",
+      "is_nullable": "YES",
+      "column_default": "'standard'::character varying",
+      "character_maximum_length": 20
+    },
+    {
+      "data_type": "character varying",
+      "table_name": "job_payments",
+      "column_name": "type",
+      "is_nullable": "YES",
+      "column_default": "'publication'::character varying",
+      "character_maximum_length": 30
+    },
+    {
+      "data_type": "character varying",
+      "table_name": "job_payments",
+      "column_name": "status",
+      "is_nullable": "YES",
+      "column_default": "'pending'::character varying",
+      "character_maximum_length": 20
+    },
+    {
+      "data_type": "character varying",
+      "table_name": "job_payments",
+      "column_name": "transaction_id",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": 255
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "job_payments",
+      "column_name": "paid_at",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "job_payments",
+      "column_name": "created_at",
+      "is_nullable": "YES",
+      "column_default": "now()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "job_photos",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "uuid_generate_v4()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "job_photos",
+      "column_name": "job_id",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "job_photos",
+      "column_name": "photo_url",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "integer",
+      "table_name": "job_photos",
+      "column_name": "order_num",
+      "is_nullable": "YES",
+      "column_default": "0",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "job_skills",
+      "column_name": "job_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "job_skills",
+      "column_name": "skill_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "jobs",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "uuid_generate_v4()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "jobs",
+      "column_name": "employer_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "jobs",
+      "column_name": "organization_name",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "jobs",
+      "column_name": "org_description",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "jobs",
+      "column_name": "object_description",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "jobs",
+      "column_name": "work_type",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "jobs",
+      "column_name": "detailed_description",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "jobs",
+      "column_name": "date_time",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "numeric",
+      "table_name": "jobs",
+      "column_name": "payment_amount",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "jobs",
+      "column_name": "address",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "jobs",
+      "column_name": "city",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "double precision",
+      "table_name": "jobs",
+      "column_name": "lat",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "double precision",
+      "table_name": "jobs",
+      "column_name": "lng",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "jobs",
+      "column_name": "status",
+      "is_nullable": "YES",
+      "column_default": "'open'::text",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "jobs",
+      "column_name": "created_at",
+      "is_nullable": "YES",
+      "column_default": "now()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "jobs",
+      "column_name": "preferred_religion",
+      "is_nullable": "YES",
+      "column_default": "'не важно'::text",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "integer",
+      "table_name": "jobs",
+      "column_name": "max_workers",
+      "is_nullable": "YES",
+      "column_default": "1",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "integer",
+      "table_name": "jobs",
+      "column_name": "current_workers",
+      "is_nullable": "YES",
+      "column_default": "0",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "tsvector",
+      "table_name": "jobs",
+      "column_name": "search_vector",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "boolean",
+      "table_name": "jobs",
+      "column_name": "is_paid",
+      "is_nullable": "YES",
+      "column_default": "false",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "jobs",
+      "column_name": "paid_at",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "jobs",
+      "column_name": "expires_at",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "character varying",
+      "table_name": "jobs",
+      "column_name": "tariff",
+      "is_nullable": "YES",
+      "column_default": "'standard'::character varying",
+      "character_maximum_length": 20
+    },
+    {
+      "data_type": "bigint",
+      "table_name": "messages",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "messages",
+      "column_name": "sender_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "messages",
+      "column_name": "content",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "messages",
+      "column_name": "created_at",
+      "is_nullable": "YES",
+      "column_default": "now()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "messages",
+      "column_name": "application_id",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "monetization_settings",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "monetization_settings",
+      "column_name": "key",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "monetization_settings",
+      "column_name": "value",
+      "is_nullable": "NO",
+      "column_default": "''::text",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "monetization_settings",
+      "column_name": "updated_at",
+      "is_nullable": "YES",
+      "column_default": "now()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "bigint",
+      "table_name": "notifications",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "notifications",
+      "column_name": "user_id",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "notifications",
+      "column_name": "type",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "notifications",
+      "column_name": "message",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "jsonb",
+      "table_name": "notifications",
+      "column_name": "data",
+      "is_nullable": "YES",
+      "column_default": "'{}'::jsonb",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "boolean",
+      "table_name": "notifications",
+      "column_name": "read",
+      "is_nullable": "YES",
+      "column_default": "false",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "notifications",
+      "column_name": "created_at",
+      "is_nullable": "YES",
+      "column_default": "now()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "boolean",
+      "table_name": "notifications",
+      "column_name": "is_read",
+      "is_nullable": "YES",
+      "column_default": "false",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "profiles",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "profiles",
+      "column_name": "role",
+      "is_nullable": "NO",
+      "column_default": "'worker'::text",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "profiles",
+      "column_name": "full_name",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "profiles",
+      "column_name": "phone",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "profiles",
+      "column_name": "photo_url",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "integer",
+      "table_name": "profiles",
+      "column_name": "age",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "profiles",
+      "column_name": "bio",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "profiles",
+      "column_name": "city",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "profiles",
+      "column_name": "experience",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "numeric",
+      "table_name": "profiles",
+      "column_name": "desired_payment",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "profiles",
+      "column_name": "verification_status",
+      "is_nullable": "YES",
+      "column_default": "'none'::text",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "profiles",
+      "column_name": "verification_doc_url",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "double precision",
+      "table_name": "profiles",
+      "column_name": "rating",
+      "is_nullable": "YES",
+      "column_default": "0",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "integer",
+      "table_name": "profiles",
+      "column_name": "total_reviews",
+      "is_nullable": "YES",
+      "column_default": "0",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "profiles",
+      "column_name": "created_at",
+      "is_nullable": "YES",
+      "column_default": "now()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "profiles",
+      "column_name": "updated_at",
+      "is_nullable": "YES",
+      "column_default": "now()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "ARRAY",
+      "table_name": "profiles",
+      "column_name": "skills",
+      "is_nullable": "YES",
+      "column_default": "'{}'::text[]",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "profiles",
+      "column_name": "religion",
+      "is_nullable": "YES",
+      "column_default": "'не указано'::text",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "profiles",
+      "column_name": "portfolio_link",
+      "is_nullable": "YES",
+      "column_default": "''::text",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "profiles",
+      "column_name": "inn",
+      "is_nullable": "YES",
+      "column_default": "''::text",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "boolean",
+      "table_name": "profiles",
+      "column_name": "is_self_employed",
+      "is_nullable": "YES",
+      "column_default": "false",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "profiles",
+      "column_name": "email_public",
+      "is_nullable": "YES",
+      "column_default": "''::text",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "profiles",
+      "column_name": "religion_id",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "tsvector",
+      "table_name": "profiles",
+      "column_name": "search_vector",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "jsonb",
+      "table_name": "profiles",
+      "column_name": "notification_prefs",
+      "is_nullable": "YES",
+      "column_default": "'{}'::jsonb",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "profiles",
+      "column_name": "contact",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "bigint",
+      "table_name": "push_subscriptions",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "push_subscriptions",
+      "column_name": "user_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "push_subscriptions",
+      "column_name": "endpoint",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "push_subscriptions",
+      "column_name": "p256dh",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "push_subscriptions",
+      "column_name": "auth",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "push_subscriptions",
+      "column_name": "created_at",
+      "is_nullable": "YES",
+      "column_default": "now()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "ratings",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "ratings",
+      "column_name": "rated_user_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "ratings",
+      "column_name": "rater_user_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "character varying",
+      "table_name": "ratings",
+      "column_name": "rating_type",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": 20
+    },
+    {
+      "data_type": "character varying",
+      "table_name": "ratings",
+      "column_name": "target_type",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": 20
+    },
+    {
+      "data_type": "integer",
+      "table_name": "ratings",
+      "column_name": "rating",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "ratings",
+      "column_name": "comment",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "ratings",
+      "column_name": "created_at",
+      "is_nullable": "YES",
+      "column_default": "now()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "ratings",
+      "column_name": "job_id",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "ratings",
+      "column_name": "updated_at",
+      "is_nullable": "YES",
+      "column_default": "now()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "receipts",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "receipts",
+      "column_name": "contact_payment_id",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "receipts",
+      "column_name": "church_name",
+      "is_nullable": "NO",
+      "column_default": "''::text",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "receipts",
+      "column_name": "church_inn",
+      "is_nullable": "NO",
+      "column_default": "''::text",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "receipts",
+      "column_name": "service_description",
+      "is_nullable": "NO",
+      "column_default": "''::text",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "integer",
+      "table_name": "receipts",
+      "column_name": "amount",
+      "is_nullable": "NO",
+      "column_default": "0",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "receipts",
+      "column_name": "status",
+      "is_nullable": "NO",
+      "column_default": "'sent'::text",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "jsonb",
+      "table_name": "receipts",
+      "column_name": "receipt_json",
+      "is_nullable": "YES",
+      "column_default": "'{}'::jsonb",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "receipts",
+      "column_name": "created_at",
+      "is_nullable": "YES",
+      "column_default": "now()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "receipts",
+      "column_name": "resent_at",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "religions",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "religions",
+      "column_name": "name",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "religions",
+      "column_name": "created_at",
+      "is_nullable": "YES",
+      "column_default": "now()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "integer",
+      "table_name": "religions",
+      "column_name": "sort_order",
+      "is_nullable": "YES",
+      "column_default": "0",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "skills",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "text",
+      "table_name": "skills",
+      "column_name": "name",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "skills",
+      "column_name": "created_at",
+      "is_nullable": "YES",
+      "column_default": "now()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "integer",
+      "table_name": "skills",
+      "column_name": "sort_order",
+      "is_nullable": "YES",
+      "column_default": "0",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "integer",
+      "table_name": "spatial_ref_sys",
+      "column_name": "srid",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "character varying",
+      "table_name": "spatial_ref_sys",
+      "column_name": "auth_name",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": 256
+    },
+    {
+      "data_type": "integer",
+      "table_name": "spatial_ref_sys",
+      "column_name": "auth_srid",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "character varying",
+      "table_name": "spatial_ref_sys",
+      "column_name": "srtext",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": 2048
+    },
+    {
+      "data_type": "character varying",
+      "table_name": "spatial_ref_sys",
+      "column_name": "proj4text",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": 2048
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "tariff_settings",
+      "column_name": "id",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "character varying",
+      "table_name": "tariff_settings",
+      "column_name": "tariff_key",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": 30
+    },
+    {
+      "data_type": "integer",
+      "table_name": "tariff_settings",
+      "column_name": "price",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "integer",
+      "table_name": "tariff_settings",
+      "column_name": "duration_days",
+      "is_nullable": "NO",
+      "column_default": "30",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "integer",
+      "table_name": "tariff_settings",
+      "column_name": "renewal_price",
+      "is_nullable": "YES",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "boolean",
+      "table_name": "tariff_settings",
+      "column_name": "is_active",
+      "is_nullable": "YES",
+      "column_default": "true",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "timestamp with time zone",
+      "table_name": "tariff_settings",
+      "column_name": "updated_at",
+      "is_nullable": "YES",
+      "column_default": "now()",
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "user_skills",
+      "column_name": "user_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    },
+    {
+      "data_type": "uuid",
+      "table_name": "user_skills",
+      "column_name": "skill_id",
+      "is_nullable": "NO",
+      "column_default": null,
+      "character_maximum_length": null
+    }
+  ],
+  "rls_status": [
+    {
+      "tablename": "_archive_contact_payments",
+      "rls_enabled": true
+    },
+    {
+      "tablename": "applications",
+      "rls_enabled": true
+    },
+    {
+      "tablename": "blacklists",
+      "rls_enabled": true
+    },
+    {
+      "tablename": "employer_details",
+      "rls_enabled": true
+    },
+    {
+      "tablename": "favorites",
+      "rls_enabled": true
+    },
+    {
+      "tablename": "invitations",
+      "rls_enabled": true
+    },
+    {
+      "tablename": "job_favorites",
+      "rls_enabled": true
+    },
+    {
+      "tablename": "job_payments",
+      "rls_enabled": true
+    },
+    {
+      "tablename": "job_photos",
+      "rls_enabled": true
+    },
+    {
+      "tablename": "job_skills",
+      "rls_enabled": true
+    },
+    {
+      "tablename": "jobs",
+      "rls_enabled": true
+    },
+    {
+      "tablename": "messages",
+      "rls_enabled": true
+    },
+    {
+      "tablename": "monetization_settings",
+      "rls_enabled": true
+    },
+    {
+      "tablename": "notifications",
+      "rls_enabled": true
+    },
+    {
+      "tablename": "profiles",
+      "rls_enabled": true
+    },
+    {
+      "tablename": "push_subscriptions",
+      "rls_enabled": true
+    },
+    {
+      "tablename": "ratings",
+      "rls_enabled": true
+    },
+    {
+      "tablename": "receipts",
+      "rls_enabled": true
+    },
+    {
+      "tablename": "religions",
+      "rls_enabled": true
+    },
+    {
+      "tablename": "skills",
+      "rls_enabled": true
+    },
+    {
+      "tablename": "spatial_ref_sys",
+      "rls_enabled": false
+    },
+    {
+      "tablename": "tariff_settings",
+      "rls_enabled": true
+    },
+    {
+      "tablename": "user_skills",
+      "rls_enabled": true
+    }
+  ],
+  "rls_policies": [
+    {
+      "operation": "INSERT",
+      "tablename": "_archive_contact_payments",
+      "policyname": "contact_payments_insert"
+    },
+    {
+      "operation": "SELECT",
+      "tablename": "_archive_contact_payments",
+      "policyname": "contact_payments_select"
+    },
+    {
+      "operation": "UPDATE",
+      "tablename": "_archive_contact_payments",
+      "policyname": "contact_payments_update"
+    },
+    {
+      "operation": "UPDATE",
+      "tablename": "applications",
+      "policyname": "Employers can update applications"
+    },
+    {
+      "operation": "SELECT",
+      "tablename": "applications",
+      "policyname": "Users can view own applications"
+    },
+    {
+      "operation": "DELETE",
+      "tablename": "applications",
+      "policyname": "Workers can delete own applications"
+    },
+    {
+      "operation": "INSERT",
+      "tablename": "applications",
+      "policyname": "Workers can insert applications"
+    },
+    {
+      "operation": "ALL",
+      "tablename": "blacklists",
+      "policyname": "Users manage own blacklists"
+    },
+    {
+      "operation": "SELECT",
+      "tablename": "employer_details",
+      "policyname": "Anyone can view employer details"
+    },
+    {
+      "operation": "INSERT",
+      "tablename": "employer_details",
+      "policyname": "Employers can insert own details"
+    },
+    {
+      "operation": "UPDATE",
+      "tablename": "employer_details",
+      "policyname": "Employers can update own details"
+    },
+    {
+      "operation": "ALL",
+      "tablename": "favorites",
+      "policyname": "Users manage own favorites"
+    },
+    {
+      "operation": "INSERT",
+      "tablename": "invitations",
+      "policyname": "Employers can insert invitations"
+    },
+    {
+      "operation": "SELECT",
+      "tablename": "invitations",
+      "policyname": "Users can read their invitations"
+    },
+    {
+      "operation": "UPDATE",
+      "tablename": "invitations",
+      "policyname": "Workers can update invitations"
+    },
+    {
+      "operation": "ALL",
+      "tablename": "job_favorites",
+      "policyname": "Users manage own job favorites"
+    },
+    {
+      "operation": "SELECT",
+      "tablename": "job_payments",
+      "policyname": "Employers can read own payments"
+    },
+    {
+      "operation": "INSERT",
+      "tablename": "job_payments",
+      "policyname": "Service can insert payments"
+    },
+    {
+      "operation": "SELECT",
+      "tablename": "job_photos",
+      "policyname": "Anyone can view job photos"
+    },
+    {
+      "operation": "INSERT",
+      "tablename": "job_photos",
+      "policyname": "Employers can insert job photos"
+    },
+    {
+      "operation": "SELECT",
+      "tablename": "job_skills",
+      "policyname": "read_job_skills"
+    },
+    {
+      "operation": "DELETE",
+      "tablename": "jobs",
+      "policyname": "Employers can delete own jobs"
+    },
+    {
+      "operation": "INSERT",
+      "tablename": "jobs",
+      "policyname": "Employers can insert jobs"
+    },
+    {
+      "operation": "UPDATE",
+      "tablename": "jobs",
+      "policyname": "Employers can update own jobs"
+    },
+    {
+      "operation": "SELECT",
+      "tablename": "jobs",
+      "policyname": "Jobs are viewable by everyone"
+    },
+    {
+      "operation": "INSERT",
+      "tablename": "messages",
+      "policyname": "Application participants can insert messages"
+    },
+    {
+      "operation": "SELECT",
+      "tablename": "messages",
+      "policyname": "Application participants can view messages"
+    },
+    {
+      "operation": "INSERT",
+      "tablename": "monetization_settings",
+      "policyname": "monetization_settings_insert"
+    },
+    {
+      "operation": "SELECT",
+      "tablename": "monetization_settings",
+      "policyname": "monetization_settings_select"
+    },
+    {
+      "operation": "UPDATE",
+      "tablename": "monetization_settings",
+      "policyname": "monetization_settings_update"
+    },
+    {
+      "operation": "UPDATE",
+      "tablename": "notifications",
+      "policyname": "Users can update own notifications"
+    },
+    {
+      "operation": "SELECT",
+      "tablename": "notifications",
+      "policyname": "Users can view own notifications"
+    },
+    {
+      "operation": "SELECT",
+      "tablename": "profiles",
+      "policyname": "Public profiles are viewable"
+    },
+    {
+      "operation": "INSERT",
+      "tablename": "profiles",
+      "policyname": "Users can insert own profile"
+    },
+    {
+      "operation": "UPDATE",
+      "tablename": "profiles",
+      "policyname": "Users can update own profile"
+    },
+    {
+      "operation": "DELETE",
+      "tablename": "push_subscriptions",
+      "policyname": "Users can delete own push subscriptions"
+    },
+    {
+      "operation": "INSERT",
+      "tablename": "push_subscriptions",
+      "policyname": "Users can insert own push subscriptions"
+    },
+    {
+      "operation": "SELECT",
+      "tablename": "push_subscriptions",
+      "policyname": "Users can view own push subscriptions"
+    },
+    {
+      "operation": "SELECT",
+      "tablename": "ratings",
+      "policyname": "Anyone can read ratings"
+    },
+    {
+      "operation": "INSERT",
+      "tablename": "ratings",
+      "policyname": "Users can insert own ratings"
+    },
+    {
+      "operation": "UPDATE",
+      "tablename": "ratings",
+      "policyname": "Users can update own ratings"
+    },
+    {
+      "operation": "INSERT",
+      "tablename": "receipts",
+      "policyname": "receipts_insert"
+    },
+    {
+      "operation": "SELECT",
+      "tablename": "receipts",
+      "policyname": "receipts_select"
+    },
+    {
+      "operation": "UPDATE",
+      "tablename": "receipts",
+      "policyname": "receipts_update"
+    },
+    {
+      "operation": "SELECT",
+      "tablename": "religions",
+      "policyname": "read_religions"
+    },
+    {
+      "operation": "SELECT",
+      "tablename": "skills",
+      "policyname": "read_skills"
+    },
+    {
+      "operation": "SELECT",
+      "tablename": "tariff_settings",
+      "policyname": "Anyone can read tariff settings"
+    },
+    {
+      "operation": "SELECT",
+      "tablename": "user_skills",
+      "policyname": "read_user_skills"
+    }
+  ],
+  "indexes": [
+    {
+      "indexdef": "CREATE UNIQUE INDEX contact_payments_pkey ON public._archive_contact_payments USING btree (id)",
+      "indexname": "contact_payments_pkey",
+      "tablename": "_archive_contact_payments"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_contact_payments_application_id ON public._archive_contact_payments USING btree (application_id)",
+      "indexname": "idx_contact_payments_application_id",
+      "tablename": "_archive_contact_payments"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_contact_payments_employer ON public._archive_contact_payments USING btree (employer_id)",
+      "indexname": "idx_contact_payments_employer",
+      "tablename": "_archive_contact_payments"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_contact_payments_job ON public._archive_contact_payments USING btree (job_id)",
+      "indexname": "idx_contact_payments_job",
+      "tablename": "_archive_contact_payments"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_contact_payments_worker ON public._archive_contact_payments USING btree (worker_id)",
+      "indexname": "idx_contact_payments_worker",
+      "tablename": "_archive_contact_payments"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX applications_job_id_worker_id_key ON public.applications USING btree (job_id, worker_id)",
+      "indexname": "applications_job_id_worker_id_key",
+      "tablename": "applications"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX applications_pkey ON public.applications USING btree (id)",
+      "indexname": "applications_pkey",
+      "tablename": "applications"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_applications_worker_id ON public.applications USING btree (worker_id)",
+      "indexname": "idx_applications_worker_id",
+      "tablename": "applications"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX blacklists_pkey ON public.blacklists USING btree (user_id, blocked_user_id)",
+      "indexname": "blacklists_pkey",
+      "tablename": "blacklists"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_blacklists_blocked_user_id ON public.blacklists USING btree (blocked_user_id)",
+      "indexname": "idx_blacklists_blocked_user_id",
+      "tablename": "blacklists"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX employer_details_pkey ON public.employer_details USING btree (id)",
+      "indexname": "employer_details_pkey",
+      "tablename": "employer_details"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX favorites_pkey ON public.favorites USING btree (user_id, target_id)",
+      "indexname": "favorites_pkey",
+      "tablename": "favorites"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_favorites_target_id ON public.favorites USING btree (target_id)",
+      "indexname": "idx_favorites_target_id",
+      "tablename": "favorites"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_invitations_employer ON public.invitations USING btree (employer_id)",
+      "indexname": "idx_invitations_employer",
+      "tablename": "invitations"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_invitations_job ON public.invitations USING btree (job_id)",
+      "indexname": "idx_invitations_job",
+      "tablename": "invitations"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_invitations_worker ON public.invitations USING btree (worker_id)",
+      "indexname": "idx_invitations_worker",
+      "tablename": "invitations"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX invitations_job_id_worker_id_key ON public.invitations USING btree (job_id, worker_id)",
+      "indexname": "invitations_job_id_worker_id_key",
+      "tablename": "invitations"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX invitations_pkey ON public.invitations USING btree (id)",
+      "indexname": "invitations_pkey",
+      "tablename": "invitations"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_job_favorites_job_id ON public.job_favorites USING btree (job_id)",
+      "indexname": "idx_job_favorites_job_id",
+      "tablename": "job_favorites"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX job_favorites_pkey ON public.job_favorites USING btree (user_id, job_id)",
+      "indexname": "job_favorites_pkey",
+      "tablename": "job_favorites"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_job_payments_employer ON public.job_payments USING btree (employer_id)",
+      "indexname": "idx_job_payments_employer",
+      "tablename": "job_payments"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_job_payments_job ON public.job_payments USING btree (job_id)",
+      "indexname": "idx_job_payments_job",
+      "tablename": "job_payments"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX job_payments_pkey ON public.job_payments USING btree (id)",
+      "indexname": "job_payments_pkey",
+      "tablename": "job_payments"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_job_photos_job_id ON public.job_photos USING btree (job_id)",
+      "indexname": "idx_job_photos_job_id",
+      "tablename": "job_photos"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX job_photos_pkey ON public.job_photos USING btree (id)",
+      "indexname": "job_photos_pkey",
+      "tablename": "job_photos"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_job_skills_skill_id ON public.job_skills USING btree (skill_id)",
+      "indexname": "idx_job_skills_skill_id",
+      "tablename": "job_skills"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX job_skills_pkey ON public.job_skills USING btree (job_id, skill_id)",
+      "indexname": "job_skills_pkey",
+      "tablename": "job_skills"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_jobs_employer_id ON public.jobs USING btree (employer_id)",
+      "indexname": "idx_jobs_employer_id",
+      "tablename": "jobs"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_jobs_expires ON public.jobs USING btree (expires_at) WHERE (status = 'open'::text)",
+      "indexname": "idx_jobs_expires",
+      "tablename": "jobs"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX jobs_pkey ON public.jobs USING btree (id)",
+      "indexname": "jobs_pkey",
+      "tablename": "jobs"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_messages_application_id ON public.messages USING btree (application_id)",
+      "indexname": "idx_messages_application_id",
+      "tablename": "messages"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_messages_sender_id ON public.messages USING btree (sender_id)",
+      "indexname": "idx_messages_sender_id",
+      "tablename": "messages"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX messages_pkey ON public.messages USING btree (id)",
+      "indexname": "messages_pkey",
+      "tablename": "messages"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX monetization_settings_key_key ON public.monetization_settings USING btree (key)",
+      "indexname": "monetization_settings_key_key",
+      "tablename": "monetization_settings"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX monetization_settings_pkey ON public.monetization_settings USING btree (id)",
+      "indexname": "monetization_settings_pkey",
+      "tablename": "monetization_settings"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_notifications_user ON public.notifications USING btree (user_id)",
+      "indexname": "idx_notifications_user",
+      "tablename": "notifications"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX notifications_pkey ON public.notifications USING btree (id)",
+      "indexname": "notifications_pkey",
+      "tablename": "notifications"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_profiles_religion_id ON public.profiles USING btree (religion_id)",
+      "indexname": "idx_profiles_religion_id",
+      "tablename": "profiles"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX profiles_pkey ON public.profiles USING btree (id)",
+      "indexname": "profiles_pkey",
+      "tablename": "profiles"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_push_subscriptions_user_id ON public.push_subscriptions USING btree (user_id)",
+      "indexname": "idx_push_subscriptions_user_id",
+      "tablename": "push_subscriptions"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX push_subscriptions_pkey ON public.push_subscriptions USING btree (id)",
+      "indexname": "push_subscriptions_pkey",
+      "tablename": "push_subscriptions"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_ratings_job ON public.ratings USING btree (job_id)",
+      "indexname": "idx_ratings_job",
+      "tablename": "ratings"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_ratings_rated_user ON public.ratings USING btree (rated_user_id)",
+      "indexname": "idx_ratings_rated_user",
+      "tablename": "ratings"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_ratings_rater_user ON public.ratings USING btree (rater_user_id)",
+      "indexname": "idx_ratings_rater_user",
+      "tablename": "ratings"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX ratings_pkey ON public.ratings USING btree (id)",
+      "indexname": "ratings_pkey",
+      "tablename": "ratings"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX ratings_rater_job_unique ON public.ratings USING btree (rater_user_id, job_id)",
+      "indexname": "ratings_rater_job_unique",
+      "tablename": "ratings"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_receipts_contact_payment_id ON public.receipts USING btree (contact_payment_id)",
+      "indexname": "idx_receipts_contact_payment_id",
+      "tablename": "receipts"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX receipts_pkey ON public.receipts USING btree (id)",
+      "indexname": "receipts_pkey",
+      "tablename": "receipts"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_religions_sort ON public.religions USING btree (sort_order, name)",
+      "indexname": "idx_religions_sort",
+      "tablename": "religions"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX religions_name_key ON public.religions USING btree (name)",
+      "indexname": "religions_name_key",
+      "tablename": "religions"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX religions_pkey ON public.religions USING btree (id)",
+      "indexname": "religions_pkey",
+      "tablename": "religions"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_skills_sort ON public.skills USING btree (sort_order, name)",
+      "indexname": "idx_skills_sort",
+      "tablename": "skills"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX skills_name_key ON public.skills USING btree (name)",
+      "indexname": "skills_name_key",
+      "tablename": "skills"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX skills_pkey ON public.skills USING btree (id)",
+      "indexname": "skills_pkey",
+      "tablename": "skills"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX spatial_ref_sys_pkey ON public.spatial_ref_sys USING btree (srid)",
+      "indexname": "spatial_ref_sys_pkey",
+      "tablename": "spatial_ref_sys"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX tariff_settings_pkey ON public.tariff_settings USING btree (id)",
+      "indexname": "tariff_settings_pkey",
+      "tablename": "tariff_settings"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX tariff_settings_tariff_key_key ON public.tariff_settings USING btree (tariff_key)",
+      "indexname": "tariff_settings_tariff_key_key",
+      "tablename": "tariff_settings"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_user_skills_skill_id ON public.user_skills USING btree (skill_id)",
+      "indexname": "idx_user_skills_skill_id",
+      "tablename": "user_skills"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX user_skills_pkey ON public.user_skills USING btree (user_id, skill_id)",
+      "indexname": "user_skills_pkey",
+      "tablename": "user_skills"
+    }
+  ],
+  "enums": []
+}

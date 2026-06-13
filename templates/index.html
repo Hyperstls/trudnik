@@ -12,7 +12,14 @@
         </div>
     </div>
 
-
+    {% if session.get('role') == 'worker' %}
+    <!-- Filter buttons -->
+    <div class="flex gap-2 mb-4">
+        <button onclick="filterJobs('all')" class="filter-btn active px-4 py-2 rounded-full text-sm font-medium transition-all bg-primary-500 text-white shadow-sm" data-filter="all">Все</button>
+        <button onclick="filterJobs('new')" class="filter-btn px-4 py-2 rounded-full text-sm font-medium transition-all bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50" data-filter="new">Новые</button>
+        <button onclick="filterJobs('applied')" class="filter-btn px-4 py-2 rounded-full text-sm font-medium transition-all bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50" data-filter="applied">Откликнулся</button>
+    </div>
+    {% endif %}
 
     {% if session.get('role') == 'worker' %}
     <!-- Mass actions bar (floating) -->
@@ -35,7 +42,7 @@
     <!-- Job cards grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {% for job in jobs %}
-        <div class="card bg-white rounded-2xl shadow-sm border border-neutral-200 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group fade-in">
+        <div class="card bg-white rounded-2xl shadow-sm border border-neutral-200 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group fade-in{% if job.id in applied_job_ids %} applied{% endif %}">
             <div class="p-4">
                 {% if session.get('role') == 'worker' %}
                 <div class="flex items-start gap-2">
@@ -174,5 +181,32 @@ function bulkAction(url) {
         cb.addEventListener('change', updateMassBar);
     });
 })();
+
+// ==========================================
+// Filter jobs: all / new / applied
+// ==========================================
+function filterJobs(filter) {
+    // Update active button styles
+    document.querySelectorAll('.filter-btn').forEach(function(btn) {
+        btn.classList.remove('bg-primary-500', 'text-white', 'shadow-sm');
+        btn.classList.add('bg-white', 'text-neutral-700', 'border', 'border-neutral-200', 'hover:bg-neutral-50');
+    });
+    var activeBtn = document.querySelector('.filter-btn[data-filter="' + filter + '"]');
+    if (activeBtn) {
+        activeBtn.classList.remove('bg-white', 'text-neutral-700', 'border', 'border-neutral-200', 'hover:bg-neutral-50');
+        activeBtn.classList.add('bg-primary-500', 'text-white', 'shadow-sm');
+    }
+
+    // Show/hide cards
+    document.querySelectorAll('.card').forEach(function(card) {
+        if (filter === 'all') {
+            card.style.display = '';
+        } else if (filter === 'new') {
+            card.style.display = card.classList.contains('applied') ? 'none' : '';
+        } else if (filter === 'applied') {
+            card.style.display = card.classList.contains('applied') ? '' : 'none';
+        }
+    });
+}
 </script>
 {% endblock %}

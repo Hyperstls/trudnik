@@ -8,9 +8,30 @@ from functools import wraps
 from typing import Any
 
 import requests
-from flask import current_app, flash, redirect, request, session, url_for
+from flask import current_app, flash, jsonify, redirect, request, session, url_for
 
 from app.config import Config
+
+
+def cache_for(seconds=30):
+    """Простой in-memory кэш для функций.
+    Используется для декорирования функций, результат которых можно кэшировать на заданное время."""
+    cache_store = {}
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            key = (func.__name__, repr(args), repr(sorted(kwargs.items())))
+            now = time.time()
+            if key in cache_store:
+                result, expiry = cache_store[key]
+                if now < expiry:
+                    return result
+            result = func(*args, **kwargs)
+            cache_store[key] = (result, now + seconds)
+            return result
+        return wrapper
+    return decorator
+
 
 SUPABASE_URL = Config.SUPABASE_URL
 SUPABASE_KEY = Config.SUPABASE_ANON_KEY
@@ -192,6 +213,8 @@ def rate_limit(f):
         now = time.time()
         _rate_limits[ip] = [t for t in _rate_limits[ip] if now - t < _RATE_WINDOW]
         if len(_rate_limits[ip]) >= _RATE_MAX_REQUESTS:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or 'application/json' in request.headers.get('Accept', ''):
+                return jsonify({'error': 'Слишком много попыток. Подождите минуту.'}), 429
             flash('Слишком много попыток. Подождите минуту.', 'danger')
             return redirect(url_for('auth.login'))
         _rate_limits[ip].append(now)
