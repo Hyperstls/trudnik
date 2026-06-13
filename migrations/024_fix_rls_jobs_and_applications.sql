@@ -7,7 +7,7 @@ DROP POLICY IF EXISTS "Jobs are viewable by everyone" ON jobs;
 CREATE POLICY "Jobs are viewable by everyone" ON jobs
     FOR SELECT
     USING (
-        status = 'open'
+        status IN ('open', 'in_progress', 'active')
         OR (auth.uid() = employer_id)
         OR (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'))
     );
