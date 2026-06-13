@@ -22,9 +22,9 @@
                         <span class="{% if inv.status == 'pending' %}text-primary-600{% else %}text-neutral-400{% endif %} font-semibold text-sm">@</span>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="font-semibold text-neutral-900 text-sm">
+                        <a href="{{ url_for('jobs.job_detail', job_id=inv.job_id) }}" class="block font-semibold text-primary-600 hover:text-primary-700 hover:underline text-sm">
                             {{ inv.job.organization_name if inv.job else 'Задание #' + inv.job_id[:8] }}
-                        </p>
+                        </a>
                         {% if session.get('role') == 'worker' %}
                         <p class="text-sm text-neutral-600 mt-0.5">Вас пригласили на задание</p>
                         {% else %}
@@ -42,11 +42,11 @@
                         </p>
                         {% if inv.status == 'pending' and session.get('role') == 'worker' %}
                         <div class="flex gap-2 mt-3">
-                            <button onclick="respondInvite('{{ inv.id }}','accept')"
+                            <button onclick="event.stopPropagation(); respondInvite('{{ inv.id }}','accept')"
                                 class="px-4 py-2 bg-success text-white text-sm font-medium rounded-lg hover:bg-green-600 transition-colors">
                                 Принять
                             </button>
-                            <button onclick="respondInvite('{{ inv.id }}','reject')"
+                            <button onclick="event.stopPropagation(); respondInvite('{{ inv.id }}','reject')"
                                 class="px-4 py-2 bg-neutral-200 text-neutral-700 text-sm font-medium rounded-lg hover:bg-neutral-300 transition-colors">
                                 Отклонить
                             </button>
