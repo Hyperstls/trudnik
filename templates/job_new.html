@@ -299,17 +299,28 @@
     // Yandex Map for Step 2
     // ==========================================
     var map, placemark;
+    var geoCoords = null; // Will hold {lat, lon} if geolocation succeeds
 
     function initMap() {
         try {
+            var centerLat = geoCoords ? geoCoords.lat : 55.751574;
+            var centerLon = geoCoords ? geoCoords.lon : 37.573856;
+
             map = new ymaps.Map('map', {
-                center: [55.751574, 37.573856],
+                center: [centerLat, centerLon],
                 zoom: 10
             });
-            placemark = new ymaps.Placemark([55.751574, 37.573856], {
+            placemark = new ymaps.Placemark([centerLat, centerLon], {
                 balloonContent: 'Местоположение'
             });
             map.geoObjects.add(placemark);
+
+            // If geolocation already provided coords, pre-fill hidden fields
+            if (geoCoords) {
+                document.getElementById('lat').value = geoCoords.lat;
+                document.getElementById('lng').value = geoCoords.lon;
+            }
+
             map.events.add('click', function(e) {
                 var coords = e.get('coords');
                 placemark.geometry.setCoordinates(coords);
@@ -318,6 +329,70 @@
             });
         } catch(e) {}
     }
+
+    // ==========================================
+    // Auto-geolocation: detect user location on page load
+    // ==========================================
+    (function initGeolocation() {
+        // Don't request geolocation if address is already filled (editing mode)
+        var addressField = document.getElementById('address');
+        if (addressField && addressField.value.trim()) return;
+
+        if (!navigator.geolocation) return;
+
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                geoCoords = {
+                    lat: position.coords.latitude,
+                    lon: position.coords.longitude
+                };
+
+                // If map is already initialized, update it
+                if (map && placemark) {
+                    map.setCenter([geoCoords.lat, geoCoords.lon]);
+                    placemark.geometry.setCoordinates([geoCoords.lat, geoCoords.lon]);
+                    document.getElementById('lat').value = geoCoords.lat;
+                    document.getElementById('lng').value = geoCoords.lon;
+                }
+
+                // Reverse geocode via Yandex.Maps
+                if (typeof ymaps !== 'undefined') {
+                    ymaps.ready(function() {
+                        var addrField = document.getElementById('address');
+                        // Double-check address is still empty (user might have typed)
+                        if (addrField && !addrField.value.trim()) {
+                            ymaps.geocode([geoCoords.lat, geoCoords.lon], { results: 1 }).then(function(res) {
+                                var geoObject = res.geoObjects.get(0);
+                                if (!geoObject) return;
+                                var address = geoObject.getAddressLine();
+                                if (address) {
+                                    addrField.value = address;
+                                }
+                                // Try to extract city from geocode result
+                                var cityField = document.getElementById('city');
+                                if (cityField && !cityField.value.trim()) {
+                                    // Attempt to get locality from address components
+                                    var country = geoObject.getCountry ? geoObject.getCountry() : '';
+                                    var adminAreas = geoObject.getAdministrativeAreas ? geoObject.getAdministrativeAreas() : [];
+                                    var localities = geoObject.getLocalities ? geoObject.getLocalities() : [];
+                                    if (localities.length > 0) {
+                                        cityField.value = localities[0];
+                                    } else if (adminAreas.length > 0) {
+                                        cityField.value = adminAreas[adminAreas.length - 1];
+                                    }
+                                }
+                            }).catch(function() {});
+                        }
+                    });
+                }
+            },
+            function(error) {
+                // Silently fail — geolocation is optional
+                console.log('Geolocation unavailable:', error.message);
+            },
+            { timeout: 10000, maximumAge: 300000 }
+        );
+    })();
 
     // ==========================================
     // Auto-save draft to localStorage
