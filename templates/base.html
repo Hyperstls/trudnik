@@ -771,6 +771,15 @@
             </svg>
             <span>Чаты</span>
         </a>
+        <a href="/blacklist"
+           class="nav-item flex flex-col items-center text-[10px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'blacklist' in request.endpoint }}"
+           aria-label="Чёрный список">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+            </svg>
+            <span>ЧС</span>
+        </a>
         {% else %}
         <!-- Трудник -->
         <a href="/"

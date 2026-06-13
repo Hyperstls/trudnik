@@ -56,6 +56,14 @@
                 {{ star(18) }}
                 <span class="text-sm ml-2 font-medium">В избранное</span>
             </button>
+            {% if session.get('role') == 'employer' %}
+            <form method="POST" action="/blacklist/{{ profile_user.id }}" style="display:inline;" onsubmit="return confirm('Заблокировать этого работника? Он не сможет откликаться на ваши задания.');">
+                <button type="submit" class="action-icon-btn reject-btn" title="Заблокировать">
+                    🚫
+                    <span class="text-sm ml-2 font-medium">Заблокировать</span>
+                </button>
+            </form>
+            {% endif %}
         </div>
     </div>
 
@@ -187,6 +195,14 @@
             {{ star(18) }}
             <span class="text-sm ml-2 font-medium">В избранное</span>
         </button>
+        {% if session.get('role') == 'employer' %}
+        <form method="POST" action="/blacklist/{{ profile_user.id }}" style="display:inline;" onsubmit="return confirm('Заблокировать этого работника? Он не сможет откликаться на ваши задания.');">
+            <button type="submit" class="action-icon-btn reject-btn" title="Заблокировать">
+                🚫
+                <span class="text-sm ml-2 font-medium">Заблокировать</span>
+            </button>
+        </form>
+        {% endif %}
     </div>
     {% endif %}
     {% endif %}
