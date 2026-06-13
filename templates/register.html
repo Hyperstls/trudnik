@@ -91,12 +91,19 @@
             <!-- ===== Шаг 2: Профиль ===== -->
             <div id="step-2" class="space-y-4" style="display:none;">
                 <!-- Вероисповедание -->
-                <div class="floating-label-group">
-                    <select name="religion" id="religion">
-                        <option value="">Загрузка...</option>
+                <div class="mb-4">
+                    <label for="religion" class="block text-sm font-medium text-neutral-700 mb-1.5">
+                        Вероисповедание
+                    </label>
+                    <select id="religion" name="religion"
+                            class="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl
+                                   focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all
+                                   text-neutral-900 appearance-none
+                                   bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%23737373%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22M19%209l-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')]
+                                   bg-[length:20px] bg-[right_12px_center] bg-no-repeat pr-10">
+                        <option value="" disabled selected hidden>Не указано</option>
                     </select>
                     <input type="hidden" name="religion_id" id="religion_id" value="">
-                    <label for="religion">Вероисповедание</label>
                 </div>
 
                 <div class="floating-label-group">

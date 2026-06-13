@@ -44,24 +44,40 @@
                 Обнаружены слова, характерные для трудовых отношений. Пожалуйста, опишите разовую услугу.
             </div>
 
-            <div class="floating-label-group">
-                <select name="work_type" id="work_type">
-                    <option value="">Выберите вид работы</option>
+            <!-- Вид работы -->
+            <div class="mb-4">
+                <label for="work_type" class="block text-sm font-medium text-neutral-700 mb-1.5">
+                    Вид работы <span class="text-red-500">*</span>
+                </label>
+                <select name="work_type" id="work_type" required
+                        class="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl 
+                               focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all
+                               text-neutral-900 appearance-none
+                               bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%23737373%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22M19%209l-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] 
+                               bg-[length:20px] bg-[right_12px_center] bg-no-repeat pr-10">
+                    <option value="" disabled selected hidden>Выберите вид работы</option>
                     {% for skill in skills_list %}
                     <option value="{{ skill.id }}" {% if job and job.get('work_type') == skill.id %}selected{% endif %}>{{ skill.name }}</option>
                     {% endfor %}
                 </select>
-                <label for="work_type">Вид работы</label>
             </div>
 
-            <div class="floating-label-group">
-                <select name="preferred_religion" id="preferred_religion">
-                    <option value="">Не указано</option>
+            <!-- Предпочтительное вероисповедание -->
+            <div class="mb-4">
+                <label for="preferred_religion" class="block text-sm font-medium text-neutral-700 mb-1.5">
+                    Предпочтительное вероисповедание
+                </label>
+                <select name="preferred_religion" id="preferred_religion"
+                        class="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl 
+                               focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all
+                               text-neutral-900 appearance-none
+                               bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%23737373%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22M19%209l-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] 
+                               bg-[length:20px] bg-[right_12px_center] bg-no-repeat pr-10">
+                    <option value="" disabled selected hidden>Не указано</option>
                     {% for religion in religions_list %}
                     <option value="{{ religion.id }}" {% if job and job.get('preferred_religion') == religion.id %}selected{% endif %}>{{ religion.name }}</option>
                     {% endfor %}
                 </select>
-                <label for="preferred_religion">Предпочтительное вероисповедание</label>
             </div>
 
             <button type="button" id="to-step-2" class="w-full bg-primary-500 hover:bg-primary-600 active:scale-[0.98] text-white font-bold py-3.5 rounded-xl shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2">

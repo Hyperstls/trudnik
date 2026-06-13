@@ -410,9 +410,9 @@ def job_detail(job_id):
 def job_new():
     """Создание задания (единственный маршрут, заменяет /create-job)"""
     # Загружаем справочники из БД
-    skills_resp = supabase_request('GET', 'skills?select=id,name&order=name.asc')
+    skills_resp = supabase_request('GET', 'skills?select=id,name&order=sort_order.asc,name.asc')
     skills_list = skills_resp.json() if skills_resp.ok else []
-    religions_resp = supabase_request('GET', 'religions?select=id,name&order=name.asc')
+    religions_resp = supabase_request('GET', 'religions?select=id,name&order=sort_order.asc,name.asc')
     religions_list = religions_resp.json() if religions_resp.ok else []
 
     template_data = {
@@ -932,9 +932,9 @@ def edit_job(job_id):
     has_accepted = apps_check.ok and apps_check.json()
 
     # Загружаем справочники
-    skills_resp = supabase_request('GET', 'skills?select=id,name&order=name.asc')
+    skills_resp = supabase_request('GET', 'skills?select=id,name&order=sort_order.asc,name.asc')
     skills_list = skills_resp.json() if skills_resp.ok else []
-    religions_resp = supabase_request('GET', 'religions?select=id,name&order=name.asc')
+    religions_resp = supabase_request('GET', 'religions?select=id,name&order=sort_order.asc,name.asc')
     religions_list = religions_resp.json() if religions_resp.ok else []
 
     if request.method == 'POST':
