@@ -459,7 +459,7 @@ def job_new():
                 'object_description': '',
                 'work_type': request.form.get('work_type', ''),
                 'detailed_description': description,
-                'date_time': datetime.now().isoformat(),
+                'date_time': request.form.get('deadline') or datetime.now().isoformat(),
                 'payment_amount': float(request.form.get('payment') or 0),
                 'address': request.form.get('address', ''),
                 'city': request.form.get('city', ''),
@@ -961,6 +961,7 @@ def edit_job(job_id):
             'address': request.form.get('address', job.get('address', '')),
             'max_workers': int(request.form.get('max_workers', job.get('max_workers', 1))),
             'preferred_religion': request.form.get('preferred_religion', job.get('preferred_religion', '')),
+            'date_time': request.form.get('deadline') or job.get('date_time', ''),
         }
         resp = supabase_request('PATCH', f'jobs?id=eq.{job_id}', json=data)
         if resp.ok:

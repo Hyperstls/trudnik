@@ -123,7 +123,7 @@
             </div>
 
             <div class="floating-label-group">
-                <input type="datetime-local" name="deadline" id="deadline" placeholder=" ">
+                <input type="datetime-local" name="deadline" id="deadline" placeholder=" " value="{{ job.get('date_time', '')[:16] if job else '' }}">
                 <label for="deadline">Дата и время</label>
             </div>
 
