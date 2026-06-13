@@ -79,7 +79,7 @@ def index():
     now = datetime.now(timezone.utc).isoformat()
 
     # Запрос только оплаченных открытых заданий
-    query = 'status=eq.open&is_paid=eq.true&select=*,photos:job_photos(*)'
+    query = 'status=in.(open,completed)&is_paid=eq.true&select=*,photos:job_photos(*)'
     if city: query += f'&city=ilike.*{sanitize_postgrest(city)}*'
     if payment_min: query += f'&payment_amount=gte.{sanitize_postgrest(payment_min)}'
     if payment_max: query += f'&payment_amount=lte.{sanitize_postgrest(payment_max)}'
@@ -89,7 +89,7 @@ def index():
     jobs = resp.json() if resp.ok else []
 
     # Фильтрация: открытые, оплаченные, не истёкшие
-    jobs = [j for j in jobs if j.get('status') == 'open' and j.get('is_paid')]
+    jobs = [j for j in jobs if j.get('status') in ('open', 'completed') and j.get('is_paid')]
     jobs = [j for j in jobs if not j.get('expires_at') or j['expires_at'] > now]
 
     # Фильтрация по навыкам (поиск в work_type, object_description, detailed_description)

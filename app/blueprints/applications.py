@@ -77,7 +77,16 @@ def apply_selected():
 
     user_id = session['user_id']
     applied = 0
+    skipped_count = 0
     for job_id in job_ids:
+        # Проверить статус задания
+        job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status')
+        if job_resp.ok and job_resp.json():
+            job = job_resp.json()[0]
+            if job['status'] != 'open':
+                skipped_count += 1
+                continue
+
         check = supabase_request('GET', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
         if not (check.ok and check.json()):
             supabase_request('POST', 'applications', json={'job_id': job_id, 'worker_id': user_id})
@@ -87,6 +96,8 @@ def apply_selected():
         flash(f'Отклик отправлен на {applied} заданий', 'success')
     else:
         flash('Вы уже откликались на все выбранные задания', 'info')
+    if skipped_count > 0:
+        flash(f'{skipped_count} заданий пропущено (нельзя откликнуться).', 'warning')
     return redirect(url_for('jobs.index'))
 
 
