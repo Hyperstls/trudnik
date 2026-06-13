@@ -44,8 +44,8 @@ def apply_job(job_id):
         flash('Вы не можете откликнуться: работодатель добавил вас в чёрный список', 'danger')
         return redirect(url_for('jobs.index'))
 
-    # Проверить статус задания (разрешены open и in_progress, если есть места)
-    if job['status'] not in ('open', 'in_progress'):
+    # Проверить статус задания (разрешён только open)
+    if job['status'] != 'open':
         flash('На это задание нельзя откликаться', 'danger')
         return redirect(url_for('jobs.index'))
 
@@ -129,7 +129,7 @@ def api_withdraw_application(app_id):
     - pending → withdrawn в любое время (без ограничений)
     - accepted → withdrawn только если > 12 часов до начала задания
     - Уменьшает current_workers, если accepted
-    - Если current_workers падает до 0 и статус in_progress → open
+    - Если current_workers падает до 0 и статус completed → open
     """
     user_id = session['user_id']
 
@@ -179,7 +179,7 @@ def api_withdraw_application(app_id):
         # Уменьшить current_workers
         current_workers = max(0, job.get('current_workers', 1) - 1)
         new_job_status = job.get('status')
-        if current_workers == 0 and new_job_status == 'in_progress':
+        if current_workers == 0 and new_job_status == 'completed':
             new_job_status = 'open'
 
         supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={
@@ -291,14 +291,14 @@ def api_handle_application(app_id, action):
         if current_workers >= max_workers:
             return jsonify({'success': False, 'error': f'Все места в задании заняты (максимум {max_workers})'}), 409
 
-        if job.get('status') not in ('open', 'in_progress'):
+        if job.get('status') != 'open':
             return jsonify({'success': False, 'error': 'Задание уже закрыто для принятия откликов'}), 409
 
         # Атомарный PATCH с условием: обновляем только если current_workers < max_workers
         # PostgREST выполняет UPDATE с WHERE current_workers < {max_workers} атомарно на уровне БД
         # Благодаря Prefer: return=representation, при успехе возвращается обновлённая запись
         new_count = current_workers + 1
-        new_status = 'in_progress' if new_count >= max_workers else 'open'
+        new_status = 'completed' if new_count >= max_workers else 'open'
         patch_resp = supabase_request('PATCH', f'jobs?id=eq.{job_id}&current_workers=lt.{max_workers}', json={
             'status': new_status,
             'current_workers': new_count
@@ -338,7 +338,7 @@ def api_handle_application(app_id, action):
 
             job = job_resp.json()[0]
             current_workers = max(0, job.get('current_workers', 1) - 1)
-            new_job_status = 'open' if current_workers == 0 else 'in_progress'
+            new_job_status = 'open' if current_workers == 0 else 'completed'
 
             # 2. Уменьшить счётчик и обновить статус задания
             supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={
@@ -463,13 +463,13 @@ def cancel_application(app_id):
 
     job = job_resp.json()[0]
 
-    # Проверить статус задания (можно отменить только до начала)
-    if job['status'] in ('active', 'completed'):
-        flash('Нельзя отменить работника после начала задания', 'danger')
+    # Проверить статус задания (нельзя отменить в отозванном)
+    if job['status'] == 'cancelled':
+        flash('Нельзя отменить работника в отозванном задании', 'danger')
         return redirect(url_for('applications.my_applications'))
 
-    # Проверить время (если статус in_progress - проверить 12 часов до начала)
-    if job['status'] == 'in_progress':
+    # Проверить время (если статус completed - проверить 12 часов до начала)
+    if job['status'] == 'completed':
         date_time_str = job.get('date_time')
         if date_time_str:
             try:
@@ -492,7 +492,7 @@ def cancel_application(app_id):
         current_workers = max(0, job_data.get('current_workers', 1) - 1)
 
         # Вернуть статус в open если все ушли
-        new_status = 'open' if current_workers == 0 else 'in_progress'
+        new_status = 'open' if current_workers == 0 else 'completed'
         supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={
             'status': new_status,
             'current_workers': current_workers

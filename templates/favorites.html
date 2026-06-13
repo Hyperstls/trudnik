@@ -130,11 +130,9 @@
                         {% if job.status %}
                         <span class="inline-block mt-2 text-[11px] font-semibold px-2.5 py-0.5 rounded-full
                             {% if job.status == 'open' %}bg-green-100 text-green-700
-                            {% elif job.status == 'in_progress' %}bg-blue-100 text-blue-700
                             {% elif job.status == 'completed' %}bg-neutral-200 text-neutral-600
                             {% else %}bg-red-100 text-red-700{% endif %}">
                             {% if job.status == 'open' %}Открыто
-                            {% elif job.status == 'in_progress' %}В работе
                             {% elif job.status == 'completed' %}Завершено
                             {% elif job.status == 'cancelled' %}Отменено
                             {% else %}{{ job.status }}{% endif %}

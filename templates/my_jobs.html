@@ -18,7 +18,7 @@
     {# Статистика                                   #}
     {# ============================================ #}
     {% set total = jobs|length %}
-    {% set open_count = jobs|selectattr('status', 'in', ['open', 'in_progress', 'active'])|list|length %}
+    {% set open_count = jobs|selectattr('status', 'equalto', 'open')|list|length %}
     {% set completed_count = jobs|selectattr('status', 'equalto', 'completed')|list|length %}
     {% set cancelled_count = jobs|selectattr('status', 'equalto', 'cancelled')|list|length %}
     {% if total > 0 %}
@@ -44,6 +44,10 @@
         <a href="/my-jobs?status=open"
            class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if current_status == 'open' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">
             Идёт набор
+        </a>
+        <a href="/my-jobs?status=completed"
+           class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if current_status == 'completed' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">
+            Завершённые
         </a>
         <a href="/my-jobs?status=completed"
            class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if current_status == 'completed' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">
@@ -114,15 +118,11 @@
                             {# Статус-бейдж #}
                             <span class="status-badge
                                 {% if job.status == 'open' %}status-open
-                                {% elif job.status == 'in_progress' %}status-open
-                                {% elif job.status == 'active' %}status-open
                                 {% elif job.status == 'completed' %}status-completed
                                 {% elif job.status == 'cancelled' %}status-cancelled
                                 {% endif %}"
                                 title="Статус: {{ job.status }}">
                                 {% if job.status == 'open' %}Идёт набор
-                                {% elif job.status == 'in_progress' %}Идёт набор
-                                {% elif job.status == 'active' %}Идёт набор
                                 {% elif job.status == 'completed' %}Набор окончен
                                 {% elif job.status == 'cancelled' %}Отозвано
                                 {% else %}{{ job.status }}
@@ -165,8 +165,8 @@
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Дублировать</span>
                             </button>
 
-                            {# Завершить: только active #}
-                            {% if job.status == 'active' %}
+                            {# Завершить: только open #}
+                            {% if job.status == 'open' %}
                             <button type="button" onclick="forceCompleteJob('{{ job.id }}')"
                                     class="action-icon-btn reject-btn" title="Завершить задание">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -174,8 +174,8 @@
                             </button>
                             {% endif %}
 
-                            {# Отозвать: только open, in_progress (matrix: active блокируется бэкендом) #}
-                            {% if job.status in ['open', 'in_progress'] %}
+                            {# Отозвать: только open #}
+                            {% if job.status == 'open' %}
                             <button type="button" onclick="cancelJob('{{ job.id }}')"
                                     class="action-icon-btn contact-btn" title="Отозвать">
                                 {{ x_close(16) }}

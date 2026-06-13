@@ -112,16 +112,14 @@ def send_message():
     if app_data.get('status') != 'accepted':
         return jsonify({'status': 'error', 'message': 'Чат доступен только после принятия отклика'}), 403
 
-    # Отправка сообщений разрешена только для заданий в статусе in_progress
+    # Отправка сообщений разрешена только для заданий в статусе completed
     job_resp = supabase_request('GET', f'jobs?id=eq.{app_data["job_id"]}&select=status')
     if job_resp.ok and job_resp.json():
         job_status = job_resp.json()[0].get('status')
-        if job_status != 'in_progress':
+        if job_status != 'completed':
             status_labels = {
-                'completed': 'завершено',
-                'cancelled': 'отменено',
-                'active': 'началось',
                 'open': 'открыто',
+                'cancelled': 'отменено',
             }
             label = status_labels.get(job_status, job_status)
             return jsonify({'status': 'error', 'message': f'Отправка сообщений недоступна — задание {label}'}), 403
