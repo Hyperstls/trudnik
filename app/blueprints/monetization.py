@@ -16,7 +16,7 @@ from flask import Blueprint, jsonify, request, session, send_file, render_templa
 from app.decorators import login_required
 from app.services.payment_service import PaymentService
 from app.services.receipt_service import ReceiptService
-from app.utils import supabase_request
+from app.utils import supabase_request, supabase_admin_request
 from app.services.notification_service import create as notify
 
 monetization_bp = Blueprint('monetization', __name__, url_prefix='/api')
@@ -282,6 +282,8 @@ def admin_monetization_settings():
         renewal_price = data.get('renewal_price')
         owner_inn = data.get('owner_inn')
 
+        errors = []
+
         # Обновить тариф
         if tariff_key and price is not None:
             try:
@@ -295,11 +297,19 @@ def admin_monetization_settings():
                     update_data['renewal_price'] = int(renewal_price)
                 except (ValueError, TypeError):
                     pass
-            supabase_request('PATCH', f'tariff_settings?tariff_key=eq.{tariff_key}', json=update_data)
+
+            resp = supabase_admin_request('PATCH', f'tariff_settings?tariff_key=eq.{tariff_key}', json=update_data)
+            if not resp.ok:
+                errors.append(f'Tariff update failed: {resp.status_code} {resp.text}')
 
         # Обновить ИНН владельца
         if owner_inn is not None:
-            supabase_request('PATCH', 'monetization_settings?key=eq.owner_inn', json={'value': owner_inn})
+            resp = supabase_admin_request('PATCH', 'monetization_settings?key=eq.owner_inn', json={'value': owner_inn})
+            if not resp.ok:
+                errors.append(f'Owner INN update failed: {resp.status_code} {resp.text}')
+
+        if errors:
+            return jsonify({'success': False, 'error': '; '.join(errors)}), 500
 
         return jsonify({'success': True})
 
