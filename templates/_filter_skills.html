@@ -21,13 +21,15 @@
     </button>
 
     {# Overlay-панель фильтров (скрыта изначально) #}
+    {# На мобильных: bottom sheet drawer с backdrop #}
+    {# На десктопе: выпадающее меню справа от кнопки #}
     <div id="{{ filter_id }}-panel"
-         class="skills-filter-panel fixed inset-0 z-50 hidden md:absolute md:right-0 md:top-full md:inset-auto"
+         class="skills-filter-panel fixed inset-0 z-[70] hidden md:absolute md:right-0 md:top-full md:inset-auto md:z-50"
          role="dialog"
          aria-modal="true"
          aria-label="Фильтр по навыкам">
         {# Backdrop (только на мобильных) #}
-        <div id="{{ filter_id }}-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm md:hidden"></div>
+        <div id="{{ filter_id }}-backdrop" class="absolute inset-0 bg-black/50 backdrop-blur-sm md:hidden"></div>
         {# Обёртка для позиционирования #}
         <div id="{{ filter_id }}-content-wrapper"
              class="absolute inset-x-0 bottom-0
@@ -35,11 +37,12 @@
                     md:w-80">
             {# Содержимое панели #}
             <div id="{{ filter_id }}-content"
-                 class="bg-white rounded-t-2xl md:rounded-2xl
-                        max-h-[70vh] md:max-h-[80vh] overflow-y-auto
-                        shadow-2xl md:shadow-2xl
+                 class="bg-white rounded-t-3xl md:rounded-2xl
+                        max-h-[80vh] md:max-h-[80vh] overflow-y-auto
+                        shadow-2xl
                         transition-all duration-300 ease-out
-                        translate-y-0 opacity-100 scale-100">
+                        translate-y-full md:translate-y-0 md:opacity-100 md:scale-100"
+                 style="padding-bottom: max(env(safe-area-inset-bottom), 16px);">
                 {# Заголовок #}
                 <div class="sticky top-0 bg-white border-b border-neutral-200 px-4 py-3 flex items-center justify-between z-10 rounded-t-2xl">
                     <h3 class="font-semibold text-neutral-800">Фильтр по навыкам</h3>
@@ -170,6 +173,9 @@
         var scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
         document.body.style.overflow = 'hidden';
         document.body.style.paddingRight = scrollbarWidth + 'px';
+        document.body.style.position = 'fixed';
+        document.body.style.top = '-' + savedScrollY + 'px';
+        document.body.style.width = '100%';
 
         // Показываем панель
         panel.classList.remove('hidden');
@@ -178,8 +184,8 @@
         // Запускаем анимацию (после кадра, чтобы transition сработал)
         requestAnimationFrame(function() {
             requestAnimationFrame(function() {
+                content.style.transform = 'translateY(0)';
                 content.style.opacity = '1';
-                content.style.transform = 'translateY(0) scale(1)';
             });
         });
 
@@ -197,10 +203,10 @@
         // Анимация скрытия
         var isMobile = window.innerWidth < 768;
         if (isMobile) {
-            content.style.transform = 'translateY(100%) scale(1)';
+            content.style.transform = 'translateY(100%)';
         } else {
             content.style.opacity = '0';
-            content.style.transform = 'translateY(0) scale(0.95)';
+            content.style.transform = 'scale(0.95)';
         }
 
         toggle.setAttribute('aria-expanded', 'false');
@@ -212,6 +218,10 @@
             content.style.transformOrigin = '';
             document.body.style.overflow = '';
             document.body.style.paddingRight = '';
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+            window.scrollTo(0, savedScrollY);
             // Возвращаем фокус на кнопку
             toggle.focus();
         }, 300);
@@ -221,7 +231,7 @@
     function setInitialClosedState() {
         var isMobile = window.innerWidth < 768;
         if (isMobile) {
-            content.style.transform = 'translateY(100%) scale(1)';
+            content.style.transform = 'translateY(100%)';
         } else {
             content.style.opacity = '0';
             content.style.transform = 'scale(0.95)';
@@ -236,6 +246,11 @@
         setInitialClosedState();
         originalOpenPanel();
     };
+
+    // ── Глобальные функции openFilter / closeFilter ──
+    // Экспортируем для вызова из других скриптов (например, для мобильного меню)
+    window['openFilter_' + filterId] = openPanel;
+    window['closeFilter_' + filterId] = closePanel;
 
     // ── Обработчики событий ──
     if (toggle) toggle.addEventListener('click', function(e) {

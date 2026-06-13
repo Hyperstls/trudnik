@@ -11,7 +11,7 @@
     </div>
 
     {% if workers %}
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {% for worker in workers %}
             <div class="app-card rounded-2xl bg-white shadow-sm border border-neutral-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
                  data-worker-id="{{ worker.id }}"
@@ -64,43 +64,84 @@
                 <p class="text-success text-sm font-semibold mt-2">{{ worker.desired_payment }} ₽</p>
                 {% endif %}
 
-                {# Кнопки #}
-                <div class="mt-4 pt-3 border-t border-neutral-100 flex gap-2">
-                    <button onclick="event.stopPropagation(); window.location.href='/chat/new/{{ worker.id }}'"
-                            class="action-icon-btn chat-btn" title="Написать сообщение">
-                        {{ chat(16) }}
-                        <span class="text-[11px] ml-1.5 font-medium">Написать</span>
-                    </button>
-                    {% if session.get('role') == 'employer' %}
-                    {% set is_invited = worker.id in invited_worker_ids %}
-                    <button id="invite-btn-{{ worker.id }}" onclick="event.stopPropagation(); inviteWorker('{{ worker.id }}', '{{ worker.full_name|default('') }}', this)"
-                            class="action-icon-btn {{ 'opacity-60' if is_invited else 'accept-btn' }}"
-                            title="{{ 'Уже приглашён' if is_invited else 'Пригласить на задание' }}"
-                            {{ 'disabled' if is_invited }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-                        <span class="invite-text text-[11px] ml-1.5 font-medium">{{ '✓ Приглашён' if is_invited else 'Пригласить' }}</span>
-                    </button>
-                    <button id="block-btn-{{ worker.id }}" onclick="toggleBlock(this, '{{ worker.id }}')"
-                            class="action-icon-btn reject-btn" title="Заблокировать">
-                        🚫
-                        <span class="text-[11px] ml-1.5 font-medium">Заблок</span>
-                    </button>
-                    <button id="unblock-btn-{{ worker.id }}" onclick="toggleBlock(this, '{{ worker.id }}')"
-                            class="action-icon-btn accept-btn hidden" title="Разблокировать">
-                        🔓
-                        <span class="text-[11px] ml-1.5 font-medium">Разблок</span>
-                    </button>
-                    {% endif %}
-                    <button onclick="event.stopPropagation(); toggleFavorite('{{ worker.id }}', this, event)"
-                            class="favorite-btn action-icon-btn contact-btn"
-                            data-worker-id="{{ worker.id }}"
-                            data-favorited="false"
-                            data-initial-status="not-favorited">
-                        <span class="favorite-icon flex items-center gap-1.5">
-                            {{ star(16) }}
-                        </span>
-                        <span class="favorite-text text-[11px] font-medium">В избранное</span>
-                    </button>
+                {# Кнопки действий — адаптивные с выпадающим меню на мобильных #}
+                <div class="mt-4 pt-3 border-t border-neutral-100">
+                    <div class="flex flex-wrap gap-2">
+                        {# Основные кнопки (видны всегда) #}
+                        <button onclick="event.stopPropagation(); window.location.href='/chat/new/{{ worker.id }}'"
+                                class="action-icon-btn chat-btn min-w-[100px]" title="Написать сообщение">
+                            {{ chat(16) }}
+                            <span class="text-[11px] ml-1.5 font-medium">Написать</span>
+                        </button>
+                        {% if session.get('role') == 'employer' %}
+                        {% set is_invited = worker.id in invited_worker_ids %}
+                        <button id="invite-btn-{{ worker.id }}" onclick="event.stopPropagation(); inviteWorker('{{ worker.id }}', '{{ worker.full_name|default('') }}', this)"
+                                class="action-icon-btn min-w-[100px] {{ 'opacity-60' if is_invited else 'accept-btn' }}"
+                                title="{{ 'Уже приглашён' if is_invited else 'Пригласить на задание' }}"
+                                {{ 'disabled' if is_invited }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                            <span class="invite-text text-[11px] ml-1.5 font-medium">{{ '✓ Приглашён' if is_invited else 'Пригласить' }}</span>
+                        </button>
+
+                        {# Кнопки, скрываемые в «Ещё» на мобильных (<768px) #}
+                        <div class="hidden sm:flex flex-wrap gap-2" id="extra-actions-{{ worker.id }}">
+                            <button id="block-btn-{{ worker.id }}" onclick="toggleBlock(this, '{{ worker.id }}')"
+                                    class="action-icon-btn reject-btn min-w-[100px]" title="Заблокировать">
+                                🚫
+                                <span class="text-[11px] ml-1.5 font-medium">Заблокировать</span>
+                            </button>
+                            <button id="unblock-btn-{{ worker.id }}" onclick="toggleBlock(this, '{{ worker.id }}')"
+                                    class="action-icon-btn accept-btn min-w-[100px] hidden" title="Разблокировать">
+                                🔓
+                                <span class="text-[11px] ml-1.5 font-medium">Разблокировать</span>
+                            </button>
+                            <button onclick="event.stopPropagation(); toggleFavorite('{{ worker.id }}', this, event)"
+                                    class="favorite-btn action-icon-btn contact-btn min-w-[100px]"
+                                    data-worker-id="{{ worker.id }}"
+                                    data-favorited="false"
+                                    data-initial-status="not-favorited">
+                                <span class="favorite-icon flex items-center gap-1.5">
+                                    {{ star(16) }}
+                                </span>
+                                <span class="favorite-text text-[11px] font-medium">В избранное</span>
+                            </button>
+                        </div>
+
+                        {# Выпадающее меню «Ещё» (только на мобильных) #}
+                        <div class="relative sm:hidden" id="more-menu-{{ worker.id }}">
+                            <button onclick="event.stopPropagation(); toggleMoreMenu('{{ worker.id }}')"
+                                    class="action-icon-btn min-w-[44px]" title="Ещё">
+                                ⋮
+                            </button>
+                            <div id="more-dropdown-{{ worker.id }}" class="absolute bottom-full right-0 mb-2 bg-white rounded-xl shadow-xl border border-neutral-200 py-1 z-50 hidden min-w-[160px]">
+                                <button onclick="event.stopPropagation(); toggleBlock(document.getElementById('block-btn-{{ worker.id }}'), '{{ worker.id }}')"
+                                        class="w-full text-left px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
+                                    🚫 Заблокировать
+                                </button>
+                                <button onclick="event.stopPropagation(); toggleBlock(document.getElementById('unblock-btn-{{ worker.id }}'), '{{ worker.id }}')"
+                                        class="w-full text-left px-4 py-2.5 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2 hidden" id="more-unblock-{{ worker.id }}">
+                                    🔓 Разблокировать
+                                </button>
+                                <button onclick="event.stopPropagation(); toggleFavorite('{{ worker.id }}', document.querySelector('.favorite-btn[data-worker-id=\\'{{ worker.id }}\\']'), event)"
+                                        class="w-full text-left px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-50 flex items-center gap-2">
+                                    {{ star(16) }} В избранное
+                                </button>
+                            </div>
+                        </div>
+                        {% else %}
+                        {# Для не-работодателей: только избранное #}
+                        <button onclick="event.stopPropagation(); toggleFavorite('{{ worker.id }}', this, event)"
+                                class="favorite-btn action-icon-btn contact-btn min-w-[100px]"
+                                data-worker-id="{{ worker.id }}"
+                                data-favorited="false"
+                                data-initial-status="not-favorited">
+                            <span class="favorite-icon flex items-center gap-1.5">
+                                {{ star(16) }}
+                            </span>
+                            <span class="favorite-text text-[11px] font-medium">В избранное</span>
+                        </button>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
             {% endfor %}
@@ -119,6 +160,30 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/favorites.js') }}"></script>
+<script>
+// Выпадающее меню «Ещё» на мобильных
+function toggleMoreMenu(workerId) {
+    var dd = document.getElementById('more-dropdown-' + workerId);
+    if (!dd) return;
+    var isHidden = dd.classList.contains('hidden');
+    // Закрыть все другие меню
+    document.querySelectorAll('[id^="more-dropdown-"]').forEach(function(el) {
+        el.classList.add('hidden');
+    });
+    if (isHidden) {
+        dd.classList.remove('hidden');
+    }
+}
+
+// Закрытие выпадающего меню по клику вне
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('[id^="more-menu-"]')) {
+        document.querySelectorAll('[id^="more-dropdown-"]').forEach(function(el) {
+            el.classList.add('hidden');
+        });
+    }
+});
+</script>
 {% if session.get('role') == 'employer' %}
 <script>
 async function inviteWorker(workerId, workerName, btn) {
