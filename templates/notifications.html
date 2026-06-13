@@ -4,12 +4,19 @@
 <div class="px-4 pb-24 max-w-lg mx-auto">
     <div class="flex items-center justify-between mb-5">
         <h2 class="text-2xl font-bold text-neutral-900">Уведомления</h2>
-        {% if items %}
-        <button onclick="deleteAllNotifications()"
-            class="text-sm text-danger hover:text-red-700 font-medium transition-colors">
-            Удалить все
-        </button>
-        {% endif %}
+        <div class="flex items-center gap-3">
+            <a href="/notifications/settings"
+               class="text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors"
+               title="Настройки уведомлений">
+                ⚙️ Настройки
+            </a>
+            {% if items %}
+            <button onclick="deleteAllNotifications()"
+                class="text-sm text-danger hover:text-red-700 font-medium transition-colors">
+                Удалить все
+            </button>
+            {% endif %}
+        </div>
     </div>
 
     {% if items %}

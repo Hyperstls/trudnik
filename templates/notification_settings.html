@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% from '_icons.html' import bell, settings, chevron_left %}
+{% block content %}
+<div class="px-4 pb-24 max-w-lg mx-auto">
+    <div class="flex items-center gap-3 mb-5">
+        <a href="/notifications" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors touch-target" aria-label="Назад к уведомлениям">
+            {{ chevron_left(20) }}
+        </a>
+        <h2 class="text-2xl font-bold text-neutral-900">⚙️ Настройки уведомлений</h2>
+    </div>
+
+    <p class="text-sm text-neutral-500 mb-5">Выберите, какие уведомления вы хотите получать</p>
+
+    <div id="preferences-container" class="space-y-3">
+        <div class="flex flex-col items-center justify-center py-12 text-center">
+            <div class="w-12 h-12 rounded-full bg-neutral-100 flex items-center justify-center mb-3">
+                <svg class="animate-spin h-6 w-6 text-primary-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+            </div>
+            <p class="text-sm text-neutral-400">Загрузка настроек...</p>
+        </div>
+    </div>
+
+    <div class="mt-6">
+        <button id="save-btn" onclick="savePreferences()"
+                class="w-full bg-primary-500 text-white py-3.5 rounded-xl font-bold text-base hover:bg-primary-600 active:scale-[0.97] transition-all duration-200 shadow-md hidden">
+            Сохранить настройки
+        </button>
+    </div>
+    <div id="save-status" class="text-center text-sm mt-2 hidden"></div>
+</div>
+
+<script>
+const csrfToken = '{{ csrf_token }}';
+let currentPreferences = {};
+let originalPreferences = {};
+
+function loadPreferences() {
+    fetch('/api/notifications/preferences', {
+        headers: {'X-CSRF-Token': csrfToken}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) {
+            document.getElementById('preferences-container').innerHTML =
+                '<div class="flex flex-col items-center justify-center py-12 text-center">' +
+                '<p class="text-danger font-medium">Ошибка загрузки настроек</p>' +
+                '<p class="text-sm text-neutral-400 mt-1">Попробуйте обновить страницу</p>' +
+                '</div>';
+            return;
+        }
+        currentPreferences = {};
+        originalPreferences = {};
+        const prefs = data.preferences || {};
+        let html = '';
+        for (const [key, info] of Object.entries(prefs)) {
+            currentPreferences[key] = info.enabled;
+            originalPreferences[key] = info.enabled;
+            html += `
+                <div class="app-card bg-white rounded-2xl shadow-sm border border-neutral-100 p-4 flex items-center justify-between transition-all duration-200 hover:border-primary-200">
+                    <div class="flex-1 min-w-0">
+                        <p class="font-medium text-neutral-900 text-sm">${escapeHtml(info.label)}</p>
+                        <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(key)}</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-3">
+                        <input type="checkbox" class="sr-only peer" data-type="${escapeHtml(key)}"
+                               ${info.enabled ? 'checked' : ''}
+                               onchange="togglePref('${escapeHtml(key)}', this.checked)">
+                        <div class="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
+                    </label>
+                </div>`;
+        }
+        document.getElementById('preferences-container').innerHTML = html;
+        document.getElementById('save-btn').classList.remove('hidden');
+    })
+    .catch(err => {
+        document.getElementById('preferences-container').innerHTML =
+            '<div class="flex flex-col items-center justify-center py-12 text-center">' +
+            '<p class="text-danger font-medium">Ошибка соединения</p>' +
+            '<p class="text-sm text-neutral-400 mt-1">Проверьте подключение к интернету</p>' +
+            '</div>';
+    });
+}
+
+function togglePref(type, enabled) {
+    currentPreferences[type] = enabled;
+    // Проверяем, изменилось ли что-то относительно оригинала
+    let changed = false;
+    for (const [key, val] of Object.entries(currentPreferences)) {
+        if (originalPreferences[key] !== val) {
+            changed = true;
+            break;
+        }
+    }
+    const saveBtn = document.getElementById('save-btn');
+    if (changed) {
+        saveBtn.classList.remove('bg-neutral-400', 'cursor-not-allowed');
+        saveBtn.classList.add('bg-primary-500', 'hover:bg-primary-600');
+        saveBtn.disabled = false;
+    } else {
+        saveBtn.classList.add('bg-neutral-400', 'cursor-not-allowed');
+        saveBtn.classList.remove('bg-primary-500', 'hover:bg-primary-600');
+        saveBtn.disabled = true;
+    }
+}
+
+function savePreferences() {
+    const saveBtn = document.getElementById('save-btn');
+    const statusEl = document.getElementById('save-status');
+
+    // Собираем только изменённые настройки
+    const changes = [];
+    for (const [type, enabled] of Object.entries(currentPreferences)) {
+        if (originalPreferences[type] !== enabled) {
+            changes.push({type: type, enabled: enabled});
+        }
+    }
+
+    if (changes.length === 0) {
+        statusEl.textContent = 'Нет изменений для сохранения';
+        statusEl.className = 'text-center text-sm mt-2 text-neutral-500';
+        statusEl.classList.remove('hidden');
+        return;
+    }
+
+    saveBtn.disabled = true;
+    saveBtn.classList.add('opacity-50');
+    statusEl.classList.add('hidden');
+
+    // Сохраняем каждое изменение последовательно
+    let promises = changes.map(change =>
+        fetch('/api/notifications/preferences', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
+            body: JSON.stringify({type: change.type, enabled: change.enabled})
+        }).then(r => r.json())
+    );
+
+    Promise.all(promises)
+        .then(results => {
+            const allOk = results.every(r => r.success);
+            if (allOk) {
+                // Обновляем оригинальные значения
+                for (const change of changes) {
+                    originalPreferences[change.type] = change.enabled;
+                }
+                statusEl.textContent = '✅ Настройки сохранены';
+                statusEl.className = 'text-center text-sm mt-2 text-green-600';
+                saveBtn.classList.add('bg-neutral-400', 'cursor-not-allowed');
+                saveBtn.classList.remove('bg-primary-500', 'hover:bg-primary-600');
+            } else {
+                const errors = results.filter(r => !r.success).map(r => r.error).join(', ');
+                statusEl.textContent = '❌ Ошибка: ' + errors;
+                statusEl.className = 'text-center text-sm mt-2 text-danger';
+            }
+            statusEl.classList.remove('hidden');
+        })
+        .catch(() => {
+            statusEl.textContent = '❌ Ошибка соединения';
+            statusEl.className = 'text-center text-sm mt-2 text-danger';
+            statusEl.classList.remove('hidden');
+        })
+        .finally(() => {
+            saveBtn.disabled = false;
+            saveBtn.classList.remove('opacity-50');
+        });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Загрузка при старте
+loadPreferences();
+</script>
+{% endblock %}

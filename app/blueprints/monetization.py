@@ -344,3 +344,60 @@ def admin_job_stats():
     })
 
 
+# ============================================================
+# 7. ЧЕКИ ПОЛЬЗОВАТЕЛЯ
+# ============================================================
+
+@monetization_bp.route('/receipts/my', methods=['GET'])
+@login_required
+def my_receipts():
+    """Получить чеки текущего пользователя.
+    Работодатель видит чеки за публикации (по church_inn/name).
+    Работник видит чеки за выполненные работы (по contact_payment_id через заявки).
+    """
+    user_id = session['user_id']
+
+    # Получаем профиль пользователя
+    profile_resp = supabase_request('GET', f'profiles?id=eq.{user_id}&select=full_name,inn,role')
+    if not profile_resp.ok or not profile_resp.json():
+        return jsonify({'success': False, 'error': 'Профиль не найден'}), 404
+
+    profile = profile_resp.json()[0]
+    user_name = profile.get('full_name', '')
+    user_inn = profile.get('inn', '')
+    user_role = profile.get('role', 'worker')
+
+    receipts = []
+
+    if user_role == 'employer':
+        # Ищем чеки по имени или ИНН работодателя
+        if user_inn:
+            resp = supabase_request('GET',
+                f'receipts?or=(church_inn.eq.{user_inn},church_name.ilike.*{user_name}*)&order=created_at.desc&limit=50')
+        else:
+            resp = supabase_request('GET',
+                f'receipts?church_name=ilike.*{user_name}*&order=created_at.desc&limit=50')
+        if resp.ok:
+            receipts = resp.json() or []
+    else:
+        # Работник: ищем все accepted заявки пользователя, затем contact_payment_id
+        apps_resp = supabase_request('GET',
+            f'applications?worker_id=eq.{user_id}&status=eq.accepted&select=id,job_id')
+        if apps_resp.ok and apps_resp.json():
+            # Для простоты ищем чеки через service_description (содержит job_id)
+            job_ids = [a['job_id'] for a in apps_resp.json() if a.get('job_id')]
+            all_receipts = []
+            for job_id in job_ids:
+                short_id = job_id[:8]
+                resp = supabase_request('GET',
+                    f'receipts?service_description=ilike.*{short_id}*&order=created_at.desc&limit=10')
+                if resp.ok and resp.json():
+                    all_receipts.extend(resp.json())
+            # Дополнительно: ищем по contact_payment_id (если есть таблица contact_payments)
+            receipts = all_receipts
+
+    return jsonify({'success': True, 'receipts': receipts})
+
+
+
+

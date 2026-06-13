@@ -212,6 +212,12 @@ def create_app():
         return send_from_directory('static/.well-known', 'assetlinks.json',
                                    mimetype='application/json')
 
+    @app.route('/receipts')
+    @login_required
+    def receipts_page():
+        """Страница просмотра чеков пользователя."""
+        return render_template('receipts.html')
+
     # ── Обработчики ошибок ──────────────────────────────
 
     @app.before_request

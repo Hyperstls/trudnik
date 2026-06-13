@@ -4,6 +4,7 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 
 from app.decorators import login_required
 from app.services.notification_service import (
+    NOTIFICATION_TYPES, DEFAULT_ENABLED_TYPES,
     get_notifications, get_unread_count, mark_all_read, mark_read
 )
 from app.utils import my_query, supabase_request, supabase_admin_request
@@ -95,3 +96,63 @@ def api_delete_all_notifications():
 def mark_read_route(notification_id):
     mark_read(notification_id)
     return redirect(url_for('notifications.notifications'))
+
+
+# ============================================================
+# Настройки уведомлений
+# ============================================================
+
+@notifications_bp.route('/notifications/settings')
+@login_required
+def notification_settings_page():
+    """Страница настроек уведомлений."""
+    return render_template('notification_settings.html',
+                           notification_types=NOTIFICATION_TYPES,
+                           default_enabled=DEFAULT_ENABLED_TYPES)
+
+
+@notifications_bp.route('/api/notifications/preferences', methods=['GET'])
+@login_required
+def api_get_preferences():
+    """Получить настройки уведомлений пользователя."""
+    from app.services.notification_service import get_user_prefs
+    prefs = get_user_prefs(session['user_id'])
+    # Возвращаем все типы с их статусом
+    result = {}
+    for key, label in NOTIFICATION_TYPES.items():
+        result[key] = {
+            'label': label,
+            'enabled': prefs.get(key, DEFAULT_ENABLED_TYPES.get(key, True))
+        }
+    return jsonify({'success': True, 'preferences': result})
+
+
+@notifications_bp.route('/api/notifications/preferences', methods=['POST'])
+@login_required
+def api_save_preference():
+    """Сохранить одну настройку уведомления.
+    Body: {type: str, enabled: bool}
+    """
+    data = request.get_json(silent=True) or {}
+    notif_type = data.get('type')
+    enabled = data.get('enabled')
+
+    if not notif_type or notif_type not in NOTIFICATION_TYPES:
+        return jsonify({'success': False, 'error': 'Неизвестный тип уведомления'}), 400
+    if not isinstance(enabled, bool):
+        return jsonify({'success': False, 'error': 'enabled должен быть boolean'}), 400
+
+    user_id = session['user_id']
+
+    # Получить текущие настройки
+    from app.services.notification_service import get_user_prefs
+    prefs = get_user_prefs(user_id)
+    prefs[notif_type] = enabled
+
+    # Сохранить в profiles.notification_prefs
+    resp = supabase_admin_request('PATCH',
+        f'profiles?id=eq.{user_id}',
+        json={'notification_prefs': prefs})
+    if resp.ok:
+        return jsonify({'success': True, 'message': 'Настройка сохранена'})
+    return jsonify({'success': False, 'error': 'Ошибка сохранения'}), 500

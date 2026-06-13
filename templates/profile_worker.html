@@ -40,6 +40,9 @@
             <span class="text-warning">★</span>
             <span class="text-sm font-medium text-neutral-700">{{ "%.1f"|format(profile_user.get('rating', 0) or 0) }}</span>
             <span class="text-xs text-neutral-400">({{ profile_user.get('total_reviews', 0) }} {{ 'отзыв' if profile_user.get('total_reviews', 0) == 1 else 'отзывов' }})</span>
+            {% if profile_user.get('total_reviews', 0) > 0 %}
+            <a href="/ratings/user/{{ profile_user.id }}" class="text-xs text-primary-600 hover:text-primary-700 font-medium ml-1 transition-colors">Все отзывы</a>
+            {% endif %}
         </div>
 
         {# Быстрые кнопки #}

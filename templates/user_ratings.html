@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% from '_icons.html' import star, chevron_left %}
+{% block title %}Оценки пользователя — Трудник{% endblock %}
+{% block content %}
+<div class="px-4 pb-24 max-w-lg mx-auto">
+    <div class="flex items-center gap-3 mb-5">
+        <a href="javascript:history.back()" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors touch-target" aria-label="Назад">
+            {{ chevron_left(20) }}
+        </a>
+        <h2 class="text-2xl font-bold text-neutral-900">Оценки и отзывы</h2>
+    </div>
+
+    {# Сводка: средний рейтинг #}
+    <div id="rating-summary" class="bg-white rounded-2xl shadow-sm border border-neutral-100 p-5 mb-5 text-center hidden">
+        <div class="text-4xl font-bold text-primary-600" id="avg-rating">—</div>
+        <div class="flex items-center justify-center gap-0.5 mt-1" id="stars-display"></div>
+        <p class="text-sm text-neutral-400 mt-1"><span id="total-reviews">0</span> отзывов</p>
+    </div>
+
+    {# Список отзывов #}
+    <div id="ratings-container" class="space-y-3">
+        <div class="flex flex-col items-center justify-center py-12 text-center">
+            <div class="w-12 h-12 rounded-full bg-neutral-100 flex items-center justify-center mb-3">
+                <svg class="animate-spin h-6 w-6 text-primary-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+            </div>
+            <p class="text-sm text-neutral-400">Загрузка отзывов...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+const userId = '{{ profile_user_id }}';
+
+function renderStars(rating) {
+    let html = '';
+    for (let i = 1; i <= 5; i++) {
+        if (i <= Math.floor(rating)) {
+            html += '<span class="text-warning text-lg">★</span>';
+        } else if (i - 0.5 <= rating) {
+            html += '<span class="text-warning text-lg">★</span>';  {/* упрощённо — полная звезда */}
+        } else {
+            html += '<span class="text-neutral-300 text-lg">★</span>';
+        }
+    }
+    return html;
+}
+
+function loadRatings() {
+    fetch('/api/ratings/user/' + userId + '/details')
+    .then(r => r.json())
+    .then(data => {
+        const container = document.getElementById('ratings-container');
+        const summaryEl = document.getElementById('rating-summary');
+
+        if (!data.success) {
+            container.innerHTML =
+                '<div class="flex flex-col items-center justify-center py-16 text-center">' +
+                '<div class="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mb-4">' +
+                '<span class="text-2xl">⭐</span></div>' +
+                '<p class="text-lg font-semibold text-neutral-700">Ошибка загрузки</p>' +
+                '<p class="text-sm text-neutral-400 mt-1">' + escapeHtml(data.error || 'Неизвестная ошибка') + '</p>' +
+                '</div>';
+            return;
+        }
+
+        const ratings = data.ratings || [];
+        const average = data.average || 0;
+        const count = data.count || 0;
+
+        // Обновляем сводку
+        document.getElementById('avg-rating').textContent = average > 0 ? average.toFixed(1) : '—';
+        document.getElementById('stars-display').innerHTML = renderStars(average);
+        document.getElementById('total-reviews').textContent = count;
+        summaryEl.classList.remove('hidden');
+
+        if (ratings.length === 0) {
+            container.innerHTML =
+                '<div class="flex flex-col items-center justify-center py-16 text-center">' +
+                '<div class="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mb-4">' +
+                '<span class="text-3xl">⭐</span></div>' +
+                '<p class="text-lg font-semibold text-neutral-700">Нет отзывов</p>' +
+                '<p class="text-sm text-neutral-400 mt-1">У этого пользователя пока нет оценок</p>' +
+                '</div>';
+            return;
+        }
+
+        let html = '';
+        ratings.forEach(function(r) {
+            const rating = r.rating || 0;
+            const comment = r.comment || '';
+            const createdAt = r.created_at ? r.created_at.slice(0, 10) : '—';
+            const rater = r.rater || {};
+            const raterName = rater.full_name || 'Пользователь';
+            const ratingType = r.rating_type === 'employer' ? 'От работодателя' : 'От работника';
+
+            html += '<div class="app-card bg-white rounded-2xl shadow-sm border border-neutral-100 p-4 transition-all duration-200">' +
+                '<div class="flex items-start justify-between mb-2">' +
+                    '<div class="flex items-center gap-2">' +
+                        '<div class="w-8 h-8 rounded-full bg-primary-50 flex items-center justify-center text-primary-600 font-semibold text-xs">' +
+                            escapeHtml(raterName.charAt(0).toUpperCase()) +
+                        '</div>' +
+                        '<div>' +
+                            '<p class="font-medium text-neutral-900 text-sm">' + escapeHtml(raterName) + '</p>' +
+                            '<p class="text-xs text-neutral-400">' + escapeHtml(ratingType) + ' • ' + escapeHtml(createdAt) + '</p>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="flex items-center gap-0.5 shrink-0">' +
+                        renderStars(rating) +
+                    '</div>' +
+                '</div>' +
+                (comment
+                    ? '<p class="text-sm text-neutral-600 mt-2 leading-relaxed">' + escapeHtml(comment) + '</p>'
+                    : '<p class="text-sm text-neutral-400 mt-2 italic">Без комментария</p>') +
+            '</div>';
+        });
+
+        container.innerHTML = html;
+    })
+    .catch(function() {
+        document.getElementById('ratings-container').innerHTML =
+            '<div class="flex flex-col items-center justify-center py-16 text-center">' +
+            '<div class="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mb-4">' +
+            '<span class="text-2xl">⭐</span></div>' +
+            '<p class="text-lg font-semibold text-neutral-700">Ошибка соединения</p>' +
+            '<p class="text-sm text-neutral-400 mt-1">Проверьте подключение к интернету</p>' +
+            '</div>';
+    });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = String(text || '');
+    return div.innerHTML;
+}
+
+loadRatings();
+</script>
+{% endblock %}

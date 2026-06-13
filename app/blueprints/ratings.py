@@ -1,5 +1,5 @@
 """Blueprint для рейтингов и отзывов."""
-from flask import Blueprint, jsonify, request, session, current_app
+from flask import Blueprint, jsonify, request, session, current_app, render_template
 
 from app.decorators import login_required
 from app.utils import rate_limit, supabase_request, supabase_admin_request, update_rating
@@ -182,5 +182,45 @@ def upsert_rating():
         'is_new': is_new,
         'message': 'Оценка сохранена' if is_new else 'Оценка обновлена'
     })
+
+
+# ============================================================
+# Детальные оценки пользователя
+# ============================================================
+
+@ratings_bp.route('/api/ratings/user/<user_id>/details', methods=['GET'])
+def get_user_rating_details(user_id):
+    """Получить все детальные оценки пользователя с отзывами."""
+    resp = supabase_request(
+        'GET',
+        f'ratings?rated_user_id=eq.{user_id}&select=*,rater:profiles!rater_user_id(full_name,photo_url)&order=created_at.desc&limit=100'
+    )
+    if not resp.ok:
+        return jsonify({'success': False, 'error': 'Ошибка загрузки оценок'}), 500
+
+    ratings = resp.json() or []
+
+    # Вычисляем средний рейтинг
+    avg_rating = 0
+    if ratings:
+        vals = [r['rating'] for r in ratings]
+        avg_rating = round(sum(vals) / len(vals), 1)
+
+    return jsonify({
+        'success': True,
+        'ratings': ratings,
+        'average': avg_rating,
+        'count': len(ratings)
+    })
+
+
+# ============================================================
+# Страница оценок пользователя (HTML)
+# ============================================================
+
+@ratings_bp.route('/ratings/user/<user_id>')
+def user_ratings_page(user_id):
+    """Страница со списком всех оценок пользователя."""
+    return render_template('user_ratings.html', profile_user_id=user_id)
 
 
