@@ -477,7 +477,9 @@ def job_new():
                 'max_workers': int(request.form.get('max_workers') or 1),
                 'current_workers': 0,
                 'status': 'open',
-                'is_paid': False,
+                'is_paid': True,
+                'paid_at': datetime.now(timezone.utc).isoformat(),
+                'expires_at': (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
             }
 
             resp = supabase_request('POST', 'jobs', json=job_data)
