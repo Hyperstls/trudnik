@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required
 from app.utils import supabase_request
@@ -10,19 +10,39 @@ blacklist_bp = Blueprint('blacklist', __name__)
 @login_required
 def blacklist():
     resp = supabase_request('GET',
-        f'blacklists?user_id=eq.{session["user_id"]}&select=blocked:profiles!blacklists_blocked_user_id_fkey(id,full_name,photo_url)')
-    return render_template('blacklist.html', items=resp.json() if resp.ok else [])
+        f'blacklists?user_id=eq.{session["user_id"]}&select=blocked:profiles!blacklists_blocked_user_id_fkey(id,full_name,photo_url,skills,city)')
+    items = resp.json() if resp.ok else []
+    # Разворачиваем вложенные объекты blocked → плоский список
+    workers = []
+    for item in items:
+        if item.get('blocked'):
+            workers.append(item['blocked'])
+    return render_template('blacklist.html', workers=workers)
 
 
 @blacklist_bp.route('/blacklist/<user_id>', methods=['POST'])
 @login_required
 def block_user(user_id):
-    supabase_request('POST', 'blacklists', json={'user_id': session['user_id'], 'blocked_user_id': user_id})
+    resp = supabase_request('POST', 'blacklists', json={'user_id': session['user_id'], 'blocked_user_id': user_id})
+    if resp.ok:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.headers.get('Accept') == 'application/json':
+            return jsonify({'success': True})
+        return redirect(request.referrer or url_for('jobs.index'))
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.headers.get('Accept') == 'application/json':
+        return jsonify({'success': False, 'error': 'Ошибка блокировки'}), 400
+    flash('Ошибка блокировки', 'danger')
     return redirect(request.referrer or url_for('jobs.index'))
 
 
 @blacklist_bp.route('/unblock/<user_id>', methods=['POST'])
 @login_required
 def unblock_user(user_id):
-    supabase_request('DELETE', f'blacklists?user_id=eq.{session["user_id"]}&blocked_user_id=eq.{user_id}')
+    resp = supabase_request('DELETE', f'blacklists?user_id=eq.{session["user_id"]}&blocked_user_id=eq.{user_id}')
+    if resp.ok:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.headers.get('Accept') == 'application/json':
+            return jsonify({'success': True})
+        return redirect(url_for('blacklist.blacklist'))
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.headers.get('Accept') == 'application/json':
+        return jsonify({'success': False, 'error': 'Ошибка разблокировки'}), 400
+    flash('Ошибка разблокировки', 'danger')
     return redirect(url_for('blacklist.blacklist'))

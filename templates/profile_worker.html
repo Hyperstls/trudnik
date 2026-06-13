@@ -60,12 +60,16 @@
                 <span class="text-sm ml-2 font-medium">В избранное</span>
             </button>
             {% if session.get('role') == 'employer' %}
-            <form method="POST" action="/blacklist/{{ profile_user.id }}" style="display:inline;" onsubmit="return confirm('Заблокировать этого работника? Он не сможет откликаться на ваши задания.');">
-                <button type="submit" class="action-icon-btn reject-btn" title="Заблокировать">
-                    🚫
-                    <span class="text-sm ml-2 font-medium">Заблокировать</span>
-                </button>
-            </form>
+            <button id="block-btn-{{ profile_user.id }}" onclick="toggleBlockProfile(this, '{{ profile_user.id }}')"
+                    class="action-icon-btn reject-btn" title="Заблокировать">
+                🚫
+                <span class="text-sm ml-2 font-medium">Заблокировать</span>
+            </button>
+            <button id="unblock-btn-{{ profile_user.id }}" onclick="toggleBlockProfile(this, '{{ profile_user.id }}')"
+                    class="action-icon-btn accept-btn hidden" title="Разблокировать">
+                🔓
+                <span class="text-sm ml-2 font-medium">Разблокировать</span>
+            </button>
             {% endif %}
         </div>
     </div>
@@ -199,12 +203,16 @@
             <span class="text-sm ml-2 font-medium">В избранное</span>
         </button>
         {% if session.get('role') == 'employer' %}
-        <form method="POST" action="/blacklist/{{ profile_user.id }}" style="display:inline;" onsubmit="return confirm('Заблокировать этого работника? Он не сможет откликаться на ваши задания.');">
-            <button type="submit" class="action-icon-btn reject-btn" title="Заблокировать">
-                🚫
-                <span class="text-sm ml-2 font-medium">Заблокировать</span>
-            </button>
-        </form>
+        <button id="block-btn2-{{ profile_user.id }}" onclick="toggleBlockProfile(this, '{{ profile_user.id }}')"
+                class="action-icon-btn reject-btn" title="Заблокировать">
+            🚫
+            <span class="text-sm ml-2 font-medium">Заблокировать</span>
+        </button>
+        <button id="unblock-btn2-{{ profile_user.id }}" onclick="toggleBlockProfile(this, '{{ profile_user.id }}')"
+                class="action-icon-btn accept-btn hidden" title="Разблокировать">
+            🔓
+            <span class="text-sm ml-2 font-medium">Разблокировать</span>
+        </button>
         {% endif %}
     </div>
     {% endif %}
@@ -212,4 +220,62 @@
 </div>
 
 <script src="{{ url_for('static', filename='js/favorites.js') }}"></script>
+
+{% if session.get('role') == 'employer' %}
+<script>
+async function toggleBlockProfile(btn, workerId) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const blockBtn = document.getElementById('block-btn-' + workerId);
+    const unblockBtn = document.getElementById('unblock-btn-' + workerId);
+    const blockBtn2 = document.getElementById('block-btn2-' + workerId);
+    const unblockBtn2 = document.getElementById('unblock-btn2-' + workerId);
+
+    const isUnblock = blockBtn && !blockBtn.classList.contains('hidden');
+
+    if (isUnblock && !confirm('Заблокировать этого работника? Он не сможет откликаться на ваши задания.')) return;
+
+    const url = isUnblock ? '/blacklist/' + workerId : '/unblock/' + workerId;
+    const origText = btn.querySelector('span') ? btn.querySelector('span').textContent : '';
+    if (btn.querySelector('span')) btn.querySelector('span').textContent = '...';
+    btn.disabled = true;
+
+    try {
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': '{{ csrf_token }}'
+            }
+        });
+        const data = await resp.json();
+
+        if (data.success) {
+            if (isUnblock) {
+                // Переключить обе пары кнопок на "разблокировать"
+                [blockBtn, blockBtn2].forEach(b => { if (b) b.classList.add('hidden'); });
+                [unblockBtn, unblockBtn2].forEach(b => { if (b) b.classList.remove('hidden'); });
+                if (window.showToast) window.showToast('🔒 Работник заблокирован', 'success');
+            } else {
+                // Вернуть обе пары кнопок в исходное состояние
+                [unblockBtn, unblockBtn2].forEach(b => { if (b) b.classList.add('hidden'); });
+                [blockBtn, blockBtn2].forEach(b => { if (b) b.classList.remove('hidden'); });
+                if (window.showToast) window.showToast('🔓 Работник разблокирован', 'success');
+            }
+        } else {
+            if (window.showToast) window.showToast('❌ ' + (data.error || 'Ошибка'), 'error');
+            if (btn.querySelector('span')) btn.querySelector('span').textContent = origText;
+        }
+    } catch (e) {
+        if (window.showToast) window.showToast('❌ Ошибка соединения', 'error');
+        if (btn.querySelector('span')) btn.querySelector('span').textContent = origText;
+    }
+    btn.disabled = false;
+    if (isUnblock && btn.querySelector('span')) {
+        btn.querySelector('span').textContent = origText;
+    }
+}
+</script>
+{% endif %}
 {% endblock %}
