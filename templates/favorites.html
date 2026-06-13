@@ -6,8 +6,54 @@
     
     {% if items or favorite_jobs %}
     
+    {# ── Секция: Избранные работодатели (для трудника) ── #}
+    {% if session.get('role') == 'worker' and items %}
+    <h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-3">Работодатели</h3>
+    <div class="space-y-3 mb-6">
+        {% for employer in items %}
+        <div class="app-card bg-white rounded-2xl shadow-sm border border-neutral-100 p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+            <a href="/employers/{{ employer.id }}" class="flex items-start gap-3">
+                {% if employer.photo_url %}
+                <img src="{{ employer.photo_url }}" alt="{{ employer.full_name }}"
+                     class="w-14 h-14 rounded-full object-cover border-2 border-neutral-200 shrink-0"
+                     onerror="var p=this.parentElement;var s=p.querySelector('.avatar-smiley');if(s){s.style.display=''};this.style.display='none';">
+                <div class="avatar-smiley w-14 h-14 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400" style="display:none">{{ smiley(32) }}</div>
+                {% else %}
+                <div class="w-14 h-14 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400">{{ smiley(32) }}</div>
+                {% endif %}
+                <div class="min-w-0 flex-1">
+                    <h3 class="font-semibold text-neutral-900 truncate">{{ employer.full_name }}</h3>
+                    {% if employer.city %}
+                    <p class="text-sm text-neutral-500 mt-1 flex items-center gap-1">
+                        {{ map_pin(14) }}
+                        {{ employer.city }}
+                    </p>
+                    {% endif %}
+                    {% if employer.verification_status == 'approved' %}
+                    <span class="inline-flex items-center gap-0.5 mt-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-[11px] font-semibold">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        Проверен
+                    </span>
+                    {% endif %}
+                </div>
+            </a>
+            <div class="mt-3 pt-3 border-t border-neutral-100">
+                <form method="POST" action="/employers/{{ employer.id }}/favorite" class="inline">
+                    <button type="submit" class="action-icon-btn reject-btn">
+                        <span class="flex items-center gap-1.5">
+                            {{ heart(18) }}
+                        </span>
+                        <span class="text-xs font-medium">Удалить из избранного</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
     {# ── Секция: Избранные трудники (для работодателя) ── #}
-    {% if items %}
+    {% if session.get('role') == 'employer' and items %}
     <h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-3">Трудники</h3>
     
     {# Панель массовых действий #}
@@ -169,11 +215,17 @@
         </div>
         <h3 class="text-lg font-semibold text-neutral-700 mb-1">В избранном пока пусто</h3>
         {% if session.get('role') == 'worker' %}
-        <p class="text-sm text-neutral-400 mb-6">Добавляйте задания, чтобы быстро находить их здесь</p>
-        <a href="/"
-           class="inline-flex items-center gap-1.5 bg-primary-500 text-white px-6 py-3 rounded-full text-sm font-semibold shadow-md hover:bg-primary-600 active:scale-[0.97] transition-all duration-200">
-            Перейти к заданиям
-        </a>
+        <p class="text-sm text-neutral-400 mb-6">Добавляйте работодателей и задания, чтобы быстро находить их здесь</p>
+        <div class="flex flex-col sm:flex-row gap-2">
+            <a href="/employers"
+               class="inline-flex items-center gap-1.5 bg-primary-500 text-white px-6 py-3 rounded-full text-sm font-semibold shadow-md hover:bg-primary-600 active:scale-[0.97] transition-all duration-200">
+                Перейти к работодателям
+            </a>
+            <a href="/"
+               class="inline-flex items-center gap-1.5 bg-white text-neutral-700 border border-neutral-200 px-6 py-3 rounded-full text-sm font-semibold shadow-sm hover:bg-neutral-50 active:scale-[0.97] transition-all duration-200">
+                Перейти к заданиям
+            </a>
+        </div>
         {% else %}
         <p class="text-sm text-neutral-400 mb-6">Добавляйте трудников, чтобы быстро находить их здесь</p>
         <a href="/workers"

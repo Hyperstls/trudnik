@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% from '_icons.html' import star, heart, map_pin, clock, dollar, phone, smiley, avatar, award, briefcase %}
+{% block title %}{{ employer.full_name }} — Трудник{% endblock %}
+{% block content %}
+<div class="px-4 pb-24 max-w-2xl mx-auto fade-in">
+
+    {# ============================================ #}
+    {# Шапка профиля                                 #}
+    {# ============================================ #}
+    <div class="bg-white rounded-2xl shadow-sm border border-neutral-100 p-5 mb-5">
+        <div class="flex items-start gap-4">
+            {# Аватар #}
+            {% if employer.photo_url %}
+            <img src="{{ employer.photo_url }}" alt="{{ employer.full_name }}"
+                 class="w-20 h-20 rounded-full object-cover border-2 border-neutral-200 shrink-0"
+                 onerror="var p=this.parentElement;var s=p.querySelector('.avatar-smiley');if(s){s.style.display=''};this.style.display='none';">
+            <div class="avatar-smiley w-20 h-20 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400" style="display:none">{{ smiley(40) }}</div>
+            {% else %}
+            <div class="w-20 h-20 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400">{{ smiley(40) }}</div>
+            {% endif %}
+
+            <div class="min-w-0 flex-1">
+                <h1 class="text-xl font-bold text-neutral-900 truncate">{{ employer.full_name }}</h1>
+
+                {# Рейтинг #}
+                <div class="flex items-center gap-0.5 mt-1">
+                    {% set rating = employer.rating|default(0)|float %}
+                    {% for i in range(5) %}
+                        {% if i < rating|int %}
+                            <span class="text-warning text-sm">★</span>
+                        {% elif rating - i >= 0.5 %}
+                            <span class="text-warning text-sm">★</span>
+                        {% else %}
+                            <span class="text-neutral-300 text-sm">★</span>
+                        {% endif %}
+                    {% endfor %}
+                    {% if rating > 0 %}
+                        <span class="text-neutral-500 text-sm ml-1 font-medium">{{ rating|round(1) }}</span>
+                        {% if employer.total_reviews %}
+                            <span class="text-neutral-400 text-xs ml-1">({{ employer.total_reviews }} отз.)</span>
+                        {% endif %}
+                    {% endif %}
+                </div>
+
+                {# Город #}
+                {% if employer.city %}
+                <div class="flex items-center gap-1 text-sm text-neutral-500 mt-1">
+                    {{ map_pin(14) }}
+                    {{ employer.city }}
+                </div>
+                {% endif %}
+
+                {# Дата регистрации #}
+                {% if employer.created_at %}
+                <div class="flex items-center gap-1 text-xs text-neutral-400 mt-1">
+                    {{ clock(14) }}
+                    На платформе с {{ employer.created_at[:10] }}
+                </div>
+                {% endif %}
+
+                {# Статус верификации #}
+                {% if employer.verification_status == 'approved' %}
+                <span class="inline-flex items-center gap-1 mt-2 px-2.5 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Проверенный работодатель
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Кнопка избранного #}
+        {% if session.get('role') == 'worker' %}
+        <div class="mt-4 pt-4 border-t border-neutral-100">
+            <form method="POST" action="/employers/{{ employer.id }}/favorite" class="inline">
+                <button type="submit" class="action-icon-btn {% if is_favorited %}reject-btn{% else %}contact-btn{% endif %}">
+                    <span class="flex items-center gap-1.5">
+                        {{ heart(18) }}
+                    </span>
+                    <span class="text-sm font-medium">
+                        {% if is_favorited %}❤️ Убрать из избранного{% else %}🤍 Добавить в избранное{% endif %}
+                    </span>
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+
+    {# ============================================ #}
+    {# Об работодателе                               #}
+    {# ============================================ #}
+    {% if employer.bio or employer.phone %}
+    <div class="bg-white rounded-2xl shadow-sm border border-neutral-100 p-5 mb-5">
+        <h2 class="font-semibold text-neutral-800 mb-3">Об работодателе</h2>
+        {% if employer.bio %}
+        <p class="text-sm text-neutral-600 leading-relaxed">{{ employer.bio }}</p>
+        {% endif %}
+        {% if employer.phone %}
+        <div class="flex items-center gap-2 mt-3 text-sm text-neutral-600">
+            {{ phone(16) }}
+            <a href="tel:{{ employer.phone }}" class="text-primary-600 hover:underline">{{ employer.phone }}</a>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {# ============================================ #}
+    {# Открытые задания                               #}
+    {# ============================================ #}
+    <div class="mb-5">
+        <h2 class="font-semibold text-neutral-800 mb-3 flex items-center gap-2">
+            {{ briefcase(18) }}
+            Открытые задания
+            {% if open_jobs %}
+            <span class="text-sm text-neutral-400 font-normal">({{ open_jobs|length }})</span>
+            {% endif %}
+        </h2>
+
+        {% if open_jobs %}
+        <div class="space-y-3">
+            {% for job in open_jobs %}
+            <div class="app-card bg-white rounded-2xl shadow-sm border border-neutral-100 p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+                <a href="/jobs/{{ job.id }}" class="block">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0 flex-1">
+                            <h3 class="font-semibold text-neutral-900 truncate">{{ job.organization_name or 'Без названия' }}</h3>
+                            {% if job.city or job.date_time %}
+                            <p class="text-xs text-neutral-400 mt-1 flex items-center gap-1 flex-wrap">
+                                {% if job.city %}
+                                <span class="inline-flex items-center gap-0.5">{{ map_pin(12) }}{{ job.city }}</span>
+                                {% endif %}
+                                {% if job.city and job.date_time %}
+                                <span class="w-1 h-1 rounded-full bg-neutral-300"></span>
+                                {% endif %}
+                                {% if job.date_time %}
+                                <span class="inline-flex items-center gap-0.5">{{ clock(12) }}{{ job.date_time[:10] }}</span>
+                                {% endif %}
+                            </p>
+                            {% endif %}
+                            {% if job.object_description %}
+                            <p class="mt-1.5 text-sm text-neutral-600 line-clamp-2 leading-relaxed">{{ job.object_description }}</p>
+                            {% endif %}
+                            {% if job.status %}
+                            <span class="inline-block mt-2 text-[11px] font-semibold px-2.5 py-0.5 rounded-full
+                                {% if job.status == 'open' %}bg-green-100 text-green-700
+                                {% elif job.status == 'completed' %}bg-neutral-200 text-neutral-600
+                                {% else %}bg-red-100 text-red-700{% endif %}">
+                                {% if job.status == 'open' %}Открыто
+                                {% elif job.status == 'completed' %}Завершено
+                                {% elif job.status == 'cancelled' %}Отменено
+                                {% else %}{{ job.status }}{% endif %}
+                            </span>
+                            {% endif %}
+                        </div>
+                        {% if job.payment_amount %}
+                        <div class="bg-primary-500 text-white text-sm font-bold px-3 py-1 rounded-lg shadow-sm shrink-0">
+                            {{ job.payment_amount }} ₽
+                        </div>
+                        {% endif %}
+                    </div>
+                </a>
+                {# Кнопка «Откликнуться» #}
+                {% if session.get('role') == 'worker' and job.status == 'open' and job.id not in already_applied_job_ids %}
+                <div class="mt-3 pt-3 border-t border-neutral-100">
+                    <form method="POST" action="/apply/{{ job.id }}" class="inline">
+                        <button type="submit" class="action-icon-btn accept-btn">
+                            <span class="flex items-center gap-1.5">
+                                {{ dollar(16) }}
+                            </span>
+                            <span class="text-xs font-medium">Откликнуться</span>
+                        </button>
+                    </form>
+                </div>
+                {% elif session.get('role') == 'worker' and job.id in already_applied_job_ids %}
+                <div class="mt-3 pt-3 border-t border-neutral-100">
+                    <span class="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        Вы откликнулись
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-neutral-50 rounded-2xl border border-neutral-200 p-8 text-center">
+            <div class="w-14 h-14 rounded-full bg-neutral-100 flex items-center justify-center mx-auto mb-3">
+                {{ briefcase(28) }}
+            </div>
+            <p class="text-sm text-neutral-500">У этого работодателя пока нет открытых заданий</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

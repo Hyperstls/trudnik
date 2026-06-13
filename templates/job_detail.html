@@ -36,6 +36,18 @@
         {% endif %}
     </p>
 
+    {# Кнопка «Добавить работодателя в избранное» (для трудников) #}
+    {% if session.get('role') == 'worker' and employer %}
+    <div class="mb-4">
+        <form method="POST" action="/employers/{{ employer.id }}/favorite" style="display:inline;">
+            <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all
+                {% if is_employer_favorited %}bg-red-50 text-red-600 border border-red-200 hover:bg-red-100{% else %}bg-primary-50 text-primary-600 border border-primary-200 hover:bg-primary-100{% endif %}">
+                {% if is_employer_favorited %}❤️ В избранном{% else %}🤍 Добавить работодателя в избранное{% endif %}
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
     {# ID задания с копированием #}
     {% if session.get('role') == 'employer' and session.get('user_id') == job.employer_id %}
     <div class="flex items-center gap-2 mb-4 px-4 py-2.5 bg-neutral-50 rounded-xl border border-neutral-200">

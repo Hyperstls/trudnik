@@ -389,6 +389,13 @@ def job_detail(job_id):
                 except (ValueError, TypeError):
                     can_withdraw = True
 
+    # Проверка: добавлен ли работодатель в избранное у трудника
+    is_employer_favorited = False
+    if session.get('role') == 'worker' and session.get('user_id') and job.get('employer_id'):
+        fav_check = supabase_request('GET',
+            f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{job["employer_id"]}&favorite_type=eq.employer')
+        is_employer_favorited = bool(fav_check.json()) if fav_check.ok else False
+
     return render_template('job_detail.html', job=job,
                            employer=employer,
                            yandex_api_key=current_app.config['YANDEX_MAPS_API_KEY'],
@@ -396,7 +403,8 @@ def job_detail(job_id):
                            my_app_status=my_app_status,
                            my_app_id=my_app_id,
                            can_withdraw=can_withdraw,
-                           current_user_role=session.get('role'))
+                           current_user_role=session.get('role'),
+                           is_employer_favorited=is_employer_favorited)
 
 
 # ──────────────────────────────────────────────

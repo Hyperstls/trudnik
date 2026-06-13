@@ -9,20 +9,30 @@ favorites_bp = Blueprint('favorites', __name__)
 @favorites_bp.route('/favorites')
 @login_required
 def favorites():
-    resp = supabase_request('GET',
-        f'favorites?user_id=eq.{session["user_id"]}&select=target:profiles!favorites_target_id_fkey(id,full_name,photo_url,rating,city,skills,experience,desired_payment)')
-    items = [item['target'] for item in resp.json()] if resp.ok else []
-
-    # Определяем, какие трудники уже приглашены работодателем
+    items = []
     invited_worker_ids = set()
-    if session.get('role') == 'employer' and items:
-        worker_ids = [item['id'] for item in items if item.get('id')]
-        if worker_ids:
-            ids_filter = ','.join(worker_ids)
-            inv_resp = supabase_request('GET',
-                f'invitations?employer_id=eq.{session["user_id"]}&worker_id=in.({ids_filter})&status=in.(pending,accepted)&select=worker_id')
-            if inv_resp.ok and inv_resp.json():
-                invited_worker_ids = {inv['worker_id'] for inv in inv_resp.json()}
+
+    if session.get('role') == 'employer':
+        # Избранные трудники
+        resp = supabase_request('GET',
+            f'favorites?user_id=eq.{session["user_id"]}&favorite_type=eq.worker&select=target:profiles!favorites_target_id_fkey(id,full_name,photo_url,rating,city,skills,experience,desired_payment)')
+        items = [item['target'] for item in resp.json()] if resp.ok else []
+
+        # Определяем, какие трудники уже приглашены работодателем
+        if items:
+            worker_ids = [item['id'] for item in items if item.get('id')]
+            if worker_ids:
+                ids_filter = ','.join(worker_ids)
+                inv_resp = supabase_request('GET',
+                    f'invitations?employer_id=eq.{session["user_id"]}&worker_id=in.({ids_filter})&status=in.(pending,accepted)&select=worker_id')
+                if inv_resp.ok and inv_resp.json():
+                    invited_worker_ids = {inv['worker_id'] for inv in inv_resp.json()}
+
+    elif session.get('role') == 'worker':
+        # Избранные работодатели
+        resp = supabase_request('GET',
+            f'favorites?user_id=eq.{session["user_id"]}&favorite_type=eq.employer&select=target:profiles!favorites_target_id_fkey(id,full_name,photo_url,verification_status,city)')
+        items = [item['target'] for item in resp.json()] if resp.ok else []
 
     favorite_jobs = []
     if session.get('role') == 'worker':

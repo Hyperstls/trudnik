@@ -121,3 +121,100 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(e => console.error('Ошибка проверки избранного:', e));
     });
 });
+
+/**
+ * Переключение избранного для работодателя (через API).
+ * Использует эндпоинты /api/employers/favorites/add и /api/employers/favorites/remove.
+ *
+ * @param {string} employerId - UUID работодателя
+ * @param {HTMLElement} btn  - DOM-элемент кнопки
+ * @param {Event}      event - Событие (для остановки всплытия)
+ */
+function toggleEmployerFavorite(employerId, btn, event) {
+    if (!employerId || !btn) {
+        console.error('toggleEmployerFavorite: missing employerId or btn');
+        return;
+    }
+
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+
+    const isFavorited = btn.dataset.favorited === 'true';
+
+    if (isFavorited) {
+        // Удаляем
+        updateEmployerFavoriteUI(btn, false);
+        fetch('/api/employers/favorites/remove', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ employer_id: employerId })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                updateEmployerFavoriteUI(btn, true);
+                if (window.showToast) {
+                    window.showToast('❌ ' + (data.error || 'Не удалось удалить'), 'error');
+                }
+            } else {
+                if (window.showToast) {
+                    window.showToast('✅ Работодатель удалён из избранного', 'success');
+                }
+            }
+        })
+        .catch(() => {
+            updateEmployerFavoriteUI(btn, true);
+            if (window.showToast) {
+                window.showToast('❌ Ошибка сети', 'error');
+            }
+        });
+    } else {
+        // Добавляем
+        updateEmployerFavoriteUI(btn, true);
+        fetch('/api/employers/favorites/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ employer_id: employerId })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                if (window.showToast) {
+                    window.showToast('✅ Работодатель добавлен в избранное!', 'success');
+                }
+            } else {
+                updateEmployerFavoriteUI(btn, false);
+                if (window.showToast) {
+                    window.showToast('❌ ' + (data.error || 'Не удалось добавить'), 'error');
+                }
+            }
+        })
+        .catch(() => {
+            updateEmployerFavoriteUI(btn, false);
+            if (window.showToast) {
+                window.showToast('❌ Ошибка сети', 'error');
+            }
+        });
+    }
+}
+
+function updateEmployerFavoriteUI(btn, isFavorited) {
+    const icon = btn.querySelector('.favorite-icon');
+    const text = btn.querySelector('.favorite-text');
+
+    btn.dataset.favorited = isFavorited ? 'true' : 'false';
+
+    if (isFavorited) {
+        btn.classList.remove('contact-btn');
+        btn.classList.add('reject-btn');
+        if (icon) icon.innerHTML = SVG_HEART;
+        if (text) text.textContent = 'Удалить из избранного';
+    } else {
+        btn.classList.remove('reject-btn');
+        btn.classList.add('contact-btn');
+        if (icon) icon.innerHTML = SVG_STAR;
+        if (text) text.textContent = 'В избранное';
+    }
+}
