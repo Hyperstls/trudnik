@@ -1,3 +1,5 @@
+import html as _html
+
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required
@@ -124,16 +126,19 @@ def send_message():
             label = status_labels.get(job_status, job_status)
             return jsonify({'status': 'error', 'message': f'Отправка сообщений недоступна — задание {label}'}), 403
 
+    # XSS-санитизация: экранируем HTML-теги в сообщении
+    sanitized_content = _html.escape(content, quote=True)
+
     supabase_request('POST', 'messages', json={
         'application_id': application_id,
         'sender_id': sender_id,
-        'content': content
+        'content': sanitized_content
     })
 
     # Уведомить получателя
     recipient = app_data['worker_id'] if sender_id == employer_id else employer_id
     create_notification(recipient, 'new_message', 'Новое сообщение',
-                       data['content'][:100], data={'application_id': application_id})
+                       sanitized_content[:100], data={'application_id': application_id})
 
     return jsonify({'status': 'ok'})
 

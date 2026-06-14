@@ -4,7 +4,7 @@ from flask import Blueprint, current_app, flash, jsonify, redirect, render_templ
 
 from app.config import Config
 from app.decorators import login_required
-from app.utils import rate_limit, supabase_request
+from app.utils import rate_limit, supabase_request, supabase_admin_request, supabase_rpc
 from app.services.notification_service import create as notify
 
 applications_bp = Blueprint('applications', __name__)
@@ -290,44 +290,20 @@ def api_handle_application(app_id, action):
         if current_status == 'rejected':
             supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'pending'})
 
-        # Проверить количество мест и статус задания
-        job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=current_workers,max_workers,status')
-        if not job_resp.ok or not job_resp.json():
-            return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
+        # Атомарный accept через RPC (этап 4.4)
+        rpc_result = supabase_rpc('accept_application', {
+            'p_job_id': job_id,
+            'p_app_id': app_id,
+        }, use_admin=True)
 
-        job = job_resp.json()[0]
-        current_workers = job.get('current_workers', 0)
-        max_workers = job.get('max_workers', 1)
+        if not rpc_result.ok:
+            return jsonify({'success': False, 'error': 'Ошибка выполнения операции'}), 500
 
-        if current_workers >= max_workers:
-            return jsonify({'success': False, 'error': f'Все места в задании заняты (максимум {max_workers})'}), 409
-
-        if job.get('status') != 'open':
-            return jsonify({'success': False, 'error': 'Задание уже закрыто для принятия откликов'}), 409
-
-        # Атомарный PATCH с условием: обновляем только если current_workers < max_workers
-        # PostgREST выполняет UPDATE с WHERE current_workers < {max_workers} атомарно на уровне БД
-        # Благодаря Prefer: return=representation, при успехе возвращается обновлённая запись
-        new_count = current_workers + 1
-        new_status = 'completed' if new_count >= max_workers else 'open'
-        patch_resp = supabase_request('PATCH', f'jobs?id=eq.{job_id}&current_workers=lt.{max_workers}', json={
-            'status': new_status,
-            'current_workers': new_count
-        })
-        current_app.logger.info(
-            '[ACCEPT] atomic PATCH: job_id=%s current=%s max=%s ok=%s status=%s json=%s text=%s',
-            job_id, current_workers, max_workers, patch_resp.ok, patch_resp.status_code,
-            (patch_resp.json() if patch_resp.ok else None), (patch_resp.text or '')[:200]
-        )
-        if not (patch_resp.ok and patch_resp.json()):
-            return jsonify({'success': False, 'error': 'Не удалось забронировать место (конкуренция запросов)'}), 409
-
-        # Принять отклик
-        supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'accepted'})
-
-        # Отклонить остальные ожидающие отклики на это задание
-        supabase_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.pending&id=neq.{app_id}',
-                         json={'status': 'rejected'})
+        result_data = rpc_result.json()
+        if not result_data or not result_data.get('success'):
+            error_msg = (result_data or {}).get('error', 'Не удалось принять отклик')
+            status_code = 409 if 'места' in error_msg else 400
+            return jsonify({'success': False, 'error': error_msg}), status_code
 
         # Уведомить работника
         notify(worker_id, 'application_accepted', 'Отклик принят',
@@ -340,44 +316,23 @@ def api_handle_application(app_id, action):
         })
 
     elif action == 'reject':
-        if current_status == 'accepted':
-            # === ОТКЛОНЕНИЕ УЖЕ ПРИНЯТОГО РАБОТНИКА ===
-            # 1. Получить данные задания
-            job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=current_workers,max_workers,status')
-            if not job_resp.ok or not job_resp.json():
-                return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
+        # Атомарный reject через RPC (этап 4.4)
+        rpc_result = supabase_rpc('reject_application', {
+            'p_job_id': job_id,
+            'p_app_id': app_id,
+        }, use_admin=True)
 
-            job = job_resp.json()[0]
-            current_workers = max(0, job.get('current_workers', 1) - 1)
-            new_job_status = 'open' if current_workers == 0 else 'completed'
+        if not rpc_result.ok:
+            return jsonify({'success': False, 'error': 'Ошибка выполнения операции'}), 500
 
-            # 2. Уменьшить счётчик и обновить статус задания
-            supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={
-                'status': new_job_status,
-                'current_workers': current_workers
-            })
+        result_data = rpc_result.json()
+        if not result_data or not result_data.get('success'):
+            error_msg = (result_data or {}).get('error', 'Не удалось отклонить отклик')
+            return jsonify({'success': False, 'error': error_msg}), 400
 
-            # 3. Отклонить отклик
-            supabase_request('PATCH', f'applications?id=eq.{app_id}', json={
-                'status': 'rejected',
-            })
-
-            # 5. Уведомить работника
-            notify(worker_id, 'application_rejected', 'Отклик отклонён',
-                             f'Ваш отклик на задание #{job_id} был отклонён работодателем')
-
-            return jsonify({
-                'success': True,
-                'new_status': 'rejected',
-                'current_workers': current_workers,
-                'job_status': new_job_status,
-                'message': 'Работник отклонён'
-            })
-
-        # === ОБЫЧНОЕ ОТКЛОНЕНИЕ (pending → rejected) ===
-        supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'rejected'})
+        # Уведомить работника
         notify(worker_id, 'application_rejected', 'Отклик отклонён',
-                         f'Ваш отклик на задание #{job_id} был отклонён')
+               f'Ваш отклик на задание #{job_id} был отклонён')
 
         return jsonify({
             'success': True,
@@ -404,6 +359,9 @@ def api_batch_applications():
 
     if not app_ids or not action:
         return jsonify({'success': False, 'error': 'Не указаны ID откликов или действие'}), 400
+
+    if len(app_ids) > Config.MAX_BATCH_SIZE:
+        return jsonify({'success': False, 'error': f'Максимальный размер пакета: {Config.MAX_BATCH_SIZE}'}), 400
 
     if action not in ('accept', 'reject', 'reopen'):
         return jsonify({'success': False, 'error': f'Неизвестное действие: {action}'}), 400

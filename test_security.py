@@ -11,91 +11,10 @@ import time
 import pytest
 import requests
 
-
-BASE_URL = "http://localhost:5000"
-
-# Тестовые учётные данные (из setup_test_users.py)
-EMPLOYER_EMAIL = "org@test.ru"
-EMPLOYER_PASSWORD = "test123456"
-WORKER_EMAIL = "trud3@test.ru"
-WORKER_PASSWORD = "test123456"
-
-
-# ──────────────────────────────────────────────
-# Вспомогательные функции
-# ──────────────────────────────────────────────
-
-def extract_csrf_token(html: str) -> str | None:
-    """Извлечь CSRF-токен из meta-тега HTML-страницы."""
-    match = re.search(r'<meta name="csrf-token" content="([^"]+)"', html)
-    return match.group(1) if match else None
-
-
-def login_as(session: requests.Session, email: str, password: str) -> str | None:
-    """
-    Войти как пользователь с указанным email/паролем.
-    Возвращает CSRF-токен или None при ошибке.
-    """
-    resp = session.get(f"{BASE_URL}/login", timeout=30)
-    csrf = extract_csrf_token(resp.text)
-
-    # POST /login не требует CSRF (явно пропущен в csrf_check)
-    resp = session.post(
-        f"{BASE_URL}/login",
-        data={"email": email, "password": password},
-        timeout=30,
-        allow_redirects=True,
-    )
-    if "Ошибка входа" in resp.text:
-        return None
-    fresh_csrf = extract_csrf_token(resp.text)
-    return fresh_csrf or csrf
-
-
-def get_csrf_from_page(session: requests.Session, path: str = "/") -> str | None:
-    """Получить CSRF-токен с любой страницы приложения."""
-    resp = session.get(f"{BASE_URL}{path}", timeout=30)
-    return extract_csrf_token(resp.text)
-
-
-def csrf_headers(session: requests.Session) -> dict:
-    """Получить заголовки с CSRF-токеном для JSON API-запросов."""
-    csrf = get_csrf_from_page(session)
-    return {
-        "X-CSRF-Token": csrf or "",
-        "Content-Type": "application/json",
-        "X-Requested-With": "XMLHttpRequest",
-    }
-
-
-def form_with_csrf(session: requests.Session, **extra) -> dict:
-    """Формирует данные формы с CSRF-токеном."""
-    csrf = get_csrf_from_page(session)
-    return {"_csrf_token": csrf or "", **extra}
-
-
-# ──────────────────────────────────────────────
-# Fixtures
-# ──────────────────────────────────────────────
-
-@pytest.fixture(scope="module")
-def employer_session():
-    """Сессия работодателя (org@test.ru)."""
-    sess = requests.Session()
-    csrf = login_as(sess, EMPLOYER_EMAIL, EMPLOYER_PASSWORD)
-    if csrf is None:
-        pytest.fail("Не удалось войти как работодатель. Проверьте учётные данные.")
-    return sess
-
-
-@pytest.fixture(scope="module")
-def worker_session():
-    """Сессия трудника (trud3@test.ru)."""
-    sess = requests.Session()
-    csrf = login_as(sess, WORKER_EMAIL, WORKER_PASSWORD)
-    if csrf is None:
-        pytest.fail("Не удалось войти как трудник. Проверьте учётные данные.")
-    return sess
+from conftest import (
+    login_as, extract_csrf_token, csrf_headers, get_csrf_from_page, form_with_csrf,
+    BASE_URL, EMPLOYER_EMAIL, EMPLOYER_PASSWORD, WORKER_EMAIL, WORKER_PASSWORD,
+)
 
 
 # ──────────────────────────────────────────────

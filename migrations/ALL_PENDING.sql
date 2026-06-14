@@ -244,3 +244,192 @@ SET is_paid = TRUE,
     expires_at = NOW() + INTERVAL '30 days'
 WHERE status IN ('open', 'completed') 
   AND (is_paid = FALSE OR is_paid IS NULL);
+
+
+-- ============================================================
+-- 039_atomic_operations: RPC-процедуры
+-- Полный SQL — в файле migrations/039_atomic_operations.sql
+-- Создаёт функции: accept_application, reject_application,
+--                  delete_job_cascade, delete_user_cascade
+-- Все с SECURITY DEFINER, атомарные операции
+-- ============================================================
+-- ⚠ Запустите migrations/039_atomic_operations.sql отдельно
+--    (файл слишком большой для включения сюда)
+
+
+-- ============================================================
+-- 040: Schema Versioning
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS public.schema_migrations (
+    version     TEXT PRIMARY KEY,
+    applied_at  TIMESTAMPTZ DEFAULT NOW(),
+    description TEXT
+);
+
+ALTER TABLE public.schema_migrations ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+    DROP POLICY IF EXISTS "Admin can read schema_migrations" ON public.schema_migrations;
+    CREATE POLICY "Admin can read schema_migrations" ON public.schema_migrations
+        FOR SELECT
+        USING (
+            EXISTS (
+                SELECT 1 FROM profiles
+                WHERE profiles.id = (SELECT auth.uid())
+                  AND profiles.role = 'admin'
+            )
+        );
+EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'schema_migrations policy: %', SQLERRM;
+END $$;
+
+INSERT INTO public.schema_migrations (version, description)
+VALUES ('040', 'Schema versioning: таблица schema_migrations с RLS')
+ON CONFLICT (version) DO NOTHING;
+
+
+-- ============================================================
+-- 041: FK для messages — sender_id → profiles.id ON DELETE CASCADE
+-- ============================================================
+
+-- FK: messages.sender_id → profiles.id
+DO $$
+DECLARE
+    fk_exists boolean;
+BEGIN
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints tc
+        JOIN information_schema.constraint_column_usage ccu
+            ON ccu.constraint_name = tc.constraint_name
+        WHERE tc.constraint_type = 'FOREIGN KEY'
+          AND tc.table_name = 'messages'
+          AND ccu.table_name = 'profiles'
+          AND ccu.column_name = 'id'
+    ) INTO fk_exists;
+
+    IF NOT fk_exists THEN
+        DELETE FROM messages
+        WHERE sender_id IS NOT NULL
+          AND sender_id NOT IN (SELECT id FROM profiles);
+
+        ALTER TABLE public.messages
+            ADD CONSTRAINT fk_messages_sender_id
+            FOREIGN KEY (sender_id)
+            REFERENCES public.profiles(id)
+            ON DELETE CASCADE;
+
+        RAISE NOTICE 'FK messages.sender_id → profiles.id created';
+    ELSE
+        RAISE NOTICE 'FK messages.sender_id → profiles.id already exists';
+    END IF;
+EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'FK messages.sender_id: %', SQLERRM;
+END $$;
+
+-- FK: messages.application_id → applications.id
+DO $$
+DECLARE
+    fk_exists boolean;
+    col_exists boolean;
+BEGIN
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'messages'
+          AND column_name = 'application_id'
+    ) INTO col_exists;
+
+    IF col_exists THEN
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.table_constraints tc
+            JOIN information_schema.constraint_column_usage ccu
+                ON ccu.constraint_name = tc.constraint_name
+            WHERE tc.constraint_type = 'FOREIGN KEY'
+              AND tc.table_name = 'messages'
+              AND ccu.table_name = 'applications'
+              AND ccu.column_name = 'id'
+        ) INTO fk_exists;
+
+        IF NOT fk_exists THEN
+            DELETE FROM messages
+            WHERE application_id IS NOT NULL
+              AND application_id NOT IN (SELECT id FROM applications);
+
+            ALTER TABLE public.messages
+                ADD CONSTRAINT fk_messages_application_id
+                FOREIGN KEY (application_id)
+                REFERENCES public.applications(id)
+                ON DELETE CASCADE;
+
+            RAISE NOTICE 'FK messages.application_id → applications.id created';
+        ELSE
+            RAISE NOTICE 'FK messages.application_id → applications.id already exists';
+        END IF;
+    ELSE
+        RAISE NOTICE 'Column messages.application_id does not exist — skipped';
+    END IF;
+EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'FK messages.application_id: %', SQLERRM;
+END $$;
+
+INSERT INTO public.schema_migrations (version, description)
+VALUES ('041', 'FK messages: sender_id → profiles.id, application_id → applications.id ON DELETE CASCADE')
+ON CONFLICT (version) DO NOTHING;
+
+
+-- ============================================================
+-- 042: Чистка дубликатов и мёртвых таблиц
+-- ============================================================
+
+-- Дубликаты: notifications.read vs is_read
+DO $$
+DECLARE
+    has_read boolean;
+    has_is_read boolean;
+BEGIN
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'notifications' AND column_name = 'read'
+    ) INTO has_read;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'notifications' AND column_name = 'is_read'
+    ) INTO has_is_read;
+
+    IF has_read AND has_is_read THEN
+        UPDATE notifications
+        SET is_read = read::boolean
+        WHERE is_read IS NULL AND read IS NOT NULL;
+
+        ALTER TABLE public.notifications DROP COLUMN IF EXISTS read;
+        RAISE NOTICE 'notifications: колонка read удалена (оставлена is_read)';
+    ELSIF has_read AND NOT has_is_read THEN
+        ALTER TABLE public.notifications RENAME COLUMN read TO is_read;
+        RAISE NOTICE 'notifications: колонка read переименована в is_read';
+    ELSE
+        RAISE NOTICE 'notifications: дубликатов нет';
+    END IF;
+EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'notifications cleanup: %', SQLERRM;
+END $$;
+
+-- Дубликаты: profiles.religion (TEXT) vs religion_id (UUID)
+DO $$
+BEGIN
+    COMMENT ON COLUMN public.profiles.religion IS 'DEPRECATED: используйте religion_id (UUID → religions.id)';
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
+
+-- Мёртвые таблицы
+DO $$ BEGIN
+    COMMENT ON TABLE public.shifts IS 'DEPRECATED: заменены на application-based чат (messages.application_id). Миграция 027.';
+EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
+DO $$ BEGIN
+    COMMENT ON TABLE public.spatial_ref_sys IS 'DEPRECATED: системная таблица PostGIS, не используется приложением.';
+EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
+INSERT INTO public.schema_migrations (version, description)
+VALUES ('042', 'Cleanup: дубликаты колонок, пометка мёртвых таблиц')
+ON CONFLICT (version) DO NOTHING;

@@ -1,16 +1,31 @@
 import secrets
 import time
 from functools import wraps
+from typing import Any, Callable, TypeVar
 
 import jwt
 from flask import abort, flash, redirect, request, session, url_for
 
 from app.utils import refresh_access_token, supabase_request
 
+F = TypeVar('F', bound=Callable[..., Any])
 
-def login_required(f):
+
+def login_required(f: F) -> F:
+    """Декоратор: требует аутентификации пользователя.
+
+    Проверяет наличие access_token в сессии. При истечении токена
+    пытается обновить его через refresh_token. Если не удаётся —
+    очищает сессию и перенаправляет на login.
+
+    Args:
+        f: функция-обработчик маршрута.
+
+    Returns:
+        Декорированная функция с проверкой аутентификации.
+    """
     @wraps(f)
-    def decorated(*args, **kwargs):
+    def decorated(*args: Any, **kwargs: Any) -> Any:
         token = session.get('access_token')
         if not token:
             return redirect(url_for('auth.login'))
@@ -31,13 +46,24 @@ def login_required(f):
             pass
 
         return f(*args, **kwargs)
-    return decorated
+    return decorated  # type: ignore[return-value]
 
 
-def role_required(role):
-    def decorator(f):
+def role_required(role: str) -> Callable[[F], F]:
+    """Декоратор: требует определённую роль пользователя.
+
+    Проверяет роль через запрос к profiles. Если роль не совпадает —
+    показывает flash-сообщение и перенаправляет на индекс.
+
+    Args:
+        role: требуемая роль ('worker', 'employer', 'admin').
+
+    Returns:
+        Декоратор, проверяющий роль пользователя.
+    """
+    def decorator(f: F) -> F:
         @wraps(f)
-        def decorated(*args, **kwargs):
+        def decorated(*args: Any, **kwargs: Any) -> Any:
             if 'access_token' not in session:
                 return redirect(url_for('auth.login'))
             resp = supabase_request('GET', f'profiles?id=eq.{session["user_id"]}&select=role')
@@ -49,7 +75,7 @@ def role_required(role):
                 flash('Доступ запрещён', 'danger')
                 return redirect(url_for('jobs.index'))
             return f(*args, **kwargs)
-        return decorated
+        return decorated  # type: ignore[return-value]
     return decorator
 
 

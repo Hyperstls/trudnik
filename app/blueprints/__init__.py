@@ -3,6 +3,7 @@
 from app.blueprints.auth import auth_bp
 from app.blueprints.profile import profile_bp
 from app.blueprints.jobs import jobs_bp
+from app.blueprints.jobs_api import jobs_api_bp
 from app.blueprints.applications import applications_bp
 from app.blueprints.chat import chat_bp
 from app.blueprints.favorites import favorites_bp
@@ -11,7 +12,7 @@ from app.blueprints.notifications import notifications_bp
 from app.blueprints.admin import admin_bp
 
 __all__ = [
-    'auth_bp', 'profile_bp', 'jobs_bp', 'applications_bp',
-    'chat_bp', 'favorites_bp', 'blacklist_bp',
-    'notifications_bp', 'admin_bp',
+    'auth_bp', 'profile_bp', 'jobs_bp', 'jobs_api_bp',
+    'applications_bp', 'chat_bp', 'favorites_bp',
+    'blacklist_bp', 'notifications_bp', 'admin_bp',
 ]

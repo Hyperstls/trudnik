@@ -1,6 +1,6 @@
 import subprocess
 import secrets
-from flask import Flask, session, request, abort
+from flask import Flask, g, session, request, abort
 
 from app.config import Config
 
@@ -28,14 +28,34 @@ def create_app():
             session['_csrf_token'] = secrets.token_hex(32)
         return {'csrf_token': session['_csrf_token']}
 
+    @app.context_processor
+    def inject_csp_nonce():
+        """Внедрение CSP nonce во все шаблоны для inline-скриптов."""
+        return {'csp_nonce': getattr(g, 'csp_nonce', '')}
+
+    @app.before_request
+    def generate_csp_nonce():
+        """Генерация случайного nonce для Content-Security-Policy."""
+        g.csp_nonce = secrets.token_hex(24)
+
     @app.after_request
     def add_security_headers(response):
         """Добавить HTTP Security Headers для защиты от XSS, clickjacking, MIME sniffing."""
+        nonce = getattr(g, 'csp_nonce', '')
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'DENY'
-        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://api-maps.yandex.ru https://yastatic.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co https://*.maps.yandex.net https://yastatic.net https://geocode-maps.yandex.ru; frame-src 'self'"
+        response.headers['Content-Security-Policy'] = (
+            f"default-src 'self'; "
+            f"script-src 'self' 'nonce-{nonce}' https://cdn.jsdelivr.net https://api-maps.yandex.ru https://yastatic.net; "
+            f"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+            f"font-src 'self' https://fonts.gstatic.com; "
+            f"img-src 'self' data: https:; "
+            f"connect-src 'self' https://*.supabase.co https://*.maps.yandex.net https://yastatic.net https://geocode-maps.yandex.ru; "
+            f"frame-src 'self'"
+        )
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        response.headers['X-XSS-Protection'] = '1; mode=block'
         response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=self'
         return response
 
@@ -143,6 +163,7 @@ def create_app():
     from app.blueprints.auth import auth_bp
     from app.blueprints.profile import profile_bp
     from app.blueprints.jobs import jobs_bp
+    from app.blueprints.jobs_api import jobs_api_bp
     from app.blueprints.applications import applications_bp
     from app.blueprints.chat import chat_bp
     from app.blueprints.favorites import favorites_bp
@@ -156,6 +177,7 @@ def create_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(profile_bp)
     app.register_blueprint(jobs_bp)
+    app.register_blueprint(jobs_api_bp)
     app.register_blueprint(applications_bp)
     app.register_blueprint(chat_bp)
     app.register_blueprint(favorites_bp)

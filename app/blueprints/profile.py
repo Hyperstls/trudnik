@@ -1,13 +1,18 @@
 import uuid
 
 import requests
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
+from werkzeug.utils import secure_filename
 
 from app.config import Config
 from app.decorators import login_required
-from app.utils import SERVICE_KEY, SUPABASE_KEY, SUPABASE_URL, supabase_admin_request, supabase_request, upload_to_storage
+from app.utils import SERVICE_KEY, SUPABASE_KEY, SUPABASE_URL, supabase_admin_request, supabase_request, supabase_rpc, upload_to_storage
 
 profile_bp = Blueprint('profile', __name__)
+
+# Допустимые расширения для загрузки фото
+ALLOWED_PHOTO_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
+MAX_PHOTO_SIZE = Config.MAX_PHOTO_SIZE_MB * 1024 * 1024  # 5 MB
 
 
 @profile_bp.route('/profile')
@@ -17,7 +22,8 @@ def profile():
     try:
         resp = supabase_request('GET', f'profiles?id=eq.{user_id}&select=*')
         profile_user = resp.json()[0] if resp.ok and resp.json() else None
-    except:
+    except Exception:
+        current_app.logger.exception('Error loading profile for user %s', user_id)
         profile_user = None
     return render_template('profile.html', profile_user=profile_user)
 
@@ -69,9 +75,22 @@ def update_profile():
 
     photo = request.files.get('photo')
     if photo and photo.filename:
-        safe_name = photo.filename.replace(' ', '_')
-        file_path = f'{user_id}/{uuid.uuid4()}_{safe_name}'
-        photo_url = upload_to_storage('avatars', file_path, photo.read(), photo.content_type)
+        # Проверка расширения: только изображения
+        ext = photo.filename.rsplit('.', 1)[-1].lower() if '.' in photo.filename else ''
+        if ext not in ALLOWED_PHOTO_EXTENSIONS:
+            flash(f'Недопустимый формат файла. Разрешены: {", ".join(sorted(ALLOWED_PHOTO_EXTENSIONS))}', 'danger')
+            return redirect(url_for('profile.profile'))
+
+        # Проверка размера файла (до чтения)
+        photo_data = photo.read()
+        if len(photo_data) > MAX_PHOTO_SIZE:
+            flash(f'Файл слишком большой (максимум {Config.MAX_PHOTO_SIZE_MB} МБ)', 'danger')
+            return redirect(url_for('profile.profile'))
+
+        # Безопасное имя файла: uuid + secure_filename
+        safe_name = secure_filename(photo.filename) or f'{uuid.uuid4().hex}.{ext}'
+        file_path = f'{user_id}/{uuid.uuid4().hex}_{safe_name}'
+        photo_url = upload_to_storage('avatars', file_path, photo_data, photo.content_type)
         if photo_url:
             data['photo_url'] = photo_url
             flash('Фото загружено', 'success')
@@ -81,7 +100,8 @@ def update_profile():
     try:
         supabase_request('PATCH', f'profiles?id=eq.{user_id}', json=data)
         flash('Профиль обновлён', 'success')
-    except:
+    except Exception:
+        current_app.logger.exception('Error updating profile for user %s', user_id)
         flash('Не удалось обновить профиль', 'danger')
     return redirect(url_for('profile.profile'))
 
@@ -103,22 +123,13 @@ def delete_account():
         flash('Сервисный ключ не настроен. Удаление невозможно.', 'danger')
         return redirect(url_for('profile.profile'))
 
-    # Каскадное удаление связанных записей через service_role (обход RLS)
-    cascade_deletions = [
-        ('applications', f'worker_id=eq.{user_id}'),
-        ('messages', f'sender_id=eq.{user_id}'),
-        ('job_favorites', f'user_id=eq.{user_id}'),
-        ('notifications', f'user_id=eq.{user_id}'),
-        ('blacklists', f'user_id=eq.{user_id}'),
-        ('blacklists', f'blocked_user_id=eq.{user_id}'),
-        ('ratings', f'rated_user_id=eq.{user_id}'),
-        ('ratings', f'rater_user_id=eq.{user_id}'),
-        ('user_skills', f'user_id=eq.{user_id}'),
-        ('invitations', f'worker_id=eq.{user_id}'),
-        ('invitations', f'employer_id=eq.{user_id}'),
-    ]
-    for table, condition in cascade_deletions:
-        supabase_admin_request('DELETE', f'{table}?{condition}')
+    # Каскадное удаление через RPC (этап 4.4)
+    rpc_result = supabase_rpc('delete_user_cascade', {'p_user_id': user_id}, use_admin=True)
+    if not rpc_result.ok:
+        current_app.logger.error(
+            "Profile delete account RPC: failed for %s: status=%s text=%s",
+            user_id, rpc_result.status_code, (rpc_result.text or '')[:200]
+        )
 
     delete_url = f'{SUPABASE_URL}/auth/v1/admin/users/{user_id}'
     resp = requests.delete(delete_url, headers={

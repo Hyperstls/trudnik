@@ -2,10 +2,19 @@ from datetime import datetime, timezone, timedelta
 
 from flask import Blueprint, current_app, jsonify, flash, redirect, render_template, request, session, url_for
 
+from app.config import Config
 from app.decorators import login_required, role_required
-from app.utils import (calculate_distance, copy_job, rate_limit, sanitize_postgrest,
-                       supabase_admin_request, supabase_request)
+from app.utils import (
+    calculate_distance, check_withdraw_window, copy_job, rate_limit,
+    sanitize_postgrest, supabase_admin_request, supabase_request, supabase_rpc,
+)
 from app.services.notification_service import create as notify
+from app.services.job_service import (
+    check_job_owner,
+    check_job_visibility,
+    enrich_job_with_references,
+    get_job_by_id,
+)
 
 jobs_bp = Blueprint('jobs', __name__)
 
@@ -43,21 +52,6 @@ def inject_user_role():
 
 
 
-
-
-# ──────────────────────────────────────────────
-# Публичные справочники (навыки, вероисповедания)
-# ──────────────────────────────────────────────
-
-@jobs_bp.route('/api/skills')
-def api_skills():
-    resp = supabase_request('GET', 'skills?select=*&order=sort_order.asc,name.asc')
-    return {'skills': resp.json() if resp.ok else []}
-
-@jobs_bp.route('/api/religions')
-def api_religions():
-    resp = supabase_request('GET', 'religions?select=*&order=sort_order.asc,name.asc')
-    return {'religions': resp.json() if resp.ok else []}
 
 
 # ──────────────────────────────────────────────
@@ -127,163 +121,6 @@ def index():
                             selected_skills=selected_skills_list)
 
 
-# ──────────────────────────────────────────────
-# API поиска (полнотекстовый + фильтры + пагинация)
-# ──────────────────────────────────────────────
-
-@jobs_bp.route('/api/search/jobs')
-def api_search_jobs():
-    """Поиск заданий с полнотекстовым поиском, фильтрами и пагинацией."""
-    q = request.args.get('q', '')
-    status = request.args.get('status', 'open')
-    lat = request.args.get('lat', type=float)
-    lng = request.args.get('lng', type=float)
-    radius = request.args.get('radius', 20, type=float)
-    min_pay = request.args.get('min_pay', type=int)
-    max_pay = request.args.get('max_pay', type=int)
-    skills = request.args.get('skills', '')
-    date_from = request.args.get('date_from', '')
-    date_to = request.args.get('date_to', '')
-    available_slots = request.args.get('available_slots', 'false').lower() == 'true'
-    page = max(1, request.args.get('page', 1, type=int))
-    per_page = min(100, max(1, request.args.get('per_page', 20, type=int)))
-    sort = request.args.get('sort', '')
-
-    # Базовые поля
-    select = '*,photos:job_photos(*)'
-    query_parts = [f'select={select}']
-
-    # Статус
-    if status:
-        query_parts.append(f'status=eq.{sanitize_postgrest(status)}')
-
-    # Полнотекстовый поиск
-    if q:
-        query_parts.append(f'search_vector=fts.russian.{sanitize_postgrest(q)}')
-
-    # Фильтры
-    if min_pay is not None:
-        query_parts.append(f'payment_amount=gte.{min_pay}')
-    if max_pay is not None:
-        query_parts.append(f'payment_amount=lte.{max_pay}')
-    if date_from:
-        query_parts.append(f'date_time=gte.{sanitize_postgrest(date_from)}')
-    if date_to:
-        query_parts.append(f'date_time=lte.{sanitize_postgrest(date_to)}')
-    if available_slots:
-        query_parts.append('current_workers=lt.max_workers')
-
-    # Пагинация
-    offset = (page - 1) * per_page
-    query_parts.append(f'limit={per_page}')
-    query_parts.append(f'offset={offset}')
-
-    # Сортировка
-    if sort == 'date_desc':
-        query_parts.append('order=date_time.desc')
-    elif sort == 'payment_asc':
-        query_parts.append('order=payment_amount.asc')
-    elif sort == 'payment_desc':
-        query_parts.append('order=payment_amount.desc')
-    else:
-        query_parts.append('order=created_at.desc')
-
-    query = '&'.join(query_parts)
-
-    # Запрос с подсчётом общего количества
-    headers = {'Prefer': 'count=exact'}
-    resp = supabase_request('GET', f'jobs?{query}', headers=headers)
-    jobs_list = resp.json() if resp.ok else []
-    total = int(resp.headers.get('Content-Range', '0-0/0').split('/')[-1]) if resp.ok else 0
-
-    # Гео-фильтрация и расчёт расстояния (клиентская)
-    if lat is not None and lng is not None:
-        for job in jobs_list:
-            if job.get('lat') and job.get('lng'):
-                job['distance'] = calculate_distance(lat, lng, job['lat'], job['lng'])
-        if radius:
-            jobs_list = [j for j in jobs_list if j.get('distance', float('inf')) <= radius]
-        if sort == 'distance':
-            jobs_list.sort(key=lambda x: x.get('distance', float('inf')))
-
-    # Фильтрация по навыкам (если не использовался FTS)
-    if skills and not q:
-        selected = [s.strip().lower() for s in skills.split(',') if s.strip()]
-        if selected:
-            jobs_list = [j for j in jobs_list if any(
-                sk in (j.get('work_type', '') + ' ' + j.get('object_description', '') + ' ' + j.get('detailed_description', '')).lower()
-                for sk in selected
-            )]
-
-    return {
-        'results': jobs_list,
-        'total': total,
-        'page': page,
-        'per_page': per_page,
-        'pages': max(1, (total + per_page - 1) // per_page) if total else 1
-    }
-
-
-@jobs_bp.route('/api/search/workers')
-def api_search_workers():
-    """Поиск трудников с полнотекстовым поиском, фильтрами и пагинацией."""
-    q = request.args.get('q', '')
-    skills = request.args.get('skills', '')
-    rating_min = request.args.get('rating_min', type=float)
-    lat = request.args.get('lat', type=float)
-    lng = request.args.get('lng', type=float)
-    radius = request.args.get('radius', 20, type=float)
-    page = max(1, request.args.get('page', 1, type=int))
-    per_page = min(100, max(1, request.args.get('per_page', 20, type=int)))
-    sort = request.args.get('sort', '')
-
-    query_parts = ['select=*', 'role=eq.worker']
-
-    if q:
-        query_parts.append(f'search_vector=fts.russian.{sanitize_postgrest(q)}')
-    if rating_min is not None:
-        query_parts.append(f'rating=gte.{rating_min}')
-    if skills:
-        for sk in skills.split(','):
-            sk = sk.strip()
-            if sk:
-                query_parts.append(f'skills=cs.{{{sanitize_postgrest(sk)}}}')
-
-    offset = (page - 1) * per_page
-    query_parts.append(f'limit={per_page}')
-    query_parts.append(f'offset={offset}')
-
-    if sort == 'rating_desc':
-        query_parts.append('order=rating.desc')
-    elif sort == 'payment_asc':
-        query_parts.append('order=desired_payment.asc')
-    else:
-        query_parts.append('order=rating.desc')
-
-    query = '&'.join(query_parts)
-    headers = {'Prefer': 'count=exact'}
-    resp = supabase_request('GET', f'profiles?{query}', headers=headers)
-    workers_list = resp.json() if resp.ok else []
-    total = int(resp.headers.get('Content-Range', '0-0/0').split('/')[-1]) if resp.ok else 0
-
-    if lat is not None and lng is not None:
-        for w in workers_list:
-            if w.get('lat') and w.get('lng'):
-                w['distance'] = calculate_distance(lat, lng, w['lat'], w['lng'])
-        if radius:
-            workers_list = [w for w in workers_list if w.get('distance', float('inf')) <= radius]
-        if sort == 'distance':
-            workers_list.sort(key=lambda x: x.get('distance', float('inf')))
-
-    return {
-        'results': workers_list,
-        'total': total,
-        'page': page,
-        'per_page': per_page,
-        'pages': max(1, (total + per_page - 1) // per_page) if total else 1
-    }
-
-
 @jobs_bp.route('/workers')
 def workers():
     filters = {
@@ -327,41 +164,29 @@ def workers():
 
 @jobs_bp.route('/jobs/<job_id>')
 def job_detail(job_id):
-    # Используем admin_request для обхода RLS — фильтрация видимости ниже
-    resp = supabase_admin_request('GET', f'jobs?id=eq.{job_id}&select=*,photos:job_photos(*)')
-    job = resp.json()[0] if resp.ok and resp.json() else None
+    """Детальная страница задания."""
+    job = get_job_by_id(job_id)
     if not job:
         flash('Задание не найдено', 'danger')
         return redirect(url_for('jobs.index'))
 
-    # Правила видимости:
-    # - Владелец (employer) видит задание в ЛЮБОМ статусе и с любым is_paid
-    # - Админ видит все задания
-    # - Остальные — только оплаченные (is_paid=true) в статусах open, completed
+    # Проверка видимости (вынесена в сервис)
+    if not check_job_visibility(job, session.get('user_id'), session.get('role')):
+        flash('Задание не найдено', 'danger')
+        return redirect(url_for('jobs.index'))
+
     is_owner = session.get('user_id') and job.get('employer_id') == session.get('user_id')
-    is_admin = session.get('role') == 'admin'
-    if not is_owner and not is_admin:
-        if not job.get('is_paid') or job.get('status') not in ('open', 'completed'):
-            flash('Задание не найдено', 'danger')
-            return redirect(url_for('jobs.index'))
 
     # Загружаем профиль работодателя для проверки верификации
     employer = None
     if job.get('employer_id'):
-        emp_resp = supabase_admin_request('GET',
+        emp_resp = supabase_request('GET',
             f'profiles?id=eq.{job["employer_id"]}&select=id,full_name,verification_status')
         if emp_resp.ok and emp_resp.json():
             employer = emp_resp.json()[0]
 
     # Резолвим UUID полей work_type и preferred_religion в читаемые названия
-    if job.get('work_type') and '-' in str(job['work_type']):
-        skill_resp = supabase_request('GET', f'skills?id=eq.{job["work_type"]}&select=name')
-        if skill_resp.ok and skill_resp.json():
-            job['work_type'] = skill_resp.json()[0]['name']
-    if job.get('preferred_religion') and '-' in str(job['preferred_religion']):
-        rel_resp = supabase_request('GET', f'religions?id=eq.{job["preferred_religion"]}&select=name')
-        if rel_resp.ok and rel_resp.json():
-            job['preferred_religion'] = rel_resp.json()[0]['name']
+    enrich_job_with_references(job)
 
     if is_owner:
         app_resp = supabase_request('GET', f'applications?job_id=eq.{job_id}&select=id')
@@ -381,13 +206,7 @@ def job_detail(job_id):
             app_data = app_resp.json()[0]
             my_app_status = app_data.get('status')
             my_app_id = app_data.get('id')
-            # Проверить, можно ли отозвать отклик (не позднее 12 часов до начала)
-            if job.get('date_time'):
-                try:
-                    job_dt = datetime.fromisoformat(job['date_time'].replace('Z', '+00:00'))
-                    can_withdraw = (job_dt - datetime.now(timezone.utc)).total_seconds() > 12 * 3600
-                except (ValueError, TypeError):
-                    can_withdraw = True
+            can_withdraw = check_withdraw_window(job.get('date_time'))
 
     # Проверка: добавлен ли работодатель в избранное у трудника
     is_employer_favorited = False
@@ -471,8 +290,8 @@ def job_new():
                 'payment_amount': float(request.form.get('payment') or 0),
                 'address': request.form.get('address', ''),
                 'city': request.form.get('city', ''),
-                'lat': float(request.form.get('latitude') or 55.75),
-                'lng': float(request.form.get('longitude') or 37.61),
+                'lat': float(request.form.get('latitude') or Config.DEFAULT_LAT),
+                'lng': float(request.form.get('longitude') or Config.DEFAULT_LNG),
                 'preferred_religion': request.form.get('preferred_religion', ''),
                 'max_workers': int(request.form.get('max_workers') or 1),
                 'current_workers': 0,
@@ -539,14 +358,6 @@ def my_jobs():
     return render_template('my_jobs.html', jobs=jobs, current_status=status_filter)
 
 
-def _check_job_owner(job_id, user_id):
-    """Проверить, что задание принадлежит пользователю. Возвращает True/False."""
-    resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=employer_id')
-    if resp.ok and resp.json():
-        return resp.json()[0].get('employer_id') == user_id
-    return False
-
-
 @jobs_bp.route('/my-jobs/action', methods=['POST'])
 @login_required
 def my_jobs_action():
@@ -563,14 +374,14 @@ def my_jobs_action():
         return redirect(url_for('jobs.my_jobs'))
 
     for job_id in job_ids:
-        if not _check_job_owner(job_id, user_id):
+        if not check_job_owner(job_id, user_id):
             continue
         if action == 'restore':
             supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'open'})
         elif action == 'cancel':
             supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
         elif action == 'delete':
-            supabase_request('DELETE', f'jobs?id=eq.{job_id}')
+            supabase_rpc('delete_job_cascade', {'p_job_id': job_id}, use_admin=True)
         elif action == 'duplicate':
             resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=*')
             if resp.ok and resp.json():
@@ -589,7 +400,7 @@ def my_jobs_action():
 @login_required
 @role_required('employer')
 def repost_job(job_id):
-    if not _check_job_owner(job_id, session['user_id']):
+    if not check_job_owner(job_id, session['user_id']):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
     resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=*')
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -611,7 +422,7 @@ def repost_job(job_id):
 @login_required
 @role_required('employer')
 def cancel_job(job_id):
-    if not _check_job_owner(job_id, session['user_id']):
+    if not check_job_owner(job_id, session['user_id']):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
 
     # Блокировка: нельзя отозвать задание completed с принятыми работниками
@@ -655,7 +466,7 @@ def cancel_job(job_id):
 @login_required
 @role_required('employer')
 def restore_job(job_id):
-    if not _check_job_owner(job_id, session['user_id']):
+    if not check_job_owner(job_id, session['user_id']):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
 
     # Получить текущее состояние задания
@@ -706,7 +517,7 @@ def api_force_complete_job(job_id):
     """Принудительное завершение задания работодателем.
     Переводит из open → completed.
     Уведомляет всех accepted workers, массово отклоняет pending."""
-    if not _check_job_owner(job_id, session['user_id']):
+    if not check_job_owner(job_id, session['user_id']):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
 
     # Получить задание
@@ -744,7 +555,7 @@ def api_force_complete_job(job_id):
 @login_required
 @role_required('employer')
 def delete_job(job_id):
-    if not _check_job_owner(job_id, session['user_id']):
+    if not check_job_owner(job_id, session['user_id']):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
 
     # Блокировка: предупреждение при наличии принятых откликов (матрица секция 6.1)
@@ -783,45 +594,6 @@ def delete_job(job_id):
 # Приглашения (employer → worker)
 # ──────────────────────────────────────────────
 
-@jobs_bp.route('/api/invite/<job_id>/<worker_id>', methods=['POST'])
-@login_required
-@role_required('employer')
-def invite_worker(job_id, worker_id):
-    """Работодатель приглашает трудника на задание."""
-    if not _check_job_owner(job_id, session['user_id']):
-        return jsonify({'success': False, 'error': 'Нет доступа'}), 403
-
-    # Проверить, не приглашён ли уже
-    check = supabase_request('GET', f'invitations?job_id=eq.{job_id}&worker_id=eq.{worker_id}&select=id')
-    if check.ok and check.json():
-        return jsonify({'success': False, 'error': 'Приглашение уже отправлено'}), 409
-
-    # Проверить, есть ли свободные места
-    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=current_workers,max_workers')
-    if job_resp.ok and job_resp.json():
-        job = job_resp.json()[0]
-        if job['current_workers'] >= job['max_workers']:
-            return jsonify({'success': False, 'error': 'Все места заняты'}), 409
-
-    msg = request.get_json(silent=True) or {}
-    inv = supabase_request('POST', 'invitations', json={
-        'job_id': job_id,
-        'employer_id': session['user_id'],
-        'worker_id': worker_id,
-        'message': msg.get('message', '')
-    })
-    if not inv.ok:
-        return jsonify({'success': False, 'error': 'Ошибка при создании приглашения'}), 500
-
-    # Уведомить трудника
-    job_name = job_resp.json()[0].get('organization_name', job_id) if job_resp.ok else job_id
-    notify(worker_id, 'application_received', 'Вас пригласили на задание',
-           f'Работодатель приглашает вас на задание «{job_name}»',
-           data={'job_id': job_id, 'type': 'invitation'})
-
-    return jsonify({'success': True, 'message': 'Приглашение отправлено'})
-
-
 @jobs_bp.route('/invitations')
 @login_required
 def invitations_page():
@@ -836,77 +608,6 @@ def invitations_page():
             f'invitations?employer_id=eq.{user_id}&select=*,job:jobs(organization_name),worker:profiles!invitations_worker_id_fkey(full_name)&order=created_at.desc')
     invitations = resp.json() if resp.ok else []
     return render_template('invitations.html', invitations=invitations)
-
-
-@jobs_bp.route('/api/invitations')
-@login_required
-def list_invitations():
-    """JSON API: список приглашений."""
-    user_id = session['user_id']
-    role = session.get('role', 'worker')
-    if role == 'worker':
-        resp = supabase_request('GET',
-            f'invitations?worker_id=eq.{user_id}&select=*,job:jobs(organization_name,payment_amount)&order=created_at.desc')
-    else:
-        resp = supabase_request('GET',
-            f'invitations?employer_id=eq.{user_id}&select=*,job:jobs(organization_name),worker:profiles!invitations_worker_id_fkey(full_name)&order=created_at.desc')
-    return jsonify({'invitations': resp.json() if resp.ok else []})
-
-
-@jobs_bp.route('/api/invitations/<invitation_id>/respond', methods=['POST'])
-@login_required
-def respond_invitation(invitation_id):
-    """Трудник принимает или отклоняет приглашение."""
-    data = request.get_json(silent=True) or {}
-    action = data.get('action')
-    if action not in ('accept', 'reject'):
-        return jsonify({'success': False, 'error': 'Укажите действие: accept или reject'}), 400
-
-    if session.get('role') != 'worker':
-        return jsonify({'success': False, 'error': 'Только трудник может отвечать на приглашения'}), 403
-
-    inv_resp = supabase_request('GET', f'invitations?id=eq.{invitation_id}&select=worker_id,job_id,employer_id,status')
-    if not inv_resp.ok or not inv_resp.json():
-        return jsonify({'success': False, 'error': 'Приглашение не найдено'}), 404
-
-    inv = inv_resp.json()[0]
-    if inv['worker_id'] != session['user_id']:
-        return jsonify({'success': False, 'error': 'Нет доступа'}), 403
-
-    if inv['status'] != 'pending':
-        return jsonify({'success': False, 'error': f'Приглашение уже {inv["status"]}'}), 409
-
-    new_status = 'accepted' if action == 'accept' else 'rejected'
-    supabase_request('PATCH', f'invitations?id=eq.{invitation_id}',
-                     json={'status': new_status, 'responded_at': 'now()'})
-
-    if action == 'accept':
-        # При принятии приглашения отклик сразу accepted (работодатель уже выбрал трудника)
-        supabase_admin_request('POST', 'applications', json={
-            'job_id': inv['job_id'],
-            'worker_id': inv['worker_id'],
-            'status': 'accepted'
-        })
-        # Обновить счётчик занятых мест (admin_request — worker не может PATCH jobs)
-        job_resp = supabase_admin_request('GET', f'jobs?id=eq.{inv["job_id"]}&select=current_workers,max_workers,status')
-        if job_resp.ok and job_resp.json():
-            job = job_resp.json()[0]
-            new_count = job['current_workers'] + 1
-            new_status = 'completed' if new_count >= job['max_workers'] else job['status']
-            supabase_admin_request('PATCH', f'jobs?id=eq.{inv["job_id"]}', json={
-                'current_workers': new_count,
-                'status': new_status
-            })
-        # Уведомить работника о принятии
-        notify(inv['worker_id'], 'application_accepted', 'Приглашение принято',
-               f'Ваша заявка на задание #{inv["job_id"]} принята.',
-               data={'job_id': inv['job_id']})
-        # Уведомить работодателя
-        notify(inv['employer_id'], 'application_received', 'Приглашение принято',
-               f'Трудник принял ваше приглашение на задание',
-               data={'job_id': inv['job_id']})
-
-    return jsonify({'success': True, 'new_status': new_status})
 
 
 @jobs_bp.route('/api/invitations/reject-all', methods=['POST'])

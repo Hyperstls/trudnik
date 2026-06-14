@@ -4,7 +4,7 @@ from flask import Blueprint, current_app, flash, redirect, render_template, requ
 import requests
 
 from app.decorators import login_required, role_required
-from app.utils import sanitize_postgrest, supabase_request, supabase_admin_request, SUPABASE_URL, SUPABASE_KEY, SERVICE_KEY
+from app.utils import sanitize_postgrest, supabase_request, supabase_admin_request, supabase_rpc, SUPABASE_URL, SUPABASE_KEY, SERVICE_KEY
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -105,50 +105,19 @@ def update_user_role(user_id):
 @login_required
 @role_required('admin')
 def delete_user(user_id):
-    # 1. Получить информацию о пользователе (роль, employer_id для заданий)
-    profile_resp = supabase_admin_request('GET', f'profiles?id=eq.{user_id}&select=id,role')
-    if not profile_resp.ok or not profile_resp.json():
-        flash('Пользователь не найден', 'danger')
-        return redirect(url_for('admin.admin_panel', tab='users'))
-    user_profile = profile_resp.json()[0]
-    user_role = user_profile.get('role', '')
-
-    # 2. Если пользователь — работодатель, удалить все его задания (с каскадным удалением)
-    if user_role == 'employer':
-        jobs_resp = supabase_admin_request('GET', f'jobs?employer_id=eq.{user_id}&select=id')
-        if jobs_resp.ok and jobs_resp.json():
-            for job in jobs_resp.json():
-                _delete_job_cascade(job['id'])
-
-    # 3. Каскадное удаление связанных записей
-    cascade_tables = [
-        ('applications', f'worker_id=eq.{user_id}'),
-        ('notifications', f'user_id=eq.{user_id}'),
-        ('favorites', f'user_id=eq.{user_id}'),
-        ('favorites', f'target_id=eq.{user_id}'),
-        ('job_favorites', f'user_id=eq.{user_id}'),
-        ('blacklists', f'user_id=eq.{user_id}'),
-        ('blacklists', f'blocked_user_id=eq.{user_id}'),
-        ('ratings', f'rater_user_id=eq.{user_id}'),
-        ('ratings', f'rated_user_id=eq.{user_id}'),
-        ('invitations', f'employer_id=eq.{user_id}'),
-        ('invitations', f'worker_id=eq.{user_id}'),
-        ('user_skills', f'user_id=eq.{user_id}'),
-        ('push_subscriptions', f'user_id=eq.{user_id}'),
-        ('messages', f'sender_id=eq.{user_id}'),
-    ]
-    for table, condition in cascade_tables:
-        if condition:
-            supabase_admin_request('DELETE', f'{table}?{condition}')
-
-    # 4. Удалить профиль из public.profiles
-    profile_del = supabase_admin_request('DELETE', f'profiles?id=eq.{user_id}')
-    if not profile_del.ok:
-        current_app.logger.error(f"Admin delete user: failed to delete profile {user_id}: {profile_del.status_code} {profile_del.text}")
+    # 1. Каскадное удаление пользователя через RPC (этап 4.4)
+    rpc_result = supabase_rpc('delete_user_cascade', {'p_user_id': user_id}, use_admin=True)
+    if not rpc_result.ok:
+        current_app.logger.error(
+            "Admin delete user RPC: failed for %s: status=%s text=%s",
+            user_id, rpc_result.status_code, (rpc_result.text or '')[:200]
+        )
+    result_data = rpc_result.json() if rpc_result.ok else {}
+    if not result_data.get('success'):
         flash('Ошибка при удалении пользователя', 'danger')
         return redirect(url_for('admin.admin_panel', tab='users'))
 
-    # 5. Удалить пользователя из auth.users (через Admin API)
+    # 2. Удалить пользователя из auth.users (через Admin API)
     if SERVICE_KEY:
         auth_url = f'{SUPABASE_URL}/auth/v1/admin/users/{user_id}'
         auth_headers = {
@@ -193,25 +162,13 @@ def delete_job_admin(job_id):
 
 
 def _delete_job_cascade(job_id):
-    """Каскадное удаление задания и всех связанных записей (через service role key)."""
-    cascade_tables = [
-        ('applications', f'job_id=eq.{job_id}'),
-        ('job_skills', f'job_id=eq.{job_id}'),
-        ('job_photos', f'job_id=eq.{job_id}'),
-        ('job_favorites', f'job_id=eq.{job_id}'),
-        ('invitations', f'job_id=eq.{job_id}'),
-    ]
-    for table, condition in cascade_tables:
-        supabase_admin_request('DELETE', f'{table}?{condition}')
-
-    # Уведомления, связанные с заданием (колонки job_id нет в production,
-    # ищем job_id в тексте сообщения через ilike)
-    supabase_admin_request('DELETE', f'notifications?message=ilike.*{job_id}*')
-
-    # Само задание
-    job_del = supabase_admin_request('DELETE', f'jobs?id=eq.{job_id}')
-    if not job_del.ok:
-        current_app.logger.error(f"Admin delete job: failed to delete job {job_id}: {job_del.status_code} {job_del.text}")
+    """Каскадное удаление задания и всех связанных записей через RPC (этап 4.4)."""
+    rpc_result = supabase_rpc('delete_job_cascade', {'p_job_id': job_id}, use_admin=True)
+    if not rpc_result.ok:
+        current_app.logger.error(
+            "Admin delete job RPC: failed for %s: status=%s text=%s",
+            job_id, rpc_result.status_code, (rpc_result.text or '')[:200]
+        )
 
 
 # ── Справочники: навыки и вероисповедания ──────────────
