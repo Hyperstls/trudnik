@@ -15,9 +15,9 @@
     {% if session.get('role') == 'worker' %}
     <!-- Filter buttons -->
     <div class="flex gap-2 mb-4">
-        <button onclick="filterJobs('all')" class="filter-btn active px-4 py-2 rounded-full text-sm font-medium transition-all bg-primary-500 text-white shadow-sm" data-filter="all">Все</button>
-        <button onclick="filterJobs('new')" class="filter-btn px-4 py-2 rounded-full text-sm font-medium transition-all bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50" data-filter="new">Новые</button>
-        <button onclick="filterJobs('applied')" class="filter-btn px-4 py-2 rounded-full text-sm font-medium transition-all bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50" data-filter="applied">Откликнулся</button>
+        <button class="js-filter-btn filter-btn active px-4 py-2 rounded-full text-sm font-medium transition-all bg-primary-500 text-white shadow-sm" data-filter="all">Все</button>
+        <button class="js-filter-btn filter-btn px-4 py-2 rounded-full text-sm font-medium transition-all bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50" data-filter="new">Новые</button>
+        <button class="js-filter-btn filter-btn px-4 py-2 rounded-full text-sm font-medium transition-all bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50" data-filter="applied">Откликнулся</button>
     </div>
     {% endif %}
 
@@ -28,11 +28,11 @@
         <div class="h-6 w-px bg-neutral-200"></div>
         <button type="button" id="select-all-btn" class="text-xs text-neutral-500 hover:text-neutral-700 font-medium underline underline-offset-2 transition-colors whitespace-nowrap">Выбрать все</button>
         <div class="h-6 w-px bg-neutral-200"></div>
-        <button type="button" onclick="bulkAction('/apply-selected')" class="action-icon-btn accept-btn shrink-0" title="Откликнуться на выбранные">
+        <button type="button" class="js-bulk-btn action-icon-btn accept-btn shrink-0" data-url="/apply-selected" title="Откликнуться на выбранные">
             {{ apply(16) }}
             <span class="text-xs ml-1 font-medium">Откликнуться</span>
         </button>
-        <button type="button" onclick="bulkAction('/unapply-selected')" class="action-icon-btn reject-btn shrink-0" title="Отозвать выбранные">
+        <button type="button" class="js-bulk-btn action-icon-btn reject-btn shrink-0" data-url="/unapply-selected" title="Отозвать выбранные">
             {{ x_close(16) }}
             <span class="text-xs ml-1 font-medium">Отозвать</span>
         </button>
@@ -124,7 +124,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 // ==========================================
 // Bulk actions
 // ==========================================
@@ -208,5 +208,19 @@ function filterJobs(filter) {
         }
     });
 }
+
+// ── Делегирование для фильтров и массовых действий ──
+document.addEventListener('click', function(e) {
+    var filterBtn = e.target.closest('.js-filter-btn');
+    if (filterBtn && filterBtn.dataset.filter) {
+        filterJobs(filterBtn.dataset.filter);
+        return;
+    }
+    var bulkBtn = e.target.closest('.js-bulk-btn');
+    if (bulkBtn && bulkBtn.dataset.url) {
+        bulkAction(bulkBtn.dataset.url);
+        return;
+    }
+});
 </script>
 {% endblock %}

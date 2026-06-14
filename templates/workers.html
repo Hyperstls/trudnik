@@ -14,14 +14,12 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {% for worker in workers %}
             <div class="app-card rounded-2xl bg-white shadow-sm border border-neutral-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
-                 data-worker-id="{{ worker.id }}"
-                 onclick="window.location.href='/profile/{{ worker.id }}'">
+                 data-worker-id="{{ worker.id }}">
 
                 <div class="flex items-center gap-3">
                     {% if worker.photo_url %}
-                    <img src="{{ worker.photo_url }}" alt="{{ worker.full_name }}"
-                         class="w-14 h-14 rounded-full object-cover border-2 border-neutral-200 shrink-0"
-                         onerror="var p=this.parentElement;var s=p.querySelector('.avatar-smiley');if(s){s.style.display=''};this.style.display='none';">
+                     <img src="{{ worker.photo_url }}" alt="{{ worker.full_name }}"
+                          class="js-avatar-img w-14 h-14 rounded-full object-cover border-2 border-neutral-200 shrink-0">
                     <div class="avatar-smiley w-14 h-14 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400" style="display:none">{{ smiley(32) }}</div>
                     {% else %}
                     <div class="w-14 h-14 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400">{{ smiley(32) }}</div>
@@ -68,14 +66,14 @@
                 <div class="mt-4 pt-3 border-t border-neutral-100">
                     <div class="flex flex-wrap gap-2">
                         {# Основные кнопки (видны всегда) #}
-                        <button onclick="event.stopPropagation(); window.location.href='/chat/new/{{ worker.id }}'"
+                        <button data-action="chat" data-worker-id="{{ worker.id }}"
                                 class="action-icon-btn chat-btn min-w-[100px]" title="Написать сообщение">
                             {{ chat(16) }}
                             <span class="text-[11px] ml-1.5 font-medium">Написать</span>
                         </button>
                         {% if session.get('role') == 'employer' %}
                         {% set is_invited = worker.id in invited_worker_ids %}
-                        <button id="invite-btn-{{ worker.id }}" onclick="event.stopPropagation(); inviteWorker('{{ worker.id }}', '{{ worker.full_name|default('') }}', this)"
+                        <button id="invite-btn-{{ worker.id }}"
                                 class="action-icon-btn min-w-[100px] {{ 'opacity-60' if is_invited else 'accept-btn' }}"
                                 title="{{ 'Уже приглашён' if is_invited else 'Пригласить на задание' }}"
                                 {{ 'disabled' if is_invited }}>
@@ -85,17 +83,17 @@
 
                         {# Кнопки, скрываемые в «Ещё» на мобильных (<768px) #}
                         <div class="hidden sm:flex flex-wrap gap-2" id="extra-actions-{{ worker.id }}">
-                            <button id="block-btn-{{ worker.id }}" onclick="toggleBlock(this, '{{ worker.id }}')"
+                            <button id="block-btn-{{ worker.id }}"
                                     class="action-icon-btn reject-btn min-w-[100px]" title="Заблокировать">
                                 🚫
                                 <span class="text-[11px] ml-1.5 font-medium">Заблокировать</span>
                             </button>
-                            <button id="unblock-btn-{{ worker.id }}" onclick="toggleBlock(this, '{{ worker.id }}')"
+                            <button id="unblock-btn-{{ worker.id }}"
                                     class="action-icon-btn accept-btn min-w-[100px] hidden" title="Разблокировать">
                                 🔓
                                 <span class="text-[11px] ml-1.5 font-medium">Разблокировать</span>
                             </button>
-                            <button onclick="event.stopPropagation(); toggleFavorite('{{ worker.id }}', this, event)"
+                            <button
                                     class="favorite-btn action-icon-btn contact-btn min-w-[100px]"
                                     data-worker-id="{{ worker.id }}"
                                     data-favorited="false"
@@ -109,28 +107,30 @@
 
                         {# Выпадающее меню «Ещё» (только на мобильных) #}
                         <div class="relative sm:hidden" id="more-menu-{{ worker.id }}">
-                            <button onclick="event.stopPropagation(); toggleMoreMenu('{{ worker.id }}')"
-                                    class="action-icon-btn min-w-[44px]" title="Ещё">
+                            <button class="action-icon-btn min-w-[44px]" title="Ещё" data-action="more-menu" data-worker-id="{{ worker.id }}">
                                 ⋮
                             </button>
                             <div id="more-dropdown-{{ worker.id }}" class="absolute bottom-full right-0 mb-2 bg-white rounded-xl shadow-xl border border-neutral-200 py-1 z-50 hidden min-w-[160px]">
-                                <button onclick="event.stopPropagation(); toggleBlock(document.getElementById('block-btn-{{ worker.id }}'), '{{ worker.id }}')"
-                                        class="w-full text-left px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2">
+                                <button
+                                        class="w-full text-left px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2"
+                                        data-action="block" data-worker-id="{{ worker.id }}">
                                     🚫 Заблокировать
                                 </button>
-                                <button onclick="event.stopPropagation(); toggleBlock(document.getElementById('unblock-btn-{{ worker.id }}'), '{{ worker.id }}')"
-                                        class="w-full text-left px-4 py-2.5 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2 hidden" id="more-unblock-{{ worker.id }}">
+                                <button
+                                        class="w-full text-left px-4 py-2.5 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2 hidden"
+                                        id="more-unblock-{{ worker.id }}" data-action="unblock" data-worker-id="{{ worker.id }}">
                                     🔓 Разблокировать
                                 </button>
-                                <button onclick="event.stopPropagation(); toggleFavorite('{{ worker.id }}', document.querySelector('.favorite-btn[data-worker-id=\\'{{ worker.id }}\\']'), event)"
-                                        class="w-full text-left px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-50 flex items-center gap-2">
+                                <button
+                                        class="w-full text-left px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-50 flex items-center gap-2"
+                                        data-action="favorite" data-worker-id="{{ worker.id }}">
                                     {{ star(16) }} В избранное
                                 </button>
                             </div>
                         </div>
                         {% else %}
                         {# Для не-работодателей: только избранное #}
-                        <button onclick="event.stopPropagation(); toggleFavorite('{{ worker.id }}', this, event)"
+                        <button
                                 class="favorite-btn action-icon-btn contact-btn min-w-[100px]"
                                 data-worker-id="{{ worker.id }}"
                                 data-favorited="false"
@@ -160,7 +160,7 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/favorites.js') }}"></script>
-<script>
+<script nonce="{{ csp_nonce }}">
 // Выпадающее меню «Ещё» на мобильных
 function toggleMoreMenu(workerId) {
     var dd = document.getElementById('more-dropdown-' + workerId);
@@ -185,7 +185,7 @@ document.addEventListener('click', function(e) {
 });
 </script>
 {% if session.get('role') == 'employer' %}
-<script>
+<script nonce="{{ csp_nonce }}">
 async function inviteWorker(workerId, workerName, btn) {
     const jobId = prompt(`Пригласить ${workerName || 'трудника'} на задание.\nВведите ID задания:`);
     if (!jobId) return;
@@ -219,9 +219,8 @@ async function inviteWorker(workerId, workerName, btn) {
     }
 }
 
-async function toggleBlock(btn, workerId) {
-    event.preventDefault();
-    event.stopPropagation();
+async function toggleBlock(btn, workerId, evt) {
+    if (evt) { evt.preventDefault(); evt.stopPropagation(); }
 
     if (!confirm('Заблокировать этого работника? Он не сможет откликаться на ваши задания.')) return;
 
@@ -273,4 +272,100 @@ async function toggleBlock(btn, workerId) {
 }
 </script>
 {% endif %}
+
+{# CSP-safe event delegation (replaces all onclick attributes) #}
+<script nonce="{{ csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+    var grid = document.querySelector('.grid');
+    if (!grid) return;
+
+    grid.addEventListener('click', function(e) {
+        // Find closest actionable element
+        var btn = e.target.closest('button');
+        var card = e.target.closest('[data-worker-id]');
+        var workerId = card ? card.dataset.workerId : null;
+        if (!workerId && btn) {
+            workerId = btn.dataset.workerId;
+        }
+        if (!workerId) return;
+
+        // Card click (navigate to profile) — but not on buttons
+        if (card && !btn && e.target.closest('[data-worker-id]') === card) {
+            window.location.href = '/profile/' + workerId;
+            return;
+        }
+
+        if (!btn) return;
+
+        // Chat button
+        if (btn.dataset.action === 'chat') {
+            e.stopPropagation();
+            window.location.href = '/chat/new/' + workerId;
+            return;
+        }
+
+        // More menu button
+        if (btn.dataset.action === 'more-menu') {
+            e.stopPropagation();
+            if (typeof toggleMoreMenu === 'function') toggleMoreMenu(workerId);
+            return;
+        }
+
+        // Block button (main or dropdown)
+        if (btn.dataset.action === 'block') {
+            e.stopPropagation();
+            var blockBtn = document.getElementById('block-btn-' + workerId);
+            if (typeof toggleBlock === 'function') toggleBlock(blockBtn || btn, workerId, e);
+            return;
+        }
+
+        // Unblock button (main or dropdown)
+        if (btn.dataset.action === 'unblock') {
+            e.stopPropagation();
+            var unblockBtn = document.getElementById('unblock-btn-' + workerId);
+            if (typeof toggleBlock === 'function') toggleBlock(unblockBtn || btn, workerId, e);
+            return;
+        }
+
+        // Favorite button (main or dropdown)
+        if (btn.classList.contains('favorite-btn') || btn.dataset.action === 'favorite') {
+            e.stopPropagation();
+            var favBtn = card ? card.querySelector('.favorite-btn') : btn;
+            if (typeof toggleFavorite === 'function') toggleFavorite(workerId, favBtn || btn, e);
+            return;
+        }
+    });
+
+    // Invite button (has unique ID pattern)
+    grid.addEventListener('click', function(e) {
+        var btn = e.target.closest('button[id^="invite-btn-"]');
+        if (!btn) return;
+        e.stopPropagation();
+        var workerId = btn.id.replace('invite-btn-', '');
+        var card = btn.closest('[data-worker-id]');
+        var nameEl = card ? card.querySelector('h3') : null;
+        var workerName = nameEl ? nameEl.textContent.trim() : '';
+        if (typeof inviteWorker === 'function') inviteWorker(workerId, workerName, btn);
+    });
+
+    // Block/unblock buttons (main, by ID pattern)
+    grid.addEventListener('click', function(e) {
+        var btn = e.target.closest('button[id^="block-btn-"], button[id^="unblock-btn-"]');
+        if (!btn || btn.dataset.action) return; // Skip if already handled by data-action
+        e.stopPropagation();
+        var workerId = btn.id.replace(/^(block|unblock)-btn-/, '');
+        if (typeof toggleBlock === 'function') toggleBlock(btn, workerId, e);
+    });
+});
+
+// Image onerror fallback (replaces inline onerror attributes)
+document.addEventListener('error', function(e) {
+    if (e.target.tagName === 'IMG' && e.target.closest('[data-worker-id]')) {
+        var p = e.target.parentElement;
+        var s = p ? p.querySelector('.avatar-smiley') : null;
+        if (s) s.style.display = '';
+        e.target.style.display = 'none';
+    }
+}, true);
+</script>
 {% endblock %}

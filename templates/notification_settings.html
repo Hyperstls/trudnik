@@ -24,7 +24,7 @@
     </div>
 
     <div class="mt-6">
-        <button id="save-btn" onclick="savePreferences()"
+        <button id="save-btn"
                 class="w-full bg-primary-500 text-white py-3.5 rounded-xl font-bold text-base hover:bg-primary-600 active:scale-[0.97] transition-all duration-200 shadow-md hidden">
             Сохранить настройки
         </button>
@@ -32,7 +32,7 @@
     <div id="save-status" class="text-center text-sm mt-2 hidden"></div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 const csrfToken = '{{ csrf_token }}';
 let currentPreferences = {};
 let originalPreferences = {};
@@ -65,9 +65,8 @@ function loadPreferences() {
                         <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(key)}</p>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-3">
-                        <input type="checkbox" class="sr-only peer" data-type="${escapeHtml(key)}"
-                               ${info.enabled ? 'checked' : ''}
-                               onchange="togglePref('${escapeHtml(key)}', this.checked)">
+                        <input type="checkbox" class="sr-only peer pref-checkbox" data-type="${escapeHtml(key)}"
+                               ${info.enabled ? 'checked' : ''}>
                         <div class="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
                     </label>
                 </div>`;
@@ -179,5 +178,20 @@ function escapeHtml(text) {
 
 // Загрузка при старте
 loadPreferences();
+
+// ── Делегирование для динамических чекбоксов ──
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('pref-checkbox') && e.target.dataset.type) {
+        togglePref(e.target.dataset.type, e.target.checked);
+    }
+});
+
+// ── Кнопка сохранения ──
+document.addEventListener('DOMContentLoaded', function() {
+    var saveBtn = document.getElementById('save-btn');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', savePreferences);
+    }
+});
 </script>
 {% endblock %}

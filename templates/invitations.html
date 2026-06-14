@@ -4,8 +4,7 @@
     <div class="flex items-center justify-between mb-5">
         <h2 class="text-2xl font-bold text-neutral-900">Приглашения</h2>
         {% if invitations %}
-        <button onclick="rejectAllInvites()"
-            class="text-sm text-danger hover:text-red-700 font-medium transition-colors">
+        <button class="js-reject-all-btn text-sm text-danger hover:text-red-700 font-medium transition-colors">
             Отклонить все
         </button>
         {% endif %}
@@ -42,12 +41,12 @@
                         </p>
                         {% if inv.status == 'pending' and session.get('role') == 'worker' %}
                         <div class="flex gap-2 mt-3">
-                            <button onclick="event.stopPropagation(); respondInvite('{{ inv.id }}','accept')"
-                                class="px-4 py-2 bg-success text-white text-sm font-medium rounded-lg hover:bg-green-600 transition-colors">
+                            <button class="js-respond-btn px-4 py-2 bg-success text-white text-sm font-medium rounded-lg hover:bg-green-600 transition-colors"
+                                    data-invite-id="{{ inv.id }}" data-action="accept">
                                 Принять
                             </button>
-                            <button onclick="event.stopPropagation(); respondInvite('{{ inv.id }}','reject')"
-                                class="px-4 py-2 bg-neutral-200 text-neutral-700 text-sm font-medium rounded-lg hover:bg-neutral-300 transition-colors">
+                            <button class="js-respond-btn px-4 py-2 bg-neutral-200 text-neutral-700 text-sm font-medium rounded-lg hover:bg-neutral-300 transition-colors"
+                                    data-invite-id="{{ inv.id }}" data-action="reject">
                                 Отклонить
                             </button>
                         </div>
@@ -59,10 +58,9 @@
                 </div>
             </div>
             {% if inv.status == 'pending' %}
-            <button onclick="rejectInvite('{{ inv.id }}')"
+            <button class="js-reject-one-btn flex items-center justify-center rounded-full bg-white border border-neutral-200 text-neutral-400 hover:text-danger hover:border-danger shadow-sm transition-all"
                 style="position:absolute; top:6px; right:-10px; width:28px; height:28px;"
-                class="flex items-center justify-center rounded-full bg-white border border-neutral-200 text-neutral-400 hover:text-danger hover:border-danger shadow-sm transition-all"
-                title="Отклонить приглашение">
+                data-invite-id="{{ inv.id }}" title="Отклонить приглашение">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
             {% endif %}
@@ -80,7 +78,7 @@
     {% endif %}
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function respondInvite(invitationId, action) {
     fetch('/api/invitations/' + invitationId + '/respond', {
         method: 'POST',
@@ -92,29 +90,52 @@ function respondInvite(invitationId, action) {
         if (data.success) {
             location.reload();
         } else {
-            alert(data.error || 'Ошибка');
+            window.showToast(data.error || 'Ошибка', 'error');
         }
     })
-    .catch(e => alert('Ошибка: ' + e.message));
+    .catch(function(e) { window.showToast('Ошибка: ' + e.message, 'error'); });
 }
 
 function rejectInvite(invitationId) {
-    if (!confirm('Отклонить приглашение?')) return;
-    respondInvite(invitationId, 'reject');
+    window.showConfirm('Отклонить приглашение?', function() {
+        respondInvite(invitationId, 'reject');
+    });
 }
 
 function rejectAllInvites() {
-    if (!confirm('Отклонить все приглашения?')) return;
-    fetch('/api/invitations/reject-all', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'}
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) location.reload();
-        else alert(data.error || 'Ошибка');
-    })
-    .catch(e => alert('Ошибка: ' + e.message));
+    window.showConfirm('Отклонить все приглашения?', function() {
+        fetch('/api/invitations/reject-all', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) location.reload();
+            else window.showToast(data.error || 'Ошибка', 'error');
+        })
+        .catch(function(e) { window.showToast('Ошибка: ' + e.message, 'error'); });
+    });
 }
+
+// ── Делегирование ──
+document.addEventListener('click', function(e) {
+    var respondBtn = e.target.closest('.js-respond-btn');
+    if (respondBtn) {
+        e.stopPropagation();
+        respondInvite(respondBtn.dataset.inviteId, respondBtn.dataset.action);
+        return;
+    }
+    var rejectBtn = e.target.closest('.js-reject-one-btn');
+    if (rejectBtn && rejectBtn.dataset.inviteId) {
+        e.stopPropagation();
+        rejectInvite(rejectBtn.dataset.inviteId);
+        return;
+    }
+    var rejectAllBtn = e.target.closest('.js-reject-all-btn');
+    if (rejectAllBtn) {
+        rejectAllInvites();
+        return;
+    }
+});
 </script>
 {% endblock %}

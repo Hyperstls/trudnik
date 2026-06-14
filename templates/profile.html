@@ -26,10 +26,9 @@
         <div class="relative">
             {% if profile_user.get('photo_url') %}
             <img src="{{ profile_user.get('photo_url') }}"
-                 class="w-24 h-24 rounded-full object-cover border-4 border-primary-500 shadow-lg"
+                 class="js-avatar-img w-24 h-24 rounded-full object-cover border-4 border-primary-500 shadow-lg"
                  alt="Ваше фото"
-                 crossorigin="anonymous"
-                 onerror="var p=this.parentElement;var s=p.querySelector('.avatar-smiley');if(s){s.style.display=''};this.style.display='none';">
+                 crossorigin="anonymous">
             <div class="avatar-smiley w-24 h-24 rounded-full border-4 border-primary-500 shadow-lg bg-primary-50 flex items-center justify-center text-primary-400" style="display:none">{{ smiley(48) }}</div>
             {% else %}
             <div class="w-24 h-24 rounded-full border-4 border-primary-500 shadow-lg bg-primary-50 flex items-center justify-center text-primary-400">{{ smiley(48) }}</div>
@@ -55,7 +54,7 @@
         {# Кнопки фото #}
         <div class="flex gap-2 mt-4">
             {% if profile_user.get('photo_url') %}
-            <form action="/profile/delete-photo" method="post" onsubmit="return confirm('Удалить фото?');">
+            <form action="/profile/delete-photo" method="post" class="js-confirm-form" data-confirm="Удалить фото?">
                 <button type="submit" class="action-icon-btn reject-btn" title="Удалить фото">
                     {{ trash(16) }}
                     <span class="text-xs ml-1.5 font-medium hidden sm:inline">Удалить</span>
@@ -75,7 +74,7 @@
     {# Форма редактирования профиля                 #}
     {# ============================================ #}
     <form method="post" action="/profile/update" enctype="multipart/form-data" class="space-y-4">
-        <input type="file" id="photo-input" name="photo" accept="image/*" class="hidden" onchange="this.form.submit();">
+        <input type="file" id="photo-input" name="photo" accept="image/*" class="js-auto-submit hidden">
 
         <div class="floating-label-group">
             <input type="text" name="full_name" value="{{ profile_user.get('full_name') or '' }}"
@@ -213,7 +212,7 @@
             Выйти из аккаунта
         </a>
         <form action="/profile/delete-account" method="post"
-              onsubmit="return confirm('Вы уверены? Аккаунт будет удалён безвозвратно!');">
+              class="js-confirm-form" data-confirm="Вы уверены? Аккаунт будет удалён безвозвратно!">
             <button type="submit" class="text-xs text-neutral-400 hover:text-danger transition-colors duration-200 underline">
                 Удалить аккаунт
             </button>
@@ -229,8 +228,7 @@
         {{ chat(18) }}
         <span class="text-sm ml-2 font-medium">Написать</span>
     </a>
-    <button onclick="toggleFavorite('{{ profile_user.id }}', this, event)"
-            class="favorite-btn action-icon-btn contact-btn font-medium"
+    <button class="js-fav-btn favorite-btn action-icon-btn contact-btn font-medium"
             data-worker-id="{{ profile_user.id }}"
             data-favorited="false">
         <span class="favorite-icon flex items-center gap-2">
@@ -239,11 +237,24 @@
         <span class="favorite-text text-sm font-medium">В избранное</span>
     </button>
 </div>
+<script nonce="{{ csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+    // Favorite toggle button
+    var favBtn = document.querySelector('.js-fav-btn');
+    if (favBtn) {
+        favBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleFavorite(this.getAttribute('data-worker-id'), this, e);
+        });
+    }
+});
+</script>
 <script src="{{ url_for('static', filename='js/favorites.js') }}"></script>
 {% endif %}
 
 {% if profile_user and profile_user.get('role') == 'worker' %}
-<script>
+<script nonce="{{ csp_nonce }}">
 (function() {
     var skillsHidden = document.getElementById('skills-hidden');
     if (!skillsHidden) return;

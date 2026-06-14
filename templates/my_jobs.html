@@ -142,8 +142,8 @@
                         <div class="mt-1.5 flex items-center gap-1.5">
                             <span class="text-[11px] text-neutral-400 mr-0.5">ID:</span>
                             <code class="text-[11px] font-mono text-neutral-300 select-all">{{ job.id }}</code>
-                            <button type="button" onclick="copyJobId(this, '{{ job.id }}')"
-                                    class="text-neutral-300 hover:text-primary-500 transition-colors p-0.5" title="Скопировать ID">
+                            <button type="button" class="js-copy-job-btn text-neutral-300 hover:text-primary-500 transition-colors p-0.5"
+                                    data-job-id="{{ job.id }}" title="Скопировать ID">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                             </button>
                         </div>
@@ -159,16 +159,16 @@
                             {% endif %}
 
                             {# Дублировать: все статусы кроме open (матрица) #}
-                            <button type="button" onclick="duplicateJob('{{ job.id }}')"
-                                    class="action-icon-btn chat-btn" title="Дублировать">
+                            <button type="button" class="js-job-act-btn action-icon-btn chat-btn"
+                                    data-action="duplicateJob" data-job-id="{{ job.id }}" title="Дублировать">
                                 {{ duplicate(16) }}
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Дублировать</span>
                             </button>
 
                             {# Завершить: только open #}
                             {% if job.status == 'open' %}
-                            <button type="button" onclick="forceCompleteJob('{{ job.id }}')"
-                                    class="action-icon-btn reject-btn" title="Завершить задание">
+                            <button type="button" class="js-job-act-btn action-icon-btn reject-btn"
+                                    data-action="forceCompleteJob" data-job-id="{{ job.id }}" title="Завершить задание">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Завершить</span>
                             </button>
@@ -176,8 +176,8 @@
 
                             {# Отозвать: только open #}
                             {% if job.status == 'open' %}
-                            <button type="button" onclick="cancelJob('{{ job.id }}')"
-                                    class="action-icon-btn contact-btn" title="Отозвать">
+                            <button type="button" class="js-job-act-btn action-icon-btn contact-btn"
+                                    data-action="cancelJob" data-job-id="{{ job.id }}" title="Отозвать">
                                 {{ x_close(16) }}
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Отозвать</span>
                             </button>
@@ -185,16 +185,16 @@
 
                             {# Вернуть: только cancelled #}
                             {% if job.status == 'cancelled' %}
-                            <button type="button" onclick="restoreJob('{{ job.id }}')"
-                                    class="action-icon-btn accept-btn" title="Вернуть">
+                            <button type="button" class="js-job-act-btn action-icon-btn accept-btn"
+                                    data-action="restoreJob" data-job-id="{{ job.id }}" title="Вернуть">
                                 {{ restore(16) }}
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Вернуть</span>
                             </button>
                             {% endif %}
 
                             {# Удалить: все статусы #}
-                            <button type="button" onclick="deleteJob('{{ job.id }}')"
-                                    class="action-icon-btn reject-btn" title="Удалить">
+                            <button type="button" class="js-job-act-btn action-icon-btn reject-btn"
+                                    data-action="deleteJob" data-job-id="{{ job.id }}" title="Удалить">
                                 {{ trash_detailed(16) }}
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Удалить</span>
                             </button>
@@ -250,7 +250,7 @@
     </form>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     const checkboxes = document.querySelectorAll('.job-checkbox');
     const selectAllBtn = document.getElementById('select-all-btn');
@@ -414,6 +414,23 @@ document.addEventListener('DOMContentLoaded', function() {
             window.showToast('Выделено. Нажмите Ctrl+C', 'info');
         }
     };
+
+    // ── Делегирование для кнопок действий ──
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.js-job-act-btn');
+        if (btn && btn.dataset.action && btn.dataset.jobId) {
+            var action = window[btn.dataset.action];
+            if (typeof action === 'function') {
+                action(btn.dataset.jobId);
+            }
+            return;
+        }
+        var copyBtn = e.target.closest('.js-copy-job-btn');
+        if (copyBtn && copyBtn.dataset.jobId && typeof window.copyJobId === 'function') {
+            window.copyJobId(copyBtn, copyBtn.dataset.jobId);
+            return;
+        }
+    });
 
 });
 </script>

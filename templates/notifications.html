@@ -11,8 +11,7 @@
                 ⚙️ Настройки
             </a>
             {% if items %}
-            <button onclick="deleteAllNotifications()"
-                class="text-sm text-danger hover:text-red-700 font-medium transition-colors">
+            <button class="js-delete-all-btn text-sm text-danger hover:text-red-700 font-medium transition-colors">
                 Удалить все
             </button>
             {% endif %}
@@ -61,10 +60,9 @@
                 </div>
                 {% endif %}
             </div>
-            <button onclick="deleteNotification('{{ notification.id }}')"
+            <button class="js-delete-one-btn flex items-center justify-center rounded-full bg-white border border-neutral-200 text-neutral-400 hover:text-danger hover:border-danger shadow-sm transition-all"
                 style="position:absolute; top:6px; right:-10px; width:28px; height:28px;"
-                class="flex items-center justify-center rounded-full bg-white border border-neutral-200 text-neutral-400 hover:text-danger hover:border-danger shadow-sm transition-all"
-                title="Удалить уведомление">
+                data-notif-id="{{ notification.id }}" title="Удалить уведомление">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
         </div>
@@ -81,24 +79,40 @@
     {% endif %}
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function deleteNotification(id) {
-    if (!confirm('Удалить уведомление?')) return;
-    fetch('/api/notifications/' + id + '/delete', {method: 'POST'})
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) location.reload();
-        else alert(data.error || 'Ошибка');
+    window.showConfirm('Удалить уведомление?', function() {
+        fetch('/api/notifications/' + id + '/delete', {method: 'POST'})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) location.reload();
+            else window.showToast(data.error || 'Ошибка', 'error');
+        });
     });
 }
 function deleteAllNotifications() {
-    if (!confirm('Удалить все уведомления?')) return;
-    fetch('/api/notifications/delete-all', {method: 'POST'})
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) location.reload();
-        else alert(data.error || 'Ошибка');
+    window.showConfirm('Удалить все уведомления?', function() {
+        fetch('/api/notifications/delete-all', {method: 'POST'})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) location.reload();
+            else window.showToast(data.error || 'Ошибка', 'error');
+        });
     });
 }
+
+// ── Делегирование ──
+document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.js-delete-one-btn');
+    if (btn && btn.dataset.notifId) {
+        deleteNotification(btn.dataset.notifId);
+        return;
+    }
+    var allBtn = e.target.closest('.js-delete-all-btn');
+    if (allBtn) {
+        deleteAllNotifications();
+        return;
+    }
+});
 </script>
 {% endblock %}

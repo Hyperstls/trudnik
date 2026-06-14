@@ -112,7 +112,7 @@
                                 </select>
                                 <button class="text-xs text-primary-600 hover:underline px-1">Сменить</button>
                             </form>
-                            <form method="post" action="/admin/users/{{ u.id }}/delete" onsubmit="return confirm('Удалить пользователя {{ u.get('full_name', '') }}?')">
+                            <form method="post" action="/admin/users/{{ u.id }}/delete" class="js-confirm-form" data-confirm="Удалить пользователя {{ u.get('full_name', '') }}?">
                                 <button class="text-xs text-danger hover:underline px-1">Удалить</button>
                             </form>
                         </div>
@@ -181,7 +181,7 @@
                                 </select>
                                 <button class="text-xs text-primary-600 hover:underline px-1">Сменить</button>
                             </form>
-                            <form method="post" action="/admin/jobs/{{ j.id }}/delete" onsubmit="return confirm('Удалить задание {{ j.get('organization_name', '') }}?')">
+                            <form method="post" action="/admin/jobs/{{ j.id }}/delete" class="js-confirm-form" data-confirm="Удалить задание {{ j.get('organization_name', '') }}?">
                                 <button class="text-xs text-danger hover:underline px-1">Удалить</button>
                             </form>
                         </div>
@@ -310,7 +310,7 @@
         <div class="flex gap-2 mb-4">
             <input type="text" id="skill-name-input" placeholder="Новый навык..."
                    class="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm">
-            <button onclick="addSkill()" class="px-4 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600">Добавить</button>
+            <button class="js-add-skill-btn px-4 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600">Добавить</button>
         </div>
         <div id="skills-list" class="space-y-2">
             <p class="text-sm text-neutral-400">Загрузка...</p>
@@ -327,7 +327,7 @@
         <div class="flex gap-2 mb-4">
             <input type="text" id="religion-name-input" placeholder="Новое вероисповедание..."
                    class="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm">
-            <button onclick="addReligion()" class="px-4 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600">Добавить</button>
+            <button class="js-add-religion-btn px-4 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600">Добавить</button>
         </div>
         <div id="religions-list" class="space-y-2">
             <p class="text-sm text-neutral-400">Загрузка...</p>
@@ -345,7 +345,7 @@
     {% endif %}
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 // ── Навыки: CRUD + перестановка ──
 {% if tab == 'skills' %}
 let skillsData = [];
@@ -368,18 +368,13 @@ function renderSkills() {
     const list = document.getElementById('skills-list');
     list.innerHTML = skillsData.map((s, i) => `
         <div class="flex items-center gap-1.5 p-2 border border-neutral-100 rounded-lg bg-white cursor-move"
-             id="skill-${s.id}" draggable="true"
-             ondragstart="event.dataTransfer.setData('text/plain', '${i}'); this.classList.add('opacity-50')"
-             ondragend="this.classList.remove('opacity-50')"
-             ondragover="event.preventDefault(); this.classList.add('border-primary-400')"
-             ondragleave="this.classList.remove('border-primary-400')"
-             ondrop="event.preventDefault(); this.classList.remove('border-primary-400'); moveSkill(parseInt(event.dataTransfer.getData('text/plain')), 0, ${i})">
+             id="skill-${s.id}" draggable="true" data-skill-index="${i}">
             <span class="text-xs text-neutral-300 cursor-grab mr-1 select-none" title="Перетащите">⋮⋮</span>
             <span class="text-xs text-neutral-400 w-6 text-center">${i + 1}</span>
             <input type="text" value="${s.name}" data-id="${s.id}"
                    class="flex-1 px-2 py-1 border border-neutral-200 rounded text-sm skill-edit">
-            <button onclick="saveSkill('${s.id}')" class="text-xs text-primary-600 hover:underline px-1">Сохранить</button>
-            <button onclick="removeSkill('${s.id}')" class="text-xs text-danger hover:underline px-1">Удалить</button>
+            <button class="js-save-skill-btn text-xs text-primary-600 hover:underline px-1" data-skill-id="${s.id}">Сохранить</button>
+            <button class="js-remove-skill-btn text-xs text-danger hover:underline px-1" data-skill-id="${s.id}">Удалить</button>
         </div>
     `).join('');
 }
@@ -434,13 +429,53 @@ async function saveSkill(id) {
 }
 
 async function removeSkill(id) {
-    if (!confirm('Удалить навык?')) return;
-    try {
-        await fetch(`/admin/skills/${id}`, { method: 'DELETE' });
-        loadSkills();
-    } catch (e) {}
+    window.showConfirm('Удалить навык?', async function() {
+        try {
+            await fetch(`/admin/skills/${id}`, { method: 'DELETE' });
+            loadSkills();
+        } catch (e) {}
+    });
 }
 loadSkills();
+
+// ── Делегирование для навыков ──
+document.addEventListener('click', function(e) {
+    var saveBtn = e.target.closest('.js-save-skill-btn');
+    if (saveBtn && saveBtn.dataset.skillId) { saveSkill(saveBtn.dataset.skillId); return; }
+    var removeBtn = e.target.closest('.js-remove-skill-btn');
+    if (removeBtn && removeBtn.dataset.skillId) { removeSkill(removeBtn.dataset.skillId); return; }
+    var addBtn = e.target.closest('.js-add-skill-btn');
+    if (addBtn) { addSkill(); return; }
+});
+document.addEventListener('dragstart', function(e) {
+    var div = e.target.closest('#skills-list [draggable]');
+    if (div && div.dataset.skillIndex !== undefined) {
+        e.dataTransfer.setData('text/plain', div.dataset.skillIndex);
+        div.classList.add('opacity-50');
+    }
+});
+document.addEventListener('dragend', function(e) {
+    var div = e.target.closest('#skills-list [draggable]');
+    if (div) div.classList.remove('opacity-50');
+});
+document.addEventListener('dragover', function(e) {
+    var div = e.target.closest('#skills-list [draggable]');
+    if (div) { e.preventDefault(); div.classList.add('border-primary-400'); }
+});
+document.addEventListener('dragleave', function(e) {
+    var div = e.target.closest('#skills-list [draggable]');
+    if (div) div.classList.remove('border-primary-400');
+});
+document.addEventListener('drop', function(e) {
+    var div = e.target.closest('#skills-list [draggable]');
+    if (div && div.dataset.skillIndex !== undefined) {
+        e.preventDefault();
+        div.classList.remove('border-primary-400');
+        var fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
+        var toIdx = parseInt(div.dataset.skillIndex);
+        if (!isNaN(fromIdx) && !isNaN(toIdx)) moveSkill(fromIdx, 0, toIdx);
+    }
+});
 {% endif %}
 
 // ── Вероисповедания: CRUD + перестановка ──
@@ -465,18 +500,13 @@ function renderReligions() {
     const list = document.getElementById('religions-list');
     list.innerHTML = religionsData.map((r, i) => `
         <div class="flex items-center gap-1.5 p-2 border border-neutral-100 rounded-lg bg-white cursor-move"
-             id="religion-${r.id}" draggable="true"
-             ondragstart="event.dataTransfer.setData('text/plain', '${i}'); this.classList.add('opacity-50')"
-             ondragend="this.classList.remove('opacity-50')"
-             ondragover="event.preventDefault(); this.classList.add('border-primary-400')"
-             ondragleave="this.classList.remove('border-primary-400')"
-             ondrop="event.preventDefault(); this.classList.remove('border-primary-400'); moveReligion(parseInt(event.dataTransfer.getData('text/plain')), 0, ${i})">
+             id="religion-${r.id}" draggable="true" data-religion-index="${i}">
             <span class="text-xs text-neutral-300 cursor-grab mr-1 select-none" title="Перетащите">⋮⋮</span>
             <span class="text-xs text-neutral-400 w-6 text-center">${i + 1}</span>
             <input type="text" value="${r.name}" data-id="${r.id}"
                    class="flex-1 px-2 py-1 border border-neutral-200 rounded text-sm religion-edit">
-            <button onclick="saveReligion('${r.id}')" class="text-xs text-primary-600 hover:underline px-1">Сохранить</button>
-            <button onclick="removeReligion('${r.id}')" class="text-xs text-danger hover:underline px-1">Удалить</button>
+            <button class="js-save-religion-btn text-xs text-primary-600 hover:underline px-1" data-religion-id="${r.id}">Сохранить</button>
+            <button class="js-remove-religion-btn text-xs text-danger hover:underline px-1" data-religion-id="${r.id}">Удалить</button>
         </div>
     `).join('');
 }
@@ -530,13 +560,53 @@ async function saveReligion(id) {
 }
 
 async function removeReligion(id) {
-    if (!confirm('Удалить вероисповедание?')) return;
-    try {
-        await fetch(`/admin/religions/${id}`, { method: 'DELETE' });
-        loadReligions();
-    } catch (e) {}
+    window.showConfirm('Удалить вероисповедание?', async function() {
+        try {
+            await fetch(`/admin/religions/${id}`, { method: 'DELETE' });
+            loadReligions();
+        } catch (e) {}
+    });
 }
 loadReligions();
+
+// ── Делегирование для вероисповеданий ──
+document.addEventListener('click', function(e) {
+    var saveBtn = e.target.closest('.js-save-religion-btn');
+    if (saveBtn && saveBtn.dataset.religionId) { saveReligion(saveBtn.dataset.religionId); return; }
+    var removeBtn = e.target.closest('.js-remove-religion-btn');
+    if (removeBtn && removeBtn.dataset.religionId) { removeReligion(removeBtn.dataset.religionId); return; }
+    var addBtn = e.target.closest('.js-add-religion-btn');
+    if (addBtn) { addReligion(); return; }
+});
+document.addEventListener('dragstart', function(e) {
+    var div = e.target.closest('#religions-list [draggable]');
+    if (div && div.dataset.religionIndex !== undefined) {
+        e.dataTransfer.setData('text/plain', div.dataset.religionIndex);
+        div.classList.add('opacity-50');
+    }
+});
+document.addEventListener('dragend', function(e) {
+    var div = e.target.closest('#religions-list [draggable]');
+    if (div) div.classList.remove('opacity-50');
+});
+document.addEventListener('dragover', function(e) {
+    var div = e.target.closest('#religions-list [draggable]');
+    if (div) { e.preventDefault(); div.classList.add('border-primary-400'); }
+});
+document.addEventListener('dragleave', function(e) {
+    var div = e.target.closest('#religions-list [draggable]');
+    if (div) div.classList.remove('border-primary-400');
+});
+document.addEventListener('drop', function(e) {
+    var div = e.target.closest('#religions-list [draggable]');
+    if (div && div.dataset.religionIndex !== undefined) {
+        e.preventDefault();
+        div.classList.remove('border-primary-400');
+        var fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
+        var toIdx = parseInt(div.dataset.religionIndex);
+        if (!isNaN(fromIdx) && !isNaN(toIdx)) moveReligion(fromIdx, 0, toIdx);
+    }
+});
 {% endif %}
 
 // ── Статистика ──

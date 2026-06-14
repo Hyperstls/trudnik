@@ -48,7 +48,7 @@
 
     <!-- Input -->
     <div class="px-4 py-3 border-t border-neutral-100 bg-white safe-area-inset-bottom">
-        <form id="chat-form" class="flex gap-2 items-end" onsubmit="sendMessage(event)">
+        <form id="chat-form" class="flex gap-2 items-end">
             <div class="flex-1 relative">
                 <input id="message-input" type="text" class="w-full border border-neutral-200 rounded-xl px-4 py-2.5 pr-10 text-sm
                     focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500
@@ -64,7 +64,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 const applicationId = "{{ application_id }}";
 const currentUserId = "{{ user_id }}";
 let lastMessageId = "{{ messages[-1].id if messages else '' }}";
@@ -144,6 +144,8 @@ async function sendMessage(event) {
 }
 
 window.onload = () => {
+    var form = document.getElementById('chat-form');
+    if (form) form.addEventListener('submit', sendMessage);
     const msgs = document.getElementById('messages');
     msgs.scrollTop = msgs.scrollHeight;
     setInterval(pollMessages, POLL_INTERVAL);

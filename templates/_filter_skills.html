@@ -84,7 +84,7 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 (function() {
     var filterId = '{{ filter_id }}';
     var selectedSkills = {{ selected_skills|tojson if selected_skills else '[]' }};

@@ -11,9 +11,8 @@
         <div id="blacklist-item-{{ worker.id }}" class="app-card bg-white rounded-2xl shadow-sm border border-neutral-100 p-4 hover:shadow-md transition-shadow">
             <div class="flex items-center gap-3">
                 {% if worker.photo_url %}
-                <img src="{{ worker.photo_url }}" alt="{{ worker.full_name }}"
-                     class="w-12 h-12 rounded-full object-cover border-2 border-neutral-200 shrink-0"
-                     onerror="var p=this.parentElement;var s=p.querySelector('.avatar-smiley');if(s){s.style.display=''};this.style.display='none';">
+                 <img src="{{ worker.photo_url }}" alt="{{ worker.full_name }}"
+                      class="js-avatar-img w-12 h-12 rounded-full object-cover border-2 border-neutral-200 shrink-0">
                 <div class="avatar-smiley w-12 h-12 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400" style="display:none">{{ smiley(28) }}</div>
                 {% else %}
                 <div class="w-12 h-12 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400">{{ smiley(28) }}</div>
@@ -34,8 +33,8 @@
             </div>
 
             <div class="mt-4 pt-3 border-t border-neutral-100">
-                <button onclick="unblockWorker('{{ worker.id }}')"
-                        class="w-full bg-success text-white py-2.5 rounded-xl font-bold text-sm hover:bg-success/90 active:scale-[0.97] transition-all duration-200 shadow-sm">
+                <button class="js-unblock-btn w-full bg-success text-white py-2.5 rounded-xl font-bold text-sm hover:bg-success/90 active:scale-[0.97] transition-all duration-200 shadow-sm"
+                        data-worker-id="{{ worker.id }}">
                     🔓 Разблокировать
                 </button>
             </div>
@@ -56,51 +55,57 @@
     {% endif %}
 </div>
 
-<script>
-async function unblockWorker(workerId) {
-    if (!confirm('Разблокировать этого работника? Он снова сможет откликаться на ваши задания.')) return;
+<script nonce="{{ csp_nonce }}">
+async function unblockWorker(workerId, btn) {
+    window.showConfirm('Разблокировать этого работника? Он снова сможет откликаться на ваши задания.', async function() {
+        btn.disabled = true;
+        const origText = btn.textContent;
+        btn.textContent = '...';
 
-    const btn = event.target;
-    btn.disabled = true;
-    const origText = btn.textContent;
-    btn.textContent = '...';
+        try {
+            const resp = await fetch('/unblock/' + workerId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': '{{ csrf_token }}'
+                }
+            });
+            const data = await resp.json();
 
-    try {
-        const resp = await fetch('/unblock/' + workerId, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': '{{ csrf_token }}'
+            if (data.success) {
+                const item = document.getElementById('blacklist-item-' + workerId);
+                if (item) {
+                    item.style.transition = 'opacity 0.3s, transform 0.3s';
+                    item.style.opacity = '0';
+                    item.style.transform = 'scale(0.95)';
+                    setTimeout(function() { item.remove(); }, 300);
+                }
+                if (window.showToast) window.showToast('🔓 Работник разблокирован', 'success');
+
+                setTimeout(function() {
+                    const remaining = document.querySelectorAll('[id^="blacklist-item-"]');
+                    if (remaining.length === 0) location.reload();
+                }, 400);
+            } else {
+                if (window.showToast) window.showToast('❌ ' + (data.error || 'Ошибка'), 'error');
+                btn.textContent = origText;
+                btn.disabled = false;
             }
-        });
-        const data = await resp.json();
-
-        if (data.success) {
-            // Удаляем элемент из DOM с анимацией
-            const item = document.getElementById('blacklist-item-' + workerId);
-            if (item) {
-                item.style.transition = 'opacity 0.3s, transform 0.3s';
-                item.style.opacity = '0';
-                item.style.transform = 'scale(0.95)';
-                setTimeout(() => item.remove(), 300);
-            }
-            if (window.showToast) window.showToast('🔓 Работник разблокирован', 'success');
-
-            // Если список стал пустым — перезагружаем страницу для показа empty state
-            setTimeout(() => {
-                const remaining = document.querySelectorAll('[id^="blacklist-item-"]');
-                if (remaining.length === 0) location.reload();
-            }, 400);
-        } else {
-            if (window.showToast) window.showToast('❌ ' + (data.error || 'Ошибка'), 'error');
+        } catch (e) {
+            if (window.showToast) window.showToast('❌ Ошибка соединения', 'error');
             btn.textContent = origText;
             btn.disabled = false;
         }
-    } catch (e) {
-        if (window.showToast) window.showToast('❌ Ошибка соединения', 'error');
-        btn.textContent = origText;
-        btn.disabled = false;
-    }
+    });
 }
+
+// ── Делегирование ──
+document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.js-unblock-btn');
+    if (btn && btn.dataset.workerId) {
+        unblockWorker(btn.dataset.workerId, btn);
+        return;
+    }
+});
 </script>
 {% endblock %}

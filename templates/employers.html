@@ -47,8 +47,7 @@
                 <div class="flex items-start gap-3 mb-3">
                     {% if employer.photo_url %}
                     <img src="{{ employer.photo_url }}" alt="{{ employer.full_name }}"
-                         class="w-14 h-14 rounded-full object-cover border-2 border-neutral-200 shrink-0"
-                         onerror="var p=this.parentElement;var s=p.querySelector('.avatar-smiley');if(s){s.style.display=''};this.style.display='none';">
+                         class="js-avatar-img w-14 h-14 rounded-full object-cover border-2 border-neutral-200 shrink-0">
                     <div class="avatar-smiley w-14 h-14 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400" style="display:none">{{ smiley(32) }}</div>
                     {% else %}
                     <div class="w-14 h-14 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400">{{ smiley(32) }}</div>

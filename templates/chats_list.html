@@ -4,7 +4,7 @@
 <div class="px-4 pb-24 max-w-lg mx-auto">
     <div class="flex items-center justify-between mb-5">
         <h1 class="text-2xl font-bold text-neutral-900">Чаты</h1>
-        <button onclick="deleteSelected()" class="action-icon-btn reject-btn opacity-50 pointer-events-none" id="delete-btn" disabled>
+        <button class="js-delete-chats-btn action-icon-btn reject-btn opacity-50 pointer-events-none" id="delete-btn" disabled>
             {{ trash(16) }}
             <span class="text-xs ml-1.5 font-medium">Удалить</span>
         </button>
@@ -15,7 +15,7 @@
         {% for chat in chats %}
         <div class="app-card bg-white rounded-2xl shadow-sm border border-neutral-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-3 p-3" data-chat-id="{{ chat.id }}">
             <input type="checkbox" class="chat-checkbox w-5 h-5 text-primary-500 rounded border-neutral-300 shrink-0"
-                   value="{{ chat.id }}" onchange="toggleDeleteBtn()">
+                   value="{{ chat.id }}">
             <a href="/chat/{{ chat.id }}" class="flex-1 flex items-center gap-3 min-w-0">
                 <div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
                     {{ chat_icon(18) }}
@@ -39,7 +39,7 @@
     {% endif %}
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 function toggleDeleteBtn() {
     const checked = document.querySelectorAll('.chat-checkbox:checked').length;
     const btn = document.getElementById('delete-btn');
@@ -89,5 +89,19 @@ async function deleteSelected() {
 
     toggleDeleteBtn();
 }
+
+// ── Делегирование ──
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('chat-checkbox')) {
+        toggleDeleteBtn();
+    }
+});
+document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.js-delete-chats-btn');
+    if (btn) {
+        deleteSelected();
+        return;
+    }
+});
 </script>
 {% endblock %}

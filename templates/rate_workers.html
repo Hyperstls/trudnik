@@ -75,11 +75,11 @@
 
                 {# --- Шапка: фото, имя, рейтинг --- #}
                 <div class="flex items-center gap-3 mb-3">
-                    <div class="w-12 h-12 rounded-full bg-primary-50 flex items-center justify-center shrink-0 overflow-hidden">
+                    <div class="w-12 h-12 rounded-full bg-primary-50 flex items-center justify-center shrink-0 overflow-hidden" data-initial="{{ w.full_name[:1].upper() }}">
                         {% if w.photo_url %}
                         <img src="{{ w.photo_url }}" alt="{{ w.full_name }}"
                              class="w-full h-full object-cover"
-                             onerror="this.onerror=null;this.parentElement.innerHTML='<span class=\'text-primary-600 font-semibold text-lg\'>{{ w.full_name[:1].upper() }}</span>'">
+                              class="js-worker-avatar-img">
                         {% else %}
                         <span class="text-primary-600 font-semibold text-lg">{{ w.full_name[:1].upper() }}</span>
                         {% endif %}
@@ -130,7 +130,8 @@
                         <button type="button"
                                 class="btn-primary text-sm font-semibold px-5 py-2.5 rounded-xl bg-primary-500 text-white hover:bg-primary-600 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
                                 id="save-btn-{{ w.worker_id }}"
-                                onclick="saveRating('{{ w.worker_id }}')"
+                                class="js-save-rating-btn"
+                                data-worker-id="{{ w.worker_id }}"
                                 {% if existing %}disabled{% endif %}>
                             {% if existing %}
                                 <span class="flex items-center gap-1.5">
@@ -153,7 +154,7 @@
 {# ============================================ #}
 {# JavaScript                                    #}
 {# ============================================ #}
-<script>
+<script nonce="{{ csp_nonce }}">
     var csrfToken = '{{ csrf_token }}';
     var jobId = '{{ job.id }}';
     var raterUserId = '{{ session.user_id }}';
@@ -266,11 +267,28 @@
     // --- Инициализация: сохраняем текущие значения звёзд из existing ---
     document.querySelectorAll('[id^="stars-"]').forEach(function(container) {
         var workerId = container.id.replace('stars-', '');
-        // Ищем предзаполненное значение по классу text-amber-500
         var filledStars = container.querySelectorAll('.star-btn.text-amber-500');
         if (filledStars.length > 0) {
             container.dataset.selectedRating = filledStars.length;
         }
     });
+
+    // ── Делегирование для кнопок сохранения ──
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.js-save-rating-btn');
+        if (btn && btn.dataset.workerId) {
+            saveRating(btn.dataset.workerId);
+            return;
+        }
+    });
+
+    // ── Обработчик ошибок загрузки аватаров работников ──
+    document.addEventListener('error', function(e) {
+        if (e.target.tagName === 'IMG' && e.target.classList.contains('js-worker-avatar-img')) {
+            e.target.onerror = null;
+            var initial = e.target.parentElement.getAttribute('data-initial') || '?';
+            e.target.parentElement.innerHTML = '<span class="text-primary-600 font-semibold text-lg">' + initial + '</span>';
+        }
+    }, true);
 </script>
 {% endblock %}

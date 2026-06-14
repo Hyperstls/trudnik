@@ -66,7 +66,13 @@
         </div>
         <h1>Нет подключения к сети</h1>
         <p>Проверьте подключение к интернету и попробуйте снова. Некоторые ранее открытые страницы могут быть доступны.</p>
-        <a href="/" class="btn" onclick="location.reload()">Попробовать снова</a>
+        <a href="/" class="js-reload-btn btn">Попробовать снова</a>
     </div>
+    <script>
+        document.querySelector('.js-reload-btn').addEventListener('click', function(e) {
+            e.preventDefault();
+            location.reload();
+        });
+    </script>
 </body>
 </html>

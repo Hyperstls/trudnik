@@ -128,14 +128,18 @@ def register():
 
                 if SERVICE_KEY:
                     patch_url = f"{SUPABASE_URL}/rest/v1/profiles?id=eq.{user['id']}"
-                    requests.patch(patch_url, json=update_data,
+                    patch_resp = requests.patch(patch_url, json=update_data,
                                    headers={
                                        'apikey': SERVICE_KEY,
                                        'Authorization': f'Bearer {SERVICE_KEY}',
                                        'Content-Type': 'application/json'
                                    }, timeout=10)
+                    if not patch_resp.ok:
+                        log.error('Failed to update profile for user %s: %s', user['id'], patch_resp.text)
                 else:
-                    supabase_request('PATCH', f'profiles?id=eq.{user["id"]}', json=update_data)
+                    patch_resp = supabase_request('PATCH', f'profiles?id=eq.{user["id"]}', json=update_data)
+                    if not patch_resp.ok:
+                        log.error('Failed to update profile for user %s: %s', user['id'], patch_resp.text)
 
                 # Сохраняем навыки через user_skills (с валидацией UUID)
                 if role == 'worker' and skill_ids:
@@ -154,7 +158,14 @@ def register():
                 flash('Регистрация успешна. Теперь войдите.', 'success')
                 return redirect(url_for('auth.login'))
             else:
-                flash('Ошибка регистрации', 'danger')
+                error_msg = 'Ошибка регистрации'
+                try:
+                    err_data = resp.json()
+                    if isinstance(err_data, dict):
+                        error_msg = err_data.get('msg') or err_data.get('message') or error_msg
+                except Exception:
+                    pass
+                flash(error_msg, 'danger')
         except requests.RequestException:
             flash('Ошибка соединения с сервером', 'danger')
     return render_template('register.html')
