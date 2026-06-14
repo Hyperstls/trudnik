@@ -1,6 +1,6 @@
 from datetime import datetime, timezone, timedelta
 
-from flask import Blueprint, current_app, jsonify, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, jsonify, flash, redirect, render_template, request, session, url_for, abort
 
 from app.config import Config
 from app.decorators import login_required, role_required
@@ -165,6 +165,12 @@ def workers():
 @jobs_bp.route('/jobs/<job_id>')
 def job_detail(job_id):
     """Детальная страница задания."""
+    # Валидация UUID формата перед любыми запросами к БД
+    from uuid import UUID
+    try:
+        UUID(job_id)
+    except (ValueError, AttributeError):
+        abort(404)
     job = get_job_by_id(job_id)
     if not job:
         flash('Задание не найдено', 'danger')

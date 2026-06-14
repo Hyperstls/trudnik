@@ -1,7 +1,7 @@
 import uuid
 
 import requests
-from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
 from werkzeug.utils import secure_filename
 
 from app.config import Config
@@ -213,6 +213,11 @@ def verify_employer():
 
 @profile_bp.route('/profile/<user_id>')
 def public_profile(user_id):
+    # Валидация UUID формата перед запросом к БД
+    try:
+        uuid.UUID(user_id)
+    except (ValueError, AttributeError):
+        abort(404)
     resp = supabase_request('GET', f'profiles?id=eq.{user_id}&select=*')
     profile_user = resp.json()[0] if resp.ok and resp.json() else None
     if not profile_user:

@@ -277,7 +277,7 @@ async function toggleBlockProfile(btn, workerId, evt) {
 </script>
 {% endif %}
 
-{# CSP-safe event delegation (replaces all onclick attributes) #}
+{# CSP-safe event delegation (replaces all click attributes) #}
 <script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     var workerId = '{{ profile_user.id }}';
@@ -311,7 +311,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Image onerror fallback
+// Image error fallback
 document.addEventListener('error', function(e) {
     if (e.target.tagName === 'IMG') {
         var p = e.target.parentElement;

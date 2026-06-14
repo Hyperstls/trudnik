@@ -54,23 +54,29 @@ def api_religions():
 @jobs_api_bp.route('/api/search/jobs')
 def api_search_jobs():
     """Поиск заданий с полнотекстовым поиском, фильтрами и пагинацией."""
-    filters = {
-        'q': request.args.get('q', ''),
-        'status': request.args.get('status', 'open'),
-        'lat': request.args.get('lat', type=float),
-        'lng': request.args.get('lng', type=float),
-        'radius': request.args.get('radius', 20, type=float),
-        'min_pay': request.args.get('min_pay', type=int),
-        'max_pay': request.args.get('max_pay', type=int),
-        'skills': request.args.get('skills', ''),
-        'date_from': request.args.get('date_from', ''),
-        'date_to': request.args.get('date_to', ''),
-        'available_slots': request.args.get('available_slots', 'false').lower() == 'true',
-        'page': request.args.get('page', 1, type=int),
-        'per_page': request.args.get('per_page', 20, type=int),
-        'sort': request.args.get('sort', ''),
-    }
-    return search_jobs(filters)
+    import traceback
+    try:
+        filters = {
+            'q': request.args.get('q', ''),
+            'status': request.args.get('status', 'open'),
+            'lat': request.args.get('lat', type=float),
+            'lng': request.args.get('lng', type=float),
+            'radius': request.args.get('radius', 20, type=float),
+            'min_pay': request.args.get('min_pay', type=int),
+            'max_pay': request.args.get('max_pay', type=int),
+            'skills': request.args.get('skills', ''),
+            'date_from': request.args.get('date_from', ''),
+            'date_to': request.args.get('date_to', ''),
+            'available_slots': request.args.get('available_slots', 'false').lower() == 'true',
+            'page': request.args.get('page', 1, type=int),
+            'per_page': request.args.get('per_page', 20, type=int),
+            'sort': request.args.get('sort', ''),
+        }
+        result = search_jobs(filters)
+        return result
+    except Exception:
+        current_app.logger.error('api_search_jobs ERROR: %s', traceback.format_exc())
+        return jsonify({'error': 'Internal search error'}), 500
 
 
 @jobs_api_bp.route('/api/search/workers')

@@ -162,11 +162,13 @@ class SupabaseResponse:
     """Типизированный ответ от Supabase REST API."""
 
     def __init__(self, ok: bool = False, status_code: int = 0,
-                 data: Any = None, text: str = '') -> None:
+                 data: Any = None, text: str = '',
+                 headers: Any = None) -> None:
         self.ok = ok
         self.status_code = status_code
         self._data = data
         self.text = text
+        self.headers = headers if headers is not None else {}
 
     def json(self) -> Any:
         """Вернуть распарсенные данные. Приоритет: _data, затем парсинг text."""
@@ -256,7 +258,7 @@ def supabase_request(method: str, endpoint: str, **kwargs: Any) -> SupabaseRespo
             data = resp.json()
         except Exception:
             data = None
-        return SupabaseResponse(ok=resp.ok, status_code=resp.status_code, data=data, text=resp.text)
+        return SupabaseResponse(ok=resp.ok, status_code=resp.status_code, data=data, text=resp.text, headers=resp.headers)
 
     try:
         resp = _cb_supabase.call(_make_request)
@@ -301,7 +303,7 @@ def supabase_admin_request(method: str, endpoint: str, **kwargs: Any) -> Supabas
             data = resp.json()
         except Exception:
             data = None
-        return SupabaseResponse(ok=resp.ok, status_code=resp.status_code, data=data, text=resp.text)
+        return SupabaseResponse(ok=resp.ok, status_code=resp.status_code, data=data, text=resp.text, headers=resp.headers)
 
     try:
         return _cb_admin.call(_make_request)

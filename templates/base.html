@@ -1111,7 +1111,7 @@
             }
         });
 
-        // Desktop search form submit handler (replaces onsubmit attribute)
+        // Desktop search form submit handler (replaces form submit attribute)
         document.addEventListener('DOMContentLoaded', function() {
             var form = document.getElementById('desktop-search-form');
             if (form) {
@@ -1121,7 +1121,7 @@
             }
         });
 
-        // Mobile search button handlers (replace onclick attributes)
+        // Mobile search button handlers (replace click attributes)
         document.addEventListener('DOMContentLoaded', function() {
             var btn = document.getElementById('mobile-search-btn');
             if (btn) btn.addEventListener('click', toggleMobileSearch);
@@ -1150,7 +1150,7 @@
             }
         }, true);
 
-        // Global confirm-form handler (replaces onsubmit="return confirm(...)")
+        // Global confirm-form handler (replaces form submit with confirm)
         document.addEventListener('submit', function(e) {
             var form = e.target.closest('.js-confirm-form');
             if (form && !form.dataset.confirmHandled) {
@@ -1166,7 +1166,7 @@
             }
         });
 
-        // Global auto-submit handler for file inputs (replaces onchange="this.form.submit()")
+        // Global auto-submit handler for file inputs (replaces change-event form submit)
         document.addEventListener('change', function(e) {
             if (e.target.classList.contains('js-auto-submit') && e.target.form) {
                 e.target.form.submit();

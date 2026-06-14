@@ -63,7 +63,7 @@ def create_app():
     def csrf_check():
         """Глобальная CSRF-защита: проверка токена для всех мутирующих запросов.
         Пропускаем: GET/HEAD/OPTIONS, тестовые запросы, auth-роуты (login/register).
-        Приоритет: 1) X-CSRF-Token заголовок (fetch/AJAX), 2) _csrf_token в форме."""
+        Приоритет: 1) X-CSRF-Token заголовок (fetch/AJAX), 2) _csrf_token в форме/JSON."""
         if request.method in ('GET', 'HEAD', 'OPTIONS'):
             return
         # В режиме тестирования CSRF отключён
@@ -78,8 +78,19 @@ def create_app():
             if header_token != session.get('_csrf_token'):
                 abort(400, description='CSRF-токен недействителен')
             return
-        # Для обычных форм
-        token = request.form.get('_csrf_token')
+        # Для обычных форм (устойчиво к не-form Content-Type, например text/plain)
+        token = None
+        try:
+            token = request.form.get('_csrf_token')
+        except Exception:
+            pass
+        # Если не в форме — пробуем JSON (для API-запросов с application/json)
+        if not token and request.is_json:
+            try:
+                json_data = request.get_json(silent=True) or {}
+                token = json_data.get('_csrf_token')
+            except Exception:
+                pass
         if not token or token != session.get('_csrf_token'):
             abort(400, description='CSRF-токен отсутствует или недействителен')
 
@@ -265,6 +276,10 @@ def create_app():
     @app.errorhandler(Exception)
     def handle_supabase_error(e):
         import requests as req_lib
+        from werkzeug.exceptions import HTTPException
+        # Пропускаем HTTP-исключения (abort, 404, 400 и т.д.) — возвращаем как есть
+        if isinstance(e, HTTPException):
+            return e
         if isinstance(e, req_lib.ConnectionError):
             return render_template('error.html', error_code='503',
                                    error='Сервис временно недоступен. Пожалуйста, попробуйте позже.'), 503

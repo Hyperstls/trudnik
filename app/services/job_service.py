@@ -206,18 +206,23 @@ def search_jobs(filters: Dict[str, Any]) -> Dict[str, Any]:
     sort = filters.get('sort', '')
 
     if lat is not None and lng is not None:
-        for job in jobs_list:
-            if job.get('lat') and job.get('lng'):
-                job['distance'] = calculate_distance(
-                    lat, lng, job['lat'], job['lng']
-                )
-        if radius:
-            jobs_list = [
-                j for j in jobs_list
-                if j.get('distance', float('inf')) <= radius
-            ]
-        if sort == 'distance':
-            jobs_list.sort(key=lambda x: x.get('distance', float('inf')))
+        try:
+            for job in jobs_list:
+                if job.get('lat') and job.get('lng'):
+                    job['distance'] = calculate_distance(
+                        lat, lng, job['lat'], job['lng']
+                    )
+            if radius:
+                jobs_list = [
+                    j for j in jobs_list
+                    if j.get('distance', float('inf')) <= radius
+                ]
+            if sort == 'distance':
+                jobs_list.sort(key=lambda x: x.get('distance', float('inf')))
+        except (TypeError, ValueError) as e:
+            from flask import current_app
+            current_app.logger.warning('Geo-filter error: %s', str(e))
+            # Возвращаем результаты без гео-фильтрации при некорректных параметрах
 
     # Фильтрация по навыкам (если не использовался FTS)
     skills = filters.get('skills', '')
@@ -264,18 +269,22 @@ def search_workers(filters: Dict[str, Any]) -> Dict[str, Any]:
     sort = filters.get('sort', '')
 
     if lat is not None and lng is not None:
-        for w in workers_list:
-            if w.get('lat') and w.get('lng'):
-                w['distance'] = calculate_distance(
-                    lat, lng, w['lat'], w['lng']
-                )
-        if radius:
-            workers_list = [
-                w for w in workers_list
-                if w.get('distance', float('inf')) <= radius
-            ]
-        if sort == 'distance':
-            workers_list.sort(key=lambda x: x.get('distance', float('inf')))
+        try:
+            for w in workers_list:
+                if w.get('lat') and w.get('lng'):
+                    w['distance'] = calculate_distance(
+                        lat, lng, w['lat'], w['lng']
+                    )
+            if radius:
+                workers_list = [
+                    w for w in workers_list
+                    if w.get('distance', float('inf')) <= radius
+                ]
+            if sort == 'distance':
+                workers_list.sort(key=lambda x: x.get('distance', float('inf')))
+        except (TypeError, ValueError) as e:
+            from flask import current_app
+            current_app.logger.warning('Geo-filter error (workers): %s', str(e))
 
     page = max(1, filters.get('page', 1))
     per_page = min(100, max(1, filters.get('per_page', 20)))

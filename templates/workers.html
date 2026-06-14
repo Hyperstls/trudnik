@@ -273,7 +273,7 @@ async function toggleBlock(btn, workerId, evt) {
 </script>
 {% endif %}
 
-{# CSP-safe event delegation (replaces all onclick attributes) #}
+{# CSP-safe event delegation (replaces all click attributes) #}
 <script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     var grid = document.querySelector('.grid');
@@ -358,7 +358,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Image onerror fallback (replaces inline onerror attributes)
+// Image error fallback (replaces image error attributes)
 document.addEventListener('error', function(e) {
     if (e.target.tagName === 'IMG' && e.target.closest('[data-worker-id]')) {
         var p = e.target.parentElement;

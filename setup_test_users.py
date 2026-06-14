@@ -10,9 +10,10 @@ SERVICE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 ANON_KEY = os.environ["SUPABASE_ANON_KEY"]
 
 TEST_USERS = [
-    {"email": "admin@test.ru", "password": "Step@1986", "role": "admin", "name": "Admin Test"},
-    {"email": "org@test.ru", "password": "Step@1986", "role": "employer", "name": "Org Test"},
-    {"email": "trud@test.ru", "password": "Step@1986", "role": "worker", "name": "Trud Test"},
+    {"email": "admin@test.ru", "password": "test123", "role": "admin", "name": "Admin Test"},
+    {"email": "org@test.ru", "password": "test123", "role": "employer", "name": "Org Test"},
+    {"email": "trud@test.ru", "password": "test123", "role": "worker", "name": "Trud Test"},
+    {"email": "trud3@test.ru", "password": "test123", "role": "worker", "name": "Trud3 Test"},
 ]
 
 headers = {
