@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required
 from app.utils import supabase_request
@@ -6,9 +6,22 @@ from app.utils import supabase_request
 blacklist_bp = Blueprint('blacklist', __name__)
 
 
+def _reject_worker():
+    """Запрещает доступ к ЧС для роли worker — возвращает 403 или редиректит."""
+    if session.get('role') == 'worker':
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.headers.get('Accept') == 'application/json':
+            abort(403)
+        flash('Доступ запрещён', 'danger')
+        return redirect(url_for('jobs.index'))
+    return None
+
+
 @blacklist_bp.route('/blacklist')
 @login_required
 def blacklist():
+    err = _reject_worker()
+    if err:
+        return err
     resp = supabase_request('GET',
         f'blacklists?user_id=eq.{session["user_id"]}&select=blocked:profiles!blacklists_blocked_user_id_fkey(id,full_name,photo_url,skills,city)')
     items = resp.json() if resp.ok else []
@@ -23,6 +36,9 @@ def blacklist():
 @blacklist_bp.route('/blacklist/<user_id>', methods=['POST'])
 @login_required
 def block_user(user_id):
+    err = _reject_worker()
+    if err:
+        return err
     resp = supabase_request('POST', 'blacklists', json={'user_id': session['user_id'], 'blocked_user_id': user_id})
     if resp.ok:
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.headers.get('Accept') == 'application/json':
@@ -37,6 +53,9 @@ def block_user(user_id):
 @blacklist_bp.route('/unblock/<user_id>', methods=['POST'])
 @login_required
 def unblock_user(user_id):
+    err = _reject_worker()
+    if err:
+        return err
     resp = supabase_request('DELETE', f'blacklists?user_id=eq.{session["user_id"]}&blocked_user_id=eq.{user_id}')
     if resp.ok:
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.headers.get('Accept') == 'application/json':
