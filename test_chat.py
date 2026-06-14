@@ -92,100 +92,8 @@ class TestChatBasic:
 
 
 class TestChatFullChain:
-    """P0: Тесты чата, требующие полной цепочки: задание → отклик → accept → чат."""
-
-    @pytest.fixture(scope="function")
-    def accepted_application_id(self, employer_session, worker_session):
-        """
-        Создать полную цепочку: задание → apply → accept.
-        Задания теперь создаются с is_paid=True по умолчанию.
-        Возвращает (application_id, job_id) или (None, None) при ошибке.
-        """
-        e_sess = employer_session
-        w_sess = worker_session
-
-        # 1. Создать задание (сразу is_paid=True)
-        form = form_with_csrf(
-            e_sess,
-            title="Тестовое задание для чата",
-            description="Описание тестового задания для проверки чата",
-            work_type="Уборка",
-            payment="700",
-            address="Москва, ул. Чатовая, 1",
-            city="Москва",
-            latitude="55.75",
-            longitude="37.61",
-            max_workers="2",
-        )
-        create_resp = e_sess.post(
-            f"{BASE_URL}/job/new", data=form, timeout=30, allow_redirects=False
-        )
-        if create_resp.status_code not in (301, 302) and create_resp.status_code != 200:
-            return None, None
-
-        location = create_resp.headers.get("Location", "")
-        parts = location.strip("/").split("/")
-        if len(parts) >= 2 and parts[0] == "job":
-            job_id = parts[1]
-        else:
-            # Редирект на /my-jobs — ищем ID задания
-            my_jobs_resp = e_sess.get(f"{BASE_URL}/my-jobs", timeout=30)
-            import re as _re
-            job_ids = _re.findall(r'/jobs/([a-f0-9-]{36})', my_jobs_resp.text)
-            job_id = job_ids[-1] if job_ids else None
-        if not job_id:
-            return None, None
-
-        # 2. Трудник откликается
-        apply_resp = w_sess.post(
-            f"{BASE_URL}/apply/{job_id}",
-            data=form_with_csrf(w_sess),
-            timeout=30,
-            allow_redirects=True,
-        )
-        if apply_resp.status_code != 200:
-            return None, None
-
-        # 3. Получить ID отклика через страницу my-applications работодателя
-        app_id = _get_application_id_for_job(e_sess, job_id)
-        if not app_id:
-            # Пробуем найти application_id в ответе страницы заданий работодателя
-            my_jobs = e_sess.get(f"{BASE_URL}/my-jobs", timeout=30)
-            app_links = re.findall(r'/api/applications/([a-f0-9\-]+)/accept', my_jobs.text)
-            if not app_links:
-                app_links = re.findall(r'data-app-id="([^"]+)"', my_jobs.text)
-            if app_links:
-                app_id = app_links[0]
-
-        if not app_id:
-            my_apps = e_sess.get(f"{BASE_URL}/my-applications", timeout=30)
-            for pattern in [
-                r'/api/applications/([a-f0-9\-]+)/accept',
-                r'/api/applications/([a-f0-9\-]+)/reject',
-                r'data-application-id="([^"]+)"',
-                r'data-app-id="([^"]+)"',
-            ]:
-                matches = re.findall(pattern, my_apps.text)
-                if matches:
-                    app_id = matches[0]
-                    break
-
-        if not app_id:
-            return None, None
-
-        # 4. Принять отклик
-        accept_resp = e_sess.post(
-            f"{BASE_URL}/api/applications/{app_id}/accept",
-            headers=csrf_headers(e_sess),
-            timeout=30,
-        )
-        if not accept_resp.ok:
-            return None, None
-        accept_data = accept_resp.json() if accept_resp.ok else {}
-        if not accept_data.get("success"):
-            return None, None
-
-        return app_id, job_id
+    """P0: Тесты чата, требующие полной цепочки: задание → отклик → accept → чат.
+    Использует accepted_application_id из conftest.py."""
 
     def test_chat_available_after_accept(self, accepted_application_id):
         """После accept отклика, GET /chat/<application_id> → 200."""
@@ -308,13 +216,7 @@ class TestChatFullChain:
         if not job_id:
             pytest.skip("Не удалось извлечь job_id")
 
-        # 2. Опубликовать
-        e_sess.post(
-            f"{BASE_URL}/api/jobs/{job_id}/publish",
-            headers=csrf_headers(e_sess),
-            json={"tariff": "standard"},
-            timeout=30,
-        )
+        # 2. Задания создаются с is_paid=True по умолчанию — публикация не требуется
 
         # 3. Трудник откликается (pending статус)
         w_sess.post(

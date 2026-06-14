@@ -273,44 +273,13 @@ class TestIDORProtection:
             f"Трудник не должен иметь доступ к /my-applications, получено {resp.status_code}"
         )
 
-    @pytest.mark.skip(reason="Зависит от порядка: rate-limit тест исчерпывает лимит, сессия теряется")
-    def test_cannot_access_other_users_applications_api(self, employer_session, worker_session):
-        """Трудник пытается принять/отклонить чужой отклик через API → 403."""
-        # Создаём задание как работодатель
+    def test_cannot_access_other_users_applications_api(self, employer_session, worker_session, published_job_id):
+        """Трудник пытается принять чужой отклик через API → не 200."""
         e_sess = employer_session
-        form = form_with_csrf(
-            e_sess,
-            title="IDOR Test Job",
-            description="Testing IDOR",
-            work_type="Уборка",
-            payment="300",
-            address="Москва, IDOR",
-            city="Москва",
-            latitude="55.75",
-            longitude="37.61",
-            max_workers="1",
-        )
-        create_resp = e_sess.post(
-            f"{BASE_URL}/job/new", data=form, timeout=30, allow_redirects=False
-        )
-        if create_resp.status_code not in (301, 302):
-            pytest.skip("Не удалось создать задание для IDOR-теста")
-        location = create_resp.headers.get("Location", "")
-        parts = location.strip("/").split("/")
-        job_id = parts[1] if len(parts) >= 2 else None
-        if not job_id:
-            pytest.skip("Не удалось извлечь job_id")
-
-        # Публикуем задание
-        e_sess.post(
-            f"{BASE_URL}/api/jobs/{job_id}/publish",
-            headers=csrf_headers(e_sess),
-            json={"tariff": "standard"},
-            timeout=30,
-        )
+        w_sess = worker_session
+        job_id = published_job_id
 
         # Трудник откликается
-        w_sess = worker_session
         w_sess.post(
             f"{BASE_URL}/apply/{job_id}",
             data=form_with_csrf(w_sess),
@@ -318,25 +287,37 @@ class TestIDORProtection:
             allow_redirects=True,
         )
 
-        # Получаем ID отклика (через список откликов на задание работодателя)
-        # Используем Supabase-запрос через сессию работодателя
-        # Пытаемся принять отклик от имени трудника (должен вернуть 403)
-        # Так как мы не знаем ID отклика, просто проверим доступ к /my-applications API
-        # Трудник не может принять отклик, т.к. не является владельцем задания
-        # Тест: трудник пробует POST /api/applications/<random>/accept
-        # Для простоты используем несуществующий UUID — всё равно проверим авторизацию
-        fake_app_id = "00000000-0000-0000-0000-000000000000"
-        w_resp = w_sess.post(
-            f"{BASE_URL}/api/applications/{fake_app_id}/accept",
-            headers=csrf_headers(w_sess),
-            timeout=30,
-            allow_redirects=False,
-        )
-        # Трудник не работодатель — должен получить 403 (запрет) или 404 (отклик не найден)
-        # Важно: не 200 и не 302 (редирект)
-        assert w_resp.status_code not in (200, 302), (
-            f"Трудник не должен иметь возможность принимать отклики, получено {w_resp.status_code}"
-        )
+        # Получаем ID отклика через работодателя
+        my_apps = e_sess.get(f"{BASE_URL}/my-applications", timeout=30)
+        app_ids = re.findall(r'/api/applications/([a-f0-9\-]+)/', my_apps.text)
+        if not app_ids:
+            app_ids = re.findall(r'data-app-id="([^"]+)"', my_apps.text)
+
+        # Трудник пытается принять чужой отклик
+        if app_ids:
+            app_id = app_ids[0]
+            w_resp = w_sess.post(
+                f"{BASE_URL}/api/applications/{app_id}/accept",
+                headers=csrf_headers(w_sess),
+                timeout=30,
+                allow_redirects=False,
+            )
+            # Трудник не владелец задания — должен получить не 200/302
+            assert w_resp.status_code not in (200, 302), (
+                f"Трудник не должен иметь возможность принимать чужие отклики, получено {w_resp.status_code}"
+            )
+        else:
+            # Если не нашли ID отклика — проверяем через фейковый ID
+            fake_app_id = "00000000-0000-0000-0000-000000000000"
+            w_resp = w_sess.post(
+                f"{BASE_URL}/api/applications/{fake_app_id}/accept",
+                headers=csrf_headers(w_sess),
+                timeout=30,
+                allow_redirects=False,
+            )
+            assert w_resp.status_code not in (200, 302), (
+                f"Трудник не должен иметь возможность принимать отклики, получено {w_resp.status_code}"
+            )
 
 
 # ──────────────────────────────────────────────
