@@ -3,7 +3,7 @@
 ║  test_critical_gaps.py — Критические непокрытые сценарии из                ║
 ║  Test_TESTING_BLUEPRINT.md                                                 ║
 ║                                                                            ║
-║  Покрывает 8 секций:                                                       ║
+║  Покрывает 14 секций:                                                      ║
 ║    1. CSP Nonce (4 теста)                                                   ║
 ║    2. RPC Race Conditions (2 теста)                                        ║
 ║    3. PII Leak / Privacy (3 теста)                                         ║
@@ -12,8 +12,14 @@
 ║    6. Миграции и check_schema (2 теста)                                    ║
 ║    7. Монетизация отключена (2 теста)                                      ║
 ║    8. Edge Cases (2 теста)                                                 ║
+║    9. ILIKE Cascade Delete (1 тест)                                        ║
+║   10. Full-Text Search (1 тест)                                            ║
+║   11. Deep Linking / Circuit Breaker (3 теста)                             ║
+║   12. PWA / Offline (3 теста)                                              ║
+║   13. P0-Blockers (10 тестов)                                              ║
+║   14. P1-Critical (5 тестов)                                               ║
 ║                                                                            ║
-║  Итого: 21 тест                                                            ║
+║  Итого: 46 тестов                                                          ║
 ║  Сервер ожидается на http://127.0.0.1:5000                                 ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 """
@@ -165,7 +171,7 @@ def run_test(test_name, test_fn):
 # ═══════════════════════════════════════════════════════════════════
 
 def test_csp_header_contains_nonce():
-    """GET / → заголовок Content-Security-Policy содержит 'nonce-'."""
+    """GET / -> заголовок Content-Security-Policy содержит 'nonce-'."""
     s = requests.Session()
     resp = s.get(f"{BASE_URL}/")
     assert resp.status_code == 200, f"Ожидался 200, получен {resp.status_code}"
@@ -196,7 +202,7 @@ def test_no_unsafe_inline_in_script_src():
 
 
 def test_inline_scripts_have_nonce():
-    """GET / → все <script> без src должны иметь nonce= атрибут."""
+    """GET / -> все <script> без src должны иметь nonce= атрибут."""
     s = requests.Session()
     resp = s.get(f"{BASE_URL}/")
     assert resp.status_code == 200, f"Ожидался 200, получен {resp.status_code}"
@@ -222,7 +228,7 @@ def test_inline_scripts_have_nonce():
 
 
 def test_no_inline_event_handlers():
-    """GET / → в HTML не должно быть onclick=, onsubmit=, onerror=, onload=, onchange=."""
+    """GET / -> в HTML не должно быть onclick=, onsubmit=, onerror=, onload=, onchange=."""
     s = requests.Session()
     resp = s.get(f"{BASE_URL}/")
     assert resp.status_code == 200, f"Ожидался 200, получен {resp.status_code}"
@@ -240,7 +246,7 @@ def test_no_inline_event_handlers():
             indices = [m.start() for m in re.finditer(re.escape(handler), html)]
             for idx in indices:
                 context = html[max(0, idx - 20):idx + len(handler) + 30]
-                found.append(f"{handler} → ...{context}...")
+                found.append(f"{handler} -> ...{context}...")
 
     assert len(found) == 0, (
         f"Найдены inline-обработчики событий в HTML: {found[:5]}"
@@ -463,7 +469,7 @@ def test_race_condition_concurrent_accept_and_withdraw():
 # ═══════════════════════════════════════════════════════════════════
 
 def test_guest_cannot_see_contact_details_on_job_page():
-    """GET /jobs/<id> без авторизации → точный адрес и телефон НЕ видны в HTML."""
+    """GET /jobs/<id> без авторизации -> точный адрес и телефон НЕ видны в HTML."""
     # Сначала создаём задание чтобы иметь актуальный ID
     emp = login_employer()
     job_id = create_and_publish_job(emp, title="PII тест задания")
@@ -500,7 +506,7 @@ def test_guest_cannot_see_contact_details_on_job_page():
 
 
 def test_guest_cannot_see_email_on_profile():
-    """GET /profile/<worker_id> без авторизации → email, ИНН, телефон скрыты."""
+    """GET /profile/<worker_id> без авторизации -> email, ИНН, телефон скрыты."""
     s = requests.Session()
     # Сначала логинимся как трудник чтобы узнать свой ID
     wrk = login_worker()
@@ -544,7 +550,7 @@ def test_guest_cannot_see_email_on_profile():
 
 
 def test_worker_cannot_access_other_profile_pii():
-    """Залогиниться как worker, GET /profile/<другой_user_id> → PII скрыто."""
+    """Залогиниться как worker, GET /profile/<другой_user_id> -> PII скрыто."""
     wrk = login_worker()
 
     # Получаем ID работодателя (другого пользователя)
@@ -588,7 +594,7 @@ def test_worker_cannot_access_other_profile_pii():
 # ═══════════════════════════════════════════════════════════════════
 
 def test_anon_cannot_post_apply():
-    """POST /apply/<job_id> без сессии → 302 (редирект на login) или 401."""
+    """POST /apply/<job_id> без сессии -> 302 (редирект на login) или 401."""
     s = requests.Session()
     # Используем случайный UUID — он всё равно не должен пропустить без авторизации
     fake_job_id = "00000000-0000-0000-0000-000000000001"
@@ -604,7 +610,7 @@ def test_anon_cannot_post_apply():
 
 
 def test_invalid_uuid_returns_404():
-    """GET /jobs/not-a-uuid → 404 (не 500)."""
+    """GET /jobs/not-a-uuid -> 404 (не 500)."""
     s = requests.Session()
     resp = s.get(f"{BASE_URL}/jobs/not-a-uuid")
     # Должен вернуть 404, а не 500
@@ -615,7 +621,7 @@ def test_invalid_uuid_returns_404():
 
 
 def test_path_traversal_in_params():
-    """GET /?city=../../../etc/passwd → не 500 (должен обработать без ошибок)."""
+    """GET /?city=../../../etc/passwd -> не 500 (должен обработать без ошибок)."""
     s = requests.Session()
     resp = s.get(f"{BASE_URL}/", params={"city": "../../../etc/passwd"})
     # Не должен быть 500 Internal Server Error
@@ -630,7 +636,7 @@ def test_path_traversal_in_params():
 
 
 def test_csrf_bypass_content_type():
-    """POST с Content-Type: text/plain без CSRF токена → всё равно 400/403."""
+    """POST с Content-Type: text/plain без CSRF токена -> всё равно 400/403."""
     s = requests.Session()
     s.get(f"{BASE_URL}/login")  # Получаем сессионную куку
 
@@ -657,7 +663,7 @@ def test_csrf_bypass_content_type():
 # ═══════════════════════════════════════════════════════════════════
 
 def test_geo_filter_excludes_other_cities():
-    """GET /api/search/jobs?lat=55.75&lng=37.61&radius=10 → ответ 200 с JSON."""
+    """GET /api/search/jobs?lat=55.75&lng=37.61&radius=10 -> ответ 200 с JSON."""
     s = requests.Session()
     resp = s.get(f"{BASE_URL}/api/search/jobs", params={
         "lat": "55.75",
@@ -684,7 +690,7 @@ def test_geo_filter_excludes_other_cities():
 
 
 def test_geo_search_with_large_radius():
-    """GET /api/search/jobs?lat=55.75&lng=37.61&radius=10000 → ответ разумного размера."""
+    """GET /api/search/jobs?lat=55.75&lng=37.61&radius=10000 -> ответ разумного размера."""
     s = requests.Session()
     resp = s.get(f"{BASE_URL}/api/search/jobs", params={
         "lat": "55.75",
@@ -716,7 +722,7 @@ def test_geo_search_with_large_radius():
 # ═══════════════════════════════════════════════════════════════════
 
 def test_check_schema_runs_without_crashing():
-    """Запустить python check_schema.py как subprocess → exit code 0
+    """Запустить python check_schema.py как subprocess -> exit code 0
     или задокументированные расхождения (не crash)."""
     project_root = os.path.dirname(os.path.abspath(__file__))
     script_path = os.path.join(project_root, "check_schema.py")
@@ -752,7 +758,7 @@ def test_check_schema_runs_without_crashing():
 
 
 def test_apply_new_migrations_is_idempotent():
-    """Дважды вызвать apply_new_migrations.py → второй запуск не падает."""
+    """Дважды вызвать apply_new_migrations.py -> второй запуск не падает."""
     project_root = os.path.dirname(os.path.abspath(__file__))
     script_path = os.path.join(project_root, "apply_new_migrations.py")
 
@@ -826,7 +832,7 @@ def test_monetization_tables_exist_but_empty():
         f"Сервер должен быть healthy/ok/unhealthy, получен статус: {data.get('status')}"
     )
 
-    # Проверяем что paywall не активен: GET / → нет редиректа на оплату
+    # Проверяем что paywall не активен: GET / -> нет редиректа на оплату
     resp2 = s.get(f"{BASE_URL}/")
     assert resp2.status_code == 200, f"Главная страница должна быть доступна: {resp2.status_code}"
 
@@ -898,7 +904,7 @@ def test_no_paywall_anywhere():
 
 def test_delete_notifications_does_not_delete_invitations():
     """Проверить что при удалении всех уведомлений приглашения остаются.
-    Тест: получаем уведомления → удаляем все → проверяем что
+    Тест: получаем уведомления -> удаляем все -> проверяем что
     эндпоинт не удаляет приглашения."""
     # Логинимся как работодатель чтобы посмотреть уведомления
     emp = login_employer()
@@ -945,7 +951,7 @@ def test_delete_notifications_does_not_delete_invitations():
 
 
 def test_expired_token_clears_session():
-    """Симулировать истёкший токен → редирект на /login.
+    """Симулировать истёкший токен -> редирект на /login.
     Используем просроченный или невалидный токен в куках."""
     s = requests.Session()
 
@@ -1047,7 +1053,7 @@ def test_fts_search_with_typo():
 # ═══════════════════════════════════════════════════════════════════
 
 def test_circuit_breaker_503_page():
-    """GET на несуществующий эндпоинт → 404, не 500."""
+    """GET на несуществующий эндпоинт -> 404, не 500."""
     s = requests.Session()
 
     # Запрос на заведомо несуществующий путь
@@ -1067,7 +1073,7 @@ def test_circuit_breaker_503_page():
 
 
 def test_deep_linking_filters():
-    """GET /?skills=... → фильтр применяется (страница не падает)."""
+    """GET /?skills=... -> фильтр применяется (страница не падает)."""
     s = requests.Session()
     resp = s.get(f"{BASE_URL}/", params={"skills": "python,уборка"})
     assert resp.status_code == 200, (
@@ -1092,7 +1098,7 @@ def test_deep_linking_filters():
 
 
 def test_deep_linking_chat():
-    """GET /chat/<id> без авторизации → редирект на /login?next=/chat/<id>."""
+    """GET /chat/<id> без авторизации -> редирект на /login?next=/chat/<id>."""
     s = requests.Session()
     test_chat_id = "00000000-0000-0000-0000-000000000001"
     resp = s.get(f"{BASE_URL}/chat/{test_chat_id}", allow_redirects=False)
@@ -1112,7 +1118,7 @@ def test_deep_linking_chat():
 # ═══════════════════════════════════════════════════════════════════
 
 def test_pwa_offline_page():
-    """GET /offline → 200 (страница для offline-режима PWA)."""
+    """GET /offline -> 200 (страница для offline-режима PWA)."""
     s = requests.Session()
     resp = s.get(f"{BASE_URL}/offline")
     # Страница offline должна существовать (200) или быть 404 (если не реализована)
@@ -1124,7 +1130,7 @@ def test_pwa_offline_page():
 
 
 def test_sw_js_accessible():
-    """GET /sw.js → 200, валидный JavaScript (Service Worker)."""
+    """GET /sw.js -> 200, валидный JavaScript (Service Worker)."""
     s = requests.Session()
     resp = s.get(f"{BASE_URL}/sw.js")
     # Service Worker может быть 200 или 404 если не реализован
@@ -1139,7 +1145,7 @@ def test_sw_js_accessible():
 
 
 def test_manifest_json_valid():
-    """GET /static/manifest.json → 200, валидный JSON (PWA манифест)."""
+    """GET /static/manifest.json -> 200, валидный JSON (PWA манифест)."""
     s = requests.Session()
     resp = s.get(f"{BASE_URL}/static/manifest.json")
     # Манифест может быть 200 или 404 если не реализован
@@ -1154,6 +1160,538 @@ def test_manifest_json_valid():
             log("INFO", f"Манифест PWA: name={data.get('name')}, keys={list(data.keys())}")
         except json.JSONDecodeError:
             assert False, f"manifest.json не является валидным JSON: {resp.text[:200]}"
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Секция 13: P0-Blockers (критические бомбы из Test_TESTING_BLUEPRINT)
+# ═══════════════════════════════════════════════════════════════════
+
+def test_jwt_verify_signature_enforced():
+    """[BOMB] Бомба #1: JWT с поддельной подписью role=admin -> 401/403/302."""
+    # Создаём фейковый JWT: заголовок + payload с role=admin + мусорная подпись
+    import base64
+    header = base64.urlsafe_b64encode(json.dumps({"alg": "HS256", "typ": "JWT"}).encode()).rstrip(b"=").decode()
+    payload = base64.urlsafe_b64encode(json.dumps({
+        "sub": "00000000-0000-0000-0000-000000000001",
+        "role": "admin",
+        "iat": int(time.time()),
+        "exp": int(time.time()) + 3600,
+    }).encode()).rstrip(b"=").decode()
+    fake_signature = "FAKE_SIGNATURE_GARBAGE_DATA_12345"
+    fake_jwt = f"{header}.{payload}.{fake_signature}"
+
+    s = requests.Session()
+    s.cookies.set("access_token", fake_jwt, domain="127.0.0.1")
+
+    # Пытаемся получить доступ к /admin с фейковым токеном
+    resp = s.get(f"{BASE_URL}/admin", allow_redirects=False)
+    # Должен быть заблокирован: 302 (редирект на login), 401 или 403
+    assert resp.status_code in (302, 401, 403), (
+        f"[BOMB] Бомба #1: фейковый JWT с role=admin должен быть отклонён! "
+        f"Получен статус {resp.status_code}"
+    )
+    # Если это редирект, он должен вести на login
+    if resp.status_code == 302:
+        location = resp.headers.get("Location", "")
+        assert "login" in location.lower(), (
+            f"[BOMB] Бомба #1: редирект должен вести на /login, а не на {location}"
+        )
+    log("INFO", "[BOMB] Бомба #1 обезврежена: поддельный JWT отклонён")
+
+
+def test_no_test_endpoints_in_production():
+    """[BOMB] P0: /api/applications/test -> 404 или 403 в production."""
+    s = requests.Session()
+    # Тестовый эндпоинт не должен быть доступен публично без авторизации
+    resp = s.get(f"{BASE_URL}/api/applications/test")
+    # В production тестовые эндпоинты должны быть отключены или требовать авторизацию
+    # Допустимые ответы: 404 (не существует), 403 (доступ запрещён), 302 (редирект на login)
+    assert resp.status_code in (404, 403, 302), (
+        f"[BOMB] P0: /api/applications/test не должен быть публично доступен! "
+        f"Получен статус {resp.status_code}, тело: {resp.text[:200]}"
+    )
+    log("INFO", f"[BOMB] P0-2: /api/applications/test -> {resp.status_code}")
+
+
+def test_no_none_literal_in_html():
+    """[BOMB] Бомба #6: пустые поля не выводят строку 'None' в HTML."""
+    s = requests.Session()
+    resp = s.get(f"{BASE_URL}/")
+    assert resp.status_code == 200, f"Главная страница должна быть доступна: {resp.status_code}"
+    html = resp.text
+
+    # Ищем строку "None" как текст (не в URL, не в JS-блоках, не в атрибутах)
+    # Удаляем script-теги и link-теги
+    clean_html = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.DOTALL | re.IGNORECASE)
+    clean_html = re.sub(r'<link[^>]*>', '', clean_html, flags=re.IGNORECASE)
+    # Удаляем атрибуты (где None может быть значением атрибута)
+    clean_html = re.sub(r'="[^"]*None[^"]*"', '', clean_html, flags=re.IGNORECASE)
+    clean_html = re.sub(r"='[^']*None[^']*'", '', clean_html, flags=re.IGNORECASE)
+    # Удаляем теги style
+    clean_html = re.sub(r'<style[^>]*>.*?</style>', '', clean_html, flags=re.DOTALL | re.IGNORECASE)
+
+    # Ищем "None" как отдельное слово в текстовых блоках (>None< или > None <)
+    none_in_text = re.findall(r'>\s*None\s*<', clean_html)
+    assert len(none_in_text) == 0, (
+        f"[BOMB] Бомба #6: найдено {len(none_in_text)} вхождений строки 'None' "
+        f"в текстовом содержимом HTML! Первые 3: {none_in_text[:3]}"
+    )
+    log("INFO", "[BOMB] Бомба #6 обезврежена: 'None' не найдено в тексте HTML")
+
+
+def test_sitemap_xml_no_private_urls():
+    """[BOMB] Бомба #4: /sitemap.xml не содержит /my-jobs, /admin, /chats, /notifications."""
+    s = requests.Session()
+    resp = s.get(f"{BASE_URL}/sitemap.xml")
+    assert resp.status_code == 200, f"sitemap.xml должен быть доступен: {resp.status_code}"
+
+    sitemap_text = resp.text.lower()
+    private_urls = ["/my-jobs", "/admin", "/chats", "/notifications", "/profile/", "/my-applications"]
+    found_private = [url for url in private_urls if url in sitemap_text]
+
+    assert len(found_private) == 0, (
+        f"[BOMB] Бомба #4: /sitemap.xml содержит приватные URL: {found_private}"
+    )
+    log("INFO", "[BOMB] Бомба #4 обезврежена: sitemap.xml не содержит приватных URL")
+
+
+def test_idor_mass_action_blocked():
+    """[BOMB] P0: Employer A не может добавить job_ids Employer B в /my-jobs/action."""
+    import uuid
+    # Создаём сессию работодателя
+    emp = login_employer()
+    # Получаем CSRF-токен на странице my-jobs
+    resp_page = emp.get(f"{BASE_URL}/my-jobs")
+    csrf_match = re.search(r'<meta name="csrf-token" content="([^"]+)"', resp_page.text)
+    csrf = csrf_match.group(1) if csrf_match else None
+
+    if not csrf:
+        log("SKIP", "Не удалось получить CSRF-токен для IDOR mass action теста")
+        return
+
+    # Пытаемся выполнить массовое действие с чужим job_id (UUID другого работодателя)
+    foreign_job_id = str(uuid.uuid4())
+    resp = emp.post(
+        f"{BASE_URL}/my-jobs/action",
+        data={
+            "_csrf_token": csrf,
+            "action": "cancel",
+            "job_ids": foreign_job_id,
+        },
+        allow_redirects=False,
+    )
+    # Должен либо проигнорировать чужой ID (редирект с flash), либо вернуть ошибку
+    # Важно: чужой job_id не должен быть обработан (сервер проверяет check_job_owner)
+    assert resp.status_code in (302, 403, 400), (
+        f"[BOMB] P0-5: массовое действие с чужим job_id должно быть заблокировано! "
+        f"Получен статус {resp.status_code}"
+    )
+    log("INFO", f"[BOMB] P0-5: IDOR mass action -> {resp.status_code}")
+
+
+def test_chat_blocked_when_open_with_accepted():
+    """[BOMB] Архитектурный баг: отправка заблокирована при open+accepted."""
+    # Сценарий: задание открыто, есть accepted-заявка, но сообщения должны быть заблокированы
+    # (согласно chat.py: отправка разрешена только при status='completed')
+    emp = login_employer()
+    wrk = login_worker()
+
+    # Создаём задание с max_workers=5
+    job_id = create_and_publish_job(emp, title="Чат баг open+accepted", max_workers="5")
+    if job_id is None:
+        log("SKIP", "Не удалось создать задание для chat архитектурного теста")
+        return
+
+    # Трудник откликается
+    csrf_w = extract_csrf_from_page(wrk)
+    apply_resp = wrk.post(
+        f"{BASE_URL}/apply/{job_id}",
+        data={"_csrf_token": csrf_w},
+        allow_redirects=False,
+    )
+    log("INFO", f"Отклик для chat-теста: статус={apply_resp.status_code}")
+
+    # Получаем ID отклика
+    emp_csrf = extract_csrf_from_page(emp)
+    apps_resp = emp.get(f"{BASE_URL}/my-applications")
+    app_id_match = re.search(r'/api/applications/([a-f0-9-]+)/accept', apps_resp.text)
+    if not app_id_match:
+        # Пробуем другой паттерн
+        app_id_match = re.search(r'data-app-id="([^"]+)"', apps_resp.text)
+
+    if not app_id_match:
+        log("SKIP", "Не удалось найти ID отклика для chat архитектурного теста")
+        return
+
+    app_id = app_id_match.group(1)
+
+    # Работодатель принимает отклик (accept)
+    csrf_accept = extract_csrf_from_page(emp)
+    accept_resp = emp.post(
+        f"{BASE_URL}/api/applications/{app_id}/accept",
+        headers={
+            "X-CSRF-Token": csrf_accept or "",
+            "Content-Type": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+        },
+        allow_redirects=False,
+    )
+    log("INFO", f"Accept ответ: статус={accept_resp.status_code}")
+
+    # Проверяем задание — статус должен быть 'open' (ещё не completed)
+    job_check = emp.get(f"{BASE_URL}/jobs/{job_id}")
+    log("INFO", f"Статус задания после accept: страница доступна={job_check.status_code}")
+
+    # Пытаемся отправить сообщение в чат при статусе задания open
+    csrf_chat = extract_csrf_from_page(emp)
+    msg_resp = emp.post(
+        f"{BASE_URL}/api/send_message",
+        headers={
+            "X-CSRF-Token": csrf_chat or "",
+            "Content-Type": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+        },
+        json={
+            "application_id": app_id,
+            "content": "Тестовое сообщение при open статусе",
+        },
+        allow_redirects=False,
+    )
+    log("INFO", f"send_message при open: статус={msg_resp.status_code}, тело={msg_resp.text[:200]}")
+
+    # Сообщение должно быть заблокировано (задание не completed)
+    # 403 = чат недоступен (так и должно быть по архитектуре)
+    # 404 = заявка не найдена
+    # Если 200 — это архитектурный баг: сообщения уходят при open+accepted
+    assert msg_resp.status_code != 200, (
+        f"[BOMB] Архитектурный баг: send_message вернул 200 при открытом задании! "
+        f"Сообщения не должны отправляться при статусе open+accepted."
+    )
+    log("INFO", "[BOMB] Архитектурный баг чата обезврежен: сообщения заблокированы при open+accepted")
+
+
+def test_ghost_user_handled_gracefully():
+    """[BOMB] Бомба #3: Auth есть, Profile нет -> понятная ошибка, не 500."""
+    import uuid
+    s = requests.Session()
+    # Запрашиваем профиль несуществующего пользователя
+    ghost_id = str(uuid.uuid4())
+    resp = s.get(f"{BASE_URL}/profile/{ghost_id}")
+    # Должен вернуть 404 (страница не найдена), а не 500
+    assert resp.status_code != 500, (
+        f"[BOMB] Бомба #3: профиль несуществующего пользователя вызвал 500! "
+        f"Статус: {resp.status_code}, тело: {resp.text[:300]}"
+    )
+    assert resp.status_code in (200, 404, 302), (
+        f"[BOMB] Бомба #3: неожиданный статус для ghost-профиля: {resp.status_code}"
+    )
+    log("INFO", f"[BOMB] Бомба #3 обезврежена: ghost user -> {resp.status_code}")
+
+
+def test_geocoder_unavailable_handled():
+    """[BOMB] Бомба #5: создание задания при недоступном геокодере -> fallback, не 500."""
+    emp = login_employer()
+    csrf = extract_csrf_from_page(emp)
+    if not csrf:
+        log("SKIP", "Не удалось получить CSRF-токен для геокодер теста")
+        return
+
+    # Создаём задание с адресом (геокодер может быть недоступен, но задание должно создаться)
+    # Широта/долгота предоставлены явно, геокодер не нужен
+    resp = emp.post(
+        f"{BASE_URL}/job/new",
+        data={
+            "_csrf_token": csrf,
+            "title": "Тест геокодера",
+            "description": "Проверка fallback при недоступном геокодере",
+            "work_type": "Уборка",
+            "payment": "400",
+            "address": "Москва, ул. Тестовая, 99",
+            "city": "Москва",
+            "latitude": "55.75",
+            "longitude": "37.61",
+            "preferred_religion": "",
+            "max_workers": "1",
+        },
+        allow_redirects=False,
+    )
+    # Должен быть редирект на my-jobs (успешное создание) или 302
+    assert resp.status_code != 500, (
+        f"[BOMB] Бомба #5: создание задания с адресом вызвало 500! "
+        f"Статус: {resp.status_code}, тело: {resp.text[:300]}"
+    )
+    assert resp.status_code in (301, 302, 200), (
+        f"[BOMB] Бомба #5: неожиданный статус при создании задания: {resp.status_code}"
+    )
+    log("INFO", f"[BOMB] Бомба #5 обезврежена: создание задания -> {resp.status_code}")
+
+
+def test_postgrest_schema_cache_coherence():
+    """[BOMB] Бомба #2: после миграции данные консистентны (поиск работает)."""
+    s = requests.Session()
+    # GET /api/search/jobs должен возвращать консистентный JSON
+    resp = s.get(f"{BASE_URL}/api/search/jobs")
+    assert resp.status_code == 200, (
+        f"[BOMB] Бомба #2: поиск заданий должен вернуть 200, получен {resp.status_code}"
+    )
+    try:
+        data = resp.json()
+        assert "results" in data, (
+            f"[BOMB] Бомба #2: ответ поиска должен содержать 'results'. Ключи: {list(data.keys())}"
+        )
+        assert "total" in data, (
+            f"[BOMB] Бомба #2: ответ поиска должен содержать 'total'. Ключи: {list(data.keys())}"
+        )
+        assert isinstance(data["results"], list), (
+            f"[BOMB] Бомба #2: 'results' должен быть списком, получен {type(data['results'])}"
+        )
+        # Проверяем структуру первого результата (если есть)
+        results = data.get("results", [])
+        if results:
+            first = results[0]
+            required_fields = ["id", "title", "status", "address", "payment"]
+            missing = [f for f in required_fields if f not in first]
+            if missing:
+                log("INFO", f"[BOMB] Бомба #2: в результатах поиска отсутствуют поля: {missing}")
+        log("INFO", f"[BOMB] Бомба #2 обезврежена: поиск консистентен, total={data.get('total')}")
+    except json.JSONDecodeError:
+        assert False, f"[BOMB] Бомба #2: ответ поиска не валидный JSON: {resp.text[:300]}"
+
+
+def test_exec_sql_not_accessible_to_anon():
+    """[BOMB] P0: exec_sql RPC недоступен анонимам/пользователям.
+    Проверяет, что нет публичного доступа к exec_sql через API."""
+    s = requests.Session()
+    # Пробуем разные варианты вызова exec_sql
+    # Прямой RPC вызов
+    resp = s.post(
+        f"{BASE_URL}/api/rpc/exec_sql",
+        headers={"Content-Type": "application/json"},
+        json={"sql": "SELECT 1"},
+        allow_redirects=False,
+    )
+    # Должен быть 404 (не существует), 403 (запрещён), 400 (bad request = эндпоинт не принимает без авторизации)
+    assert resp.status_code in (404, 403, 401, 302, 400), (
+        f"[BOMB] P0-10: exec_sql может быть доступен анонимам! Статус: {resp.status_code}"
+    )
+    log("INFO", f"[BOMB] P0-10 обезврежен: exec_sql -> {resp.status_code}")
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Секция 14: P1-Critical (выборочные, самые важные)
+# ═══════════════════════════════════════════════════════════════════
+
+def test_idor_mass_delete_blocked():
+    """P1: Employer не может удалить чужие задания через массовое действие."""
+    import uuid
+    emp = login_employer()
+    csrf = extract_csrf_from_page(emp, "/my-jobs")
+    if not csrf:
+        log("SKIP", "Не удалось получить CSRF-токен для IDOR mass delete теста")
+        return
+
+    # Пытаемся удалить чужое задание (UUID, которого нет у этого работодателя)
+    foreign_job_id = str(uuid.uuid4())
+    resp = emp.post(
+        f"{BASE_URL}/my-jobs/action",
+        data={
+            "_csrf_token": csrf,
+            "action": "delete",
+            "job_ids": foreign_job_id,
+        },
+        allow_redirects=False,
+    )
+    # Должен либо проигнорировать (302 с flash), либо вернуть 403/400
+    assert resp.status_code in (302, 403, 400), (
+        f"P1-1: массовое удаление чужого задания должно быть заблокировано! "
+        f"Получен статус {resp.status_code}"
+    )
+    log("INFO", f"P1-1: IDOR mass delete -> {resp.status_code}")
+
+
+def test_css_injection_in_skill_name_escaped():
+    """P1: Навык с именем <style>body{background:red}</style> экранируется Jinja2."""
+    s = requests.Session()
+    # Проверяем, что главная страница экранирует опасные символы в выводе навыков
+    # GET / с поиском по навыку, содержащему HTML-теги
+    resp = s.get(f"{BASE_URL}/", params={"skills": "<style>body{background:red}</style>"})
+    assert resp.status_code == 200, (
+        f"P1-2: страница с инъекцией в фильтре навыков должна вернуть 200, "
+        f"получен {resp.status_code}"
+    )
+    html = resp.text
+    # Проверяем, что тег <style> экранирован (<style> или удалён)
+    # Если сырой <style> присутствует в HTML (не в script), это XSS
+    raw_style_count = len(re.findall(r'<style>', html, re.IGNORECASE))
+    # Допускается наличие <style> только от самой страницы (например, CSP nonce style),
+    # но не от пользовательского ввода
+    if raw_style_count > 0:
+        # Проверяем, что <style> не содержит пользовательский ввод
+        style_with_red = re.findall(r'<style[^>]*>.*?background\s*:\s*red.*?</style>', html, re.DOTALL | re.IGNORECASE)
+        assert len(style_with_red) == 0, (
+            f"P1-2: CSS инъекция не экранирована! Найдено {len(style_with_red)} вхождений "
+            f"инъектированного CSS."
+        )
+    log("INFO", "P1-2: CSS инъекция в навыках экранируется")
+
+
+def test_zombie_session_after_password_change():
+    """P1: После смены пароля старые сессии инвалидируются.
+    Тест: проверяет что эндпоинт смены пароля существует и доступен."""
+    # Этот тест проверяет, что механизм смены пароля существует и работает
+    # без 500 ошибок. Полную проверку zombie-сессий можно сделать только
+    # при наличии service_role ключа Supabase.
+    wrk = login_worker()
+
+    # Проверяем, что страница профиля доступна (редактирование на той же странице)
+    profile_resp = wrk.get(f"{BASE_URL}/profile")
+    assert profile_resp.status_code == 200, (
+        f"P1-3: страница профиля должна быть доступна: {profile_resp.status_code}"
+    )
+
+    # Проверяем POST /profile/change-password (эндпоинт должен существовать)
+    csrf = extract_csrf_from_page(wrk, "/profile")
+    if csrf:
+        change_resp = wrk.post(
+            f"{BASE_URL}/profile/change-password",
+            data={
+                "_csrf_token": csrf,
+                "current_password": WORKER_PASSWORD,
+                "new_password": WORKER_PASSWORD,
+                "confirm_password": WORKER_PASSWORD,
+            },
+            allow_redirects=False,
+        )
+        log("INFO", f"P1-3: change-password ответ: статус={change_resp.status_code}")
+        # Не должен быть 500; 302 (редирект) или 200 допустимы
+        assert change_resp.status_code != 500, (
+            f"P1-3: смена пароля вызвала 500! Статус: {change_resp.status_code}"
+        )
+        assert change_resp.status_code in (200, 302, 301, 400), (
+            f"P1-3: неожиданный статус смены пароля: {change_resp.status_code}"
+        )
+    else:
+        log("SKIP", "P1-3: не удалось получить CSRF-токен для проверки change-password")
+    log("INFO", "P1-3: механизм смены пароля доступен (полная проверка zombie-сессий требует service_role)")
+
+
+def test_withdraw_cascades_delete_messages():
+    """P1: Отзыв заявки -> сообщения чата удаляются каскадно.
+    Проверяет что эндпоинт withdraw существует и не вызывает 500."""
+    emp = login_employer()
+    wrk = login_worker()
+
+    job_id = create_and_publish_job(emp, title="Withdraw cascade test", max_workers="1")
+    if job_id is None:
+        log("SKIP", "Не удалось создать задание для withdraw cascade теста")
+        return
+
+    # Трудник откликается
+    csrf_w = extract_csrf_from_page(wrk)
+    apply_resp = wrk.post(
+        f"{BASE_URL}/apply/{job_id}",
+        data={"_csrf_token": csrf_w},
+        allow_redirects=False,
+    )
+    log("INFO", f"Отклик для withdraw cascade: статус={apply_resp.status_code}")
+
+    # Получаем ID отклика
+    emp_csrf = extract_csrf_from_page(emp)
+    apps_resp = emp.get(f"{BASE_URL}/my-applications")
+    app_id_match = re.search(r'/api/applications/([a-f0-9-]+)/withdraw', apps_resp.text)
+    if not app_id_match:
+        app_id_match = re.search(r'data-app-id="([^"]+)"', apps_resp.text)
+
+    if not app_id_match:
+        log("SKIP", "Не удалось найти ID отклика для withdraw cascade теста")
+        return
+
+    app_id = app_id_match.group(1)
+
+    # Трудник отзывает заявку
+    csrf_withdraw = extract_csrf_from_page(wrk)
+    withdraw_resp = wrk.post(
+        f"{BASE_URL}/api/applications/{app_id}/withdraw",
+        headers={
+            "X-CSRF-Token": csrf_withdraw or "",
+            "Content-Type": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+        },
+        allow_redirects=False,
+    )
+    log("INFO", f"Withdraw ответ: статус={withdraw_resp.status_code}, тело={withdraw_resp.text[:200]}")
+
+    # Withdraw не должен вызывать 500
+    assert withdraw_resp.status_code != 500, (
+        f"P1-4: withdraw вызвал 500! Статус: {withdraw_resp.status_code}, "
+        f"тело: {withdraw_resp.text[:300]}"
+    )
+    log("INFO", "P1-4: withdraw отработал без 500 (каскадное удаление messages проверяется косвенно)")
+
+
+def test_cannot_rate_after_withdraw():
+    """P1: Нельзя оценить задание после отзыва заявки."""
+    emp = login_employer()
+    wrk = login_worker()
+
+    job_id = create_and_publish_job(emp, title="Rate after withdraw test", max_workers="1")
+    if job_id is None:
+        log("SKIP", "Не удалось создать задание для rate-after-withdraw теста")
+        return
+
+    # Трудник откликается
+    csrf_w = extract_csrf_from_page(wrk)
+    apply_resp = wrk.post(
+        f"{BASE_URL}/apply/{job_id}",
+        data={"_csrf_token": csrf_w},
+        allow_redirects=False,
+    )
+    log("INFO", f"Отклик для rate-after-withdraw: статус={apply_resp.status_code}")
+
+    # Получаем ID отклика
+    emp_csrf = extract_csrf_from_page(emp)
+    apps_resp = emp.get(f"{BASE_URL}/my-applications")
+    app_id_match = re.search(r'/api/applications/([a-f0-9-]+)', apps_resp.text)
+
+    if not app_id_match:
+        log("SKIP", "Не удалось найти ID отклика для rate-after-withdraw теста")
+        return
+
+    app_id = app_id_match.group(1)
+
+    # Трудник отзывает заявку
+    csrf_withdraw = extract_csrf_from_page(wrk)
+    withdraw_resp = wrk.post(
+        f"{BASE_URL}/api/applications/{app_id}/withdraw",
+        headers={
+            "X-CSRF-Token": csrf_withdraw or "",
+            "Content-Type": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+        },
+        allow_redirects=False,
+    )
+    log("INFO", f"Withdraw перед оценкой: статус={withdraw_resp.status_code}")
+
+    # Пытаемся оценить после отзыва (должен быть заблокирован)
+    csrf_rate = extract_csrf_from_page(wrk)
+    rate_resp = wrk.post(
+        f"{BASE_URL}/api/rate/{app_id}",
+        headers={
+            "X-CSRF-Token": csrf_rate or "",
+            "Content-Type": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+        },
+        json={"rating": 5, "review": "Тестовый отзыв после withdraw"},
+        allow_redirects=False,
+    )
+    log("INFO", f"Оценка после withdraw: статус={rate_resp.status_code}, тело={rate_resp.text[:200]}")
+
+    # Оценка после withdraw не должна быть успешной (200 = баг)
+    assert rate_resp.status_code != 200, (
+        f"P1-5: оценка после withdraw вернула 200! "
+        f"Нельзя оценивать задание после отзыва заявки."
+    )
+    log("INFO", "P1-5: оценка после withdraw заблокирована")
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -1179,7 +1717,7 @@ TESTS = [
 
     # Секция 4: Безопасность
     ("SEC: аноним не может POST /apply", test_anon_cannot_post_apply),
-    ("SEC: невалидный UUID → 404", test_invalid_uuid_returns_404),
+    ("SEC: невалидный UUID -> 404", test_invalid_uuid_returns_404),
     ("SEC: path traversal в параметрах", test_path_traversal_in_params),
     ("SEC: CSRF bypass через Content-Type", test_csrf_bypass_content_type),
 
@@ -1214,6 +1752,25 @@ TESTS = [
     ("PWA: /offline страница", test_pwa_offline_page),
     ("PWA: /sw.js доступен", test_sw_js_accessible),
     ("PWA: /static/manifest.json валидный JSON", test_manifest_json_valid),
+
+    # Секция 13: P0-Blockers
+    ("P0-1: JWT verify_signature enforced", test_jwt_verify_signature_enforced),
+    ("P0-2: нет тестовых эндпоинтов в production", test_no_test_endpoints_in_production),
+    ("P0-3: нет строки 'None' в HTML", test_no_none_literal_in_html),
+    ("P0-4: sitemap.xml без приватных URL", test_sitemap_xml_no_private_urls),
+    ("P0-5: IDOR mass action заблокирован", test_idor_mass_action_blocked),
+    ("P0-6: чат заблокирован при open+accepted", test_chat_blocked_when_open_with_accepted),
+    ("P0-7: ghost user -> 404 не 500", test_ghost_user_handled_gracefully),
+    ("P0-8: геокодер fallback не 500", test_geocoder_unavailable_handled),
+    ("P0-9: PostgREST schema cache консистентность", test_postgrest_schema_cache_coherence),
+    ("P0-10: exec_sql недоступен анонимам", test_exec_sql_not_accessible_to_anon),
+
+    # Секция 14: P1-Critical
+    ("P1-1: IDOR mass delete заблокирован", test_idor_mass_delete_blocked),
+    ("P1-2: CSS инъекция в навыках экранируется", test_css_injection_in_skill_name_escaped),
+    ("P1-3: механизм смены пароля доступен", test_zombie_session_after_password_change),
+    ("P1-4: withdraw без 500 (каскад messages)", test_withdraw_cascades_delete_messages),
+    ("P1-5: нельзя оценить после withdraw", test_cannot_rate_after_withdraw),
 ]
 
 

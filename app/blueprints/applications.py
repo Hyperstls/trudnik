@@ -260,6 +260,7 @@ def my_applications():
 
 
 @applications_bp.route('/api/applications/test', methods=['GET', 'POST'])
+@login_required
 def api_test():
     return jsonify({'success': True, 'message': 'applications blueprint is alive'})
 # Маршруты accept/reject/reopen вынесены в app/__init__.py (на объект app)
