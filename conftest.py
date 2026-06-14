@@ -78,7 +78,7 @@ def form_with_csrf(session: requests.Session, **extra) -> dict:
 # Fixtures
 # ──────────────────────────────────────────────
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='function')
 def employer_session():
     """Сессия работодателя (org@test.ru)."""
     sess = requests.Session()
@@ -88,7 +88,7 @@ def employer_session():
     return sess
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='function')
 def worker_session():
     """Сессия трудника (trud3@test.ru)."""
     sess = requests.Session()
