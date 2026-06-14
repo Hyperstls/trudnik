@@ -204,11 +204,12 @@ class TestDBSchemaCleanup:
 
     def test_shifts_table_not_referenced_in_code(self):
         """Проверить что 'shift_id' не используется в Python-коде приложения."""
-        # Исключаем: original_app.py (старый монолит), tests/ (старые тесты со сдвигами)
+        # Исключаем: original_app.py (старый монолит), tests/ (старые тесты со сдвигами),
+        # test_chat.py (содержит проверки на отсутствие shift_id в комментариях к assertions)
         occurrences = self._find_in_python_code(
             r"\bshift_id\b",
             exclude_dirs=["migrations", "archive", "__pycache__", ".pytest_cache", "tests"],
-            exclude_files=["original_app.py"]
+            exclude_files=["original_app.py", "test_chat.py"]
         )
         assert len(occurrences) == 0, (
             f"'shift_id' найден в коде приложения (не должно быть):\n" +

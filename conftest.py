@@ -18,7 +18,7 @@ import requests
 BASE_URL = os.environ.get('BASE_URL', 'http://127.0.0.1:5000')
 EMPLOYER_EMAIL = os.environ.get('EMPLOYER_EMAIL', 'org@test.ru')
 EMPLOYER_PASSWORD = os.environ.get('EMPLOYER_PASSWORD', 'test123')
-WORKER_EMAIL = os.environ.get('WORKER_EMAIL', 'trud@test.ru')
+WORKER_EMAIL = os.environ.get('WORKER_EMAIL', 'trud3@test.ru')
 WORKER_PASSWORD = os.environ.get('WORKER_PASSWORD', 'test123')
 
 

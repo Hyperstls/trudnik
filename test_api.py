@@ -19,7 +19,7 @@ def log(level, msg):
     print(text)
 
 
-def test(name, fn):
+def run_api_test(name, fn):
     global PASSED, FAILED
     try:
         fn()
@@ -281,7 +281,7 @@ if __name__ == "__main__":
     log("INFO", "=" * 60)
 
     for name, fn in TESTS:
-        test(name, fn)
+        run_api_test(name, fn)
 
     log("INFO", f"Total: {PASSED} passed, {FAILED} failed")
 
