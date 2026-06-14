@@ -77,10 +77,18 @@
             </button>
         </form>
     </div>
+    <div id="bulk-delete-users-bar" class="mb-3 hidden">
+        <button type="button" class="js-bulk-delete-users-btn px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50" disabled>
+            Удалить выбранных (<span id="users-selected-count">0</span>)
+        </button>
+    </div>
     <div class="bg-white rounded-xl border border-neutral-100 shadow-sm overflow-x-auto">
-        <table class="w-full text-sm">
+        <table class="w-full text-sm" id="users-table">
             <thead class="bg-neutral-50 text-neutral-600">
                 <tr>
+                    <th class="text-center px-2 py-3 font-medium w-8">
+                        <input type="checkbox" class="js-select-all-users rounded border-neutral-300" title="Выбрать всех">
+                    </th>
                     <th class="text-left px-4 py-3 font-medium">Имя</th>
                     <th class="text-left px-4 py-3 font-medium">Email</th>
                     <th class="text-left px-4 py-3 font-medium">Роль</th>
@@ -90,7 +98,10 @@
             </thead>
             <tbody>
                 {% for u in users %}
-                <tr class="border-t border-neutral-100 hover:bg-neutral-50">
+                <tr class="border-t border-neutral-100 hover:bg-neutral-50" data-user-id="{{ u.id }}">
+                    <td class="px-2 py-3 text-center">
+                        <input type="checkbox" class="js-user-checkbox rounded border-neutral-300" data-user-id="{{ u.id }}">
+                    </td>
                     <td class="px-4 py-3 font-medium text-neutral-900">{{ u.get('full_name', '—') }}</td>
                     <td class="px-4 py-3 text-neutral-600">{{ u.get('email', '—') }}</td>
                     <td class="px-4 py-3">
@@ -119,7 +130,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="5" class="px-4 py-8 text-center text-neutral-400">Пользователи не найдены</td></tr>
+                <tr><td colspan="6" class="px-4 py-8 text-center text-neutral-400">Пользователи не найдены</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -146,10 +157,18 @@
             </button>
         </form>
     </div>
+    <div id="bulk-delete-jobs-bar" class="mb-3 hidden">
+        <button type="button" class="js-bulk-delete-jobs-btn px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50" disabled>
+            Удалить выбранные (<span id="jobs-selected-count">0</span>)
+        </button>
+    </div>
     <div class="bg-white rounded-xl border border-neutral-100 shadow-sm overflow-x-auto">
-        <table class="w-full text-sm">
+        <table class="w-full text-sm" id="jobs-table">
             <thead class="bg-neutral-50 text-neutral-600">
                 <tr>
+                    <th class="text-center px-2 py-3 font-medium w-8">
+                        <input type="checkbox" class="js-select-all-jobs rounded border-neutral-300" title="Выбрать все">
+                    </th>
                     <th class="text-left px-4 py-3 font-medium">Название</th>
                     <th class="text-left px-4 py-3 font-medium">Храм</th>
                     <th class="text-left px-4 py-3 font-medium">Статус</th>
@@ -159,7 +178,10 @@
             </thead>
             <tbody>
                 {% for j in jobs %}
-                <tr class="border-t border-neutral-100 hover:bg-neutral-50">
+                <tr class="border-t border-neutral-100 hover:bg-neutral-50" data-job-id="{{ j.id }}">
+                    <td class="px-2 py-3 text-center">
+                        <input type="checkbox" class="js-job-checkbox rounded border-neutral-300" data-job-id="{{ j.id }}">
+                    </td>
                     <td class="px-4 py-3 font-medium text-neutral-900">{{ j.get('organization_name', '—')[:40] }}</td>
                     <td class="px-4 py-3 text-neutral-600">{{ j.get('employer', {}).get('full_name', '—') }}</td>
                     <td class="px-4 py-3">
@@ -188,7 +210,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="5" class="px-4 py-8 text-center text-neutral-400">Задания не найдены</td></tr>
+                <tr><td colspan="6" class="px-4 py-8 text-center text-neutral-400">Задания не найдены</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -631,5 +653,161 @@ async function loadStats() {
 }
 loadStats();
 {% endif %}
+
+// ── Массовое удаление: пользователи ──
+(function() {
+    var selectAllUsers = document.querySelector('.js-select-all-users');
+    var userCheckboxes = document.querySelectorAll('.js-user-checkbox');
+    var bulkBarUsers = document.getElementById('bulk-delete-users-bar');
+    var bulkBtnUsers = document.querySelector('.js-bulk-delete-users-btn');
+    var usersCountSpan = document.getElementById('users-selected-count');
+
+    if (selectAllUsers && userCheckboxes.length > 0) {
+        function updateUsersUI() {
+            var checked = document.querySelectorAll('.js-user-checkbox:checked');
+            var count = checked.length;
+            usersCountSpan.textContent = count;
+            if (count > 0) {
+                bulkBarUsers.classList.remove('hidden');
+                bulkBtnUsers.disabled = false;
+            } else {
+                bulkBarUsers.classList.add('hidden');
+                bulkBtnUsers.disabled = true;
+            }
+        }
+
+        selectAllUsers.addEventListener('change', function() {
+            userCheckboxes.forEach(function(cb) { cb.checked = selectAllUsers.checked; });
+            updateUsersUI();
+        });
+
+        userCheckboxes.forEach(function(cb) {
+            cb.addEventListener('change', function() {
+                if (!cb.checked) selectAllUsers.checked = false;
+                if (document.querySelectorAll('.js-user-checkbox:checked').length === userCheckboxes.length) {
+                    selectAllUsers.checked = true;
+                }
+                updateUsersUI();
+            });
+        });
+
+        bulkBtnUsers.addEventListener('click', function() {
+            var checked = document.querySelectorAll('.js-user-checkbox:checked');
+            var ids = Array.from(checked).map(function(cb) { return cb.dataset.userId; });
+            if (ids.length === 0) return;
+            var userName = checked[0].closest('tr').querySelector('td:nth-child(3)').textContent.trim();
+            var confirmMsg = ids.length === 1
+                ? 'Удалить пользователя ' + userName + '?'
+                : 'Удалить ' + ids.length + ' пользователей?';
+            window.showConfirm(confirmMsg, function() {
+                bulkBtnUsers.disabled = true;
+                bulkBtnUsers.textContent = 'Удаление...';
+                fetch('/admin/bulk-delete-users', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({user_ids: ids})
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (window.showToast) {
+                        window.showToast('Удалено: ' + data.deleted + ', ошибок: ' + data.failed, data.failed > 0 ? 'warning' : 'success');
+                    }
+                    // Удалить строки из таблицы
+                    ids.forEach(function(uid) {
+                        var row = document.querySelector('tr[data-user-id="' + uid + '"]');
+                        if (row) row.remove();
+                    });
+                    // Сбросить состояние
+                    selectAllUsers.checked = false;
+                    updateUsersUI();
+                })
+                .catch(function(err) {
+                    if (window.showToast) window.showToast('Ошибка соединения', 'danger');
+                    bulkBtnUsers.disabled = false;
+                    bulkBtnUsers.innerHTML = 'Удалить выбранных (<span id="users-selected-count">' + ids.length + '</span>)';
+                    usersCountSpan = document.getElementById('users-selected-count');
+                });
+            });
+        });
+    }
+})();
+
+// ── Массовое удаление: задания ──
+(function() {
+    var selectAllJobs = document.querySelector('.js-select-all-jobs');
+    var jobCheckboxes = document.querySelectorAll('.js-job-checkbox');
+    var bulkBarJobs = document.getElementById('bulk-delete-jobs-bar');
+    var bulkBtnJobs = document.querySelector('.js-bulk-delete-jobs-btn');
+    var jobsCountSpan = document.getElementById('jobs-selected-count');
+
+    if (selectAllJobs && jobCheckboxes.length > 0) {
+        function updateJobsUI() {
+            var checked = document.querySelectorAll('.js-job-checkbox:checked');
+            var count = checked.length;
+            jobsCountSpan.textContent = count;
+            if (count > 0) {
+                bulkBarJobs.classList.remove('hidden');
+                bulkBtnJobs.disabled = false;
+            } else {
+                bulkBarJobs.classList.add('hidden');
+                bulkBtnJobs.disabled = true;
+            }
+        }
+
+        selectAllJobs.addEventListener('change', function() {
+            jobCheckboxes.forEach(function(cb) { cb.checked = selectAllJobs.checked; });
+            updateJobsUI();
+        });
+
+        jobCheckboxes.forEach(function(cb) {
+            cb.addEventListener('change', function() {
+                if (!cb.checked) selectAllJobs.checked = false;
+                if (document.querySelectorAll('.js-job-checkbox:checked').length === jobCheckboxes.length) {
+                    selectAllJobs.checked = true;
+                }
+                updateJobsUI();
+            });
+        });
+
+        bulkBtnJobs.addEventListener('click', function() {
+            var checked = document.querySelectorAll('.js-job-checkbox:checked');
+            var ids = Array.from(checked).map(function(cb) { return cb.dataset.jobId; });
+            if (ids.length === 0) return;
+            var jobName = checked[0].closest('tr').querySelector('td:nth-child(3)').textContent.trim();
+            var confirmMsg = ids.length === 1
+                ? 'Удалить задание ' + jobName + '?'
+                : 'Удалить ' + ids.length + ' заданий?';
+            window.showConfirm(confirmMsg, function() {
+                bulkBtnJobs.disabled = true;
+                bulkBtnJobs.textContent = 'Удаление...';
+                fetch('/admin/bulk-delete-jobs', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({job_ids: ids})
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (window.showToast) {
+                        window.showToast('Удалено: ' + data.deleted + ', ошибок: ' + data.failed, data.failed > 0 ? 'warning' : 'success');
+                    }
+                    // Удалить строки из таблицы
+                    ids.forEach(function(jid) {
+                        var row = document.querySelector('tr[data-job-id="' + jid + '"]');
+                        if (row) row.remove();
+                    });
+                    // Сбросить состояние
+                    selectAllJobs.checked = false;
+                    updateJobsUI();
+                })
+                .catch(function(err) {
+                    if (window.showToast) window.showToast('Ошибка соединения', 'danger');
+                    bulkBtnJobs.disabled = false;
+                    bulkBtnJobs.innerHTML = 'Удалить выбранные (<span id="jobs-selected-count">' + ids.length + '</span>)';
+                    jobsCountSpan = document.getElementById('jobs-selected-count');
+                });
+            });
+        });
+    }
+})();
 </script>
 {% endblock %}

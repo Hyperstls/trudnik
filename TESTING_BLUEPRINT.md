@@ -1,7 +1,8 @@
 # TESTING BLUEPRINT — Архитектура и бизнес-логика приложения «Трудник»
 
-> **Автоматически сгенерировано на основе анализа исходного кода (2026-06-13).**
-> Все данные основаны исключительно на реальном коде проекта.
+> **Актуализировано на основе анализа исходного кода (2026-06-14).**
+> Все данные основаны исключительно на реальном коде проекта (ветка `main`).
+> **Статус монетизации:** отключена в main. Приложение работает в бесплатном режиме (`is_paid=True` всегда).
 
 ---
 
@@ -14,9 +15,10 @@ trudnik/
 ├── app.py                          # Точка входа WSGI: from app import app
 ├── requirements.txt                # Flask, requests, python-dotenv, jwt, gunicorn
 ├── render.yaml                     # Деплой на Render.com
-├── conftest.py                     # PyTest фикстуры
+├── conftest.py                     # PyTest фикстуры и хелперы (CSRF, логин, сессии)
 ├── apply_migrations.py             # Применение миграций через exec_sql
-├── apply_new_migrations.py         # Обновлённый скрипт миграций
+├── apply_new_migrations.py         # Обновлённый скрипт миграций (с проверкой дубликатов)
+├── check_schema.py                 # Валидатор схемы БД: сверка кода с Supabase (таблицы, колонки, RLS)
 ├── tailwind.config.js              # TailwindCSS конфигурация
 ├── app/
 │   ├── __init__.py                 # create_app() — фабрика приложения
@@ -61,7 +63,9 @@ trudnik/
 | **Фронтенд** | Jinja2 + TailwindCSS + Vanilla JS |
 | **Карты** | Яндекс.Карты API |
 | **Деплой** | Render.com (WSGI через Gunicorn) |
-| **Тестирование** | PyTest + Selenium |
+| **Тестирование** | PyTest + Selenium + requests (HTTP-клиент) |
+| **Синхронизация схемы** | `check_schema.py` (валидатор), `apply_new_migrations.py` (применение миграций) |
+| **Безопасность** | Circuit Breaker (устойчивость), CSP nonce (XSS-защита), `sanitize_postgrest` (инъекции) |
 
 ### 1.3. Схема взаимодействия компонентов
 
@@ -481,13 +485,26 @@ flowchart TB
 - Приглашения фильтруются отдельно (не показываются в общих уведомлениях)
 - Кеширование счётчика непрочитанных в сессии (30 сек)
 
-### 3.15. Монетизация
+### 3.15. Монетизация (ОТСУТСТВУЕТ в main-ветке)
 
-Текущая модель (main-ветка): **pay-per-job**
-- `is_paid = True` при создании задания
-- `paid_at = now()` при создании
-- Таблицы: `job_payments`, `tariff_settings`, `_archive_contact_payments`
-- В коде монетизация упрощена: задание сразу помечается оплаченным
+> **Важно:** В текущей версии (ветка `main`) монетизация **полностью отключена**. Приложение работает в режиме **бесплатного доступа** без каких-либо платежей.
+
+**Текущее поведение (main):**
+- `is_paid = True` при создании любого задания (всегда)
+- `paid_at = now()` при создании (автоматически)
+- `expires_at = now() + 30 days` при создании
+- Задание сразу публикуется со статусом `open`, видно всем пользователям
+- Никаких платёжных шлюзов, paywall, тарифов — **не используется**
+- Нет блюпринта `monetization.py` в регистрации (ветка `main`)
+
+**Таблицы монетизации в БД (существуют, но не используются в main):**
+- `job_payments` — платежи за задания (созданы миграциями 022, 029; код main не создаёт записи)
+- `tariff_settings` — настройки тарифов (заполнены миграцией 022; не читаются в main)
+- `_archive_contact_payments` — архив старых платежей за контакты (pay-per-contact, удалённая модель)
+- `monetization_settings` — настройки монетизации (не используются)
+- `receipts` — чеки (не создаются в main)
+
+> Все таблицы монетизации сохранены в БД для обратной совместимости и возможности возврата монетизации в ветке `main_money`. При тестировании main-ветки проверки платежей **не требуются**.
 
 ### 3.16. Административные функции
 
@@ -529,6 +546,8 @@ flowchart TB
 | `employer_details` | Детали работодателя | id(PK), name, description, address, city, lat, lng |
 | `monetization_settings` | Настройки монетизации | id(PK), key, value, updated_at |
 | `schema_migrations` | Версионирование схемы | version(PK), applied_at, description |
+
+> **Примечание о монетизационных таблицах:** `job_payments`, `tariff_settings`, `_archive_contact_payments`, `monetization_settings` и `receipts` существуют в БД (созданы миграциями 006, 022, 029), но **не используются** в текущей версии main-ветки. Сохранены для обратной совместимости и будущей ветки `main_money`. При тестировании main проверки этих таблиц не требуются.
 
 ### 4.2. RPC-процедуры
 
@@ -580,12 +599,33 @@ RLS включён на всех пользовательских таблица
 ### 5.3. CSP (Content Security Policy)
 
 Добавляется через `@app.after_request` ([`app/__init__.py`](app/__init__.py:41)):
+
+**Политика CSP:**
 - `default-src 'self'`
-- `script-src 'self' 'nonce-{random}' https://cdn.jsdelivr.net https://api-maps.yandex.ru https://yastatic.net`
-- `style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com`
+- `script-src 'self' 'nonce-{random}' https://cdn.jsdelivr.net https://api-maps.yandex.ru https://yastatic.net` — все inline-скрипты используют `nonce="{{ csp_nonce }}"`, генерируемый через `secrets.token_hex(24)`
+- `style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com` — для стилей используется `'unsafe-inline'` (TailwindCSS требует динамических стилей)
+- `font-src 'self' https://fonts.gstatic.com`
 - `img-src 'self' data: https:`
 - `connect-src 'self' https://*.supabase.co https://*.maps.yandex.net https://yastatic.net https://geocode-maps.yandex.ru`
-- Дополнительные заголовки: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Strict-Transport-Security`, `Referrer-Policy`, `X-XSS-Protection`, `Permissions-Policy`
+- `frame-src 'self'`
+
+**Дополнительные заголовки безопасности:**
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `Strict-Transport-Security: max-age=31536000; includeSubDomains`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `X-XSS-Protection: 1; mode=block`
+- `Permissions-Policy: camera=(), microphone=(), geolocation=self`
+
+**Nonce-механизм и замена inline-обработчиков:**
+- Nonce генерируется в `@app.before_request` → `g.csp_nonce = secrets.token_hex(24)` ([`app/__init__.py`](app/__init__.py:37))
+- Внедряется в шаблоны через `@app.context_processor` → `{'csp_nonce': ...}` ([`app/__init__.py`](app/__init__.py:32))
+- Все inline `<script>` используют `<script nonce="{{ csp_nonce }}">`
+- **Все inline-обработчики (`onclick`, `onsubmit`, `onerror`) заменены на `addEventListener`** внутри скриптов с nonce:
+  - `onclick` на кнопках → делегирование событий через `addEventListener('click', ...)` ([`base.html`](templates/base.html:1125))
+  - `onsubmit` на формах → `addEventListener('submit', ...)` ([`base.html`](templates/base.html:1115))
+  - `onerror` на изображениях → `addEventListener('error', ...)` ([`workers.html`](templates/workers.html:362))
+  - Исключение: `onclick` для программно создаваемых элементов confirm-модала — назначается через JS (безопасно, т.к. скрипт защищён nonce)
 
 ### 5.4. Rate Limiting
 
@@ -749,7 +789,7 @@ stateDiagram-v2
 - [ ] **Фильтрация по навыкам:** `?skills=плотник,электрик`
 - [ ] **Фильтрация по религии:** `?religion=...`
 - [ ] **Детальная страница задания:** `/jobs/<id>` — полная информация
-- [ ] **Скрытие неоплаченных заданий:** не отображаются гость/worker
+- [ ] **Все задания оплачены по умолчанию:** `is_paid=True` для всех новых заданий (main-ветка, без монетизации)
 - [ ] **Видимость для владельца:** работодатель видит своё задание в любом статусе
 
 ### 7.5. Функциональные тесты — Отклики
@@ -866,16 +906,25 @@ stateDiagram-v2
 - [ ] **Цикл с max_workers=3:** 3 accept → completed; 4-й accept → отказ; 1 отмена → open
 - [ ] **Каскадное удаление:** удаление employer → все задания удалены → все отклики удалены → все сообщения удалены
 - [ ] **ЧС + отклик:** employer блокирует worker → worker не может откликнуться
+- [ ] **RPC accept_application (атомарность):** два одновременных accept на последнее место → только один успешен (SELECT FOR UPDATE)
+- [ ] **RPC delete_job_cascade:** удаление задания → все связанные записи (applications, job_skills, job_photos, job_favorites, invitations, notifications) удалены
+- [ ] **RPC delete_user_cascade:** удаление пользователя → все его задания удалены каскадно → удалён из auth.users
+- [ ] **Circuit Breaker (CLOSED→OPEN):** 5 последовательных ошибок Supabase → цепь размыкается → запросы возвращают 503 без реальных HTTP-вызовов
+- [ ] **Circuit Breaker (OPEN→HALF_OPEN→CLOSED):** 30 сек таймаут → пробный запрос → успех → цепь замыкается, failure_count сбрасывается
+- [ ] **Circuit Breaker (HALF_OPEN→OPEN):** пробный запрос провалился → цепь снова размыкается
 
 ### 7.16. Тесты безопасности
 
 - [ ] **CSRF:** POST без токена → 400; неверный токен → 400
 - [ ] **XSS в чате:** `<script>alert(1)</script>` → `<script>...`
 - [ ] **PostgREST инъекция:** `?city=Москва' OR '1'='1` → санитизация через `sanitize_postgrest`
+- [ ] **Path traversal:** `?city=../etc/passwd` → санитизация, нет выхода за пределы
 - [ ] **Доступ к чужим данным:** worker не может PATCH чужие задания
 - [ ] **Доступ к админке без роли admin:** редирект
 - [ ] **Доступ к ЧС для worker:** 403
 - [ ] **CSP-заголовки:** присутствуют во всех ответах
+- [ ] **CSP nonce:** все inline-скрипты имеют валидный `nonce` атрибут
+- [ ] **CSP-ошибки в консоли:** 0 CSP-ошибок (отсутствие `unsafe-inline` для скриптов, все обработчики через addEventListener)
 - [ ] **Security headers:** `X-Content-Type-Options`, `X-Frame-Options`, `HSTS`, `Referrer-Policy`
 
 ### 7.17. Нагрузочные тесты

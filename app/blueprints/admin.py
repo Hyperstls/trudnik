@@ -171,6 +171,95 @@ def _delete_job_cascade(job_id):
         )
 
 
+# ── Массовое удаление ────────────────────────────────
+
+@admin_bp.route('/admin/bulk-delete-users', methods=['POST'])
+@login_required
+@role_required('admin')
+def bulk_delete_users():
+    """Массовое удаление пользователей (до 20 за раз)."""
+    data = request.get_json(silent=True) or {}
+    user_ids = data.get('user_ids', [])
+
+    if not isinstance(user_ids, list) or len(user_ids) == 0:
+        return jsonify({'deleted': 0, 'failed': 0, 'errors': ['No user_ids provided']}), 400
+    if len(user_ids) > 20:
+        return jsonify({'deleted': 0, 'failed': len(user_ids), 'errors': ['Max 20 users per request']}), 400
+
+    deleted = 0
+    failed = 0
+    errors = []
+
+    for user_id in user_ids:
+        # 1. Каскадное удаление через RPC
+        rpc_result = supabase_rpc('delete_user_cascade', {'p_user_id': user_id}, use_admin=True)
+        if not rpc_result.ok:
+            current_app.logger.error(
+                "Bulk delete user RPC: failed for %s: status=%s text=%s",
+                user_id, rpc_result.status_code, (rpc_result.text or '')[:200]
+            )
+        result_data = rpc_result.json() if rpc_result.ok else {}
+        if not result_data.get('success'):
+            failed += 1
+            errors.append(f'RPC failed for {user_id}')
+            continue
+
+        # 2. Удалить из auth.users (через Admin API)
+        if SERVICE_KEY:
+            auth_url = f'{SUPABASE_URL}/auth/v1/admin/users/{user_id}'
+            auth_headers = {
+                'apikey': SUPABASE_KEY,
+                'Authorization': f'Bearer {SERVICE_KEY}',
+                'Content-Type': 'application/json',
+            }
+            try:
+                auth_resp = requests.delete(auth_url, headers=auth_headers, timeout=15)
+                if not auth_resp.ok:
+                    current_app.logger.warning(
+                        f"Bulk delete user: auth.users delete returned {auth_resp.status_code} for {user_id}"
+                    )
+            except requests.RequestException as e:
+                current_app.logger.error(f"Bulk delete user: auth.users request failed for {user_id}: {e}")
+
+        deleted += 1
+
+    return jsonify({'deleted': deleted, 'failed': failed, 'errors': errors})
+
+
+@admin_bp.route('/admin/bulk-delete-jobs', methods=['POST'])
+@login_required
+@role_required('admin')
+def bulk_delete_jobs():
+    """Массовое удаление заданий (до 50 за раз)."""
+    data = request.get_json(silent=True) or {}
+    job_ids = data.get('job_ids', [])
+
+    if not isinstance(job_ids, list) or len(job_ids) == 0:
+        return jsonify({'deleted': 0, 'failed': 0, 'errors': ['No job_ids provided']}), 400
+    if len(job_ids) > 50:
+        return jsonify({'deleted': 0, 'failed': len(job_ids), 'errors': ['Max 50 jobs per request']}), 400
+
+    deleted = 0
+    failed = 0
+    errors = []
+
+    for job_id in job_ids:
+        rpc_result = supabase_rpc('delete_job_cascade', {'p_job_id': job_id}, use_admin=True)
+        if not rpc_result.ok:
+            current_app.logger.error(
+                "Bulk delete job RPC: failed for %s: status=%s text=%s",
+                job_id, rpc_result.status_code, (rpc_result.text or '')[:200]
+            )
+        result_data = rpc_result.json() if rpc_result.ok else {}
+        if not result_data.get('success'):
+            failed += 1
+            errors.append(f'RPC failed for {job_id}')
+        else:
+            deleted += 1
+
+    return jsonify({'deleted': deleted, 'failed': failed, 'errors': errors})
+
+
 # ── Справочники: навыки и вероисповедания ──────────────
 
 @admin_bp.route('/admin/skills', methods=['GET'])
