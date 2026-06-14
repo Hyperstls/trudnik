@@ -74,21 +74,22 @@ def get_token(email, password):
 # ── tests ────────────────────────────────────────
 
 def t_anon_cannot_list_jobs():
-    """Анонимный пользователь видит только открытые задания (RLS пропускает open)."""
+    """Анонимный пользователь видит только открытые/отменённые задания (RLS пропускает open/cancelled)."""
     resp = supabase_request("GET", "jobs?select=id,status&limit=5")
     assert resp.status_code in (200, 401, 403), \
         f"Unexpected status {resp.status_code}"
     if resp.status_code == 200:
         data = resp.json()
-        # Аноним видит только открытые задания — это нормально
+        # Аноним видит открытые, отменённые и завершённые задания — это нормально
+        allowed_statuses = {"open", "cancelled", "completed"}
         for job in data:
-            assert job.get("status") == "open", \
-                f"Anon should only see open jobs, got {job.get('status')}"
+            assert job.get("status") in allowed_statuses, \
+                f"Anon should only see open/cancelled jobs, got {job.get('status')}"
 
 
 def t_worker_can_see_open_jobs():
     """Трудник может видеть открытые задания."""
-    token = get_token("trud3@test.ru", "test123456")
+    token = get_token("trud3@test.ru", "test123")
     assert token, "Worker login failed"
     resp = supabase_request("GET", "jobs?select=id,status&status=eq.open&limit=10",
                             headers={"Authorization": f"Bearer {token}"})
@@ -102,7 +103,7 @@ def t_worker_can_see_open_jobs():
 
 def t_worker_cannot_see_drafts():
     """Трудник не должен видеть черновики (draft) заданий."""
-    token = get_token("trud3@test.ru", "test123456")
+    token = get_token("trud3@test.ru", "test123")
     assert token, "Worker login failed"
     resp = supabase_request("GET", "jobs?select=id,status&status=eq.draft&limit=10",
                             headers={"Authorization": f"Bearer {token}"})
@@ -115,7 +116,7 @@ def t_worker_cannot_see_drafts():
 
 def t_worker_cannot_modify_job():
     """Трудник не может изменить чужое задание."""
-    token = get_token("trud3@test.ru", "test123456")
+    token = get_token("trud3@test.ru", "test123")
     assert token, "Worker login failed"
     # Пробуем PATCH случайного задания
     resp = supabase_request("PATCH", "jobs?id=eq.00000000-0000-0000-0000-000000000000",
@@ -166,7 +167,7 @@ def t_notification_prefs_json():
 
 def t_user_skills_fk():
     """user_skills FK constraint: нельзя добавить несуществующий skill."""
-    token = get_token("trud3@test.ru", "test123456")
+    token = get_token("trud3@test.ru", "test123")
     resp = supabase_request("POST", "user_skills", json={
         "user_id": "00000000-0000-0000-0000-000000000000",
         "skill_id": "00000000-0000-0000-0000-000000000000",

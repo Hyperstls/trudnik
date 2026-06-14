@@ -151,8 +151,8 @@ if "active_job" in created_jobs:
         log("INFO", f"Created accepted application: {app_ids['accepted'][:12]}...")
 
 # ── Login sessions ──
-s_emp = login("org@test.ru", "test123456")
-s_wrk = login("trud3@test.ru", "test123456")
+s_emp = login("org@test.ru", "test123")
+s_wrk = login("trud3@test.ru", "test123")
 log("INFO", "Login: employer OK, worker OK")
 
 # ═══════════════════════════════════════════════════

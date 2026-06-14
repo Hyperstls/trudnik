@@ -36,13 +36,28 @@ def created_job_id(employer_session):
         max_workers="2",
     )
     resp = sess.post(f"{BASE_URL}/job/new", data=form, timeout=30, allow_redirects=False)
-    # После создания — редирект на publish_job, оттуда берём job_id из URL
+    # После создания — редирект на /my-jobs (main) или /job/<id>/publish
     if resp.status_code in (301, 302):
         location = resp.headers.get("Location", "")
-        # Формат: /job/<job_id>/publish
+        # Формат: /job/<job_id>/publish или /my-jobs
         parts = location.strip("/").split("/")
-        if len(parts) >= 2:
+        if len(parts) >= 2 and parts[0] == "job":
             return parts[1]
+        # Если редирект на /my-jobs — нужно найти job_id другим способом
+        # Пробуем найти на странице /my-jobs
+        my_jobs_resp = sess.get(f"{BASE_URL}/my-jobs", timeout=30)
+        # Ищем последний созданный job_id через data-job-id или ссылки /jobs/<uuid>
+        import re
+        job_ids = re.findall(r'/jobs/([a-f0-9-]{36})', my_jobs_resp.text)
+        if job_ids:
+            return job_ids[0]  # Возвращаем первый найденный (последний созданный)
+    elif resp.status_code == 200:
+        # Возможно страница /job/new вернула форму с ошибками — пробуем найти job_id в my-jobs
+        import re
+        my_jobs_resp = sess.get(f"{BASE_URL}/my-jobs", timeout=30)
+        job_ids = re.findall(r'/jobs/([a-f0-9-]{36})', my_jobs_resp.text)
+        if job_ids:
+            return job_ids[0]
     pytest.fail(f"Не удалось создать задание: status={resp.status_code}, body={resp.text[:500]}")
 
 

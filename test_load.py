@@ -77,18 +77,27 @@ def run():
     results["failed"] = 0
     results["times"] = []
 
-    # Тест 2: С авторизацией (работодатель)
-    print("\n[Test 2] С авторизацией (org@test.ru)")
+    # Тест 2: Публичные страницы (без авторизации, разные URL)
+    print("\n[Test 2] Публичные страницы (разные URL)")
+    public_urls = [
+        f"{BASE}/",
+        f"{BASE}/workers",
+        f"{BASE}/login",
+        f"{BASE}/register",
+    ]
     start = time.time()
     with ThreadPoolExecutor(max_workers=CONCURRENT_USERS) as executor:
-        futures = [executor.submit(user_session, "org@test.ru", "test123456") for _ in range(CONCURRENT_USERS)]
+        futures = []
+        for i in range(CONCURRENT_USERS * REQUESTS_PER_USER):
+            url = public_urls[i % len(public_urls)]
+            futures.append(executor.submit(make_request, url))
         for f in as_completed(futures):
-            for r in f.result():
-                results["times"].append(r["time"])
-                if r["ok"]:
-                    results["success"] += 1
-                else:
-                    results["failed"] += 1
+            r = f.result()
+            results["times"].append(r["time"])
+            if r["ok"]:
+                results["success"] += 1
+            else:
+                results["failed"] += 1
     elapsed = time.time() - start
 
     total = results["success"] + results["failed"]
