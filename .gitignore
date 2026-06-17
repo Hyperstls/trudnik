@@ -17,5 +17,17 @@ app-release*.aab
 # Tailwind CLI binary (downloaded during Render build)
 tailwindcss-linux-x64
 
+server.log
+*_output.html
+*_output.txt
+*_output2.txt
+*_output3.txt
+
 # Generated test reports
 *_report.txt
+
+# Temp worker file
+temp_workers_original.txt
+
+# Tests cache
+tests/__pycache__/

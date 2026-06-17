@@ -13,12 +13,49 @@
     {% if workers %}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {% for worker in workers %}
-            <div class="app-card rounded-2xl bg-white shadow-sm border border-neutral-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+            <div class="app-card rounded-2xl bg-white shadow-sm border border-neutral-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer relative"
                  data-worker-id="{{ worker.id }}">
+
+                {# Кнопки избранного и чёрного списка — верхний правый угол #}
+                <div class="absolute top-2 right-2 flex gap-1 z-10">
+                    {% if session.get('role') == 'employer' %}
+                    <button id="block-btn-{{ worker.id }}"
+                            class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                            title="Заблокировать"
+                            data-action="block">
+                        🚫
+                    </button>
+                    <button id="unblock-btn-{{ worker.id }}"
+                            class="w-8 h-8 flex items-center justify-center rounded-lg text-green-500 hover:text-green-600 hover:bg-green-50 transition-colors hidden"
+                            title="Разблокировать"
+                            data-action="unblock">
+                        🔓
+                    </button>
+                    <button class="favorite-btn contact-btn w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
+                            data-worker-id="{{ worker.id }}"
+                            data-favorited="false"
+                            title="Добавить в избранное">
+                        <span class="favorite-icon flex items-center justify-center">{{ star(16) }}</span>
+                    </button>
+                    {% elif session.get('role') == 'admin' %}
+                    <button id="block-btn-{{ worker.id }}"
+                            class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                            title="Заблокировать"
+                            data-action="block">
+                        🚫
+                    </button>
+                    <button id="unblock-btn-{{ worker.id }}"
+                            class="w-8 h-8 flex items-center justify-center rounded-lg text-green-500 hover:text-green-600 hover:bg-green-50 transition-colors hidden"
+                            title="Разблокировать"
+                            data-action="unblock">
+                        🔓
+                    </button>
+                    {% endif %}
+                </div>
 
                 <div class="flex items-center gap-3">
                     {% if worker.photo_url %}
-                     <img src="{{ worker.photo_url }}" alt="{{ worker.full_name }}"
+                    <img src="{{ worker.photo_url }}" alt="{{ worker.full_name }}"
                           class="js-avatar-img w-14 h-14 rounded-full object-cover border-2 border-neutral-200 shrink-0">
                     <div class="avatar-smiley w-14 h-14 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400" style="display:none">{{ smiley(32) }}</div>
                     {% else %}
@@ -62,10 +99,10 @@
                 <p class="text-success text-sm font-semibold mt-2">{{ worker.desired_payment }} ₽</p>
                 {% endif %}
 
-                {# Кнопки действий — адаптивные с выпадающим меню на мобильных #}
+                {# Кнопки действий #}
                 <div class="mt-4 pt-3 border-t border-neutral-100">
                     <div class="flex flex-wrap gap-2">
-                        {# Основные кнопки (видны всегда) #}
+                        {# Кнопка «Написать» #}
                         <button data-action="chat" data-worker-id="{{ worker.id }}"
                                 class="action-icon-btn chat-btn min-w-[100px]" title="Написать сообщение">
                             {{ chat(16) }}
@@ -79,66 +116,6 @@
                                 {{ 'disabled' if is_invited }}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
                             <span class="invite-text text-[11px] ml-1.5 font-medium">{{ '✓ Приглашён' if is_invited else 'Пригласить' }}</span>
-                        </button>
-
-                        {# Кнопки, скрываемые в «Ещё» на мобильных (<768px) #}
-                        <div class="hidden sm:flex flex-wrap gap-2" id="extra-actions-{{ worker.id }}">
-                            <button id="block-btn-{{ worker.id }}"
-                                    class="action-icon-btn reject-btn min-w-[100px]" title="Заблокировать">
-                                🚫
-                                <span class="text-[11px] ml-1.5 font-medium">Заблокировать</span>
-                            </button>
-                            <button id="unblock-btn-{{ worker.id }}"
-                                    class="action-icon-btn accept-btn min-w-[100px] hidden" title="Разблокировать">
-                                🔓
-                                <span class="text-[11px] ml-1.5 font-medium">Разблокировать</span>
-                            </button>
-                            <button
-                                    class="favorite-btn action-icon-btn contact-btn min-w-[100px]"
-                                    data-worker-id="{{ worker.id }}"
-                                    data-favorited="false"
-                                    data-initial-status="not-favorited">
-                                <span class="favorite-icon flex items-center gap-1.5">
-                                    {{ star(16) }}
-                                </span>
-                                <span class="favorite-text text-[11px] font-medium">В избранное</span>
-                            </button>
-                        </div>
-
-                        {# Выпадающее меню «Ещё» (только на мобильных) #}
-                        <div class="relative sm:hidden" id="more-menu-{{ worker.id }}">
-                            <button class="action-icon-btn min-w-[44px]" title="Ещё" data-action="more-menu" data-worker-id="{{ worker.id }}">
-                                ⋮
-                            </button>
-                            <div id="more-dropdown-{{ worker.id }}" class="absolute bottom-full right-0 mb-2 bg-white rounded-xl shadow-xl border border-neutral-200 py-1 z-50 hidden min-w-[160px]">
-                                <button
-                                        class="w-full text-left px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 flex items-center gap-2"
-                                        data-action="block" data-worker-id="{{ worker.id }}">
-                                    🚫 Заблокировать
-                                </button>
-                                <button
-                                        class="w-full text-left px-4 py-2.5 text-sm text-green-600 hover:bg-green-50 flex items-center gap-2 hidden"
-                                        id="more-unblock-{{ worker.id }}" data-action="unblock" data-worker-id="{{ worker.id }}">
-                                    🔓 Разблокировать
-                                </button>
-                                <button
-                                        class="w-full text-left px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-50 flex items-center gap-2"
-                                        data-action="favorite" data-worker-id="{{ worker.id }}">
-                                    {{ star(16) }} В избранное
-                                </button>
-                            </div>
-                        </div>
-                        {% else %}
-                        {# Для не-работодателей: только избранное #}
-                        <button
-                                class="favorite-btn action-icon-btn contact-btn min-w-[100px]"
-                                data-worker-id="{{ worker.id }}"
-                                data-favorited="false"
-                                data-initial-status="not-favorited">
-                            <span class="favorite-icon flex items-center gap-1.5">
-                                {{ star(16) }}
-                            </span>
-                            <span class="favorite-text text-[11px] font-medium">В избранное</span>
                         </button>
                         {% endif %}
                     </div>
@@ -160,30 +137,6 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/favorites.js') }}"></script>
-<script nonce="{{ csp_nonce }}">
-// Выпадающее меню «Ещё» на мобильных
-function toggleMoreMenu(workerId) {
-    var dd = document.getElementById('more-dropdown-' + workerId);
-    if (!dd) return;
-    var isHidden = dd.classList.contains('hidden');
-    // Закрыть все другие меню
-    document.querySelectorAll('[id^="more-dropdown-"]').forEach(function(el) {
-        el.classList.add('hidden');
-    });
-    if (isHidden) {
-        dd.classList.remove('hidden');
-    }
-}
-
-// Закрытие выпадающего меню по клику вне
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('[id^="more-menu-"]')) {
-        document.querySelectorAll('[id^="more-dropdown-"]').forEach(function(el) {
-            el.classList.add('hidden');
-        });
-    }
-});
-</script>
 {% if session.get('role') == 'employer' %}
 <script nonce="{{ csp_nonce }}">
 async function inviteWorker(workerId, workerName, btn) {
@@ -218,21 +171,26 @@ async function inviteWorker(workerId, workerName, btn) {
         btn.disabled = false;
     }
 }
-
+</script>
+{% endif %}
+{% if session.get('role') in ('employer', 'admin') %}
+<script nonce="{{ csp_nonce }}">
 async function toggleBlock(btn, workerId, evt) {
     if (evt) { evt.preventDefault(); evt.stopPropagation(); }
-
-    if (!confirm('Заблокировать этого работника? Он не сможет откликаться на ваши задания.')) return;
 
     const blockBtn = document.getElementById('block-btn-' + workerId);
     const unblockBtn = document.getElementById('unblock-btn-' + workerId);
 
     // Определяем, блокировка или разблокировка по видимой кнопке
-    const isUnblock = !blockBtn.classList.contains('hidden');
+    const isBlocking = blockBtn && !blockBtn.classList.contains('hidden');
 
-    const url = isUnblock ? '/blacklist/' + workerId : '/unblock/' + workerId;
-    const origText = btn.querySelector('span') ? btn.querySelector('span').textContent : '';
-    if (btn.querySelector('span')) btn.querySelector('span').textContent = '...';
+    const actionText = isBlocking ? 'Заблокировать' : 'Разблокировать';
+    const message = isBlocking
+        ? 'Заблокировать этого работника? Он не сможет откликаться на ваши задания.'
+        : 'Разблокировать этого работника? Он снова сможет откликаться на ваши задания.';
+    if (!confirm(message)) return;
+
+    const url = isBlocking ? '/blacklist/' + workerId : '/unblock/' + workerId;
     btn.disabled = true;
 
     try {
@@ -246,29 +204,24 @@ async function toggleBlock(btn, workerId, evt) {
         const data = await resp.json();
 
         if (data.success) {
-            if (isUnblock) {
+            if (isBlocking) {
                 // Заблокировали — переключаем на состояние "разблокировать"
-                blockBtn.classList.add('hidden');
-                unblockBtn.classList.remove('hidden');
+                if (blockBtn) blockBtn.classList.add('hidden');
+                if (unblockBtn) unblockBtn.classList.remove('hidden');
                 if (window.showToast) window.showToast('🔒 Работник заблокирован', 'success');
             } else {
                 // Разблокировали — возвращаем кнопку блокировки
-                unblockBtn.classList.add('hidden');
-                blockBtn.classList.remove('hidden');
+                if (unblockBtn) unblockBtn.classList.add('hidden');
+                if (blockBtn) blockBtn.classList.remove('hidden');
                 if (window.showToast) window.showToast('🔓 Работник разблокирован', 'success');
             }
         } else {
             if (window.showToast) window.showToast('❌ ' + (data.error || 'Ошибка'), 'error');
-            if (btn.querySelector('span')) btn.querySelector('span').textContent = origText;
         }
     } catch (e) {
         if (window.showToast) window.showToast('❌ Ошибка соединения', 'error');
-        if (btn.querySelector('span')) btn.querySelector('span').textContent = origText;
     }
     btn.disabled = false;
-    if (isUnblock && blockBtn.classList.contains('hidden') && btn.querySelector('span')) {
-        btn.querySelector('span').textContent = origText;
-    }
 }
 </script>
 {% endif %}
@@ -304,14 +257,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // More menu button
-        if (btn.dataset.action === 'more-menu') {
-            e.stopPropagation();
-            if (typeof toggleMoreMenu === 'function') toggleMoreMenu(workerId);
-            return;
-        }
-
-        // Block button (main or dropdown)
+        // Block button
         if (btn.dataset.action === 'block') {
             e.stopPropagation();
             var blockBtn = document.getElementById('block-btn-' + workerId);
@@ -319,7 +265,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Unblock button (main or dropdown)
+        // Unblock button
         if (btn.dataset.action === 'unblock') {
             e.stopPropagation();
             var unblockBtn = document.getElementById('unblock-btn-' + workerId);

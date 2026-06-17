@@ -16,7 +16,7 @@ URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 HEADERS = {"apikey": KEY, "Authorization": f"Bearer {KEY}", "Content-Type": "application/json"}
 
-MIGRATIONS_DIR = Path(__file__).resolve().parent / "migrations"
+MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / "migrations"
 
 
 def exec_sql(query: str) -> dict:
@@ -303,10 +303,10 @@ def main():
 
     # Step 2: Apply migrations 039-042
     migrations = [
-        "migrations/039_atomic_operations.sql",
-        "migrations/040_schema_versioning.sql",
-        "migrations/041_add_messages_fk.sql",
-        "migrations/042_cleanup_duplicates.sql",
+        str(MIGRATIONS_DIR / "039_atomic_operations.sql"),
+        str(MIGRATIONS_DIR / "040_schema_versioning.sql"),
+        str(MIGRATIONS_DIR / "041_add_messages_fk.sql"),
+        str(MIGRATIONS_DIR / "042_cleanup_duplicates.sql"),
     ]
 
     total_errors = 0
