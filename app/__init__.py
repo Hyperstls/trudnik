@@ -186,34 +186,35 @@ def create_app():
         log.debug('[INV_CTX] skip: no user_id or not worker')
         return {'pending_invitations': 0}
 
-    # Кешируем git-версию при старте приложения (ранее вычислялась на каждый запрос)
-    _git_version = 'dev'
-    try:
-        _git_version = subprocess.check_output(
-            ['git', 'log', '-1', '--format=%h %s (%ai)'],
-            cwd=project_root, stderr=subprocess.DEVNULL, text=True
-        ).strip()
-    except Exception:
-        pass
-@app.context_processor
-def inject_git_version():
-    return {'git_version': _git_version}
+        # Кешируем git-версию при старте приложения (ранее вычислялась на каждый запрос)
+        _git_version = 'dev'
+        try:
+            _git_version = subprocess.check_output(
+                ['git', 'log', '-1', '--format=%h %s (%ai)'],
+                cwd=project_root, stderr=subprocess.DEVNULL, text=True
+            ).strip()
+        except Exception:
+            pass
 
-@app.context_processor
-def inject_sort_url():
-    """Хелпер для построения URL сортировки с сохранением остальных параметров."""
-    from urllib.parse import quote
+        @app.context_processor
+        def inject_git_version():
+            return {'git_version': _git_version}
 
-    def sort_url(sort_value):
-        args = dict(request.args)
-        # Заменяем sort и сбрасываем page
-        args['sort'] = sort_value
-        args.pop('page', None)
-        if not args:
-            return '?'
-        return '?' + '&'.join(f'{quote(str(k))}={quote(str(v))}' for k, v in args.items())
+        @app.context_processor
+        def inject_sort_url():
+            """Хелпер для построения URL сортировки с сохранением остальных параметров."""
+            from urllib.parse import quote
 
-    return {'sort_url': sort_url}
+            def sort_url(sort_value):
+                args = dict(request.args)
+                # Заменяем sort и сбрасываем page
+                args['sort'] = sort_value
+                args.pop('page', None)
+                if not args:
+                    return '?'
+                return '?' + '&'.join(f'{quote(str(k))}={quote(str(v))}' for k, v in args.items())
+
+            return {'sort_url': sort_url}
 
     # Регистрация blueprints
     from app.blueprints.auth import auth_bp

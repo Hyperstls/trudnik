@@ -151,7 +151,7 @@ def send_message():
     create_notification(recipient, 'new_message', 'Новое сообщение',
                        sanitized_content[:100],
                        data={'application_id': application_id,
-                             'link': url_for('chat.chat_view', application_id=application_id, _external=True)})
+                             'link': url_for('chat.chat', application_id=application_id, _external=True)})
 
     # Публикуем событие в Redis для мгновенной доставки через WebSocket
     try:
