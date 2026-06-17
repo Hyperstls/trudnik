@@ -1,14 +1,14 @@
 {# ============================================ #}
-{# Переиспользуемая панель фильтра по навыкам    #}
+{# Переиспользуемый фильтр по навыкам             #}
 {# Параметры:                                    #}
-{#   filter_id  — уникальный ID для страницы     #}
-{#   selected   — строка с выбранными навыками   #}
-{#                (через запятую, из GET-параметров) #}
-{#   placeholder — текст кнопки по умолчанию      #}
+{#   filter_id       — уникальный ID              #}
+{#   selected_skills — список выбранных навыков   #}
 {# ============================================ #}
-<div id="{{ filter_id }}-container" class="skills-filter-container relative">
-    {# Кнопка-триггер (видна на всех разрешениях) #}
-    <button type="button" id="{{ filter_id }}-toggle"
+<div class="relative inline-block" id="{{ filter_id }}-container">
+
+    {# Кнопка-триггер #}
+    <button type="button"
+            id="{{ filter_id }}-trigger"
             class="action-icon-btn inline-flex items-center gap-1.5 py-2 px-3 bg-neutral-100 hover:bg-neutral-200 rounded-xl text-sm font-medium text-neutral-700 transition-all duration-200 active:scale-95"
             aria-label="Открыть фильтр навыков"
             aria-expanded="false"
@@ -17,67 +17,79 @@
             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
         </svg>
         <span>Фильтр</span>
-        <span id="{{ filter_id }}-badge" class="hidden bg-primary-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">0</span>
+        <span id="{{ filter_id }}-badge"
+              class="hidden bg-primary-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">0</span>
     </button>
 
-    {# Overlay-панель фильтров (скрыта изначально) #}
-    {# На мобильных: bottom sheet drawer с backdrop #}
-    {# На десктопе: выпадающее меню справа от кнопки #}
+    {# Панель фильтра #}
     <div id="{{ filter_id }}-panel"
-         class="skills-filter-panel fixed inset-0 z-[70] hidden md:absolute md:right-0 md:top-full md:inset-auto md:z-50"
+         class="hidden"
          role="dialog"
          aria-modal="true"
          aria-label="Фильтр по навыкам">
-        {# Backdrop (только на мобильных) #}
-        <div id="{{ filter_id }}-backdrop" class="absolute inset-0 bg-black/50 backdrop-blur-sm md:hidden"></div>
-        {# Обёртка для позиционирования #}
-        <div id="{{ filter_id }}-content-wrapper"
-             class="absolute inset-x-0 bottom-0
-                    md:relative md:inset-auto md:mt-2
-                    md:w-80">
-            {# Содержимое панели #}
-            <div id="{{ filter_id }}-content"
-                 class="bg-white rounded-t-3xl md:rounded-2xl
-                        max-h-[80vh] md:max-h-[80vh] overflow-y-auto
-                        shadow-2xl
-                        transition-all duration-300 ease-out
-                        translate-y-full md:translate-y-0 md:opacity-100 md:scale-100"
-                 style="padding-bottom: max(env(safe-area-inset-bottom), 16px);">
-                {# Заголовок #}
-                <div class="sticky top-0 bg-white border-b border-neutral-200 px-4 py-3 flex items-center justify-between z-10 rounded-t-2xl">
-                    <h3 class="font-semibold text-neutral-800">Фильтр по навыкам</h3>
-                    <button type="button" id="{{ filter_id }}-close"
-                            class="w-8 h-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-500 transition-colors"
-                            aria-label="Закрыть фильтр">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    </button>
+
+        {# Backdrop — только на мобильных #}
+        <div id="{{ filter_id }}-backdrop"
+             class="fixed inset-0 bg-black/50 z-40 cursor-pointer md:hidden"
+             aria-hidden="true"></div>
+
+        {# Контент панели: bottom sheet (mobile) / dropdown (desktop) #}
+        <div id="{{ filter_id }}-content"
+             class="fixed bottom-0 left-0 right-0 z-50
+                    max-h-[80vh] overflow-y-auto
+                    bg-white rounded-t-2xl shadow-2xl
+                    transition-all duration-300 ease-out
+                    translate-y-full opacity-0
+                    md:absolute md:top-full md:right-0 md:left-auto md:bottom-auto
+                    md:w-80 md:max-h-[70vh] md:rounded-2xl md:translate-y-0 md:mt-2
+                    md:shadow-lg">
+
+            {# Заголовок #}
+            <div class="sticky top-0 bg-white border-b border-neutral-200 px-4 py-3 flex items-center justify-between z-10 rounded-t-2xl">
+                <h3 class="font-semibold text-neutral-800">Фильтр по навыкам</h3>
+                <button type="button"
+                        id="{{ filter_id }}-close"
+                        class="w-8 h-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-500 transition-colors"
+                        aria-label="Закрыть фильтр">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="p-4 space-y-3">
+                {# Поиск навыков #}
+                <div class="relative">
+                    <input type="text"
+                           id="{{ filter_id }}-search"
+                           class="w-full pl-8 pr-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15"
+                           placeholder="Поиск навыков...">
+                    <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400"
+                         viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
                 </div>
 
-                <div class="p-4 space-y-3">
-                    {# Поиск навыков #}
-                    <div class="relative">
-                        <input type="text" id="{{ filter_id }}-search"
-                               class="w-full pl-8 pr-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15"
-                               placeholder="Поиск навыка...">
-                        <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                    </div>
+                {# Список чекбоксов #}
+                <div id="{{ filter_id }}-list"
+                     class="max-h-60 overflow-y-auto space-y-0.5">
+                    <span class="text-sm text-neutral-400">Загрузка...</span>
+                </div>
 
-                    {# Список чекбоксов #}
-                    <div id="{{ filter_id }}-list" class="max-h-60 overflow-y-auto space-y-0.5">
-                        <span class="text-sm text-neutral-400">Загрузка...</span>
-                    </div>
-
-                    {# Кнопки действий #}
-                    <div class="flex gap-2 pt-2 border-t border-neutral-100">
-                        <button type="button" id="{{ filter_id }}-apply"
-                                class="flex-1 bg-primary-500 hover:bg-primary-600 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors active:scale-[0.98]">
-                            Применить
-                        </button>
-                        <button type="button" id="{{ filter_id }}-reset"
-                                class="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 font-medium py-2.5 rounded-lg text-sm transition-colors active:scale-[0.98]">
-                            Сбросить
-                        </button>
-                    </div>
+                {# Кнопки действий #}
+                <div class="flex gap-2 pt-2 border-t border-neutral-100">
+                    <button type="button"
+                            id="{{ filter_id }}-apply"
+                            class="flex-1 bg-primary-500 hover:bg-primary-600 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors active:scale-[0.98]">
+                        Применить
+                    </button>
+                    <button type="button"
+                            id="{{ filter_id }}-reset"
+                            class="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-600 font-medium py-2.5 rounded-lg text-sm transition-colors active:scale-[0.98]">
+                        Сбросить
+                    </button>
                 </div>
             </div>
         </div>
@@ -90,7 +102,7 @@
     var selectedSkills = {{ selected_skills|tojson if selected_skills else '[]' }};
 
     var container = document.getElementById(filterId + '-container');
-    var toggle = document.getElementById(filterId + '-toggle');
+    var trigger = document.getElementById(filterId + '-trigger');
     var panel = document.getElementById(filterId + '-panel');
     var backdrop = document.getElementById(filterId + '-backdrop');
     var content = document.getElementById(filterId + '-content');
@@ -102,90 +114,111 @@
     var badge = document.getElementById(filterId + '-badge');
 
     var isOpen = false;
-    var savedScrollY = 0;
+    var skillsLoaded = false;
+    var allSkills = [];
 
-    // Загрузка списка навыков
-    fetch('/api/skills')
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            var skills = data.skills || [];
-            if (!skills.length) {
-                listDiv.innerHTML = '<span class="text-sm text-neutral-400">Нет доступных навыков</span>';
-                return;
-            }
-            renderCheckboxes(skills);
-            updateUI();
-        })
-        .catch(function() {
-            listDiv.innerHTML = '<span class="text-sm text-red-400">Ошибка загрузки</span>';
-        });
+    // ── Вспомогательные ──
 
-    function renderCheckboxes(skills) {
-        listDiv.innerHTML = skills.map(function(s) {
-            var checked = selectedSkills.indexOf(s.name) !== -1;
-            return '<label class="flex items-center gap-2 px-2 py-1.5 hover:bg-neutral-50 rounded cursor-pointer text-sm skill-filter-item" data-skill="' + s.name + '">' +
-                '<input type="checkbox" value="' + s.name + '" class="skill-filter-cb rounded border-neutral-300 text-primary-500 focus:ring-primary-500" ' + (checked ? 'checked' : '') + '>' +
-                '<span class="text-neutral-700">' + s.name + '</span>' +
-                '</label>';
-        }).join('');
-
-        listDiv.querySelectorAll('.skill-filter-cb').forEach(function(cb) {
-            cb.addEventListener('change', function() {
-                if (this.checked) {
-                    if (selectedSkills.indexOf(this.value) === -1) selectedSkills.push(this.value);
-                } else {
-                    selectedSkills = selectedSkills.filter(function(s) { return s !== cb.value; });
-                }
-                updateUI();
-            });
-        });
+    function isMobile() {
+        return window.innerWidth < 768;
     }
 
-    function updateUI() {
-        if (badge) {
-            if (selectedSkills.length > 0) {
-                badge.textContent = selectedSkills.length;
-                badge.classList.remove('hidden');
-            } else {
-                badge.classList.add('hidden');
-            }
+    function updateBadge() {
+        if (!badge) return;
+        if (selectedSkills.length > 0) {
+            badge.textContent = selectedSkills.length;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
         }
     }
 
-    // Поиск по навыкам
+    // ── Рендер чекбоксов ──
+
+    function renderCheckboxes(skills) {
+        var html = '';
+        for (var i = 0; i < skills.length; i++) {
+            var s = skills[i];
+            var checked = selectedSkills.indexOf(s.name) !== -1;
+            html += '<label class="flex items-center gap-2 px-2 py-1.5 hover:bg-neutral-50 rounded cursor-pointer text-sm skill-filter-item" data-skill="' + s.name.replace(/"/g, '"') + '">' +
+                '<input type="checkbox" value="' + s.name.replace(/"/g, '"') + '" class="skill-filter-cb rounded border-neutral-300 text-primary-500 focus:ring-primary-500" ' + (checked ? 'checked' : '') + '>' +
+                '<span class="text-neutral-700">' + s.name + '</span>' +
+                '</label>';
+        }
+        listDiv.innerHTML = html || '<span class="text-sm text-neutral-400">Нет доступных навыков</span>';
+
+        // Навешиваем обработчики на все чекбоксы
+        var cbs = listDiv.querySelectorAll('.skill-filter-cb');
+        for (var j = 0; j < cbs.length; j++) {
+            cbs[j].addEventListener('change', function() {
+                var val = this.value;
+                if (this.checked) {
+                    if (selectedSkills.indexOf(val) === -1) selectedSkills.push(val);
+                } else {
+                    selectedSkills = selectedSkills.filter(function(s) { return s !== val; });
+                }
+                updateBadge();
+            });
+        }
+    }
+
+    // ── Загрузка навыков (ленивая, один раз) ──
+
+    function loadSkills() {
+        if (skillsLoaded) return;
+        skillsLoaded = true;
+
+        fetch('/api/skills')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                allSkills = data.skills || [];
+                renderCheckboxes(allSkills);
+                updateBadge();
+            })
+            .catch(function() {
+                listDiv.innerHTML = '<span class="text-sm text-red-400">Ошибка загрузки</span>';
+            });
+    }
+
+    // ── Поиск по навыкам ──
+
     if (searchInput) {
         searchInput.addEventListener('input', function() {
             var q = this.value.toLowerCase();
-            listDiv.querySelectorAll('.skill-filter-item').forEach(function(item) {
-                var skill = item.getAttribute('data-skill').toLowerCase();
-                item.style.display = skill.indexOf(q) !== -1 ? 'flex' : 'none';
-            });
+            var items = listDiv.querySelectorAll('.skill-filter-item');
+            for (var i = 0; i < items.length; i++) {
+                var skill = (items[i].getAttribute('data-skill') || '').toLowerCase();
+                items[i].style.display = skill.indexOf(q) !== -1 ? 'flex' : 'none';
+            }
         });
     }
 
     // ── Открытие панели ──
+
     function openPanel() {
         if (isOpen) return;
         isOpen = true;
 
-        // Сохраняем позицию скролла и блокируем body
-        savedScrollY = window.scrollY;
-        var scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+        // Ленивая загрузка навыков
+        loadSkills();
+
+        // Scroll lock: только overflow hidden, без position:fixed на body
         document.body.style.overflow = 'hidden';
-        document.body.style.paddingRight = scrollbarWidth + 'px';
-        document.body.style.position = 'fixed';
-        document.body.style.top = '-' + savedScrollY + 'px';
-        document.body.style.width = '100%';
 
         // Показываем панель
         panel.classList.remove('hidden');
-        toggle.setAttribute('aria-expanded', 'true');
+        trigger.setAttribute('aria-expanded', 'true');
 
-        // Запускаем анимацию (после кадра, чтобы transition сработал)
+        // Запускаем анимацию
         requestAnimationFrame(function() {
             requestAnimationFrame(function() {
-                content.style.transform = 'translateY(0)';
-                content.style.opacity = '1';
+                if (isMobile()) {
+                    content.style.transform = 'translateY(0)';
+                    content.style.opacity = '1';
+                } else {
+                    content.style.opacity = '1';
+                    content.style.transform = 'scale(1)';
+                }
             });
         });
 
@@ -196,73 +229,64 @@
     }
 
     // ── Закрытие панели ──
+
     function closePanel() {
         if (!isOpen) return;
         isOpen = false;
 
         // Анимация скрытия
-        var isMobile = window.innerWidth < 768;
-        if (isMobile) {
+        if (isMobile()) {
             content.style.transform = 'translateY(100%)';
+            content.style.opacity = '0';
         } else {
             content.style.opacity = '0';
             content.style.transform = 'scale(0.95)';
         }
 
-        toggle.setAttribute('aria-expanded', 'false');
+        trigger.setAttribute('aria-expanded', 'false');
 
+        // Скрываем после завершения анимации
         setTimeout(function() {
             panel.classList.add('hidden');
-            content.style.opacity = '';
+            // Сброс inline-стилей
             content.style.transform = '';
-            content.style.transformOrigin = '';
+            content.style.opacity = '';
+            // Возвращаем scroll
             document.body.style.overflow = '';
-            document.body.style.paddingRight = '';
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.width = '';
-            window.scrollTo(0, savedScrollY);
-            // Возвращаем фокус на кнопку
-            toggle.focus();
+            // Возвращаем фокус
+            trigger.focus();
         }, 300);
     }
 
-    // Начальное состояние для анимации открытия
+    // ── Установка начального состояния для анимации ──
+
     function setInitialClosedState() {
-        var isMobile = window.innerWidth < 768;
-        if (isMobile) {
+        if (isMobile()) {
             content.style.transform = 'translateY(100%)';
+            content.style.opacity = '0';
         } else {
             content.style.opacity = '0';
             content.style.transform = 'scale(0.95)';
-            content.style.transformOrigin = 'top right';
         }
     }
 
-    // Перехватываем открытие — устанавливаем начальное состояние перед показом
-    var originalOpenPanel = openPanel;
-    openPanel = function() {
-        if (isOpen) return;
-        setInitialClosedState();
-        originalOpenPanel();
-    };
-
-    // ── Глобальные функции openFilter / closeFilter ──
-    // Экспортируем для вызова из других скриптов (например, для мобильного меню)
-    window['openFilter_' + filterId] = openPanel;
-    window['closeFilter_' + filterId] = closePanel;
-
     // ── Обработчики событий ──
-    if (toggle) toggle.addEventListener('click', function(e) {
+
+    trigger.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        openPanel();
+        if (isOpen) {
+            closePanel();
+        } else {
+            setInitialClosedState();
+            openPanel();
+        }
     });
 
-    if (closeBtn) closeBtn.addEventListener('click', closePanel);
-    if (backdrop) backdrop.addEventListener('click', closePanel);
+    closeBtn.addEventListener('click', closePanel);
+    backdrop.addEventListener('click', closePanel);
 
-    // Закрытие по Escape
+    // Escape
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && isOpen) {
             e.preventDefault();
@@ -270,36 +294,40 @@
         }
     });
 
-    // Закрытие по клику вне панели (десктоп)
+    // Клик вне панели (только на десктопе)
     document.addEventListener('click', function(e) {
         if (!isOpen) return;
-        var isDesktop = window.innerWidth >= 768;
-        if (!isDesktop) return;
-        if (!panel.contains(e.target) && !toggle.contains(e.target)) {
+        if (isMobile()) return;
+        if (!container.contains(e.target)) {
             closePanel();
         }
     });
 
     // ── Применить фильтр ──
-    if (applyBtn) {
-        applyBtn.addEventListener('click', function() {
-            var url = new URL(window.location.href);
-            if (selectedSkills.length > 0) {
-                url.searchParams.set('skills', selectedSkills.join(','));
-            } else {
-                url.searchParams.delete('skills');
-            }
-            window.location.href = url.toString();
-        });
-    }
+
+    applyBtn.addEventListener('click', function() {
+        var url = new URL(window.location.href);
+        if (selectedSkills.length > 0) {
+            url.searchParams.set('skills', selectedSkills.join(','));
+        } else {
+            url.searchParams.delete('skills');
+        }
+        // Сбрасываем page при изменении фильтра
+        url.searchParams.delete('page');
+        window.location.href = url.toString();
+    });
 
     // ── Сбросить фильтр ──
-    if (resetBtn) {
-        resetBtn.addEventListener('click', function() {
-            var url = new URL(window.location.href);
-            url.searchParams.delete('skills');
-            window.location.href = url.toString();
-        });
-    }
+
+    resetBtn.addEventListener('click', function() {
+        var url = new URL(window.location.href);
+        url.searchParams.delete('skills');
+        url.searchParams.delete('page');
+        window.location.href = url.toString();
+    });
+
+    // ── Инициализация ──
+
+    updateBadge();
 })();
 </script>
