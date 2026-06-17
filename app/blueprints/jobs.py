@@ -82,8 +82,8 @@ def index():
     resp = supabase_request('GET', f'jobs?{query}&order=created_at.desc')
     jobs = resp.json() if resp.ok else []
 
-    # Фильтрация: открытые, оплаченные, не истёкшие
-    jobs = [j for j in jobs if j.get('status') in ('open', 'completed') and j.get('is_paid')]
+    # Фильтрация: открытые, не истёкшие
+    jobs = [j for j in jobs if j.get('status') in ('open', 'completed')]
     jobs = [j for j in jobs if not j.get('expires_at') or j['expires_at'] > now]
 
     # Фильтрация по навыкам (поиск в work_type, object_description, detailed_description)
@@ -302,8 +302,6 @@ def job_new():
                 'max_workers': int(request.form.get('max_workers') or 1),
                 'current_workers': 0,
                 'status': 'open',
-                'is_paid': True,
-                'paid_at': datetime.now(timezone.utc).isoformat(),
                 'expires_at': (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
             }
 

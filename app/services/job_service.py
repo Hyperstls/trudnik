@@ -371,7 +371,7 @@ def check_job_visibility(job: dict, user_id: Optional[str] = None,
     Правила:
     - Владелец (employer) видит задание в ЛЮБОМ статусе и с любым is_paid.
     - Админ видит все задания.
-    - Остальные — только оплаченные (is_paid=true) в статусах open, completed.
+    - Остальные — только в статусах open, completed.
 
     Args:
         job: словарь задания.
@@ -387,9 +387,7 @@ def check_job_visibility(job: dict, user_id: Optional[str] = None,
     # Админ
     if user_role == 'admin':
         return True
-    # Остальные: только оплаченные в статусах open, completed
-    if not job.get('is_paid'):
-        return False
+    # Остальные: только в статусах open, completed
     if job.get('status') not in ('open', 'completed'):
         return False
     return True

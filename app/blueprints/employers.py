@@ -1,4 +1,4 @@
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required
 from app.utils import supabase_request, sanitize_postgrest
@@ -116,21 +116,26 @@ def toggle_favorite(employer_id):
     """Toggle избранного работодателя (form-based)."""
     user_id = session['user_id']
 
-    check = supabase_request('GET',
-        f'favorites?user_id=eq.{user_id}&target_id=eq.{employer_id}&favorite_type=eq.employer')
-    is_favorited = check.ok and len(check.json() or []) > 0
+    try:
+        check = supabase_request('GET',
+            f'favorites?user_id=eq.{user_id}&target_id=eq.{employer_id}&favorite_type=eq.employer')
+        is_favorited = check.ok and len(check.json() or []) > 0
 
-    if is_favorited:
-        fav_id = check.json()[0]['id']
-        supabase_request('DELETE', f'favorites?id=eq.{fav_id}')
-        flash('Работодатель удалён из избранного', 'success')
-    else:
-        supabase_request('POST', 'favorites', json={
-            'user_id': user_id,
-            'target_id': employer_id,
-            'favorite_type': 'employer'
-        })
-        flash('Работодатель добавлен в избранное', 'success')
+        if is_favorited:
+            supabase_request('DELETE',
+                f'favorites?user_id=eq.{user_id}&target_id=eq.{employer_id}&favorite_type=eq.employer')
+            flash('Работодатель удалён из избранного', 'success')
+        else:
+            supabase_request('POST', 'favorites', json={
+                'user_id': user_id,
+                'target_id': employer_id,
+                'favorite_type': 'employer'
+            })
+            flash('Работодатель добавлен в избранное', 'success')
+    except Exception as e:
+        current_app.logger.error(f"toggle_favorite error: {e}")
+        flash('Произошла ошибка при обновлении избранного', 'danger')
+        return redirect(request.referrer or url_for('employers.employers_list'))
 
     return redirect(request.referrer or url_for('employers.employers_list'))
 

@@ -56,7 +56,7 @@ def add_favorite(target_id):
 @favorites_bp.route('/unfavorite/<target_id>', methods=['POST'])
 @login_required
 def remove_favorite(target_id):
-    supabase_request('DELETE', f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{target_id}')
+    supabase_request('DELETE', f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{target_id}&favorite_type=eq.worker')
     return redirect(url_for('favorites.favorites'))
 
 
@@ -97,7 +97,7 @@ def remove_favorite_api():
         return jsonify({'success': False, 'error': 'Не указан worker_id'})
 
     try:
-        supabase_request('DELETE', f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{worker_id}')
+        supabase_request('DELETE', f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{worker_id}&favorite_type=eq.worker')
         return jsonify({'success': True, 'message': 'Трудник удалён из избранного'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})

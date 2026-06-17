@@ -15,9 +15,8 @@
 
 ```python
 # ТЕКУЩЕЕ (workaround) — строки 479–482:
+# В main is_paid и paid_at уже удалены (workaround откатан):
 'status': 'open',
-'is_paid': True,                                                          # ← удалить
-'paid_at': datetime.now(timezone.utc).isoformat(),                        # ← удалить
 'expires_at': (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(), # ← удалить
 ```
 
@@ -34,16 +33,16 @@
 # ТЕКУЩЕЕ — строка 82:
 query = 'status=in.(open,completed)&select=...'
 # ТЕКУЩЕЕ — строка 92 (Python-фильтр):
-jobs = [j for j in jobs if j.get('status') in ('open', 'completed') and j.get('is_paid')]
-# ↑ ЛОГИКА ПРАВИЛЬНАЯ — оставить как есть, это целевое поведение
+jobs = [j for j in jobs if j.get('status') in ('open', 'completed')]
+# ↑ В main фильтр is_paid удалён — осознанный отказ от модели pay-per-job
 ```
 
 ### 1.4. Детальный просмотр — [`app/blueprints/jobs.py`](app/blueprints/jobs.py:343-346)
 
 ```python
-# ТЕКУЩЕЕ — ЛОГИКА ПРАВИЛЬНАЯ — оставить как есть:
+# В main проверка is_paid уже удалена — осознанный отказ от модели pay-per-job:
 if not is_owner and not is_admin:
-    if not job.get('is_paid') or job.get('status') not in ('open', 'completed'):
+    if job.get('status') not in ('open', 'completed'):
         flash('Задание не найдено', 'danger')
         return redirect(url_for('jobs.index'))
 ```

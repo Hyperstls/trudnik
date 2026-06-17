@@ -435,7 +435,6 @@ def copy_job(original_job: dict) -> dict:
         'status': 'open',
         'max_workers': original_job.get('max_workers', 1),
         'current_workers': 0,
-        'is_paid': True,
     }
 
 

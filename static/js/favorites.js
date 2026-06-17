@@ -162,6 +162,8 @@ function toggleEmployerFavorite(employerId, btn, event) {
                 if (window.showToast) {
                     window.showToast('✅ Работодатель удалён из избранного', 'success');
                 }
+                // Перезагружаем страницу, чтобы удалить карточку из DOM на странице избранного
+                setTimeout(() => location.reload(), 800);
             }
         })
         .catch(() => {
