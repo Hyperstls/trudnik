@@ -1,4 +1,17 @@
-"""Сервис уведомлений: типизация, создание, проверка настроек."""
+"""Сервис уведомлений: типизация, создание, проверка настроек.
+
+БЕЗОПАСНОСТЬ (service_role):
+    create() и get_user_prefs() используют supabase_admin_request (service_role),
+    потому что:
+    - Создание уведомлений (INSERT в notifications) — системная операция.
+      RLS-политика notifications разрешает INSERT только для service_role
+      (политика "Service can insert notifications").
+    - Чтение notification_prefs из profiles и email из profiles — вызывается
+      из контекста, где user_id может не совпадать с auth.uid()
+      (например, при создании уведомления от имени системы другому пользователю).
+    - Профиль читается для получения email при отправке email/push-уведомлений
+      через Celery, где нет сессии пользователя.
+"""
 
 import logging
 from app.utils import supabase_admin_request, supabase_request

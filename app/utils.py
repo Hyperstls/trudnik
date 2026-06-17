@@ -1,6 +1,9 @@
 """Утилиты: HTTP-запросы к Supabase, вычисления, уведомления, rate limiting."""
+import inspect
 import json
+import logging
 import math
+import os
 import time
 import uuid
 import urllib.parse
@@ -14,6 +17,8 @@ import requests as _requests
 from flask import current_app, flash, jsonify, redirect, request, session, url_for
 
 from app.config import Config
+
+logger = logging.getLogger(__name__)
 
 F = TypeVar('F', bound=Callable[..., Any])
 
@@ -153,6 +158,76 @@ SUPABASE_URL = Config.SUPABASE_URL
 SUPABASE_KEY = Config.SUPABASE_ANON_KEY
 SERVICE_KEY = Config.SUPABASE_SERVICE_ROLE_KEY
 
+# ═══════════════════════════════════════════════════════════════
+# Безопасность service_role (этап 5.1)
+# ═══════════════════════════════════════════════════════════════
+
+# Множество разрешённых контекстов для service_role вызовов.
+# Вызовы из тестов и скриптов — допустимы (admin-утилиты).
+# Вызовы из Jinja2-контекста (template globals/context processors) — допустимы,
+#   но должны быть минимизированы (предпочитать supabase_request с токеном пользователя).
+# Вызовы из Celery-задач — допустимы (нет пользовательской сессии).
+_ADMIN_ALLOWED_PREFIXES = frozenset({
+    'app.blueprints',       # Flask route handlers (серверная сторона)
+    'app.services',         # Сервисный слой (может вызываться из Celery)
+    'app.tasks',            # Celery-задачи (нет сессии пользователя)
+    'app.utils',            # Внутренние хелперы (update_rating и др.)
+    'app',                  # app/__init__.py (контекстные процессоры)
+    'scripts',              # Административные скрипты
+    'tests',                # Тесты
+    'archive',              # Архивные утилиты
+})
+
+_ADMIN_WARN_PREFIXES = frozenset({
+    # Шаблоны Jinja2: если admin_request вызывается из шаблона — это ошибка архитектуры.
+    # Код шаблонов не должен иметь доступа к service_role.
+    'app.templates',
+})
+
+
+def _get_caller_info() -> str:
+    """Получить информацию о вызывающем модуле для аудит-лога.
+
+    Просматривает стек вызовов и находит первый фрейм вне app.utils.
+    Используется только для логирования, не для принятия решений о безопасности.
+
+    Returns:
+        Строка вида 'module.function:line' или 'unknown'.
+    """
+    try:
+        frame = inspect.currentframe()
+        # Поднимаемся по стеку: пропускаем _get_caller_info, _assert_service_key,
+        # supabase_admin_request и _make_request
+        skip_count = 0
+        while frame is not None:
+            module_name = frame.f_globals.get('__name__', '')
+            if module_name and module_name != __name__:
+                func_name = frame.f_code.co_name
+                line_no = frame.f_lineno
+                return f"{module_name}.{func_name}:{line_no}"
+            frame = frame.f_back
+            skip_count += 1
+            if skip_count > 20:  # Защита от бесконечного цикла
+                break
+    except Exception:
+        pass
+    return 'unknown'
+
+
+def _assert_service_key() -> None:
+    """Проверить, что SERVICE_KEY установлен перед выполнением admin-запроса.
+
+    Если ключ не задан, запрос с пустым Bearer-токеном либо упадёт с 401,
+    либо (хуже) может быть обработан Supabase как анонимный запрос.
+    """
+    if not SERVICE_KEY:
+        caller = _get_caller_info()
+        logger.error(
+            "SECURITY: supabase_admin_request вызван без SUPABASE_SERVICE_ROLE_KEY! "
+            "Вызывающий: %s. Запрос будет выполнен с пустым service_role токеном.",
+            caller
+        )
+
 
 # ═══════════════════════════════════════════════════════════════
 # SupabaseResponse
@@ -280,6 +355,17 @@ def supabase_admin_request(method: str, endpoint: str, **kwargs: Any) -> Supabas
     Использует _admin_session для переиспользования TCP-соединений.
     Использует CircuitBreaker.
 
+    БЕЗОПАСНОСТЬ:
+    - Эта функция обходит Row Level Security (RLS) и должна использоваться
+      только на серверной стороне (Flask-роуты, Celery-задачи, скрипты).
+    - НИКОГДА не вызывайте её из шаблонов Jinja2 или кода, который может
+      быть выполнен в контексте клиента.
+    - Перед добавлением нового вызова supabase_admin_request проверьте:
+      1. Можно ли использовать supabase_request с токеном пользователя?
+      2. Можно ли использовать supabase_rpc с проверкой прав в БД?
+      3. Действительно ли операция требует обхода RLS?
+    - Все вызовы логируются на DEBUG-уровне для аудита.
+
     Args:
         method: HTTP-метод (GET, POST, PATCH, DELETE).
         endpoint: PostgREST-эндпоинт.
@@ -288,6 +374,25 @@ def supabase_admin_request(method: str, endpoint: str, **kwargs: Any) -> Supabas
     Returns:
         SupabaseResponse с полями ok, status_code, json(), text.
     """
+    # Проверка безопасности: ключ service_role должен быть задан
+    _assert_service_key()
+
+    # Аудит-лог: кто и откуда делает привилегированный запрос
+    caller = _get_caller_info()
+    logger.debug(
+        "ADMIN_REQUEST: %s %s from %s",
+        method, endpoint.split('?')[0], caller
+    )
+
+    # Проверка: предупреждаем, если service_role вызывается из подозрительного контекста
+    caller_module = caller.split('.')[0] if '.' in caller else caller
+    if caller_module in _ADMIN_WARN_PREFIXES:
+        logger.warning(
+            "SECURITY: supabase_admin_request вызван из подозрительного контекста: %s. "
+            "Код шаблонов не должен иметь доступа к service_role.",
+            caller
+        )
+
     extra_headers = kwargs.pop('headers', None)
     headers = {
         'apikey': SUPABASE_KEY,

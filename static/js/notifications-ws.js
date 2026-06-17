@@ -174,16 +174,23 @@ class NotificationsWebSocket {
     _getWsUrl() {
         // Определяем URL WebSocket-сервера
         // В production: wss://домен/ws (через reverse proxy)
-        // В development: ws://localhost:8001
+        // В development: ws://localhost:8001/ws
         if (window.TRUDNIK_CONFIG && window.TRUDNIK_CONFIG.wsUrl) {
             return window.TRUDNIK_CONFIG.wsUrl;
         }
 
-        // Автоопределение: заменяем http на ws, порт из конфига или 8001
+        // Автоопределение: заменяем http на ws
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.hostname;
-        const port = window.TRUDNIK_CONFIG?.wsPort || '8001';
-        return `${protocol}//${host}:${port}`;
+
+        // На localhost используем отдельный порт 8001 для dev-сервера WebSocket
+        if (host === 'localhost' || host === '127.0.0.1') {
+            const port = window.TRUDNIK_CONFIG?.wsPort || '8001';
+            return `${protocol}//${host}:${port}`;
+        }
+
+        // В production WebSocket идёт через reverse proxy на том же хосте/пути /ws
+        return `${protocol}//${host}/ws`;
     }
 
     _scheduleReconnect(token) {

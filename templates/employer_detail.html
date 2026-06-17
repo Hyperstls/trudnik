@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from '_icons.html' import star, heart, map_pin, clock, dollar, phone, smiley, avatar, award, briefcase %}
-{% block title %}{{ employer.full_name }} — Трудник{% endblock %}
+{% block title %}{{ employer.full_name }} — Работодатель{% endblock %}
 {% block content %}
 <div class="px-4 pb-24 max-w-2xl mx-auto fade-in">
 
@@ -67,9 +67,9 @@
             </div>
         </div>
 
-        {# Кнопка избранного #}
-        {% if session.get('role') == 'worker' %}
-        <div class="mt-4 pt-4 border-t border-neutral-100">
+        {# Кнопки действий #}
+        <div class="mt-4 pt-4 border-t border-neutral-100 flex flex-wrap gap-2">
+            {% if session.get('role') == 'worker' %}
             <form method="POST" action="/employers/{{ employer.id }}/favorite" class="inline">
                 <button type="submit" class="action-icon-btn {% if is_favorited %}reject-btn{% else %}contact-btn{% endif %}">
                     <span class="flex items-center gap-1.5">
@@ -80,8 +80,17 @@
                     </span>
                 </button>
             </form>
+            {# Кнопка «Оценить» — для трудника #}
+            <button id="rate-employer-btn"
+                    class="action-icon-btn contact-btn"
+                    title="Оценить работодателя">
+                <span class="flex items-center gap-1.5">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                </span>
+                <span class="text-sm font-medium">Оценить</span>
+            </button>
+            {% endif %}
         </div>
-        {% endif %}
     </div>
 
     {# ============================================ #}
@@ -191,4 +200,265 @@
     </div>
 
 </div>
+
+{# ============================================ #}
+{# Модальное окно оценки работодателя             #}
+{# ============================================ #}
+{% if session.get('role') == 'worker' %}
+<div id="rating-modal-backdrop" class="modal-backdrop hidden" style="display:none; z-index: 80;">
+    <div class="modal-content animate-scale-in" style="max-width: 420px;">
+        <h3 class="text-lg font-bold text-neutral-800 mb-1">Оценить работодателя</h3>
+        <p class="text-sm text-neutral-500 mb-4">{{ employer.full_name }}</p>
+
+        {# Выбор задания #}
+        <div id="rating-job-select-container" class="mb-4 hidden">
+            <label class="block text-sm font-medium text-neutral-700 mb-2">Выберите завершённое задание:</label>
+            <select id="rating-job-select" class="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                <option value="">— Выберите задание —</option>
+            </select>
+        </div>
+
+        {# Звёзды #}
+        <div id="rating-stars" class="flex justify-center gap-2 mb-4">
+            {% for i in range(1, 6) %}
+            <button type="button" class="rating-star text-3xl text-neutral-300 hover:text-warning transition-colors cursor-pointer" data-value="{{ i }}">★</button>
+            {% endfor %}
+        </div>
+        <input type="hidden" id="rating-value" value="0">
+
+        {# Комментарий #}
+        <textarea id="rating-comment" rows="3" maxlength="500"
+                  class="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all resize-none mb-4"
+                  placeholder="Комментарий (необязательно)"></textarea>
+
+        <div id="rating-no-jobs-msg" class="text-sm text-neutral-500 text-center mb-4 hidden">
+            Нет завершённых заданий с этим работодателем. Оценка возможна только после совместной работы.
+        </div>
+
+        {# Кнопки #}
+        <div class="flex gap-3 justify-end">
+            <button id="rating-modal-cancel" class="px-5 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-sm font-medium transition-colors">Отмена</button>
+            <button id="rating-modal-submit" class="px-5 py-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-xl text-sm font-medium transition-colors">Отправить</button>
+        </div>
+    </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+(function() {
+    var currentEmployerId = '{{ employer.id }}';
+    var currentRating = 0;
+    var selectedJobId = '';
+    var completedJobs = [];
+
+    var backdrop = document.getElementById('rating-modal-backdrop');
+    var starsContainer = document.getElementById('rating-stars');
+    var ratingInput = document.getElementById('rating-value');
+    var commentEl = document.getElementById('rating-comment');
+    var cancelBtn = document.getElementById('rating-modal-cancel');
+    var submitBtn = document.getElementById('rating-modal-submit');
+    var jobSelectContainer = document.getElementById('rating-job-select-container');
+    var jobSelect = document.getElementById('rating-job-select');
+    var noJobsMsg = document.getElementById('rating-no-jobs-msg');
+    var rateBtn = document.getElementById('rate-employer-btn');
+
+    async function openRatingModal() {
+        currentRating = 0;
+        selectedJobId = '';
+        ratingInput.value = '0';
+        commentEl.value = '';
+
+        // Сбросить звёзды
+        var stars = starsContainer.querySelectorAll('.rating-star');
+        stars.forEach(function(s) { s.classList.remove('text-warning'); s.classList.add('text-neutral-300'); });
+
+        // Загрузить завершённые задания
+        jobSelectContainer.classList.add('hidden');
+        noJobsMsg.classList.add('hidden');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Загрузка...';
+
+        try {
+            var resp = await fetch('/api/ratings/completed-jobs/' + currentEmployerId);
+            var data = await resp.json();
+            if (data.success && data.jobs && data.jobs.length > 0) {
+                completedJobs = data.jobs;
+                jobSelect.innerHTML = '<option value="">— Выберите задание —</option>';
+                completedJobs.forEach(function(job) {
+                    var opt = document.createElement('option');
+                    opt.value = job.id;
+                    opt.textContent = job.title || ('Задание #' + job.id);
+                    jobSelect.appendChild(opt);
+                });
+                if (completedJobs.length === 1) {
+                    jobSelect.value = completedJobs[0].id;
+                    selectedJobId = completedJobs[0].id;
+                    jobSelectContainer.classList.add('hidden');
+                } else {
+                    jobSelectContainer.classList.remove('hidden');
+                }
+            } else {
+                noJobsMsg.classList.remove('hidden');
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-50');
+            }
+        } catch (e) {
+            console.error('Failed to load completed jobs:', e);
+            noJobsMsg.classList.remove('hidden');
+            noJobsMsg.textContent = 'Ошибка загрузки данных. Попробуйте позже.';
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-50');
+        }
+
+        submitBtn.textContent = 'Отправить';
+
+        // Показать
+        backdrop.style.display = 'flex';
+        backdrop.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeRatingModal() {
+        backdrop.style.display = 'none';
+        backdrop.classList.add('hidden');
+        document.body.style.overflow = '';
+        submitBtn.classList.remove('opacity-50');
+    }
+
+    // Выбор задания из списка
+    if (jobSelect) {
+        jobSelect.addEventListener('change', function() {
+            selectedJobId = this.value;
+        });
+    }
+
+    // Звёзды: выбор рейтинга
+    if (starsContainer) {
+        starsContainer.addEventListener('click', function(e) {
+            var star = e.target.closest('.rating-star');
+            if (!star) return;
+            var value = parseInt(star.dataset.value);
+            currentRating = value;
+            ratingInput.value = value;
+            var stars = starsContainer.querySelectorAll('.rating-star');
+            stars.forEach(function(s) {
+                if (parseInt(s.dataset.value) <= value) {
+                    s.classList.remove('text-neutral-300');
+                    s.classList.add('text-warning');
+                } else {
+                    s.classList.remove('text-warning');
+                    s.classList.add('text-neutral-300');
+                }
+            });
+        });
+
+        starsContainer.addEventListener('mouseover', function(e) {
+            var star = e.target.closest('.rating-star');
+            if (!star) return;
+            var value = parseInt(star.dataset.value);
+            var stars = starsContainer.querySelectorAll('.rating-star');
+            stars.forEach(function(s) {
+                if (parseInt(s.dataset.value) <= value) {
+                    s.classList.add('text-warning');
+                    s.classList.remove('text-neutral-300');
+                } else {
+                    s.classList.remove('text-warning');
+                    s.classList.add('text-neutral-300');
+                }
+            });
+        });
+
+        starsContainer.addEventListener('mouseleave', function() {
+            var stars = starsContainer.querySelectorAll('.rating-star');
+            stars.forEach(function(s) {
+                if (parseInt(s.dataset.value) <= currentRating) {
+                    s.classList.add('text-warning');
+                    s.classList.remove('text-neutral-300');
+                } else {
+                    s.classList.remove('text-warning');
+                    s.classList.add('text-neutral-300');
+                }
+            });
+        });
+    }
+
+    // Отправка оценки
+    if (submitBtn) {
+        submitBtn.addEventListener('click', async function() {
+            if (currentRating < 1 || currentRating > 5) {
+                if (window.showToast) window.showToast('Пожалуйста, выберите оценку (1–5 звёзд)', 'warning');
+                return;
+            }
+            if (!selectedJobId && completedJobs.length === 1) {
+                selectedJobId = completedJobs[0].id;
+            }
+            if (!selectedJobId && jobSelect && jobSelect.value) {
+                selectedJobId = jobSelect.value;
+            }
+            if (!selectedJobId) {
+                if (window.showToast) window.showToast('Пожалуйста, выберите задание', 'warning');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = '...';
+
+            try {
+                var body = {
+                    job_id: selectedJobId,
+                    rated_user_id: currentEmployerId,
+                    rating: currentRating,
+                    comment: commentEl.value.trim(),
+                    target_type: 'employer'
+                };
+
+                var resp = await fetch('/api/ratings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                var data = await resp.json();
+                if (resp.ok && data.success) {
+                    if (window.showToast) window.showToast('✅ Оценка сохранена', 'success');
+                    closeRatingModal();
+                } else {
+                    if (window.showToast) window.showToast('❌ ' + (data.error || 'Ошибка при сохранении оценки'), 'error');
+                }
+            } catch (e) {
+                console.error('Rating submit error:', e);
+                if (window.showToast) window.showToast('❌ Ошибка соединения', 'error');
+            }
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Отправить';
+        });
+    }
+
+    // Открытие модалки по кнопке
+    if (rateBtn) {
+        rateBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            openRatingModal();
+        });
+    }
+
+    // Закрытие
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', closeRatingModal);
+    }
+    if (backdrop) {
+        backdrop.addEventListener('click', function(e) {
+            if (e.target === backdrop) closeRatingModal();
+        });
+    }
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && backdrop && !backdrop.classList.contains('hidden')) {
+            closeRatingModal();
+        }
+    });
+})();
+</script>
+{% endif %}
 {% endblock %}

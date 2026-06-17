@@ -59,15 +59,12 @@
                 <span class="text-sm ml-2 font-medium">В избранное</span>
             </button>
             {% if session.get('role') == 'employer' %}
-            <button id="block-btn-{{ profile_user.id }}"
-                    class="action-icon-btn reject-btn" title="Заблокировать">
+            <button id="toggle-block-btn-{{ profile_user.id }}"
+                    class="action-icon-btn reject-btn" title="Заблокировать"
+                    data-action="toggle-block"
+                    data-blocked="false">
                 🚫
                 <span class="text-sm ml-2 font-medium">Заблокировать</span>
-            </button>
-            <button id="unblock-btn-{{ profile_user.id }}"
-                    class="action-icon-btn accept-btn hidden" title="Разблокировать">
-                🔓
-                <span class="text-sm ml-2 font-medium">Разблокировать</span>
             </button>
             {% endif %}
         </div>
@@ -202,15 +199,12 @@
             <span class="text-sm ml-2 font-medium">В избранное</span>
         </button>
         {% if session.get('role') == 'employer' %}
-        <button id="block-btn2-{{ profile_user.id }}"
-                class="action-icon-btn reject-btn" title="Заблокировать">
+        <button id="toggle-block-btn2-{{ profile_user.id }}"
+                class="action-icon-btn reject-btn" title="Заблокировать"
+                data-action="toggle-block"
+                data-blocked="false">
             🚫
             <span class="text-sm ml-2 font-medium">Заблокировать</span>
-        </button>
-        <button id="unblock-btn2-{{ profile_user.id }}"
-                class="action-icon-btn accept-btn hidden" title="Разблокировать">
-            🔓
-            <span class="text-sm ml-2 font-medium">Разблокировать</span>
         </button>
         {% endif %}
     </div>
@@ -225,18 +219,17 @@
 async function toggleBlockProfile(btn, workerId, evt) {
     if (evt) { evt.preventDefault(); evt.stopPropagation(); }
 
-    const blockBtn = document.getElementById('block-btn-' + workerId);
-    const unblockBtn = document.getElementById('unblock-btn-' + workerId);
-    const blockBtn2 = document.getElementById('block-btn2-' + workerId);
-    const unblockBtn2 = document.getElementById('unblock-btn2-' + workerId);
+    const isBlocked = btn.dataset.blocked === 'true';
+    const span = btn.querySelector('span');
+    const origText = span ? span.textContent : '';
+    const message = isBlocked
+        ? 'Разблокировать этого работника? Он снова сможет откликаться на ваши задания.'
+        : 'Заблокировать этого работника? Он не сможет откликаться на ваши задания.';
 
-    const isUnblock = blockBtn && !blockBtn.classList.contains('hidden');
+    if (!confirm(message)) return;
 
-    if (isUnblock && !confirm('Заблокировать этого работника? Он не сможет откликаться на ваши задания.')) return;
-
-    const url = isUnblock ? '/blacklist/' + workerId : '/unblock/' + workerId;
-    const origText = btn.querySelector('span') ? btn.querySelector('span').textContent : '';
-    if (btn.querySelector('span')) btn.querySelector('span').textContent = '...';
+    const url = isBlocked ? '/unblock/' + workerId : '/blacklist/' + workerId;
+    if (span) span.textContent = '...';
     btn.disabled = true;
 
     try {
@@ -250,34 +243,65 @@ async function toggleBlockProfile(btn, workerId, evt) {
         const data = await resp.json();
 
         if (data.success) {
-            if (isUnblock) {
-                // Переключить обе пары кнопок на "разблокировать"
-                [blockBtn, blockBtn2].forEach(b => { if (b) b.classList.add('hidden'); });
-                [unblockBtn, unblockBtn2].forEach(b => { if (b) b.classList.remove('hidden'); });
-                if (window.showToast) window.showToast('🔒 Работник заблокирован', 'success');
-            } else {
-                // Вернуть обе пары кнопок в исходное состояние
-                [unblockBtn, unblockBtn2].forEach(b => { if (b) b.classList.add('hidden'); });
-                [blockBtn, blockBtn2].forEach(b => { if (b) b.classList.remove('hidden'); });
-                if (window.showToast) window.showToast('🔓 Работник разблокирован', 'success');
+            // Обновить обе кнопки (верхнюю и нижнюю)
+            const btn1 = document.getElementById('toggle-block-btn-' + workerId);
+            const btn2 = document.getElementById('toggle-block-btn2-' + workerId);
+
+            [btn1, btn2].forEach(function(b) {
+                if (!b) return;
+                var s = b.querySelector('span');
+                if (isBlocked) {
+                    // Разблокировали
+                    b.dataset.blocked = 'false';
+                    b.innerHTML = '🚫';
+                    b.title = 'Заблокировать';
+                    b.classList.remove('accept-btn');
+                    b.classList.add('reject-btn');
+                    if (s) {
+                        b.appendChild(s);
+                        s.textContent = 'Заблокировать';
+                    } else {
+                        var newSpan = document.createElement('span');
+                        newSpan.className = 'text-sm ml-2 font-medium';
+                        newSpan.textContent = 'Заблокировать';
+                        b.appendChild(newSpan);
+                    }
+                } else {
+                    // Заблокировали
+                    b.dataset.blocked = 'true';
+                    b.innerHTML = '🔓';
+                    b.title = 'Разблокировать';
+                    b.classList.remove('reject-btn');
+                    b.classList.add('accept-btn');
+                    if (s) {
+                        b.appendChild(s);
+                        s.textContent = 'Разблокировать';
+                    } else {
+                        var newSpan = document.createElement('span');
+                        newSpan.className = 'text-sm ml-2 font-medium';
+                        newSpan.textContent = 'Разблокировать';
+                        b.appendChild(newSpan);
+                    }
+                }
+            });
+
+            if (window.showToast) {
+                window.showToast(isBlocked ? '🔓 Работник разблокирован' : '🔒 Работник заблокирован', 'success');
             }
         } else {
             if (window.showToast) window.showToast('❌ ' + (data.error || 'Ошибка'), 'error');
-            if (btn.querySelector('span')) btn.querySelector('span').textContent = origText;
+            if (span) span.textContent = origText;
         }
     } catch (e) {
         if (window.showToast) window.showToast('❌ Ошибка соединения', 'error');
-        if (btn.querySelector('span')) btn.querySelector('span').textContent = origText;
+        if (span) span.textContent = origText;
     }
     btn.disabled = false;
-    if (isUnblock && btn.querySelector('span')) {
-        btn.querySelector('span').textContent = origText;
-    }
 }
 </script>
 {% endif %}
 
-{# CSP-safe event delegation (replaces all click attributes) #}
+{# CSP-safe event delegation #}
 <script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     var workerId = '{{ profile_user.id }}';
@@ -290,24 +314,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Block/Unblock buttons
-    ['block-btn-', 'block-btn2-'].forEach(function(prefix) {
-        var blockBtn = document.getElementById(prefix + workerId);
-        if (blockBtn) {
-            blockBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                if (typeof toggleBlockProfile === 'function') toggleBlockProfile(blockBtn, workerId, e);
-            });
-        }
-    });
-    ['unblock-btn-', 'unblock-btn2-'].forEach(function(prefix) {
-        var unblockBtn = document.getElementById(prefix + workerId);
-        if (unblockBtn) {
-            unblockBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                if (typeof toggleBlockProfile === 'function') toggleBlockProfile(unblockBtn, workerId, e);
-            });
-        }
+    // Toggle block buttons (single button approach)
+    document.querySelectorAll('[data-action="toggle-block"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (typeof toggleBlockProfile === 'function') toggleBlockProfile(btn, workerId, e);
+        });
     });
 });
 

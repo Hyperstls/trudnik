@@ -28,39 +28,23 @@
             <div class="app-card rounded-2xl bg-white shadow-sm border border-neutral-100 p-5 hover:shadow-md hover:-translate-y-0.5 transition-shadow transition-transform duration-200 cursor-pointer relative"
                  data-worker-id="{{ worker.id }}">
 
-                {# Кнопки избранного и чёрного списка — верхний правый угол #}
+                {# Кнопки избранного, блокировки и оценки — верхний правый угол #}
                 <div class="absolute flex gap-1 z-10" style="top: 0.5rem; right: 0.5rem;">
-                    {% if session.get('role') == 'employer' %}
-                    <button id="block-btn-{{ worker.id }}"
+                    {% if session.get('role') in ('employer', 'admin') %}
+                    <button id="toggle-block-btn-{{ worker.id }}"
                             class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                             title="Заблокировать"
-                            data-action="block">
+                            data-action="toggle-block"
+                            data-blocked="false">
                         🚫
                     </button>
-                    <button id="unblock-btn-{{ worker.id }}"
-                            class="w-8 h-8 flex items-center justify-center rounded-lg text-green-500 hover:text-green-600 hover:bg-green-50 transition-colors hidden"
-                            title="Разблокировать"
-                            data-action="unblock">
-                        🔓
-                    </button>
+                    {% endif %}
+                    {% if session.get('role') == 'employer' %}
                     <button class="favorite-btn contact-btn w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
                             data-worker-id="{{ worker.id }}"
                             data-favorited="false"
                             title="Добавить в избранное">
                         <span class="favorite-icon flex items-center justify-center">{{ star(16) }}</span>
-                    </button>
-                    {% elif session.get('role') == 'admin' %}
-                    <button id="block-btn-{{ worker.id }}"
-                            class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                            title="Заблокировать"
-                            data-action="block">
-                        🚫
-                    </button>
-                    <button id="unblock-btn-{{ worker.id }}"
-                            class="w-8 h-8 flex items-center justify-center rounded-lg text-green-500 hover:text-green-600 hover:bg-green-50 transition-colors hidden"
-                            title="Разблокировать"
-                            data-action="unblock">
-                        🔓
                     </button>
                     {% endif %}
                 </div>
@@ -130,6 +114,15 @@
                             <span class="invite-text text-[11px] ml-1.5 font-medium">{{ '✓ Приглашён' if is_invited else 'Пригласить' }}</span>
                         </button>
                         {% endif %}
+                        {# Кнопка «Оценить» — для работодателя #}
+                        {% if session.get('role') == 'employer' %}
+                        <button data-action="rate" data-worker-id="{{ worker.id }}"
+                                data-worker-name="{{ worker.full_name }}"
+                                class="action-icon-btn contact-btn min-w-[100px]" title="Оценить трудника">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            <span class="text-[11px] ml-1.5 font-medium">Оценить</span>
+                        </button>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -144,6 +137,35 @@
             <p class="text-sm text-neutral-400 mt-1">Проверьте позже</p>
         </div>
     {% endif %}
+</div>
+
+{# ============================================ #}
+{# Модальное окно оценки                          #}
+{# ============================================ #}
+<div id="rating-modal-backdrop" class="modal-backdrop hidden" style="display:none; z-index: 80;">
+    <div class="modal-content animate-scale-in" style="max-width: 420px;">
+        <h3 id="rating-modal-title" class="text-lg font-bold text-neutral-800 mb-1">Оценить трудника</h3>
+        <p id="rating-modal-worker-name" class="text-sm text-neutral-500 mb-4"></p>
+
+        {# Звёзды #}
+        <div id="rating-stars" class="flex justify-center gap-2 mb-4">
+            {% for i in range(1, 6) %}
+            <button type="button" class="rating-star text-3xl text-neutral-300 hover:text-warning transition-colors cursor-pointer" data-value="{{ i }}">★</button>
+            {% endfor %}
+        </div>
+        <input type="hidden" id="rating-value" value="0">
+
+        {# Комментарий #}
+        <textarea id="rating-comment" rows="3" maxlength="500"
+                  class="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all resize-none mb-4"
+                  placeholder="Комментарий (необязательно)"></textarea>
+
+        {# Кнопки #}
+        <div class="flex gap-3 justify-end">
+            <button id="rating-modal-cancel" class="px-5 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-sm font-medium transition-colors">Отмена</button>
+            <button id="rating-modal-submit" class="px-5 py-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-xl text-sm font-medium transition-colors">Отправить</button>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -190,19 +212,15 @@ async function inviteWorker(workerId, workerName, btn) {
 async function toggleBlock(btn, workerId, evt) {
     if (evt) { evt.preventDefault(); evt.stopPropagation(); }
 
-    const blockBtn = document.getElementById('block-btn-' + workerId);
-    const unblockBtn = document.getElementById('unblock-btn-' + workerId);
+    const isBlocked = btn.dataset.blocked === 'true';
+    const actionText = isBlocked ? 'Разблокировать' : 'Заблокировать';
+    const message = isBlocked
+        ? 'Разблокировать этого работника? Он снова сможет откликаться на ваши задания.'
+        : 'Заблокировать этого работника? Он не сможет откликаться на ваши задания.';
 
-    // Определяем, блокировка или разблокировка по видимой кнопке
-    const isBlocking = blockBtn && !blockBtn.classList.contains('hidden');
-
-    const actionText = isBlocking ? 'Заблокировать' : 'Разблокировать';
-    const message = isBlocking
-        ? 'Заблокировать этого работника? Он не сможет откликаться на ваши задания.'
-        : 'Разблокировать этого работника? Он снова сможет откликаться на ваши задания.';
     if (!confirm(message)) return;
 
-    const url = isBlocking ? '/blacklist/' + workerId : '/unblock/' + workerId;
+    const url = isBlocked ? '/unblock/' + workerId : '/blacklist/' + workerId;
     btn.disabled = true;
 
     try {
@@ -222,16 +240,22 @@ async function toggleBlock(btn, workerId, evt) {
         const data = await resp.json();
 
         if (data.success) {
-            if (isBlocking) {
-                // Заблокировали — переключаем на состояние "разблокировать"
-                if (blockBtn) blockBtn.classList.add('hidden');
-                if (unblockBtn) unblockBtn.classList.remove('hidden');
-                if (window.showToast) window.showToast('🔒 Работник заблокирован', 'success');
-            } else {
-                // Разблокировали — возвращаем кнопку блокировки
-                if (unblockBtn) unblockBtn.classList.add('hidden');
-                if (blockBtn) blockBtn.classList.remove('hidden');
+            if (isBlocked) {
+                // Разблокировали
+                btn.dataset.blocked = 'false';
+                btn.innerHTML = '🚫';
+                btn.title = 'Заблокировать';
+                btn.classList.remove('text-green-500', 'hover:text-green-600', 'hover:bg-green-50');
+                btn.classList.add('text-neutral-400', 'hover:text-red-500', 'hover:bg-red-50');
                 if (window.showToast) window.showToast('🔓 Работник разблокирован', 'success');
+            } else {
+                // Заблокировали
+                btn.dataset.blocked = 'true';
+                btn.innerHTML = '🔓';
+                btn.title = 'Разблокировать';
+                btn.classList.remove('text-neutral-400', 'hover:text-red-500', 'hover:bg-red-50');
+                btn.classList.add('text-green-500', 'hover:text-green-600', 'hover:bg-green-50');
+                if (window.showToast) window.showToast('🔒 Работник заблокирован', 'success');
             }
         } else {
             if (window.showToast) window.showToast('❌ ' + (data.error || 'Ошибка'), 'error');
@@ -242,6 +266,192 @@ async function toggleBlock(btn, workerId, evt) {
     }
     btn.disabled = false;
 }
+</script>
+{% endif %}
+
+{# ============================================ #}
+{# Скрипт модального окна оценки                  #}
+{# ============================================ #}
+{% if session.get('role') == 'employer' %}
+<script nonce="{{ csp_nonce }}">
+(function() {
+    var currentWorkerId = null;
+    var currentWorkerName = '';
+    var currentRating = 0;
+    var selectedJobId = '';
+    var completedJobs = [];
+
+    var backdrop = document.getElementById('rating-modal-backdrop');
+    var titleEl = document.getElementById('rating-modal-title');
+    var nameEl = document.getElementById('rating-modal-worker-name');
+    var starsContainer = document.getElementById('rating-stars');
+    var ratingInput = document.getElementById('rating-value');
+    var commentEl = document.getElementById('rating-comment');
+    var cancelBtn = document.getElementById('rating-modal-cancel');
+    var submitBtn = document.getElementById('rating-modal-submit');
+
+    async function openRatingModal(workerId, workerName) {
+        currentWorkerId = workerId;
+        currentWorkerName = workerName;
+        currentRating = 0;
+        selectedJobId = '';
+        ratingInput.value = '0';
+        commentEl.value = '';
+        nameEl.textContent = workerName;
+
+        // Сбросить звёзды
+        var stars = starsContainer.querySelectorAll('.rating-star');
+        stars.forEach(function(s) { s.classList.remove('text-warning'); s.classList.add('text-neutral-300'); });
+
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Загрузка...';
+
+        // Загрузить завершённые задания с этим работником
+        try {
+            var resp = await fetch('/api/ratings/completed-jobs/' + workerId);
+            var data = await resp.json();
+            if (data.success && data.jobs && data.jobs.length > 0) {
+                completedJobs = data.jobs;
+                selectedJobId = completedJobs[0].id;
+            }
+        } catch (e) {
+            console.error('Failed to load completed jobs:', e);
+        }
+
+        submitBtn.textContent = 'Отправить';
+
+        // Показать
+        backdrop.style.display = 'flex';
+        backdrop.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeRatingModal() {
+        backdrop.style.display = 'none';
+        backdrop.classList.add('hidden');
+        document.body.style.overflow = '';
+        currentWorkerId = null;
+    }
+
+    // Звёзды: выбор рейтинга
+    if (starsContainer) {
+        starsContainer.addEventListener('click', function(e) {
+            var star = e.target.closest('.rating-star');
+            if (!star) return;
+            var value = parseInt(star.dataset.value);
+            currentRating = value;
+            ratingInput.value = value;
+            var stars = starsContainer.querySelectorAll('.rating-star');
+            stars.forEach(function(s) {
+                if (parseInt(s.dataset.value) <= value) {
+                    s.classList.remove('text-neutral-300');
+                    s.classList.add('text-warning');
+                } else {
+                    s.classList.remove('text-warning');
+                    s.classList.add('text-neutral-300');
+                }
+            });
+        });
+
+        // Hover preview
+        starsContainer.addEventListener('mouseover', function(e) {
+            var star = e.target.closest('.rating-star');
+            if (!star) return;
+            var value = parseInt(star.dataset.value);
+            var stars = starsContainer.querySelectorAll('.rating-star');
+            stars.forEach(function(s) {
+                if (parseInt(s.dataset.value) <= value) {
+                    s.classList.add('text-warning');
+                    s.classList.remove('text-neutral-300');
+                } else {
+                    s.classList.remove('text-warning');
+                    s.classList.add('text-neutral-300');
+                }
+            });
+        });
+
+        starsContainer.addEventListener('mouseleave', function() {
+            var stars = starsContainer.querySelectorAll('.rating-star');
+            stars.forEach(function(s) {
+                if (parseInt(s.dataset.value) <= currentRating) {
+                    s.classList.add('text-warning');
+                    s.classList.remove('text-neutral-300');
+                } else {
+                    s.classList.remove('text-warning');
+                    s.classList.add('text-neutral-300');
+                }
+            });
+        });
+    }
+
+    // Отправка оценки
+    if (submitBtn) {
+        submitBtn.addEventListener('click', async function() {
+            if (currentRating < 1 || currentRating > 5) {
+                if (window.showToast) window.showToast('Пожалуйста, выберите оценку (1–5 звёзд)', 'warning');
+                return;
+            }
+            if (!selectedJobId) {
+                if (window.showToast) window.showToast('Нет завершённых заданий с этим работником', 'warning');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = '...';
+
+            try {
+                var body = {
+                    job_id: selectedJobId,
+                    rated_user_id: currentWorkerId,
+                    rating: currentRating,
+                    comment: commentEl.value.trim(),
+                    target_type: 'worker'
+                };
+
+                var resp = await fetch('/api/ratings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                var data = await resp.json();
+                if (resp.ok && data.success) {
+                    if (window.showToast) window.showToast('✅ Оценка сохранена', 'success');
+                    closeRatingModal();
+                } else {
+                    if (window.showToast) window.showToast('❌ ' + (data.error || 'Ошибка при сохранении оценки'), 'error');
+                }
+            } catch (e) {
+                console.error('Rating submit error:', e);
+                if (window.showToast) window.showToast('❌ Ошибка соединения', 'error');
+            }
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Отправить';
+        });
+    }
+
+    // Закрытие
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', closeRatingModal);
+    }
+    if (backdrop) {
+        backdrop.addEventListener('click', function(e) {
+            if (e.target === backdrop) closeRatingModal();
+        });
+    }
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && backdrop && !backdrop.classList.contains('hidden')) {
+            closeRatingModal();
+        }
+    });
+
+    // Экспорт
+    window.openRatingModal = openRatingModal;
+    window.closeRatingModal = closeRatingModal;
+})();
 </script>
 {% endif %}
 
@@ -276,19 +486,19 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Block button
-        if (btn.dataset.action === 'block') {
+        // Toggle block button (single button)
+        if (btn.dataset.action === 'toggle-block') {
             e.stopPropagation();
-            var blockBtn = document.getElementById('block-btn-' + workerId);
-            if (typeof toggleBlock === 'function') toggleBlock(blockBtn || btn, workerId, e);
+            if (typeof toggleBlock === 'function') toggleBlock(btn, workerId, e);
             return;
         }
 
-        // Unblock button
-        if (btn.dataset.action === 'unblock') {
+        // Rate button
+        if (btn.dataset.action === 'rate') {
             e.stopPropagation();
-            var unblockBtn = document.getElementById('unblock-btn-' + workerId);
-            if (typeof toggleBlock === 'function') toggleBlock(unblockBtn || btn, workerId, e);
+            if (typeof window.openRatingModal === 'function') {
+                window.openRatingModal(workerId, btn.dataset.workerName || '');
+            }
             return;
         }
 
@@ -311,15 +521,6 @@ document.addEventListener('DOMContentLoaded', function() {
         var nameEl = card ? card.querySelector('h3') : null;
         var workerName = nameEl ? nameEl.textContent.trim() : '';
         if (typeof inviteWorker === 'function') inviteWorker(workerId, workerName, btn);
-    });
-
-    // Block/unblock buttons (main, by ID pattern)
-    grid.addEventListener('click', function(e) {
-        var btn = e.target.closest('button[id^="block-btn-"], button[id^="unblock-btn-"]');
-        if (!btn || btn.dataset.action) return; // Skip if already handled by data-action
-        e.stopPropagation();
-        var workerId = btn.id.replace(/^(block|unblock)-btn-/, '');
-        if (typeof toggleBlock === 'function') toggleBlock(btn, workerId, e);
     });
 });
 

@@ -144,68 +144,79 @@ def index():
 
 @jobs_bp.route('/workers')
 def workers():
-    filters = {
-        'city': request.args.get('city', ''),
-        'experience': request.args.get('experience', ''),
-        'payment_from': request.args.get('payment_from', ''),
-        'payment_to': request.args.get('payment_to', ''),
-        'rating_min': request.args.get('rating_min', ''),
-        'skills': request.args.get('skills', ''),
-        'religion': request.args.get('religion', ''),
-    }
-    sort = request.args.get('sort', 'rating')
-    lat = request.args.get('lat', type=float) or session.get('lat')
-    lng = request.args.get('lng', type=float) or session.get('lng')
+    try:
+        filters = {
+            'city': request.args.get('city', ''),
+            'experience': request.args.get('experience', ''),
+            'payment_from': request.args.get('payment_from', ''),
+            'payment_to': request.args.get('payment_to', ''),
+            'rating_min': request.args.get('rating_min', ''),
+            'skills': request.args.get('skills', ''),
+            'religion': request.args.get('religion', ''),
+        }
+        sort = request.args.get('sort', 'rating')
+        lat = request.args.get('lat', type=float) or session.get('lat')
+        lng = request.args.get('lng', type=float) or session.get('lng')
 
-    query = 'role=eq.worker'
-    if filters['city']: query += f'&city=ilike.*{sanitize_postgrest(filters["city"])}*'
-    if filters['experience']: query += f'&experience=ilike.*{sanitize_postgrest(filters["experience"])}*'
-    if filters['payment_from']: query += f'&desired_payment=gte.{filters["payment_from"]}'
-    if filters['payment_to']: query += f'&desired_payment=lte.{filters["payment_to"]}'
-    if filters['rating_min']: query += f'&rating=gte.{filters["rating_min"]}'
-    if filters['skills']:
-        for skill in filters['skills'].split(','):
-            query += f'&skills=cs.{{{sanitize_postgrest(skill.strip())}}}'
-    if filters['religion']:
-        query += f'&religion=eq.{sanitize_postgrest(filters["religion"])}'
+        query = 'role=eq.worker'
+        if filters['city']: query += f'&city=ilike.*{sanitize_postgrest(filters["city"])}*'
+        if filters['experience']: query += f'&experience=ilike.*{sanitize_postgrest(filters["experience"])}*'
+        if filters['payment_from']: query += f'&desired_payment=gte.{sanitize_postgrest(filters["payment_from"])}'
+        if filters['payment_to']: query += f'&desired_payment=lte.{sanitize_postgrest(filters["payment_to"])}'
+        if filters['rating_min']: query += f'&rating=gte.{sanitize_postgrest(filters["rating_min"])}'
+        if filters['skills']:
+            for skill in filters['skills'].split(','):
+                query += f'&skills=cs.{{{sanitize_postgrest(skill.strip())}}}'
+        if filters['religion']:
+            query += f'&religion=eq.{sanitize_postgrest(filters["religion"])}'
 
-    # Определяем order в зависимости от sort
-    order = 'rating.desc'
-    if sort == 'name':
-        order = 'full_name.asc'
-    elif sort in ('price_asc',):
-        order = 'desired_payment.asc.nullslast'
-    elif sort in ('price_desc',):
-        order = 'desired_payment.desc.nullslast'
+        # Определяем order в зависимости от sort
+        order = 'rating.desc'
+        if sort == 'name':
+            order = 'full_name.asc'
+        elif sort in ('price_asc',):
+            order = 'desired_payment.asc.nullslast'
+        elif sort in ('price_desc',):
+            order = 'desired_payment.desc.nullslast'
 
-    resp = supabase_request('GET', f'profiles?{query}&order={order}')
-    workers_list = resp.json() if resp.ok else []
+        resp = supabase_request('GET', f'profiles?{query}&order={order}')
+        if not resp.ok:
+            current_app.logger.error(
+                '[WORKERS] Failed to fetch profiles: status=%s text=%s',
+                resp.status_code, (resp.text or '')[:300]
+            )
+        workers_list = resp.json() if resp.ok else []
 
-    # Сортировка по расстоянию (после загрузки, если есть координаты)
-    if sort == 'distance' and lat is not None and lng is not None:
-        for w in workers_list:
-            w_lat = w.get('lat')
-            w_lng = w.get('lng')
-            if w_lat is not None and w_lng is not None:
-                w['distance'] = calculate_distance(lat, lng, w_lat, w_lng)
-            else:
-                w['distance'] = float('inf')
-        workers_list.sort(key=lambda x: x.get('distance', float('inf')))
+        # Сортировка по расстоянию (после загрузки, если есть координаты)
+        if sort == 'distance' and lat is not None and lng is not None:
+            for w in workers_list:
+                w_lat = w.get('lat')
+                w_lng = w.get('lng')
+                if w_lat is not None and w_lng is not None:
+                    w['distance'] = calculate_distance(lat, lng, w_lat, w_lng)
+                else:
+                    w['distance'] = float('inf')
+            workers_list.sort(key=lambda x: x.get('distance', float('inf')))
 
-    # Определяем, какие трудники уже приглашены работодателем
-    invited_worker_ids = set()
-    if session.get('role') == 'employer' and workers_list:
-        worker_ids = [w['id'] for w in workers_list if w.get('id')]
-        if worker_ids:
-            ids_filter = ','.join(worker_ids)
-            inv_resp = supabase_request('GET',
-                f'invitations?employer_id=eq.{session["user_id"]}&worker_id=in.({ids_filter})&status=in.(pending,accepted)&select=worker_id')
-            if inv_resp.ok and inv_resp.json():
-                invited_worker_ids = {inv['worker_id'] for inv in inv_resp.json()}
+        # Определяем, какие трудники уже приглашены работодателем
+        invited_worker_ids = set()
+        if session.get('role') == 'employer' and workers_list:
+            worker_ids = [w['id'] for w in workers_list if w.get('id')]
+            if worker_ids:
+                ids_filter = ','.join(worker_ids)
+                inv_resp = supabase_request('GET',
+                    f'invitations?employer_id=eq.{session["user_id"]}&worker_id=in.({ids_filter})&status=in.(pending,accepted)&select=worker_id')
+                if inv_resp.ok and inv_resp.json():
+                    invited_worker_ids = {inv['worker_id'] for inv in inv_resp.json()}
 
-    selected_skills_list = [s.strip() for s in filters['skills'].split(',') if s.strip()] if filters['skills'] else []
-    return render_template('workers.html', workers=workers_list, selected_skills=selected_skills_list,
-                           invited_worker_ids=invited_worker_ids, sort=sort, lat=lat, lng=lng)
+        selected_skills_list = [s.strip() for s in filters['skills'].split(',') if s.strip()] if filters['skills'] else []
+        return render_template('workers.html', workers=workers_list, selected_skills=selected_skills_list,
+                               invited_worker_ids=invited_worker_ids, sort=sort, lat=lat, lng=lng)
+    except Exception as e:
+        current_app.logger.exception('[WORKERS] Unexpected error rendering /workers: %s', e)
+        flash('Произошла ошибка при загрузке страницы. Попробуйте позже.', 'danger')
+        return render_template('workers.html', workers=[], selected_skills=[],
+                               invited_worker_ids=set(), sort='rating', lat=None, lng=None)
 
 
 @jobs_bp.route('/jobs/<job_id>')

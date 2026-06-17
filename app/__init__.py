@@ -99,7 +99,7 @@ def create_app():
     def inject_ws_config():
         """Добавляет WebSocket-конфигурацию и JWT-токен во все шаблоны."""
         config = {
-            'wsUrl': os.environ.get('WEBSOCKET_URL', 'ws://localhost:8001'),
+            'wsUrl': os.environ.get('WEBSOCKET_URL', ''),
             'wsPort': os.environ.get('WEBSOCKET_PORT', '8001'),
             'pushEnabled': bool(os.environ.get('VAPID_PUBLIC_KEY', '')),
             'jwtToken': ''
@@ -155,8 +155,13 @@ def create_app():
 
     @app.context_processor
     def inject_pending_invitations():
-        """Счётчик непрочитанных приглашений для трудника."""
-        from app.utils import supabase_admin_request
+        """Счётчик непрочитанных приглашений для трудника.
+
+        Использует supabase_request с токеном пользователя вместо service_role.
+        RLS-политика invitations разрешает SELECT для worker_id = auth.uid(),
+        поэтому обход RLS не требуется.
+        """
+        from app.utils import supabase_request
         from time import time
         import logging
         log = logging.getLogger(__name__)
@@ -171,7 +176,7 @@ def create_app():
             if cached and (now - cached.get('ts', 0)) < 30:
                 log.debug('[INV_CTX] cached count=%d', cached.get('count', 0))
                 return {'pending_invitations': cached.get('count', 0)}
-            resp = supabase_admin_request('GET',
+            resp = supabase_request('GET',
                 f'invitations?worker_id=eq.{user_id}&status=eq.pending&select=id&limit=100')
             if resp.ok:
                 data = resp.json()
@@ -186,35 +191,35 @@ def create_app():
         log.debug('[INV_CTX] skip: no user_id or not worker')
         return {'pending_invitations': 0}
 
-        # Кешируем git-версию при старте приложения (ранее вычислялась на каждый запрос)
-        _git_version = 'dev'
-        try:
-            _git_version = subprocess.check_output(
-                ['git', 'log', '-1', '--format=%h %s (%ai)'],
-                cwd=project_root, stderr=subprocess.DEVNULL, text=True
-            ).strip()
-        except Exception:
-            pass
+    # Кешируем git-версию при старте приложения (ранее вычислялась на каждый запрос)
+    _git_version = 'dev'
+    try:
+        _git_version = subprocess.check_output(
+            ['git', 'log', '-1', '--format=%h %s (%ai)'],
+            cwd=project_root, stderr=subprocess.DEVNULL, text=True
+        ).strip()
+    except Exception:
+        pass
 
-        @app.context_processor
-        def inject_git_version():
-            return {'git_version': _git_version}
+    @app.context_processor
+    def inject_git_version():
+        return {'git_version': _git_version}
 
-        @app.context_processor
-        def inject_sort_url():
-            """Хелпер для построения URL сортировки с сохранением остальных параметров."""
-            from urllib.parse import quote
+    @app.context_processor
+    def inject_sort_url():
+        """Хелпер для построения URL сортировки с сохранением остальных параметров."""
+        from urllib.parse import quote
 
-            def sort_url(sort_value):
-                args = dict(request.args)
-                # Заменяем sort и сбрасываем page
-                args['sort'] = sort_value
-                args.pop('page', None)
-                if not args:
-                    return '?'
-                return '?' + '&'.join(f'{quote(str(k))}={quote(str(v))}' for k, v in args.items())
+        def sort_url(sort_value):
+            args = dict(request.args)
+            # Заменяем sort и сбрасываем page
+            args['sort'] = sort_value
+            args.pop('page', None)
+            if not args:
+                return '?'
+            return '?' + '&'.join(f'{quote(str(k))}={quote(str(v))}' for k, v in args.items())
 
-            return {'sort_url': sort_url}
+        return {'sort_url': sort_url}
 
     # Регистрация blueprints
     from app.blueprints.auth import auth_bp

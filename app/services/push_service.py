@@ -4,6 +4,27 @@
 Работает с Supabase REST API для хранения подписок (таблица push_subscriptions).
 
 VAPID-ключи генерируются администратором и задаются через переменные окружения.
+
+БЕЗОПАСНОСТЬ (service_role):
+    Все операции с таблицей push_subscriptions используют supabase_admin_request
+    (service_role) по двум причинам:
+    1. RLS-политика push_subscriptions имеет SELECT/INSERT/DELETE для auth.uid(),
+       но НЕ имеет UPDATE-политики. Метод save_subscription() делает PATCH при
+       обновлении существующей подписки, что требует service_role.
+    2. PushService вызывается из Celery-задач (push_tasks.py), где нет сессии
+       пользователя — service_role необходим для фоновых операций.
+
+    TODO (безопасность): Добавить RLS UPDATE-политику для push_subscriptions:
+        CREATE POLICY "Users can update own push subscriptions"
+            ON push_subscriptions FOR UPDATE
+            USING (auth.uid() = user_id)
+            WITH CHECK (auth.uid() = user_id);
+    После этого:
+    - save_subscription() сможет использовать supabase_request с токеном пользователя
+      при вызове из Flask-контекста.
+    - get_user_subscriptions() (SELECT) и delete_subscription() (DELETE) уже сейчас
+      могут работать через supabase_request, но требуют рефакторинга для разделения
+      контекстов (Flask vs Celery).
 """
 
 import base64

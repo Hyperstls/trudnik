@@ -2,7 +2,7 @@
 from flask import Blueprint, jsonify, request, session, current_app, render_template, redirect, flash, url_for
 
 from app.decorators import login_required
-from app.utils import rate_limit, supabase_request, supabase_admin_request, update_rating
+from app.utils import rate_limit, sanitize_postgrest, supabase_request, supabase_admin_request, update_rating
 
 ratings_bp = Blueprint('ratings', __name__)
 
@@ -185,6 +185,59 @@ def upsert_rating():
 
 
 # ============================================================
+# Завершённые задания между пользователями (для модалки оценки)
+# ============================================================
+
+@ratings_bp.route('/api/ratings/completed-jobs/<target_user_id>', methods=['GET'])
+@login_required
+def get_completed_jobs_for_rating(target_user_id):
+    """Вернуть список завершённых заданий, в которых участвовали оба пользователя."""
+    rater_user_id = session['user_id']
+
+    target_user_id = sanitize_postgrest(target_user_id)
+    rater_user_id = sanitize_postgrest(rater_user_id)
+
+    # RPC ищет завершённые задания между двумя пользователями (порядок не важен)
+    resp = supabase_admin_request('GET',
+        f'rpc/get_completed_jobs_between'
+        f'?p_user_a={rater_user_id}&p_user_b={target_user_id}')
+
+    if not resp.ok:
+        # Если RPC нет — фолбэк через прямые запросы
+        jobs = []
+        # Задания, где target_user — работодатель, а rater — принятый работник
+        apps_resp = supabase_admin_request('GET',
+            f'applications?worker_id=eq.{rater_user_id}&status=eq.accepted'
+            f'&select=job_id,jobs!job_id(id,title,status,employer_id)')
+        if apps_resp.ok and apps_resp.json():
+            for app in apps_resp.json():
+                job = app.get('jobs') or {}
+                if job.get('status') == 'completed' and job.get('employer_id') == target_user_id:
+                    jobs.append({'id': job['id'], 'title': job.get('title', '')})
+
+        # Задания, где rater — работодатель, а target — принятый работник
+        jobs_resp = supabase_admin_request('GET',
+            f'jobs?employer_id=eq.{rater_user_id}&status=eq.completed&select=id,title')
+        if jobs_resp.ok and jobs_resp.json():
+            employer_jobs = jobs_resp.json()
+            if employer_jobs:
+                # Batch-запрос: проверить все задания одним вызовом
+                job_ids = [job['id'] for job in employer_jobs]
+                ids_filter = ','.join(job_ids)
+                batch_check = supabase_admin_request('GET',
+                    f'applications?job_id=in.({ids_filter})&worker_id=eq.{target_user_id}&status=eq.accepted&select=job_id')
+                accepted_job_ids = {a['job_id'] for a in batch_check.json()} if batch_check.ok and batch_check.json() else set()
+                for job in employer_jobs:
+                    if job['id'] in accepted_job_ids:
+                        if not any(j['id'] == job['id'] for j in jobs):
+                            jobs.append({'id': job['id'], 'title': job.get('title', '')})
+
+        return jsonify({'success': True, 'jobs': jobs})
+
+    return jsonify({'success': True, 'jobs': resp.json() if resp.json() else []})
+
+
+# ============================================================
 # Детальные оценки пользователя
 # ============================================================
 
@@ -244,6 +297,10 @@ def rate_workers_page(job_id):
         f'jobs?id=eq.{job_id}&select=id,title,status,employer_id'
     )
     if not job_resp.ok:
+        current_app.logger.error(
+            '[RATE_WORKERS] Failed to fetch job %s: status=%s text=%s',
+            job_id, job_resp.status_code, (job_resp.text or '')[:200]
+        )
         if job_resp.status_code == 401:
             flash('Сессия истекла, пожалуйста войдите снова', 'warning')
             return redirect(url_for('auth.login'))
