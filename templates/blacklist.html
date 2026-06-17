@@ -67,9 +67,15 @@ async function unblockWorker(workerId, btn) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                     'X-CSRF-Token': '{{ csrf_token }}'
                 }
             });
+            if (!resp.ok) {
+                const text = await resp.text();
+                console.error('Unblock failed: HTTP ' + resp.status + ' — ' + text.substring(0, 300));
+                throw new Error('HTTP ' + resp.status + ': ' + text.substring(0, 200));
+            }
             const data = await resp.json();
 
             if (data.success) {
@@ -92,6 +98,7 @@ async function unblockWorker(workerId, btn) {
                 btn.disabled = false;
             }
         } catch (e) {
+            console.error('unblockWorker error:', e);
             if (window.showToast) window.showToast('❌ Ошибка соединения', 'error');
             btn.textContent = origText;
             btn.disabled = false;

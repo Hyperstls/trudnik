@@ -198,9 +198,15 @@ async function toggleBlock(btn, workerId, evt) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
                 'X-CSRF-Token': '{{ csrf_token }}'
             }
         });
+        if (!resp.ok) {
+            const text = await resp.text();
+            console.error('Block/unblock failed: HTTP ' + resp.status + ' — ' + text.substring(0, 300));
+            throw new Error('HTTP ' + resp.status + ': ' + text.substring(0, 200));
+        }
         const data = await resp.json();
 
         if (data.success) {
@@ -219,6 +225,7 @@ async function toggleBlock(btn, workerId, evt) {
             if (window.showToast) window.showToast('❌ ' + (data.error || 'Ошибка'), 'error');
         }
     } catch (e) {
+        console.error('toggleBlock error:', e);
         if (window.showToast) window.showToast('❌ Ошибка соединения', 'error');
     }
     btn.disabled = false;

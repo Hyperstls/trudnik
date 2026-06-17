@@ -6,10 +6,17 @@ from app.utils import supabase_request
 blacklist_bp = Blueprint('blacklist', __name__)
 
 
+def _is_ajax():
+    """Определяет, является ли запрос AJAX-запросом (ожидает JSON-ответ)."""
+    return (request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
+            request.headers.get('Accept') == 'application/json' or
+            (request.headers.get('Content-Type') or '').startswith('application/json'))
+
+
 def _reject_worker():
     """Запрещает доступ к ЧС для роли worker — возвращает 403 или редиректит."""
     if session.get('role') == 'worker':
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.headers.get('Accept') == 'application/json':
+        if _is_ajax():
             abort(403)
         flash('Доступ запрещён', 'danger')
         return redirect(url_for('jobs.index'))
@@ -41,10 +48,10 @@ def block_user(user_id):
         return err
     resp = supabase_request('POST', 'blacklists', json={'user_id': session['user_id'], 'blocked_user_id': user_id})
     if resp.ok:
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.headers.get('Accept') == 'application/json':
+        if _is_ajax():
             return jsonify({'success': True})
         return redirect(request.referrer or url_for('jobs.index'))
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.headers.get('Accept') == 'application/json':
+    if _is_ajax():
         return jsonify({'success': False, 'error': 'Ошибка блокировки'}), 400
     flash('Ошибка блокировки', 'danger')
     return redirect(request.referrer or url_for('jobs.index'))
@@ -58,10 +65,10 @@ def unblock_user(user_id):
         return err
     resp = supabase_request('DELETE', f'blacklists?user_id=eq.{session["user_id"]}&blocked_user_id=eq.{user_id}')
     if resp.ok:
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.headers.get('Accept') == 'application/json':
+        if _is_ajax():
             return jsonify({'success': True})
         return redirect(url_for('blacklist.blacklist'))
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.headers.get('Accept') == 'application/json':
+    if _is_ajax():
         return jsonify({'success': False, 'error': 'Ошибка разблокировки'}), 400
     flash('Ошибка разблокировки', 'danger')
     return redirect(url_for('blacklist.blacklist'))
