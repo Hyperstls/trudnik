@@ -81,8 +81,14 @@ def cleanup_expired_subscriptions() -> dict:
 
         checked += 1
 
-        # Отправляем пустой payload для проверки валидности подписки
-        result = push_service.send_notification(sub, {})
+        # Отправляем тестовый payload с флагом healthcheck для проверки валидности подписки.
+        # Service Worker должен игнорировать сообщения с типом healthcheck, не показывая уведомление.
+        result = push_service.send_notification(sub, {
+            'title': '',
+            'body': '',
+            'tag': 'healthcheck-cleanup',
+            'data': {'type': 'healthcheck', 'action': 'cleanup'}
+        })
 
         if result.get('should_unsubscribe'):
             push_service.delete_subscription(endpoint)

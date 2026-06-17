@@ -27,6 +27,7 @@ def _log_to_db(
     status: str,
     error_message: str = "",
     template_name: str = "",
+    attempts: int = 1,
 ) -> bool:
     """Записывает результат отправки email в таблицу email_log через Supabase REST API.
 
@@ -38,10 +39,12 @@ def _log_to_db(
         status: Статус отправки ('sent', 'failed', 'dead', 'skipped').
         error_message: Текст ошибки (если была).
         template_name: Имя использованного шаблона.
+        attempts: Количество попыток отправки.
 
     Returns:
         True при успешной записи в БД, False при ошибке.
     """
+    now_iso = datetime.now(timezone.utc).isoformat()
     payload: dict[str, Any] = {
         "user_id": user_id,
         "notification_id": notification_id,
@@ -49,7 +52,9 @@ def _log_to_db(
         "subject": subject,
         "status": status,
         "template_name": template_name,
-        "sent_at": datetime.now(timezone.utc).isoformat(),
+        "attempts": attempts,
+        "last_attempt_at": now_iso,
+        "sent_at": now_iso if status == "sent" else None,
     }
 
     if error_message:
@@ -193,6 +198,7 @@ def send_email_notification(
                 status="dead",
                 error_message=str(send_err),
                 template_name=template_name,
+                attempts=self.request.retries + 1,
             )
             return {"status": "dead", "error": str(send_err)}
 
@@ -205,6 +211,7 @@ def send_email_notification(
             subject=subject,
             status="sent",
             template_name=template_name,
+            attempts=self.request.retries + 1,
         )
         logger.info(
             "Email-уведомление отправлено: user=%s notification=%s type=%s",
@@ -227,6 +234,7 @@ def send_email_notification(
                 status="dead",
                 error_message="SMTP-отправка не удалась после всех попыток",
                 template_name=template_name,
+                attempts=self.request.retries + 1,
             )
             return {"status": "dead", "error": "SMTP-отправка не удалась"}
 

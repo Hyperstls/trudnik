@@ -54,7 +54,36 @@ function loadPreferences() {
         currentPreferences = {};
         originalPreferences = {};
         const prefs = data.preferences || {};
+        const channels = data.channels || {};
         let html = '';
+
+        // Секция каналов уведомлений
+        const channelLabels = {
+            'email_enabled': '📧 Email-уведомления',
+            'push_enabled': '🔔 Push-уведомления',
+            'in_app_enabled': '📱 Уведомления в приложении'
+        };
+        html += '<h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mt-4 mb-2">Каналы уведомлений</h3>';
+        for (const [key, label] of Object.entries(channelLabels)) {
+            const enabled = channels[key] !== undefined ? channels[key] : true;
+            currentPreferences[key] = enabled;
+            originalPreferences[key] = enabled;
+            html += `
+                <div class="app-card bg-white rounded-2xl shadow-sm border border-neutral-100 p-4 flex items-center justify-between transition-all duration-200 hover:border-primary-200">
+                    <div class="flex-1 min-w-0">
+                        <p class="font-medium text-neutral-900 text-sm">${escapeHtml(label)}</p>
+                        <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(key)}</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-3">
+                        <input type="checkbox" class="sr-only peer pref-checkbox" data-type="${escapeHtml(key)}"
+                               ${enabled ? 'checked' : ''}>
+                        <div class="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
+                    </label>
+                </div>`;
+        }
+
+        // Секция типов уведомлений
+        html += '<h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mt-6 mb-2">Типы уведомлений</h3>';
         for (const [key, info] of Object.entries(prefs)) {
             currentPreferences[key] = info.enabled;
             originalPreferences[key] = info.enabled;

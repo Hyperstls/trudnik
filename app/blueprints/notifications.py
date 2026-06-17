@@ -125,7 +125,13 @@ def api_get_preferences():
             'label': label,
             'enabled': prefs.get(key, DEFAULT_ENABLED_TYPES.get(key, True))
         }
-    return jsonify({'success': True, 'preferences': result})
+    # Глобальные переключатели каналов
+    channels = {
+        'email_enabled': prefs.get('email_enabled', True),
+        'push_enabled': prefs.get('push_enabled', True),
+        'in_app_enabled': prefs.get('in_app_enabled', True),
+    }
+    return jsonify({'success': True, 'preferences': result, 'channels': channels})
 
 
 @notifications_bp.route('/api/notifications/preferences', methods=['POST'])
@@ -133,13 +139,15 @@ def api_get_preferences():
 def api_save_preference():
     """Сохранить одну настройку уведомления.
     Body: {type: str, enabled: bool}
+    Поддерживаются как типы уведомлений, так и каналы (email_enabled, push_enabled, in_app_enabled).
     """
     data = request.get_json(silent=True) or {}
     notif_type = data.get('type')
     enabled = data.get('enabled')
 
-    if not notif_type or notif_type not in NOTIFICATION_TYPES:
-        return jsonify({'success': False, 'error': 'Неизвестный тип уведомления'}), 400
+    CHANNEL_KEYS = {'email_enabled', 'push_enabled', 'in_app_enabled'}
+    if not notif_type or (notif_type not in NOTIFICATION_TYPES and notif_type not in CHANNEL_KEYS):
+        return jsonify({'success': False, 'error': 'Неизвестный тип уведомления или канал'}), 400
     if not isinstance(enabled, bool):
         return jsonify({'success': False, 'error': 'enabled должен быть boolean'}), 400
 

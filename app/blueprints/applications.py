@@ -61,7 +61,8 @@ def apply_job(job_id):
 
     # Уведомить работодателя о новом отклике
     notify(job['employer_id'], 'application_received', 'Новый отклик',
-           f'На ваше задание поступил новый отклик', data={'job_id': job_id})
+           f'На ваше задание поступил новый отклик',
+           data={'job_id': job_id, 'link': url_for('jobs.job_detail', job_id=job_id, _external=True)})
 
     flash('Отклик отправлен', 'success')
     return redirect(url_for('jobs.index'))
@@ -200,7 +201,8 @@ def api_withdraw_application(app_id):
 
         # Уведомить работодателя
         notify(job['employer_id'], 'withdraw', 'Работник отозвал отклик',
-               f'Принятый работник отозвал отклик с задания #{job_id}')
+               f'Принятый работник отозвал отклик с задания #{job_id}',
+               data={'job_id': job_id, 'link': url_for('jobs.job_detail', job_id=job_id, _external=True)})
 
     # Поменять статус отклика на withdrawn
     supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'withdrawn'})
@@ -308,7 +310,8 @@ def api_handle_application(app_id, action):
 
         # Уведомить работника
         notify(worker_id, 'application_accepted', 'Отклик принят',
-               f'Ваш отклик на задание #{job_id} был принят')
+               f'Ваш отклик на задание #{job_id} был принят',
+               data={'job_id': job_id, 'link': url_for('applications.my_applications', _external=True)})
 
         return jsonify({
             'success': True,
@@ -333,7 +336,8 @@ def api_handle_application(app_id, action):
 
         # Уведомить работника
         notify(worker_id, 'application_rejected', 'Отклик отклонён',
-               f'Ваш отклик на задание #{job_id} был отклонён')
+               f'Ваш отклик на задание #{job_id} был отклонён',
+               data={'job_id': job_id, 'link': url_for('applications.my_applications', _external=True)})
 
         return jsonify({
             'success': True,
@@ -473,7 +477,8 @@ def cancel_application(app_id):
 
     # Отправить уведомления
     notify(worker_id, 'application_rejected', 'Отклик отменен',
-                     f'Ваш отклик на задание {job.get("organization_name", "#" + job_id)} был отменен')
+                      f'Ваш отклик на задание {job.get("organization_name", "#" + job_id)} был отменен',
+                      data={'job_id': job_id, 'link': url_for('applications.my_applications', _external=True)})
 
     flash('Работник отменен', 'success')
     return redirect(url_for('applications.my_applications'))

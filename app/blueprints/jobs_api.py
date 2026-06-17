@@ -6,7 +6,7 @@
 
 from datetime import datetime, timezone
 
-from flask import Blueprint, jsonify, request, session, current_app
+from flask import Blueprint, jsonify, request, session, current_app, url_for
 
 from app.decorators import login_required, role_required
 from app.services.job_service import (
@@ -143,7 +143,8 @@ def invite_worker(job_id, worker_id):
     )
     notify(worker_id, 'application_received', 'Вас пригласили на задание',
            f'Работодатель приглашает вас на задание «{job_name}»',
-           data={'job_id': job_id, 'type': 'invitation'})
+           data={'job_id': job_id, 'type': 'invitation',
+                 'link': url_for('jobs.job_detail', job_id=job_id, _external=True)})
 
     return jsonify({'success': True, 'message': 'Приглашение отправлено'})
 
@@ -220,10 +221,12 @@ def respond_invitation(invitation_id):
         # Уведомить работника о принятии
         notify(inv['worker_id'], 'application_accepted', 'Приглашение принято',
                f'Ваша заявка на задание #{inv["job_id"]} принята.',
-               data={'job_id': inv['job_id']})
+               data={'job_id': inv['job_id'],
+                     'link': url_for('jobs.job_detail', job_id=inv['job_id'], _external=True)})
         # Уведомить работодателя
         notify(inv['employer_id'], 'application_received', 'Приглашение принято',
                f'Трудник принял ваше приглашение на задание',
-               data={'job_id': inv['job_id']})
+               data={'job_id': inv['job_id'],
+                     'link': url_for('jobs.job_detail', job_id=inv['job_id'], _external=True)})
 
     return jsonify({'success': True, 'new_status': new_status})

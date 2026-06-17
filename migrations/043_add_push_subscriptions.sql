@@ -28,10 +28,15 @@ CREATE TABLE IF NOT EXISTS email_log (
     id BIGSERIAL PRIMARY KEY,
     notification_id BIGINT REFERENCES notifications(id) ON DELETE SET NULL,
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    to_email TEXT,
+    subject TEXT,
+    template_name VARCHAR(100),
     status VARCHAR(20) NOT NULL DEFAULT 'pending',
     -- status: pending, sent, failed, dead (dead-letter queue)
     attempts INT NOT NULL DEFAULT 0,
     last_attempt_at TIMESTAMPTZ,
+    sent_at TIMESTAMPTZ,
+    error_message TEXT,
     error TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

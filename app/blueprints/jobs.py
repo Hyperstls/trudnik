@@ -503,7 +503,8 @@ def cancel_job(job_id):
     if apps_resp.ok and apps_resp.json():
         for app in apps_resp.json():
             notify(app['worker_id'], 'job_cancelled', 'Задание отозвано',
-                   f'Задание #{job_id} было отозвано работодателем')
+                   f'Задание #{job_id} было отозвано работодателем',
+                   data={'job_id': job_id, 'link': url_for('jobs.index', _external=True)})
 
     supabase_admin_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -551,7 +552,8 @@ def restore_job(job_id):
     if apps_resp.ok and apps_resp.json():
         for app in apps_resp.json():
             notify(app['worker_id'], 'status_change', 'Задание восстановлено',
-                   f'Задание #{job_id} снова открыто для откликов')
+                   f'Задание #{job_id} снова открыто для откликов',
+                   data={'job_id': job_id, 'link': url_for('jobs.job_detail', job_id=job_id, _external=True)})
 
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     if is_ajax:
@@ -592,7 +594,8 @@ def api_force_complete_job(job_id):
     if apps_resp.ok and apps_resp.json():
         for app in apps_resp.json():
             notify(app['worker_id'], 'force_complete', 'Задание завершено',
-                   f'Работодатель завершил задание #{job_id}')
+                   f'Работодатель завершил задание #{job_id}',
+                   data={'job_id': job_id, 'link': url_for('applications.my_applications', _external=True)})
 
     return jsonify({
         'success': True,
