@@ -27,9 +27,9 @@
 
 Приложение «Трудник» — **монолитное Flask-приложение** (Python 3.14), разбитое на 11 модульных Blueprint'ов. База данных — **Supabase (PostgreSQL 15)**, взаимодействие через REST API (библиотеки `supabase` и `postgrest`). WSGI-сервер — Gunicorn, хостинг — Render.
 
-**Application Factory** [`create_app()`](app/__init__.py:10) собирает приложение:
+**Application Factory** [`create_app()`](../app/__init__.py:10) собирает приложение:
 
-- Flask-приложение с настройками из [`Config`](app/config.py:8)
+- Flask-приложение с настройками из [`Config`](../app/config.py:8)
 - 11 Blueprint'ов (auth, profile, jobs, jobs_api, applications, chat, favorites, blacklist, notifications, admin, ratings, employers, seo, monetization)
 - 5 контекст-процессоров (глобальные переменные шаблонов)
 - Глобальный CSRF-фильтр
@@ -53,7 +53,7 @@
 | `data` | JSONB | Доп. данные (job_id, application_id) |
 | `created_at` | timestamptz | Дата создания |
 
-Настройки хранятся в `profiles.notification_prefs` (JSONB) — миграция [012_notification_prefs.sql](migrations/012_notification_prefs.sql:8):
+Настройки хранятся в `profiles.notification_prefs` (JSONB) — миграция [012_notification_prefs.sql](../migrations/012_notification_prefs.sql:8):
 
 ```sql
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS notification_prefs JSONB DEFAULT '{}'::jsonb;
@@ -61,7 +61,7 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS notification_prefs JSONB DEFAULT '
 
 #### Сервис NotificationService
 
-Файл: [`app/services/notification_service.py`](app/services/notification_service.py)
+Файл: [`app/services/notification_service.py`](../app/services/notification_service.py)
 
 **Типы уведомлений** (14 типов):
 
@@ -96,7 +96,7 @@ def create(user_id, notification_type, title, message, data=None):
 
 #### Blueprint уведомлений
 
-Файл: [`app/blueprints/notifications.py`](app/blueprints/notifications.py)
+Файл: [`app/blueprints/notifications.py`](../app/blueprints/notifications.py)
 
 Эндпоинты:
 
@@ -115,7 +115,7 @@ def create(user_id, notification_type, title, message, data=None):
 
 #### Контекст-процессоры для бейджей
 
-В [`app/__init__.py`](app/__init__.py:97) два контекст-процессора:
+В [`app/__init__.py`](../app/__init__.py:97) два контекст-процессора:
 
 - `inject_unread_notifications()` — счётчик 🔔, кэш в сессии 30 сек, исключает приглашения
 - `inject_pending_invitations()` — счётчик 👤+ для трудника, кэш 30 сек
@@ -124,7 +124,7 @@ def create(user_id, notification_type, title, message, data=None):
 
 #### Чат и интеграция с уведомлениями
 
-Файл: [`app/blueprints/chat.py`](app/blueprints/chat.py)
+Файл: [`app/blueprints/chat.py`](../app/blueprints/chat.py)
 
 Отправка сообщения (`/api/send_message`, строка 87):
 
@@ -281,7 +281,7 @@ sequenceDiagram
 
 - **Стандарт:** Web Push API (RFC 8030) через `pywebpush`
 - **Ключи:** VAPID (Voluntary Application Server Identification) — генерируются один раз
-- **Service Worker:** расширение существующего [`sw.js`](static/sw.js) — добавление обработчика `push` события
+- **Service Worker:** расширение существующего [`sw.js`](../static/sw.js) — добавление обработчика `push` события
 - **Подписки:** хранятся в таблице `push_subscriptions`
 - **Срок действия:** подписки могут истекать — нужна обработка ошибок 410 Gone
 
@@ -1002,7 +1002,7 @@ http-ece>=1.1.0,<2   # Зависимость pywebpush для шифрован�
 
 **Проблема:** Текущий Content-Security-Policy не разрешает WebSocket-подключения.
 
-**Решение:** Добавить в CSP заголовок (в [`app/__init__.py`](app/__init__.py:42)):
+**Решение:** Добавить в CSP заголовок (в [`app/__init__.py`](../app/__init__.py:42)):
 
 ```python
 f"connect-src 'self' https://*.supabase.co https://*.maps.yandex.net "

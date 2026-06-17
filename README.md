@@ -44,6 +44,22 @@
 
 ---
 
+## 📚 Документация
+
+Подробная техническая документация проекта доступна в индексном хабе **[TESTING_BLUEPRINT.md](TESTING_BLUEPRINT.md)** и в директории **[docs/](docs/)**:
+
+| Документ | Содержание |
+|----------|-----------|
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Архитектура, технологический стек, структура проекта |
+| [`docs/API_REFERENCE.md`](docs/API_REFERENCE.md) | Все маршруты и API-эндпоинты |
+| [`docs/BUSINESS_LOGIC.md`](docs/BUSINESS_LOGIC.md) | Бизнес-логика, модель данных, жизненные циклы |
+| [`docs/SECURITY.md`](docs/SECURITY.md) | Безопасность: JWT, CSRF, CSP, Rate Limiting, RLS |
+| [`docs/FRONTEND.md`](docs/FRONTEND.md) | Фронтенд: страницы, JS, UI-компоненты, PWA |
+| [`docs/TEST_CHECKLIST.md`](docs/TEST_CHECKLIST.md) | Тестовые сценарии и чеклисты |
+| [`docs/E2E_SCENARIOS.md`](docs/E2E_SCENARIOS.md) | End-to-end сценарии по ролям |
+
+---
+
 ## 🛠 Локальная разработка
 
 ```bash
