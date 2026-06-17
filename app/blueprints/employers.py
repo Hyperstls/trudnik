@@ -180,10 +180,17 @@ def remove_employer_favorite_api():
         return jsonify({'success': False, 'error': 'Не указан employer_id'})
 
     try:
-        supabase_request('DELETE',
+        resp = supabase_request('DELETE',
             f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{employer_id}&favorite_type=eq.employer')
-        return jsonify({'success': True, 'message': 'Работодатель удалён из избранного'})
+        if resp.ok:
+            return jsonify({'success': True, 'message': 'Работодатель удалён из избранного'})
+        else:
+            current_app.logger.error(
+                f"remove_employer_favorite_api: DELETE failed status={resp.status_code} body={resp.text}"
+            )
+            return jsonify({'success': False, 'error': f'Ошибка сервера: {resp.status_code}'})
     except Exception as e:
+        current_app.logger.error(f"remove_employer_favorite_api exception: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
 
