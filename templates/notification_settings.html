@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 {% from '_icons.html' import bell, settings, chevron_left %}
 {% block content %}
+<style nonce="{{ csp_nonce }}">
+    /* Фикс: гарантируем content для ::after toggle-переключателей,
+       даже если Tailwind JIT не скомпилировал after:content-[''] */
+    .pref-checkbox + div::after {
+        content: '';
+    }
+</style>
 <div class="px-4 pb-24 max-w-lg mx-auto">
     <div class="flex items-center gap-3 mb-5">
         <a href="/notifications" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors touch-target" aria-label="Назад к уведомлениям">
