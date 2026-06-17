@@ -32,6 +32,14 @@ def employers_list():
     resp = supabase_request('GET', f'profiles?{query}', headers={'Prefer': 'count=exact'})
     employers = resp.json() if resp.ok and resp.json() else []
 
+    # Фильтрация: исключаем работодателей, заблокировавших текущего трудника
+    if session.get('role') == 'worker' and session.get('user_id'):
+        bl_resp = supabase_request('GET',
+            f'blacklists?blocked_user_id=eq.{session["user_id"]}&select=user_id')
+        if bl_resp.ok and bl_resp.json():
+            blocked_employer_ids = {b['user_id'] for b in bl_resp.json()}
+            employers = [e for e in employers if e['id'] not in blocked_employer_ids]
+
     # Подсчёт открытых заданий для каждого работодателя
     open_jobs_counts = {}
     if employers:
@@ -84,9 +92,19 @@ def employer_detail(employer_id):
         return redirect(url_for('employers.employers_list'))
 
     # Открытые задания работодателя
-    jobs_resp = supabase_request('GET',
-        f'jobs?employer_id=eq.{employer_id}&status=eq.open&select=*,photos:job_photos(*)&order=created_at.desc')
-    open_jobs = jobs_resp.json() if jobs_resp.ok and jobs_resp.json() else []
+    # Если текущий трудник заблокирован этим работодателем — скрываем задания
+    open_jobs = []
+    if session.get('role') == 'worker' and session.get('user_id'):
+        bl_check = supabase_request('GET',
+            f'blacklists?user_id=eq.{employer_id}&blocked_user_id=eq.{session["user_id"]}&select=user_id')
+        is_blocked = bl_check.ok and len(bl_check.json() or []) > 0
+    else:
+        is_blocked = False
+
+    if not is_blocked:
+        jobs_resp = supabase_request('GET',
+            f'jobs?employer_id=eq.{employer_id}&status=eq.open&select=*,photos:job_photos(*)&order=created_at.desc')
+        open_jobs = jobs_resp.json() if jobs_resp.ok and jobs_resp.json() else []
 
     # Проверка избранного и откликов
     is_favorited = False

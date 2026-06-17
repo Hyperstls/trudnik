@@ -86,6 +86,14 @@ def index():
     jobs = [j for j in jobs if j.get('status') in ('open', 'completed')]
     jobs = [j for j in jobs if not j.get('expires_at') or j['expires_at'] > now]
 
+    # Фильтрация: исключаем задания от работодателей, заблокировавших текущего трудника
+    if session.get('role') == 'worker' and 'user_id' in session:
+        bl_resp = supabase_request('GET',
+            f'blacklists?blocked_user_id=eq.{session["user_id"]}&select=user_id')
+        if bl_resp.ok and bl_resp.json():
+            blocked_employer_ids = {b['user_id'] for b in bl_resp.json()}
+            jobs = [j for j in jobs if j.get('employer_id') not in blocked_employer_ids]
+
     # Фильтрация по навыкам (поиск в work_type, object_description, detailed_description)
     if skills_filter:
         selected_skills = [s.strip().lower() for s in skills_filter.split(',') if s.strip()]

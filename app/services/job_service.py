@@ -371,6 +371,7 @@ def check_job_visibility(job: dict, user_id: Optional[str] = None,
     Правила:
     - Владелец (employer) видит задание в ЛЮБОМ статусе и с любым is_paid.
     - Админ видит все задания.
+    - Трудник не видит задания от работодателей, которые его заблокировали.
     - Остальные — только в статусах open, completed.
 
     Args:
@@ -387,6 +388,12 @@ def check_job_visibility(job: dict, user_id: Optional[str] = None,
     # Админ
     if user_role == 'admin':
         return True
+    # Трудник: проверяем, не заблокирован ли он работодателем задания
+    if user_role == 'worker' and user_id and job.get('employer_id'):
+        bl_resp = supabase_request('GET',
+            f'blacklists?user_id=eq.{job["employer_id"]}&blocked_user_id=eq.{user_id}&select=user_id')
+        if bl_resp.ok and bl_resp.json():
+            return False
     # Остальные: только в статусах open, completed
     if job.get('status') not in ('open', 'completed'):
         return False

@@ -47,7 +47,7 @@ def favorites():
 @favorites_bp.route('/favorite/<target_id>', methods=['POST'])
 @login_required
 def add_favorite(target_id):
-    resp = supabase_request('POST', 'favorites', json={'user_id': session['user_id'], 'target_id': target_id})
+    resp = supabase_request('POST', 'favorites', json={'user_id': session['user_id'], 'target_id': target_id, 'favorite_type': 'worker'})
     if not resp.ok:
         flash('Не удалось добавить в избранное', 'danger')
     return redirect(request.referrer or url_for('jobs.index'))
@@ -74,7 +74,7 @@ def add_favorite_api():
         return jsonify({'success': False, 'error': 'Не указан worker_id'})
 
     try:
-        resp = supabase_request('POST', 'favorites', json={'user_id': session['user_id'], 'target_id': worker_id})
+        resp = supabase_request('POST', 'favorites', json={'user_id': session['user_id'], 'target_id': worker_id, 'favorite_type': 'worker'})
         if resp.ok:
             return jsonify({'success': True, 'message': 'Трудник добавлен в избранное'})
         else:

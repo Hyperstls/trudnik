@@ -1,7 +1,16 @@
 /**
+ * Возвращает CSRF-токен из мета-тега.
+ * @returns {string}
+ */
+function getCSRFToken() {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
+/**
  * Единая функция переключения избранного.
  * Вызывается из любого шаблона с одинаковой сигнатурой.
- * 
+ *
  * @param {string} workerId - UUID трудника
  * @param {HTMLElement} btn - DOM-элемент кнопки
  */
@@ -27,7 +36,10 @@ function toggleFavorite(workerId, btn, event) {
         
         fetch('/api/favorites/remove', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': getCSRFToken()
+            },
             body: JSON.stringify({ worker_id: workerId })
         })
         .then(r => r.json())
@@ -51,7 +63,10 @@ function toggleFavorite(workerId, btn, event) {
         
         fetch('/api/favorites/add', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': getCSRFToken()
+            },
             body: JSON.stringify({ worker_id: workerId })
         })
         .then(r => r.json())
@@ -109,7 +124,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         fetch('/api/favorites/check', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': getCSRFToken()
+            },
             body: JSON.stringify({ worker_id: workerId })
         })
         .then(r => r.json())
@@ -148,7 +166,10 @@ function toggleEmployerFavorite(employerId, btn, event) {
         updateEmployerFavoriteUI(btn, false);
         fetch('/api/employers/favorites/remove', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': getCSRFToken()
+            },
             body: JSON.stringify({ employer_id: employerId })
         })
         .then(r => r.json())
@@ -177,7 +198,10 @@ function toggleEmployerFavorite(employerId, btn, event) {
         updateEmployerFavoriteUI(btn, true);
         fetch('/api/employers/favorites/add', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': getCSRFToken()
+            },
             body: JSON.stringify({ employer_id: employerId })
         })
         .then(r => r.json())
