@@ -220,3 +220,12 @@ function updateEmployerFavoriteUI(btn, isFavorited) {
         if (text) text.textContent = 'В избранное';
     }
 }
+
+// Делегированный обработчик для кнопки удаления работодателя из избранного (CSP-совместимый)
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.unfavorite-employer-btn');
+    if (!btn) return;
+    e.preventDefault();
+    const employerId = btn.dataset.employerId;
+    toggleEmployerFavorite(employerId, btn, e);
+});
