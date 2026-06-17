@@ -208,16 +208,16 @@ def get_completed_jobs_for_rating(target_user_id):
         # Задания, где target_user — работодатель, а rater — принятый работник
         apps_resp = supabase_admin_request('GET',
             f'applications?worker_id=eq.{rater_user_id}&status=eq.accepted'
-            f'&select=job_id,jobs!job_id(id,title,status,employer_id)')
+            f'&select=job_id,jobs!job_id(id,organization_name,status,employer_id)')
         if apps_resp.ok and apps_resp.json():
             for app in apps_resp.json():
                 job = app.get('jobs') or {}
                 if job.get('status') == 'completed' and job.get('employer_id') == target_user_id:
-                    jobs.append({'id': job['id'], 'title': job.get('title', '')})
+                    jobs.append({'id': job['id'], 'title': job.get('organization_name', '')})
 
         # Задания, где rater — работодатель, а target — принятый работник
         jobs_resp = supabase_admin_request('GET',
-            f'jobs?employer_id=eq.{rater_user_id}&status=eq.completed&select=id,title')
+            f'jobs?employer_id=eq.{rater_user_id}&status=eq.completed&select=id,organization_name')
         if jobs_resp.ok and jobs_resp.json():
             employer_jobs = jobs_resp.json()
             if employer_jobs:
@@ -230,7 +230,7 @@ def get_completed_jobs_for_rating(target_user_id):
                 for job in employer_jobs:
                     if job['id'] in accepted_job_ids:
                         if not any(j['id'] == job['id'] for j in jobs):
-                            jobs.append({'id': job['id'], 'title': job.get('title', '')})
+                            jobs.append({'id': job['id'], 'title': job.get('organization_name', '')})
 
         return jsonify({'success': True, 'jobs': jobs})
 
@@ -294,7 +294,7 @@ def rate_workers_page(job_id):
     # --- 2. Получить задание и проверить владельца ---
     job_resp = supabase_request(
         'GET',
-        f'jobs?id=eq.{job_id}&employer_id=eq.{user_id}&select=id,title,status,employer_id'
+        f'jobs?id=eq.{job_id}&employer_id=eq.{user_id}&select=id,organization_name,status,employer_id'
     )
     if not job_resp.ok:
         current_app.logger.error(

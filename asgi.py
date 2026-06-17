@@ -18,6 +18,9 @@ class RouterMiddleware:
         self.flask_asgi = flask_asgi
     
     async def __call__(self, scope, receive, send):
+        if scope["type"] == "websocket" or scope["path"].startswith("/ws"):
+            import logging
+            logging.getLogger(__name__).warning(f"[ASGI_ROUTER] type={scope['type']} path={scope['path']} headers={dict(scope.get('headers', []))}")
         if scope["type"] in ("websocket", "lifespan"):
             # WebSocket and lifespan go to FastAPI (needs lifespan for Redis)
             await self.ws_app(scope, receive, send)
