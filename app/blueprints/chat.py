@@ -5,6 +5,7 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 from app.decorators import login_required
 from app.utils import rate_limit, supabase_request
 from app.services.notification_service import create as create_notification
+from app.services.redis_publisher import redis_publisher
 
 chat_bp = Blueprint('chat', __name__)
 
@@ -129,16 +130,44 @@ def send_message():
     # XSS-санитизация: экранируем HTML-теги в сообщении
     sanitized_content = _html.escape(content, quote=True)
 
-    supabase_request('POST', 'messages', json={
+    # Сохраняем сообщение и получаем его ID из ответа
+    headers = {'Prefer': 'return=representation'}
+    msg_resp = supabase_request('POST', 'messages', json={
         'application_id': application_id,
         'sender_id': sender_id,
         'content': sanitized_content
-    })
+    }, headers=headers)
+
+    message_id = None
+    try:
+        msg_data = msg_resp.json()
+        if isinstance(msg_data, list) and len(msg_data) > 0:
+            message_id = msg_data[0].get('id')
+    except Exception:
+        pass
 
     # Уведомить получателя
     recipient = app_data['worker_id'] if sender_id == employer_id else employer_id
     create_notification(recipient, 'new_message', 'Новое сообщение',
                        sanitized_content[:100], data={'application_id': application_id})
+
+    # Публикуем событие в Redis для мгновенной доставки через WebSocket
+    try:
+        redis_publisher.publish_chat_message(
+            sender_id=sender_id,
+            recipient_id=recipient,
+            message_data={
+                'message_id': message_id,
+                'text': sanitized_content,
+                'sender_id': sender_id,
+                'sender_name': session.get('username', 'Пользователь'),
+                'application_id': application_id,
+                'job_id': app_data.get('job_id')
+            }
+        )
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.warning("Не удалось опубликовать сообщение чата в Redis: %s", e)
 
     return jsonify({'status': 'ok'})
 

@@ -157,3 +157,72 @@ def api_save_preference():
     if resp.ok:
         return jsonify({'success': True, 'message': 'Настройка сохранена'})
     return jsonify({'success': False, 'error': 'Ошибка сохранения'}), 500
+
+
+# ============================================================
+# Push-уведомления (Web Push API)
+# ============================================================
+
+@notifications_bp.route('/push/vapid-public-key')
+@login_required
+def push_vapid_public_key():
+    """Возвращает публичный VAPID-ключ для фронтенда."""
+    import os as _os
+    public_key = _os.environ.get('VAPID_PUBLIC_KEY', '')
+    return jsonify({'public_key': public_key})
+
+
+@notifications_bp.route('/push/subscription', methods=['POST'])
+@login_required
+def push_subscribe():
+    """Подписка на push-уведомления.
+
+    Тело запроса (JSON):
+        {
+            "endpoint": "...",
+            "keys": {
+                "p256dh": "...",
+                "auth": "..."
+            }
+        }
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'Нет данных'}), 400
+
+    from app.services.push_service import PushService
+    push_service = PushService()
+    success = push_service.save_subscription(session['user_id'], data)
+    return jsonify({'success': success})
+
+
+@notifications_bp.route('/push/subscription', methods=['DELETE'])
+@login_required
+def push_unsubscribe():
+    """Отписка от push-уведомлений.
+
+    Тело запроса (JSON):
+        {"endpoint": "https://..."}
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'Нет данных'}), 400
+
+    endpoint = data.get('endpoint', '')
+    if not endpoint:
+        return jsonify({'success': False, 'error': 'endpoint обязателен'}), 400
+
+    from app.services.push_service import PushService
+    push_service = PushService()
+    success = push_service.delete_subscription(endpoint)
+    return jsonify({'success': success})
+
+
+@notifications_bp.route('/push/subscription', methods=['GET'])
+@login_required
+def push_get_subscriptions():
+    """Получение списка активных push-подписок пользователя."""
+    from app.services.push_service import PushService
+    push_service = PushService()
+    subscriptions = push_service.get_user_subscriptions(session['user_id'])
+    return jsonify({'subscriptions': subscriptions})

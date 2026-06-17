@@ -162,7 +162,7 @@
                             <span class="w-1 h-1 rounded-full bg-neutral-300"></span>
                             {% endif %}
                             {% if job.date_time %}
-                            <span class="inline-flex items-center gap-0.5">{{ clock(12) }}{{ job.date_time[:10] }}</span>
+                            <span class="inline-flex items-center gap-0.5">{{ clock(12) }}{{ job.date_time | format_date }}</span>
                             {% endif %}
                         </p>
                         {% endif %}

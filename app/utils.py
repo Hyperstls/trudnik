@@ -5,7 +5,7 @@ import time
 import uuid
 import urllib.parse
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from threading import Lock
 from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
@@ -604,3 +604,131 @@ def my_query(table: str, field: str = 'user_id', extra: str = '') -> str:
     if extra:
         q += extra
     return q
+
+
+# ═══════════════════════════════════════════════════════════════
+# Форматирование дат
+# ═══════════════════════════════════════════════════════════════
+
+# Русские названия месяцев (родительный падеж)
+_MONTHS_RU = [
+    'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+]
+
+# Московский часовой пояс (UTC+3)
+_MSK_TZ = timezone(timedelta(hours=3))
+
+
+def format_datetime(iso_string: Optional[str]) -> str:
+    """Преобразовать ISO-строку даты в человеко-читаемый формат на русском.
+
+    Поддерживаемые форматы:
+      - '2026-06-16T00:47'       → '16 июня 2026, 00:47'
+      - '2026-06-16T00:47:00'    → '16 июня 2026, 00:47'
+      - '2026-06-16T00:47:00+00:00' → с учётом временной зоны
+      - '2026-06-16'             → '16 июня 2026'
+      - Сегодняшняя дата         → 'Сегодня, 14:30'
+      - Вчерашняя дата           → 'Вчера, 09:15'
+
+    Все даты без временной зоны считаются UTC и конвертируются в MSK (UTC+3).
+
+    Args:
+        iso_string: ISO-формат даты/времени или None/пустая строка.
+
+    Returns:
+        Отформатированная строка или '—' при невалидном вводе.
+    """
+    if not iso_string:
+        return '—'
+
+    try:
+        dt = None
+        # Пробуем распространённые форматы
+        for fmt in ('%Y-%m-%dT%H:%M:%S', '%Y-%m-%dT%H:%M', '%Y-%m-%d'):
+            try:
+                dt = datetime.strptime(iso_string[:len(fmt)], fmt)
+                break
+            except (ValueError, IndexError):
+                continue
+
+        if dt is None:
+            # Пробуем fromisoformat (Python 3.7+) — обрабатывает timezone offset
+            try:
+                dt = datetime.fromisoformat(iso_string.replace('Z', '+00:00'))
+            except (ValueError, TypeError):
+                return '—'
+
+        # Если время без tzinfo — считаем UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+
+        # Конвертируем в московское время
+        dt_msk = dt.astimezone(_MSK_TZ)
+
+        # Текущее московское время для сравнения «сегодня/вчера»
+        now_msk = datetime.now(timezone.utc).astimezone(_MSK_TZ)
+
+        # Если без времени (только дата) — просто форматируем дату
+        has_time = 'T' in str(iso_string) and len(iso_string) > 10
+
+        # «Сегодня» / «Вчера» только если есть время
+        if has_time:
+            if dt_msk.date() == now_msk.date():
+                return f"Сегодня, {dt_msk.strftime('%H:%M')}"
+            if dt_msk.date() == (now_msk - timedelta(days=1)).date():
+                return f"Вчера, {dt_msk.strftime('%H:%M')}"
+
+        # Полный формат: «16 июня 2026, 00:47»
+        month_name = _MONTHS_RU[dt_msk.month - 1]
+        if has_time:
+            return f"{dt_msk.day} {month_name} {dt_msk.year}, {dt_msk.strftime('%H:%M')}"
+        else:
+            return f"{dt_msk.day} {month_name} {dt_msk.year}"
+
+    except Exception:
+        return '—'
+
+
+# ═══════════════════════════════════════════════════════════════
+# VAPID-ключи для Web Push API
+# ═══════════════════════════════════════════════════════════════
+
+def generate_vapid_keys():
+    """Генерирует VAPID-ключи для Web Push. Вызывается из CLI.
+
+    Использует криптографию на эллиптических кривых (P-256 / SECP256R1).
+    Возвращает пару ключей в base64url-кодировке без padding.
+
+    Returns:
+        Кортеж (private_key, public_key) — строки в base64url.
+
+    Пример использования:
+        python -c "from app.utils import generate_vapid_keys; print(generate_vapid_keys())"
+    """
+    import base64 as _base64
+
+    try:
+        from cryptography.hazmat.primitives.asymmetric import ec
+    except ImportError:
+        raise ImportError(
+            'cryptography не установлен. Установите: pip install cryptography'
+        )
+
+    private_key = ec.generate_private_key(ec.SECP256R1())
+    public_key = private_key.public_key()
+
+    # Экспорт в raw-формат
+    private_raw = private_key.private_numbers().private_value.to_bytes(32, 'big')
+
+    pub_numbers = public_key.public_numbers()
+    public_raw = (
+        pub_numbers.x.to_bytes(32, 'big') +
+        pub_numbers.y.to_bytes(32, 'big')
+    )
+
+    # Кодирование в base64url без padding
+    private_b64 = _base64.urlsafe_b64encode(private_raw).rstrip(b'=').decode('ascii')
+    public_b64 = _base64.urlsafe_b64encode(public_raw).rstrip(b'=').decode('ascii')
+
+    return private_b64, public_b64

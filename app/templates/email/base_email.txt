@@ -1,0 +1,9 @@
+Trudnik
+======
+
+{% block content %}{% endblock %}
+
+---
+&copy; {{ year }} Trudnik. Все права защищены.
+Отписаться: {{ unsubscribe_url }}
+Настройки: {{ base_url }}/notifications

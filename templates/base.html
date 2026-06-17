@@ -543,6 +543,16 @@
             min-height: 44px;
         }
     </style>
+    {% if trudnik_ws_config %}
+    <script nonce="{{ csp_nonce }}">
+        window.TRUDNIK_CONFIG = {
+            wsUrl: '{{ trudnik_ws_config.wsUrl }}',
+            wsPort: '{{ trudnik_ws_config.wsPort }}',
+            pushEnabled: {{ 'true' if trudnik_ws_config.pushEnabled else 'false' }},
+            jwtToken: '{{ trudnik_ws_config.jwtToken }}'
+        };
+    </script>
+    {% endif %}
 </head>
 <body class="bg-neutral-50 text-neutral-800">
     <!-- ================================ -->
@@ -1280,5 +1290,12 @@
     if (overlay) overlay.style.display = 'none';
   });
 </script>
+    {% if trudnik_ws_config %}
+    <script src="{{ url_for('static', filename='js/notifications-ws.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/notifications-init.js') }}"></script>
+    {% if trudnik_ws_config.pushEnabled %}
+    <script src="{{ url_for('static', filename='js/push-notifications.js') }}"></script>
+    {% endif %}
+    {% endif %}
 </body>
 </html>

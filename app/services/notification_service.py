@@ -2,6 +2,7 @@
 
 import logging
 from app.utils import supabase_admin_request, supabase_request
+from app.services.redis_publisher import redis_publisher
 
 logger = logging.getLogger(__name__)
 
@@ -82,11 +83,90 @@ def create(user_id, notification_type, title, message, data=None):
 
     # Используем admin_request для обхода RLS:
     # уведомления создаются системой (не владельцем), user_id может не совпадать с auth.uid()
-    resp = supabase_admin_request('POST', 'notifications', json=base_payload)
+    headers = {'Prefer': 'return=representation'}
+    resp = supabase_admin_request('POST', 'notifications', json=base_payload, headers=headers)
     if not resp.ok:
         logger.error('Failed to create notification: user=%s type=%s status=%s body=%s',
                      user_id, notification_type, resp.status_code, resp.text)
         return False
+
+    # Получаем ID созданного уведомления из ответа
+    notification_id = None
+    try:
+        resp_data = resp.json()
+        if isinstance(resp_data, list) and len(resp_data) > 0:
+            notification_id = resp_data[0].get('id')
+    except Exception:
+        pass
+
+    # full_message уже вычислен в base_payload['message'] (строка 79)
+    full_message = base_payload['message']
+
+    # Публикуем событие в Redis для мгновенной WebSocket-доставки
+    try:
+        redis_publisher.publish_notification(
+            user_id=user_id,
+            notification_type=notification_type,
+            data={
+                'notification_id': notification_id,
+                'type': notification_type,
+                'text': full_message,
+                'title': title,
+                'data': data if data else {},
+                'is_read': False
+            }
+        )
+    except Exception as e:
+        logger.warning("Не удалось опубликовать уведомление в Redis: %s", e)
+
+    # Ставим задачи в очередь Celery для email и push
+    try:
+        from app.tasks.email_tasks import send_email_notification
+        from app.tasks.push_tasks import send_push_notification
+
+        # Получаем email и имя пользователя из профиля
+        user_email = None
+        user_name = None
+        try:
+            profile_resp = supabase_admin_request('GET', f'profiles?id=eq.{user_id}&select=email,username')
+            if profile_resp.ok and profile_resp.json():
+                profile = profile_resp.json()[0]
+                user_email = profile.get('email')
+                user_name = profile.get('username', 'Пользователь')
+        except Exception:
+            pass
+
+        # Проверяем настройки уведомлений пользователя
+        user_prefs = prefs  # уже получены выше
+
+        if user_email and user_prefs.get('email_enabled', True):
+            send_email_notification.delay(
+                user_id=user_id,
+                notification_id=notification_id,
+                user_email=user_email,
+                user_name=user_name or 'Пользователь',
+                notification_text=full_message,
+                notification_type=notification_type,
+                notification_url=data.get('link', '') if data else ''
+            )
+
+        if user_prefs.get('push_enabled', True):
+            send_push_notification.delay(
+                user_id=user_id,
+                notification_data={
+                    'title': title or 'Trudnik',
+                    'body': message,
+                    'url': data.get('link', '') if data else '',
+                    'notification_id': notification_id,
+                    'type': notification_type,
+                    'tag': f'notification-{notification_id}' if notification_id else None
+                }
+            )
+    except ImportError:
+        pass  # Celery может быть не настроен
+    except Exception as e:
+        logger.warning("Не удалось поставить задачу в очередь Celery: %s", e)
+
     return True
 
 

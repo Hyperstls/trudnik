@@ -1,0 +1,33 @@
+{% extends "base_email.html" %}
+{% block title %}Trudnik — Новое сообщение в чате{% endblock %}
+{% block content %}
+<h2 style="color: #1e293b; font-size: 20px; margin: 0 0 16px 0;">Здравствуйте, {{ user_name }}!</h2>
+
+<p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 12px 0;">
+    У вас новое сообщение от пользователя <strong>{{ sender_name }}</strong>.
+</p>
+
+{% if message_preview %}
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f1f5f9; border-radius: 8px; margin: 16px 0;">
+    <tr>
+        <td style="padding: 16px 20px; color: #334155; font-size: 15px; line-height: 1.5;">
+            {{ message_preview }}
+        </td>
+    </tr>
+</table>
+{% endif %}
+
+{% if chat_url %}
+<table cellpadding="0" cellspacing="0" style="margin: 24px 0;">
+    <tr>
+        <td align="center" style="background-color: #2563eb; border-radius: 6px;">
+            <a href="{{ chat_url }}" style="display: inline-block; padding: 12px 32px; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: bold;">Открыть чат</a>
+        </td>
+    </tr>
+</table>
+{% endif %}
+
+<p style="color: #94a3b8; font-size: 13px; margin: 24px 0 0 0;">
+    Это автоматическое уведомление от сервиса Trudnik. Пожалуйста, не отвечайте на это письмо.
+</p>
+{% endblock %}

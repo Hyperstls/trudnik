@@ -47,8 +47,11 @@
 ## 🛠 Локальная разработка
 
 ```bash
-# Установка зависимостей
+# Установка production-зависимостей
 pip install -r requirements.txt
+
+# Установка всех зависимостей (включая тестовые)
+pip install -r requirements-dev.txt
 
 # Запуск
 python app.py
@@ -70,6 +73,61 @@ python app.py
 | `archive/` | Архив старых скриптов и документации |
 | `render.yaml` | Конфигурация деплоя на Render |
 | `requirements.txt` | Python-зависимости |
+
+---
+
+## Система уведомлений v2
+
+Много-канальная система уведомлений реального времени:
+
+### Компоненты
+- **WebSocket-сервер** (FastAPI + Redis Pub/Sub) — мгновенная доставка уведомлений и сообщений чата
+- **Email-рассылка** (SMTP + Jinja2) — HTML и текстовые шаблоны, пакетная отправка
+- **Push-уведомления** (Web Push API + Service Worker) — браузерные уведомления
+- **Celery** (Redis брокер) — фоновые задачи для email/push/очистки
+
+### Запуск
+```bash
+# 1. Установка зависимостей (для разработки: pip install -r requirements-dev.txt)
+pip install -r requirements.txt
+
+# 2. Генерация VAPID-ключей (для push-уведомлений)
+python -c "from app.utils import generate_vapid_keys; k=generate_vapid_keys(); print(f'VAPID_PRIVATE_KEY={k[0]}\nVAPID_PUBLIC_KEY={k[1]}')"
+
+# 3. Настройка .env (скопируйте .env.example и заполните)
+cp .env.example .env
+
+# 4. Запуск Redis (через Docker или локально)
+docker run -d --name trudnik-redis -p 6379:6379 redis:7-alpine
+
+# 5. Запуск WebSocket-сервера
+uvicorn websocket_server.main:app --host 0.0.0.0 --port 8001
+
+# 6. Запуск Celery воркера
+celery -A app.tasks.celery_app worker --loglevel=info
+
+# 7. Запуск Celery Beat (для периодических задач)
+celery -A app.tasks.celery_app beat --loglevel=info
+
+# 8. Запуск Flask-приложения
+python app.py
+```
+
+### Docker Compose (все сервисы)
+```bash
+docker-compose up -d
+```
+Сервисы: web, redis, websocket, celery_worker, celery_beat
+
+### Переменные окружения
+| Переменная | Назначение | По умолчанию |
+|-----------|-----------|-------------|
+| `REDIS_URL` | URL Redis для Pub/Sub и Celery | `redis://localhost:6379/0` |
+| `WEBSOCKET_PORT` | Порт WebSocket-сервера | `8001` |
+| `SMTP_HOST` | SMTP сервер | `localhost` |
+| `SMTP_PORT` | SMTP порт | `587` |
+| `VAPID_PRIVATE_KEY` | Приватный VAPID-ключ | — |
+| `VAPID_PUBLIC_KEY` | Публичный VAPID-ключ | — |
 
 ---
 

@@ -1,0 +1,24 @@
+{% extends "base_email.txt" %}
+{% block content %}
+Здравствуйте, {{ user_name }}!
+
+{{ notification_text }}
+
+{% if notification_type == 'new_message' %}
+У вас новое сообщение в чате. Перейдите по ссылке, чтобы прочитать и ответить.
+{% elif notification_type == 'application_received' %}
+Вы получили новый отклик на ваше задание. Ознакомьтесь с кандидатом и примите решение.
+{% elif notification_type == 'status_change' %}
+Статус вашего отклика или задания изменился. Проверьте детали по ссылке ниже.
+{% elif notification_type == 'invitation' %}
+Вас пригласили на задание. Ознакомьтесь с деталями и примите или отклоните приглашение.
+{% elif notification_type == 'cheque_reminder' %}
+Напоминаем о необходимости загрузки чека для подтверждения оплаты задания.
+{% endif %}
+
+{% if notification_url %}
+Ссылка: {{ notification_url }}
+{% endif %}
+
+Это автоматическое уведомление от сервиса Trudnik. Пожалуйста, не отвечайте на это письмо.
+{% endblock %}

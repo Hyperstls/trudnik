@@ -63,10 +63,10 @@ def index():
     city = request.args.get('city', '')
     payment_min = request.args.get('payment_min', '')
     payment_max = request.args.get('payment_max', '')
-    lat = request.args.get('lat', type=float)
-    lng = request.args.get('lng', type=float)
+    lat = request.args.get('lat', type=float) or session.get('lat')
+    lng = request.args.get('lng', type=float) or session.get('lng')
     radius = request.args.get('radius', 20, type=float)
-    sort = request.args.get('sort', '')
+    sort = request.args.get('sort', 'newest')
     skills_filter = request.args.get('skills', '')
     religion = request.args.get('religion', '')
 
@@ -109,12 +109,25 @@ def index():
         if radius:
             jobs = [j for j in jobs if j.get('distance', float('inf')) <= radius]
 
+    # Сортировка
     if sort == 'distance' and lat is not None:
         jobs.sort(key=lambda x: x.get('distance', float('inf')))
-    elif sort == 'payment_asc':
+    elif sort == 'rating':
+        # Получаем рейтинги работодателей для сортировки
+        if jobs:
+            employer_ids = list({j['employer_id'] for j in jobs if j.get('employer_id')})
+            if employer_ids:
+                ids_filter = ','.join(employer_ids)
+                rating_resp = supabase_request('GET',
+                    f'profiles?id=in.({ids_filter})&select=id,rating')
+                if rating_resp.ok and rating_resp.json():
+                    rating_map = {p['id']: p.get('rating', 0) or 0 for p in rating_resp.json()}
+                    jobs.sort(key=lambda x: rating_map.get(x.get('employer_id'), 0), reverse=True)
+    elif sort in ('payment_asc', 'price_asc'):
         jobs.sort(key=lambda x: x['payment_amount'])
-    elif sort == 'payment_desc':
+    elif sort in ('payment_desc', 'price_desc'):
         jobs.sort(key=lambda x: x['payment_amount'], reverse=True)
+    # sort == 'newest' — уже отсортировано по created_at.desc из запроса
 
     applied_job_ids = []
     if session.get('role') == 'worker' and 'user_id' in session:
@@ -140,6 +153,10 @@ def workers():
         'skills': request.args.get('skills', ''),
         'religion': request.args.get('religion', ''),
     }
+    sort = request.args.get('sort', 'rating')
+    lat = request.args.get('lat', type=float) or session.get('lat')
+    lng = request.args.get('lng', type=float) or session.get('lng')
+
     query = 'role=eq.worker'
     if filters['city']: query += f'&city=ilike.*{sanitize_postgrest(filters["city"])}*'
     if filters['experience']: query += f'&experience=ilike.*{sanitize_postgrest(filters["experience"])}*'
@@ -152,8 +169,28 @@ def workers():
     if filters['religion']:
         query += f'&religion=eq.{sanitize_postgrest(filters["religion"])}'
 
-    resp = supabase_request('GET', f'profiles?{query}&order=rating.desc')
+    # Определяем order в зависимости от sort
+    order = 'rating.desc'
+    if sort == 'name':
+        order = 'full_name.asc'
+    elif sort in ('price_asc',):
+        order = 'desired_payment.asc.nullslast'
+    elif sort in ('price_desc',):
+        order = 'desired_payment.desc.nullslast'
+
+    resp = supabase_request('GET', f'profiles?{query}&order={order}')
     workers_list = resp.json() if resp.ok else []
+
+    # Сортировка по расстоянию (после загрузки, если есть координаты)
+    if sort == 'distance' and lat is not None and lng is not None:
+        for w in workers_list:
+            w_lat = w.get('lat')
+            w_lng = w.get('lng')
+            if w_lat is not None and w_lng is not None:
+                w['distance'] = calculate_distance(lat, lng, w_lat, w_lng)
+            else:
+                w['distance'] = float('inf')
+        workers_list.sort(key=lambda x: x.get('distance', float('inf')))
 
     # Определяем, какие трудники уже приглашены работодателем
     invited_worker_ids = set()
@@ -167,7 +204,8 @@ def workers():
                 invited_worker_ids = {inv['worker_id'] for inv in inv_resp.json()}
 
     selected_skills_list = [s.strip() for s in filters['skills'].split(',') if s.strip()] if filters['skills'] else []
-    return render_template('workers.html', workers=workers_list, selected_skills=selected_skills_list, invited_worker_ids=invited_worker_ids)
+    return render_template('workers.html', workers=workers_list, selected_skills=selected_skills_list,
+                           invited_worker_ids=invited_worker_ids, sort=sort, lat=lat, lng=lng)
 
 
 @jobs_bp.route('/jobs/<job_id>')

@@ -144,3 +144,101 @@ self.addEventListener('message', event => {
     self.skipWaiting();
   }
 });
+
+// ============================================================
+// Push Notifications (Web Push API)
+// ============================================================
+
+self.addEventListener('push', (event) => {
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data = {
+        title: 'Trudnik',
+        body: event.data.text(),
+        icon: '/static/icons/icon-192x192.png',
+        badge: '/static/icons/icon-72x72.png',
+        data: { url: '/notifications' }
+      };
+    }
+  }
+
+  const options = {
+    body: data.body || 'Новое уведомление',
+    icon: data.icon || '/static/icons/icon-192x192.png',
+    badge: data.badge || '/static/icons/icon-72x72.png',
+    vibrate: [200, 100, 200],
+    data: {
+      url: data.url || '/notifications',
+      notification_id: data.notification_id,
+      type: data.type
+    },
+    actions: [
+      { action: 'open', title: 'Открыть' },
+      { action: 'close', title: 'Закрыть' }
+    ],
+    tag: data.tag || 'trudnik-notification',
+    requireInteraction: data.require_interaction || false
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(
+      data.title || 'Trudnik',
+      options
+    )
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const urlToOpen = event.notification.data.url || '/notifications';
+
+  event.waitUntil(
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true
+    }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(urlToOpen) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
+});
+
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil(
+    self.registration.pushManager.subscribe(
+      event.oldSubscription.options
+    ).then((newSubscription) => {
+      return fetch('/notifications/push/subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify(newSubscription.toJSON())
+      });
+    })
+  );
+});
+
+// Хранилище CSRF-токена в Service Worker (обновляется через postMessage из основного потока)
+let _csrfToken = '';
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SET_CSRF_TOKEN') {
+    _csrfToken = event.data.token || '';
+  }
+});
+
+function getCSRFToken() {
+  return _csrfToken;
+}

@@ -15,6 +15,7 @@ def employers_list():
     city = request.args.get('city', '')
     skills = request.args.get('skills', '')
     search = request.args.get('q', '')
+    sort = request.args.get('sort', 'rating')
 
     # Базовый запрос: только работодатели
     query = 'role=eq.employer'
@@ -23,7 +24,16 @@ def employers_list():
     if search:
         query += f'&full_name=ilike.*{sanitize_postgrest(search)}*'
     query += '&select=id,full_name,photo_url,rating,total_reviews,city,verification_status,bio'
-    query += '&order=rating.desc'
+
+    # Определяем order в зависимости от sort
+    if sort == 'name':
+        query += '&order=full_name.asc'
+    elif sort == 'jobs_count':
+        # Для сортировки по количеству заданий нужно считать после загрузки
+        query += '&order=rating.desc'
+    else:
+        # sort == 'rating' (по умолчанию)
+        query += '&order=rating.desc'
 
     # Пагинация
     offset = (page - 1) * per_page
@@ -51,6 +61,10 @@ def employers_list():
                 eid = job['employer_id']
                 open_jobs_counts[eid] = open_jobs_counts.get(eid, 0) + 1
 
+    # Сортировка по количеству заданий (если выбрана)
+    if sort == 'jobs_count':
+        employers.sort(key=lambda e: open_jobs_counts.get(e['id'], 0), reverse=True)
+
     # Проверка избранного (только для трудников)
     favorited_ids = set()
     if session.get('user_id') and session.get('role') == 'worker':
@@ -70,7 +84,8 @@ def employers_list():
                            page=page,
                            total_pages=total_pages,
                            city=city,
-                           search=search)
+                           search=search,
+                           sort=sort)
 
 
 @employers_bp.route('/employers/<employer_id>')

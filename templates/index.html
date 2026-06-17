@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from '_icons.html' import star, apply, x_close, check, clock, eye, menu_icon %}
+{% from '_sort_panel.html' import sort_panel with context %}
 {% block content %}
 <div class="px-4 py-4 sm:px-6 fade-in">
     <!-- Header row -->
@@ -20,6 +21,18 @@
         <button class="js-filter-btn filter-btn px-4 py-2 rounded-full text-sm font-medium transition-all bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50" data-filter="applied">Откликнулся</button>
     </div>
     {% endif %}
+
+    {# ============================================ #}
+    {# Панель сортировки                              #}
+    {# ============================================ #}
+    {% set has_coords = (lat is defined and lat is not none and lng is defined and lng is not none) or (session.get('lat') and session.get('lng')) %}
+    {{ sort_panel(sort|default('newest'), [
+        {'value': 'newest', 'label': 'Новые'},
+        {'value': 'rating', 'label': 'По рейтингу'},
+        {'value': 'price_asc', 'label': 'Дешевле'},
+        {'value': 'price_desc', 'label': 'Дороже'},
+        {'value': 'distance', 'label': 'Ближе'},
+    ], has_coords=has_coords) }}
 
     {% if session.get('role') == 'worker' %}
     <!-- Mass actions bar (floating) -->
@@ -63,7 +76,7 @@
                             {% endif %}
                             <span>{{ job.city }}</span>
                             <span class="w-1 h-1 rounded-full bg-neutral-300"></span>
-                            <span class="inline-flex items-center gap-0.5">{{ clock(12) }}{{ job.date_time[:10] }}</span>
+                            <span class="inline-flex items-center gap-0.5">{{ clock(12) }}{{ job.date_time | format_date }}</span>
                         </p>
                         <p class="mt-2 text-sm text-neutral-600 line-clamp-2 leading-relaxed">{{ job.object_description }}</p>
                     </a>

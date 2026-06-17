@@ -1,0 +1,24 @@
+{# ============================================ #}
+{# Переиспользуемая панель сортировки              #}
+{# Параметры:                                    #}
+{#   current_sort — текущее значение сортировки    #}
+{#   options     — список словарей:               #}
+{#     { value, label }                           #}
+{#   has_coords  — доступны ли координаты (bool)   #}
+{# ============================================ #}
+{% macro sort_panel(current_sort, options, has_coords=False) -%}
+<div class="flex flex-wrap gap-2 mb-4 items-center">
+    <span class="text-sm text-neutral-500 self-center mr-1">Сортировка:</span>
+    {% for opt in options %}
+        {% if opt.value == 'distance' and not has_coords %}
+            {# Скрываем кнопку «Ближе» если нет координат #}
+        {% else %}
+            <a href="{{ sort_url(opt.value) }}"
+               class="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200
+                      {% if current_sort == opt.value %}bg-primary-500 text-white shadow-sm{% else %}bg-neutral-100 text-neutral-600 hover:bg-neutral-200{% endif %}">
+                {{ opt.label }}
+            </a>
+        {% endif %}
+    {% endfor %}
+</div>
+{%- endmacro %}

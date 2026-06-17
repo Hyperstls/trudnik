@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from '_icons.html' import star, chat, users, smiley %}
+{% from '_sort_panel.html' import sort_panel with context %}
 {% block title %}Трудники{% endblock %}
 {% block content %}
 <div class="px-4 pb-24 max-w-6xl mx-auto">
@@ -9,6 +10,17 @@
         {% include '_filter_skills.html' %}
         {% endwith %}
     </div>
+
+    {# ============================================ #}
+    {# Панель сортировки                              #}
+    {# ============================================ #}
+    {% set has_coords = (lat is defined and lat is not none and lng is defined and lng is not none) or (session.get('lat') and session.get('lng')) %}
+    {{ sort_panel(sort|default('rating'), [
+        {'value': 'rating', 'label': 'По рейтингу'},
+        {'value': 'price_asc', 'label': 'Дешевле'},
+        {'value': 'price_desc', 'label': 'Дороже'},
+        {'value': 'distance', 'label': 'Ближе'},
+    ], has_coords=has_coords) }}
 
     {% if workers %}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

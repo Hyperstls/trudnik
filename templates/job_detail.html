@@ -24,7 +24,7 @@
         <span>{{ map_pin(14) }} {{ job.city }}{% if job.address %}, {{ job.address }}{% endif %}</span>
         {% if job.date_time %}
         <span class="w-1 h-1 rounded-full bg-neutral-300 mx-1"></span>
-        <span id="job-datetime" data-datetime="{{ job.date_time }}">{{ clock(14) }} {{ job.date_time[:16] }}</span>
+        <span id="job-datetime" data-datetime="{{ job.date_time }}">{{ clock(14) }} {{ job.date_time | format_date }}</span>
         <span id="countdown-timer" class="ml-1.5 px-2 py-0.5 rounded-full text-xs font-semibold hidden"></span>
         {% endif %}
         {% if employer and (employer.verified or employer.verification_status == 'approved') %}

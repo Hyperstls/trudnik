@@ -1,11 +1,12 @@
 import subprocess
 import secrets
+import os
+from datetime import datetime, timedelta, timezone
 from flask import Flask, g, session, request, abort
 
 from app.config import Config
 
 
-import os
 
 def create_app():
     # Корень проекта — родительская директория пакета app/
@@ -50,7 +51,7 @@ def create_app():
             f"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
             f"font-src 'self' https://fonts.gstatic.com; "
             f"img-src 'self' data: https:; "
-            f"connect-src 'self' https://*.supabase.co https://*.maps.yandex.net https://yastatic.net https://geocode-maps.yandex.ru; "
+            f"connect-src 'self' https://*.supabase.co https://*.maps.yandex.net https://yastatic.net https://geocode-maps.yandex.ru ws://localhost:* wss://*; "
             f"frame-src 'self'"
         )
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
@@ -93,6 +94,35 @@ def create_app():
                 pass
         if not token or token != session.get('_csrf_token'):
             abort(400, description='CSRF-токен отсутствует или недействителен')
+
+    @app.context_processor
+    def inject_ws_config():
+        """Добавляет WebSocket-конфигурацию и JWT-токен во все шаблоны."""
+        config = {
+            'wsUrl': os.environ.get('WEBSOCKET_URL', 'ws://localhost:8001'),
+            'wsPort': os.environ.get('WEBSOCKET_PORT', '8001'),
+            'pushEnabled': bool(os.environ.get('VAPID_PUBLIC_KEY', '')),
+            'jwtToken': ''
+        }
+
+        # Генерируем JWT-токен для аутентифицированных пользователей
+        user_id = session.get('user_id')
+        if user_id:
+            try:
+                import jwt as pyjwt
+                token = pyjwt.encode(
+                    {
+                        'user_id': str(user_id),
+                        'exp': datetime.now(timezone.utc) + timedelta(days=7)
+                    },
+                    app.config['SECRET_KEY'],
+                    algorithm='HS256'
+                )
+                config['jwtToken'] = token
+            except Exception:
+                pass  # Любая ошибка — не фатально
+
+        return {'trudnik_ws_config': config}
 
     @app.context_processor
     def inject_unread_notifications():
@@ -165,10 +195,25 @@ def create_app():
         ).strip()
     except Exception:
         pass
+@app.context_processor
+def inject_git_version():
+    return {'git_version': _git_version}
 
-    @app.context_processor
-    def inject_git_version():
-        return {'git_version': _git_version}
+@app.context_processor
+def inject_sort_url():
+    """Хелпер для построения URL сортировки с сохранением остальных параметров."""
+    from urllib.parse import quote
+
+    def sort_url(sort_value):
+        args = dict(request.args)
+        # Заменяем sort и сбрасываем page
+        args['sort'] = sort_value
+        args.pop('page', None)
+        if not args:
+            return '?'
+        return '?' + '&'.join(f'{quote(str(k))}={quote(str(v))}' for k, v in args.items())
+
+    return {'sort_url': sort_url}
 
     # Регистрация blueprints
     from app.blueprints.auth import auth_bp
@@ -198,6 +243,18 @@ def create_app():
     app.register_blueprint(ratings_bp)
     app.register_blueprint(seo_bp)
     app.register_blueprint(employers_bp)
+
+    # ================================
+    # Jinja2-фильтры
+    # ================================
+
+    @app.template_filter('format_date')
+    def format_date_filter(value):
+        """Форматирует ISO-строку даты в человеко-читаемый вид на русском.
+        Пример: '2026-06-16T00:47' → '16 июня 2026, 00:47'.
+        Сегодняшние даты → 'Сегодня, 14:30', вчерашние → 'Вчера, 09:15'."""
+        from app.utils import format_datetime
+        return format_datetime(value)
 
     # ================================
     # API-роуты accept/reject/reopen (вынесены на объект app

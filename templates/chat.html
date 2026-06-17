@@ -17,7 +17,7 @@
     </div>
 
     <!-- Messages -->
-    <div id="messages" class="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+    <div id="messages" class="flex-1 overflow-y-auto px-4 py-3 space-y-3 pb-24">
         {% for msg in messages %}
         {% set is_mine = msg.sender_id == user_id %}
         <div class="flex {% if is_mine %}justify-end{% else %}justify-start{% endif %} animate-fade-in">
@@ -47,20 +47,22 @@
     </div>
 
     <!-- Input -->
-    <div class="px-4 py-3 border-t border-neutral-100 bg-white safe-area-inset-bottom">
-        <form id="chat-form" class="flex gap-2 items-end">
-            <div class="flex-1 relative">
-                <input id="message-input" type="text" class="w-full border border-neutral-200 rounded-xl px-4 py-2.5 pr-10 text-sm
-                    focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500
-                    placeholder:text-neutral-400 bg-neutral-50"
-                    placeholder="Сообщение..." autocomplete="off">
-            </div>
-            <button type="submit" class="w-11 h-11 rounded-xl bg-primary-500 text-white flex items-center justify-center
-                hover:bg-primary-600 active:scale-[0.95] transition-all duration-150 shadow-sm shrink-0"
-                id="send-btn">
-                {{ send(20) }}
-            </button>
-        </form>
+    <div class="fixed bottom-0 left-0 right-0 z-10 bg-white border-t border-neutral-100" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px))">
+        <div class="max-w-lg mx-auto px-4 py-3">
+            <form id="chat-form" class="flex gap-2 items-end">
+                <div class="flex-1 relative">
+                    <input id="message-input" type="text" class="w-full border border-neutral-200 rounded-xl px-4 py-2.5 pr-10 text-sm
+                        focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500
+                        placeholder:text-neutral-400 bg-neutral-50"
+                        placeholder="Сообщение..." autocomplete="off">
+                </div>
+                <button type="submit" class="w-11 h-11 rounded-xl bg-primary-500 text-white flex items-center justify-center
+                    hover:bg-primary-600 active:scale-[0.95] transition-all duration-150 shadow-sm shrink-0"
+                    id="send-btn">
+                    {{ send(20) }}
+                </button>
+            </form>
+        </div>
     </div>
 </div>
 

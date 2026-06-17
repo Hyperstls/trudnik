@@ -251,3 +251,53 @@ def accepted_application_id(employer_session, worker_session):
             pass
     # Всё ок — возвращаем ID
     return app_id, job_id
+
+
+# ═══════════════════════════════════════════════════════════════
+# Fixtures для тестов уведомлений v2
+# ═══════════════════════════════════════════════════════════════
+
+@pytest.fixture(autouse=False)
+def setup_notifications_env():
+    """Устанавливает тестовые переменные окружения для сервисов уведомлений."""
+    os.environ['SECRET_KEY'] = 'test-secret-key-for-testing'
+    os.environ['SMTP_HOST'] = 'localhost'
+    os.environ['SMTP_PORT'] = '587'
+    os.environ['SMTP_USER'] = 'test@example.com'
+    os.environ['SMTP_PASSWORD'] = 'test-password'
+    os.environ['SMTP_FROM_EMAIL'] = 'notifications@trudnik.ru'
+    os.environ['SMTP_DAILY_LIMIT'] = '10'
+    os.environ['SMTP_RATE_LIMIT_PAUSE'] = '0.01'
+    os.environ['REDIS_URL'] = 'redis://localhost:6379/0'
+    os.environ['VAPID_PRIVATE_KEY'] = 'test-private-key-base64url'
+    os.environ['VAPID_PUBLIC_KEY'] = 'test-public-key-base64url'
+    os.environ['VAPID_CLAIMS_EMAIL'] = 'notifications@trudnik.ru'
+    os.environ['VAPID_CLAIMS_SUBJECT'] = 'mailto:notifications@trudnik.ru'
+    yield
+    # Очистка не требуется для unit-тестов
+
+
+@pytest.fixture
+def valid_jwt_token():
+    """Создаёт валидный JWT-токен для тестов WebSocket."""
+    import jwt
+    from datetime import datetime, timedelta, timezone
+
+    payload = {
+        'user_id': 1,
+        'exp': datetime.now(timezone.utc) + timedelta(hours=1),
+    }
+    return jwt.encode(payload, os.environ.get('SECRET_KEY', 'test-secret'), algorithm='HS256')
+
+
+@pytest.fixture
+def expired_jwt_token():
+    """Создаёт истёкший JWT-токен для тестов WebSocket."""
+    import jwt
+    from datetime import datetime, timedelta, timezone
+
+    payload = {
+        'user_id': 1,
+        'exp': datetime.now(timezone.utc) - timedelta(hours=1),
+    }
+    return jwt.encode(payload, os.environ.get('SECRET_KEY', 'test-secret'), algorithm='HS256')
