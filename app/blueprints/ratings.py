@@ -294,7 +294,7 @@ def rate_workers_page(job_id):
     # --- 2. Получить задание и проверить владельца ---
     job_resp = supabase_request(
         'GET',
-        f'jobs?id=eq.{job_id}&select=id,title,status,employer_id'
+        f'jobs?id=eq.{job_id}&employer_id=eq.{user_id}&select=id,title,status,employer_id'
     )
     if not job_resp.ok:
         current_app.logger.error(
