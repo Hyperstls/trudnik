@@ -1,0 +1,17 @@
+meta:
+  environment: docker
+  toolchain:
+    name: docker
+    version: latest
+build:
+  dockerfile: Dockerfile
+  skip: false
+run:
+  image: null
+  command: uvicorn asgi:application --host 0.0.0.0 --port 8000 --workers 2 --timeout-keep-alive 120
+  args: null
+  persistenceMount: /data
+  containerPort: 8000,8001
+  servicePort: "80"
+name: Trudnik
+tariffId: "5"

@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 .env
+.env.amvera
 .idea/
 original_app.py
 *_screenshot.png

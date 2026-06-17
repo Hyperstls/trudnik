@@ -21,4 +21,4 @@ USER appuser
 
 EXPOSE 8000 8001
 
-CMD ["gunicorn", "app:create_app()", "--bind", "0.0.0.0:8000", "--workers", "4"]
+CMD ["uvicorn", "asgi:application", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
