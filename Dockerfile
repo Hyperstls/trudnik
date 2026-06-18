@@ -2,21 +2,34 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# ═══════════════════════════════════════════════════════════
+# Amvera: направляем изменяемые runtime-файлы в /data
+# (persistent volume) — это обязательное условие для
+# "быстрых сборок" и сохранения кэша между перезагрузками
+# ═══════════════════════════════════════════════════════════
+ENV PIP_CACHE_DIR=/data/pip-cache
+ENV PYTHONPYCACHEPREFIX=/data/pycache
+
 # Установка системных зависимостей
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Установка Python-зависимостей
+# Установка Python-зависимостей (pip-кэш в /data — ускоряет повторные сборки)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
 # Копирование кода приложения
 COPY . .
 
+# Предкомпиляция Python-байткода (устраняет нагрев при старте)
+RUN python -m compileall -q /app
+
 # Создание непривилегированного пользователя
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+RUN useradd -m -u 1000 appuser && \
+    mkdir -p /data/pip-cache /data/pycache && \
+    chown -R appuser:appuser /app /data
 USER appuser
 
 EXPOSE 8000 8001

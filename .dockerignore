@@ -1,0 +1,50 @@
+# ═══════════════════════════════════════════════════════
+# Amvera: уменьшаем Docker-контекст — ускоряет COPY . .
+# ═══════════════════════════════════════════════════════
+
+# Архив (ненужные в рантайме файлы)
+archive/
+
+# Документация и планы
+docs/
+plans/
+
+# Тесты
+tests/
+.pytest_cache/
+
+# Git
+.git/
+.gitignore
+.gigacode/
+
+# IDE
+.idea/
+.vscode/
+
+# Окружение
+.env
+.env.example
+.env.amvera
+
+# Docker / деплой
+Dockerfile
+docker-compose.yml
+render.yaml
+
+# README, чеклисты
+*.md
+*.txt
+
+# Tailwind (собирается на Render, не нужен в Amvera)
+tailwind.config.js
+
+# PWA / TWA (собирается отдельно)
+twa-config.json
+
+# Бинарники, временные файлы
+*.pyc
+__pycache__/
+*.log
+*.bat
+*.sh
