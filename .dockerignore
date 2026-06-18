@@ -32,9 +32,10 @@ Dockerfile
 docker-compose.yml
 render.yaml
 
-# README, чеклисты
+# README, чеклисты, логи — кроме requirements.txt (нужен pip install)
 *.md
 *.txt
+!requirements.txt
 
 # Tailwind (собирается на Render, не нужен в Amvera)
 tailwind.config.js
