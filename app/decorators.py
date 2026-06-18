@@ -5,7 +5,6 @@ from typing import Any, Callable, TypeVar
 
 import jwt
 from flask import abort, current_app, flash, redirect, request, session, url_for
-from flask_login import current_user
 
 from app.utils import refresh_access_token, supabase_request
 
@@ -96,11 +95,16 @@ def get_user_profile():
     return None
 
 
+def _is_authenticated():
+    """Проверить аутентификацию через сессию Supabase (без flask_login)."""
+    return 'access_token' in session and 'user_id' in session
+
+
 def admin_required(f):
     """Require admin role."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated:
+        if not _is_authenticated():
             flash('Пожалуйста, войдите в систему.', 'warning')
             return redirect(url_for('auth.login'))
         profile = get_user_profile()
@@ -115,7 +119,7 @@ def employer_required(f):
     """Require employer role."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated:
+        if not _is_authenticated():
             flash('Пожалуйста, войдите в систему.', 'warning')
             return redirect(url_for('auth.login'))
         profile = get_user_profile()
@@ -130,7 +134,7 @@ def worker_required(f):
     """Require worker role."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated:
+        if not _is_authenticated():
             flash('Пожалуйста, войдите в систему.', 'warning')
             return redirect(url_for('auth.login'))
         profile = get_user_profile()
