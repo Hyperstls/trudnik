@@ -22,7 +22,7 @@ class PushNotificationsManager {
 
         try {
             // Регистрируем Service Worker
-            this.swRegistration = await navigator.serviceWorker.register('/static/sw.js', { scope: '/' });
+            this.swRegistration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
 
             // Ждём активации
             await navigator.serviceWorker.ready;
