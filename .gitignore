@@ -4,6 +4,17 @@ __pycache__/
 .env.amvera
 .idea/
 original_app.py
+
+# Test output
+pytest_collect.txt
+pytest_full_p3.txt
+pytest_output_p3.txt
+
+# Environment files with secrets
+.env.amvera
+
+# Backup files
+original_app.py
 *_screenshot.png
 
 # Android / TWA
@@ -30,5 +41,3 @@ server.log
 # Temp worker file
 temp_workers_original.txt
 
-# Tests cache
-tests/__pycache__/

@@ -11,7 +11,7 @@ import time
 import pytest
 import requests
 
-from conftest import (
+from tests.conftest import (
     login_as, extract_csrf_token, csrf_headers, get_csrf_from_page, form_with_csrf,
     BASE_URL, EMPLOYER_EMAIL, EMPLOYER_PASSWORD, WORKER_EMAIL, WORKER_PASSWORD,
 )

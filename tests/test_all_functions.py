@@ -33,7 +33,6 @@ from app.utils import (
     SUPABASE_KEY,
     SUPABASE_URL,
     SERVICE_KEY,
-    add_notification,
     calculate_distance,
     copy_job,
     refresh_access_token,
@@ -194,20 +193,6 @@ class TestUtils(unittest.TestCase):
         with patch('app.utils.session', mock_session):
             url = upload_to_storage('avatars', 'user/file.jpg', b'data', 'image/jpeg')
         self.assertIsNone(url)
-
-    @patch('app.utils.supabase_request')
-    def test_add_notification(self, mock_supabase):
-        mock_supabase.return_value = MagicMock(ok=True)
-        add_notification(
-            user_id='user-1', notification_type='test',
-            title='Тест', message='Тестовое уведомление',
-        )
-        mock_supabase.assert_called_once_with(
-            'POST', 'notifications',
-            json={'user_id': 'user-1', 'type': 'test',
-                  'title': 'Тест', 'message': 'Тестовое уведомление',
-                  'is_read': False}
-        )
 
     @patch('app.utils.supabase_admin_request')
     def test_update_rating(self, mock_admin):

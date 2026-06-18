@@ -2,7 +2,7 @@ import subprocess
 import secrets
 import os
 from datetime import datetime, timedelta, timezone
-from flask import Flask, g, session, request, abort
+from flask import Flask, g, session, request, abort, redirect, url_for
 
 from app.config import Config
 
@@ -58,6 +58,11 @@ def create_app():
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         response.headers['X-XSS-Protection'] = '1; mode=block'
         response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=self'
+        # Cache-Control: статические ассеты кешируем на 24 часа, динамику — не кешируем
+        if request.path.startswith('/static/'):
+            response.headers['Cache-Control'] = 'public, max-age=86400'
+        else:
+            response.headers['Cache-Control'] = 'no-store'
         return response
 
     @app.before_request
@@ -249,6 +254,18 @@ def create_app():
     app.register_blueprint(ratings_bp)
     app.register_blueprint(seo_bp)
     app.register_blueprint(employers_bp)
+
+    # ================================
+    # Редиректы для обратной совместимости
+    # ================================
+
+    @app.route('/jobs')
+    def jobs_redirect():
+        return redirect(url_for('jobs.index', tab='jobs'))
+
+    @app.route('/search')
+    def search_redirect():
+        return redirect(url_for('jobs.index', tab='search'))
 
     # ================================
     # Jinja2-фильтры

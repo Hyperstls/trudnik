@@ -15,54 +15,47 @@ applications_bp = Blueprint('applications', __name__)
 @rate_limit
 def apply_job(job_id):
     user_id = session['user_id']
+
+    # Быстрая предварительная проверка дубликата (некритичная, только для UX)
     check = supabase_request('GET', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
     if check.ok and check.json():
         flash('Вы уже откликались на это задание', 'info')
         return redirect(url_for('jobs.index'))
 
-    # Проверить статус задания
-    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status,current_workers,max_workers,employer_id')
-    if not job_resp.ok or not job_resp.json():
-        flash('Задание не найдено', 'danger')
+    # Атомарная RPC: все проверки + вставка отклика в одной транзакции PostgreSQL
+    # Устраняет TOCTOU race condition между проверкой мест и созданием отклика
+    rpc_result = supabase_rpc('apply_job_atomic', {
+        'p_job_id': job_id,
+        'p_worker_id': user_id,
+    }, use_admin=True)
+
+    if not rpc_result.ok:
+        flash('Ошибка при отправке отклика', 'danger')
         return redirect(url_for('jobs.index'))
 
-    job = job_resp.json()[0]
+    result = rpc_result.json()
 
-    # Проверить, что задание не собственное
-    if job['employer_id'] == user_id:
-        flash('Вы не можете откликаться на собственное задание', 'danger')
+    if not result or not result.get('success'):
+        error_code = (result or {}).get('code', 'unknown')
+        error_msg = (result or {}).get('error', 'Не удалось отправить отклик')
+
+        # Для blacklist-ошибки при POST-запросе возвращаем JSON (как в оригинале)
+        if error_code == 'blacklisted':
+            if request.method == 'POST':
+                return jsonify({'success': False, 'error': error_msg}), 403
+            flash(error_msg, 'danger')
+            return redirect(url_for('jobs.index'))
+
+        category = 'info' if error_code in ('duplicate', 'no_slots') else 'danger'
+        flash(error_msg, category)
         return redirect(url_for('jobs.index'))
 
-    # Проверить, не заблокирован ли работник у этого работодателя
-    blacklist_resp = supabase_request(
-        'GET',
-        f'blacklists?user_id=eq.{job["employer_id"]}&blocked_user_id=eq.{user_id}&select=id'
-    )
-    if blacklist_resp.ok and blacklist_resp.json():
-        if request.method == 'POST':
-            return jsonify({'success': False, 'error': 'Вы не можете откликнуться: работодатель добавил вас в чёрный список'}), 403
-        flash('Вы не можете откликнуться: работодатель добавил вас в чёрный список', 'danger')
-        return redirect(url_for('jobs.index'))
-
-    # Проверить статус задания (разрешён только open)
-    if job['status'] != 'open':
-        flash('На это задание нельзя откликаться', 'danger')
-        return redirect(url_for('jobs.index'))
-
-    # Проверить количество мест
-    current_workers = job.get('current_workers', 0)
-    max_workers = job.get('max_workers', 1)
-
-    if current_workers >= max_workers:
-        flash(f'Места в задании заполнены (максимум {max_workers})', 'info')
-        return redirect(url_for('jobs.index'))
-
-    supabase_request('POST', 'applications', json={'job_id': job_id, 'worker_id': user_id})
-
-    # Уведомить работодателя о новом отклике
-    notify(job['employer_id'], 'application_received', 'Новый отклик',
-           f'На ваше задание поступил новый отклик',
-           data={'job_id': job_id, 'link': url_for('jobs.job_detail', job_id=job_id, _external=True)})
+    # Успех: уведомить работодателя о новом отклике
+    employer_id = result.get('employer_id')
+    if employer_id:
+        notify(employer_id, 'application_received', 'Новый отклик',
+               f'На ваше задание поступил новый отклик',
+               data={'job_id': job_id, 'link': url_for('jobs.job_detail', job_id=job_id, _external=True)})
 
     flash('Отклик отправлен', 'success')
     return redirect(url_for('jobs.index'))

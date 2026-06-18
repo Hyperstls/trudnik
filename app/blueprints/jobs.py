@@ -1,6 +1,6 @@
 from datetime import datetime, timezone, timedelta
 
-from flask import Blueprint, current_app, jsonify, flash, redirect, render_template, request, session, url_for, abort
+from flask import Blueprint, current_app, g, jsonify, flash, redirect, render_template, request, session, url_for, abort
 
 from app.config import Config
 from app.decorators import login_required, role_required
@@ -39,10 +39,17 @@ def check_stop_words(text):
 def inject_application_count():
     count = 0
     if session.get('role') == 'employer' and 'user_id' in session:
-        resp = supabase_request('GET',
-            f'applications?job.employer_id=eq.{session["user_id"]}&status=eq.pending&select=id')
-        if resp.ok and resp.json():
-            count = len(resp.json())
+        user_id = session['user_id']
+        if not hasattr(g, '_app_count_cache'):
+            g._app_count_cache = {}
+        if user_id in g._app_count_cache:
+            count = g._app_count_cache[user_id]
+        else:
+            resp = supabase_request('GET',
+                f'applications?job.employer_id=eq.{user_id}&status=eq.pending&select=id')
+            if resp.ok and resp.json():
+                count = len(resp.json())
+            g._app_count_cache[user_id] = count
     return {'pending_app_count': count}
 
 
@@ -69,6 +76,9 @@ def index():
     sort = request.args.get('sort', 'newest')
     skills_filter = request.args.get('skills', '')
     religion = request.args.get('religion', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    offset = (page - 1) * per_page
 
     now = datetime.now(timezone.utc).isoformat()
 
@@ -79,7 +89,8 @@ def index():
     if payment_max: query += f'&payment_amount=lte.{sanitize_postgrest(payment_max)}'
     if religion: query += f'&preferred_religion=eq.{sanitize_postgrest(religion)}'
 
-    resp = supabase_request('GET', f'jobs?{query}&order=created_at.desc')
+    # Пагинация: limit + offset. Запрашиваем +1 чтобы определить has_next
+    resp = supabase_request('GET', f'jobs?{query}&order=created_at.desc&limit={per_page + 1}&offset={offset}')
     jobs = resp.json() if resp.ok else []
 
     # Фильтрация: открытые, не истёкшие
@@ -136,10 +147,15 @@ def index():
         if app_resp.ok and app_resp.json():
             applied_job_ids = [a['job_id'] for a in app_resp.json()]
 
+    # Определяем, есть ли следующая страница (запросили per_page+1)
+    has_next = len(jobs) > per_page
+    jobs = jobs[:per_page]
+
     selected_skills_list = [s.strip() for s in skills_filter.split(',') if s.strip()] if skills_filter else []
     return render_template('index.html', jobs=jobs, applied_job_ids=applied_job_ids,
                            lat=lat, lng=lng, radius=radius, sort=sort,
-                            selected_skills=selected_skills_list)
+                           selected_skills=selected_skills_list,
+                           page=page, has_next=has_next)
 
 
 @jobs_bp.route('/workers')
@@ -371,6 +387,7 @@ def job_new():
                 created_job = resp.json()
                 if isinstance(created_job, list):
                     created_job = created_job[0]
+                flash('Задание успешно создано', 'success')
                 return redirect(url_for('jobs.my_jobs'))
             else:
                 flash(f'Ошибка создания задания: {resp.text}', 'danger')
@@ -744,6 +761,7 @@ def edit_job(job_id):
             return redirect(url_for('jobs.job_detail', job_id=job_id))
         else:
             flash('Ошибка обновления', 'danger')
+            return redirect(url_for('jobs.edit_job', job_id=job_id))
 
     return render_template('job_new.html',
         job=job,

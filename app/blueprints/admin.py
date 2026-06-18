@@ -3,8 +3,8 @@ from datetime import datetime
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for, jsonify
 import requests
 
-from app.decorators import login_required, role_required
-from app.utils import sanitize_postgrest, supabase_request, supabase_admin_request, supabase_rpc, SUPABASE_URL, SUPABASE_KEY, SERVICE_KEY
+from app.decorators import login_required, role_required, admin_required, handle_errors
+from app.utils import cache_for, sanitize_postgrest, supabase_request, supabase_admin_request, supabase_rpc, SUPABASE_URL, SUPABASE_KEY, SERVICE_KEY
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -17,7 +17,7 @@ def health_check():
 
 @admin_bp.route('/admin')
 @login_required
-@role_required('admin')
+@admin_required
 def admin_panel():
     """Админ-панель: дашборд, пользователи, задания, верификация."""
     tab = request.args.get('tab', 'dashboard')
@@ -81,16 +81,23 @@ def admin_panel():
         pending = [u for u in all_verify if u.get('verification_status') == 'pending']
         verified = [u for u in all_verify if u.get('verification_status') in ('approved', 'rejected')]
 
+    # Навыки — справочник (загружается через JS, но данные нужны для рендера)
+    skills = []
+    if tab == 'skills':
+        skills_resp = supabase_request('GET', 'skills?select=*&order=sort_order.asc,name.asc')
+        skills = skills_resp.json() if skills_resp.ok else []
+
     return render_template('admin.html',
                            tab=tab, stats=stats, users=users,
-                           jobs=jobs, pending=pending, verified=verified)
+                           jobs=jobs, pending=pending, verified=verified,
+                           skills=skills)
 
 
 # ── Управление пользователями ──────────────────────────
 
 @admin_bp.route('/admin/users/<user_id>/role', methods=['POST'])
 @login_required
-@role_required('admin')
+@admin_required
 def update_user_role(user_id):
     new_role = request.form.get('role', '')
     if new_role in ('worker', 'employer', 'admin'):
@@ -103,7 +110,7 @@ def update_user_role(user_id):
 
 @admin_bp.route('/admin/users/<user_id>/delete', methods=['POST'])
 @login_required
-@role_required('admin')
+@admin_required
 def delete_user(user_id):
     # 1. Каскадное удаление пользователя через RPC (этап 4.4)
     rpc_result = supabase_rpc('delete_user_cascade', {'p_user_id': user_id}, use_admin=True)
@@ -143,7 +150,7 @@ def delete_user(user_id):
 
 @admin_bp.route('/admin/jobs/<job_id>/status', methods=['POST'])
 @login_required
-@role_required('admin')
+@admin_required
 def update_job_status(job_id):
     new_status = request.form.get('status', '')
     if new_status in ('open', 'completed', 'cancelled'):
@@ -154,7 +161,7 @@ def update_job_status(job_id):
 
 @admin_bp.route('/admin/jobs/<job_id>/delete', methods=['POST'])
 @login_required
-@role_required('admin')
+@admin_required
 def delete_job_admin(job_id):
     _delete_job_cascade(job_id)
     flash('Задание удалено', 'success')
@@ -175,7 +182,7 @@ def _delete_job_cascade(job_id):
 
 @admin_bp.route('/admin/bulk-delete-users', methods=['POST'])
 @login_required
-@role_required('admin')
+@admin_required
 def bulk_delete_users():
     """Массовое удаление пользователей (до 20 за раз)."""
     data = request.get_json(silent=True) or {}
@@ -228,7 +235,7 @@ def bulk_delete_users():
 
 @admin_bp.route('/admin/bulk-delete-jobs', methods=['POST'])
 @login_required
-@role_required('admin')
+@admin_required
 def bulk_delete_jobs():
     """Массовое удаление заданий (до 50 за раз)."""
     data = request.get_json(silent=True) or {}
@@ -264,7 +271,8 @@ def bulk_delete_jobs():
 
 @admin_bp.route('/admin/skills', methods=['GET'])
 @login_required
-@role_required('admin')
+@admin_required
+@cache_for(seconds=300)
 def get_skills():
     # Пробуем сортировку по sort_order; если колонки нет — fallback на name
     resp = supabase_request('GET', 'skills?select=*&order=sort_order.asc,name.asc')
@@ -274,7 +282,7 @@ def get_skills():
 
 @admin_bp.route('/admin/skills', methods=['POST'])
 @login_required
-@role_required('admin')
+@admin_required
 def add_skill():
     data = request.get_json() or {}
     name = (data.get('name', '')).strip()
@@ -295,7 +303,7 @@ def add_skill():
 
 @admin_bp.route('/admin/skills/reorder', methods=['POST'])
 @login_required
-@role_required('admin')
+@admin_required
 def reorder_skills():
     """Принять новый порядок навыков: массив [{id, sort_order}, ...]"""
     data = request.get_json() or {}
@@ -308,7 +316,7 @@ def reorder_skills():
 
 @admin_bp.route('/admin/skills/<skill_id>', methods=['PUT'])
 @login_required
-@role_required('admin')
+@admin_required
 def update_skill(skill_id):
     data = request.get_json() or {}
     name = (data.get('name', '')).strip()
@@ -319,7 +327,7 @@ def update_skill(skill_id):
 
 @admin_bp.route('/admin/skills/<skill_id>', methods=['DELETE'])
 @login_required
-@role_required('admin')
+@admin_required
 def delete_skill(skill_id):
     supabase_admin_request('DELETE', f'user_skills?skill_id=eq.{skill_id}')
     supabase_admin_request('DELETE', f'job_skills?skill_id=eq.{skill_id}')
@@ -328,7 +336,8 @@ def delete_skill(skill_id):
 
 @admin_bp.route('/admin/religions', methods=['GET'])
 @login_required
-@role_required('admin')
+@admin_required
+@cache_for(seconds=300)
 def get_religions():
     resp = supabase_request('GET', 'religions?select=*&order=sort_order.asc,name.asc')
     if not resp.ok:
@@ -337,7 +346,7 @@ def get_religions():
 
 @admin_bp.route('/admin/religions', methods=['POST'])
 @login_required
-@role_required('admin')
+@admin_required
 def add_religion():
     data = request.get_json() or {}
     name = (data.get('name', '')).strip()
@@ -357,7 +366,7 @@ def add_religion():
 
 @admin_bp.route('/admin/religions/reorder', methods=['POST'])
 @login_required
-@role_required('admin')
+@admin_required
 def reorder_religions():
     """Принять новый порядок вероисповеданий: массив [{id, sort_order}, ...]"""
     data = request.get_json() or {}
@@ -370,7 +379,7 @@ def reorder_religions():
 
 @admin_bp.route('/admin/religions/<religion_id>', methods=['PUT'])
 @login_required
-@role_required('admin')
+@admin_required
 def update_religion(religion_id):
     data = request.get_json() or {}
     name = (data.get('name', '')).strip()
@@ -381,7 +390,7 @@ def update_religion(religion_id):
 
 @admin_bp.route('/admin/religions/<religion_id>', methods=['DELETE'])
 @login_required
-@role_required('admin')
+@admin_required
 def delete_religion(religion_id):
     resp = supabase_admin_request('DELETE', f'religions?id=eq.{religion_id}')
     return jsonify({'success': resp.ok})
@@ -390,7 +399,7 @@ def delete_religion(religion_id):
 
 @admin_bp.route('/admin/approve/<user_id>', methods=['POST'])
 @login_required
-@role_required('admin')
+@admin_required
 def approve_employer(user_id):
     resp = supabase_request('PATCH', f'profiles?id=eq.{user_id}',
                      json={'verification_status': 'approved'})
@@ -403,7 +412,7 @@ def approve_employer(user_id):
 
 @admin_bp.route('/admin/reject/<user_id>', methods=['POST'])
 @login_required
-@role_required('admin')
+@admin_required
 def reject_employer(user_id):
     resp = supabase_request('PATCH', f'profiles?id=eq.{user_id}',
                      json={'verification_status': 'rejected'})
@@ -416,7 +425,7 @@ def reject_employer(user_id):
 
 @admin_bp.route('/admin/verify-employer/<user_id>', methods=['POST'])
 @login_required
-@role_required('admin')
+@admin_required
 def verify_employer(user_id):
     supabase_admin_request('PATCH', f'profiles?id=eq.{user_id}', json={'verification_status': 'approved'})
     flash('Работодатель верифицирован', 'success')

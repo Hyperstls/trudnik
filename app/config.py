@@ -5,6 +5,7 @@ load_dotenv()
 
 
 class Config:
+    TESTING = os.environ.get('TESTING', 'False').lower() in ('true', '1', 'yes')
     _FALLBACK_SECRET = os.environ.get('SECRET_KEY')
     if not _FALLBACK_SECRET:
         raise RuntimeError('SECRET_KEY environment variable is required')

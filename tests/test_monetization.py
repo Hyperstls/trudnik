@@ -11,14 +11,10 @@ import time
 import pytest
 import requests
 
+from tests.conftest import EMPLOYER_EMAIL, EMPLOYER_PASSWORD, WORKER_EMAIL, WORKER_PASSWORD
+
 
 BASE_URL = "http://127.0.0.1:5000"
-
-# Тестовые учётные данные (из setup_test_users.py)
-EMPLOYER_EMAIL = "org@test.ru"
-EMPLOYER_PASSWORD = "test123"
-WORKER_EMAIL = "trud3@test.ru"
-WORKER_PASSWORD = "test123"
 
 
 # ──────────────────────────────────────────────

@@ -2,6 +2,8 @@
 import requests, re, json, sys, os
 from datetime import datetime
 
+from tests.conftest import EMPLOYER_EMAIL, EMPLOYER_PASSWORD, WORKER_EMAIL, WORKER_PASSWORD
+
 BASE = "http://127.0.0.1:5000"
 OUT = os.path.join(os.path.dirname(__file__), "new_routes_report.txt")
 report = []
@@ -32,7 +34,7 @@ def get_csrf(s):
 
 def api_post(s, url, json_data=None, form_data=None):
     csrf = get_csrf(s)
-    h = {}
+    h = {"X-Requested-With": "XMLHttpRequest"}
     if json_data is not None:
         h["Content-Type"] = "application/json"
     if csrf:
@@ -50,8 +52,8 @@ log("INFO", f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 log("INFO", "=" * 60)
 
 # ── Pre-flight: check login ──
-s_emp = login("org@test.ru", "test123456")
-s_wrk = login("trud3@test.ru", "test123456")
+s_emp = login(EMPLOYER_EMAIL, EMPLOYER_PASSWORD)
+s_wrk = login(WORKER_EMAIL, WORKER_PASSWORD)
 log("INFO", "Logins: employer OK, worker OK")
 
 # Get CSRF tokens
@@ -399,6 +401,23 @@ for name, path, needs_auth in endpoints:
     else:
         log("FAIL", f"7. {name}: {r.status_code}")
         all_compat_ok = False
+
+# ── Тест редиректов обратной совместимости ──
+for label, path, expected_tab in [
+    ("Редирект /jobs", "/jobs", "jobs"),
+    ("Редирект /search", "/search", "search"),
+]:
+    s = requests.Session()
+    s.get(BASE + "/")
+    r = s.get(BASE + path, allow_redirects=False)
+    if r.status_code in (301, 302, 303, 307, 308):
+        loc = r.headers.get('Location', '')
+        if f'tab={expected_tab}' in loc:
+            log("PASS", f"{label}: 302 → tab={expected_tab}")
+        else:
+            log("FAIL", f"{label}: Location={loc}, ожидался tab={expected_tab}")
+    else:
+        log("WARN", f"{label}: статус {r.status_code} (не редирект)")
 
 # ═══════════════════════════════════════════════════
 # Summary

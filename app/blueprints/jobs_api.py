@@ -17,6 +17,7 @@ from app.services.job_service import (
 )
 from app.services.notification_service import create as notify
 from app.utils import (
+    cache_for,
     supabase_request,
     supabase_admin_request,
     sanitize_postgrest,
@@ -30,6 +31,7 @@ jobs_api_bp = Blueprint('jobs_api', __name__)
 # ═══════════════════════════════════════════════════════════════
 
 @jobs_api_bp.route('/api/skills')
+@cache_for(seconds=300)
 def api_skills():
     """Получить список навыков (JSON)."""
     resp = supabase_request(
@@ -39,6 +41,7 @@ def api_skills():
 
 
 @jobs_api_bp.route('/api/religions')
+@cache_for(seconds=300)
 def api_religions():
     """Получить список вероисповеданий (JSON)."""
     resp = supabase_request(

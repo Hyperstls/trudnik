@@ -20,7 +20,7 @@ class RouterMiddleware:
     async def __call__(self, scope, receive, send):
         if scope["type"] == "websocket" or scope["path"].startswith("/ws"):
             import logging
-            logging.getLogger(__name__).warning(f"[ASGI_ROUTER] type={scope['type']} path={scope['path']} headers={dict(scope.get('headers', []))}")
+            logging.getLogger(__name__).warning(f"[ASGI_ROUTER] type={scope.get('type')} path={scope.get('path')}")
         if scope["type"] in ("websocket", "lifespan"):
             # WebSocket and lifespan go to FastAPI (needs lifespan for Redis)
             await self.ws_app(scope, receive, send)

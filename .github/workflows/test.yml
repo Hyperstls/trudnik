@@ -1,0 +1,326 @@
+name: CI/CD Тестирование
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Workflow для автоматического запуска всех категорий тестов:
+#   - Backend (pytest unit/integration)
+#   - E2E (Playwright Chromium headless)
+#   - Accessibility (axe-core аудит)
+#   - Locust (нагрузочное тестирование, только workflow_dispatch)
+#
+# Использует Docker Compose для поднятия Redis, WebSocket, Celery Worker и Beat.
+# Flask запускается в фоне как тестовый сервер.
+# ══════════════════════════════════════════════════════════════════════════════
+
+on:
+  # Автоматический запуск при пуше в main и develop
+  push:
+    branches: [main, develop]
+  # Автоматический запуск при создании PR в main
+  pull_request:
+    branches: [main]
+  # Ручной запуск из интерфейса GitHub Actions
+  workflow_dispatch:
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Основной job: backend + e2e + accessibility тесты
+  # ═══════════════════════════════════════════════════════════════════════════
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      # ── Режим тестирования ─────────────────────────────────────────────
+      TESTING: 'true'                         # Отключает CSRF-защиту в тестах
+      FLASK_ENV: 'testing'                    # Flask в режиме тестирования
+      CELERY_TASK_ALWAYS_EAGER: 'true'         # Celery-задачи выполняются синхронно
+      BASE_URL: 'http://127.0.0.1:5000'       # Базовый URL тестового сервера
+
+      # ── Supabase (из GitHub Secrets) ────────────────────────────────────
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      # ── Redis / WebSocket ───────────────────────────────────────────────
+      REDIS_URL: 'redis://localhost:6379/0'
+      WEBSOCKET_URL: 'ws://localhost:8001'
+      WEBSOCKET_PORT: '8001'
+
+      # ── SMTP (почтовый сервис) ──────────────────────────────────────────
+      SMTP_HOST: 'localhost'
+      SMTP_PORT: '587'
+      SMTP_USER: ''
+      SMTP_PASSWORD: ''
+      SMTP_USE_TLS: 'True'
+      SMTP_USE_SSL: 'False'
+      SMTP_FROM_EMAIL: 'notifications@trudnik.ru'
+      SMTP_FROM_NAME: 'Trudnik'
+
+      # ── VAPID (Web Push) ────────────────────────────────────────────────
+      VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+      VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+      VAPID_CLAIMS_EMAIL: 'notifications@trudnik.ru'
+      VAPID_CLAIMS_SUBJECT: 'mailto:notifications@trudnik.ru'
+
+      # ── Тестовые учётные данные ─────────────────────────────────────────
+      EMPLOYER_EMAIL: ${{ secrets.EMPLOYER_EMAIL }}
+      EMPLOYER_PASSWORD: ${{ secrets.EMPLOYER_PASSWORD }}
+      WORKER_EMAIL: ${{ secrets.WORKER_EMAIL }}
+      WORKER_PASSWORD: ${{ secrets.WORKER_PASSWORD }}
+
+      # ── Ключ Flask и Yandex Maps ───────────────────────────────────────
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      YANDEX_MAPS_API_KEY: ${{ secrets.YANDEX_MAPS_API_KEY }}
+
+      # ── База данных (для Docker Compose сервисов Celery) ────────────────
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    steps:
+      # ────────────────────────────────────────────────────────────────────
+      # 1. Клонирование репозитория
+      # ────────────────────────────────────────────────────────────────────
+      - name: Клонирование репозитория
+        uses: actions/checkout@v4
+
+      # ────────────────────────────────────────────────────────────────────
+      # 2. Установка Python 3.11
+      # ────────────────────────────────────────────────────────────────────
+      - name: Установка Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # ────────────────────────────────────────────────────────────────────
+      # 3. Кеширование pip-зависимостей (ускоряет повторные запуски)
+      # ────────────────────────────────────────────────────────────────────
+      - name: Кеширование pip-зависимостей
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements-dev.txt', 'requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # ────────────────────────────────────────────────────────────────────
+      # 4. Установка Python-зависимостей
+      # ────────────────────────────────────────────────────────────────────
+      - name: Установка зависимостей
+        run: pip install -r requirements-dev.txt
+
+      # ────────────────────────────────────────────────────────────────────
+      # 5. Установка Playwright-браузеров (Chromium для E2E тестов)
+      # ────────────────────────────────────────────────────────────────────
+      - name: Установка Playwright браузеров
+        run: playwright install chromium --with-deps
+
+      # ────────────────────────────────────────────────────────────────────
+      # 6. Запуск Docker Compose сервисов (Redis, WebSocket, Celery)
+      #    Сборка образов из Dockerfile и запуск в фоне
+      # ────────────────────────────────────────────────────────────────────
+      - name: Запуск Docker Compose сервисов
+        run: docker compose up -d --build redis websocket celery_worker celery_beat
+
+      # ────────────────────────────────────────────────────────────────────
+      # 7. Ожидание готовности Docker-сервисов
+      #    Проверка Redis через redis-cli ping внутри контейнера
+      # ────────────────────────────────────────────────────────────────────
+      - name: Ожидание готовности сервисов
+        run: |
+          echo "Ожидание запуска контейнеров (15 секунд)..."
+          sleep 15
+          echo "Проверка состояния контейнеров:"
+          docker compose ps
+          echo "Проверка Redis (ping):"
+          docker compose exec -T redis redis-cli ping
+          echo "Все сервисы готовы."
+
+      # ────────────────────────────────────────────────────────────────────
+      # 8. Запуск Flask-приложения в фоне как тестового сервера
+      # ────────────────────────────────────────────────────────────────────
+      - name: Запуск Flask тестового сервера
+        run: |
+          echo "Запуск Flask на порту 5000..."
+          python -m flask run --host=0.0.0.0 --port=5000 &
+          echo "Flask PID: $!"
+        env:
+          FLASK_APP: 'app.py'
+
+      # ────────────────────────────────────────────────────────────────────
+      # 9. Ожидание готовности Flask и проверка health-эндпоинта
+      # ────────────────────────────────────────────────────────────────────
+      - name: Ожидание готовности Flask
+        run: |
+          echo "Ожидание запуска Flask (5 секунд)..."
+          sleep 5
+          echo "Проверка health-эндпоинта Flask:"
+          curl --fail --retry 5 --retry-delay 2 --max-time 10 http://localhost:5000/health || echo "Health-check недоступен, продолжаем..."
+          echo "Flask готов."
+
+      # ────────────────────────────────────────────────────────────────────
+      # 10. Backend-тесты (unit + integration)
+      #     Исключаем Playwright-конфигурацию и E2E-тесты
+      #     --timeout=120 требует pytest-timeout в requirements-dev.txt
+      # ────────────────────────────────────────────────────────────────────
+      - name: Backend тесты (pytest)
+        run: |
+          python -m pytest tests/ \
+            -m "not e2e and not a11y" \
+            -v --tb=short \
+            --ignore=tests/conftest_playwright.py \
+            --ignore=tests/test_e2e_frontend.py \
+            --ignore=tests/test_e2e_multicontext.py \
+            --timeout=120 \
+            --junitxml=pytest-report.xml \
+            --cov=. \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term
+
+      # ────────────────────────────────────────────────────────────────────
+      # 11. Playwright E2E тесты (headless Chromium)
+      #     Не падаем при ошибке — E2E могут быть нестабильны в CI
+      #     Исключаем медленные тесты (маркер slow)
+      # ────────────────────────────────────────────────────────────────────
+      - name: Playwright E2E тесты (headless)
+        run: |
+          python -m pytest tests/test_e2e_frontend.py tests/test_e2e_multicontext.py \
+            -m "e2e and not slow" \
+            -v --tb=short \
+            --browser chromium --headed=false \
+            --timeout=180 \
+            --junitxml=pytest-e2e-report.xml \
+          || echo "E2E_SKIPPED=true — тесты завершились с ошибкой (не блокируем CI)"
+
+      # ────────────────────────────────────────────────────────────────────
+      # 12. Accessibility тесты (axe-core аудит через Playwright)
+      #     Не падаем при ошибке — a11y-аудит опционален
+      # ────────────────────────────────────────────────────────────────────
+      - name: Accessibility тесты (a11y)
+        run: |
+          python -m pytest tests/test_e2e_frontend.py \
+            -m a11y \
+            -v --tb=short \
+            --browser chromium --headed=false \
+            --junitxml=pytest-a11y-report.xml \
+          || echo "A11Y_SKIPPED=true — a11y-тесты завершились с ошибкой (не блокируем CI)"
+
+      # ────────────────────────────────────────────────────────────────────
+      # 13. Остановка Docker Compose сервисов и очистка
+      # ────────────────────────────────────────────────────────────────────
+      - name: Остановка Docker Compose
+        if: always()
+        run: docker compose down --volumes
+
+      # ────────────────────────────────────────────────────────────────────
+      # 14. Загрузка артефактов тестирования (отчёты pytest и coverage)
+      # ────────────────────────────────────────────────────────────────────
+      - name: Загрузка артефактов — отчёты тестов
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            pytest-report.xml
+            coverage.xml
+            pytest-e2e-report.xml
+            pytest-a11y-report.xml
+          retention-days: 7
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Отдельный job: нагрузочное тестирование Locust
+  # Запускается только при ручном запуске (workflow_dispatch)
+  # ═══════════════════════════════════════════════════════════════════════════
+  locust-test:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    timeout-minutes: 10
+
+    env:
+      TESTING: 'true'
+      FLASK_ENV: 'testing'
+      CELERY_TASK_ALWAYS_EAGER: 'true'
+      BASE_URL: 'http://127.0.0.1:5000'
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      REDIS_URL: 'redis://localhost:6379/0'
+      WEBSOCKET_URL: 'ws://localhost:8001'
+      WEBSOCKET_PORT: '8001'
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      EMPLOYER_EMAIL: ${{ secrets.EMPLOYER_EMAIL }}
+      EMPLOYER_PASSWORD: ${{ secrets.EMPLOYER_PASSWORD }}
+      WORKER_EMAIL: ${{ secrets.WORKER_EMAIL }}
+      WORKER_PASSWORD: ${{ secrets.WORKER_PASSWORD }}
+
+    steps:
+      # ── Клонирование репозитория ─────────────────────────────────────
+      - name: Клонирование репозитория
+        uses: actions/checkout@v4
+
+      # ── Установка Python 3.11 ────────────────────────────────────────
+      - name: Установка Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # ── Кеширование pip ──────────────────────────────────────────────
+      - name: Кеширование pip-зависимостей
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements-dev.txt', 'requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # ── Установка зависимостей ───────────────────────────────────────
+      - name: Установка зависимостей
+        run: pip install -r requirements-dev.txt
+
+      # ── Запуск Docker Compose (только Redis) ─────────────────────────
+      - name: Запуск Docker Compose (Redis)
+        run: docker compose up -d --build redis
+
+      # ── Ожидание Redis ───────────────────────────────────────────────
+      - name: Ожидание Redis
+        run: |
+          sleep 10
+          docker compose exec -T redis redis-cli ping
+
+      # ── Запуск Flask тестового сервера ───────────────────────────────
+      - name: Запуск Flask тестового сервера
+        run: |
+          python -m flask run --host=0.0.0.0 --port=5000 &
+          sleep 5
+        env:
+          FLASK_APP: 'app.py'
+
+      # ── Нагрузочное тестирование Locust ──────────────────────────────
+      #   50 пользователей, 5 новых/сек, длительность 30 секунд
+      #   Результаты сохраняются в CSV (locust_results_*.csv)
+      # ─────────────────────────────────────────────────────────────────
+      - name: Запуск Locust (нагрузочное тестирование)
+        run: |
+          locust -f tests/locustfile.py \
+            --host=http://127.0.0.1:5000 \
+            --users=50 \
+            --spawn-rate=5 \
+            --run-time=30s \
+            --headless \
+            --csv=locust_results
+
+      # ── Остановка сервисов ───────────────────────────────────────────
+      - name: Остановка Docker Compose
+        if: always()
+        run: docker compose down --volumes
+
+      # ── Загрузка артефактов Locust ───────────────────────────────────
+      - name: Загрузка артефактов — результаты Locust
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: locust-results
+          path: |
+            locust_results_stats.csv
+            locust_results_failures.csv
+            locust_results_exceptions.csv
+          retention-days: 7

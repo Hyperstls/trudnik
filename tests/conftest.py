@@ -18,9 +18,19 @@ import requests
 
 BASE_URL = os.environ.get('BASE_URL', 'http://127.0.0.1:5000')
 EMPLOYER_EMAIL = os.environ.get('EMPLOYER_EMAIL', 'org@test.ru')
-EMPLOYER_PASSWORD = os.environ.get('EMPLOYER_PASSWORD', 'test123')
-WORKER_EMAIL = os.environ.get('WORKER_EMAIL', 'trud3@test.ru')
-WORKER_PASSWORD = os.environ.get('WORKER_PASSWORD', 'test123')
+EMPLOYER_PASSWORD = os.environ.get('EMPLOYER_PASSWORD', '')
+WORKER_EMAIL = os.environ.get('WORKER_EMAIL', '')
+WORKER_PASSWORD = os.environ.get('WORKER_PASSWORD', '')
+
+# Проверка: переменные должны быть заданы через окружение или .env
+_MISSING = [k for k, v in [('EMPLOYER_PASSWORD', EMPLOYER_PASSWORD),
+                             ('WORKER_EMAIL', WORKER_EMAIL),
+                             ('WORKER_PASSWORD', WORKER_PASSWORD)] if not v]
+if _MISSING:
+    raise RuntimeError(
+        f'Отсутствуют обязательные переменные окружения: {", ".join(_MISSING)}. '
+        f'Установите их через .env.test или переменные окружения.'
+    )
 
 
 # ──────────────────────────────────────────────

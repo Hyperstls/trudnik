@@ -4,6 +4,7 @@ import json
 import logging
 import math
 import os
+import re
 import time
 import uuid
 import urllib.parse
@@ -606,14 +607,19 @@ def rate_limit(f: F) -> F:
 # ═══════════════════════════════════════════════════════════════
 
 # Whitelist: разрешённые символы для PostgREST-параметров
+# NOTE: .,* оставлены — экранируются бэкслешем в sanitize_postgrest()
+# NOTE: ,:;'&()"<> удалены — обрабатываются шагами удаления/экранирования
 _ALLOWED_CHARS = set(
     'abcdefghijklmnopqrstuvwxyz'
     'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     '0123456789'
     'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
     'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'
-    ' -_.,:;!?@/#&()[]{}|+=\'"`~<>%^*$'
+    ' -_./:*!?@#[]{}|+=\\`~%^$'
 )
+
+# Предкомпилированный pattern для удаления HTML-тегов (XSS-векторы)
+_HTML_TAG_RE = re.compile(r'</?(script|style|iframe|svg)\b[^>]*>', re.IGNORECASE)
 
 
 def sanitize_postgrest(value: Any) -> Any:
@@ -621,10 +627,11 @@ def sanitize_postgrest(value: Any) -> Any:
 
     Этапы:
     1. URL-декодирование (%20 → пробел, %27 → ' и т.д.)
-    2. Удаление опасных символов: ( ) , ; " ' &
-    3. Экранирование спецсимволов PostgREST: . → \\. , * → \\*
-    4. Whitelist-проверка: только разрешённые символы
-    5. Обрезка пробелов
+    2. Удаление HTML-тегов <script>, <style>, <iframe>, <svg> (XSS-векторы)
+    3. Удаление опасных символов: ( ) , ; " ' & < >
+    4. Экранирование спецсимволов PostgREST: . → \\. , * → \\*
+    5. Whitelist-проверка: только разрешённые символы
+    6. Обрезка пробелов
 
     Args:
         value: строка (или не-строка — возвращается как есть).
@@ -641,14 +648,17 @@ def sanitize_postgrest(value: Any) -> Any:
     except Exception:
         pass
 
-    # 2. Удаляем опасные символы, которые могут изменить структуру запроса
-    for ch in '(),;"\'&':
+    # 2. Удаляем HTML-теги (XSS-векторы: <script>, <style>, <iframe>, <svg>)
+    value = _HTML_TAG_RE.sub('', value)
+
+    # 3. Удаляем опасные символы, которые могут изменить структуру запроса
+    for ch in '(),;"\'&<>':
         value = value.replace(ch, '')
 
-    # 3. Экранируем спецсимволы PostgREST (удвоение точки, звёздочка через backslash)
+    # 4. Экранируем спецсимволы PostgREST (точка и звёздочка — через backslash)
     value = value.replace('.', '\\.').replace('*', '\\*')
 
-    # 4. Whitelist-проверка: удаляем все символы не из разрешённого набора
+    # 5. Whitelist-проверка: удаляем все символы не из разрешённого набора
     value = ''.join(ch for ch in value if ch in _ALLOWED_CHARS)
 
     return value.strip()
