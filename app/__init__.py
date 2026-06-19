@@ -210,7 +210,7 @@ def create_app():
     def inject_git_version():
         return {
             'git_version': _git_version,
-            'worker_site_url': current_app.config.get('WORKER_SITE_URL', 'https://trudnik-hyperstls.amvera.io/'),
+            'worker_site_url': app.config.get('WORKER_SITE_URL', 'https://trudnik-hyperstls.amvera.io/'),
         }
 
     @app.context_processor
