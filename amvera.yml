@@ -1,5 +1,6 @@
 meta:
   version: 1
+  toolchain: python
 
 build:
   dockerfile: Dockerfile
