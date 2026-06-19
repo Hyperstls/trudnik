@@ -14,6 +14,7 @@ class Config:
     SUPABASE_ANON_KEY = os.environ.get('SUPABASE_ANON_KEY')
     SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY', '')
     YANDEX_MAPS_API_KEY = os.environ.get('YANDEX_MAPS_API_KEY', '')
+    WORKER_SITE_URL = os.environ.get('WORKER_SITE_URL', 'https://trudnik-hyperstls.amvera.io/')
 
     # Cookie Security
     SESSION_COOKIE_HTTPONLY = True

@@ -561,7 +561,13 @@
     <header class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-neutral-200 shadow-sm">
         <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
             <!-- Логотип -->
+            {% if session.get('role') == 'employer' %}
+            <a href="/my-jobs" class="flex items-center gap-2.5 shrink-0" aria-label="Мои задания">
+            {% elif session.get('role') == 'worker' %}
+            <a href="{{ worker_site_url }}" class="flex items-center gap-2.5 shrink-0" aria-label="На главный сайт">
+            {% else %}
             <a href="/" class="flex items-center gap-2.5 shrink-0" aria-label="На главную">
+            {% endif %}
                 <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-sm">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
@@ -1107,20 +1113,6 @@
                 observer.observe(document.documentElement, { childList: true, subtree: true });
             }
         })();
-
-        // Version toast (click on logo)
-        document.addEventListener('DOMContentLoaded', function() {
-            var logo = document.querySelector('header a[href="/"]');
-            if (logo) {
-                logo.addEventListener('click', function(e) {
-                    if (window.location.pathname === '/') {
-                        e.preventDefault();
-                        var gitVersion = document.querySelector('meta[name="git-version"]')?.content || 'dev';
-                        window.showToast('Версия: ' + gitVersion, 'info');
-                    }
-                });
-            }
-        });
 
         // Desktop search form submit handler (replaces form submit attribute)
         document.addEventListener('DOMContentLoaded', function() {

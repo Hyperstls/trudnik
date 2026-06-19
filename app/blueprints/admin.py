@@ -329,10 +329,68 @@ def update_skill(skill_id):
 @login_required
 @admin_required
 def delete_skill(skill_id):
-    supabase_admin_request('DELETE', f'user_skills?skill_id=eq.{skill_id}')
-    supabase_admin_request('DELETE', f'job_skills?skill_id=eq.{skill_id}')
+    resp1 = supabase_admin_request('DELETE', f'user_skills?skill_id=eq.{skill_id}')
+    resp2 = supabase_admin_request('DELETE', f'job_skills?skill_id=eq.{skill_id}')
+    if not resp1.ok:
+        return jsonify({'success': False, 'error': 'Failed to cleanup user_skills'}), 500
+    if not resp2.ok:
+        return jsonify({'success': False, 'error': 'Failed to cleanup job_skills'}), 500
     resp = supabase_admin_request('DELETE', f'skills?id=eq.{skill_id}')
     return jsonify({'success': resp.ok})
+
+@admin_bp.route('/admin/bulk-delete-skills', methods=['POST'])
+@login_required
+@admin_required
+def bulk_delete_skills():
+    """Массовое удаление навыков (до 50 за раз).
+
+    Использует оператор in.() PostgREST для выполнения трёх запросов
+    вместо N*3 — удаление всех user_skills, job_skills и skills за раз.
+    Возвращает сводку: deleted (сколько навыков удалено из skills),
+    failed (сколько запросов к дочерним таблицам не удались).
+    """
+    data = request.get_json(silent=True) or {}
+    skill_ids = data.get('skill_ids', [])
+
+    if not isinstance(skill_ids, list) or len(skill_ids) == 0:
+        return jsonify({'deleted': 0, 'failed': 0, 'errors': ['No skill_ids provided']}), 400
+    if len(skill_ids) > 50:
+        return jsonify({'deleted': 0, 'failed': len(skill_ids), 'errors': ['Max 50 skills per request']}), 400
+
+    ids_filter = f'id=in.({",".join(str(sid) for sid in skill_ids)})'
+    skill_id_filter = f'skill_id=in.({",".join(str(sid) for sid in skill_ids)})'
+
+    errors = []
+    failed = 0
+
+    # 1. Каскадное удаление дочерних записей
+    resp_user = supabase_admin_request('DELETE', f'user_skills?{skill_id_filter}')
+    if not resp_user.ok:
+        errors.append(f'user_skills cleanup failed: {resp_user.text}')
+        failed += 1
+
+    resp_job = supabase_admin_request('DELETE', f'job_skills?{skill_id_filter}')
+    if not resp_job.ok:
+        errors.append(f'job_skills cleanup failed: {resp_job.text}')
+        failed += 1
+
+    # 2. Удаление самих навыков
+    resp = supabase_admin_request('DELETE', f'skills?{ids_filter}')
+
+    if not resp.ok:
+        return jsonify({
+            'deleted': 0,
+            'failed': len(skill_ids),
+            'errors': errors + [f'skills DELETE failed: {resp.text}']
+        }), 500
+
+    # Подсчёт удалённых: PostgREST возвращает массив удалённых строк
+    deleted = len(resp.json()) if isinstance(resp.json(), list) else 0
+    missing = len(skill_ids) - deleted
+    if missing > 0:
+        errors.append(f'{missing} skill(s) not found in database')
+
+    return jsonify({'deleted': deleted, 'failed': failed, 'errors': errors})
 
 @admin_bp.route('/admin/religions', methods=['GET'])
 @login_required
@@ -394,6 +452,42 @@ def update_religion(religion_id):
 def delete_religion(religion_id):
     resp = supabase_admin_request('DELETE', f'religions?id=eq.{religion_id}')
     return jsonify({'success': resp.ok})
+
+@admin_bp.route('/admin/bulk-delete-religions', methods=['POST'])
+@login_required
+@admin_required
+def bulk_delete_religions():
+    """Массовое удаление вероисповеданий (до 50 за раз).
+
+    Использует оператор in.() PostgREST для одного запроса вместо N.
+    Возвращает сводку: deleted (сколько записей удалено),
+    failed и errors при ошибках.
+    """
+    data = request.get_json(silent=True) or {}
+    religion_ids = data.get('religion_ids', [])
+
+    if not isinstance(religion_ids, list) or len(religion_ids) == 0:
+        return jsonify({'deleted': 0, 'failed': 0, 'errors': ['No religion_ids provided']}), 400
+    if len(religion_ids) > 50:
+        return jsonify({'deleted': 0, 'failed': len(religion_ids), 'errors': ['Max 50 religions per request']}), 400
+
+    ids_filter = f'id=in.({",".join(str(rid) for rid in religion_ids)})'
+    resp = supabase_admin_request('DELETE', f'religions?{ids_filter}')
+
+    if not resp.ok:
+        return jsonify({
+            'deleted': 0,
+            'failed': len(religion_ids),
+            'errors': [f'religions DELETE failed: {resp.text}']
+        }), 500
+
+    deleted = len(resp.json()) if isinstance(resp.json(), list) else 0
+    errors = []
+    missing = len(religion_ids) - deleted
+    if missing > 0:
+        errors.append(f'{missing} religion(s) not found in database')
+
+    return jsonify({'deleted': deleted, 'failed': 0, 'errors': errors})
 
 # ── Верификация работодателей ──────────────────────────
 

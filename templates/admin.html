@@ -4,7 +4,10 @@
 <div class="px-4 pb-24 max-w-4xl mx-auto">
     <div class="flex items-center justify-between mb-6">
         <h2 class="text-2xl font-bold text-neutral-900">Панель администратора</h2>
-        <span class="text-xs bg-primary-100 text-primary-700 px-3 py-1 rounded-full font-medium">admin</span>
+        <div class="flex items-center gap-2">
+            <span class="text-[10px] text-neutral-400 font-mono" title="Версия приложения (git)">{{ git_version }}</span>
+            <span class="text-xs bg-primary-100 text-primary-700 px-3 py-1 rounded-full font-medium">admin</span>
+        </div>
     </div>
 
     <!-- Вкладки -->
@@ -334,6 +337,15 @@
                    class="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm">
             <button class="js-add-skill-btn px-4 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600">Добавить</button>
         </div>
+        <div id="bulk-delete-skills-bar" class="mb-3 hidden">
+            <button type="button" class="js-bulk-delete-skills-btn px-3 py-1.5 text-sm font-medium bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                Удалить выбранные навыки (<span id="skills-selected-count">0</span>)
+            </button>
+        </div>
+        <label class="flex items-center gap-2 mb-2 text-sm text-neutral-500 cursor-pointer select-none">
+            <input type="checkbox" class="js-select-all-skills rounded border-neutral-300">
+            <span>Выбрать все навыки</span>
+        </label>
         <div id="skills-list" class="space-y-2">
             <p class="text-sm text-neutral-400">Загрузка...</p>
         </div>
@@ -351,6 +363,15 @@
                    class="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm">
             <button class="js-add-religion-btn px-4 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600">Добавить</button>
         </div>
+        <div id="bulk-delete-religions-bar" class="mb-3 hidden">
+            <button type="button" class="js-bulk-delete-religions-btn px-3 py-1.5 text-sm font-medium bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                Удалить выбранные вероисповедания (<span id="religions-selected-count">0</span>)
+            </button>
+        </div>
+        <label class="flex items-center gap-2 mb-2 text-sm text-neutral-500 cursor-pointer select-none">
+            <input type="checkbox" class="js-select-all-religions rounded border-neutral-300">
+            <span>Выбрать все вероисповедания</span>
+        </label>
         <div id="religions-list" class="space-y-2">
             <p class="text-sm text-neutral-400">Загрузка...</p>
         </div>
@@ -368,6 +389,70 @@
 </div>
 
 <script nonce="{{ csp_nonce }}">
+// ── Общая функция массового удаления (используется для навыков и вероисповеданий) ──
+function setupBulkDelete(config) {
+    var selectAll = document.querySelector(config.selectAll);
+    var bulkBar = document.getElementById(config.bulkBarId);
+    var bulkBtn = document.querySelector(config.bulkBtn);
+    var countSpan = document.getElementById(config.countSpanId);
+
+    function updateUI() {
+        var checked = document.querySelectorAll(config.checkbox + ':checked');
+        var count = checked.length;
+        countSpan.textContent = count;
+        bulkBar.classList.toggle('hidden', count === 0);
+        bulkBtn.disabled = count === 0;
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            document.querySelectorAll(config.checkbox).forEach(function(cb) {
+                cb.checked = selectAll.checked;
+            });
+            updateUI();
+        });
+    }
+
+    document.getElementById(config.listId).addEventListener('change', function(e) {
+        if (e.target.classList.contains(config.checkbox.substring(1))) {
+            if (!e.target.checked && selectAll) selectAll.checked = false;
+            updateUI();
+        }
+    });
+
+    if (bulkBtn) {
+        var btnText = config.btnText;
+        bulkBtn.addEventListener('click', function() {
+            var ids = Array.from(document.querySelectorAll(config.checkbox + ':checked'))
+                           .map(function(cb) { return cb.dataset[config.dataAttr]; });
+            if (!ids.length) return;
+            var confirmMsg = 'Удалить ' + ids.length + ' ' + config.entityPlural + '? Связанные данные пользователей также будут очищены.';
+            window.showConfirm(confirmMsg, function() {
+                bulkBtn.disabled = true;
+                bulkBtn.textContent = 'Удаление...';
+                var payload = {};
+                payload[config.payloadKey] = ids;
+                fetch(config.endpoint, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    window.showToast('Удалено: ' + data.deleted + ', ошибок: ' + data.failed, data.failed > 0 ? 'warning' : 'success');
+                    config.loadFn();
+                })
+                .catch(function(err) {
+                    window.showToast(config.errorPrefix + ': ' + err.message, 'error');
+                    bulkBtn.disabled = false;
+                    countSpan.textContent = ids.length;
+                    bulkBtn.textContent = btnText + ' (' + ids.length + ')';
+                });
+            });
+        });
+    }
+}
+
 // ── Навыки: CRUD + перестановка ──
 {% if tab == 'skills' %}
 let skillsData = [];
@@ -384,6 +469,10 @@ async function loadSkills() {
             list.innerHTML = '<p class="text-sm text-neutral-400">Нет навыков</p>';
         }
     } catch (e) { document.getElementById('skills-list').innerHTML = '<p class="text-sm text-danger">Ошибка загрузки</p>'; }
+    var selectAll = document.querySelector('.js-select-all-skills');
+    if (selectAll) selectAll.checked = false;
+    var bulkBar = document.getElementById('bulk-delete-skills-bar');
+    if (bulkBar) bulkBar.classList.add('hidden');
 }
 
 function renderSkills() {
@@ -391,6 +480,7 @@ function renderSkills() {
     list.innerHTML = skillsData.map((s, i) => `
         <div class="flex items-center gap-1.5 p-2 border border-neutral-100 rounded-lg bg-white cursor-move"
              id="skill-${s.id}" draggable="true" data-skill-index="${i}">
+            <input type="checkbox" class="js-skill-checkbox rounded border-neutral-300 shrink-0" data-skill-id="${s.id}">
             <span class="text-xs text-neutral-300 cursor-grab mr-1 select-none" title="Перетащите">⋮⋮</span>
             <span class="text-xs text-neutral-400 w-6 text-center">${i + 1}</span>
             <input type="text" value="${s.name}" data-id="${s.id}"
@@ -498,6 +588,23 @@ document.addEventListener('drop', function(e) {
         if (!isNaN(fromIdx) && !isNaN(toIdx)) moveSkill(fromIdx, 0, toIdx);
     }
 });
+
+// ── Массовое удаление: навыки ──
+setupBulkDelete({
+    selectAll: '.js-select-all-skills',
+    bulkBarId: 'bulk-delete-skills-bar',
+    bulkBtn: '.js-bulk-delete-skills-btn',
+    countSpanId: 'skills-selected-count',
+    checkbox: '.js-skill-checkbox',
+    listId: 'skills-list',
+    dataAttr: 'skillId',
+    endpoint: '/admin/bulk-delete-skills',
+    payloadKey: 'skill_ids',
+    loadFn: loadSkills,
+    btnText: 'Удалить выбранные навыки',
+    entityPlural: 'навык(ов)',
+    errorPrefix: 'Ошибка при удалении навыков'
+});
 {% endif %}
 
 // ── Вероисповедания: CRUD + перестановка ──
@@ -516,6 +623,10 @@ async function loadReligions() {
             list.innerHTML = '<p class="text-sm text-neutral-400">Нет вероисповеданий</p>';
         }
     } catch (e) { document.getElementById('religions-list').innerHTML = '<p class="text-sm text-danger">Ошибка загрузки</p>'; }
+    var selectAll = document.querySelector('.js-select-all-religions');
+    if (selectAll) selectAll.checked = false;
+    var bulkBar = document.getElementById('bulk-delete-religions-bar');
+    if (bulkBar) bulkBar.classList.add('hidden');
 }
 
 function renderReligions() {
@@ -523,6 +634,7 @@ function renderReligions() {
     list.innerHTML = religionsData.map((r, i) => `
         <div class="flex items-center gap-1.5 p-2 border border-neutral-100 rounded-lg bg-white cursor-move"
              id="religion-${r.id}" draggable="true" data-religion-index="${i}">
+            <input type="checkbox" class="js-religion-checkbox rounded border-neutral-300 shrink-0" data-religion-id="${r.id}">
             <span class="text-xs text-neutral-300 cursor-grab mr-1 select-none" title="Перетащите">⋮⋮</span>
             <span class="text-xs text-neutral-400 w-6 text-center">${i + 1}</span>
             <input type="text" value="${r.name}" data-id="${r.id}"
@@ -628,6 +740,23 @@ document.addEventListener('drop', function(e) {
         var toIdx = parseInt(div.dataset.religionIndex);
         if (!isNaN(fromIdx) && !isNaN(toIdx)) moveReligion(fromIdx, 0, toIdx);
     }
+});
+
+// ── Массовое удаление: вероисповедания ──
+setupBulkDelete({
+    selectAll: '.js-select-all-religions',
+    bulkBarId: 'bulk-delete-religions-bar',
+    bulkBtn: '.js-bulk-delete-religions-btn',
+    countSpanId: 'religions-selected-count',
+    checkbox: '.js-religion-checkbox',
+    listId: 'religions-list',
+    dataAttr: 'religionId',
+    endpoint: '/admin/bulk-delete-religions',
+    payloadKey: 'religion_ids',
+    loadFn: loadReligions,
+    btnText: 'Удалить выбранные вероисповедания',
+    entityPlural: 'вероисповедание(ий)',
+    errorPrefix: 'Ошибка при удалении вероисповеданий'
 });
 {% endif %}
 
