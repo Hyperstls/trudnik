@@ -1,1 +1,1 @@
-81e27d8 feat: redesign PWA icons to smiley-face with gradient, align push API routes, add icon generator script (2026-06-19 19:43:20 +0300)
+4456b11 feat: unified versioning via VERSION file, GIT_VERSION env, and git log fallback (2026-06-19 22:19:58 +0300)

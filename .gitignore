@@ -1,7 +1,7 @@
 __pycache__/
 *.pyc
 .env
-.env.amvera
+!.env.amvera
 .idea/
 original_app.py
 
@@ -9,9 +9,6 @@ original_app.py
 pytest_collect.txt
 pytest_full_p3.txt
 pytest_output_p3.txt
-
-# Environment files with secrets
-.env.amvera
 
 # Backup files
 original_app.py
