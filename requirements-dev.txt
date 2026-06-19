@@ -21,5 +21,8 @@ locust>=2.20.0
 # Тестовые данные
 Faker>=22.0.0
 
+# Генерация иконок (scripts/generate_icons.py)
+Pillow>=10.0.0
+
 # Async/WebSocket
 websockets>=12.0

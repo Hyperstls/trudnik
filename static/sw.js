@@ -218,7 +218,7 @@ self.addEventListener('pushsubscriptionchange', (event) => {
     self.registration.pushManager.subscribe(
       event.oldSubscription.options
     ).then((newSubscription) => {
-      return fetch('/notifications/push/subscription', {
+      return fetch('/push/subscription', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
