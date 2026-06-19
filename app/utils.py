@@ -98,8 +98,8 @@ def _circuit_open_response() -> 'SupabaseResponse':
     return SupabaseResponse(ok=False, status_code=503, text='Circuit breaker open')
 
 
-_cb_supabase = CircuitBreaker(failure_threshold=5, recovery_timeout=30.0)
-_cb_admin = CircuitBreaker(failure_threshold=5, recovery_timeout=30.0)
+_cb_supabase = CircuitBreaker(failure_threshold=10, recovery_timeout=60.0)
+_cb_admin = CircuitBreaker(failure_threshold=10, recovery_timeout=60.0)
 
 
 # ═══════════════════════════════════════════════════════════════
