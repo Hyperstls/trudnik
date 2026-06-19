@@ -197,14 +197,16 @@ def create_app():
         return {'pending_invitations': 0}
 
     # Кешируем git-версию при старте приложения (ранее вычислялась на каждый запрос)
-    _git_version = 'dev'
-    try:
-        _git_version = subprocess.check_output(
-            ['git', 'log', '-1', '--format=%h %s (%ai)'],
-            cwd=project_root, stderr=subprocess.DEVNULL, text=True
-        ).strip()
-    except Exception:
-        pass
+    # Приоритет: GIT_VERSION (env) → git log → 'dev'
+    _git_version = os.environ.get('GIT_VERSION', '')
+    if not _git_version:
+        try:
+            _git_version = subprocess.check_output(
+                ['git', 'log', '-1', '--format=%h %s (%ai)'],
+                cwd=project_root, stderr=subprocess.DEVNULL, text=True
+            ).strip()
+        except Exception:
+            _git_version = 'dev'
 
     @app.context_processor
     def inject_git_version():
