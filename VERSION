@@ -1,1 +1,1 @@
-4456b11 feat: unified versioning via VERSION file, GIT_VERSION env, and git log fallback (2026-06-19 22:19:58 +0300)
+3d27a88 feat: auto-update version files via pre-commit hook (scripts/update_version.py + install_hooks.py) (2026-06-19 22:22:59 +0300)
