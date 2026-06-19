@@ -197,8 +197,15 @@ def create_app():
         return {'pending_invitations': 0}
 
     # Кешируем git-версию при старте приложения (ранее вычислялась на каждый запрос)
-    # Приоритет: GIT_VERSION (env) → git log → 'dev'
+    # Приоритет: GIT_VERSION (env) → файл VERSION → git log → 'dev'
     _git_version = os.environ.get('GIT_VERSION', '')
+    if not _git_version:
+        version_file = os.path.join(project_root, 'VERSION')
+        try:
+            with open(version_file, 'r', encoding='utf-8') as f:
+                _git_version = f.read().strip()
+        except Exception:
+            pass
     if not _git_version:
         try:
             _git_version = subprocess.check_output(
