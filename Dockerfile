@@ -13,6 +13,7 @@ ENV PYTHONPYCACHEPREFIX=/data/pycache
 # Установка системных зависимостей
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    git \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 

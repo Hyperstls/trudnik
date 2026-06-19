@@ -13,8 +13,7 @@ plans/
 tests/
 .pytest_cache/
 
-# Git
-.git/
+# Git (оставляем .git для отображения версии на /admin)
 .gitignore
 .gigacode/
 
