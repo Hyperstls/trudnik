@@ -1,9 +1,6 @@
 meta:
-  version: 1
-  toolchain: python
-
-build:
-  dockerfile: Dockerfile
+  environment: docker
+  toolchain: {}
 
 run:
   containerPort: 8000
