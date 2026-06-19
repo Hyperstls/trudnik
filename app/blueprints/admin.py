@@ -272,7 +272,6 @@ def bulk_delete_jobs():
 @admin_bp.route('/admin/skills', methods=['GET'])
 @login_required
 @admin_required
-@cache_for(seconds=300)
 def get_skills():
     # Пробуем сортировку по sort_order; если колонки нет — fallback на name
     resp = supabase_request('GET', 'skills?select=*&order=sort_order.asc,name.asc')
@@ -395,7 +394,6 @@ def bulk_delete_skills():
 @admin_bp.route('/admin/religions', methods=['GET'])
 @login_required
 @admin_required
-@cache_for(seconds=300)
 def get_religions():
     resp = supabase_request('GET', 'religions?select=*&order=sort_order.asc,name.asc')
     if not resp.ok:

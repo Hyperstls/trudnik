@@ -399,9 +399,9 @@ function setupBulkDelete(config) {
     function updateUI() {
         var checked = document.querySelectorAll(config.checkbox + ':checked');
         var count = checked.length;
-        countSpan.textContent = count;
-        bulkBar.classList.toggle('hidden', count === 0);
-        bulkBtn.disabled = count === 0;
+        if (countSpan) countSpan.textContent = count;
+        if (bulkBar) bulkBar.style.display = (count === 0) ? 'none' : 'block';
+        if (bulkBtn) bulkBtn.disabled = (count === 0);
     }
 
     if (selectAll) {
@@ -472,7 +472,7 @@ async function loadSkills() {
     var selectAll = document.querySelector('.js-select-all-skills');
     if (selectAll) selectAll.checked = false;
     var bulkBar = document.getElementById('bulk-delete-skills-bar');
-    if (bulkBar) bulkBar.classList.add('hidden');
+    if (bulkBar) bulkBar.style.display = 'none';
 }
 
 function renderSkills() {
@@ -626,7 +626,7 @@ async function loadReligions() {
     var selectAll = document.querySelector('.js-select-all-religions');
     if (selectAll) selectAll.checked = false;
     var bulkBar = document.getElementById('bulk-delete-religions-bar');
-    if (bulkBar) bulkBar.classList.add('hidden');
+    if (bulkBar) bulkBar.style.display = 'none';
 }
 
 function renderReligions() {
