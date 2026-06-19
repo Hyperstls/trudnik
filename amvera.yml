@@ -1,0 +1,7 @@
+version: 1
+
+build:
+  dockerfile: Dockerfile
+
+run:
+  containerPort: 8000
