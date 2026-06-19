@@ -31,8 +31,8 @@ RUN python -m compileall -q /app
 RUN useradd -m -u 1000 appuser && \
     mkdir -p /data/pip-cache /data/pycache && \
     chown -R appuser:appuser /app /data
-USER appuser
+# USER appuser  # Закомментирован: порт 80 требует root на Amvera
 
 EXPOSE 8000 8001
 
-CMD ["sh", "-c", "uvicorn asgi:application --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
+CMD ["uvicorn", "asgi:application", "--host", "0.0.0.0", "--port", "80", "--workers", "1"]
