@@ -1,11 +1,61 @@
 import subprocess
 import secrets
 import os
+import time
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from flask import Flask, g, session, request, abort, redirect, url_for
 
 from app.config import Config
 
+
+# ── Кеш версии с TTL 60 секунд ────────────────────────
+@dataclass
+class _VersionCache:
+    value: str | None = None
+    timestamp: float = 0.0
+
+_git_version_cache = _VersionCache()
+
+
+def get_git_version(project_root: str) -> str:
+    """Получить актуальную git-версию приложения.
+
+    Приоритет:
+      1. Переменная окружения GIT_VERSION
+      2. Файл VERSION в корне проекта
+      3. git log -1 --format=%h %s (%ai)
+      4. 'dev' (fallback)
+
+    Результат кешируется на 60 секунд для снижения нагрузки.
+    """
+    now = time.time()
+    if _git_version_cache.value is not None and (now - _git_version_cache.timestamp) < 60:
+        return _git_version_cache.value
+
+    version = os.environ.get('GIT_VERSION', '')
+
+    if not version:
+        version_file = os.path.join(project_root, 'VERSION')
+        try:
+            with open(version_file, 'r', encoding='utf-8') as f:
+                version = f.read().strip()
+        except Exception:
+            pass
+
+    if not version:
+        try:
+            version = subprocess.check_output(
+                ['git', 'log', '-1', '--format=%h %s (%ai)'],
+                cwd=project_root, stderr=subprocess.DEVNULL,
+                text=True, encoding='utf-8'
+            ).strip()
+        except Exception:
+            version = 'dev'
+
+    _git_version_cache.value = version
+    _git_version_cache.timestamp = now
+    return version
 
 
 def create_app():
@@ -197,29 +247,11 @@ def create_app():
         log.debug('[INV_CTX] skip: no user_id or not worker')
         return {'pending_invitations': 0}
 
-    # Кешируем git-версию при старте приложения (ранее вычислялась на каждый запрос)
-    # Приоритет: GIT_VERSION (env) → файл VERSION → git log → 'dev'
-    _git_version = os.environ.get('GIT_VERSION', '')
-    if not _git_version:
-        version_file = os.path.join(project_root, 'VERSION')
-        try:
-            with open(version_file, 'r', encoding='utf-8') as f:
-                _git_version = f.read().strip()
-        except Exception:
-            pass
-    if not _git_version:
-        try:
-            _git_version = subprocess.check_output(
-                ['git', 'log', '-1', '--format=%h %s (%ai)'],
-                cwd=project_root, stderr=subprocess.DEVNULL, text=True
-            ).strip()
-        except Exception:
-            _git_version = 'dev'
-
     @app.context_processor
     def inject_git_version():
+        """Версия вычисляется при каждом запросе (с TTL-кешем 60 с)."""
         return {
-            'git_version': _git_version,
+            'git_version': get_git_version(project_root),
             'worker_site_url': app.config.get('WORKER_SITE_URL', 'https://trudnik-hyperstls.amvera.io/'),
         }
 

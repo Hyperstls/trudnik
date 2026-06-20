@@ -1,1 +1,1 @@
-0a3b7f6 fix(docs): РёСЃРїСЂР°РІР»РµРЅРёСЏ РїРѕ РёС‚РѕРіР°Рј СЂРµРІСЊСЋ MIGRATION_PLAN.md (2026-06-19 22:36:53 +0300)
+88f0e5f fix: url_for() in daemon thread + sync comments for apply_job_fallback (2026-06-20 14:25:00 +0300)

@@ -3,6 +3,7 @@
 
 Run before commit (via pre-commit hook) to keep version stamp current.
 Works from any directory — project root is resolved relative to this file.
+Can be run manually: python scripts/update_version.py
 """
 
 import subprocess
@@ -13,25 +14,39 @@ from pathlib import Path
 def main() -> None:
     # Resolve project root: scripts/update_version.py -> parent -> parent
     project_root = Path(__file__).resolve().parent.parent
+    version_path = project_root / "VERSION"
 
     # --- 1. Get full version string from git ---
+    full_version = ""
     try:
         result = subprocess.run(
             ["git", "log", "-1", "--format=%h %s (%ai)"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
             cwd=project_root,
             check=True,
         )
+        full_version = result.stdout.strip()
     except (subprocess.CalledProcessError, FileNotFoundError) as exc:
-        sys.exit(f"git command failed: {exc}")
+        # Git недоступен (production без .git) — сохраняем существующий VERSION
+        if version_path.exists():
+            print(f"Git unavailable ({exc}), preserving existing VERSION file.")
+            sys.exit(0)
+        # VERSION тоже нет — создаём с fallback
+        print(f"Git unavailable ({exc}) and no VERSION file — writing 'dev'.")
+        version_path.write_text("dev\n", encoding="utf-8")
+        sys.exit(0)
 
-    full_version = result.stdout.strip()
     if not full_version:
-        sys.exit("No git commits found — cannot determine version.")
+        print("No git commits found — cannot determine version.")
+        if version_path.exists():
+            print("Preserving existing VERSION file.")
+            sys.exit(0)
+        version_path.write_text("dev\n", encoding="utf-8")
+        sys.exit(0)
 
     # --- 2. Write full version to VERSION file ---
-    version_path = project_root / "VERSION"
     version_path.write_text(full_version + "\n", encoding="utf-8")
 
     # --- 3. Build short version string ---
@@ -40,6 +55,7 @@ def main() -> None:
             ["git", "log", "-1", "--format=%h"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
             cwd=project_root,
             check=True,
         )
@@ -52,6 +68,7 @@ def main() -> None:
             ["git", "log", "-1", "--format=%ad", "--date=format:%Y-%m-%d"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
             cwd=project_root,
             check=True,
         )
@@ -64,6 +81,7 @@ def main() -> None:
             ["git", "log", "-1", "--format=%s"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
             cwd=project_root,
             check=True,
         )
