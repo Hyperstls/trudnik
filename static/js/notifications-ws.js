@@ -134,6 +134,10 @@ class NotificationsWebSocket {
                 // Heartbeat ответ
                 break;
 
+            case 'connected':
+                this._emit('connected', data);
+                break;
+
             default:
                 console.debug('Неизвестный тип WebSocket сообщения:', type, data);
         }

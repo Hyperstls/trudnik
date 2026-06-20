@@ -58,10 +58,17 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       fetch(request)
         .then(response => {
-          // Cache the successful navigation response
+          // Cache the successful navigation response (без CSP)
           const cloned = response.clone();
+          const safeHeaders = new Headers(cloned.headers);
+          safeHeaders.delete('Content-Security-Policy');
+          const safeResponse = new Response(cloned.body, {
+              status: cloned.status,
+              statusText: cloned.statusText,
+              headers: safeHeaders
+          });
           caches.open(CACHE_NAME).then(cache =>
-            cache.put(request, cloned)
+            cache.put(request, safeResponse)
           );
           return response;
         })
@@ -83,8 +90,15 @@ self.addEventListener('fetch', event => {
           // Only cache successful GET responses
           if (request.method === 'GET' && response.ok) {
             const cloned = response.clone();
+            const safeHeaders = new Headers(cloned.headers);
+            safeHeaders.delete('Content-Security-Policy');
+            const safeResponse = new Response(cloned.body, {
+                status: cloned.status,
+                statusText: cloned.statusText,
+                headers: safeHeaders
+            });
             caches.open(CACHE_NAME + '-api').then(cache =>
-              cache.put(request, cloned)
+              cache.put(request, safeResponse)
             );
           }
           return response;
@@ -119,8 +133,15 @@ self.addEventListener('fetch', event => {
         // Only cache same-origin static assets
         if (url.origin === self.location.origin && response.ok) {
           const cloned = response.clone();
+          const safeHeaders = new Headers(cloned.headers);
+          safeHeaders.delete('Content-Security-Policy');
+          const safeResponse = new Response(cloned.body, {
+              status: cloned.status,
+              statusText: cloned.statusText,
+              headers: safeHeaders
+          });
           caches.open(CACHE_NAME).then(cache =>
-            cache.put(request, cloned)
+            cache.put(request, safeResponse)
           );
         }
         return response;

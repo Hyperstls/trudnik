@@ -180,6 +180,11 @@ def push_vapid_public_key():
     return jsonify({'public_key': public_key})
 
 
+@notifications_bp.route('/notifications/push/vapid-public-key')
+def push_vapid_public_key_alias():
+    return redirect(url_for('notifications.push_vapid_public_key'))
+
+
 @notifications_bp.route('/push/subscription', methods=['POST'])
 @login_required
 def push_subscribe():

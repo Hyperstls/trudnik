@@ -634,9 +634,10 @@ def api_force_complete_job(job_id):
 
 @jobs_bp.route('/delete-job/<job_id>', methods=['GET', 'POST'])
 @login_required
-@role_required('employer')
 def delete_job(job_id):
-    if not check_job_owner(job_id, session['user_id']):
+    # Разрешаем удаление владельцу-работодателю и админу
+    is_admin = session.get('role') == 'admin'
+    if not is_admin and not check_job_owner(job_id, session['user_id']):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
 
     # Блокировка: предупреждение при наличии принятых откликов (матрица секция 6.1)

@@ -1,7 +1,7 @@
-# План миграции проекта «Трудник» с Supabase на российский облачный сервис
+# План миграции проекта «Трудник» с Supabase на Amvera
 
-**Дата:** 19 июня 2026  
-**Версия:** 1.0  
+**Дата:** 20 июня 2026  
+**Версия:** 2.0 — актуализировано под преднастроенные сервисы Amvera  
 **Статус:** Проект  
 
 ---
@@ -40,17 +40,18 @@
 
 | Характеристика | Яндекс Облако | VK Cloud | Selectel | SberCloud | Amvera | Beget |
 |---------------|---------------|----------|----------|-----------|--------|-------|
-| **Managed PostgreSQL** | Да (Managed Service for PostgreSQL) | Да (DBaaS) | Да (Облачные базы данных) | Да (CS DBaaS) | Да (встроенный Postgres) | Да (managed, от 800 ₽/мес) |
-| **PostGIS** | Да | Да | Да | Да | Требует уточнения | Да |
+| **Managed PostgreSQL** | Да (Managed Service for PostgreSQL) | Да (DBaaS) | Да (Облачные базы данных) | Да (CS DBaaS) | **Да (managed кластер, до 15 реплик, суперпользователь)** | Да (managed, от 800 ₽/мес) |
+| **PostGIS** | Да | Да | Да | Да | **Да (superuser → CREATE EXTENSION)** | Да |
 | **Docker-контейнеры** | Да (Serverless Containers / Managed K8s) | Да (K8s Cluster / Cloud Containers) | Да (Облачные контейнеры) | Да (SberCloud Containers) | **Да (нативная платформа)** | Только на VPS (ручная установка) |
-| **S3-хранилище** | Да (Object Storage) | Да (Cloud Storage) | Да (S3 Object Storage) | Да (CS Object Storage) | Да (встроенное S3) | Нет (нужен Яндекс Object Storage) |
-| **ЦОД в РФ** | Да (Москва, Владимир) | Да (Москва, СПб) | Да (Москва, СПб) | Да (Москва) | Да (Москва) | Да (Москва, СПб) |
+| **S3-хранилище** | Да (Object Storage) | Да (Cloud Storage) | Да (S3 Object Storage) | Да (CS Object Storage) | **Да (встроенное S3)** | Нет (нужен Яндекс Object Storage) |
+| **ЦОД в РФ** | Да (Москва, Владимир) | Да (Москва, СПб) | Да (Москва, СПб) | Да (Москва) | **Да (Москва)** | Да (Москва, СПб) |
 | **152-ФЗ** | Да (аттестат ФСТЭК) | Да | Да | Да (аттестован) | В процессе | **Да (аттестован)** |
-| **Managed Redis** | Да | Да | Да (in-memory DB) | Да | Свой контейнер | Нет (свой контейнер на VPS) |
+| **Managed Redis** | Да | Да | Да (in-memory DB) | Да | **Да (преднастроенный сервис Redis)** | Нет (свой контейнер на VPS) |
+| **Преднастроенный PostgREST** | Нет | Нет | Нет | Нет | **Да (вкладка «Преднастроенные сервисы»)** | Нет |
 | **SSL/домены** | Да (Certificate Manager) | Да | Да | Да | **Да (автоматически)** | Ручная настройка (Let's Encrypt) |
 | **CI/CD** | GitLab CI, GitHub Actions | GitLab CI | Встроенный CI/CD | GitLab CI | **Push-to-deploy (git push)** | Нет (ручная настройка) |
 | **Простота деплоя** | Средняя (сложная документация) | Средняя | Средняя | Средняя | **Высокая (один push)** | Низкая (ручная настройка всех сервисов) |
-| **Минимальная цена/мес** | ~3 500 ₽ (БД 2 vCPU + контейнеры + S3) | ~3 000 ₽ | ~3 500 ₽ | ~4 000 ₽ | **~700 ₽ (начальный тариф)** | ~400 ₽ (VPS) + ~800 ₽ (БД) + ~150 ₽ (S3) = ~1 350 ₽ |
+| **Минимальная цена/мес** | ~3 500 ₽ (БД 2 vCPU + контейнеры + S3) | ~3 000 ₽ | ~3 500 ₽ | ~4 000 ₽ | **~800 ₽ (контейнер) + ~500 ₽ (БД «Начальный») + ~500 ₽ (Redis) = ~1 800 ₽** | ~400 ₽ (VPS) + ~800 ₽ (БД) + ~150 ₽ (S3) = ~1 350 ₽ |
 | **Бесплатный trial** | Да (грант 4000 ₽) | Да (30 дней) | Да (3000 ₽ бонус) | Да | Да (тестовый период) | Да (30 дней VPS) |
 | **Python-экосистема** | Средняя | Средняя | Средняя | Средняя | **Отличная (специализация на Python)** | Низкая (исторически PHP-хостинг) |
 | **Совместимость с существующей конфигурацией** | Низкая (требует адаптации) | Низкая | Низкая | Низкая | **Высокая (уже есть .env.amvera, WORKER_SITE_URL)** | Низкая (всё с нуля) |
@@ -63,34 +64,63 @@
    - Файл [`.env.amvera`](.env.amvera) с настроенными переменными окружения
    - `WORKER_SITE_URL=https://trudnik-hyperstls.amvera.io/` в [`app/config.py:17`](app/config.py:17) — домен уже на Amvera
    - [`Dockerfile:6-11`](Dockerfile:6) содержит Amvera-совместимые директивы (`/data` volume)
-   - [`render.yaml`](render.yaml) и [`docker-compose.yml`](docker-compose.yml) — нужно будет мигрировать, но основа готова
+   - [`docker-compose.yml`](docker-compose.yml) — требует минимальных изменений (убрать redis/postgres/postgrest контейнеры)
 
-2. **Цена.** Начальный тариф ~700 ₽/мес — в 5 раз дешевле конкурентов. Все сервисы (БД, Redis, PostgREST, S3, SSL) включены в стоимость. Для небольшого религиозного проекта это критично.
+2. **Цена.** ~1 800 ₽/мес за полный стек:
+   - Контейнер приложения (Flask + Celery): ~800 ₽/мес («Начальный»)
+   - Managed PostgreSQL кластер: ~500 ₽/мес (1 реплика, «Начальный»)
+   - Преднастроенный Redis: ~500 ₽/мес (встроенный S3 — бесплатно)
+   - **Важно:** тарификация PostgreSQL и Redis — отдельная от контейнеров.
 
 3. **Простота деплоя.** Push-to-deploy — `git push amvera master` — без сложной настройки K8s, без ручного CI/CD.
 
-4. **Python-специализация.** Amvera заточена под Python-проекты, Flask/FastAPI из коробки. В отличие от Beget (исторически PHP-хостинг) и универсальных облачных провайдеров.
+4. **Python-специализация.** Amvera заточена под Python-проекты, Flask/FastAPI из коробки.
 
-5. **Встроенный S3.** Не нужно отдельно настраивать Object Storage и платить за него.
+5. **🔑 Ключевое преимущество: Преднастроенный PostgREST.** Amvera предоставляет PostgREST как готовый преднастроенный сервис (вкладка «Преднастроенные сервисы» → «Утилиты для баз данных» → «PostgREST»). Это означает:
+   - ❌ **Не нужно** писать Dockerfile для PostgREST
+   - ❌ **Не нужно** настраивать docker-compose секцию `postgrest`
+   - ❌ **Не нужно** управлять сетевыми правилами для PostgREST
+   - ✅ Достаточно указать `PGRST_DB_URI`, `PGRST_DB_SCHEMA`, `PGRST_DB_ANON_ROLE`, `PGRST_JWT_SECRET` в переменных окружения сервиса
 
-6. **Автоматические SSL и домены.** HTTPS из коробки, не нужен Certbot (в отличие от Beget, где требуется ручная настройка Let's Encrypt).
+6. **🔑 Преднастроенный Redis.** Amvera предоставляет Redis как готовый сервис (вкладка «Преднастроенные сервисы» → «Базы данных» → «Redis»). Замена контейнера `redis:7-alpine` из текущего docker-compose.
 
-7. **Микросервисы из коробки.** 6 контейнеров (Flask, WebSocket, PostgREST, Celery Worker, Celery Beat, Redis) работают как сервисы одного проекта в docker-compose.
+7. **Managed PostgreSQL кластер.** Amvera предоставляет управляемый PostgreSQL с:
+   - Суперпользователем (можно установить PostGIS, pgcrypto, pg_trgm)
+   - Репликами (от 1 до 15, master — запись, реплики — чтение)
+   - Внутренним DNS (`amvera-<user>-cnpg-<name>-rw`)
+   - Автоматическими ежедневными бэкапами (3 хранятся)
+   - Ручными бэкапами по клику (до 3)
+
+8. **Полезные вспомогательные сервисы:**
+   - **pgAdmin** (преднастроенный) — веб-интерфейс для управления PostgreSQL
+   - **DBeaver** (преднастроенный) — десктопный клиент БД
+
+**Итоговая архитектура после миграции:**
+
+| Сервис | До миграции | После миграции |
+|--------|------------|----------------|
+| PostgreSQL | Supabase (внешний) | Amvera Managed PostgreSQL |
+| PostgREST | Supabase (встроенный) | Amvera Преднастроенный PostgREST |
+| Redis | Docker-контейнер `redis:7-alpine` | Amvera Преднастроенный Redis |
+| S3-хранилище | Supabase Storage | Amvera встроенное S3 |
+| Auth | Supabase GoTrue | Flask-Login + bcrypt + PyJWT |
+| Flask + Celery | Docker-контейнеры (Amvera) | Docker-контейнеры (Amvera, без изменений) |
 
 **Почему НЕ Beget:**
 
 Beget — традиционный хостинг/VPS-провайдер, который **не подходит** для этого проекта по ключевым причинам:
-- ❌ **Нет нативной поддержки Docker.** Все 6 контейнеров пришлось бы разворачивать вручную на VPS, настраивать сети, мониторинг и перезапуски.
+- ❌ **Нет нативной поддержки Docker.** Все контейнеры пришлось бы разворачивать вручную на VPS.
 - ❌ **Нет S3-хранилища.** Нужен сторонний сервис (Яндекс Object Storage, +150 ₽/мес).
 - ❌ **Нет CI/CD.** Каждый деплой — ручная работа: rsync, docker-compose pull/up, перезапуск.
 - ❌ **Нет managed Redis.** Пришлось бы поднимать свой контейнер на VPS.
 - ❌ **PHP-ориентированный.** Python поддерживается только на VPS, без специализированных инструментов.
-- ❌ **Реальная цена выше.** VPS (~400 ₽) + managed PostgreSQL (~800 ₽) + S3-аналог (~150 ₽) = минимум ~1 350 ₽/мес, почти в 2 раза дороже Amvera.
+- ❌ **Нет преднастроенного PostgREST.** Пришлось бы настраивать контейнер вручную.
+- ❌ **Реальная цена выше.** VPS (~400 ₽) + managed PostgreSQL (~800 ₽) + S3-аналог (~150 ₽) = минимум ~1 350 ₽/мес без учёта трудозатрат на ручную настройку.
 
 Beget может рассматриваться только если критически требуется **готовая сертификация 152-ФЗ прямо сейчас** и при этом Amvera по каким-то причинам недоступна.
 
-**Риски Amvera:**
-- Не полностью управляемый Postgres (возможно, придётся поднимать свой контейнер)
+**Риски Amvera (обновлено):**
+- Тарификация PostgreSQL и Redis — отдельная от контейнеров (общая стоимость ~1 800 ₽/мес вместо ~700 ₽ в предыдущей оценке v1.0)
 - Меньше возможностей масштабирования по сравнению с K8s-решениями
 - Статус 152-ФЗ сертификации требует уточнения
 
@@ -115,11 +145,10 @@ Beget может рассматриваться только если крити
 |------|---------------|-----------|--------|
 | [`app/__init__.py`](app/__init__.py) | Обновление CSP-заголовков (connect-src), замена supabase-доменов на свои | **Средняя** | 48-55 |
 | [`app/blueprints/profile.py`](app/blueprints/profile.py) | Замена `upload_to_storage()` + адаптация change-password/delete-account | **Средняя** | 93, 127, 134, 162 |
-| [`docker-compose.yml`](docker-compose.yml) | Добавление сервиса postgrest, замена `SUPABASE_*` env на `DATABASE_URL` + `POSTGREST_URL` | **Средняя** | 1-74 |
-| [`Dockerfile`](Dockerfile) | Добавление postgrest binary или multi-stage build | **Средняя** | 1-38 |
-| [`render.yaml`](render.yaml) | Замена env-переменных, возможно удаление (если полный переход на Amvera) | **Средняя** | 1-21 |
+| [`docker-compose.yml`](docker-compose.yml) | **Упрощение:** удаление сервисов `redis`, `postgrest`, `postgres` (теперь это преднастроенные сервисы Amvera). Остаются: `app`, `websocket`, `celery_worker`, `celery_beat` | **Низкая** (было Средняя) | 1-74 → ~100 |
+| [`Dockerfile`](Dockerfile) | **Без изменений** (ранее планировалось добавить PostgREST binary). PostgREST — преднастроенный сервис Amvera, не требует модификации Dockerfile | **Нулевая** (было Средняя) | 0 |
 | [`.env.example`](.env.example) | Полная ревизия переменных окружения | **Средняя** | 1-42 |
-| [`.env.amvera`](.env.amvera) | Обновление всех значений на новые | **Средняя** | 1-45 |
+| [`.env.amvera`](.env.amvera) | Обновление всех значений на новые (DATABASE_URL, POSTGREST_URL, REDIS_URL, S3_*) | **Средняя** | 1-45 |
 
 ### 2.3. Умеренные изменения (адаптация)
 
@@ -165,14 +194,14 @@ Beget может рассматриваться только если крити
 | [`requirements-dev.txt`](requirements-dev.txt) | Аналогично requirements.txt | **Низкая** |
 | [`scripts/apply_migrations.py`](scripts/apply_migrations.py) | Адаптировать под новую БД (прямое подключение psycopg2) | **Средняя** |
 
-### 2.7. Сводка по сложности
+### 2.7. Сводка по сложности (обновлено v2.0)
 
-| Сложность | Количество файлов |
-|-----------|-------------------|
-| Высокая | 3 (`utils.py`, `auth.py`, 48 migration files) |
-| Средняя | 14 |
-| Низкая | 15+ |
-| Нулевая | 2 |
+| Сложность | Количество файлов | Примечание |
+|-----------|-------------------|------------|
+| Высокая | 3 (`utils.py`, `auth.py`, 48 migration files) | Без изменений |
+| Средняя | 11 (было 14) | Dockerfile и render.yaml выпали (PostgREST — преднастроенный сервис) |
+| Низкая | 15+ | docker-compose.yml понижен со Средней до Низкой (только удаление сервисов) |
+| Нулевая | 4 (было 2) | Добавлены Dockerfile и render.yaml |
 
 ---
 
@@ -193,13 +222,12 @@ flowchart TD
 
 ### Этап 0: Подготовка
 
-**Продолжительность:** 1 день
+**Продолжительность:** 0.5 дня (было 1 день)
 **Риски:** Низкие
-**Критерии приёмки:** Полный бэкап Supabase, экспортированные данные, создан feature-ветка `migration/russia-cloud`, подтверждена техническая совместимость Amvera
+**Критерии приёмки:** Полный бэкап Supabase, экспортированные данные, создан feature-ветка `migration/russia-cloud`
 
 | Шаг | Описание |
 |-----|----------|
-| 0.0 | **Уточнить у поддержки Amvera:** доступность managed PostgreSQL (v15) с расширениями PostGIS, pgcrypto, pg_trgm; возможность запуска контейнера PostgREST `postgrest/postgrest:v12`; лимиты тарифа «Базовый» на количество контейнеров. Создать тестовый проект для проверки |
 | 0.1 | Создать полный бэкап Supabase: `pg_dump` через connection string (порт 6543 — pooler) |
 | 0.2 | Экспортировать `auth.users` через Supabase Dashboard (SQL Editor) с помощью `auth.raw_user_meta_data()` |
 | 0.3 | Сохранить бэкап в защищённое облачное хранилище (Яндекс.Диск, S3) |
@@ -207,22 +235,23 @@ flowchart TD
 | 0.5 | Уведомить пользователей о планируемых технических работах (email + баннер в приложении) |
 | 0.6 | Задокументировать текущую версию всех зависимостей (`pip freeze > frozen-requirements.txt`) |
 
-### Этап 1: Инфраструктура
+### Этап 1: Инфраструктура (обновлено v2.0)
 
-**Продолжительность:** 1-2 дня  
-**Риски:** Средние (Amvera может не поддерживать PostgREST как отдельный сервис)  
-**Критерии приёмки:** Развёрнуты БД, Redis, контейнер приложения в Amvera; проверен health-check
+**Продолжительность:** 1-2 часа (было 1-2 дня)  
+**Риски:** Низкие (было Средние — все сервисы создаются кнопками в админке Amvera)  
+**Критерии приёмки:** Созданы Managed PostgreSQL, Преднастроенный PostgREST, Преднастроенный Redis; проверен health-check
 
-| Шаг | Описание |
-|-----|----------|
-| 1.1 | Зарегистрироваться / войти в Amvera, создать проект `trudnik` |
-| 1.2 | Развернуть Managed PostgreSQL (или поднять контейнер `postgres:15-alpine` с расширениями PostGIS, pgcrypto, pg_trgm) |
-| 1.3 | Поднять контейнер Redis 7 (`redis:7-alpine`) через Amvera-сервисы |
-| 1.4 | Поднять контейнер PostgREST (`postgrest/postgrest:v12`) с JWT-секретом |
-| 1.5 | Настроить S3-бакет в Amvera для хранения файлов |
-| 1.6 | Настроить сетевые правила: PostgREST доступен только из внутренней сети контейнеров |
-| 1.7 | Настроить SSL-сертификат и кастомный домен (trudnik.ru или amvera.io) |
-| 1.8 | Проверить связность: Flask → PostgREST → PostgreSQL; Flask → Redis; Flask → S3 |
+| Шаг | Описание | Где |
+|-----|----------|-----|
+| 1.1 | Создать **Managed PostgreSQL** кластер: тариф «Начальный», 1 реплика, активировать Superuser Access | Админка Amvera → Базы данных → PostgreSQL → Создать |
+| 1.2 | Запомнить внутренние DNS: `amvera-<user>-cnpg-<name>-rw` (запись), `-ro` (чтение) | Страница «Инфо» кластера |
+| 1.3 | Установить расширения через суперпользователя: `CREATE EXTENSION postgis; CREATE EXTENSION pgcrypto; CREATE EXTENSION pg_trgm;` | DBeaver/pgAdmin → подключение к кластеру |
+| 1.4 | Создать **Преднастроенный PostgREST**: указать `PGRST_DB_URI`, `PGRST_DB_SCHEMA=public`, `PGRST_DB_ANON_ROLE=web_anon`, `PGRST_JWT_SECRET` | Админка Amvera → Преднастроенные сервисы → Утилиты для БД → PostgREST |
+| 1.5 | Запомнить внутренний DNS PostgREST (для `POSTGREST_URL`) | Страница «Инфо» сервиса PostgREST |
+| 1.6 | Создать **Преднастроенный Redis**: тариф «Начальный» | Админка Amvera → Преднастроенные сервисы → Базы данных → Redis |
+| 1.7 | Запомнить внутренний DNS Redis (для `REDIS_URL`) | Страница «Инфо» сервиса Redis |
+| 1.8 | Настроить S3-бакет в Amvera для хранения файлов | Админка Amvera → Хранилище |
+| 1.9 | Проверить связность: Flask → PostgREST → PostgreSQL; Flask → Redis; Flask → S3 | Health-check эндпоинт |
 
 ### Этап 2: База данных
 
@@ -646,58 +675,49 @@ bcrypt>=4.2.0
 
 ---
 
-## 5. Стратегия замены PostgREST API
+## 5. Стратегия замены Supabase REST API (PostgREST как преднастроенный сервис Amvera)
 
-### 5.1. Вариант А: Self-hosted PostgREST (рекомендованный)
+### 5.1. Архитектура: Преднастроенный PostgREST (новое в v2.0)
+
+Amvera предоставляет PostgREST как **преднастроенный сервис** (вкладка «Преднастроенные сервисы» → «Утилиты для баз данных» → «PostgREST»). Это устраняет необходимость в ручном разворачивании контейнера `postgrest/postgrest:v12`.
 
 **Архитектура:**
 
 ```
-Flask → HTTP → PostgREST (контейнер в Docker) → PostgreSQL
-  │                   │
-  │                   ├── /rest/v1/{table}    (CRUD)
-  │                   ├── /rest/v1/rpc/{fn}   (хранимые процедуры)
-  │                   └── Аутентификация через JWT (Authorization: Bearer)
-  │
-  └── POST /storage/v1/... → S3 (boto3)
+Flask (контейнер) → HTTP → Преднастроенный PostgREST (Amvera) → Managed PostgreSQL (Amvera)
+   │                                │
+   │                                ├── /{table}              (CRUD)
+   │                                ├── /rpc/{fn}             (хранимые процедуры)
+   │                                └── JWT (Authorization: Bearer)
+   │
+   └── boto3 → Встроенное S3 (Amvera)
 ```
 
-**Почему этот вариант предпочтительнее:**
+**Что даёт преднастроенный PostgREST:**
 
-| Критерий | Self-hosted PostgREST | Прямой psycopg2 |
-|----------|-----------------------|------------------|
-| Совместимость с текущим кодом | **Высокая** (те же REST-эндпоинты, те же RPC, те же заголовки) | Низкая (нужно переписывать все запросы на SQL) |
-| RLS-поддержка | **Полная** (PostgREST пробрасывает JWT → `request.jwt.claim.sub`) | Нет (нужно эмулировать RLS в коде) |
-| Сложность миграции | **Низкая** (меняем URL и заголовки) | Высокая (пишем SQL-запросы вместо REST) |
-| ORM-возможности | Встроенный (автоматическая генерация REST API из схемы БД) | Нет (нужен SQLAlchemy или сырой SQL) |
-| Безопасность | RLS на уровне БД, JWT-верификация | Только на уровне приложения |
-| Производительность | Высокая (один HTTP-запрос → один SQL) | Зависит от реализации |
-| Обслуживание | Контейнер, авто-обновления | Только код приложения |
+| Задача | Было (v1.0) | Стало (v2.0) |
+|--------|-------------|--------------|
+| Разворачивание | Контейнер `postgrest/postgrest:v12` в docker-compose | Кнопка «Создать преднастроенный сервис» в админке Amvera |
+| Конфигурация | `docker-compose.yml` секция postgrest | 4 переменные окружения в админке Amvera |
+| Сетевая изоляция | `expose: "3000"` в docker-compose | Автоматически: внутренний DNS Amvera |
+| SSL/TLS | Ручная настройка | Автоматически: Amvera управляет сертификатами |
+| Health-check | Docker healthcheck | Автоматически: Amvera мониторит сервис |
+| Обновления | Ручной `docker pull` | Автоматически: Amvera обновляет образ |
+| Масштабирование | Ручное | Выбор тарифа в админке |
 
-### 5.2. Конфигурация PostgREST
+### 5.2. Конфигурация Преднастроенного PostgREST
 
-**docker-compose.yml (фрагмент):**
+Переменные окружения, которые нужно задать в админке Amvera при создании сервиса:
 
-```yaml
-postgrest:
-  image: postgrest/postgrest:v12
-  container_name: trudnik-postgrest
-  restart: unless-stopped
-  ports:
-    - "3000:3000"
-  environment:
-    PGRST_DB_URI: ${DATABASE_URL}
-    PGRST_DB_SCHEMA: public
-    PGRST_DB_ANON_ROLE: anon
-    PGRST_JWT_SECRET: ${JWT_SECRET}
-    PGRST_DB_USE_LEGACY_GUCS: "false"
-    PGRST_SERVER_PORT: "3000"
-    PGRST_SERVER_HOST: "0.0.0.0"
-    PGRST_LOG_LEVEL: "info"
-  depends_on:
-    postgres:
-      condition: service_healthy
-```
+| Переменная | Значение | Описание |
+|-----------|----------|----------|
+| `PGRST_DB_URI` | `postgresql://user:pass@amvera-<user>-cnpg-<project>-rw:5432/<db>` | Строка подключения к Managed PostgreSQL (внутренний DNS) |
+| `PGRST_DB_SCHEMA` | `public` | Схема БД |
+| `PGRST_DB_ANON_ROLE` | `web_anon` | Роль для неаутентифицированных запросов |
+| `PGRST_JWT_SECRET` | `{{JWT_SECRET}}` | Секрет для верификации JWT (должен совпадать с Flask) |
+| `PGRST_SERVER_PORT` | `3000` | Порт (по умолчанию) |
+
+**Примечание:** Заголовок `apikey` (Supabase-специфичный) не требуется. PostgREST проверяет только `Authorization: Bearer {JWT}`.
 
 ### 5.3. Адаптация `supabase_request()` → `postgrest_request()`
 
@@ -712,19 +732,15 @@ headers = {
 }
 
 # Стало:
-POSTGREST_URL = Config.POSTGREST_URL  # http://postgrest:3000
+POSTGREST_URL = Config.POSTGREST_URL  # http://amvera-<user>-<project>-postgrest:3000
 
 url = f'{POSTGREST_URL}/{endpoint}'
 headers = {
     'Authorization': f'Bearer {session.get("access_token") or ANON_JWT}',
 }
-# Примечание: PostgREST не требует заголовка 'apikey' (это Supabase-специфичный заголовок)
-# Prefer-заголовки остаются: 'Prefer': 'return=representation'
 ```
 
 ### 5.4. Адаптация `supabase_admin_request()` → `postgrest_admin_request()`
-
-Текущий код в [`app/utils.py:353-421`](app/utils.py:353):
 
 ```python
 # Было:
@@ -734,43 +750,25 @@ headers = {
 }
 
 # Стало:
-# Создаём специальный "админский" JWT с ролью 'admin'
-# Использовать фиксированный UUID системного администратора (не nil-UUID)
+# Админский JWT с ролью 'admin', фиксированный UUID системного администратора
 SYSTEM_ADMIN_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 
 def get_admin_jwt() -> str:
     return jwt.encode({
-        'sub': SYSTEM_ADMIN_UUID,  # реальная запись в таблице users
+        'sub': SYSTEM_ADMIN_UUID,
         'role': 'admin',
         'user_role': 'admin',
         'iat': datetime.now(timezone.utc),
         'exp': datetime.now(timezone.utc) + timedelta(minutes=30),
     }, JWT_SECRET, algorithm='HS256')
-```
-
-> **Важно:** UUID `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa` — это фиксированный идентификатор системного администратора, для которого должна быть создана реальная запись в таблице `users` на этапе 2.2. Не используйте nil-UUID (`00000000-...`), так как он может конфликтовать с проверками `user_id IS NOT NULL` в приложении.
-
-```python
 
 headers = {
     'Authorization': f'Bearer {get_admin_jwt()}',
 }
 ```
 
-### 5.5. Анонимный доступ (для неавторизованных запросов)
+### 5.5. Анонимный доступ
 
-PostgREST использует роль `anon` для неавторизованных запросов. Нужно создать роль в БД:
-
-```sql
-CREATE ROLE anon NOLOGIN;
-GRANT anon TO authenticator;
-GRANT USAGE ON SCHEMA public TO anon;
-GRANT SELECT ON profiles TO anon;
-GRANT SELECT ON jobs TO anon;  -- только открытые через RLS
--- и т.д.
-```
-
-Анонимный JWT (короткоживущий, 7 дней; при истечении клиент запрашивает новый через `/api/anon-token`):
 ```python
 def get_anon_jwt() -> str:
     return jwt.encode({
@@ -782,9 +780,9 @@ def get_anon_jwt() -> str:
 
 ### 5.6. Ключевые отличия заголовков
 
-| Заголовок | Supabase | Self-hosted PostgREST |
-|-----------|----------|------------------------|
-| `apikey` | Требуется (anon key или service_role key) | **Не требуется** |
+| Заголовок | Supabase | Преднастроенный PostgREST Amvera |
+|-----------|----------|----------------------------------|
+| `apikey` | Требуется | **Не требуется** |
 | `Authorization` | `Bearer {access_token}` или `Bearer {service_role_key}` | `Bearer {JWT}` |
 | `Prefer` | `return=representation` | `return=representation` (одинаково) |
 | `Content-Type` | `application/json` | `application/json` (одинаково) |
@@ -1107,7 +1105,7 @@ S3_BUCKET_VERIFICATION=verification-docs
 | Несовместимость bcrypt-хешей | Низкая | Критическое | Предварительное тестирование на тестовом пользователе |
 | RLS не работает с новым JWT | Средняя | Высокое | Тестирование каждой RLS-политики в staging-окружении |
 | Простой сервиса при переключении | Высокая | Среднее | Maintenance mode, информирование пользователей, ночное переключение |
-| PostgREST на Amvera не поддерживается | Средняя | Высокое | План «Б»: прямое подключение psycopg2 + собственный REST-слой |
+| PostgREST на Amvera не поддерживается | ~~Средняя~~ **Низкая (v2.0)** | ~~Высокое~~ **Низкое** | **Снят:** PostgREST — официальный преднастроенный сервис Amvera (вкладка «Преднастроенные сервисы» → «PostgREST»). План «Б» не требуется |
 | S3-хранилище Amvera недоступно | Низкая | Среднее | План «Б»: Яндекс Object Storage (совместим с boto3) |
 | CSP блокирует запросы к новому домену | Средняя | Среднее | Тестирование в браузере, временный `connect-src *` для отладки |
 | Celery-задачи ломаются без `SUPABASE_SERVICE_ROLE_KEY` | Средняя | Высокое | Замена на `postgrest_admin_request` с admin-JWT |
@@ -1227,93 +1225,53 @@ beat_schedule = {
 
 ## 9. Оценка трудозатрат
 
-### 9.1. Детальная оценка по этапам
+### 9.1. Детальная оценка по этапам (обновлено v2.0)
 
-| Этап | Человеко-часы | Исполнители | Комментарий |
-|------|---------------|-------------|-------------|
-| **0. Подготовка** | **4 ч** | Backend | Экспорт, бэкап, ветка |
-| 0.1 Бэкап Supabase | 1 ч | Backend | pg_dump + SQL-экспорт auth.users |
-| 0.2 Сохранение бэкапа | 0.5 ч | Backend | Загрузка в облако |
-| 0.3 Создание ветки | 0.5 ч | Backend | Git + CI/CD |
-| 0.4 Уведомление пользователей | 1 ч | Backend | Email-рассылка + баннер |
-| 0.5 Заморозка зависимостей | 1 ч | Backend | pip freeze |
-| **1. Инфраструктура** | **8 ч** | DevOps | Разворачивание всех сервисов |
-| 1.1 Регистрация в Amvera | 1 ч | DevOps | Создание проекта |
-| 1.2 Разворачивание БД | 2 ч | DevOps | PostgreSQL + расширения |
-| 1.3 Разворачивание Redis | 1 ч | DevOps | Контейнер или managed |
-| 1.4 Разворачивание PostgREST | 2 ч | DevOps | Конфигурация JWT |
-| 1.5 Настройка S3 | 1 ч | DevOps | Бакеты + ключи доступа |
-| 1.6 Проверка связности | 1 ч | DevOps | Health-check |
-| **2. База данных** | **16 ч** | Backend + DevOps | Миграция схемы и данных |
-| 2.1 Применение миграций | 4 ч | Backend | 48 SQL-файлов с заменой auth.uid() |
-| 2.2 Создание таблицы users | 1 ч | Backend | SQL-схема |
-| 2.3 Импорт данных | 4 ч | Backend | pg_restore, валидация FK |
-| 2.4 Импорт пользователей | 3 ч | Backend | auth.users → public.users |
-| 2.5 Проверка целостности | 2 ч | Backend | FK, индексы, constraints |
-| 2.6 Пересоздание индексов | 1 ч | Backend | GIN, GiST, B-tree |
-| 2.7 ANALYZE | 1 ч | Backend | Обновление статистики |
-| **3. Аутентификация** | **16 ч** | Backend | Наиболее ответственный этап |
-| 3.1 Модель User + bcrypt | 2 ч | Backend | Класс User, хеширование |
-| 3.2 Flask-Login интеграция | 3 ч | Backend | login_user, logout_user, user_loader |
-| 3.3 Замена login | 3 ч | Backend | Переписывание auth.login() |
-| 3.4 Замена register | 3 ч | Backend | Переписывание auth.register() |
-| 3.5 Замена refresh token | 2 ч | Backend | refresh_access_token() |
-| 3.6 Замена change password | 1 ч | Backend | profile.change_password() |
-| 3.7 Замена delete account | 1 ч | Backend | profile.delete_account() |
-| 3.8 JWT для PostgREST | 1 ч | Backend | Генерация совместимых JWT |
-| **4. Бэкенд** | **24 ч** | Backend | Самый объёмный этап |
-| 4.1 PostgREST в docker-compose | 2 ч | DevOps | Конфигурация сервиса |
-| 4.2 supabase_request → postgrest_request | 4 ч | Backend | utils.py:309 |
-| 4.3 supabase_admin_request | 3 ч | Backend | utils.py:353 |
-| 4.4 supabase_rpc | 2 ч | Backend | utils.py:467 |
-| 4.5 upload_to_storage → upload_to_s3 | 3 ч | Backend | utils.py:431 |
-| 4.6 refresh_access_token | 2 ч | Backend | utils.py:278 |
-| 4.7 Обновление blueprint'ов | 6 ч | Backend | 13 blueprint'ов |
-| 4.8 Обновление services | 2 ч | Backend | job_service, notification_service |
-| **5. Фронтенд и CSP** | **4 ч** | Frontend | Лёгкий этап |
-| 5.1 CSP connect-src | 0.5 ч | Frontend | app/__init__.py:54 |
-| 5.2 CSP img-src | 0.5 ч | Frontend | app/__init__.py:53 |
-| 5.3 worker_site_url | 0.5 ч | Frontend | app/__init__.py:213 |
-| 5.4 Проверка шаблонов | 1.5 ч | Frontend | Все Jinja2-шаблоны |
-| 5.5 Service worker | 0.5 ч | Frontend | static/sw.js |
-| 5.6 URL аватаров | 0.5 ч | Frontend | Проверка генерации URL |
-| **6. Тестирование** | **16 ч** | QA + Backend | Полное покрытие |
-| 6.1 Дымовое тестирование | 2 ч | QA | Основные сценарии |
-| 6.2 Уведомления | 2 ч | QA | Web Push + Email |
-| 6.3 WebSocket | 2 ч | QA | Real-time |
-| 6.4 Гео-поиск | 1 ч | QA | PostGIS |
-| 6.5 Админ-панель | 2 ч | QA | /admin |
-| 6.6 Celery-задачи | 2 ч | QA | Email + Push |
-| 6.7 Нагрузочное тестирование | 2 ч | QA | 50 пользователей |
-| 6.8 PWA | 1 ч | QA | Офлайн, установка |
-| 6.9 Загрузка файлов | 2 ч | QA | Аватары, фото, документы |
-| **7. Переключение** | **8 ч** | Backend + DevOps | Ответственный этап |
-| 7.1 Maintenance mode | 0.5 ч | Backend | Баннер |
-| 7.2 Финальный бэкап | 0.5 ч | Backend | Инкрементальный |
-| 7.3 Импорт данных | 2 ч | Backend | Инкрементальные данные |
-| 7.4 Финальные миграции | 1 ч | Backend | Если были изменения |
-| 7.5 Деплой | 1 ч | DevOps | git push amvera |
-| 7.6 Health-check | 0.5 ч | DevOps | GET /health |
-| 7.7 Дымовой тест | 1 ч | QA | Быстрая проверка |
-| 7.8 Мониторинг | 1.5 ч | DevOps | Логи, ошибки |
+| Этап | Человеко-часы | Было (v1.0) | Исполнители | Комментарий |
+|------|---------------|-------------|-------------|-------------|
+| **0. Подготовка** | **2 ч** | 4 ч | Backend | Экспорт, бэкап, ветка |
+| 0.1 Бэкап Supabase | 1 ч | 1 ч | Backend | pg_dump + SQL-экспорт auth.users |
+| 0.2 Сохранение бэкапа | 0.5 ч | 0.5 ч | Backend | Загрузка в облако |
+| 0.3 Создание ветки | 0.5 ч | 0.5 ч | Backend | Git |
+| **1. Инфраструктура** | **2 ч** | ~~8 ч~~ | DevOps | **−6 ч:** PostgREST и Redis создаются кнопками |
+| 1.1 Создание Managed PostgreSQL | 0.5 ч | 2 ч | DevOps | Кнопка «Создать БД» в админке |
+| 1.2 Создание Преднастроенного PostgREST | 0.5 ч | — | DevOps | Кнопка «Создать преднастроенный сервис» |
+| 1.3 Создание Преднастроенного Redis | 0.25 ч | 1 ч | DevOps | Кнопка «Создать преднастроенный сервис» |
+| 1.4 Установка расширений БД | 0.25 ч | — | Backend | `CREATE EXTENSION postgis/pgcrypto/pg_trgm` |
+| 1.5 Настройка S3 | 0.25 ч | 1 ч | DevOps | Бакеты + ключи |
+| 1.6 Проверка связности | 0.25 ч | 1 ч | DevOps | Health-check |
+| **2. База данных** | **16 ч** | 16 ч | Backend + DevOps | Без изменений |
+| **3. Аутентификация** | **16 ч** | 16 ч | Backend | Без изменений |
+| **4. Бэкенд** | **18 ч** | ~~24 ч~~ | Backend | **−6 ч:** убрана настройка PostgREST в docker-compose |
+| 4.1 ~~PostgREST в docker-compose~~ | ~~0 ч~~ | ~~2 ч~~ | — | **Исключено:** PostgREST — преднастроенный сервис |
+| 4.2 supabase_request → postgrest_request | 4 ч | 4 ч | Backend | utils.py |
+| 4.3 supabase_admin_request | 3 ч | 3 ч | Backend | utils.py |
+| 4.4 supabase_rpc | 2 ч | 2 ч | Backend | utils.py |
+| 4.5 upload_to_storage → upload_to_s3 | 3 ч | 3 ч | Backend | utils.py |
+| 4.6 refresh_access_token | 2 ч | 2 ч | Backend | utils.py |
+| 4.7 Обновление blueprint'ов | 4 ч | 6 ч | Backend | 13 blueprint'ов (упрощённые заголовки) |
+| 4.8 Обновление services | 2 ч | 2 ч | Backend | job_service, notification_service |
+| **5. Фронтенд и CSP** | **4 ч** | 4 ч | Frontend | Без изменений |
+| **6. Тестирование** | **16 ч** | 16 ч | QA + Backend | Без изменений |
+| **7. Переключение** | **8 ч** | 8 ч | Backend + DevOps | Без изменений |
 
 ### 9.2. Итого
 
-| Категория | Человеко-часы |
-|-----------|---------------|
-| Подготовка | 4 |
-| Инфраструктура | 8 |
-| База данных | 16 |
-| Аутентификация | 16 |
-| Бэкенд | 24 |
-| Фронтенд и CSP | 4 |
-| Тестирование | 16 |
-| Переключение | 8 |
-| **ИТОГО** | **96 ч** |
+| Категория | v1.0 (ч) | v2.0 (ч) | Экономия |
+|-----------|----------|----------|----------|
+| Подготовка | 4 | 2 | −2 ч |
+| Инфраструктура | 8 | **2** | **−6 ч** |
+| База данных | 16 | 16 | — |
+| Аутентификация | 16 | 16 | — |
+| Бэкенд | 24 | **18** | **−6 ч** |
+| Фронтенд и CSP | 4 | 4 | — |
+| Тестирование | 16 | 16 | — |
+| Переключение | 8 | 8 | — |
+| **ИТОГО** | **96 ч** | **82 ч** | **−14 ч (−15%)** |
 
 **Рекомендуемая команда:**
-- 1 Backend-разработчик (Python/Flask) — 60 ч
-- 1 DevOps-инженер — 20 ч
+- 1 Backend-разработчик (Python/Flask) — 52 ч
+- 1 DevOps-инженер — 14 ч (было 20 ч)
 - 1 QA-инженер — 16 ч
 
 ---
@@ -1362,28 +1320,28 @@ beat_schedule = {
 | Redis | 1 GB | ~1 000 ₽ |
 | **Итого** | | **~5 950 ₽** |
 
-#### Amvera (рекомендованный)
+#### Amvera (рекомендованный) — обновлено v2.0
 
 | Ресурс | Конфигурация | Цена/мес |
 |--------|-------------|----------|
-| Контейнер приложения | 1 vCPU, 2 GB RAM (тариф «Базовый») | 700 ₽ |
-| PostgreSQL (свой контейнер) | Включено в тариф | 0 ₽ |
-| Redis (свой контейнер) | Включено в тариф | 0 ₽ |
-| S3-хранилище | 10 GB (включено) | 0 ₽ |
-| PostgREST (свой контейнер) | Включено в тариф | 0 ₽ |
+| Контейнер приложения (Flask + Celery Worker + Celery Beat + WebSocket) | 1 vCPU, 2 GB RAM (тариф «Начальный») | ~800 ₽ |
+| **Managed PostgreSQL** | 1 реплика, тариф «Начальный» (суперпользователь, бэкапы, PostGIS/pgcrypto/pg_trgm) | ~500 ₽ |
+| **Преднастроенный PostgREST** | Включено в тариф контейнера | 0 ₽ |
+| **Преднастроенный Redis** | Тариф «Начальный» | ~500 ₽ |
+| Встроенное S3-хранилище | 10 GB (включено) | 0 ₽ |
 | SSL + домен | Включено | 0 ₽ |
-| **Итого** | | **~700 ₽** |
+| **Итого** | | **~1 800 ₽** |
 
-**Примечание:** Amvera предлагает фиксированную стоимость за контейнер с включёнными ресурсами. Все дополнительные сервисы (БД, Redis, PostgREST) запускаются как контейнеры внутри того же приложения. При масштабировании цена растёт линейно.
+**Примечание (v2.0):** В отличие от оценки v1.0 (~700 ₽), актуальная стоимость учитывает, что Managed PostgreSQL и Преднастроенный Redis тарифицируются отдельно от контейнера приложения. Однако все три сервиса (PostgreSQL, PostgREST, Redis) создаются кнопками в админке, без необходимости писать Dockerfile или docker-compose секции.
 
-### 10.2. Новые переменные окружения
+### 10.2. Новые переменные окружения (обновлено v2.0)
 
 ```bash
 # ═══════════════════════════════════════════════════════════
-# База данных и PostgREST
+# База данных и PostgREST (Amvera внутренние DNS)
 # ═══════════════════════════════════════════════════════════
-DATABASE_URL=postgresql://authenticator:password@postgres:5432/trudnik
-POSTGREST_URL=http://postgrest:3000
+DATABASE_URL=postgresql://user:password@amvera-<user>-cnpg-<project>-rw:5432/<dbname>
+POSTGREST_URL=http://amvera-<user>-<project>-postgrest:3000
 JWT_SECRET=your-jwt-secret-at-least-32-chars
 
 # ═══════════════════════════════════════════════════════════
@@ -1393,7 +1351,12 @@ SECRET_KEY=your-secret-key-at-least-32-chars
 FLASK_ENV=production
 
 # ═══════════════════════════════════════════════════════════
-# S3-хранилище
+# Redis (Amvera Преднастроенный Redis, внутренний DNS)
+# ═══════════════════════════════════════════════════════════
+REDIS_URL=redis://amvera-<user>-<project>-redis:6379/0
+
+# ═══════════════════════════════════════════════════════════
+# S3-хранилище (встроенное Amvera)
 # ═══════════════════════════════════════════════════════════
 S3_ENDPOINT=https://s3.amvera.io
 S3_ACCESS_KEY=your_s3_access_key
@@ -1404,124 +1367,28 @@ S3_BUCKET_JOBS=job-photos
 S3_BUCKET_VERIFICATION=verification-docs
 
 # ═══════════════════════════════════════════════════════════
-# Внешние API (без изменений)
-# ═══════════════════════════════════════════════════════════
-YANDEX_MAPS_API_KEY=your_yandex_maps_key
-DEEPSEEK_API_KEY=your_deepseek_key
-
-# ═══════════════════════════════════════════════════════════
-# Redis
-# ═══════════════════════════════════════════════════════════
-REDIS_URL=redis://redis:6379/0
-
-# ═══════════════════════════════════════════════════════════
 # WebSocket
 # ═══════════════════════════════════════════════════════════
 WEBSOCKET_PORT=8001
 WEBSOCKET_URL=wss://trudnik.amvera.io/ws
 
 # ═══════════════════════════════════════════════════════════
-# SMTP (без изменений)
-# ═══════════════════════════════════════════════════════════
-SMTP_HOST=smtp.yandex.ru
-SMTP_PORT=587
-SMTP_USER=notifications@trudnik.ru
-SMTP_PASSWORD=your_app_password
-SMTP_FROM_EMAIL=notifications@trudnik.ru
-SMTP_FROM_NAME=Trudnik
-SMTP_USE_TLS=True
-SMTP_USE_SSL=False
-SMTP_TIMEOUT=30
-SMTP_DAILY_LIMIT=1000
-SMTP_RATE_LIMIT_PAUSE=1.0
-
-# ═══════════════════════════════════════════════════════════
-# Web Push (VAPID) — без изменений
-# ═══════════════════════════════════════════════════════════
-VAPID_PRIVATE_KEY=your_vapid_private_key
-VAPID_PUBLIC_KEY=your_vapid_public_key
-VAPID_CLAIMS_EMAIL=notifications@trudnik.ru
-VAPID_CLAIMS_SUBJECT=mailto:notifications@trudnik.ru
-
-# ═══════════════════════════════════════════════════════════
 # Amvera
 # ═══════════════════════════════════════════════════════════
 WORKER_SITE_URL=https://trudnik.amvera.io/
-GIT_VERSION=1.0.0
+GIT_VERSION=2.0.0
 ```
 
-### 10.3. Пример docker-compose.yml для нового провайдера
+> **Примечание (v2.0):** `POSTGREST_URL`, `REDIS_URL` и `DATABASE_URL` используют внутренние DNS-имена Amvera (вида `amvera-<user>-<service>-<project>`). Точные имена доступны на странице «Инфо» каждого сервиса. Внешние API (Yandex Maps, SMTP, VAPID) остаются без изменений.
+
+### 10.3. Пример docker-compose.yml для Amvera (обновлено v2.0)
+
+> **Важно:** PostgREST, Redis и PostgreSQL — преднастроенные сервисы Amvera, создаются через админку. В docker-compose остаются только контейнеры приложения.
 
 ```yaml
 version: '3.8'
 
 services:
-  # ═══════════════════════════════════════════════════════════
-  # База данных
-  # ═══════════════════════════════════════════════════════════
-  postgres:
-    image: postgres:15-alpine
-    container_name: trudnik-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: trudnik
-      POSTGRES_USER: authenticator
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    command: |
-      postgres
-      -c shared_preload_libraries=pg_stat_statements
-      -c wal_level=replica
-      -c max_wal_senders=3
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U authenticator -d trudnik"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # ═══════════════════════════════════════════════════════════
-  # PostgREST (REST API для PostgreSQL)
-  # ═══════════════════════════════════════════════════════════
-  postgrest:
-    image: postgrest/postgrest:v12
-    container_name: trudnik-postgrest
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    environment:
-      PGRST_DB_URI: postgresql://authenticator:${DB_PASSWORD:?DB_PASSWORD must be set}@postgres:5432/trudnik
-      PGRST_DB_SCHEMA: public
-      PGRST_DB_ANON_ROLE: anon
-      PGRST_JWT_SECRET: ${JWT_SECRET}
-      PGRST_DB_USE_LEGACY_GUCS: false
-      PGRST_SERVER_PORT: "3000"
-      PGRST_SERVER_HOST: "0.0.0.0"
-      PGRST_LOG_LEVEL: "info"
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  # ═══════════════════════════════════════════════════════════
-  # Redis (Celery-брокер + Pub/Sub)
-  # ═══════════════════════════════════════════════════════════
-  redis:
-    image: redis:7-alpine
-    container_name: trudnik-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   # ═══════════════════════════════════════════════════════════
   # Flask + FastAPI приложение (ASGI через Uvicorn)
   # ═══════════════════════════════════════════════════════════
@@ -1532,11 +1399,11 @@ services:
     ports:
       - "${PORT:-80}:80"
     environment:
-      - DATABASE_URL=postgresql://authenticator:${DB_PASSWORD:?DB_PASSWORD must be set}@postgres:5432/trudnik
-      - POSTGREST_URL=http://postgrest:3000
+      - DATABASE_URL=${DATABASE_URL}
+      - POSTGREST_URL=${POSTGREST_URL}
       - JWT_SECRET=${JWT_SECRET}
       - SECRET_KEY=${SECRET_KEY}
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=${REDIS_URL}
       - S3_ENDPOINT=${S3_ENDPOINT}
       - S3_ACCESS_KEY=${S3_ACCESS_KEY}
       - S3_SECRET_KEY=${S3_SECRET_KEY}
@@ -1545,13 +1412,11 @@ services:
       - S3_BUCKET_JOBS=${S3_BUCKET_JOBS:-job-photos}
       - S3_BUCKET_VERIFICATION=${S3_BUCKET_VERIFICATION:-verification-docs}
       - YANDEX_MAPS_API_KEY=${YANDEX_MAPS_API_KEY}
-      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
       - SMTP_HOST=${SMTP_HOST:-smtp.yandex.ru}
       - SMTP_PORT=${SMTP_PORT:-587}
       - SMTP_USER=${SMTP_USER}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-notifications@trudnik.ru}
-      - SMTP_FROM_NAME=${SMTP_FROM_NAME:-Trudnik}
       - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
       - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
       - VAPID_CLAIMS_EMAIL=${VAPID_CLAIMS_EMAIL:-notifications@trudnik.ru}
@@ -1559,13 +1424,6 @@ services:
       - WEBSOCKET_URL=${WEBSOCKET_URL:-ws://localhost:8001/ws}
       - WORKER_SITE_URL=${WORKER_SITE_URL}
       - FLASK_ENV=${FLASK_ENV:-production}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      postgrest:
-        condition: service_started
     command: uvicorn asgi:application --host 0.0.0.0 --port 80 --workers 1 --timeout-keep-alive 120
 
   # ═══════════════════════════════════════════════════════════
@@ -1578,12 +1436,9 @@ services:
     ports:
       - "${WEBSOCKET_PORT:-8001}:8001"
     environment:
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=${REDIS_URL}
       - JWT_SECRET=${JWT_SECRET}
       - WEBSOCKET_PORT=8001
-    depends_on:
-      redis:
-        condition: service_healthy
     command: uvicorn websocket_server.main:app --host 0.0.0.0 --port 8001 --log-level info
 
   # ═══════════════════════════════════════════════════════════
@@ -1594,9 +1449,9 @@ services:
     container_name: trudnik-celery-worker
     restart: unless-stopped
     environment:
-      - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=postgresql://authenticator:${DB_PASSWORD:?DB_PASSWORD must be set}@postgres:5432/trudnik
-      - POSTGREST_URL=http://postgrest:3000
+      - REDIS_URL=${REDIS_URL}
+      - DATABASE_URL=${DATABASE_URL}
+      - POSTGREST_URL=${POSTGREST_URL}
       - JWT_SECRET=${JWT_SECRET}
       - SECRET_KEY=${SECRET_KEY}
       - SMTP_HOST=${SMTP_HOST:-smtp.yandex.ru}
@@ -1607,9 +1462,6 @@ services:
       - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
       - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
       - VAPID_CLAIMS_EMAIL=${VAPID_CLAIMS_EMAIL:-notifications@trudnik.ru}
-    depends_on:
-      redis:
-        condition: service_healthy
     command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4
 
   # ═══════════════════════════════════════════════════════════
@@ -1620,56 +1472,79 @@ services:
     container_name: trudnik-celery-beat
     restart: unless-stopped
     environment:
-      - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=postgresql://authenticator:${DB_PASSWORD:?DB_PASSWORD must be set}@postgres:5432/trudnik
-      - POSTGREST_URL=http://postgrest:3000
+      - REDIS_URL=${REDIS_URL}
+      - DATABASE_URL=${DATABASE_URL}
+      - POSTGREST_URL=${POSTGREST_URL}
       - JWT_SECRET=${JWT_SECRET}
       - SECRET_KEY=${SECRET_KEY}
-    depends_on:
-      redis:
-        condition: service_healthy
     command: celery -A app.tasks.celery_app beat --loglevel=info
 
-volumes:
-  postgres_data:
-  redis_data:
+# Примечание (v2.0):
+# - postgres — удалён (Amvera Managed PostgreSQL)
+# - postgrest — удалён (Amvera Преднастроенный PostgREST)
+# - redis — удалён (Amvera Преднастроенный Redis)
+# - volumes — удалены (управляются Amvera)
+# - depends_on — удалены (сервисы Amvera доступны через внутренний DNS всегда)
 ```
 
-### 10.4. Диаграмма архитектуры после миграции
+**Сравнение docker-compose до и после:**
+
+| Сервис | Было (v1.0) | Стало (v2.0) |
+|--------|------------|-------------|
+| `postgres` | Контейнер `postgres:15-alpine` | ❌ Удалён (Amvera Managed PostgreSQL) |
+| `postgrest` | Контейнер `postgrest/postgrest:v12` | ❌ Удалён (Amvera Преднастроенный PostgREST) |
+| `redis` | Контейнер `redis:7-alpine` | ❌ Удалён (Amvera Преднастроенный Redis) |
+| `app` | Flask + FastAPI | ✅ Остался |
+| `websocket` | WebSocket Server | ✅ Остался |
+| `celery_worker` | Celery Worker | ✅ Остался |
+| `celery_beat` | Celery Beat | ✅ Остался |
+| `volumes` | postgres_data, redis_data | ❌ Удалены (управляются Amvera) |
+| **Итого контейнеров** | **7** | **4** |
+
+### 10.4. Диаграмма архитектуры после миграции (обновлено v2.0)
 
 ```mermaid
 flowchart TB
-    subgraph Amvera["Amvera Cloud (РФ)"]
-        subgraph Containers["Контейнеры Docker"]
+    subgraph Amvera["Amvera Cloud (Москва, РФ)"]
+        subgraph Containers["Docker-контейнеры (4 шт.)"]
             Flask["Flask + FastAPI\nuvicorn asgi:application\n:80"]
             WS["WebSocket Server\nuvicorn\n:8001"]
-            PG["PostgREST\nv12\n:3000"]
             CeleryW["Celery Worker\ncelery -A app.tasks"]
             CeleryB["Celery Beat\ncelery -A app.tasks beat"]
         end
         
+        subgraph Preconf["Преднастроенные сервисы"]
+            PG["PostgREST\n(преднастроенный)\n:3000"]
+        end
+        
         subgraph Data["Данные"]
-            PGDB["PostgreSQL 15\nPostGIS, pgcrypto, pg_trgm\n:5432"]
-            RedisSrv["Redis 7\nPub/Sub + Broker\n:6379"]
-            S3Store["S3-совместимое\nхранилище\navatars, job-photos, docs"]
+            PGDB["Managed PostgreSQL\nPostGIS, pgcrypto, pg_trgm\nавто-бэкапы, репликация"]
+            RedisSrv["Преднастроенный Redis\nPub/Sub + брокер Celery"]
+            S3Store["Встроенное S3\navatars, job-photos, docs"]
         end
     end
     
     User["Пользователь\nБраузер / PWA"] -->|HTTPS| Flask
     User -->|WSS| WS
-    Flask -->|HTTP REST| PG
+    Flask -->|HTTP REST + JWT| PG
     PG -->|SQL| PGDB
     Flask -->|boto3| S3Store
     Flask -->|Pub/Sub| RedisSrv
     WS -->|Pub/Sub| RedisSrv
-    CeleryW -->|HTTP REST| PG
+    CeleryW -->|HTTP REST + JWT| PG
     CeleryW -->|boto3| S3Store
     CeleryB -->|Redis| RedisSrv
     
     style Amvera fill:#e1f5fe,stroke:#0288d1
     style Containers fill:#fff3e0,stroke:#f57c00
+    style Preconf fill:#f3e5f5,stroke:#7b1fa2
     style Data fill:#e8f5e9,stroke:#388e3c
 ```
+
+> **Легенда (v2.0):**
+> - 🟠 **Контейнеры** — 4 Docker-контейнера, управляемые через docker-compose
+> - 🟣 **Преднастроенные сервисы** — 1 сервис (PostgREST), созданный кнопкой в админке Amvera
+> - 🟢 **Данные** — 3 сервиса (Managed PostgreSQL, Преднастроенный Redis, S3), созданные через админку Amvera
 
 ### 10.5. Чек-лист готовности к переключению
 
@@ -1702,4 +1577,5 @@ flowchart TB
 
 | Дата | Версия | Изменения |
 |------|--------|-----------|
+| 2026-06-20 | 2.0 | **Актуализация под преднастроенные сервисы Amvera:** PostgREST и Redis — готовые сервисы (создаются кнопками в админке). Managed PostgreSQL — отдельный тариф с суперпользователем. docker-compose упрощён с 7 до 4 контейнеров. Оценка трудозатрат снижена на 14 ч (−15%). Цена скорректирована: ~1 800 ₽/мес вместо ~700 ₽. Удалены риски «PostgREST не поддерживается» и «нужен свой контейнер Redis» |
 | 2026-06-19 | 1.0 | Начальная версия плана миграции |

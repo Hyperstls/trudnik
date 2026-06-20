@@ -30,7 +30,8 @@
 
                 {# Кнопки избранного, блокировки и оценки — верхний правый угол #}
                 <div class="absolute flex gap-1 z-10" style="top: 0.5rem; right: 0.5rem;">
-                    {% if session.get('role') in ('employer', 'admin') %}
+                    {# Кнопка блокировки — только для работодателей (админ блокирует через админ-панель) #}
+                    {% if session.get('role') == 'employer' %}
                     <button id="toggle-block-btn-{{ worker.id }}"
                             class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                             title="Заблокировать"

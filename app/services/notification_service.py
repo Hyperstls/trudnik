@@ -14,10 +14,18 @@
 """
 
 import logging
+import traceback
 from app.utils import supabase_admin_request, supabase_request
-from app.services.redis_publisher import redis_publisher
 
 logger = logging.getLogger(__name__)
+
+# Безопасный импорт: если redis не установлен — redis_publisher будет в режиме no-op,
+# все вызовы publish_notification() будут молча возвращать False.
+try:
+    from app.services.redis_publisher import redis_publisher
+except ImportError:
+    redis_publisher = None
+    logger.warning("redis_publisher не загружен — WebSocket-уведомления отключены")
 
 NOTIFICATION_TYPES = {
     'status_change':         'Изменение статуса',
@@ -65,7 +73,7 @@ def get_user_prefs(user_id):
     return dict(DEFAULT_ENABLED_TYPES)
 
 
-def create(user_id, notification_type, title, message, data=None):
+def create(user_id, notification_type, title, message, data=None, email=None, username=None):
     """Создать уведомление с проверкой настроек пользователя.
 
     Args:
@@ -74,6 +82,8 @@ def create(user_id, notification_type, title, message, data=None):
         title: заголовок
         message: текст
         data: dict с доп. данными (job_id, application_id)
+        email: (опционально) email получателя для ускорения отправки
+        username: (опционально) имя получателя для ускорения отправки
 
     Returns:
         bool: True если создано, False если отключено или ошибка
@@ -116,43 +126,53 @@ def create(user_id, notification_type, title, message, data=None):
     full_message = base_payload['message']
 
     # Публикуем событие в Redis для мгновенной WebSocket-доставки
-    try:
-        redis_publisher.publish_notification(
-            user_id=user_id,
-            notification_type=notification_type,
-            data={
-                'notification_id': notification_id,
-                'type': notification_type,
-                'text': full_message,
-                'title': title,
-                'data': data if data else {},
-                'is_read': False
-            }
-        )
-    except Exception as e:
-        logger.warning("Не удалось опубликовать уведомление в Redis: %s", e)
+    if redis_publisher is not None:
+        try:
+            redis_publisher.publish_notification(
+                user_id=user_id,
+                notification_type=notification_type,
+                data={
+                    'notification_id': notification_id,
+                    'type': notification_type,
+                    'text': full_message,
+                    'title': title,
+                    'data': data if data else {},
+                    'is_read': False
+                }
+            )
+        except Exception as e:
+            logger.warning("Не удалось опубликовать уведомление в Redis: %s", e)
 
     # Ставим задачи в очередь Celery для email и push
     try:
         from app.tasks.email_tasks import send_email_notification
         from app.tasks.push_tasks import send_push_notification
+    except ImportError:
+        send_email_notification = None
+        send_push_notification = None
+        logger.warning("Celery tasks не найдены — email/push уведомления отключены")
 
-        # Получаем email и имя пользователя из профиля
-        user_email = None
-        user_name = None
+    # Получаем email и имя пользователя из профиля (если не переданы явно)
+    user_email = email
+    user_name = username
+    if user_email is None or user_name is None:
         try:
             profile_resp = supabase_admin_request('GET', f'profiles?id=eq.{user_id}&select=email,username')
             if profile_resp.ok and profile_resp.json():
                 profile = profile_resp.json()[0]
-                user_email = profile.get('email')
-                user_name = profile.get('username', 'Пользователь')
+                if user_email is None:
+                    user_email = profile.get('email')
+                if user_name is None:
+                    user_name = profile.get('username', 'Пользователь')
         except Exception:
-            pass
+            logger.warning("Не удалось получить профиль для user_id=%s", user_id)
 
-        # Проверяем настройки уведомлений пользователя
-        user_prefs = prefs  # уже получены выше
+    # Проверяем настройки уведомлений пользователя
+    user_prefs = prefs  # уже получены выше
 
-        if user_email and user_prefs.get('email_enabled', True):
+    # Отправка email через Celery — отдельный try/except
+    if send_email_notification and user_email and user_prefs.get('email_enabled', True):
+        try:
             send_email_notification.delay(
                 user_id=user_id,
                 notification_id=notification_id,
@@ -162,8 +182,16 @@ def create(user_id, notification_type, title, message, data=None):
                 notification_type=notification_type,
                 notification_url=data.get('link', '') if data else ''
             )
+        except Exception:
+            logger.error(
+                "Не удалось поставить email-задачу в очередь Celery: user=%s type=%s",
+                user_id, notification_type
+            )
+            logger.error(traceback.format_exc())
 
-        if user_prefs.get('push_enabled', True):
+    # Отправка push через Celery — отдельный try/except
+    if send_push_notification and user_prefs.get('push_enabled', True):
+        try:
             send_push_notification.delay(
                 user_id=user_id,
                 notification_data={
@@ -175,10 +203,12 @@ def create(user_id, notification_type, title, message, data=None):
                     'tag': f'notification-{notification_id}' if notification_id else None
                 }
             )
-    except ImportError:
-        pass  # Celery может быть не настроен
-    except Exception as e:
-        logger.warning("Не удалось поставить задачу в очередь Celery: %s", e)
+        except Exception:
+            logger.error(
+                "Не удалось поставить push-задачу в очередь Celery: user=%s type=%s",
+                user_id, notification_type
+            )
+            logger.error(traceback.format_exc())
 
     return True
 

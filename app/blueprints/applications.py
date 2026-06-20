@@ -1,3 +1,5 @@
+import logging
+import threading
 from datetime import datetime, timezone
 
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
@@ -6,6 +8,8 @@ from app.config import Config
 from app.decorators import login_required
 from app.utils import rate_limit, supabase_request, supabase_admin_request, supabase_rpc
 from app.services.notification_service import create as notify
+
+logger = logging.getLogger(__name__)
 
 applications_bp = Blueprint('applications', __name__)
 
@@ -24,12 +28,22 @@ def apply_job(job_id):
 
     # Атомарная RPC: все проверки + вставка отклика в одной транзакции PostgreSQL
     # Устраняет TOCTOU race condition между проверкой мест и созданием отклика
+    # FALLBACK: если RPC apply_job_atomic не существует (миграция 048 не применена),
+    # используем неатомарную логику с проверками через REST API
     rpc_result = supabase_rpc('apply_job_atomic', {
         'p_job_id': job_id,
         'p_worker_id': user_id,
     }, use_admin=True)
 
     if not rpc_result.ok:
+        # RPC-функция не найдена (404) — используем fallback
+        if rpc_result.status_code == 404:
+            logger.warning(
+                "apply_job: RPC apply_job_atomic not found (migration 048 not applied), "
+                "falling back to non-atomic apply for job_id=%s user_id=%s",
+                job_id, user_id
+            )
+            return _apply_job_fallback(job_id, user_id)
         flash('Ошибка при отправке отклика', 'danger')
         return redirect(url_for('jobs.index'))
 
@@ -50,12 +64,119 @@ def apply_job(job_id):
         flash(error_msg, category)
         return redirect(url_for('jobs.index'))
 
-    # Успех: уведомить работодателя о новом отклике
+    # Успех: уведомить работодателя о новом отклике (фоновый поток)
     employer_id = result.get('employer_id')
     if employer_id:
-        notify(employer_id, 'application_received', 'Новый отклик',
-               f'На ваше задание поступил новый отклик',
-               data={'job_id': job_id, 'link': url_for('jobs.job_detail', job_id=job_id, _external=True)})
+        _job_id = job_id  # захват по значению
+        _link = url_for('jobs.job_detail', job_id=job_id, _external=True)
+        def _notify_employer():
+            success = notify(employer_id, 'application_received', 'Новый отклик',
+                   f'На ваше задание поступил новый отклик',
+                   data={'job_id': _job_id, 'link': _link})
+            if not success:
+                logger.error("apply_job: notify() вернул False для employer_id=%s job_id=%s",
+                             employer_id, _job_id)
+        threading.Thread(target=_notify_employer, daemon=True).start()
+
+    flash('Отклик отправлен', 'success')
+    return redirect(url_for('jobs.index'))
+
+
+def _apply_job_fallback(job_id: str, user_id: str):
+    """
+    Неатомарный fallback для apply_job, когда RPC apply_job_atomic недоступен.
+
+    Выполняет все проверки (существование задания, статус, blacklist,
+    дубликат, слоты) через REST API и создаёт отклик.
+
+    Используется только когда миграция 048 (apply_job_atomic) не применена.
+
+    ⚠️ ВАЖНО: Логика проверок должна быть синхронизирована с RPC-функцией
+    apply_job_atomic (миграция 048). При изменении правил валидации в RPC
+    необходимо обновить и этот fallback.
+    """
+    # 1. Получить информацию о задании
+    # ↑ Синхронизировать с apply_job_atomic (миграция 048)
+    job_resp = supabase_request(
+        'GET',
+        f'jobs?id=eq.{job_id}&select=status,current_workers,max_workers,employer_id'
+    )
+    if not job_resp.ok or not job_resp.json():
+        flash('Задание не найдено', 'danger')
+        return redirect(url_for('jobs.index'))
+
+    job = job_resp.json()[0]
+
+    # 2. Проверить, что задание открыто для откликов
+    # ↑ Синхронизировать с apply_job_atomic (миграция 048)
+    if job.get('status') != 'open':
+        flash('На это задание нельзя откликаться', 'info')
+        return redirect(url_for('jobs.index'))
+
+    # 3. Проверить, что работник не откликается на собственное задание
+    # ↑ Синхронизировать с apply_job_atomic (миграция 048)
+    employer_id = job.get('employer_id')
+    if employer_id == user_id:
+        flash('Вы не можете откликаться на собственное задание', 'danger')
+        return redirect(url_for('jobs.index'))
+
+    # 4. Проверить blacklist (требует service_role для обхода RLS)
+    # ↑ Синхронизировать с apply_job_atomic (миграция 048)
+    if employer_id:
+        bl_resp = supabase_admin_request(
+            'GET',
+            f'blacklists?user_id=eq.{employer_id}&blocked_user_id=eq.{user_id}&select=id'
+        )
+        if bl_resp.ok and bl_resp.json():
+            error_msg = 'Вы не можете откликнуться: работодатель добавил вас в чёрный список'
+            if request.method == 'POST':
+                return jsonify({'success': False, 'error': error_msg}), 403
+            flash(error_msg, 'danger')
+            return redirect(url_for('jobs.index'))
+
+    # 5. Проверить дубликат отклика
+    # ↑ Синхронизировать с apply_job_atomic (миграция 048)
+    dup_resp = supabase_request(
+        'GET',
+        f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}&select=id'
+    )
+    if dup_resp.ok and dup_resp.json():
+        flash('Вы уже откликались на это задание', 'info')
+        return redirect(url_for('jobs.index'))
+
+    # 6. Проверить наличие свободных мест
+    # ↑ Синхронизировать с apply_job_atomic (миграция 048)
+    # ⚠️ TOCTOU: между этой проверкой и созданием отклика другой запрос может занять место.
+    # Атомарная RPC (apply_job_atomic) устраняет эту гонку — fallback используется только
+    # когда RPC недоступна (миграция 048 не применена).
+    current_workers = job.get('current_workers', 0)
+    max_workers = job.get('max_workers', 1)
+    if current_workers >= max_workers:
+        flash(f'Места в задании заполнены (максимум {max_workers})', 'info')
+        return redirect(url_for('jobs.index'))
+
+    # 7. Создать отклик
+    create_resp = supabase_request('POST', 'applications', json={
+        'job_id': job_id,
+        'worker_id': user_id,
+        'status': 'pending',
+    })
+    if not create_resp.ok:
+        flash('Ошибка при отправке отклика', 'danger')
+        return redirect(url_for('jobs.index'))
+
+    # 8. Уведомить работодателя о новом отклике (фоновый поток)
+    if employer_id:
+        _job_id = job_id
+        _link = url_for('jobs.job_detail', job_id=job_id, _external=True)
+        def _notify_employer():
+            success = notify(employer_id, 'application_received', 'Новый отклик',
+                   f'На ваше задание поступил новый отклик',
+                   data={'job_id': _job_id, 'link': _link})
+            if not success:
+                logger.error("_apply_job_fallback: notify() вернул False для employer_id=%s job_id=%s",
+                             employer_id, _job_id)
+        threading.Thread(target=_notify_employer, daemon=True).start()
 
     flash('Отклик отправлен', 'success')
     return redirect(url_for('jobs.index'))
@@ -72,19 +193,46 @@ def apply_selected():
     user_id = session['user_id']
     applied = 0
     skipped_count = 0
+    # Словарь для группировки уведомлений: employer_id -> list of job_ids
+    employer_jobs = {}
+
     for job_id in job_ids:
-        # Проверить статус задания
-        job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status')
+        # Проверить статус задания и получить employer_id
+        job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status,employer_id')
+        employer_id = None
         if job_resp.ok and job_resp.json():
             job = job_resp.json()[0]
             if job['status'] != 'open':
                 skipped_count += 1
                 continue
+            employer_id = job.get('employer_id')
 
         check = supabase_request('GET', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
         if not (check.ok and check.json()):
-            supabase_request('POST', 'applications', json={'job_id': job_id, 'worker_id': user_id})
-            applied += 1
+            resp = supabase_request('POST', 'applications', json={'job_id': job_id, 'worker_id': user_id})
+            if resp.ok:
+                applied += 1
+                # Группируем по работодателю для уведомлений
+                if employer_id:
+                    if employer_id not in employer_jobs:
+                        employer_jobs[employer_id] = []
+                    employer_jobs[employer_id].append(job_id)
+
+    # Отправляем уведомления работодателям в фоновом потоке
+    if employer_jobs:
+        _applications_link = url_for('applications.my_applications', _external=True)
+        def _notify_employers():
+            for emp_id, jids in employer_jobs.items():
+                job_list = ', '.join(f'#{jid}' for jid in jids)
+                success = notify(
+                    emp_id, 'application_received', 'Новые отклики',
+                    f'На ваши задания ({job_list}) поступили новые отклики',
+                    data={'job_ids': jids, 'link': _applications_link}
+                )
+                if not success:
+                    logger.error("apply_selected: notify() вернул False для employer_id=%s job_ids=%s",
+                                 emp_id, jids)
+        threading.Thread(target=_notify_employers, daemon=True).start()
 
     if applied > 0:
         flash(f'Отклик отправлен на {applied} заданий', 'success')
@@ -193,9 +341,12 @@ def api_withdraw_application(app_id):
         })
 
         # Уведомить работодателя
-        notify(job['employer_id'], 'withdraw', 'Работник отозвал отклик',
+        success = notify(job['employer_id'], 'withdraw', 'Работник отозвал отклик',
                f'Принятый работник отозвал отклик с задания #{job_id}',
                data={'job_id': job_id, 'link': url_for('jobs.job_detail', job_id=job_id, _external=True)})
+        if not success:
+            logger.error("api_withdraw_application: notify() вернул False для employer_id=%s job_id=%s",
+                         job['employer_id'], job_id)
 
     # Поменять статус отклика на withdrawn
     supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'withdrawn'})
@@ -302,9 +453,12 @@ def api_handle_application(app_id, action):
             return jsonify({'success': False, 'error': error_msg}), status_code
 
         # Уведомить работника
-        notify(worker_id, 'application_accepted', 'Отклик принят',
+        success = notify(worker_id, 'application_accepted', 'Отклик принят',
                f'Ваш отклик на задание #{job_id} был принят',
                data={'job_id': job_id, 'link': url_for('applications.my_applications', _external=True)})
+        if not success:
+            logger.error("api_handle_application accept: notify() вернул False для worker_id=%s job_id=%s",
+                         worker_id, job_id)
 
         return jsonify({
             'success': True,
@@ -328,9 +482,12 @@ def api_handle_application(app_id, action):
             return jsonify({'success': False, 'error': error_msg}), 400
 
         # Уведомить работника
-        notify(worker_id, 'application_rejected', 'Отклик отклонён',
+        success = notify(worker_id, 'application_rejected', 'Отклик отклонён',
                f'Ваш отклик на задание #{job_id} был отклонён',
                data={'job_id': job_id, 'link': url_for('applications.my_applications', _external=True)})
+        if not success:
+            logger.error("api_handle_application reject: notify() вернул False для worker_id=%s job_id=%s",
+                         worker_id, job_id)
 
         return jsonify({
             'success': True,
@@ -469,9 +626,12 @@ def cancel_application(app_id):
     supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'rejected'})
 
     # Отправить уведомления
-    notify(worker_id, 'application_rejected', 'Отклик отменен',
+    success = notify(worker_id, 'application_rejected', 'Отклик отменен',
                       f'Ваш отклик на задание {job.get("organization_name", "#" + job_id)} был отменен',
                       data={'job_id': job_id, 'link': url_for('applications.my_applications', _external=True)})
+    if not success:
+        logger.error("cancel_application: notify() вернул False для worker_id=%s job_id=%s",
+                     worker_id, job_id)
 
     flash('Работник отменен', 'success')
     return redirect(url_for('applications.my_applications'))

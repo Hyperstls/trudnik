@@ -5,7 +5,11 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 from app.decorators import login_required
 from app.utils import rate_limit, supabase_request
 from app.services.notification_service import create as create_notification
-from app.services.redis_publisher import redis_publisher
+
+try:
+    from app.services.redis_publisher import redis_publisher
+except ImportError:
+    redis_publisher = None
 
 chat_bp = Blueprint('chat', __name__)
 
@@ -154,22 +158,23 @@ def send_message():
                              'link': url_for('chat.chat', application_id=application_id, _external=True)})
 
     # Публикуем событие в Redis для мгновенной доставки через WebSocket
-    try:
-        redis_publisher.publish_chat_message(
-            sender_id=sender_id,
-            recipient_id=recipient,
-            message_data={
-                'message_id': message_id,
-                'text': sanitized_content,
-                'sender_id': sender_id,
-                'sender_name': session.get('username', 'Пользователь'),
-                'application_id': application_id,
-                'job_id': app_data.get('job_id')
-            }
-        )
-    except Exception as e:
-        from flask import current_app
-        current_app.logger.warning("Не удалось опубликовать сообщение чата в Redis: %s", e)
+    if redis_publisher is not None:
+        try:
+            redis_publisher.publish_chat_message(
+                sender_id=sender_id,
+                recipient_id=recipient,
+                message_data={
+                    'message_id': message_id,
+                    'text': sanitized_content,
+                    'sender_id': sender_id,
+                    'sender_name': session.get('username', 'Пользователь'),
+                    'application_id': application_id,
+                    'job_id': app_data.get('job_id')
+                }
+            )
+        except Exception as e:
+            from flask import current_app
+            current_app.logger.warning("Не удалось опубликовать сообщение чата в Redis: %s", e)
 
     return jsonify({'status': 'ok'})
 

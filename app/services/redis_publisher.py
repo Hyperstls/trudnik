@@ -3,31 +3,49 @@ Redis Publisher — синхронный клиент для публикаци�
 """
 import json
 import os
+import time
 import logging
-import redis
 
 logger = logging.getLogger(__name__)
+
+# Безопасный импорт: если redis не установлен — модуль не крашнется,
+# все публичные методы будут возвращать False (no-op).
+try:
+    import redis
+    _REDIS_AVAILABLE = True
+except ImportError:
+    redis = None  # type: ignore
+    _REDIS_AVAILABLE = False
+    logger.warning("redis пакет не установлен — Redis Publisher будет в режиме no-op")
 
 
 class RedisPublisher:
     """Публикует события в Redis Pub/Sub из синхронного Flask-контекста."""
 
     _instance = None
+    _reconnect_interval = 60  # секунд между попытками переподключения
 
     def __init__(self):
         self.redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
         self._client = None
+        self._last_attempt_time = 0.0
 
     def _get_client(self):
-        """Ленивое подключение к Redis."""
+        """Ленивое подключение к Redis с механизмом переподключения."""
+        if not _REDIS_AVAILABLE:
+            return None
         if self._client is None:
-            try:
-                self._client = redis.from_url(self.redis_url, decode_responses=True)
-                self._client.ping()
-                logger.info("Redis Publisher подключён к %s", self.redis_url)
-            except redis.ConnectionError as e:
-                logger.warning("Redis недоступен (%s). События не будут публиковаться.", e)
-                self._client = None
+            now = time.time()
+            # Пытаемся подключиться только если прошло достаточно времени с последней попытки
+            if now - self._last_attempt_time >= self._reconnect_interval:
+                self._last_attempt_time = now
+                try:
+                    self._client = redis.from_url(self.redis_url, decode_responses=True)
+                    # Не делаем ping() при инициализации — ошибка проявится при первой операции
+                    logger.info("Redis Publisher подключён к %s", self.redis_url)
+                except redis.ConnectionError as e:
+                    logger.warning("Redis недоступен (%s). События не будут публиковаться.", e)
+                    self._client = None
         return self._client
 
     def publish(self, channel: str, message: dict) -> bool:

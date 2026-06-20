@@ -1,1 +1,1 @@
-3d27a88 feat: auto-update version files via pre-commit hook (scripts/update_version.py + install_hooks.py) (2026-06-19 22:22:59 +0300)
+0a3b7f6 fix(docs): РёСЃРїСЂР°РІР»РµРЅРёСЏ РїРѕ РёС‚РѕРіР°Рј СЂРµРІСЊСЋ MIGRATION_PLAN.md (2026-06-19 22:36:53 +0300)

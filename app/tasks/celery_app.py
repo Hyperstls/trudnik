@@ -62,6 +62,9 @@ celery_app.conf.update(
     # Повторы по умолчанию
     task_default_retry_delay=60,  # 1 минута между попытками
     task_max_retries=3,
+    # Переподключение к брокеру при старте
+    broker_connection_retry_on_startup=True,
+    broker_connection_max_retries=10,
 )
 
 # ═══════════════════════════════════════════════════════════════
@@ -69,7 +72,7 @@ celery_app.conf.update(
 # ═══════════════════════════════════════════════════════════════
 
 # Позже сюда добавятся email_tasks и push_tasks
-celery_app.autodiscover_tasks(["app.tasks"], force=False)
+celery_app.autodiscover_tasks(["app.tasks"], force=True)
 
 # Расписание Celery Beat для периодических задач
 celery_app.conf.beat_schedule = {
