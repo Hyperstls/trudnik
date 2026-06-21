@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from '_icons.html' import star, chat, trash, shield, camera, settings, mail, phone, map_pin, info, smiley %}
 {% block content %}
-<div class="px-4 pb-24 max-w-lg mx-auto">
+<div class="px-4 pb-24 max-w-lg mx-auto" data-user-id="{{ current_user_id }}">
     {% if error_message %}
         <div class="bg-danger/10 border border-danger/20 text-danger px-4 py-3 rounded-xl mb-4 text-sm">
             {{ error_message }}

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date as date_type
 
 from flask import Blueprint, current_app, g, jsonify, flash, redirect, render_template, request, session, url_for, abort
 
@@ -21,6 +21,39 @@ jobs_bp = Blueprint('jobs', __name__)
 # Юридически значимое: стоп-слова для предотвращения переквалификации
 # в трудовые отношения (ст. 15 ТК РФ)
 STOP_WORDS = ["ставка", "зарплата", "штат", "трудовая", "график", "постоянная работа", "вахта"]
+
+
+def validate_deadline_not_past(deadline_str: str) -> str | None:
+    """Проверить, что дата выполнения не в прошлом.
+    
+    Returns:
+        Сообщение об ошибке или None если дата валидна.
+    """
+    if not deadline_str:
+        return None  # Без даты — ок, поставится дефолт
+    
+    try:
+        # Пробуем разные форматы: ISO с временем и без
+        deadline_str = deadline_str.strip()
+        if 'T' in deadline_str:
+            deadline_dt = datetime.fromisoformat(deadline_str)
+        else:
+            # Формат YYYY-MM-DD
+            deadline_dt = datetime.strptime(deadline_str, '%Y-%m-%d')
+        
+        # Приводим к date для сравнения (дата выполнения может быть сегодня)
+        deadline_date = deadline_dt.date() if hasattr(deadline_dt, 'date') else deadline_dt
+        
+        # Если deadline не содержит времени, считаем что конец дня
+        now = datetime.now(timezone.utc)
+        today = now.date()
+        
+        if deadline_date < today:
+            return 'Дата выполнения не может быть в прошлом'
+    except (ValueError, TypeError):
+        return 'Некорректный формат даты'
+    
+    return None
 
 
 def check_stop_words(text):
@@ -358,6 +391,13 @@ def job_new():
                 )
                 return render_template('job_new.html', **template_data)
 
+            # Валидация: дата выполнения не должна быть в прошлом
+            deadline = request.form.get('deadline', '')
+            deadline_error = validate_deadline_not_past(deadline)
+            if deadline_error:
+                flash(deadline_error, 'danger')
+                return render_template('job_new.html', **template_data)
+
             job_data = {
                 'employer_id': session['user_id'],
                 'organization_name': title,
@@ -525,6 +565,14 @@ def cancel_job(job_id):
     supabase_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.pending',
                      json={'status': 'rejected'})
 
+    cancel_resp = supabase_admin_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
+    if not cancel_resp.ok:
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        if is_ajax:
+            return jsonify({'success': False, 'error': 'Не удалось отозвать задание'}), 500
+        flash('Не удалось отозвать задание', 'danger')
+        return redirect(url_for('jobs.my_jobs'))
+
     # Уведомить заявителей, что задание отозвано
     apps_resp = supabase_request('GET',
         f'applications?job_id=eq.{job_id}&status=eq.rejected&select=worker_id')
@@ -533,8 +581,6 @@ def cancel_job(job_id):
             notify(app['worker_id'], 'job_cancelled', 'Задание отозвано',
                    f'Задание #{job_id} было отозвано работодателем',
                    data={'job_id': job_id, 'link': url_for('jobs.index', _external=True)})
-
-    supabase_admin_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True, 'message': 'Задание отозвано'})
     flash('Задание отозвано', 'success')
@@ -744,6 +790,19 @@ def edit_job(job_id):
                     return jsonify({'success': False, 'error': msg}), 409
                 flash(msg, 'danger')
                 return redirect(url_for('jobs.job_detail', job_id=job_id))
+
+        # Валидация: дата выполнения не должна быть в прошлом
+        new_deadline = request.form.get('deadline', '')
+        if new_deadline:
+            deadline_error = validate_deadline_not_past(new_deadline)
+            if deadline_error:
+                flash(deadline_error, 'danger')
+                return render_template('job_new.html',
+                    job=job,
+                    is_edit=True,
+                    skills_list=skills_list,
+                    religions_list=religions_list,
+                    yandex_api_key=current_app.config['YANDEX_MAPS_API_KEY'])
 
         data = {
             'organization_name': request.form.get('title', job['organization_name']),

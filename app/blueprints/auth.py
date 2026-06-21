@@ -1,5 +1,6 @@
 import uuid as _uuid
 import logging
+import re
 import time
 import requests
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
@@ -9,6 +10,43 @@ from app.utils import SUPABASE_KEY, SUPABASE_URL, SERVICE_KEY, rate_limit, supab
 
 auth_bp = Blueprint('auth', __name__)
 log = logging.getLogger(__name__)
+
+# RFC 5322 упрощённый regex для валидации email
+_EMAIL_RE = re.compile(
+    r'^[a-zA-Z0-9][a-zA-Z0-9.!#$%&\'*+/=?^_`{|}~-]*'
+    r'@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?'
+    r'(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$'
+)
+
+# Запрещённые SQL-паттерны в пользовательском вводе (дополнительная защита).
+# Проверяет ТОЛЬКО ASCII-фрагменты ввода — кириллица с \b работает некорректно
+# и даёт ложные срабатывания (например, «Андрей» содержит «AND»).
+# AND/OR исключены — они наиболее вероятны в легитимных именах и названиях.
+_SQL_INJECTION_PATTERNS = re.compile(
+    r"(?:SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE|EXEC|TRUNCATE)"
+    r"(?:\s|=|'|\b)",
+    re.IGNORECASE
+)
+
+
+def _has_sql_injection(text: str) -> bool:
+    """Проверить, содержит ли текст признаки SQL-инъекции.
+
+    Проверяются только ASCII-фрагменты текста, чтобы избежать ложных
+    срабатываний на кириллице (например, «Андрей» не должен блокироваться).
+    Первичная защита — параметризованные запросы Supabase.
+    """
+    # Извлекаем только ASCII-подстроки из текста
+    ascii_parts = re.findall(r'[ -~]+', text)
+    for part in ascii_parts:
+        if _SQL_INJECTION_PATTERNS.search(part):
+            return True
+    return False
+
+# Максимальные длины полей
+_MAX_NAME_LENGTH = 150
+_MAX_CITY_LENGTH = 100
+_MAX_EMAIL_LENGTH = 254  # RFC 5321
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
@@ -72,12 +110,29 @@ def register():
         errors = []
         if not full_name:
             errors.append('Укажите полное имя')
+        elif len(full_name) > _MAX_NAME_LENGTH:
+            errors.append(f'Полное имя не должно превышать {_MAX_NAME_LENGTH} символов')
+        elif _has_sql_injection(full_name):
+            errors.append('Полное имя содержит недопустимые символы')
+
         if not email:
             errors.append('Укажите email')
+        elif len(email) > _MAX_EMAIL_LENGTH:
+            errors.append(f'Email не должен превышать {_MAX_EMAIL_LENGTH} символов')
+        elif not _EMAIL_RE.match(email):
+            errors.append('Некорректный формат email')
+        elif _has_sql_injection(email):
+            errors.append('Email содержит недопустимые символы')
+
         if not password:
             errors.append('Укажите пароль')
+
         if role not in ('worker', 'employer'):
             errors.append('Выберите роль')
+
+        if city and len(city) > _MAX_CITY_LENGTH:
+            errors.append(f'Город не должен превышать {_MAX_CITY_LENGTH} символов')
+
         if errors:
             for err in errors:
                 flash(err, 'danger')

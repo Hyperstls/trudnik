@@ -55,6 +55,7 @@ class Config:
     MAX_PHOTO_SIZE_MB = 5
     RATE_LIMIT_MAX = 10
     RATE_LIMIT_WINDOW = 60
+    PERMANENT_SESSION_LIFETIME = 1800  # 30 минут — сессия переживает задержки Supabase
     CACHE_MAX_SIZE = 256
     PAGINATION_DEFAULT_PER_PAGE = 20
 

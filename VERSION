@@ -1,1 +1,1 @@
-88f0e5f fix: url_for() in daemon thread + sync comments for apply_job_fallback (2026-06-20 14:25:00 +0300)
+147817b fix: review feedback — move test doc to docs/, use dataclass for version cache, standard import (2026-06-20 16:37:15 +0300)

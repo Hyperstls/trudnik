@@ -38,3 +38,6 @@ server.log
 # Temp worker file
 temp_workers_original.txt
 
+# Mock Supabase file (test infrastructure)
+.mock_supabase
+

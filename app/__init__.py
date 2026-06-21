@@ -432,6 +432,11 @@ def create_app():
         except Exception:
             return jsonify({"status": "unhealthy"}), 500
 
+    # В тестовом режиме наполняем in-memory БД начальными данными
+    if app.config.get('TESTING'):
+        from app.utils import _seed_test_db
+        _seed_test_db()
+
     return app
 
 

@@ -522,3 +522,49 @@ def verify_employer(user_id):
     supabase_admin_request('PATCH', f'profiles?id=eq.{user_id}', json={'verification_status': 'approved'})
     flash('Работодатель верифицирован', 'success')
     return redirect(url_for('admin.admin_panel', tab='verification'))
+
+
+@admin_bp.route('/api/admin/job-stats')
+@login_required
+@admin_required
+def job_stats():
+    """Статистика заданий для админ-дашборда.
+
+    Использует RPC get_job_stats для серверной агрегации (O(1) вместо O(n)).
+    При отсутствии RPC — fallback на загрузку всех записей с подсчётом в Python.
+    """
+    try:
+        # Пробуем RPC с серверной агрегацией
+        rpc_resp = supabase_rpc('get_job_stats', {}, use_admin=True)
+        if rpc_resp.ok and rpc_resp.json():
+            data = rpc_resp.json()
+            # RPC может вернуть dict или list[dict]
+            if isinstance(data, dict):
+                return jsonify({
+                    "total_jobs": data.get('total', 0),
+                    "open_jobs": data.get('open', 0),
+                    "completed_jobs": data.get('completed', 0),
+                    "cancelled_jobs": data.get('cancelled', 0),
+                })
+            elif isinstance(data, list) and data:
+                stats = data[0]
+                return jsonify({
+                    "total_jobs": stats.get('total', 0),
+                    "open_jobs": stats.get('open', 0),
+                    "completed_jobs": stats.get('completed', 0),
+                    "cancelled_jobs": stats.get('cancelled', 0),
+                })
+
+        # Fallback: загружаем все статусы и считаем в Python (работает без RPC)
+        resp = supabase_admin_request('GET', 'jobs?select=status')
+        if resp.ok and resp.json():
+            statuses = [j.get('status', '') for j in resp.json()]
+            return jsonify({
+                "total_jobs": len(statuses),
+                "open_jobs": statuses.count('open'),
+                "completed_jobs": statuses.count('completed'),
+                "cancelled_jobs": statuses.count('cancelled'),
+            })
+        return jsonify({"total_jobs": 0, "open_jobs": 0, "completed_jobs": 0, "cancelled_jobs": 0, "error": True})
+    except Exception:
+        return jsonify({"total_jobs": 0, "open_jobs": 0, "completed_jobs": 0, "cancelled_jobs": 0, "error": True})

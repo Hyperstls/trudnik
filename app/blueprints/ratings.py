@@ -114,6 +114,18 @@ def upsert_rating():
         if not (app_check.ok and app_check.json()):
             return jsonify({'success': False, 'error': 'Вы не являетесь участником этого задания'}), 403
 
+    # Проверить, что оцениваемый пользователь тоже участвовал в этом задании
+    if target_type == 'employer':
+        # Оцениваемый работодатель должен быть владельцем задания
+        if rated_user_id != job['employer_id']:
+            return jsonify({'success': False, 'error': 'Оцениваемый пользователь не является работодателем этого задания'}), 403
+    else:
+        # Оцениваемый работник должен иметь accepted-отклик на это задание
+        rated_app_check = supabase_admin_request('GET',
+            f'applications?job_id=eq.{job_id}&worker_id=eq.{rated_user_id}&status=eq.accepted&select=id')
+        if not (rated_app_check.ok and rated_app_check.json()):
+            return jsonify({'success': False, 'error': 'Оцениваемый пользователь не является участником этого задания'}), 403
+
     # Определить rating_type (роль оценивающего)
     if rater_user_id == job['employer_id']:
         rating_type = 'employer'

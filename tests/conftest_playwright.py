@@ -107,32 +107,31 @@ def relogin_if_expired(page: Page, email: str, password: str) -> None:
 
 
 # ──────────────────────────────────────────────
-# Фикстуры (function scope)
+# Фикстуры (session + class scope — один логин на класс тестов)
 # ──────────────────────────────────────────────
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope='session')
 def playwright_browser() -> Browser:
-    """Запускает headed Chromium браузер для отладки E2E-тестов.
+    """Один браузер на всю тестовую сессию.
 
-    headless=False — браузер видим (удобно при разработке).
-    slow_mo=100 — замедление операций для наглядности.
+    headless=True — без GUI для CI/автоматизации.
+    slow_mo=0 — без замедления.
     """
     with sync_playwright() as p:
         browser = p.chromium.launch(
-            headless=False,
-            slow_mo=100,
+            headless=True,
+            slow_mo=0,
         )
         yield browser
         browser.close()
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope='class')
 def employer_context(playwright_browser: Browser) -> tuple[BrowserContext, Page]:
-    """Изолированный контекст с залогиненным работодателем.
+    """Один логин работодателя на весь тестовый класс.
 
-    Returns:
-        (BrowserContext, Page) — контекст и страница.
+    Не создаёт новый логин для каждого теста — избегает rate-limit (429).
     """
     context = playwright_browser.new_context(
         viewport={'width': 1024, 'height': 768},
@@ -147,12 +146,11 @@ def employer_context(playwright_browser: Browser) -> tuple[BrowserContext, Page]
     context.close()
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope='class')
 def worker_context(playwright_browser: Browser) -> tuple[BrowserContext, Page]:
-    """Изолированный контекст с залогиненным трудником.
+    """Один логин трудника на весь тестовый класс.
 
-    Returns:
-        (BrowserContext, Page) — контекст и страница.
+    Не создаёт новый логин для каждого теста — избегает rate-limit (429).
     """
     context = playwright_browser.new_context(
         viewport={'width': 1024, 'height': 768},
@@ -167,21 +165,21 @@ def worker_context(playwright_browser: Browser) -> tuple[BrowserContext, Page]:
     context.close()
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope='class')
 def employer_page(employer_context: tuple[BrowserContext, Page]) -> Page:
-    """Упрощённая фикстура — возвращает только page работодателя."""
+    """Упрощённая фикстура — возвращает только page работодателя (class scope)."""
     _ctx, page = employer_context
     return page
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope='class')
 def worker_page(worker_context: tuple[BrowserContext, Page]) -> Page:
-    """Упрощённая фикстура — возвращает только page трудника."""
+    """Упрощённая фикстура — возвращает только page трудника (class scope)."""
     _ctx, page = worker_context
     return page
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope='class')
 def browser_contexts(playwright_browser: Browser) -> dict:
     """Два изолированных контекста: работодатель + трудник.
 
@@ -247,9 +245,11 @@ def run_accessibility_audit(page: Page) -> list[dict]:
         axe = Axe()
         results = axe.run(page)
 
+        # AxeResults is a Pydantic model — access attributes directly
+        violations_list = results.violations if hasattr(results, 'violations') else []
         violations = [
-            v for v in results.get('violations', [])
-            if v.get('impact') in ('critical', 'serious')
+            v for v in violations_list
+            if (v.get('impact') if isinstance(v, dict) else getattr(v, 'impact', None)) in ('critical', 'serious')
         ]
         return violations
 

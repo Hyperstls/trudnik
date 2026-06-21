@@ -110,7 +110,7 @@ def admin_required(f):
         profile = get_user_profile()
         if not profile or profile.get('role') != 'admin':
             flash('Доступ запрещён. Требуются права администратора.', 'error')
-            return redirect(url_for('index'))
+            return redirect(url_for('jobs.index'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -125,7 +125,7 @@ def employer_required(f):
         profile = get_user_profile()
         if not profile or profile.get('role') != 'employer':
             flash('Доступ запрещён. Требуются права работодателя.', 'error')
-            return redirect(url_for('index'))
+            return redirect(url_for('jobs.index'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -140,12 +140,12 @@ def worker_required(f):
         profile = get_user_profile()
         if not profile or profile.get('role') != 'worker':
             flash('Доступ запрещён. Требуются права работника.', 'error')
-            return redirect(url_for('index'))
+            return redirect(url_for('jobs.index'))
         return f(*args, **kwargs)
     return decorated_function
 
 
-def handle_errors(redirect_endpoint='index'):
+def handle_errors(redirect_endpoint='jobs.index'):
     """Unified error handler for blueprint routes.
     
     Usage:
