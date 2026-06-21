@@ -56,9 +56,11 @@ class CircuitBreaker:
         Returns:
             Результат вызова func или фейловый ответ при разомкнутой цепи.
         """
-        # В режиме тестирования отключаем circuit breaker — ошибки накапливаются
+        # В режиме mock-тестирования отключаем circuit breaker — ошибки накапливаются
         # между запусками pytest и ломают последующие тесты.
-        if Config.TESTING:
+        # Используем _is_mock_enabled() для консистентности с остальной mock-логикой
+        # (учитывает SUPABASE_MOCK_MODE, TESTING=True и .mock_supabase файл).
+        if _is_mock_enabled():
             return func(*args, **kwargs)
 
         with self._lock:

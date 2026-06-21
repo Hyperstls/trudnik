@@ -1,7 +1,7 @@
 # Бизнес-логика — Трудник (Trudnik)
 
 > Модель данных, бизнес-процессы, состояния и жизненные циклы.
-> **Актуализировано:** 2026-06-17 | **Ветка:** `main` (монетизация отключена, все задания `is_paid=True`)
+> **Актуализировано:** 2026-06-21 | **Ветка:** `main` (монетизация отключена, все задания `is_paid=True`)
 
 ---
 
@@ -327,9 +327,28 @@ RPC **`delete_user_cascade(user_id)`** — удаляет пользовател
 
 На ветке `main` монетизация **полностью отключена**:
 - Все задания публикуются с `is_paid=True` (без оплаты)
-- Таблицы монетизации (`monetization_settings`, `contact_payments`, `job_payments`, `tariff_settings`) существуют, но не используются
+- Таблицы монетизации (`monetization_settings`, `contact_payments`, `job_payments`, `tariff_settings`, `receipts`, `_archive_contact_payments`) существуют, но не используются
 - Функционал «раскрытия контакта за плату» неактивен
 - Чеки самозанятого (`receipts`) и история наймов (`hires`) не используются в основной бизнес-логике
+
+---
+
+### Безопасность (новые улучшения)
+
+- **Валидация email** — RFC 5322 regex при регистрации и входе ([`app/blueprints/auth.py:15`](../app/blueprints/auth.py:15))
+- **Защита от SQL-инъекций** — проверка ASCII-фрагментов пользовательского ввода на паттерны SQL-команд ([`app/blueprints/auth.py:25`](../app/blueprints/auth.py:25))
+- **Дифференцированные таймауты** — GET-запросы 15s, мутации (POST/PUT/DELETE) 60s в [`supabase_request()`](../app/utils.py)
+- **PERMANENT_SESSION_LIFETIME** = 1800 секунд (30 минут) — Flask-сессии
+- **Условный apikey** в `supabase_admin_request` — `SERVICE_KEY` отправляется только для localhost
+
+### Тестовая инфраструктура (Mock Supabase)
+
+При `TESTING=True` (или `SUPABASE_MOCK_MODE=1`) активируется in-memory mock Supabase в [`app/utils.py`](../app/utils.py), который эмулирует:
+- REST API (GET/POST/PATCH/DELETE с фильтрацией)
+- Auth API (login/signup/logout)
+- RPC-функции (все перечисленные выше)
+
+Защита от случайной активации: гарда `PYTEST_CURRENT_TEST` в [`tests/conftest.py:24`](../tests/conftest.py:24).
 
 ---
 
@@ -342,6 +361,7 @@ RPC **`delete_user_cascade(user_id)`** — удаляет пользовател
 | **Дашборд** | Статистика: всего пользователей (по ролям), всего заданий (по статусам), ожидающие верификации |
 | **Пользователи** | Поиск, фильтрация по роли, просмотр профилей |
 | **Задания** | Поиск, фильтрация по статусу, просмотр |
+| **Статистика** | Статистика публикаций через RPC `get_job_stats` ([`/api/admin/job-stats`](../app/blueprints/admin.py)) |
 | **Верификация** | Подтверждение/отклонение верификации работодателей |
 | **Справочники** | Управление навыками (`skills`) и религиями (`religions`) |
 
@@ -358,7 +378,7 @@ RPC **`delete_user_cascade(user_id)`** — удаляет пользовател
 
 ### Таблицы БД
 
-Активные таблицы (18):
+Активные таблицы (21):
 
 | Таблица | Назначение | Ключевые поля |
 |---------|------------|---------------|
@@ -381,12 +401,13 @@ RPC **`delete_user_cascade(user_id)`** — удаляет пользовател
 | `email_log` | Лог email-отправки | `id`, `user_id`, `email_to`, `subject`, `status`, `error_message`, `created_at` |
 | `employer_details` | Детали работодателя | `id`, `user_id`, `organization_name`, `description` |
 
-Таблицы монетизации (отключены, 6):
+Таблицы монетизации (отключены, 7):
 
 | Таблица | Назначение |
 |---------|------------|
 | `monetization_settings` | Настройки монетизации (ключ-значение) |
 | `contact_payments` | Платежи за раскрытие контакта |
+| `_archive_contact_payments` | Архив платежей за раскрытие контакта |
 | `job_payments` | Платежи за публикацию/продление |
 | `tariff_settings` | Настройки тарифов |
 | `receipts` | Чеки самозанятого |
@@ -402,11 +423,14 @@ RPC **`delete_user_cascade(user_id)`** — удаляет пользовател
 |-----------|------------|-------------|
 | `accept_application(app_id UUID)` | Принять отклик: обновить статус заявки + инкремент `current_workers` | Да (SECURITY DEFINER, одна транзакция) |
 | `reject_application(app_id UUID)` | Отклонить отклик: обновить статус заявки | Да |
+| `apply_job_atomic(job_id UUID, worker_id UUID)` | Атомарный отклик на задание: проверка дубликатов, мест, чёрного списка | Да |
 | `delete_job_cascade(job_id UUID)` | Каскадное удаление задания и всех связанных данных | Да |
 | `delete_user_cascade(user_id UUID)` | Каскадное удаление пользователя и всех связанных данных | Да |
+| `get_job_stats(start_date TEXT, end_date TEXT)` | Статистика публикаций за период (для админ-панели) | Нет (только чтение) |
+| `nearby_jobs(lat FLOAT, lng FLOAT, radius_km INTEGER)` | Геопоиск ближайших заданий в радиусе (PostGIS) | Нет (только чтение) |
 | `exec_sql(query TEXT)` | Выполнение произвольного SQL (только для admin, service_role) | Нет |
 
-**Источник:** [`app/utils.py:466`](../app/utils.py:466) — `supabase_rpc()`
+**Источник:** [`app/utils.py:466`](../app/utils.py:466) — `supabase_rpc()`, миграции 039, 048, 052, 056
 
 ---
 

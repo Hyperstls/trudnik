@@ -1,7 +1,7 @@
 # План миграции проекта «Трудник» с Supabase на Amvera
 
-**Дата:** 20 июня 2026  
-**Версия:** 2.0 — актуализировано под преднастроенные сервисы Amvera  
+**Дата:** 21 июня 2026  
+**Версия:** 2.1 — актуализированы миграции (001–056), новые RPC, выравнивание с облачной схемой Supabase  
 **Статус:** Проект  
 
 ---
@@ -175,7 +175,7 @@ Beget может рассматриваться только если крити
 
 | Группа файлов | Тип изменений | Сложность |
 |---------------|---------------|-----------|
-| `migrations/001-048` (48 файлов) | Замена `auth.uid()` → `current_setting('request.jwt.claim.sub')` или `request.jwt.claim.user_id` | **Высокая** |
+| `migrations/001-056` (56 файлов) | Замена `auth.uid()` → `current_setting('request.jwt.claim.sub')` или `request.jwt.claim.user_id`. Миграции 049–056 — выравнивание с облачной схемой Supabase: восстановление колонок, новые таблицы (`monetization_settings`, `receipts`, `_archive_contact_payments`), исправление типов, RPC `get_job_stats` и `nearby_jobs` | **Высокая** |
 
 ### 2.5. Статические файлы и шаблоны
 
@@ -198,7 +198,7 @@ Beget может рассматриваться только если крити
 
 | Сложность | Количество файлов | Примечание |
 |-----------|-------------------|------------|
-| Высокая | 3 (`utils.py`, `auth.py`, 48 migration files) | Без изменений |
+| Высокая | 3 (`utils.py`, `auth.py`, 56 migration files) | Без изменений |
 | Средняя | 11 (было 14) | Dockerfile и render.yaml выпали (PostgREST — преднастроенный сервис) |
 | Низкая | 15+ | docker-compose.yml понижен со Средней до Низкой (только удаление сервисов) |
 | Нулевая | 4 (было 2) | Добавлены Dockerfile и render.yaml |
@@ -889,7 +889,15 @@ environment:
 
 ### 6.4. Перенос хранимых процедур
 
-Хранимые процедуры в [`migrations/039_atomic_operations.sql`](migrations/039_atomic_operations.sql) **не требуют изменений**, так как они используют `SECURITY DEFINER` и не полагаются на `auth.uid()` внутри себя. Единственное изменение — в RLS-политиках, которые регулируют доступ к этим функциям через `supabase_rpc()`:
+Хранимые процедуры в [`migrations/039_atomic_operations.sql`](migrations/039_atomic_operations.sql), [`migrations/048_atomic_apply_job.sql`](migrations/048_atomic_apply_job.sql), [`migrations/052_add_job_stats_rpc.sql`](migrations/052_add_job_stats_rpc.sql) и [`migrations/056_add_nearby_jobs_rpc.sql`](migrations/056_add_nearby_jobs_rpc.sql) **не требуют изменений**, так как они используют `SECURITY DEFINER` и не полагаются на `auth.uid()` внутри себя. Единственное изменение — в RLS-политиках, которые регулируют доступ к этим функциям через `supabase_rpc()`:
+
+Полный список RPC-функций после миграций 001–056:
+- `accept_application` / `reject_application` — принятие/отклонение отклика
+- `apply_job_atomic` — атомарный отклик на задание
+- `delete_job_cascade` — каскадное удаление задания
+- `delete_user_cascade` — каскадное удаление пользователя
+- `get_job_stats` — статистика публикаций (админ-панель)
+- `nearby_jobs` — геопоиск ближайших заданий (PostGIS)
 
 ```sql
 -- Было (если функция защищена RLS):
@@ -1577,5 +1585,6 @@ flowchart TB
 
 | Дата | Версия | Изменения |
 |------|--------|-----------|
+| 2026-06-21 | 2.1 | **Актуализация миграций:** количество миграций 001–056 (было 001–048). Миграции 049–056 — выравнивание с облачной схемой Supabase: восстановление колонок `jobs`, новые таблицы (`monetization_settings`, `receipts`, `_archive_contact_payments`), исправление типов (varchar→text, numeric→float8), RPC `get_job_stats` и `nearby_jobs`. Обновлён список RPC-функций |
 | 2026-06-20 | 2.0 | **Актуализация под преднастроенные сервисы Amvera:** PostgREST и Redis — готовые сервисы (создаются кнопками в админке). Managed PostgreSQL — отдельный тариф с суперпользователем. docker-compose упрощён с 7 до 4 контейнеров. Оценка трудозатрат снижена на 14 ч (−15%). Цена скорректирована: ~1 800 ₽/мес вместо ~700 ₽. Удалены риски «PostgREST не поддерживается» и «нужен свой контейнер Redis» |
 | 2026-06-19 | 1.0 | Начальная версия плана миграции |

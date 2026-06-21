@@ -68,7 +68,7 @@
         <p>Проверьте подключение к интернету и попробуйте снова. Некоторые ранее открытые страницы могут быть доступны.</p>
         <a href="/" class="js-reload-btn btn">Попробовать снова</a>
     </div>
-    <script>
+    <script nonce="{{ csp_nonce }}">
         document.querySelector('.js-reload-btn').addEventListener('click', function(e) {
             e.preventDefault();
             location.reload();

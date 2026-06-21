@@ -1,1 +1,1 @@
-147817b fix: review feedback — move test doc to docs/, use dataclass for version cache, standard import (2026-06-20 16:37:15 +0300)
+97a07e8 feat: выравнивание схемы с облачным Supabase + исправления после ревью (2026-06-21 22:07:35 +0300)

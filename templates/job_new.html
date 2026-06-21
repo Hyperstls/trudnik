@@ -184,7 +184,7 @@
     </form>
 </div>
 
-<script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_api_key|default('') }}&lang=ru_RU" type="text/javascript"></script>
+<script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_api_key|default('') }}&lang=ru_RU" type="text/javascript" nonce="{{ csp_nonce }}"></script>
 <script nonce="{{ csp_nonce }}">
 (function() {
     'use strict';

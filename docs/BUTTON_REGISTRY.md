@@ -1,7 +1,8 @@
 # Реестр кнопок и элементов интерфейса приложения «Трудник»
 
-Дата обновления: 2026-06-20
+Дата обновления: 2026-06-21
 Источник: полный аудит [`templates/`](../templates/), [`app/blueprints/`](../app/blueprints/)
+Тестовое покрытие: [`tests/test_buttons_backend.py`](../tests/test_buttons_backend.py) (~3200 строк комплексных тестов Guest/Worker/Employer/Admin/Security)
 
 ---
 

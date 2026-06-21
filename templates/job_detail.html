@@ -291,7 +291,7 @@
 
 </div>
 
-<script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_api_key }}&lang=ru_RU" type="text/javascript"></script>
+<script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_api_key }}&lang=ru_RU" type="text/javascript" nonce="{{ csp_nonce }}"></script>
 <script nonce="{{ csp_nonce }}">
 {% if job.lat and job.lng %}
 ymaps.ready(function() {

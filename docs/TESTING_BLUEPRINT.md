@@ -1,8 +1,8 @@
 # Трудник (Trudnik) — Индексный навигационный хаб документации
 
-> **Актуализировано:** 2026-06-18
+> **Актуализировано:** 2026-06-21
 > **Ветка:** `main` (монетизация отключена, все задания публикуются как `is_paid=True`)
-> **Статус:** этот файл теперь служит индексным хабом. Полное содержимое разнесено по дочерним документам в [`docs/`](docs/).
+> **Статус:** этот файл теперь служит индексным хабом. Полное содержимое разнесено по дочерним документам в [`docs/`](docs/). Добавлена информация о mock-инфраструктуре и новых тестовых файлах.
 
 ---
 
@@ -104,11 +104,82 @@
 | [`docker-compose.yml`](../docker-compose.yml) | Локальная инфраструктура (redis, websocket, celery) |
 | [`render.yaml`](../render.yaml) | Деплой на Render.com |
 | [`requirements.txt`](../requirements.txt) | Зависимости |
-| [`migrations/`](migrations/) | SQL-миграции (001–047) |
+| [`migrations/`](migrations/) | SQL-миграции (001–056) |
+| [`supabase/`](../supabase/) | Локальная конфигурация Supabase CLI (config.toml) |
+| [`tests/`](../tests/) | Тестовая инфраструктура |
 
 ---
 
 > **Примечание:** Этот файл ранее содержал ~1700 строк полной документации (архитектура, API, бизнес-логика, безопасность, тестовые сценарии). Теперь всё содержимое разнесено по тематическим дочерним документам в [`docs/`](docs/). Данный файл служит только индексным навигационным хабом.
+
+---
+
+## Тестовая инфраструктура (обновлено 2026-06-21)
+
+### In-memory Mock Supabase
+
+В [`app/utils.py`](../app/utils.py) реализован полноценный in-memory mock Supabase, позволяющий запускать интеграционные тесты без подключения к облачному Supabase. Mock активируется через:
+
+| Метод активации | Описание |
+|----------------|----------|
+| `SUPABASE_MOCK_MODE=1` | Явный opt-in через переменную окружения |
+| `TESTING=True` | Flask-конфигурация (устанавливается в [`conftest.py`](../tests/conftest.py)) |
+| `.mock_supabase` файл | Legacy-режим для CI/скриптов вне Flask-контекста |
+
+**Защита от случайной активации:** гарда `PYTEST_CURRENT_TEST` в [`tests/conftest.py:24`](../tests/conftest.py:24) — mock активируется только при запуске через pytest.
+
+Mock эмулирует:
+- REST API (GET/POST/PATCH/DELETE с фильтрацией `eq`/`neq`/`gt`/`lt`/`ilike`/`in`/`not`/`is.null`)
+- Auth API (login/signup/logout)
+- RPC: `accept_application`, `reject_application`, `apply_job_atomic`, `delete_job_cascade`, `delete_user_cascade`, `get_job_stats`, `get_completed_jobs_between`, `nearby_jobs`
+
+### Ключевые файлы тестовой инфраструктуры
+
+| Файл | Описание |
+|------|----------|
+| [`tests/conftest.py`](../tests/conftest.py) | Фикстуры: `preseed_test_data`, class-scope сессии, `admin_session`, сброс паролей/ролей перед тестами |
+| [`tests/conftest_playwright.py`](../tests/conftest_playwright.py) | Playwright браузерные фикстуры (session/class-scope) |
+| [`tests/test_buttons_backend.py`](../tests/test_buttons_backend.py) | ~3200 строк комплексных тестов: Guest/Worker/Employer/Admin/Security |
+| [`tests/test_buttons_browser.py`](../tests/test_buttons_browser.py) | Браузерные тесты кнопок (Playwright) |
+| [`tests/test_buttons_frontend.py`](../tests/test_buttons_frontend.py) | Фронтенд-тесты кнопок |
+| [`scripts/preseed_test_data.py`](../scripts/preseed_test_data.py) | Предзаполнение тестовых данных |
+
+### Новые скрипты (2026-06)
+
+| Скрипт | Назначение |
+|--------|-----------|
+| [`scripts/_apply_all_direct.py`](../scripts/_apply_all_direct.py) | Прямое применение всех миграций |
+| [`scripts/_create_base_tables.py`](../scripts/_create_base_tables.py) | Создание базовых таблиц |
+| [`scripts/_create_email_log.py`](../scripts/_create_email_log.py) | Создание таблицы email_log |
+| [`scripts/_create_missing_tables.py`](../scripts/_create_missing_tables.py) | Создание отсутствующих таблиц |
+| [`scripts/_init_exec_sql.py`](../scripts/_init_exec_sql.py) | Инициализация exec_sql |
+
+### Новые миграции (049–056)
+
+| Миграция | Назначение |
+|----------|-----------|
+| 049 | Восстановление облачных колонок `jobs` |
+| 050 | Добавление колонок `profiles` + исправление `preferred_religion` |
+| 051 | GRANT service_role на справочные таблицы |
+| 052 | RPC `get_job_stats` |
+| 053 | Критические исправления типов (varchar→text, numeric→float8) |
+| 054 | Создание таблиц `monetization_settings`, `receipts`, `_archive_contact_payments` |
+| 055 | Исправление `employer_details`, `favorites`, `job_photos`, `invitations`, `ratings` |
+| 056 | RPC `nearby_jobs` (PostGIS) |
+
+### Безопасность (новые улучшения)
+
+- **Валидация email** — RFC 5322 regex в [`app/blueprints/auth.py`](../app/blueprints/auth.py)
+- **Защита от SQL-инъекций** — проверка ASCII-фрагментов пользовательского ввода
+- **Дифференцированные таймауты** — GET=15s, мутации=60s
+- **PERMANENT_SESSION_LIFETIME** = 1800 секунд
+- **Условный apikey** в `supabase_admin_request` (`SERVICE_KEY` только для localhost)
+
+### Локальная конфигурация Supabase
+
+Директория [`supabase/`](../supabase/) содержит конфигурацию Supabase CLI:
+- [`supabase/config.toml`](../supabase/config.toml) — локальная конфигурация
+- [`supabase/snippets/`](../supabase/snippets/) — SQL-сниппеты
 
 ---
 

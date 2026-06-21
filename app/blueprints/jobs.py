@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta, date as date_type
+from datetime import datetime, timezone, timedelta
 
 from flask import Blueprint, current_app, g, jsonify, flash, redirect, render_template, request, session, url_for, abort
 
@@ -42,7 +42,7 @@ def validate_deadline_not_past(deadline_str: str) -> str | None:
             deadline_dt = datetime.strptime(deadline_str, '%Y-%m-%d')
         
         # Приводим к date для сравнения (дата выполнения может быть сегодня)
-        deadline_date = deadline_dt.date() if hasattr(deadline_dt, 'date') else deadline_dt
+        deadline_date = deadline_dt.date()
         
         # Если deadline не содержит времени, считаем что конец дня
         now = datetime.now(timezone.utc)
@@ -561,10 +561,7 @@ def cancel_job(job_id):
             flash(msg, 'danger')
             return redirect(url_for('jobs.my_jobs'))
 
-    # Сбросить все pending отклики в rejected
-    supabase_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.pending',
-                     json={'status': 'rejected'})
-
+    # Сначала отменить задание, чтобы не потерять отклики при ошибке cancel
     cancel_resp = supabase_admin_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
     if not cancel_resp.ok:
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -572,6 +569,14 @@ def cancel_job(job_id):
             return jsonify({'success': False, 'error': 'Не удалось отозвать задание'}), 500
         flash('Не удалось отозвать задание', 'danger')
         return redirect(url_for('jobs.my_jobs'))
+
+    # Только после успешного cancel сбрасываем pending отклики в rejected
+    reject_resp = supabase_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.pending',
+                     json={'status': 'rejected'})
+    if not reject_resp.ok:
+        current_app.logger.error(
+            'Не удалось отклонить pending-отклики для отменённого задания %s: HTTP %s',
+            job_id, reject_resp.status_code)
 
     # Уведомить заявителей, что задание отозвано
     apps_resp = supabase_request('GET',

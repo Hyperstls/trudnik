@@ -23,7 +23,7 @@ _EMAIL_RE = re.compile(
 # и даёт ложные срабатывания (например, «Андрей» содержит «AND»).
 # AND/OR исключены — они наиболее вероятны в легитимных именах и названиях.
 _SQL_INJECTION_PATTERNS = re.compile(
-    r"(?:SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE|EXEC|TRUNCATE)"
+    r"(?:SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE|EXEC(?:UTE)?|TRUNCATE)"
     r"(?:\s|=|'|\b)",
     re.IGNORECASE
 )

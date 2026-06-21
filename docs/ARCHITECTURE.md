@@ -1,8 +1,8 @@
 # Архитектура приложения «Трудник»
 
-> **Актуализировано:** 2026-06-17
+> **Актуализировано:** 2026-06-21
 > **Ветка:** `main` (монетизация отключена, `is_paid=True` всегда)
-> **Версия документа:** 3.0 — замена `plans/ARCHITECTURE.md`, отражает реальное состояние кода
+> **Версия документа:** 4.0 — добавлен in-memory mock Supabase, миграции 049–056, новые RPC, безопасность, тестовая инфраструктура
 
 ---
 
@@ -44,14 +44,14 @@
 | **Фоновые задачи** | Celery (worker + beat) |
 | **Брокер сообщений** | Redis 7 (Celery broker + Pub/Sub + кеш) |
 | **База данных** | Supabase (PostgreSQL + PostgREST + Auth) |
-| **RPC** | PostgreSQL функции (`accept_application`, `reject_application`, `delete_job_cascade`, `delete_user_cascade`) |
+| **RPC** | PostgreSQL функции (`accept_application`, `reject_application`, `apply_job_atomic`, `delete_job_cascade`, `delete_user_cascade`, `get_job_stats`, `nearby_jobs`) |
 | **Фронтенд** | Jinja2 + TailwindCSS + Vanilla JS |
 | **Карты** | Яндекс.Карты API |
 | **Реальное время** | WebSocket (FastAPI) + Redis Pub/Sub |
 | **Push-уведомления** | Web Push API (VAPID) + Email (SMTP) |
 | **Деплой** | Render.com (Docker) |
-| **Тестирование** | PyTest + Selenium |
-| **Безопасность** | CSP nonce + CSRF + Rate Limiting + Circuit Breaker + RLS |
+| **Тестирование** | PyTest + Playwright + Selenium + In-memory Mock Supabase |
+| **Безопасность** | CSP nonce + CSRF + Rate Limiting + Circuit Breaker + RLS + email-валидация (RFC 5322) + защита от SQL-инъекций + дифференцированные таймауты |
 
 ---
 
@@ -77,7 +77,7 @@ trudnik/
 │   ├── __init__.py                 # create_app() — фабрика приложения, security headers, CSRF, контекст-процессоры
 │   ├── config.py                   # Config — переменные окружения (SECRET_KEY, SUPABASE_*, REDIS_URL, SMTP_*, VAPID_*, WEBSOCKET_*)
 │   ├── decorators.py               # @login_required, @role_required
-│   ├── utils.py                    # supabase_request, CircuitBreaker, rate_limit, sanitize, хелперы
+│   ├── utils.py                    # supabase_request, CircuitBreaker, rate_limit, sanitize, хелперы, in-memory mock Supabase
 │   │
 │   ├── blueprints/                 # 13 блюпринтов
 │   │   ├── __init__.py
@@ -151,70 +151,57 @@ trudnik/
 │
 ├── static/                         # CSS, JS, изображения, PWA (sw.js, manifest.json)
 │
-├── migrations/                     # SQL-миграции (001–047)
+├── migrations/                     # SQL-миграции (001–056)
 │   ├── 001_setup_rls.sql
-│   ├── 002_apply_rls_policies.sql
-│   ├── 003_add_max_workers.sql
-│   ├── 004_fix_notifications.sql
-│   ├── 005_add_is_read_column.sql
-│   ├── 006_add_monetization.sql
-│   ├── 007_add_skills_religions.sql
-│   ├── 008_add_sort_order.sql
-│   ├── 009_fix_user_skills_rls.sql
-│   ├── 010_add_shifts_update_rls.sql
-│   ├── 011_add_search_indexes.sql
-│   ├── 012_notification_prefs.sql
-│   ├── 013_invitations.sql
-│   ├── 014_add_contact_field.sql
-│   ├── 015_enable_rls_all_tables.sql
-│   ├── 016_fix_supabase_warnings.sql
-│   ├── 017_add_job_ratings.sql
-│   ├── 018_fix_spatial_ref_sys_rls.sql
-│   ├── 019_add_missing_notifications_columns.sql
-│   ├── 019_fix_security_warnings.sql
-│   ├── 020_fix_performance_warnings.sql
-│   ├── 021_fix_performance_indexes.sql
-│   ├── 022_new_monetization_model.sql
-│   ├── 023_fix_job_payments_rls.sql
-│   ├── 024_fix_rls_jobs_and_applications.sql
-│   ├── 025_fix_linter_warnings.sql
-│   ├── 026_fix_active_status_constraint.sql
-│   ├── 027_drop_shifts_migrate_chat.sql
-│   ├── 028_sync_db_with_code.sql
-│   ├── 029_add_job_payments_unique.sql
-│   ├── 030_fix_schema_gaps.sql
-│   ├── 031_fix_linter_warnings_v2.sql
-│   ├── 032_simplify_job_statuses.sql
-│   ├── 033_add_tariff_settings_rls.sql
-│   ├── 034_fix_cascade_delete_fk.sql
-│   ├── 035_fix_rls_cancelled_status.sql
-│   ├── 036_add_employer_favorites.sql
-│   ├── 037_add_applications_rls.sql
-│   ├── 038_fix_unpaid_jobs.sql
-│   ├── 039_atomic_operations.sql
-│   ├── 040_schema_versioning.sql
-│   ├── 041_add_messages_fk.sql
-│   ├── 042_cleanup_duplicates.sql
-│   ├── 043_add_push_subscriptions.sql
-│   ├── 044_add_email_log_rls.sql
-│   ├── 045_fix_email_log_columns.sql
-│   ├── 046_add_push_subscriptions_update_rls.sql
+│   ├── ... (002–047 — см. историю коммитов)
 │   ├── 047_fix_security_linter_critical.sql
+│   ├── 048_atomic_apply_job.sql
+│   ├── 049_fix_cloud_schema_alignment.sql    # Восстановление облачных колонок jobs
+│   ├── 050_fix_profiles_cloud_alignment.sql  # Добавление колонок profiles + fix preferred_religion
+│   ├── 051_fix_service_role_grants.sql       # GRANT service_role на справочные таблицы
+│   ├── 052_add_job_stats_rpc.sql             # RPC get_job_stats
+│   ├── 053_fix_critical_type_mismatches.sql  # varchar→text, numeric→float8
+│   ├── 054_create_missing_cloud_tables.sql   # monetization_settings, receipts, _archive_contact_payments
+│   ├── 055_fix_table_structures.sql          # employer_details, favorites, job_photos, invitations, ratings
+│   ├── 056_add_nearby_jobs_rpc.sql           # RPC nearby_jobs (PostGIS)
 │   ├── ALL_PENDING.sql
-│   ├── FINAL_FIX.sql / FINAL_FIX_2.sql / FINAL_FIX_3.sql
 │   └── supabase_check.sql / supabase_schema.json
 │
 ├── docs/                           # Документация
 │   ├── ARCHITECTURE.md             # Этот документ
 │   ├── API_REFERENCE.md            # Все маршруты и API-эндпоинты
 │   ├── BUSINESS_LOGIC.md           # Бизнес-логика, модель данных, состояния
+│   ├── BUTTON_REGISTRY.md          # Реестр всех кнопок и UI-элементов
+│   ├── TESTING_BLUEPRINT.md        # Индексный навигационный хаб документации
 │   ├── SECURITY.md                 # Безопасность (аутентификация, CSRF, CSP, Rate Limiting, Circuit Breaker)
 │   ├── TEST_CHECKLIST.md           # Тестовые сценарии и чеклисты
 │   ├── FRONTEND.md                 # Фронтенд (страницы, JS, UI, адаптивность, доступность)
 │   ├── E2E_SCENARIOS.md            # End-to-end сценарии по ролям
+│   ├── MIGRATION_PLAN.md           # План миграции с Supabase на Amvera
 │   ├── notifications-v2.md         # Спецификация уведомлений v2
 │   ├── PROJECT_CONTEXT.md          # Контекст проекта
 │   └── screenshots/                # Скриншоты UI
+│
+├── supabase/                       # Локальная конфигурация Supabase CLI
+│   ├── config.toml                 # Конфигурация Supabase CLI
+│   └── snippets/                   # SQL-сниппеты
+│
+├── tests/                          # Тестовая инфраструктура
+│   ├── conftest.py                 # Фикстуры (preseed_test_data, class-scope сессии, admin_session)
+│   ├── conftest_playwright.py      # Playwright браузерные фикстуры
+│   ├── test_buttons_backend.py     # ~3200 строк комплексных тестов (Guest/Worker/Employer/Admin/Security)
+│   ├── test_buttons_browser.py     # Браузерные тесты (Playwright)
+│   ├── test_buttons_frontend.py    # Фронтенд-тесты кнопок
+│   └── ...                         # Прочие тесты
+│
+├── scripts/                        # Утилиты и скрипты
+│   ├── _apply_all_direct.py        # Прямое применение всех миграций
+│   ├── _create_base_tables.py      # Создание базовых таблиц
+│   ├── _create_email_log.py        # Создание таблицы email_log
+│   ├── _create_missing_tables.py   # Создание отсутствующих таблиц
+│   ├── _init_exec_sql.py           # Инициализация exec_sql
+│   ├── preseed_test_data.py        # Предзаполнение тестовых данных
+│   └── ...                         # Прочие скрипты
 │
 ├── archive/                        # Архивные файлы (не используются)
 ├── plans/                          # Планы и исторические документы
@@ -323,8 +310,11 @@ flowchart TB
 
 Ключевые RPC-функции:
 - `accept_application` / `reject_application` — принятие/отклонение отклика
+- `apply_job_atomic` — атомарный отклик на задание
 - `delete_job_cascade` — каскадное удаление задания
 - `delete_user_cascade` — каскадное удаление пользователя
+- `get_job_stats` — статистика публикаций (для админ-панели)
+- `nearby_jobs` — геопоиск ближайших заданий (PostGIS)
 
 ### 5.3. Загрузка файлов
 
@@ -371,6 +361,33 @@ Celery Worker → pywebpush (VAPID) → Браузер (Service Worker) → По
 - VAPID-ключи в [`app/config.py`](../app/config.py): `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_CLAIMS_EMAIL`
 - Подписки хранятся в таблице `push_subscriptions`
 - Service Worker (`sw.js`) принимает push-события и показывает браузерные уведомления
+
+### 5.7. In-memory Mock Supabase (тестовый режим)
+
+```
+Тесты (PyTest) → `_is_mock_enabled()` → `_test_mock_request()` → In-memory dict БД
+```
+
+В [`app/utils.py`](../app/utils.py) реализован полноценный in-memory mock Supabase для тестового режима (`TESTING=True`). Mock эмулирует:
+
+- **REST API** — GET/POST/PATCH/DELETE с фильтрацией: `eq`, `neq`, `gt`, `lt`, `ilike`, `in`, `not`, `is.null`
+- **Auth API** — login, signup, logout
+- **RPC** — `accept_application`, `reject_application`, `apply_job_atomic`, `delete_job_cascade`, `delete_user_cascade`, `get_job_stats`, `get_completed_jobs_between`, `nearby_jobs`
+
+**Активация mock** через [`_is_mock_enabled()`](../app/utils.py:441):
+1. Переменная окружения `SUPABASE_MOCK_MODE=1` (явный opt-in)
+2. Flask-конфигурация `TESTING=True` (устанавливается в [`conftest.py`](../tests/conftest.py))
+3. Файл `.mock_supabase` в корне проекта (legacy, для CI/скриптов)
+
+**Защита от случайной активации:** гарда `PYTEST_CURRENT_TEST` в [`tests/conftest.py:24`](../tests/conftest.py:24) — mock активируется только при запуске через pytest.
+
+### 5.8. Безопасность (новые улучшения)
+
+- **Валидация email** — RFC 5322 regex в [`app/blueprints/auth.py:15`](../app/blueprints/auth.py:15)
+- **Защита от SQL-инъекций** — проверка ASCII-фрагментов пользовательского ввода в [`app/blueprints/auth.py:25`](../app/blueprints/auth.py:25)
+- **Дифференцированные таймауты** — GET-запросы 15s, мутации (POST/PUT/DELETE) 60s в [`supabase_request()`](../app/utils.py)
+- **PERMANENT_SESSION_LIFETIME** = 1800 секунд (30 минут)
+- **Условный apikey** в `supabase_admin_request`: `SERVICE_KEY` только для localhost
 
 ---
 
