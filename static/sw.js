@@ -1,5 +1,5 @@
-const CACHE_VERSION = 'trudnik-v3';
-const CACHE_NAME = 'trudnik-v3';
+const CACHE_VERSION = 'trudnik-v4';
+const CACHE_NAME = 'trudnik-v4';
 const PRECACHE_URLS = [
   '/',
   '/offline',
@@ -73,10 +73,30 @@ self.addEventListener('fetch', event => {
           return response;
         })
         .catch(() => {
-          // Try to serve from cache, fallback to offline page
-          return caches.match(request).then(cached =>
-            cached || caches.match('/offline')
-          );
+          // Network error — determine if we're genuinely offline or if this was a transient error
+          return caches.match(request).then(cached => {
+            if (cached) {
+              console.log('SW: Serving cached navigation for', request.url);
+              return cached;
+            }
+            // Not in cache — check if we're actually offline before showing offline page
+            // Use a cache-busting URL to bypass SW cache and hit the real network
+            return fetch('/offline?_sw_ping=' + Date.now(), { method: 'HEAD' })
+              .then(() => {
+                // Network IS available — the original request failed for another reason
+                // (e.g. server error, timeout). Don't swallow the error; let the browser handle it.
+                console.warn('SW: Navigation failed but network is available for', request.url);
+                return new Response('Navigation error — server is reachable but request failed', {
+                  status: 503,
+                  statusText: 'Service Unavailable'
+                });
+              })
+              .catch(() => {
+                // Network is genuinely down — serve the offline page from cache
+                console.log('SW: Network offline, serving offline page for', request.url);
+                return caches.match('/offline');
+              });
+          });
         })
     );
     return;

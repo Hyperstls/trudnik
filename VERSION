@@ -1,1 +1,1 @@
-22d0780 fix: Supabase linter warnings v3 — RLS policies, REVOKE anon, drop unused indexes (2026-06-21 23:31:38 +0300)
+c5b3e8b fix: CSP strict-dynamic + nonce для всех script-тегов — логинация и Яндекс.Карты (2026-06-22 10:18:05 +0300)
