@@ -1,1 +1,1 @@
-7f6f0f4 Миграция с Supabase на Amvera/PostgREST: нативная JWT-аутентификация, локальное хранилище, postgrest_* API, run_all_safe.sql (2026-06-22 17:48:54 +0300)
+16ab791 fix: устранены проблемы code review — консолидация rate_limit, дедупликация контекст-процессоров, атомарность withdraw_application (2026-06-22 23:22:03 +0300)

@@ -86,6 +86,13 @@ celery_app.conf.beat_schedule = {
             'expires': 3000,  # Задача истекает через 50 минут
         },
     },
+    'cleanup-orphaned-notifications': {
+        'task': 'app.tasks.maintenance_tasks.cleanup_orphaned_notifications',
+        'schedule': 3600.0,  # Каждый час (в секундах)
+        'options': {
+            'expires': 3000,  # Задача истекает через 50 минут
+        },
+    },
     'cleanup-old-email-logs': {
         'task': 'app.tasks.email_tasks.cleanup_old_email_logs',
         'schedule': 86400.0,  # Раз в сутки

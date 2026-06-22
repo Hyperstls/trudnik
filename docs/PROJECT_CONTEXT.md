@@ -97,7 +97,7 @@ app/
 - `icons/` – иконки PWA
 
 ### Миграции (`migrations/`)
-Всего 63 миграции от `001_setup_rls.sql` до `063_add_job_id_to_notifications.sql`. Применяются через `run_all_safe.sql`.
+Всего 64 миграции от `001_setup_rls.sql` до `064_update_accept_application.sql`. Применяются через `run_all_safe.sql`.
 
 ## База данных Supabase (основные таблицы)
 - **`profiles`** – пользователи (роль, навыки, вероисповедание, рейтинг, `photo_url`, `portfolio_link`)

@@ -447,12 +447,7 @@ def api_handle_application(app_id, action):
         if current_status not in ('pending', 'rejected'):
             return jsonify({'success': False, 'error': f'Нельзя принять отклик в статусе «{current_status}»'}), 409
 
-        # Повторное принятие: возвращаем rejected → pending
-        if current_status == 'rejected':
-            reopen_resp = supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'pending'})
-            assert_supabase_ok(reopen_resp, 'повторное открытие отклика')
-
-        # Атомарный accept через RPC (этап 4.4)
+        # Атомарный accept через RPC (принимает заявки в статусах pending и rejected)
         rpc_result = supabase_rpc('accept_application', {
             'p_job_id': job_id,
             'p_app_id': app_id,
@@ -630,31 +625,63 @@ def cancel_application(app_id):
             except (ValueError, TypeError):
                 pass
 
-    # Уменьшить счетчик работников
-    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=current_workers,max_workers')
-    if job_resp.ok and job_resp.json():
-        job_data = job_resp.json()[0]
-        current_workers = max(0, job_data.get('current_workers', 1) - 1)
+    # Атомарная отмена через RPC cancel_worker_atomic
+    rpc_success = False
+    try:
+        rpc_result = supabase_rpc('cancel_worker_atomic', {
+            'p_application_id': app_id,
+            'p_user_id': session.get('user_id'),
+        }, use_admin=True)
+        if rpc_result.ok and rpc_result.json():
+            rpc_data = rpc_result.json()
+            if rpc_data and rpc_data.get('success'):
+                rpc_success = True
+                current_app.logger.info(
+                    'cancel_application: RPC cancel_worker_atomic OK for app_id=%s job_id=%s new_status=%s',
+                    app_id, job_id, rpc_data.get('new_status')
+                )
+            else:
+                current_app.logger.warning(
+                    'cancel_application: RPC cancel_worker_atomic returned success=false for app_id=%s: %s',
+                    app_id, (rpc_data or {}).get('error', 'неизвестная ошибка')
+                )
+    except Exception as e:
+        current_app.logger.error(
+            'cancel_application: RPC cancel_worker_atomic exception for app_id=%s: %s',
+            app_id, str(e)
+        )
 
-        # Вернуть статус в open если все ушли
-        new_status = 'open' if current_workers == 0 else 'completed'
-        job_patch_resp = supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={
-            'status': new_status,
-            'current_workers': current_workers
-        })
-        assert_supabase_ok(job_patch_resp, 'обновление статуса задания при отмене работника')
+    # Fallback: если RPC недоступна — используем ручную логику
+    if not rpc_success:
+        current_app.logger.warning(
+            'cancel_application: RPC cancel_worker_atomic failed for app_id=%s, falling back to manual logic',
+            app_id
+        )
+        # Уменьшить счетчик работников
+        job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=current_workers,max_workers')
+        if job_resp.ok and job_resp.json():
+            job_data = job_resp.json()[0]
+            current_workers = max(0, job_data.get('current_workers', 1) - 1)
 
-    # Отклонить отклик
-    cancel_resp = supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'rejected'})
-    assert_supabase_ok(cancel_resp, 'отклонение отклика при отмене работника')
+            # Вернуть статус в open если все ушли
+            new_status = 'open' if current_workers == 0 else 'completed'
+            job_patch_resp = supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={
+                'status': new_status,
+                'current_workers': current_workers
+            })
+            assert_supabase_ok(job_patch_resp, 'обновление статуса задания при отмене работника')
 
-    # Отправить уведомления
-    success = notify(worker_id, 'application_rejected', 'Отклик отменен',
-                      f'Ваш отклик на задание {job.get("organization_name", "#" + job_id)} был отменен',
-                      data={'job_id': job_id, 'link': url_for('applications.my_applications', _external=True)})
-    if not success:
-        logger.error("cancel_application: notify() вернул False для worker_id=%s job_id=%s",
-                     worker_id, job_id)
+        # Отклонить отклик
+        cancel_resp = supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'rejected'})
+        assert_supabase_ok(cancel_resp, 'отклонение отклика при отмене работника')
+
+        # Отправить уведомления (только в fallback-пути, RPC создаёт уведомление сама)
+        success = notify(worker_id, 'application_rejected', 'Отклик отменен',
+                          f'Ваш отклик на задание {job.get("organization_name", "#" + job_id)} был отменен',
+                          data={'job_id': job_id, 'link': url_for('applications.my_applications', _external=True)})
+        if not success:
+            logger.error("cancel_application: notify() вернул False для worker_id=%s job_id=%s",
+                         worker_id, job_id)
 
     flash('Работник отменен', 'success')
     return redirect(url_for('applications.my_applications'))
