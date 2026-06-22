@@ -250,7 +250,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-<script src="{{ url_for('static', filename='js/favorites.js') }}"></script>
+<script src="{{ url_for('static', filename='js/favorites.js') }}" nonce="{{ csp_nonce }}"></script>
 {% endif %}
 
 {% if profile_user and profile_user.get('role') == 'worker' %}

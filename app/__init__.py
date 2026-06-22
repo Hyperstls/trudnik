@@ -97,12 +97,12 @@ def create_app():
         response.headers['X-Frame-Options'] = 'DENY'
         response.headers['Content-Security-Policy'] = (
             f"default-src 'self'; "
-            f"script-src 'self' 'nonce-{nonce}' https://cdn.jsdelivr.net https://api-maps.yandex.ru https://yastatic.net; "
+            f"script-src 'self' 'nonce-{nonce}' 'strict-dynamic' https://cdn.jsdelivr.net https://api-maps.yandex.ru https://yastatic.net; "
             f"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
             f"font-src 'self' https://fonts.gstatic.com; "
             f"img-src 'self' data: https:; "
             f"connect-src 'self' https://*.supabase.co https://*.maps.yandex.net https://yastatic.net https://geocode-maps.yandex.ru https://fonts.googleapis.com https://fonts.gstatic.com ws://localhost:* wss://*; "
-            f"worker-src 'self'; "
+            f"worker-src 'self' blob:; "
             f"frame-src 'self'"
         )
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'

@@ -1283,10 +1283,10 @@
   });
 </script>
     {% if trudnik_ws_config %}
-    <script src="{{ url_for('static', filename='js/notifications-ws.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/notifications-init.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/notifications-ws.js') }}" nonce="{{ csp_nonce }}"></script>
+    <script src="{{ url_for('static', filename='js/notifications-init.js') }}" nonce="{{ csp_nonce }}"></script>
     {% if trudnik_ws_config.pushEnabled %}
-    <script src="{{ url_for('static', filename='js/push-notifications.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/push-notifications.js') }}" nonce="{{ csp_nonce }}"></script>
     {% endif %}
     {% endif %}
 </body>

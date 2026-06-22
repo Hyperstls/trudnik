@@ -212,7 +212,7 @@
     {% endif %}
 </div>
 
-<script src="{{ url_for('static', filename='js/favorites.js') }}"></script>
+<script src="{{ url_for('static', filename='js/favorites.js') }}" nonce="{{ csp_nonce }}"></script>
 
 {% if session.get('role') == 'employer' %}
 <script nonce="{{ csp_nonce }}">

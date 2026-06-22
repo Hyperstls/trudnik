@@ -258,5 +258,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/applications.js') }}"></script>
+<script src="{{ url_for('static', filename='js/applications.js') }}" nonce="{{ csp_nonce }}"></script>
 {% endblock %}
