@@ -1,6 +1,6 @@
 meta:
   environment: docker
-  toolchain: docker
+  toolchain: dockerfile
 
 services:
   trudnik-app:
@@ -10,9 +10,9 @@ services:
       containerPort: 80
       persistenceMount: /data
     environment:
-      - PGRST_JWT_SECRET=${PGRST_JWT_SECRET}
-      - DEPLOYMENT_ENV=production
-      - POSTGREST_URL=${POSTGREST_URL}
+      PGRST_JWT_SECRET: ${PGRST_JWT_SECRET}
+      DEPLOYMENT_ENV: production
+      POSTGREST_URL: ${POSTGREST_URL}
 
   trudnik-celery:
     build:
@@ -20,6 +20,6 @@ services:
     run:
       command: celery -A app.tasks.celery_app worker --loglevel=info
     environment:
-      - PGRST_JWT_SECRET=${PGRST_JWT_SECRET}
-      - DEPLOYMENT_ENV=production
-      - POSTGREST_URL=${POSTGREST_URL}
+      PGRST_JWT_SECRET: ${PGRST_JWT_SECRET}
+      DEPLOYMENT_ENV: production
+      POSTGREST_URL: ${POSTGREST_URL}
