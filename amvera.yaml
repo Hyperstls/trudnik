@@ -1,14 +1,24 @@
-# Amvera конфигурация для trudnik
-# Сгенерировано автоматически
+meta:
+  environment: docker
+  tool: docker
 
 services:
   trudnik-app:
+    build:
+      dockerfile: Dockerfile
+    run:
+      containerPort: 80
+      persistenceMount: /data
     environment:
       - PGRST_JWT_SECRET=${PGRST_JWT_SECRET}
       - DEPLOYMENT_ENV=production
       - POSTGREST_URL=${POSTGREST_URL}
 
   trudnik-celery:
+    build:
+      dockerfile: Dockerfile
+    run:
+      command: celery -A app.tasks.celery_app worker --loglevel=info
     environment:
       - PGRST_JWT_SECRET=${PGRST_JWT_SECRET}
       - DEPLOYMENT_ENV=production
