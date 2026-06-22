@@ -1,6 +1,6 @@
 meta:
   environment: docker
-  tool: docker
+  toolchain: docker
 
 services:
   trudnik-app:
