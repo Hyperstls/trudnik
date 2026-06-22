@@ -4,7 +4,7 @@ import os
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from flask import Flask, g, session, request, abort, redirect, url_for
+from flask import Flask, current_app, g, session, request, abort, redirect, url_for
 
 from app.config import Config
 
@@ -101,7 +101,7 @@ def create_app():
             f"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
             f"font-src 'self' https://fonts.gstatic.com; "
             f"img-src 'self' data: https:; "
-            f"connect-src 'self' https://*.supabase.co https://*.maps.yandex.net https://yastatic.net https://geocode-maps.yandex.ru https://fonts.googleapis.com https://fonts.gstatic.com ws://localhost:* wss://*; "
+            f"connect-src 'self' https://*.maps.yandex.net https://yastatic.net https://geocode-maps.yandex.ru https://fonts.googleapis.com https://fonts.gstatic.com ws://localhost:* wss://*; "
             f"worker-src 'self' blob:; "
             f"frame-src 'self'"
         )
@@ -185,7 +185,7 @@ def create_app():
         """Глобальная переменная для бейджа уведомлений во всех шаблонах.
         Результат кешируется в сессии на 30 секунд.
         Исключает уведомления-приглашения (они на 👤+ иконке)."""
-        from app.utils import supabase_request
+        from app.utils import postgrest_request
         from time import time
         user_id = session.get('user_id')
         if user_id:
@@ -194,7 +194,7 @@ def create_app():
             now = time()
             if cached and (now - cached.get('ts', 0)) < 30:
                 return {'unread_notifications': cached.get('count', 0)}
-            resp = supabase_request('GET',
+            resp = postgrest_request('GET',
                 f'notifications?user_id=eq.{user_id}&is_read=eq.false&select=id,type,message&limit=100')
             if resp.ok:
                 data = resp.json()
@@ -213,11 +213,11 @@ def create_app():
     def inject_pending_invitations():
         """Счётчик непрочитанных приглашений для трудника.
 
-        Использует supabase_request с токеном пользователя вместо service_role.
+        Использует postgrest_request с токеном пользователя вместо service_role.
         RLS-политика invitations разрешает SELECT для worker_id = auth.uid(),
         поэтому обход RLS не требуется.
         """
-        from app.utils import supabase_request
+        from app.utils import postgrest_request
         from time import time
         import logging
         log = logging.getLogger(__name__)
@@ -232,7 +232,7 @@ def create_app():
             if cached and (now - cached.get('ts', 0)) < 30:
                 log.debug('[INV_CTX] cached count=%d', cached.get('count', 0))
                 return {'pending_invitations': cached.get('count', 0)}
-            resp = supabase_request('GET',
+            resp = postgrest_request('GET',
                 f'invitations?worker_id=eq.{user_id}&status=eq.pending&select=id&limit=100')
             if resp.ok:
                 data = resp.json()
@@ -370,6 +370,16 @@ def create_app():
         return send_from_directory('static/.well-known', 'assetlinks.json',
                                    mimetype='application/json')
 
+    # ═══════════════════════════════════════════════════════════════
+    # Обслуживание загруженных файлов (замена Supabase Storage)
+    # ═══════════════════════════════════════════════════════════════
+
+    @app.route('/uploads/<path:filename>')
+    def uploaded_file(filename):
+        """Отдаёт загруженные файлы из локального хранилища."""
+        upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
+        return send_from_directory(upload_folder, filename)
+
     # ── Обработчики ошибок ──────────────────────────────
 
     @app.before_request
@@ -408,9 +418,6 @@ def create_app():
         if isinstance(e, req_lib.ConnectionError):
             return render_template('error.html', error_code='503',
                                    error='Сервис временно недоступен. Пожалуйста, попробуйте позже.'), 503
-        if hasattr(e, '__module__') and 'supabase' in str(e.__module__).lower():
-            return render_template('error.html', error_code='503',
-                                   error='Сервис временно недоступен. Пожалуйста, попробуйте позже.'), 503
         raise e
 
     # ================================
@@ -418,13 +425,13 @@ def create_app():
     # ================================
 
     from flask import jsonify
-    from app.utils import supabase_request
+    from app.utils import postgrest_admin_request
 
     @app.route('/health')
     def health_check():
         """Проверка работоспособности приложения и доступности БД."""
         try:
-            resp = supabase_request('GET', 'profiles?select=id&limit=1')
+            resp = postgrest_admin_request('GET', 'profiles?select=id&limit=1')
             if resp.ok:
                 return jsonify({"status": "healthy", "database": "connected"}), 200
             else:

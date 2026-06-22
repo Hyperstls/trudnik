@@ -1,6 +1,7 @@
-"""Утилиты: HTTP-запросы к Supabase, вычисления, уведомления, rate limiting."""
+"""Утилиты: HTTP-запросы к PostgREST, вычисления, уведомления, rate limiting."""
 import inspect
 import json
+import jwt as pyjwt
 import logging
 import math
 import os
@@ -28,7 +29,7 @@ F = TypeVar('F', bound=Callable[..., Any])
 # ═══════════════════════════════════════════════════════════════
 
 class CircuitBreaker:
-    """Circuit Breaker для внешних HTTP-вызовов (Supabase).
+    """Circuit Breaker для внешних HTTP-вызовов (PostgREST).
 
     Три состояния:
     - CLOSED: нормальная работа, запросы проходят
@@ -105,7 +106,7 @@ def _circuit_open_response() -> 'SupabaseResponse':
     return SupabaseResponse(ok=False, status_code=503, text='Circuit breaker open')
 
 
-_cb_supabase = CircuitBreaker(failure_threshold=10, recovery_timeout=60.0)
+_cb_postgrest = CircuitBreaker(failure_threshold=10, recovery_timeout=60.0)
 _cb_admin = CircuitBreaker(failure_threshold=10, recovery_timeout=60.0)
 
 
@@ -162,9 +163,53 @@ def cache_for(seconds: int = 30) -> Callable[[F], F]:
     return decorator
 
 
-SUPABASE_URL = Config.SUPABASE_URL
-SUPABASE_KEY = Config.SUPABASE_ANON_KEY
-SERVICE_KEY = Config.SUPABASE_SERVICE_ROLE_KEY
+POSTGREST_URL = Config.POSTGREST_URL
+PGRST_JWT_SECRET = Config.PGRST_JWT_SECRET
+
+# ═══════════════════════════════════════════════════════════════
+# JWT-хелперы для PostgREST-аутентификации
+# ═══════════════════════════════════════════════════════════════
+
+def get_service_role_headers() -> Dict[str, str]:
+    """Создать заголовки с JWT service_role для админских операций (обход RLS).
+
+    Returns:
+        Словарь с заголовками Authorization и Content-Type.
+    """
+    token = pyjwt.encode(
+        {'role': 'service_role'},
+        PGRST_JWT_SECRET,
+        algorithm='HS256'
+    )
+    return {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json',
+    }
+
+
+def get_user_headers(user_id: Optional[str] = None) -> Dict[str, str]:
+    """Создать заголовки с JWT для аутентифицированного пользователя.
+
+    Args:
+        user_id: UUID пользователя (если None — берётся из сессии Flask).
+
+    Returns:
+        Словарь с заголовками Authorization и Content-Type.
+    """
+    if user_id is None:
+        user_id = session.get('user_id', '')
+    payload = {
+        'role': 'authenticated',
+        'user_id': str(user_id) if user_id else '',
+        'exp': int(time.time()) + 3600,
+        'iat': int(time.time()),
+    }
+    token = pyjwt.encode(payload, PGRST_JWT_SECRET, algorithm='HS256')
+    return {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json',
+    }
+
 
 # ═══════════════════════════════════════════════════════════════
 # Безопасность service_role (этап 5.1)
@@ -173,7 +218,7 @@ SERVICE_KEY = Config.SUPABASE_SERVICE_ROLE_KEY
 # Множество разрешённых контекстов для service_role вызовов.
 # Вызовы из тестов и скриптов — допустимы (admin-утилиты).
 # Вызовы из Jinja2-контекста (template globals/context processors) — допустимы,
-#   но должны быть минимизированы (предпочитать supabase_request с токеном пользователя).
+#   но должны быть минимизированы (предпочитать postgrest_request с токеном пользователя).
 # Вызовы из Celery-задач — допустимы (нет пользовательской сессии).
 _ADMIN_ALLOWED_PREFIXES = frozenset({
     'app.blueprints',       # Flask route handlers (серверная сторона)
@@ -205,7 +250,7 @@ def _get_caller_info() -> str:
     try:
         frame = inspect.currentframe()
         # Поднимаемся по стеку: пропускаем _get_caller_info, _assert_service_key,
-        # supabase_admin_request и _make_request
+        # postgrest_admin_request и _make_request
         skip_count = 0
         while frame is not None:
             module_name = frame.f_globals.get('__name__', '')
@@ -223,26 +268,25 @@ def _get_caller_info() -> str:
 
 
 def _assert_service_key() -> None:
-    """Проверить, что SERVICE_KEY установлен перед выполнением admin-запроса.
+    """Проверить, что PGRST_JWT_SECRET установлен перед выполнением admin-запроса.
 
-    Если ключ не задан, запрос с пустым Bearer-токеном либо упадёт с 401,
-    либо (хуже) может быть обработан Supabase как анонимный запрос.
+    Если ключ не задан, JWT-токен не может быть создан.
     """
-    if not SERVICE_KEY:
+    if not PGRST_JWT_SECRET:
         caller = _get_caller_info()
         logger.error(
-            "SECURITY: supabase_admin_request вызван без SUPABASE_SERVICE_ROLE_KEY! "
-            "Вызывающий: %s. Запрос будет выполнен с пустым service_role токеном.",
+            "SECURITY: postgrest_admin_request вызван без PGRST_JWT_SECRET! "
+            "Вызывающий: %s. Запрос будет выполнен с пустым JWT-токеном.",
             caller
         )
 
 
 # ═══════════════════════════════════════════════════════════════
-# SupabaseResponse
+# PostgrestResponse
 # ═══════════════════════════════════════════════════════════════
 
 class SupabaseResponse:
-    """Типизированный ответ от Supabase REST API."""
+    """Типизированный ответ от PostgREST API."""
 
     def __init__(self, ok: bool = False, status_code: int = 0,
                  data: Any = None, text: str = '',
@@ -263,6 +307,9 @@ class SupabaseResponse:
             return None
 
 
+PostgrestResponse = SupabaseResponse  # Новое имя, отражающее переход на PostgREST
+
+
 # ═══════════════════════════════════════════════════════════════
 # In-Memory Mock для тестового режима (TESTING=True)
 # ═══════════════════════════════════════════════════════════════
@@ -280,7 +327,7 @@ def _gen_uuid() -> str:
 
 
 # ═══════════════════════════════════════════════════════════════
-# Auth mock: перехватывает прямые вызовы requests к Supabase Auth API
+# Auth mock: перехватывает прямые вызовы requests к Auth API
 # ═══════════════════════════════════════════════════════════════
 
 _test_auth_tokens: dict[str, dict] = {}  # token -> user profile
@@ -311,17 +358,17 @@ class _MockRequestsResponse:
 
 def _should_intercept(url: str) -> bool:
     """Проверить, нужно ли перехватывать этот URL."""
-    supabase_url = Config.SUPABASE_URL.rstrip('/')
-    return url.startswith(supabase_url) and '/auth/v1/' in url
+    postgrest_url = Config.POSTGREST_URL.rstrip('/')
+    return url.startswith(postgrest_url) and '/auth/v1/' in url
 
 
 def _mock_post(url: str, *args: Any, **kwargs: Any) -> Any:
-    """Перехватывает requests.post для Supabase Auth API."""
+    """Перехватывает requests.post для Auth API."""
     if not _should_intercept(url):
         return _original_post(url, *args, **kwargs)
 
-    supabase_url = Config.SUPABASE_URL.rstrip('/')
-    path = url[len(supabase_url):].lstrip('/')
+    postgrest_url = Config.POSTGREST_URL.rstrip('/')
+    path = url[len(postgrest_url):].lstrip('/')
 
     # POST auth/v1/token?grant_type=password (логин)
     if path.startswith('auth/v1/token'):
@@ -392,11 +439,11 @@ def _mock_post(url: str, *args: Any, **kwargs: Any) -> Any:
 
 
 def _mock_delete(url: str, *args: Any, **kwargs: Any) -> Any:
-    """Перехватывает requests.delete для Supabase Auth API."""
+    """Перехватывает requests.delete для Auth API."""
     if not _should_intercept(url):
         return _original_delete(url, *args, **kwargs)
-    supabase_url = Config.SUPABASE_URL.rstrip('/')
-    path = url[len(supabase_url):].lstrip('/')
+    postgrest_url = Config.POSTGREST_URL.rstrip('/')
+    path = url[len(postgrest_url):].lstrip('/')
     if path.startswith('auth/v1/admin/users/'):
         return _MockRequestsResponse(200, {})
     return _original_delete(url, *args, **kwargs)
@@ -441,7 +488,7 @@ def _uninstall_auth_mock():
 
 
 def _is_mock_enabled() -> bool:
-    """Проверить, активен ли in-memory mock Supabase.
+    """Проверить, активен ли in-memory mock PostgREST.
 
     Приоритет проверок:
     1. Переменная окружения SUPABASE_MOCK_MODE (явный opt-in для скриптов)
@@ -944,38 +991,42 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
 # ═══════════════════════════════════════════════════════════════
 
 def refresh_access_token() -> bool:
-    """Обновить access_token через refresh_token в сессии.
-
-    Returns:
-        True если обновление успешно, иначе False.
+    """Генерирует новый JWT для PostgREST. Больше не требует refresh_token от Supabase Auth.
+    
+    Достаточно наличия user_id в сессии для генерации свежего токена.
     """
-    refresh_token = session.get('refresh_token')
-    if not refresh_token:
+    user_id = session.get('user_id')
+    
+    if not user_id:
         return False
-    url = f'{SUPABASE_URL}/auth/v1/token?grant_type=refresh_token'
+    
     try:
-        resp = _requests.post(url, json={'refresh_token': refresh_token},
-                              headers={'apikey': SUPABASE_KEY, 'Content-Type': 'application/json'},
-                              timeout=10)
-        if resp.ok:
-            data = resp.json()
-            session['access_token'] = data['access_token']
-            session['refresh_token'] = data.get('refresh_token', refresh_token)
-            session.modified = True
-            return True
-        else:
-            session.clear()
-            return False
-    except _requests.RequestException:
+        payload = {
+            'role': 'authenticated',
+            'user_id': str(user_id),
+            'exp': int(time.time()) + 3600,  # 1 час
+            'iat': int(time.time()),
+        }
+        token = pyjwt.encode(
+            payload,
+            PGRST_JWT_SECRET,
+            algorithm='HS256'
+        )
+        session['access_token'] = token
+        session.modified = True
+        return True
+    except Exception:
+        session.clear()
         return False
 
 
+
 # ═══════════════════════════════════════════════════════════════
-# HTTP-запросы к Supabase
+# HTTP-запросы к PostgREST
 # ═══════════════════════════════════════════════════════════════
 
-def supabase_request(method: str, endpoint: str, **kwargs: Any) -> SupabaseResponse:
-    """Сделать HTTP-запрос к Supabase REST API с пользовательским токеном.
+def postgrest_request(method: str, endpoint: str, **kwargs: Any) -> SupabaseResponse:
+    """Сделать HTTP-запрос к PostgREST API с пользовательским JWT-токеном.
 
     Автоматически обновляет access_token при 401. Использует CircuitBreaker.
     При TESTING=True использует in-memory mock.
@@ -994,13 +1045,10 @@ def supabase_request(method: str, endpoint: str, **kwargs: Any) -> SupabaseRespo
     extra_headers = kwargs.pop('headers', None)
 
     def _make_request() -> SupabaseResponse:
-        headers = {
-            'apikey': SUPABASE_KEY,
-            'Authorization': f'Bearer {session.get("access_token") or SUPABASE_KEY}',
-        }
+        headers = get_user_headers()
         if extra_headers:
             headers.update(extra_headers)
-        url = f'{SUPABASE_URL}/rest/v1/{endpoint}'
+        url = f'{POSTGREST_URL}/{endpoint}'
         # Дифференцированный таймаут: чтение быстрое (15с), мутации с триггерами — дольше (60с)
         _timeout = 15 if method.upper() == 'GET' else 60
         resp = _session.request(method, url, headers=headers, timeout=_timeout, **kwargs)
@@ -1011,21 +1059,21 @@ def supabase_request(method: str, endpoint: str, **kwargs: Any) -> SupabaseRespo
         return SupabaseResponse(ok=resp.ok, status_code=resp.status_code, data=data, text=resp.text, headers=resp.headers)
 
     try:
-        resp = _cb_supabase.call(_make_request)
+        resp = _cb_postgrest.call(_make_request)
         if resp.status_code == 401 and session.get('refresh_token'):
             if refresh_access_token():
-                resp = _cb_supabase.call(_make_request)
+                resp = _cb_postgrest.call(_make_request)
         return resp
     except _requests.RequestException as e:
-        current_app.logger.error(f"Supabase request error: {e}")
+        current_app.logger.error(f"PostgREST request error: {e}")
         return SupabaseResponse(ok=False, status_code=0, text=str(e))
     except Exception as e:
-        current_app.logger.error(f"Unexpected error in supabase_request: {e}")
+        current_app.logger.error(f"Unexpected error in postgrest_request: {e}")
         return SupabaseResponse(ok=False, status_code=0, text=str(e))
 
 
-def supabase_admin_request(method: str, endpoint: str, **kwargs: Any) -> SupabaseResponse:
-    """Сделать запрос к Supabase REST API с service_role_key (обход RLS).
+def postgrest_admin_request(method: str, endpoint: str, **kwargs: Any) -> SupabaseResponse:
+    """Сделать запрос к PostgREST API с JWT service_role (обход RLS).
 
     Использует _admin_session для переиспользования TCP-соединений.
     Использует CircuitBreaker.
@@ -1036,8 +1084,8 @@ def supabase_admin_request(method: str, endpoint: str, **kwargs: Any) -> Supabas
     - НИКОГДА не вызывайте её из шаблонов Jinja2 или кода, который может
       быть выполнен в контексте клиента.
     - Перед добавлением нового вызова supabase_admin_request проверьте:
-      1. Можно ли использовать supabase_request с токеном пользователя?
-      2. Можно ли использовать supabase_rpc с проверкой прав в БД?
+      1. Можно ли использовать postgrest_request с токеном пользователя?
+      2. Можно ли использовать postgrest_rpc с проверкой прав в БД?
       3. Действительно ли операция требует обхода RLS?
     - Все вызовы логируются на DEBUG-уровне для аудита.
 
@@ -1063,7 +1111,7 @@ def supabase_admin_request(method: str, endpoint: str, **kwargs: Any) -> Supabas
     caller_module = caller.split('.')[0] if '.' in caller else caller
     if caller_module in _ADMIN_WARN_PREFIXES:
         logger.warning(
-            "SECURITY: supabase_admin_request вызван из подозрительного контекста: %s. "
+            "SECURITY: postgrest_admin_request вызван из подозрительного контекста: %s. "
             "Код шаблонов не должен иметь доступа к service_role.",
             caller
         )
@@ -1072,24 +1120,12 @@ def supabase_admin_request(method: str, endpoint: str, **kwargs: Any) -> Supabas
     if _is_mock_enabled():
         return _test_mock_request(method, endpoint, **kwargs)
     extra_headers = kwargs.pop('headers', None)
-    # Локальный Supabase (localhost/127.0.0.1/docker): заголовок apikey определяет
-    # роль, поэтому нужен SERVICE_KEY, чтобы запрос шёл от service_role.
-    # Облачный Supabase: роль определяется заголовком Authorization,
-    # apikey должен быть анонимным ключом (SUPABASE_KEY).
-    _is_local_supabase = any(
-        host in SUPABASE_URL
-        for host in ('localhost', '127.0.0.1', 'host.docker.internal', '0.0.0.0')
-    )
-    _apikey = SERVICE_KEY if _is_local_supabase else SUPABASE_KEY
-    headers = {
-        'apikey': _apikey,
-        'Authorization': f'Bearer {SERVICE_KEY}',
-    }
+    headers = get_service_role_headers()
     if extra_headers:
         headers.update(extra_headers)
 
     def _make_request() -> SupabaseResponse:
-        url = f'{SUPABASE_URL}/rest/v1/{endpoint}'
+        url = f'{POSTGREST_URL}/{endpoint}'
         # Дифференцированный таймаут: чтение быстрое (15с), мутации с триггерами — дольше (60с)
         _timeout = 15 if method.upper() == 'GET' else 60
         resp = _admin_session.request(method, url, headers=headers, timeout=_timeout, **kwargs)
@@ -1102,10 +1138,10 @@ def supabase_admin_request(method: str, endpoint: str, **kwargs: Any) -> Supabas
     try:
         return _cb_admin.call(_make_request)
     except _requests.RequestException as e:
-        current_app.logger.error(f"Supabase admin request error: {e}")
+        current_app.logger.error(f"PostgREST admin request error: {e}")
         return SupabaseResponse(ok=False, status_code=0, text=str(e))
     except Exception as e:
-        current_app.logger.error(f"Unexpected error in supabase_admin_request: {e}")
+        current_app.logger.error(f"Unexpected error in postgrest_admin_request: {e}")
         return SupabaseResponse(ok=False, status_code=0, text=str(e))
 
 
@@ -1118,42 +1154,52 @@ MAX_UPLOAD_SIZE = Config.MAX_PHOTO_SIZE_MB * 1024 * 1024  # 5 MB
 
 def upload_to_storage(bucket: str, file_path: str, file_data: bytes,
                        content_type: str) -> Optional[str]:
-    """Загрузить файл в Supabase Storage.
-
+    """Сохранить файл в локальное хранилище (Amvera-совместимое).
+    
+    Файлы сохраняются в UPLOAD_FOLDER/<bucket>/<file_path>.
+    Возвращает относительный URL для доступа через /uploads/<bucket>/<file_path>.
+    
     Args:
-        bucket: имя бакета.
-        file_path: путь к файлу в бакете.
+        bucket: имя бакета (напр. 'avatars', 'verification-docs').
+        file_path: путь к файлу внутри бакета.
         file_data: бинарные данные файла.
-        content_type: MIME-тип файла.
-
+        content_type: MIME-тип файла (не используется при локальном хранении).
+        
     Returns:
-        Публичный URL загруженного файла или None при ошибке.
+        URL загруженного файла или None при ошибке.
     """
+    import os as _os
+    from flask import current_app
+    
     if file_data and len(file_data) > MAX_UPLOAD_SIZE:
         current_app.logger.warning('Upload rejected: file too large (%d bytes)', len(file_data))
         return None
-    url = f'{SUPABASE_URL}/storage/v1/object/{bucket}/{file_path}'
-    headers = {
-        'apikey': SUPABASE_KEY,
-        'Authorization': f'Bearer {session["access_token"]}',
-    }
+    
+    upload_dir = _os.path.join(
+        current_app.config.get('UPLOAD_FOLDER', 'uploads'), bucket
+    )
+    _os.makedirs(upload_dir, exist_ok=True)
+    
+    full_path = _os.path.join(upload_dir, file_path)
     try:
-        resp = _requests.post(url, headers=headers,
-                              files={'file': (file_path, file_data, content_type)},
-                              timeout=30)
-        if resp.status_code in (200, 201):
-            return f'{SUPABASE_URL}/storage/v1/object/public/{bucket}/{file_path}?t={int(time.time())}'
-    except _requests.RequestException:
-        pass
-    return None
+        with open(full_path, 'wb') as f:
+            f.write(file_data)
+        current_app.logger.info(
+            'File saved: %s/%s (%d bytes)', bucket, file_path, len(file_data)
+        )
+        # Return relative URL with cache-busting timestamp
+        return f'/uploads/{bucket}/{file_path}?t={int(time.time())}'
+    except OSError as e:
+        current_app.logger.error('File save error: %s', e)
+        return None
 
 
 # ═══════════════════════════════════════════════════════════════
 # RPC-вызовы (этап 4.4)
 # ═══════════════════════════════════════════════════════════════
 
-def supabase_rpc(function_name: str, params: dict, use_admin: bool = False) -> SupabaseResponse:
-    """Вызвать хранимую процедуру Supabase через PostgREST RPC.
+def postgrest_rpc(function_name: str, params: dict, use_admin: bool = False) -> SupabaseResponse:
+    """Вызвать хранимую процедуру через PostgREST RPC.
 
     При TESTING=True использует in-memory mock.
 
@@ -1168,19 +1214,11 @@ def supabase_rpc(function_name: str, params: dict, use_admin: bool = False) -> S
     # Mock активен при TESTING=True или SUPABASE_MOCK_MODE (безопасная проверка)
     if _is_mock_enabled():
         return _test_mock_rpc(function_name, params)
-    url = f'{SUPABASE_URL}/rest/v1/rpc/{function_name}'
+    url = f'{POSTGREST_URL}/rpc/{function_name}'
     if use_admin:
-        headers = {
-            'apikey': SUPABASE_KEY,
-            'Authorization': f'Bearer {SERVICE_KEY}',
-            'Content-Type': 'application/json',
-        }
+        headers = get_service_role_headers()
     else:
-        headers = {
-            'apikey': SUPABASE_KEY,
-            'Authorization': f'Bearer {session.get("access_token") or SUPABASE_KEY}',
-            'Content-Type': 'application/json',
-        }
+        headers = get_user_headers()
 
     def _make_request() -> SupabaseResponse:
         resp = _session.post(url, headers=headers, json=params, timeout=60)
@@ -1191,17 +1229,17 @@ def supabase_rpc(function_name: str, params: dict, use_admin: bool = False) -> S
         return SupabaseResponse(ok=resp.ok, status_code=resp.status_code, data=data, text=resp.text)
 
     try:
-        cb = _cb_admin if use_admin else _cb_supabase
+        cb = _cb_admin if use_admin else _cb_postgrest
         resp = cb.call(_make_request)
         if resp.status_code == 401 and not use_admin and session.get('refresh_token'):
             if refresh_access_token():
                 resp = cb.call(_make_request)
         return resp
     except _requests.RequestException as e:
-        current_app.logger.error(f"Supabase RPC error ({function_name}): {e}")
+        current_app.logger.error(f"PostgREST RPC error ({function_name}): {e}")
         return SupabaseResponse(ok=False, status_code=0, text=str(e))
     except Exception as e:
-        current_app.logger.error(f"Unexpected error in supabase_rpc ({function_name}): {e}")
+        current_app.logger.error(f"Unexpected error in postgrest_rpc ({function_name}): {e}")
         return SupabaseResponse(ok=False, status_code=0, text=str(e))
 
 
@@ -1246,7 +1284,7 @@ def update_rating(user_id: str, new_rating: float) -> None:
 
     Использует admin_request для обхода RLS (вызывается от лица rat'ера, не владельца профиля).
     """
-    ratings_resp = supabase_admin_request('GET', f'ratings?rated_user_id=eq.{user_id}&select=rating')
+    ratings_resp = postgrest_admin_request('GET', f'ratings?rated_user_id=eq.{user_id}&select=rating')
     if not ratings_resp.ok or not ratings_resp.json():
         return
 
@@ -1254,7 +1292,7 @@ def update_rating(user_id: str, new_rating: float) -> None:
     total = sum(r['rating'] for r in ratings_list)
     avg = round(total / len(ratings_list), 1)
 
-    supabase_admin_request('PATCH', f'profiles?id=eq.{user_id}', json={'rating': avg})
+    postgrest_admin_request('PATCH', f'profiles?id=eq.{user_id}', json={'rating': avg})
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -1540,3 +1578,14 @@ def generate_vapid_keys():
     public_b64 = _base64.urlsafe_b64encode(public_raw).rstrip(b'=').decode('ascii')
 
     return private_b64, public_b64
+
+
+# ═══════════════════════════════════════════════════════════════
+# Обратная совместимость: старые имена функций
+# ═══════════════════════════════════════════════════════════════
+supabase_request = postgrest_request
+supabase_admin_request = postgrest_admin_request
+supabase_rpc = postgrest_rpc
+SUPABASE_URL = POSTGREST_URL
+SUPABASE_KEY = None  # Больше не используется, оставлен для совместимости импортов
+SERVICE_KEY = None   # Больше не используется, оставлен для совместимости импортов

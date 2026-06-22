@@ -1,12 +1,12 @@
 import uuid as _uuid
 import logging
 import re
-import time
-import requests
+import time as _time
+import jwt as _pyjwt
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
 from app.config import Config
-from app.utils import SUPABASE_KEY, SUPABASE_URL, SERVICE_KEY, rate_limit, supabase_request
+from app.utils import postgrest_admin_request, postgrest_request, rate_limit
 
 auth_bp = Blueprint('auth', __name__)
 log = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ def _has_sql_injection(text: str) -> bool:
 
     Проверяются только ASCII-фрагменты текста, чтобы избежать ложных
     срабатываний на кириллице (например, «Андрей» не должен блокироваться).
-    Первичная защита — параметризованные запросы Supabase.
+    Первичная защита — параметризованные запросы PostgREST.
     """
     # Извлекаем только ASCII-подстроки из текста
     ascii_parts = re.findall(r'[ -~]+', text)
@@ -42,6 +42,27 @@ def _has_sql_injection(text: str) -> bool:
         if _SQL_INJECTION_PATTERNS.search(part):
             return True
     return False
+
+
+def _generate_jwt(user_id: str, role: str) -> str:
+    """Сгенерировать JWT-токен для PostgREST-аутентификации."""
+    payload = {
+        'role': role,
+        'user_id': str(user_id),
+        'exp': int(_time.time()) + 3600,  # 1 час
+        'iat': int(_time.time()),
+    }
+    return _pyjwt.encode(payload, Config.PGRST_JWT_SECRET, algorithm='HS256')
+
+
+def _login_user_session(user_id: str, role: str, email: str) -> None:
+    """Сохранить данные пользователя в сессии после успешного логина."""
+    session['access_token'] = _generate_jwt(user_id, role)
+    session['refresh_token'] = 'jwt'  # для совместимости с refresh_access_token
+    session['user_id'] = user_id
+    session['role'] = role
+    session['email'] = email
+    session.modified = True
 
 # Максимальные длины полей
 _MAX_NAME_LENGTH = 150
@@ -55,38 +76,35 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
-        auth_url = f'{SUPABASE_URL}/auth/v1/token?grant_type=password'
         last_error = None
         for attempt in range(3):
             try:
-                resp = requests.post(auth_url, json={'email': email, 'password': password},
-                                     headers={'apikey': SUPABASE_KEY}, timeout=10)
+                resp = postgrest_request('POST', 'rpc/login_user',
+                    json={'p_email': email, 'p_password': password})
                 if resp.ok:
                     data = resp.json()
-                    session['access_token'] = data['access_token']
-                    session['refresh_token'] = data.get('refresh_token', '')
-                    session['user_id'] = data['user']['id']
-                    role_resp = supabase_request('GET', f'profiles?id=eq.{data["user"]["id"]}&select=role')
-                    session['role'] = role_resp.json()[0]['role'] if role_resp.ok and role_resp.json() else 'worker'
-                    session.modified = True
-                    if session.get('role') == 'employer':
-                        return redirect(url_for('jobs.my_jobs'))
+                    if isinstance(data, list) and len(data) > 0:
+                        user = data[0]
+                        _login_user_session(user['user_id'], user['role'], email)
+                        if user.get('role') == 'employer':
+                            return redirect(url_for('jobs.my_jobs'))
+                        else:
+                            return redirect(url_for('jobs.index'))
                     else:
-                        return redirect(url_for('jobs.index'))
+                        flash('Ошибка входа: неверный email или пароль', 'danger')
+                        return render_template('login.html')
                 elif resp.status_code == 429:
-                    # Rate limit — ждём и пробуем снова
                     log.warning('Auth rate-limited for %s, attempt %d/3', email, attempt + 1)
                     last_error = 'rate_limited'
-                    time.sleep(1.5 * (attempt + 1))
+                    _time.sleep(1.5 * (attempt + 1))
                     continue
                 else:
-                    # Неверный пароль — не повторяем
                     flash('Ошибка входа: неверный email или пароль', 'danger')
                     return render_template('login.html')
-            except requests.RequestException as e:
+            except Exception as e:
                 log.warning('Auth connection error for %s, attempt %d/3: %s', email, attempt + 1, e)
                 last_error = str(e)
-                time.sleep(1.0 * (attempt + 1))
+                _time.sleep(1.0 * (attempt + 1))
                 continue
         # Все попытки исчерпаны
         if last_error == 'rate_limited':
@@ -126,6 +144,8 @@ def register():
 
         if not password:
             errors.append('Укажите пароль')
+        elif len(password) < 6:
+            errors.append('Пароль должен содержать минимум 6 символов')
 
         if role not in ('worker', 'employer'):
             errors.append('Выберите роль')
@@ -153,15 +173,22 @@ def register():
                 flash('ИНН должен содержать ровно 12 цифр', 'danger')
                 return render_template('register.html')
 
-        signup_url = f'{SUPABASE_URL}/auth/v1/signup'
+        # Регистрация через RPC (нативная PostgreSQL-аутентификация)
         try:
-            resp = requests.post(signup_url, json={'email': email, 'password': password},
-                                 headers={'apikey': SUPABASE_KEY}, timeout=10)
+            resp = postgrest_admin_request('POST', 'rpc/register_user', json={
+                'p_email': email,
+                'p_password': password,
+                'p_full_name': full_name,
+                'p_role': role
+            })
             if resp.ok:
-                user = resp.json()['user']
+                # RPC возвращает uuid нового пользователя
+                user_id = resp.json()
+                if isinstance(user_id, list) and len(user_id) > 0:
+                    user_id = user_id[0] if isinstance(user_id[0], str) else user_id[0].get('register_user')
+
+                # Обновить профиль дополнительными данными
                 update_data = {
-                    'role': role,
-                    'full_name': full_name,
                     'city': city,
                     'religion': religion,
                     'portfolio_link': portfolio_link,
@@ -181,20 +208,9 @@ def register():
                     contact = request.form.get('contact', '').strip()
                     update_data['contact'] = contact if len(contact) >= 3 else None
 
-                if SERVICE_KEY:
-                    patch_url = f"{SUPABASE_URL}/rest/v1/profiles?id=eq.{user['id']}"
-                    patch_resp = requests.patch(patch_url, json=update_data,
-                                   headers={
-                                       'apikey': SERVICE_KEY,
-                                       'Authorization': f'Bearer {SERVICE_KEY}',
-                                       'Content-Type': 'application/json'
-                                   }, timeout=10)
-                    if not patch_resp.ok:
-                        log.error('Failed to update profile for user %s: %s', user['id'], patch_resp.text)
-                else:
-                    patch_resp = supabase_request('PATCH', f'profiles?id=eq.{user["id"]}', json=update_data)
-                    if not patch_resp.ok:
-                        log.error('Failed to update profile for user %s: %s', user['id'], patch_resp.text)
+                patch_resp = postgrest_admin_request('PATCH', f'profiles?id=eq.{user_id}', json=update_data)
+                if not patch_resp.ok:
+                    log.error('Failed to update profile for user %s: %s', user_id, patch_resp.text)
 
                 # Сохраняем навыки через user_skills (с валидацией UUID)
                 if role == 'worker' and skill_ids:
@@ -206,22 +222,30 @@ def register():
                             _uuid.UUID(sid)
                         except (ValueError, AttributeError):
                             continue
-                        supabase_request('POST', 'user_skills', json={
-                            'user_id': user['id'], 'skill_id': sid
+                        postgrest_admin_request('POST', 'user_skills', json={
+                            'user_id': user_id, 'skill_id': sid
                         })
 
-                flash('Регистрация успешна. Теперь войдите.', 'success')
-                return redirect(url_for('auth.login'))
+                # Автоматический логин после регистрации
+                _login_user_session(str(user_id), role, email)
+
+                if role == 'employer':
+                    return redirect(url_for('jobs.my_jobs'))
+                else:
+                    return redirect(url_for('jobs.index'))
             else:
                 error_msg = 'Ошибка регистрации'
                 try:
                     err_data = resp.json()
                     if isinstance(err_data, dict):
-                        error_msg = err_data.get('msg') or err_data.get('message') or error_msg
+                        error_msg = err_data.get('message') or err_data.get('msg') or error_msg
                 except Exception:
                     pass
+                if isinstance(err_data, dict) and 'email_exists' in err_data.get('message', '').lower():
+                    error_msg = 'Пользователь с таким email уже зарегистрирован'
                 flash(error_msg, 'danger')
-        except requests.RequestException:
+        except Exception as e:
+            log.error('Registration error: %s', e)
             flash('Ошибка соединения с сервером', 'danger')
     return render_template('register.html')
 

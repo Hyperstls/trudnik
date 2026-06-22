@@ -6,7 +6,7 @@ from typing import Any, Callable, TypeVar
 import jwt
 from flask import abort, current_app, flash, redirect, request, session, url_for
 
-from app.utils import refresh_access_token, supabase_request
+from app.utils import refresh_access_token, postgrest_request
 
 F = TypeVar('F', bound=Callable[..., Any])
 
@@ -66,7 +66,7 @@ def role_required(role: str) -> Callable[[F], F]:
         def decorated(*args: Any, **kwargs: Any) -> Any:
             if 'access_token' not in session:
                 return redirect(url_for('auth.login'))
-            resp = supabase_request('GET', f'profiles?id=eq.{session["user_id"]}&select=role')
+            resp = postgrest_request('GET', f'profiles?id=eq.{session["user_id"]}&select=role')
             data = resp.json()
             if not data or not isinstance(data, list) or not data:
                 flash('Ошибка проверки прав доступа', 'danger')
@@ -87,7 +87,7 @@ def get_user_profile():
     """Получить профиль текущего пользователя из Supabase."""
     if 'access_token' not in session:
         return None
-    resp = supabase_request('GET', f'profiles?id=eq.{session["user_id"]}&select=*')
+    resp = postgrest_request('GET', f'profiles?id=eq.{session["user_id"]}&select=*')
     if resp.ok and resp.json():
         data = resp.json()
         if isinstance(data, list) and data:

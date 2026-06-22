@@ -41,3 +41,9 @@ temp_workers_original.txt
 # Mock Supabase file (test infrastructure)
 .mock_supabase
 
+# Uploaded files (local storage)
+uploads/*
+!uploads/.gitkeep
+!uploads/avatars/.gitkeep
+!uploads/verification_docs/.gitkeep
+

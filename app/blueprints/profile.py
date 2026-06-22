@@ -1,12 +1,11 @@
 import uuid
 
-import requests
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
 from werkzeug.utils import secure_filename
 
 from app.config import Config
 from app.decorators import login_required
-from app.utils import SERVICE_KEY, SUPABASE_KEY, SUPABASE_URL, supabase_admin_request, supabase_request, supabase_rpc, upload_to_storage
+from app.utils import postgrest_admin_request, postgrest_request, postgrest_rpc, upload_to_storage, rate_limit
 
 profile_bp = Blueprint('profile', __name__)
 
@@ -20,7 +19,7 @@ MAX_PHOTO_SIZE = Config.MAX_PHOTO_SIZE_MB * 1024 * 1024  # 5 MB
 def profile():
     user_id = session['user_id']
     try:
-        resp = supabase_request('GET', f'profiles?id=eq.{user_id}&select=*')
+        resp = postgrest_request('GET', f'profiles?id=eq.{user_id}&select=*')
         profile_user = resp.json()[0] if resp.ok and resp.json() else None
     except Exception:
         current_app.logger.exception('Error loading profile for user %s', user_id)
@@ -98,7 +97,7 @@ def update_profile():
             flash('Ошибка загрузки фото', 'danger')
 
     try:
-        supabase_request('PATCH', f'profiles?id=eq.{user_id}', json=data)
+        postgrest_request('PATCH', f'profiles?id=eq.{user_id}', json=data)
         flash('Профиль обновлён', 'success')
     except Exception:
         current_app.logger.exception('Error updating profile for user %s', user_id)
@@ -110,7 +109,7 @@ def update_profile():
 @login_required
 def delete_photo():
     user_id = session['user_id']
-    supabase_request('PATCH', f'profiles?id=eq.{user_id}', json={'photo_url': None})
+    postgrest_request('PATCH', f'profiles?id=eq.{user_id}', json={'photo_url': None})
     flash('Фото удалено', 'success')
     return redirect(url_for('profile.profile'))
 
@@ -119,39 +118,33 @@ def delete_photo():
 @login_required
 def delete_account():
     user_id = session['user_id']
-    if not SERVICE_KEY:
-        flash('Сервисный ключ не настроен. Удаление невозможно.', 'danger')
-        return redirect(url_for('profile.profile'))
 
     # Каскадное удаление через RPC (этап 4.4)
-    rpc_result = supabase_rpc('delete_user_cascade', {'p_user_id': user_id}, use_admin=True)
+    rpc_result = postgrest_rpc('delete_user_cascade', {'p_user_id': user_id}, use_admin=True)
     if not rpc_result.ok:
         current_app.logger.error(
             "Profile delete account RPC: failed for %s: status=%s text=%s",
             user_id, rpc_result.status_code, (rpc_result.text or '')[:200]
         )
-
-    delete_url = f'{SUPABASE_URL}/auth/v1/admin/users/{user_id}'
-    resp = requests.delete(delete_url, headers={
-        'apikey': SERVICE_KEY,
-        'Authorization': f'Bearer {SERVICE_KEY}',
-        'Content-Type': 'application/json'
-    }, timeout=10)
-    if resp.ok:
-        session.clear()
-        flash('Ваш аккаунт полностью удалён.', 'success')
-        return redirect(url_for('auth.login'))
-    else:
-        flash(f'Ошибка удаления аккаунта: {resp.text}', 'danger')
+        flash('Ошибка удаления аккаунта. Пожалуйста, попробуйте позже.', 'danger')
         return redirect(url_for('profile.profile'))
+
+    session.clear()
+    flash('Ваш аккаунт полностью удалён.', 'success')
+    return redirect(url_for('auth.login'))
 
 
 @profile_bp.route('/profile/change-password', methods=['POST'])
 @login_required
+@rate_limit
 def change_password():
+    old_password = request.form.get('old_password', '')
     new_password = request.form.get('new_password')
     confirm_password = request.form.get('confirm_password')
 
+    if not old_password:
+        flash('Укажите текущий пароль', 'danger')
+        return redirect(url_for('profile.profile'))
     if not new_password or len(new_password) < 6:
         flash('Пароль должен содержать минимум 6 символов', 'danger')
         return redirect(url_for('profile.profile'))
@@ -159,21 +152,27 @@ def change_password():
         flash('Новые пароли не совпадают', 'danger')
         return redirect(url_for('profile.profile'))
 
-    auth_update_url = f'{SUPABASE_URL}/auth/v1/user'
-    headers = {
-        'apikey': SUPABASE_KEY,
-        'Authorization': f'Bearer {session["access_token"]}',
-        'Content-Type': 'application/json'
-    }
+    user_id = session['user_id']
     try:
-        resp = requests.put(auth_update_url, headers=headers,
-                            json={'password': new_password}, timeout=10)
+        resp = postgrest_request('POST', 'rpc/change_password', json={
+            'p_user_id': user_id,
+            'p_old_password': old_password,
+            'p_new_password': new_password
+        })
         if resp.ok:
-            flash('Пароль успешно изменён', 'success')
+            result = resp.json()
+            if isinstance(result, list) and len(result) > 0:
+                success = result[0] if isinstance(result[0], bool) else result[0].get('change_password', False)
+            else:
+                success = False
+            if success:
+                flash('Пароль успешно изменён', 'success')
+            else:
+                flash('Неверный текущий пароль', 'danger')
         else:
-            error_data = resp.json()
-            flash(f'Ошибка смены пароля: {error_data.get("msg", "попробуйте позже")}', 'danger')
-    except requests.RequestException:
+            flash('Ошибка смены пароля', 'danger')
+    except Exception:
+        current_app.logger.exception('Error changing password for user %s', user_id)
         flash('Ошибка соединения с сервером', 'danger')
 
     return redirect(url_for('profile.profile'))
@@ -205,7 +204,7 @@ def verify_employer():
                 flash(f'Ошибка при загрузке: {str(e)}', 'danger')
                 return redirect(url_for('profile.verify_employer'))
 
-        supabase_request('PATCH', f'profiles?id=eq.{user_id}', json=data)
+        postgrest_request('PATCH', f'profiles?id=eq.{user_id}', json=data)
         flash('Заявка на верификацию отправлена', 'success')
         return redirect(url_for('profile.profile'))
     return render_template('verify_employer.html')
@@ -218,7 +217,7 @@ def public_profile(user_id):
         uuid.UUID(user_id)
     except (ValueError, AttributeError):
         abort(404)
-    resp = supabase_request('GET', f'profiles?id=eq.{user_id}&select=*')
+    resp = postgrest_request('GET', f'profiles?id=eq.{user_id}&select=*')
     profile_user = resp.json()[0] if resp.ok and resp.json() else None
     if not profile_user:
         flash('Пользователь не найден', 'danger')

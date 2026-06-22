@@ -1,0 +1,12 @@
+# Amvera конфигурация для trudnik
+# Сгенерировано автоматически
+
+services:
+  trudnik-app:
+    environment:
+      - PGRST_JWT_SECRET=CHANGE_ME  # Сгенерировать через python scripts/generate_jwt_secret.py
+      - FLASK_ENV=production
+
+  trudnik-celery:
+    environment:
+      - PGRST_JWT_SECRET=CHANGE_ME  # Сгенерировать через python scripts/generate_jwt_secret.py

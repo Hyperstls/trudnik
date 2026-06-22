@@ -20,26 +20,32 @@ services:
     build: .
     container_name: trudnik-websocket
     restart: unless-stopped
+    depends_on:
+      - redis
     ports:
       - "${WEBSOCKET_PORT:-8001}:8001"
     environment:
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - SECRET_KEY=${SECRET_KEY}
       - WEBSOCKET_PORT=8001
-    depends_on:
-      redis:
-        condition: service_healthy
     command: uvicorn websocket_server.main:app --host 0.0.0.0 --port 8001 --log-level info
 
   celery_worker:
     build: .
     container_name: trudnik-celery-worker
     restart: unless-stopped
+    depends_on:
+      - redis
     environment:
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - DATABASE_URL=${DATABASE_URL}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - PGUSER=${PGUSER}
+      - PGPASSWORD=${PGPASSWORD}
+      - PGHOST=${PGHOST}
+      - PGPORT=${PGPORT:-5432}
+      - PGDATABASE=${PGDATABASE}
+      - POSTGREST_URL=${POSTGREST_URL:-http://localhost:3000}
+      - PGRST_JWT_SECRET=${PGRST_JWT_SECRET}
       - SECRET_KEY=${SECRET_KEY}
       - SMTP_HOST=${SMTP_HOST:-localhost}
       - SMTP_PORT=${SMTP_PORT:-587}
@@ -50,24 +56,25 @@ services:
       - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
       - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
       - VAPID_CLAIMS_EMAIL=${VAPID_CLAIMS_EMAIL:-notifications@trudnik.ru}
-    depends_on:
-      redis:
-        condition: service_healthy
     command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4
 
   celery_beat:
     build: .
     container_name: trudnik-celery-beat
     restart: unless-stopped
-    environment:
-      - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=${DATABASE_URL}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-      - SECRET_KEY=${SECRET_KEY}
     depends_on:
-      redis:
-        condition: service_healthy
+      - redis
+    environment:
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - DATABASE_URL=${DATABASE_URL}
+      - PGUSER=${PGUSER}
+      - PGPASSWORD=${PGPASSWORD}
+      - PGHOST=${PGHOST}
+      - PGPORT=${PGPORT:-5432}
+      - PGDATABASE=${PGDATABASE}
+      - POSTGREST_URL=${POSTGREST_URL:-http://localhost:3000}
+      - PGRST_JWT_SECRET=${PGRST_JWT_SECRET}
+      - SECRET_KEY=${SECRET_KEY}
     command: celery -A app.tasks.celery_app beat --loglevel=info
 
 volumes:

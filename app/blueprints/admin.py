@@ -1,10 +1,9 @@
 from collections import Counter
 from datetime import datetime
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for, jsonify
-import requests
 
 from app.decorators import login_required, role_required, admin_required, handle_errors
-from app.utils import cache_for, sanitize_postgrest, supabase_request, supabase_admin_request, supabase_rpc, SUPABASE_URL, SUPABASE_KEY, SERVICE_KEY
+from app.utils import cache_for, sanitize_postgrest, supabase_request, supabase_admin_request, supabase_rpc
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -124,23 +123,8 @@ def delete_user(user_id):
         flash('Ошибка при удалении пользователя', 'danger')
         return redirect(url_for('admin.admin_panel', tab='users'))
 
-    # 2. Удалить пользователя из auth.users (через Admin API)
-    if SERVICE_KEY:
-        auth_url = f'{SUPABASE_URL}/auth/v1/admin/users/{user_id}'
-        auth_headers = {
-            'apikey': SUPABASE_KEY,
-            'Authorization': f'Bearer {SERVICE_KEY}',
-            'Content-Type': 'application/json',
-        }
-        try:
-            auth_resp = requests.delete(auth_url, headers=auth_headers, timeout=15)
-            if not auth_resp.ok:
-                current_app.logger.warning(
-                    f"Admin delete user: auth.users delete returned {auth_resp.status_code} for {user_id}. "
-                    f"Profile was deleted but auth entry may remain."
-                )
-        except requests.RequestException as e:
-            current_app.logger.error(f"Admin delete user: auth.users request failed for {user_id}: {e}")
+    # Amvera: удаление из auth.users не требуется (нет Supabase Auth)
+    # Пользователь удалён каскадно через RPC delete_user_cascade
 
     flash('Пользователь удалён', 'success')
     return redirect(url_for('admin.admin_panel', tab='users'))
@@ -211,22 +195,8 @@ def bulk_delete_users():
             errors.append(f'RPC failed for {user_id}')
             continue
 
-        # 2. Удалить из auth.users (через Admin API)
-        if SERVICE_KEY:
-            auth_url = f'{SUPABASE_URL}/auth/v1/admin/users/{user_id}'
-            auth_headers = {
-                'apikey': SUPABASE_KEY,
-                'Authorization': f'Bearer {SERVICE_KEY}',
-                'Content-Type': 'application/json',
-            }
-            try:
-                auth_resp = requests.delete(auth_url, headers=auth_headers, timeout=15)
-                if not auth_resp.ok:
-                    current_app.logger.warning(
-                        f"Bulk delete user: auth.users delete returned {auth_resp.status_code} for {user_id}"
-                    )
-            except requests.RequestException as e:
-                current_app.logger.error(f"Bulk delete user: auth.users request failed for {user_id}: {e}")
+        # Amvera: удаление из auth.users не требуется (нет Supabase Auth)
+        # Пользователь удалён каскадно через RPC delete_user_cascade
 
         deleted += 1
 
