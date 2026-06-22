@@ -86,9 +86,12 @@ class CircuitBreaker:
         self.last_failure_time = time.time()
         if self.failure_count >= self.failure_threshold:
             self.state = 'OPEN'
-            current_app.logger.warning(
-                'Circuit Breaker OPEN after %d failures', self.failure_count
-            )
+            try:
+                current_app.logger.warning(
+                    'Circuit Breaker OPEN after %d failures', self.failure_count
+                )
+            except Exception:
+                pass
 
 
 def _circuit_open_response() -> 'SupabaseResponse':
@@ -337,7 +340,7 @@ def postgrest_request(method: str, endpoint: str, **kwargs: Any) -> SupabaseResp
         if extra_headers:
             headers.update(extra_headers)
         url = f'{POSTGREST_URL}/{endpoint}'
-        _timeout = 15 if method.upper() == 'GET' else 60
+        _timeout = 15 if method.upper() == 'GET' else 10
         resp = _session.request(method, url, headers=headers, timeout=_timeout, **kwargs)
         try:
             data = resp.json()
@@ -405,7 +408,7 @@ def postgrest_admin_request(method: str, endpoint: str, **kwargs: Any) -> Supaba
 
     def _make_request() -> SupabaseResponse:
         url = f'{POSTGREST_URL}/{endpoint}'
-        _timeout = 15 if method.upper() == 'GET' else 60
+        _timeout = 15 if method.upper() == 'GET' else 10
         resp = _admin_session.request(method, url, headers=headers, timeout=_timeout, **kwargs)
         try:
             data = resp.json()
@@ -450,7 +453,7 @@ def postgrest_rpc(function_name: str, params: dict, use_admin: bool = False) -> 
         headers = get_user_headers()
 
     def _make_request() -> SupabaseResponse:
-        resp = _session.post(url, headers=headers, json=params, timeout=60)
+        resp = _session.post(url, headers=headers, json=params, timeout=10)
         try:
             data = resp.json()
         except Exception:

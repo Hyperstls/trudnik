@@ -1,1 +1,1 @@
-9ffb954 fix: обернуть импорт mock_supabase в try/except для продакшена (2026-06-22 23:59:32 +0300)
+365dd59 fix: circular import — app/utils/rate_limit.py больше не импортирует из app.decorators (2026-06-23 00:08:30 +0300)

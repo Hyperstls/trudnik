@@ -78,9 +78,9 @@ def login():
         email = request.form.get('email')
         password = request.form.get('password')
         last_error = None
-        for attempt in range(3):
+        for attempt in range(2):
             try:
-                resp = postgrest_request('POST', 'rpc/login_user',
+                resp = postgrest_admin_request('POST', 'rpc/login_user',
                     json={'p_email': email, 'p_password': password})
                 if resp.ok:
                     data = resp.json()
@@ -95,7 +95,7 @@ def login():
                         flash('Ошибка входа: неверный email или пароль', 'danger')
                         return render_template('login.html')
                 elif resp.status_code == 429:
-                    log.warning('Auth rate-limited for %s, attempt %d/3', email, attempt + 1)
+                    log.warning('Auth rate-limited for %s, attempt %d/2', email, attempt + 1)
                     last_error = 'rate_limited'
                     _time.sleep(1.5 * (attempt + 1))
                     continue
@@ -103,7 +103,7 @@ def login():
                     flash('Ошибка входа: неверный email или пароль', 'danger')
                     return render_template('login.html')
             except Exception as e:
-                log.warning('Auth connection error for %s, attempt %d/3: %s', email, attempt + 1, e)
+                log.warning('Auth connection error for %s, attempt %d/2: %s', email, attempt + 1, e)
                 last_error = str(e)
                 _time.sleep(1.0 * (attempt + 1))
                 continue
