@@ -18,6 +18,84 @@ class _VersionCache:
 _git_version_cache = _VersionCache()
 
 
+# ── Redis-кэш (TTL 30 сек) ──
+# Глобальный кэш между worker'ами через Redis.
+# При отсутствии Redis — graceful degradation (возврат None).
+_redis_client = None
+_REDIS_CACHE_TTL = 30  # секунд
+
+
+def _get_redis_client():
+    """Ленивая инициализация Redis-клиента.
+
+    Returns:
+        Redis-клиент или None, если Redis недоступен.
+    """
+    global _redis_client
+    if _redis_client is not None:
+        return _redis_client
+    try:
+        import redis as _redis_lib
+        redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+        _redis_client = _redis_lib.from_url(redis_url, decode_responses=True)
+        # Проверяем соединение
+        _redis_client.ping()
+    except Exception:
+        _redis_client = None
+    return _redis_client
+
+
+def _redis_cache_get(key: str):
+    """Получает значение из Redis-кэша.
+
+    Args:
+        key: ключ кэша.
+
+    Returns:
+        Значение (int) или None, если ключ не найден или Redis недоступен.
+    """
+    try:
+        client = _get_redis_client()
+        if client is None:
+            return None
+        value = client.get(key)
+        if value is not None:
+            return int(value)
+    except Exception:
+        pass
+    return None
+
+
+def _redis_cache_set(key: str, value: int, ttl: int = _REDIS_CACHE_TTL):
+    """Сохраняет значение в Redis-кэш с TTL.
+
+    Args:
+        key: ключ кэша.
+        value: целочисленное значение.
+        ttl: время жизни в секундах (по умолчанию 30).
+    """
+    try:
+        client = _get_redis_client()
+        if client is not None:
+            client.setex(key, ttl, value)
+    except Exception:
+        pass
+
+
+def _redis_cache_delete(key: str):
+    """Удаляет ключ из Redis-кэша.
+
+    Args:
+        key: ключ кэша.
+    """
+    try:
+        client = _get_redis_client()
+        if client is not None:
+            client.delete(key)
+    except Exception:
+        pass
+
+
 def get_git_version(project_root: str) -> str:
     """Получить актуальную git-версию приложения.
 
@@ -151,101 +229,9 @@ def create_app():
         if not token or token != session.get('_csrf_token'):
             abort(400, description='CSRF-токен отсутствует или недействителен')
 
-    @app.context_processor
-    def inject_ws_config():
-        """Добавляет WebSocket-конфигурацию и JWT-токен во все шаблоны."""
-        config = {
-            'wsUrl': os.environ.get('WEBSOCKET_URL', ''),
-            'wsPort': os.environ.get('WEBSOCKET_PORT', '8001'),
-            'pushEnabled': bool(os.environ.get('VAPID_PUBLIC_KEY', '')),
-            'jwtToken': ''
-        }
-
-        # Генерируем JWT-токен для аутентифицированных пользователей
-        user_id = session.get('user_id')
-        if user_id:
-            try:
-                import jwt as pyjwt
-                token = pyjwt.encode(
-                    {
-                        'user_id': str(user_id),
-                        'exp': datetime.now(timezone.utc) + timedelta(days=7)
-                    },
-                    app.config['SECRET_KEY'],
-                    algorithm='HS256'
-                )
-                config['jwtToken'] = token
-            except Exception:
-                pass  # Любая ошибка — не фатально
-
-        return {'trudnik_ws_config': config}
-
-    @app.context_processor
-    def inject_unread_notifications():
-        """Глобальная переменная для бейджа уведомлений во всех шаблонах.
-        Результат кешируется в сессии на 30 секунд.
-        Исключает уведомления-приглашения (они на 👤+ иконке)."""
-        from app.utils import postgrest_request
-        from time import time
-        user_id = session.get('user_id')
-        if user_id:
-            cache_key = f'_notif_cache_{user_id}'
-            cached = session.get(cache_key)
-            now = time()
-            if cached and (now - cached.get('ts', 0)) < 30:
-                return {'unread_notifications': cached.get('count', 0)}
-            resp = postgrest_request('GET',
-                f'notifications?user_id=eq.{user_id}&is_read=eq.false&select=id,type,message&limit=100')
-            if resp.ok:
-                data = resp.json()
-                if isinstance(data, list):
-                    # Исключаем уведомления "Вас пригласили" (приглашения трудника)
-                    non_inv = [n for n in data if 'вас пригласили' not in (n.get('message') or '').lower()]
-                    count = len(non_inv)
-                else:
-                    count = 0
-                session[cache_key] = {'count': count, 'ts': now}
-                return {'unread_notifications': count}
-            session[cache_key] = {'count': 0, 'ts': now}
-        return {'unread_notifications': 0}
-
-    @app.context_processor
-    def inject_pending_invitations():
-        """Счётчик непрочитанных приглашений для трудника.
-
-        Использует postgrest_request с токеном пользователя вместо service_role.
-        RLS-политика invitations разрешает SELECT для worker_id = auth.uid(),
-        поэтому обход RLS не требуется.
-        """
-        from app.utils import postgrest_request
-        from time import time
-        import logging
-        log = logging.getLogger(__name__)
-        user_id = session.get('user_id')
-        role = session.get('role')
-        log.debug('[INV_CTX] user_id=%s role=%s',
-            str(user_id)[:12] if user_id else 'None', role)
-        if user_id and role == 'worker':
-            cache_key = f'_inv_cache_{user_id}'
-            cached = session.get(cache_key)
-            now = time()
-            if cached and (now - cached.get('ts', 0)) < 30:
-                log.debug('[INV_CTX] cached count=%d', cached.get('count', 0))
-                return {'pending_invitations': cached.get('count', 0)}
-            resp = postgrest_request('GET',
-                f'invitations?worker_id=eq.{user_id}&status=eq.pending&select=id&limit=100')
-            if resp.ok:
-                data = resp.json()
-                count = len(data) if isinstance(data, list) else 0
-                log.debug('[INV_CTX] query ok, count=%d', count)
-            else:
-                count = 0
-                log.error('[INV_CTX] query FAILED: status=%s body=%s',
-                          resp.status_code, (resp.text or '')[:200])
-            session[cache_key] = {'count': count, 'ts': now}
-            return {'pending_invitations': count}
-        log.debug('[INV_CTX] skip: no user_id or not worker')
-        return {'pending_invitations': 0}
+    # Регистрация контекст-процессоров (вынесены в app/context_processors.py)
+    from app.context_processors import register_context_processors
+    register_context_processors(app)
 
     @app.context_processor
     def inject_git_version():
@@ -329,8 +315,7 @@ def create_app():
     # из-за проблем с blueprint-роутингом на production/Render)
     # ================================
     from app.blueprints.applications import api_handle_application
-    from app.decorators import login_required
-    from app.utils import rate_limit
+    from app.decorators import login_required, rate_limit
 
     @app.route('/api/applications/<app_id>/accept', methods=['POST'])
     @login_required

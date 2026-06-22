@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -34,5 +34,8 @@ RUN useradd -m -u 1000 appuser && \
 # USER appuser  # Закомментирован: порт 80 требует root на Amvera
 
 EXPOSE 8000 8001
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:$PORT/health')" || exit 1
 
 CMD ["uvicorn", "asgi:application", "--host", "0.0.0.0", "--port", "80", "--workers", "1"]

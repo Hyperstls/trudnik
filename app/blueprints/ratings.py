@@ -1,13 +1,14 @@
 """Blueprint для рейтингов и отзывов."""
 from flask import Blueprint, jsonify, request, session, current_app, render_template, redirect, flash, url_for
 
-from app.decorators import login_required
-from app.utils import rate_limit, sanitize_postgrest, supabase_request, supabase_admin_request, update_rating
+from app.decorators import login_required, rate_limit, role_required, validate_uuid
+from app.utils import sanitize_postgrest, supabase_request, supabase_admin_request, update_rating
 
 ratings_bp = Blueprint('ratings', __name__)
 
 
 @ratings_bp.route('/api/ratings/<job_id>', methods=['GET'])
+@validate_uuid('job_id')
 def get_job_ratings(job_id):
     """Получить все оценки для задания."""
     resp = supabase_request(
@@ -35,6 +36,7 @@ def get_job_ratings(job_id):
 
 
 @ratings_bp.route('/api/ratings/user/<user_id>', methods=['GET'])
+@validate_uuid('user_id')
 def get_user_rating(user_id):
     """Получить агрегированный рейтинг пользователя."""
     resp = supabase_request(
@@ -254,6 +256,7 @@ def get_completed_jobs_for_rating(target_user_id):
 # ============================================================
 
 @ratings_bp.route('/api/ratings/user/<user_id>/details', methods=['GET'])
+@validate_uuid('user_id')
 def get_user_rating_details(user_id):
     """Получить все детальные оценки пользователя с отзывами."""
     resp = supabase_request(
@@ -284,6 +287,7 @@ def get_user_rating_details(user_id):
 # ============================================================
 
 @ratings_bp.route('/ratings/user/<user_id>')
+@validate_uuid('user_id')
 def user_ratings_page(user_id):
     """Страница со списком всех оценок пользователя."""
     return render_template('user_ratings.html', profile_user_id=user_id)
@@ -291,6 +295,8 @@ def user_ratings_page(user_id):
 
 @ratings_bp.route('/jobs/<job_id>/rate-workers')
 @login_required
+@role_required('employer')
+@validate_uuid('job_id')
 def rate_workers_page(job_id):
     """
     Страница оценки всех принятых работников задания.
@@ -298,12 +304,7 @@ def rate_workers_page(job_id):
     """
     user_id = session['user_id']
 
-    # --- 1. Проверка роли ---
-    if session.get('role') != 'employer':
-        flash('Только работодатели могут оценивать работников', 'danger')
-        return redirect(url_for('jobs.index'))
-
-    # --- 2. Получить задание и проверить владельца ---
+    # --- 1. Получить задание и проверить владельца ---
     job_resp = supabase_request(
         'GET',
         f'jobs?id=eq.{job_id}&employer_id=eq.{user_id}&select=id,organization_name,status,employer_id'

@@ -11,10 +11,10 @@ import psycopg2
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
-DB_URL = os.environ.get(
-    'DATABASE_URL',
-    'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
-)
+DB_URL = os.environ.get('DATABASE_URL')
+if not DB_URL:
+    print("ERROR: DATABASE_URL environment variable must be set")
+    sys.exit(1)
 MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / "migrations"
 
 

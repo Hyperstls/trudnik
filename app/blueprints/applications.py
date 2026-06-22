@@ -5,8 +5,9 @@ from datetime import datetime, timezone
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 
 from app.config import Config
-from app.decorators import login_required
-from app.utils import rate_limit, supabase_request, supabase_admin_request, supabase_rpc
+from app.decorators import login_required, rate_limit, role_required, validate_uuid
+from app.utils import supabase_request, supabase_admin_request, supabase_rpc
+from app.utils.helpers import assert_supabase_ok
 from app.services.notification_service import create as notify
 
 logger = logging.getLogger(__name__)
@@ -16,6 +17,7 @@ applications_bp = Blueprint('applications', __name__)
 
 @applications_bp.route('/apply/<job_id>', methods=['GET', 'POST'])
 @login_required
+@validate_uuid('job_id')
 @rate_limit
 def apply_job(job_id):
     user_id = session['user_id']
@@ -184,6 +186,7 @@ def _apply_job_fallback(job_id: str, user_id: str):
 
 @applications_bp.route('/apply-selected', methods=['POST'])
 @login_required
+@role_required('worker')
 def apply_selected():
     job_ids = request.form.getlist('job_ids')
     if not job_ids:
@@ -191,32 +194,47 @@ def apply_selected():
         return redirect(url_for('jobs.index'))
 
     user_id = session['user_id']
+
     applied = 0
     skipped_count = 0
+    error_count = 0
     # Словарь для группировки уведомлений: employer_id -> list of job_ids
     employer_jobs = {}
 
     for job_id in job_ids:
-        # Проверить статус задания и получить employer_id
-        job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status,employer_id')
-        employer_id = None
-        if job_resp.ok and job_resp.json():
-            job = job_resp.json()[0]
-            if job['status'] != 'open':
-                skipped_count += 1
-                continue
-            employer_id = job.get('employer_id')
+        # Атомарная RPC: все проверки (статус, blacklist, свой же заказ, дубликат, слоты) + вставка
+        rpc_result = supabase_rpc('apply_job_atomic', {
+            'p_job_id': job_id,
+            'p_worker_id': user_id,
+        }, use_admin=True)
 
-        check = supabase_request('GET', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
-        if not (check.ok and check.json()):
-            resp = supabase_request('POST', 'applications', json={'job_id': job_id, 'worker_id': user_id})
-            if resp.ok:
-                applied += 1
-                # Группируем по работодателю для уведомлений
-                if employer_id:
-                    if employer_id not in employer_jobs:
-                        employer_jobs[employer_id] = []
-                    employer_jobs[employer_id].append(job_id)
+        if not rpc_result.ok:
+            if rpc_result.status_code == 404:
+                logger.warning(
+                    "apply_selected: RPC apply_job_atomic not found for job_id=%s, skipping", job_id
+                )
+            skipped_count += 1
+            continue
+
+        result = rpc_result.json()
+        if not result or not result.get('success'):
+            error_code = (result or {}).get('code', 'unknown')
+            if error_code in ('duplicate', 'job_not_open', 'own_job', 'no_slots'):
+                skipped_count += 1
+            else:
+                error_count += 1
+                logger.warning(
+                    "apply_selected: RPC apply_job_atomic failed for job_id=%s code=%s error=%s",
+                    job_id, error_code, (result or {}).get('error', '')
+                )
+            continue
+
+        applied += 1
+        employer_id = result.get('employer_id')
+        if employer_id:
+            if employer_id not in employer_jobs:
+                employer_jobs[employer_id] = []
+            employer_jobs[employer_id].append(job_id)
 
     # Отправляем уведомления работодателям в фоновом потоке
     if employer_jobs:
@@ -236,146 +254,134 @@ def apply_selected():
 
     if applied > 0:
         flash(f'Отклик отправлен на {applied} заданий', 'success')
-    else:
-        flash('Вы уже откликались на все выбранные задания', 'info')
     if skipped_count > 0:
-        flash(f'{skipped_count} заданий пропущено (нельзя откликнуться).', 'warning')
+        flash(f'{skipped_count} заданий пропущено (уже откликались или недоступны).', 'warning')
+    if error_count > 0:
+        flash(f'{error_count} заданий не обработано из-за ошибок.', 'danger')
+    if applied == 0 and skipped_count == 0 and error_count == 0:
+        flash('Вы уже откликались на все выбранные задания', 'info')
     return redirect(url_for('jobs.index'))
 
 
 @applications_bp.route('/unapply/<job_id>', methods=['POST'])
 @login_required
+@validate_uuid('job_id')
 def unapply_job(job_id):
+    """Отзыв отклика по job_id (редирект на withdraw_application_atomic).
+
+    Находит отклик по job_id + worker_id, затем вызывает атомарный отзыв.
+    Сохраняет обратную совместимость URL /unapply/<job_id>.
+    """
+    # noqa: локальный импорт — циклическая зависимость (applications → application_service → applications)
+    from app.services.application_service import withdraw_application_atomic
+
     user_id = session['user_id']
-    resp = supabase_request('DELETE', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
-    if resp is not None and resp.ok:
-        flash('Отклик отозван', 'success')
+    # Найти отклик по job_id + worker_id
+    app_resp = supabase_request(
+        'GET',
+        f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}&select=id'
+    )
+    if not app_resp.ok or not app_resp.json():
+        flash('Отклик не найден (возможно, он уже отозван)', 'danger')
+        return redirect(url_for('jobs.index'))
+
+    app_id = app_resp.json()[0]['id']
+    result = withdraw_application_atomic(app_id, user_id)
+
+    if result.get('success'):
+        flash(result.get('message', 'Отклик отозван'), 'success')
     else:
-        flash('Не удалось отозвать отклик (возможно, он уже удалён)', 'danger')
+        flash(result.get('error', 'Не удалось отозвать отклик'), 'danger')
     return redirect(url_for('jobs.index'))
 
 
 @applications_bp.route('/unapply-selected', methods=['POST'])
 @login_required
 def unapply_selected():
+    """Массовый отзыв откликов через withdraw_application_atomic.
+
+    Находит каждый отклик по job_id + worker_id и вызывает атомарный отзыв.
+    Сохраняет обратную совместимость URL /unapply-selected.
+    """
+    from app.services.application_service import withdraw_application_atomic
+
     job_ids = request.form.getlist('job_ids')
     if not job_ids:
         flash('Не выбрано ни одного задания', 'danger')
         return redirect(url_for('jobs.index'))
     user_id = session['user_id']
-    removed = 0
+    withdrawn = 0
+    errors = 0
     for job_id in job_ids:
-        resp = supabase_request('DELETE', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
-        if resp is not None and resp.ok:
-            removed += 1
-    if removed > 0:
-        flash(f'Отклики отозваны ({removed} заданий)', 'success')
-    else:
-        flash('Ни один отклик не был удалён', 'info')
+        app_resp = supabase_request(
+            'GET',
+            f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}&select=id'
+        )
+        if not app_resp.ok or not app_resp.json():
+            errors += 1
+            continue
+        app_id = app_resp.json()[0]['id']
+        result = withdraw_application_atomic(app_id, user_id)
+        if result.get('success'):
+            withdrawn += 1
+        else:
+            errors += 1
+    if withdrawn > 0:
+        flash(f'Отклики отозваны ({withdrawn} заданий)', 'success')
+    if errors > 0:
+        flash(f'{errors} откликов не удалось отозвать', 'warning')
+    if withdrawn == 0 and errors == 0:
+        flash('Ни один отклик не найден', 'info')
     return redirect(url_for('jobs.index'))
 
 
 @applications_bp.route('/api/applications/<app_id>/withdraw', methods=['POST'])
 @login_required
+@validate_uuid('app_id')
 def api_withdraw_application(app_id):
     """Отзыв отклика работником (автором).
-    - pending → withdrawn в любое время (без ограничений)
-    - accepted → withdrawn только если > 12 часов до начала задания
-    - Уменьшает current_workers, если accepted
-    - Если current_workers падает до 0 и статус completed → open
+    Использует унифицированный сервис app/services/application_service.py.
     """
-    user_id = session['user_id']
+    from app.services.application_service import withdraw_application_atomic
 
-    # Получить отклик
-    app_resp = supabase_request('GET',
-        f'applications?id=eq.{app_id}&select=job_id,worker_id,status')
-    if not app_resp.ok or not app_resp.json():
-        return jsonify({'success': False, 'error': 'Отклик не найден'}), 404
+    result = withdraw_application_atomic(app_id, session['user_id'])
+    if not result['success']:
+        status_code = {
+            'Отклик не найден': 404,
+            'Вы не автор этого отклика': 403,
+            'Отклик уже отозван': 409,
+        }
+        error_msg = result.get('error', '')
+        code = 409
+        for key, sc in status_code.items():
+            if key in error_msg:
+                code = sc
+                break
+        return jsonify(result), code
 
-    app_data = app_resp.json()[0]
-    if app_data['worker_id'] != user_id:
-        return jsonify({'success': False, 'error': 'Вы не автор этого отклика'}), 403
-
-    current_status = app_data.get('status', 'pending')
-    if current_status == 'withdrawn':
-        return jsonify({'success': False, 'error': 'Отклик уже отозван'}), 409
-
-    job_id = app_data['job_id']
-
-    # Получить задание
-    job_resp = supabase_request('GET',
-        f'jobs?id=eq.{job_id}&select=status,date_time,current_workers,max_workers,employer_id')
-    if not job_resp.ok or not job_resp.json():
-        return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
-
-    job = job_resp.json()[0]
-
-    # Если accepted — проверить 12-часовой лимит
-    if current_status == 'accepted':
-        date_time_str = job.get('date_time')
-        if date_time_str:
-            try:
-                if isinstance(date_time_str, str):
-                    date_time = datetime.fromisoformat(date_time_str.replace('Z', '+00:00'))
-                else:
-                    date_time = date_time_str
-                now = datetime.now(timezone.utc)
-                hours_before = (date_time - now).total_seconds() / 3600
-                if hours_before < 12:
-                    return jsonify({
-                        'success': False,
-                        'error': f'Нельзя отозвать принятый отклик менее чем за 12 часов до начала задания (осталось {hours_before:.1f} ч)'
-                    }), 409
-            except (ValueError, TypeError):
-                pass  # Если дата невалидна — пропускаем проверку
-
-        # Уменьшить current_workers
-        current_workers = max(0, job.get('current_workers', 1) - 1)
-        new_job_status = job.get('status')
-        if current_workers == 0 and new_job_status == 'completed':
-            new_job_status = 'open'
-
-        supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={
-            'current_workers': current_workers,
-            'status': new_job_status
-        })
-
-        # Уведомить работодателя
-        success = notify(job['employer_id'], 'withdraw', 'Работник отозвал отклик',
-               f'Принятый работник отозвал отклик с задания #{job_id}',
-               data={'job_id': job_id, 'link': url_for('jobs.job_detail', job_id=job_id, _external=True)})
-        if not success:
-            logger.error("api_withdraw_application: notify() вернул False для employer_id=%s job_id=%s",
-                         job['employer_id'], job_id)
-
-    # Поменять статус отклика на withdrawn
-    supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'withdrawn'})
-
-    # Если был pending — просто удаляем отклик (старая логика unapply)
-    if current_status == 'pending':
-        supabase_request('DELETE', f'applications?id=eq.{app_id}')
-
-    return jsonify({
-        'success': True,
-        'message': 'Отклик отозван',
-        'new_status': 'withdrawn'
-    })
+    return jsonify(result)
 
 
 @applications_bp.route('/my-applications')
 @login_required
+@role_required('employer')
 def my_applications():
-    """Отображение откликов на задания работодателя"""
-    if session.get('role') != 'employer':
-        flash('Доступ только для работодателей', 'danger')
-        return redirect(url_for('jobs.index'))
-
+    """Отображение откликов на задания работодателя (с пагинацией)."""
     user_id = session['user_id']
     skills_filter = request.args.get('skills', '')
+    page = max(1, request.args.get('page', 1, type=int))
+    per_page = min(100, max(1, request.args.get('per_page', 20, type=int)))
+    offset = (page - 1) * per_page
 
     resp = supabase_request('GET',
-        f'applications?job.employer_id=eq.{user_id}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,skills,desired_payment,inn,phone,email_public),job:jobs(organization_name,date_time,payment_amount,status,current_workers,max_workers)')
+        f'applications?job.employer_id=eq.{user_id}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,skills,desired_payment,inn,phone,email_public),job:jobs(organization_name,date_time,payment_amount,status,current_workers,max_workers)&limit={per_page}&offset={offset}',
+        headers={'Prefer': 'count=exact'})
     applications = resp.json() if resp.ok else []
+    total = 0
+    if resp.ok:
+        content_range = resp.headers.get('Content-Range', '')
+        if '/' in content_range:
+            total = int(content_range.split('/')[-1])
 
     # Фильтрация по навыкам (AND — все выбранные навыки должны быть у трудника)
     if skills_filter:
@@ -401,8 +407,12 @@ def my_applications():
         else:
             app_data['worker_contacts'] = None
 
+    total_pages = max(1, (total + per_page - 1) // per_page) if total else 1
+
     return render_template('my_applications.html', applications=applications, jobs=jobs,
-                           selected_skills=selected_skills_list)
+                           selected_skills=selected_skills_list,
+                           page=page, per_page=per_page, total=total,
+                           total_pages=total_pages)
 
 
 @applications_bp.route('/api/applications/test', methods=['GET', 'POST'])
@@ -433,9 +443,14 @@ def api_handle_application(app_id, action):
         return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
 
     if action == 'accept':
+        # Проверка: принимать можно только pending или rejected (повторное принятие)
+        if current_status not in ('pending', 'rejected'):
+            return jsonify({'success': False, 'error': f'Нельзя принять отклик в статусе «{current_status}»'}), 409
+
         # Повторное принятие: возвращаем rejected → pending
         if current_status == 'rejected':
-            supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'pending'})
+            reopen_resp = supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'pending'})
+            assert_supabase_ok(reopen_resp, 'повторное открытие отклика')
 
         # Атомарный accept через RPC (этап 4.4)
         rpc_result = supabase_rpc('accept_application', {
@@ -568,6 +583,7 @@ def api_batch_applications():
 
 @applications_bp.route('/application/<app_id>/cancel', methods=['POST'])
 @login_required
+@validate_uuid('app_id')
 def cancel_application(app_id):
     """Отмена принятого работника"""
     app_resp = supabase_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id,status')
@@ -578,6 +594,11 @@ def cancel_application(app_id):
     app_data = app_resp.json()[0]
     job_id = app_data['job_id']
     worker_id = app_data['worker_id']
+
+    # Проверка: отменить можно только accepted-отклик
+    if app_data.get('status') != 'accepted':
+        flash('Можно отменить только принятого работника', 'danger')
+        return redirect(url_for('applications.my_applications'))
 
     # Получить информацию о задании
     job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status,date_time,organization_name')
@@ -617,13 +638,15 @@ def cancel_application(app_id):
 
         # Вернуть статус в open если все ушли
         new_status = 'open' if current_workers == 0 else 'completed'
-        supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={
+        job_patch_resp = supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={
             'status': new_status,
             'current_workers': current_workers
         })
+        assert_supabase_ok(job_patch_resp, 'обновление статуса задания при отмене работника')
 
     # Отклонить отклик
-    supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'rejected'})
+    cancel_resp = supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'rejected'})
+    assert_supabase_ok(cancel_resp, 'отклонение отклика при отмене работника')
 
     # Отправить уведомления
     success = notify(worker_id, 'application_rejected', 'Отклик отменен',

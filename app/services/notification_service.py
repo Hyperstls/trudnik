@@ -96,13 +96,18 @@ def create(user_id, notification_type, title, message, data=None, email=None, us
     if not prefs.get(notification_type, True):
         return False
 
-    base_payload = {
+    base_payload: dict = {
         'user_id': user_id,
         'type': notification_type,
         'message': f'{title}: {message}' if title else message,
         'is_read': False,
         'data': data if data else {},
     }
+    # Прямая колонка job_id (миграция 063) — для быстрых JOIN и очистки orphaned
+    if data and isinstance(data, dict) and data.get('job_id'):
+        base_payload['job_id'] = data['job_id']
+    if data and isinstance(data, dict) and data.get('application_id'):
+        base_payload['application_id'] = data['application_id']
 
     # Используем admin_request для обхода RLS:
     # уведомления создаются системой (не владельцем), user_id может не совпадать с auth.uid()
@@ -144,6 +149,7 @@ def create(user_id, notification_type, title, message, data=None, email=None, us
             logger.warning("Не удалось опубликовать уведомление в Redis: %s", e)
 
     # Ставим задачи в очередь Celery для email и push
+    # noqa: локальные импорты — циклическая зависимость (tasks → notification_service → tasks)
     try:
         from app.tasks.email_tasks import send_email_notification
         from app.tasks.push_tasks import send_push_notification
@@ -210,6 +216,14 @@ def create(user_id, notification_type, title, message, data=None, email=None, us
             )
             logger.error(traceback.format_exc())
 
+    # Инвалидируем Redis-кэш счётчика непрочитанных уведомлений
+    # noqa: локальный импорт — циклическая зависимость (app → notification_service → app)
+    try:
+        from app import _redis_cache_delete
+        _redis_cache_delete(f'unread:{user_id}')
+    except Exception:
+        pass  # Redis недоступен — не фатально
+
     return True
 
 
@@ -230,10 +244,15 @@ def get_notifications(user_id, page=1, per_page=20):
 
 
 def get_unread_count(user_id):
-    """Быстрый счётчик непрочитанных уведомлений."""
+    """Точный счётчик непрочитанных уведомлений (через count=exact)."""
     resp = supabase_request('GET',
-        f'notifications?user_id=eq.{user_id}&is_read=eq.false&select=id&limit=100')
-    return len(resp.json()) if resp.ok else 0
+        f'notifications?user_id=eq.{user_id}&is_read=eq.false&select=id&limit=0',
+        headers={'Prefer': 'count=exact'})
+    if resp.ok:
+        content_range = resp.headers.get('Content-Range', '')
+        if '/' in content_range:
+            return int(content_range.split('/')[-1])
+    return 0
 
 
 def mark_all_read(user_id):
@@ -243,7 +262,24 @@ def mark_all_read(user_id):
         json={'is_read': True})
 
 
-def mark_read(notification_id):
-    """Пометить одно уведомление прочитанным."""
-    supabase_request('PATCH', f'notifications?id=eq.{notification_id}',
-        json={'is_read': True})
+def mark_read(notification_id, user_id=None):
+    """Пометить одно уведомление прочитанным (с проверкой принадлежности).
+
+    Args:
+        notification_id: ID уведомления.
+        user_id: UUID пользователя (опционально). Если передан — PATCH только
+                 если уведомление принадлежит этому пользователю.
+    """
+    url = f'notifications?id=eq.{notification_id}'
+    if user_id:
+        url += f'&user_id=eq.{user_id}'
+    supabase_request('PATCH', url, json={'is_read': True})
+
+    # Инвалидируем Redis-кэш счётчика непрочитанных уведомлений
+    if user_id:
+        # noqa: локальный импорт — циклическая зависимость (app → notification_service → app)
+        try:
+            from app import _redis_cache_delete
+            _redis_cache_delete(f'unread:{user_id}')
+        except Exception:
+            pass  # Redis недоступен — не фатально

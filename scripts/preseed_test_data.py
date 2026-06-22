@@ -84,15 +84,13 @@ def delete_previous_test_data(employer_id: str, worker_id: str):
     """Удаляет предыдущие тестовые данные."""
     tables_cols = [
         ('messages', 'sender_id'),
-        ('messages', 'receiver_id'),
-        ('ratings', 'rater_id'),
+        ('ratings', 'rater_user_id'),
         ('ratings', 'rated_user_id'),
         ('favorites', 'user_id'),
         ('invitations', 'employer_id'),
         ('invitations', 'worker_id'),
         ('blacklists', 'user_id'),
         ('applications', 'worker_id'),
-        ('applications', 'employer_id'),
         ('jobs', 'employer_id'),
     ]
     for table, col in tables_cols:
@@ -375,17 +373,31 @@ def main(fail_on_error: bool = True) -> bool:
     print(f'  Employer verification_status update: {patch_resp2.status_code}')
     print()
 
-    # 10. Создаём verification_requests для админ-тестов
-    print('[10/10] Creating verification requests...')
-    vr = post_record('verification_requests', {
+    # 10. Устанавливаем verification_status для админ-тестов
+    # (таблицы verification_requests нет в схеме — статус хранится в profiles)
+    print('[10/10] Setting verification data...')
+    vr_url = f'{SUPABASE_URL}/rest/v1/profiles?id=eq.{employer_id}'
+    vr_resp = requests.patch(
+        vr_url,
+        headers=REST_HEADERS,
+        json={
+            'verification_status': 'pending',
+            'inn': '7700000000',
+        },
+        timeout=30,
+    )
+    vr_id = employer_id  # verification привязана к профилю
+    print(f'  Verification data set on profile: {employer_id} (status={vr_resp.status_code})')
+    print()
+
+    # Создаём employer_details для компании
+    ed = post_record('employer_details', {
         'user_id': employer_id,
         'company_name': 'ООО Тест',
         'inn': '7700000000',
-        'description': 'Тестовая компания для верификации',
-        'status': 'pending',
     })
-    vr_id = vr.get('id') if vr else None
-    print(f'  Verification request: {vr_id}')
+    ed_id = ed.get('id') if ed else None
+    print(f'  Employer details: {ed_id}')
     print()
 
     print('=' * 60)
@@ -396,7 +408,7 @@ def main(fail_on_error: bool = True) -> bool:
     print(f'Ratings created')
     print(f'Favorites created')
     print(f'Blacklist: {bl_id}')
-    print(f'Verification requests: {vr_id}')
+    print(f'Verification data: employer profile {vr_id}, employer_details {ed_id}')
     print('=' * 60)
     return True
 

@@ -12,12 +12,12 @@ class Config:
     SECRET_KEY = _FALLBACK_SECRET
 
     # Amvera PostgREST
-    _default_postgrest = 'http://localhost:3000' if os.environ.get('FLASK_ENV') != 'production' else ''
+    _default_postgrest = 'http://localhost:3000' if os.environ.get('DEPLOYMENT_ENV') != 'production' else ''
     POSTGREST_URL = os.environ.get('POSTGREST_URL', _default_postgrest)
-    if os.environ.get('FLASK_ENV') == 'production' and not POSTGREST_URL:
+    if os.environ.get('DEPLOYMENT_ENV') == 'production' and not POSTGREST_URL:
         raise RuntimeError('POSTGREST_URL is required in production')
     PGRST_JWT_SECRET = os.environ.get('PGRST_JWT_SECRET', '')
-    if os.environ.get('FLASK_ENV') == 'production' and not PGRST_JWT_SECRET:
+    if os.environ.get('DEPLOYMENT_ENV') == 'production' and not PGRST_JWT_SECRET:
         raise RuntimeError('PGRST_JWT_SECRET is required in production')
 
     YANDEX_MAPS_API_KEY = os.environ.get('YANDEX_MAPS_API_KEY', '')
@@ -25,7 +25,7 @@ class Config:
 
     # Cookie Security
     SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SECURE = os.environ.get('FLASK_ENV', '') == 'production'
+    SESSION_COOKIE_SECURE = os.environ.get('DEPLOYMENT_ENV', '') == 'production'
     SESSION_COOKIE_SAMESITE = 'Lax'
 
     # ═══════════════════════════════════════════════════════════

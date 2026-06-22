@@ -155,81 +155,86 @@ def invite_worker(job_id, worker_id):
 @jobs_api_bp.route('/api/invitations')
 @login_required
 def list_invitations():
-    """JSON API: список приглашений."""
-    user_id = session['user_id']
-    role = session.get('role', 'worker')
-    if role == 'worker':
-        resp = supabase_request(
-            'GET',
-            f'invitations?worker_id=eq.{user_id}&select=*,job:jobs(organization_name,payment_amount)&order=created_at.desc'
-        )
-    else:
-        resp = supabase_request(
-            'GET',
-            f'invitations?employer_id=eq.{user_id}&select=*,job:jobs(organization_name),worker:profiles!invitations_worker_id_fkey(full_name)&order=created_at.desc'
-        )
-    return jsonify({'invitations': resp.json() if resp.ok else []})
+    """JSON API: список приглашений (использует унифицированный сервис)."""
+    from app.services.invitation_service import list_invitations as get_invitations
+    invitations = get_invitations()
+    return jsonify({'invitations': invitations})
 
 
 @jobs_api_bp.route('/api/invitations/<invitation_id>/respond', methods=['POST'])
 @login_required
+@role_required('worker')
 def respond_invitation(invitation_id):
-    """Трудник принимает или отклоняет приглашение."""
+    """Трудник принимает или отклоняет приглашение.
+    При accept используется атомарная RPC accept_invitation_atomic:
+    проверка приглашения + создание заявки accepted + инкремент current_workers
+    в одной транзакции PostgreSQL."""
     data = request.get_json(silent=True) or {}
     action = data.get('action')
     if action not in ('accept', 'reject'):
         return jsonify({'success': False, 'error': 'Укажите действие: accept или reject'}), 400
 
-    if session.get('role') != 'worker':
-        return jsonify({'success': False, 'error': 'Только трудник может отвечать на приглашения'}), 403
-
-    inv_resp = supabase_request(
-        'GET',
-        f'invitations?id=eq.{invitation_id}&select=worker_id,job_id,employer_id,status'
-    )
-    if not inv_resp.ok or not inv_resp.json():
-        return jsonify({'success': False, 'error': 'Приглашение не найдено'}), 404
-
-    inv = inv_resp.json()[0]
-    if inv['worker_id'] != session['user_id']:
-        return jsonify({'success': False, 'error': 'Нет доступа'}), 403
-
-    if inv['status'] != 'pending':
-        return jsonify({'success': False, 'error': f'Приглашение уже {inv["status"]}'}), 409
-
-    new_status = 'accepted' if action == 'accept' else 'rejected'
-    supabase_request('PATCH', f'invitations?id=eq.{invitation_id}',
-                     json={'status': new_status, 'responded_at': 'now()'})
-
-    if action == 'accept':
-        # При принятии приглашения отклик сразу accepted (работодатель уже выбрал трудника)
-        supabase_admin_request('POST', 'applications', json={
-            'job_id': inv['job_id'],
-            'worker_id': inv['worker_id'],
-            'status': 'accepted'
-        })
-        # Обновить счётчик занятых мест (admin_request — worker не может PATCH jobs)
-        job_resp = supabase_admin_request(
+    if action == 'reject':
+        # Отклонение — простая операция, не требует атомарности
+        inv_resp = supabase_request(
             'GET',
-            f'jobs?id=eq.{inv["job_id"]}&select=current_workers,max_workers,status'
+            f'invitations?id=eq.{invitation_id}&select=worker_id,status'
         )
-        if job_resp.ok and job_resp.json():
-            job = job_resp.json()[0]
-            new_count = job['current_workers'] + 1
-            new_status_job = 'completed' if new_count >= job['max_workers'] else job['status']
-            supabase_admin_request('PATCH', f'jobs?id=eq.{inv["job_id"]}', json={
-                'current_workers': new_count,
-                'status': new_status_job
-            })
-        # Уведомить работника о принятии
-        notify(inv['worker_id'], 'application_accepted', 'Приглашение принято',
-               f'Ваша заявка на задание #{inv["job_id"]} принята.',
-               data={'job_id': inv['job_id'],
-                     'link': url_for('jobs.job_detail', job_id=inv['job_id'], _external=True)})
-        # Уведомить работодателя
-        notify(inv['employer_id'], 'application_received', 'Приглашение принято',
-               f'Трудник принял ваше приглашение на задание',
-               data={'job_id': inv['job_id'],
-                     'link': url_for('jobs.job_detail', job_id=inv['job_id'], _external=True)})
+        if not inv_resp.ok or not inv_resp.json():
+            return jsonify({'success': False, 'error': 'Приглашение не найдено'}), 404
+        inv = inv_resp.json()[0]
+        if inv['worker_id'] != session['user_id']:
+            return jsonify({'success': False, 'error': 'Нет доступа'}), 403
+        if inv['status'] != 'pending':
+            return jsonify({'success': False, 'error': f'Приглашение уже {inv["status"]}'}), 409
 
-    return jsonify({'success': True, 'new_status': new_status})
+        supabase_request('PATCH', f'invitations?id=eq.{invitation_id}',
+                         json={'status': 'rejected', 'responded_at': 'now()'})
+        return jsonify({'success': True, 'new_status': 'rejected'})
+
+    # action == 'accept': атомарная RPC
+    rpc_result = supabase_rpc('accept_invitation_atomic', {
+        'p_invitation_id': invitation_id,
+        'p_user_id': session['user_id'],
+    }, use_admin=True)
+
+    if not rpc_result.ok:
+        if rpc_result.status_code == 404:
+            return jsonify({'success': False, 'error': 'RPC accept_invitation_atomic не найдена (миграция 061 не применена)'}), 500
+        return jsonify({'success': False, 'error': 'Ошибка выполнения операции'}), 500
+
+    result = rpc_result.json()
+    if not result or not result.get('success'):
+        error_msg = (result or {}).get('error', 'Не удалось принять приглашение')
+        status_code = {
+            'invitation_not_found': 404,
+            'not_target': 403,
+            'invitation_not_pending': 409,
+            'job_not_found': 404,
+            'job_not_open': 409,
+            'no_slots': 409,
+        }.get((result or {}).get('code', ''), 400)
+        return jsonify({'success': False, 'error': error_msg}), status_code
+
+    job_id = result.get('job_id')
+    employer_id = result.get('employer_id')
+    worker_id = result.get('worker_id')
+
+    # Уведомить работника о принятии
+    notify(worker_id, 'application_accepted', 'Приглашение принято',
+           f'Ваша заявка на задание #{job_id} принята.',
+           data={'job_id': job_id,
+                 'link': url_for('jobs.job_detail', job_id=job_id, _external=True)})
+
+    # Уведомить работодателя
+    notify(employer_id, 'application_received', 'Приглашение принято',
+           f'Трудник принял ваше приглашение на задание',
+           data={'job_id': job_id,
+                 'link': url_for('jobs.job_detail', job_id=job_id, _external=True)})
+
+    return jsonify({
+        'success': True,
+        'new_status': 'accepted',
+        'job_status': result.get('job_status'),
+        'current_workers': result.get('current_workers')
+    })

@@ -223,34 +223,34 @@
 
 ## AJAX-эндпоинты
 
-Сводка вызовов fetch/AJAX из JavaScript-файлов фронтенда:
+Сводка вызовов fetch/AJAX из фронтенда (источники указаны по blueprint'ам):
 
-| Источник (JS) | Метод | URL | Назначение |
-|---------------|-------|-----|------------|
-| `static/js/search.js` | GET | `/api/search/jobs` | AJAX-поиск заданий (фильтры, FTS, гео) |
-| `static/js/search.js` | GET | `/api/search/workers` | AJAX-поиск трудников |
-| `static/js/chat.js` | POST | `/api/send_message` | Отправка сообщения в чате |
-| `static/js/chat.js` | GET | `/api/messages/poll` | Long-polling новых сообщений |
-| `static/js/notifications.js` | POST | `/api/notifications/read` | Отметить одно уведомление |
-| `static/js/notifications.js` | POST | `/api/notifications/read-all` | Отметить все уведомления |
-| `static/js/notifications.js` | GET/POST | `/api/notifications/settings` | Настройки уведомлений |
-| `static/js/notifications.js` | POST | `/api/push/subscribe` | Подписка на push |
-| `static/js/notifications.js` | POST | `/api/push/unsubscribe` | Отписка от push |
-| `static/js/applications.js` | POST | `/api/applications/<id>/accept` | Принять отклик |
-| `static/js/applications.js` | POST | `/api/applications/<id>/reject` | Отклонить отклик |
-| `static/js/applications.js` | POST | `/api/applications/<id>/reopen` | Переоткрыть отклик |
-| `static/js/applications.js` | POST | `/api/applications/batch` | Массовое действие |
-| `static/js/favorites.js` | POST | `/favorite/<type>/<id>` | Добавить в избранное |
-| `static/js/favorites.js` | POST | `/unfavorite/<type>/<id>` | Убрать из избранного |
-| `static/js/favorites.js` | GET | `/api/favorites/status` | Статусы избранного |
-| `static/js/employers.js` | POST | `/api/employers/favorite` | Избранное (работодатели) |
-| `static/js/employers.js` | DELETE | `/api/employers/favorite` | Убрать из избранного |
-| `static/js/invite.js` | POST | `/api/invite` | Пригласить трудника |
-| `static/js/ratings.js` | POST | `/api/ratings` | Создать/обновить оценку |
-| `static/js/admin.js` | POST | `/admin/verify-employer/<id>` | Верификация работодателя |
-| `static/js/admin.js` | POST | `/admin/delete-user/<id>` | Удаление пользователя |
+| Источник (Blueprint) | Метод | URL | Назначение |
+|----------------------|-------|-----|------------|
+| `app/blueprints/jobs_api.py` | GET | `/api/search/jobs` | AJAX-поиск заданий (фильтры, FTS, гео) |
+| `app/blueprints/jobs_api.py` | GET | `/api/search/workers` | AJAX-поиск трудников |
+| `app/blueprints/chat.py` | POST | `/api/send_message` | Отправка сообщения в чате |
+| `app/blueprints/chat.py` | GET | `/api/messages/poll` | Long-polling новых сообщений |
+| `app/blueprints/notifications.py` | POST | `/api/notifications/read` | Отметить одно уведомление |
+| `app/blueprints/notifications.py` | POST | `/api/notifications/read-all` | Отметить все уведомления |
+| `app/blueprints/notifications.py` | GET/POST | `/api/notifications/settings` | Настройки уведомлений |
+| `app/blueprints/notifications.py` | POST | `/api/push/subscribe` | Подписка на push |
+| `app/blueprints/notifications.py` | POST | `/api/push/unsubscribe` | Отписка от push |
+| `app/__init__.py` | POST | `/api/applications/<id>/accept` | Принять отклик |
+| `app/__init__.py` | POST | `/api/applications/<id>/reject` | Отклонить отклик |
+| `app/__init__.py` | POST | `/api/applications/<id>/reopen` | Переоткрыть отклик |
+| `app/blueprints/applications.py` | POST | `/api/applications/batch` | Массовое действие |
+| `app/blueprints/favorites.py` | POST | `/favorite/<type>/<id>` | Добавить в избранное |
+| `app/blueprints/favorites.py` | POST | `/unfavorite/<type>/<id>` | Убрать из избранного |
+| `app/blueprints/favorites.py` | GET | `/api/favorites/status` | Статусы избранного |
+| `app/blueprints/employers.py` | POST | `/api/employers/favorite` | Избранное (работодатели) |
+| `app/blueprints/employers.py` | DELETE | `/api/employers/favorite` | Убрать из избранного |
+| `app/blueprints/jobs_api.py` | POST | `/api/invite` | Пригласить трудника |
+| `app/blueprints/ratings.py` | POST | `/api/ratings` | Создать/обновить оценку |
+| `app/blueprints/admin.py` | POST | `/admin/verify-employer/<id>` | Верификация работодателя |
+| `app/blueprints/admin.py` | POST | `/admin/delete-user/<id>` | Удаление пользователя |
 | `app/blueprints/admin.py` | GET | `/api/health` | Health check админ-панели |
-| `static/js/chat.js` | POST | `/api/delete-chats` | Удаление чатов |
+| `app/blueprints/chat.py` | POST | `/api/delete-chats` | Удаление чатов |
 
 ---
 

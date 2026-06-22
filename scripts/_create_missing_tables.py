@@ -3,10 +3,8 @@
 import os
 import psycopg2
 
-DB_URL = os.environ.get(
-    'DATABASE_URL',
-    'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
-)
+DB_URL = os.environ.get('DATABASE_URL')
+assert DB_URL, "DATABASE_URL environment variable must be set"
 
 SQL = """
 -- ratings (облачная схема: без shift_id, с updated_at)

@@ -2,8 +2,8 @@ import html as _html
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
-from app.decorators import login_required
-from app.utils import rate_limit, supabase_request
+from app.decorators import login_required, rate_limit, role_required, validate_uuid
+from app.utils import supabase_request
 from app.services.notification_service import create as create_notification
 
 try:
@@ -36,6 +36,7 @@ def chats_list():
 
 @chat_bp.route('/chat/<application_id>')
 @login_required
+@validate_uuid('application_id')
 def chat(application_id):
     """Чат по заявке (application_id)."""
     user_id = session['user_id']
@@ -69,12 +70,11 @@ def chat(application_id):
 
 @chat_bp.route('/chat/new/<worker_id>', methods=['GET'])
 @login_required
+@role_required('employer')
+@validate_uuid('worker_id')
 def chat_new(worker_id):
     """Поиск существующего чата с работником (по accepted-заявке) или редирект на список чатов."""
     user_id = session['user_id']
-    if session.get('role') != 'employer':
-        flash('Только работодатели могут создавать чаты', 'danger')
-        return redirect(url_for('jobs.index'))
 
     # Ищем accepted-заявку от этого работодателя этому работнику
     # employer_id фильтруется через join с jobs (нет колонки employer_id в applications)
@@ -115,21 +115,9 @@ def send_message():
     if sender_id not in (app_data.get('worker_id'), employer_id):
         return jsonify({'status': 'error', 'message': 'Нет доступа к этому чату'}), 403
 
-    # Чат доступен только для принятых заявок
+    # Чат доступен только для принятых заявок (общение разрешено после accept, не дожидаясь completed)
     if app_data.get('status') != 'accepted':
         return jsonify({'status': 'error', 'message': 'Чат доступен только после принятия отклика'}), 403
-
-    # Отправка сообщений разрешена только для заданий в статусе completed
-    job_resp = supabase_request('GET', f'jobs?id=eq.{app_data["job_id"]}&select=status')
-    if job_resp.ok and job_resp.json():
-        job_status = job_resp.json()[0].get('status')
-        if job_status != 'completed':
-            status_labels = {
-                'open': 'открыто',
-                'cancelled': 'отменено',
-            }
-            label = status_labels.get(job_status, job_status)
-            return jsonify({'status': 'error', 'message': f'Отправка сообщений недоступна — задание {label}'}), 403
 
     # XSS-санитизация: экранируем HTML-теги в сообщении
     sanitized_content = _html.escape(content, quote=True)

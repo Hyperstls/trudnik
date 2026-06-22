@@ -5,46 +5,73 @@
 Работодатели (настоятели, администраторы) публикуют задания, а зарегистрированные трудники находят разовую работу.
 
 ## Технологический стек
-- **Backend**: Python 3.14 + Flask (Application Factory + Blueprints)
+- **Backend**: Python 3.12 + Flask (Application Factory + Blueprints)
 - **База данных**: Supabase (PostgreSQL) – REST API + Auth + Storage
 - **Фронтенд**: HTML5 + Tailwind CSS (CDN) + Jinja2
 - **Карты**: Яндекс.Карты (JavaScript API)
-- **Хостинг**: Render (dashboard.render.com) — автоматический деплой из GitHub
-- **Деплой**: Git + GitHub, автоматический деплой через `render.yaml` (при `git push` в main)
+- **Хостинг**: Docker-контейнер на Amvera / любая Docker-совместимая платформа
+- **Деплой**: Docker + GitHub, конфигурация в `Dockerfile`, `docker-compose.yml`, `amvera.yml`
 - **Версионирование**: Git (информация о коммите отображается при клике на иконку 🤝 в шапке)
 - **AI‑помощник**: веб-чат DeepSeek (открывается в браузере по адресу `http://localhost:11434`) – используется для генерации/правок кода и анализа ошибок
-- **Архитектура**: Flask Application Factory (`create_app()`) + 10 Blueprints
+- **Архитектура**: Flask Application Factory (`create_app()`) + 13 Blueprints
 
 ## Структура проекта (после рефакторинга)
 
 ### Корень проекта
 - **`app.py`** – точка входа (создаёт Flask-приложение через `create_app()`)
-- **`config.py`** – (будет удалён, дублируется в `app/config.py`)
 - **`.env`** – переменные окружения (Supabase URL, ключи, секреты)
 - **`requirements.txt`** – зависимости Python
-- **`supabase_agent.py`** – вспомогательный скрипт для работы с Supabase
 - **`PROJECT_CONTEXT.md`** – этот файл (контекст и roadmap)
-- **`plans/refactoring-plan.md`** – план рефакторинга
 
 ### Модуль `app/` (основной код)
 ```
 app/
-├── __init__.py          # create_app() – фабрика, регистрация blueprints
-├── config.py            # Конфигурация из .env (Config class)
-├── utils.py             # Утилиты: supabase_request, upload_to_storage, add_notification, update_rating, calculate_distance, copy_job
-├── decorators.py        # Декораторы: login_required, role_required
-└── blueprints/
-    ├── __init__.py
-    ├── auth.py           # /login, /register, /logout
-    ├── profile.py        # /profile, /profile/update, /profile/delete-photo, /profile/delete-account, /profile/change-password, /verify-employer, /profile/<user_id>
-    ├── jobs.py           # /, /workers, /jobs/<id>, /job/new, /my-jobs, /my-jobs/action, /repost-job, /cancel-job, /restore-job, /delete-job, /favorite-job, /unfavorite-job + context processors
-    ├── applications.py   # /apply, /apply-selected, /unapply, /unapply-selected, /my-applications, /applications/<id>/<action>, /application/<id>/cancel
-    ├── shifts.py         # /shifts, /shift/<id>/checkin, /shift/<id>/complete, /shift/<id>/confirm-payment, /rate-worker, /shift/<id>/dispute
-    ├── chat.py           # /chats, /chat/<shift_id>, /chat/new/<worker_id>, /api/send_message
-    ├── favorites.py      # /favorites, /favorite/<id>, /unfavorite/<id>, /api/favorites/add, /api/favorites/remove, /api/favorites/check, /api/favorites/remove-selected
-    ├── blacklist.py      # /blacklist, /blacklist/<user_id>, /unblock/<user_id>
-    ├── notifications.py  # /notifications, /notification/<id>/read
-    └── admin.py          # /admin, /admin/approve/<user_id>, /admin/reject/<user_id>
+├── __init__.py               # create_app() – фабрика, регистрация blueprints
+├── config.py                 # Конфигурация из .env (Config class)
+├── context_processors.py     # Контекстные процессоры Jinja2
+├── decorators.py             # Декораторы: login_required, role_required, validate_uuid
+├── blueprints/
+│   ├── __init__.py
+│   ├── admin.py              # /admin — панель администратора
+│   ├── applications.py       # /apply, /my-applications, /api/applications/batch
+│   ├── auth.py               # /login, /register, /logout
+│   ├── blacklist.py          # /blacklist, /unblock
+│   ├── chat.py               # /chats, /chat/<app_id>, /api/send_message
+│   ├── employers.py          # /employers — список и профили работодателей
+│   ├── favorites.py          # /favorites — избранное (задания и работодатели)
+│   ├── jobs.py               # /, /workers, /jobs/<id>, /job/new, /my-jobs
+│   ├── jobs_api.py           # /api/search/jobs, /api/search/workers, /api/invite
+│   ├── notifications.py      # /notifications, /api/notifications/read
+│   ├── profile.py            # /profile, /profile/update, /verify-employer
+│   ├── ratings.py            # /api/ratings, /ratings/user/<id>, /jobs/<id>/rate-workers
+│   └── seo.py                # /robots.txt, /sitemap.xml
+├── services/
+│   ├── application_service.py
+│   ├── email_service.py
+│   ├── invitation_service.py
+│   ├── job_service.py
+│   ├── notification_service.py
+│   ├── push_service.py
+│   ├── ratings_service.py
+│   ├── redis_publisher.py
+│   └── storage_service.py
+├── tasks/
+│   ├── celery_app.py
+│   ├── email_tasks.py
+│   ├── maintenance_tasks.py
+│   └── push_tasks.py
+├── utils/
+│   ├── auth.py
+│   ├── business.py
+│   ├── formatting.py
+│   ├── geo.py
+│   ├── helpers.py
+│   ├── rate_limit.py
+│   ├── security.py
+│   ├── supabase.py
+│   └── validators.py
+└── testing/
+    └── mock_supabase.py
 ```
 
 ### Шаблоны (`templates/`)
@@ -60,7 +87,6 @@ app/
 - `favorites.html` – избранное
 - `blacklist.html` – чёрный список
 - `notifications.html` – уведомления
-- `shifts.html` – смены
 - `chat.html` / `chats_list.html` – чаты
 - `admin.html` – панель администратора
 - `verify_employer.html` – запрос верификации
@@ -71,32 +97,21 @@ app/
 - `icons/` – иконки PWA
 
 ### Миграции (`migrations/`)
-1. `001_setup_rls.sql` – настройка Row Level Security для таблицы profiles
-2. `002_apply_rls_policies.sql` – полный набор RLS-политик для всех таблиц
-3. `003_add_max_workers.sql` – поля max_workers / current_workers, индексы
-4. `004_fix_notifications.sql` – добавление столбца is_read
-5. `005_add_is_read_column.sql` – альтернативный скрипт для is_read
-
-### Архив (`archive/`)
-В архиве находятся перемещённые скрипты, тесты, документация, которые больше не нужны в корне проекта:
-- Старые деплой-скрипты (`deploy_*.sh`, `deploy_*.bat`, `deploy_*.py`)
-- Тестовые скрипты (`test_*.py`, `test_*.ps1`, `test_*.sh`)
-- Вспомогательные скрипты (`auto_fix_agent.py`, `browser_agent.py`, `cleanup.py`)
-- Дубликаты (`create_job.html`, `setup_rls_jobs_only.sql`)
-- Документация (`DEPLOY_INSTRUCTION*.md`, `FIX_*.md`, `DEPLOY_SUMMARY.txt` и др.)
-- `REFACTORING_REPORT.md` – предыдущий отчёт о рефакторинге
+Всего 63 миграции от `001_setup_rls.sql` до `063_add_job_id_to_notifications.sql`. Применяются через `run_all_safe.sql`.
 
 ## База данных Supabase (основные таблицы)
 - **`profiles`** – пользователи (роль, навыки, вероисповедание, рейтинг, `photo_url`, `portfolio_link`)
 - **`jobs`** – задания (включая `preferred_religion`, `max_workers`, `current_workers`)
-- **`applications`** – отклики
-- **`shifts`** – смены
+- **`applications`** – отклики на задания
 - **`messages`** – сообщения чата
 - **`favorites`** – избранные пользователи (работодатели/работники)
 - **`job_favorites`** – избранные задания
 - **`blacklists`** – чёрный список
 - **`ratings`** – оценки (1-5 звёзд) + комментарий
 - **`notifications`** – уведомления (тип, заголовок, текст, `is_read`)
+- **`invitations`** – приглашения трудников на задания
+- **`push_subscriptions`** – подписки на Web Push
+- **`email_log`** – журнал отправленных email
 
 ## Что уже реализовано (основные функции)
 - Регистрация и вход через Supabase Auth (email + пароль)
@@ -104,9 +119,9 @@ app/
 - Создание заданий с фото и картой (Яндекс)
 - Лента заданий с фильтрами (город, оплата, расстояние, сортировка)
 - Отклики, массовые отклики, отзыв откликов
-- Смены (чек-ин, завершение, подтверждение оплаты)
-- Чат между работником и работодателем (привязан к смене)
-- Избранное (люди + задания)
+- Управление откликами (принятие, отклонение, переоткрытие)
+- Чат между работником и работодателем (привязан к заявке)
+- Избранное (работодатели + задания)
 - Чёрный список
 - Профиль с фото, навыками, вероисповеданием, портфолио
 - Автообновление JWT-токенов
@@ -114,14 +129,15 @@ app/
 - Адаптивное нижнее меню (разное для работника и работодателя)
 - Миграции: RLS, max_workers, notifications, is_read
 
-### ✅ Выполненный рефакторинг (Этап 0)
-- Монолитная `app.py` (1491 строка) разбита на 10 модульных Blueprint'ов
+### ✅ Выполненный рефакторинг
+- Монолитная `app.py` разбита на 13 модульных Blueprint'ов
 - Реализована фабрика приложения `create_app()` в `app/__init__.py`
-- Утилиты и декораторы вынесены в `app/utils.py` и `app/decorators.py`
-- Корневая директория очищена от лишних скриптов (перемещены в `archive/`)
-- Миграции упорядочены с префиксами `001_`—`005_`
-- Удалены дублирующиеся маршруты (`/create-job`), шаблоны (`create_job.html`) и скрипты (`setup_rls_jobs_only.sql`)
-- 53 маршрута успешно зарегистрированы через Blueprints
+- Утилиты вынесены в `app/utils/`, декораторы в `app/decorators.py`
+- Сервисный слой выделен в `app/services/`
+- Фоновые задачи вынесены в `app/tasks/` (Celery)
+- Миграции упорядочены с префиксами `001_`—`063_`
+- Удалены дублирующиеся маршруты и скрипты
+- Все маршруты успешно зарегистрированы через Blueprints
 
 ## Полный Roadmap (в порядке реализации)
 
@@ -191,27 +207,11 @@ app/
 
 ## Правила деплоя (обновления сайта)
 
-### Автоматический деплой через Render
-Проект использует автоматический деплой через Render. При каждом `git push` в ветку `main` Render автоматически:
-1. Обнаруживает изменения в репозитории GitHub
-2. Устанавливает зависимости из `requirements.txt`
-3. Запускает приложение через Gunicorn (команда: `gunicorn app:app`)
-4. Приложение слушает порт, указанный в переменной окружения `PORT`
-
-### Настройка на Render
-1. Создать новый Web Service на [dashboard.render.com](https://dashboard.render.com)
-2. Подключить GitHub-репозиторий
-3. Указать:
-   - **Runtime**: Python 3
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `gunicorn app:app --bind 0.0.0.0:$PORT`
-4. Добавить переменные окружения (из `.env` файла)
-
-### Конфигурация `render.yaml`
-В корне проекта находится файл `render.yaml` с полной конфигурацией деплоя.
+### Деплой через Docker / Amvera
+Проект использует контейнеризацию через Docker. Основные конфигурации в `Dockerfile`, `docker-compose.yml`, `amvera.yml`.
 
 ### Важные замечания
-- При деплое на Render убедитесь, что корневой `app.py` содержит объект `app` (создаётся через `create_app()`)
-- Render автоматически устанавливает переменную `PORT`, приложение должно её использовать
-- Новые Blueprint'ы автоматически регистрируются в `app/__init__.py` – не забудьте импортировать и зарегистрировать их там
+- Приложение запускается через Uvicorn: `uvicorn asgi:application --host 0.0.0.0 --port 80`
+- Health check доступен по `/health`
+- Новые Blueprint'ы автоматически регистрируются в `app/__init__.py`
 - Все изменения в `app/blueprints/` не требуют дополнительных действий при деплое

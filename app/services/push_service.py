@@ -30,6 +30,8 @@ VAPID-ключи генерируются администратором и за
 import base64
 import logging
 import os
+import time as _time_module
+import urllib.parse
 from typing import Optional
 
 from app.utils import supabase_admin_request
@@ -44,14 +46,18 @@ logger = logging.getLogger(__name__)
 class PushService:
     """Сервис для отправки Web Push уведомлений через pywebpush."""
 
-    def __init__(self) -> None:
-        """Инициализация сервиса с VAPID-ключами из переменных окружения."""
-        self.vapid_private_key: str = os.environ.get('VAPID_PRIVATE_KEY', '')
-        self.vapid_public_key: str = os.environ.get('VAPID_PUBLIC_KEY', '')
-        self.vapid_claims_email: str = os.environ.get(
+    def __init__(self,
+                 vapid_private_key: Optional[str] = None,
+                 vapid_public_key: Optional[str] = None,
+                 vapid_claims_email: Optional[str] = None,
+                 vapid_claims_subject: Optional[str] = None) -> None:
+        """Инициализация сервиса с VAPID-ключами (по умолчанию из переменных окружения)."""
+        self.vapid_private_key: str = vapid_private_key if vapid_private_key is not None else os.environ.get('VAPID_PRIVATE_KEY', '')
+        self.vapid_public_key: str = vapid_public_key if vapid_public_key is not None else os.environ.get('VAPID_PUBLIC_KEY', '')
+        self.vapid_claims_email: str = vapid_claims_email if vapid_claims_email is not None else os.environ.get(
             'VAPID_CLAIMS_EMAIL', 'notifications@trudnik.ru'
         )
-        self.vapid_claims_subject: str = os.environ.get(
+        self.vapid_claims_subject: str = vapid_claims_subject if vapid_claims_subject is not None else os.environ.get(
             'VAPID_CLAIMS_SUBJECT', 'mailto:notifications@trudnik.ru'
         )
 
@@ -154,7 +160,7 @@ class PushService:
                 vapid_claims={
                     'sub': self.vapid_claims_subject,
                     'aud': subscription_info['endpoint'],
-                    'exp': '24h',
+                    'exp': int(_time_module.time() + 86400),
                 },
             )
 
@@ -226,7 +232,7 @@ class PushService:
 
             # Удаляем невалидные подписки
             if result.get('should_unsubscribe'):
-                self.delete_subscription(sub.get('endpoint', ''))
+                self.delete_subscription(sub.get('endpoint', ''), user_id=user_id)
                 logger.info(
                     'Удалена невалидная подписка: user=%s endpoint=%s',
                     user_id, sub.get('endpoint', '')[:50]
@@ -312,21 +318,23 @@ class PushService:
         )
         return []
 
-    def delete_subscription(self, endpoint: str) -> bool:
-        """Удаляет push-подписку по endpoint.
+    def delete_subscription(self, endpoint: str, user_id: str = "") -> bool:
+        """Удаляет push-подписку по endpoint с проверкой принадлежности пользователю.
 
         Args:
             endpoint: URL эндпоинта подписки.
+            user_id: UUID пользователя (опционально). Если передан — удаление
+                     только если подписка принадлежит этому пользователю.
 
         Returns:
             True если успешно удалено, иначе False.
         """
         if not endpoint:
             return False
-        resp = supabase_admin_request(
-            'DELETE',
-            f'push_subscriptions?endpoint=eq.{_encode_uri_component(endpoint)}'
-        )
+        url = f'push_subscriptions?endpoint=eq.{_encode_uri_component(endpoint)}'
+        if user_id:
+            url += f'&user_id=eq.{user_id}'
+        resp = supabase_admin_request('DELETE', url)
         return resp.ok
 
     def delete_all_user_subscriptions(self, user_id: str) -> bool:
@@ -350,15 +358,19 @@ class PushService:
             return False
         return True
 
-    def get_all_subscriptions(self) -> list:
-        """Получает все подписки (для периодической очистки).
+    def get_all_subscriptions(self, limit: int = 100, offset: int = 0) -> list:
+        """Получает страницу подписок с пагинацией (для периодической очистки).
+
+        Args:
+            limit: Максимальное количество подписок на странице (по умолчанию 100).
+            offset: Смещение для пагинации (по умолчанию 0).
 
         Returns:
-            Список всех подписок с полями id, user_id, endpoint, p256dh, auth.
+            Список подписок с полями id, user_id, endpoint, p256dh, auth.
         """
         resp = supabase_admin_request(
             'GET',
-            'push_subscriptions?select=id,user_id,endpoint,p256dh,auth'
+            f'push_subscriptions?select=id,user_id,endpoint,p256dh,auth&limit={limit}&offset={offset}'
         )
         if resp.ok:
             data = resp.json()
@@ -383,7 +395,6 @@ def _encode_uri_component(value: str) -> str:
     Returns:
         Закодированная строка.
     """
-    import urllib.parse
     # PostgREST использует декодирование URL, но endpoint содержит спецсимволы
     # Кодируем полный endpoint для безопасной вставки в URL
     encoded = urllib.parse.quote(value, safe='')

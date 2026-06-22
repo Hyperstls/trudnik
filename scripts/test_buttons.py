@@ -34,14 +34,30 @@ if sys.platform == 'win32':
 # ——————————————————————————————
 BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:5000").rstrip("/")
 
+# Учётные данные — только из переменных окружения (НИКАКИХ хардкод-паролей)
+_worker_email = os.getenv("TEST_WORKER_EMAIL")
+_worker_pass = os.getenv("TEST_WORKER_PASSWORD")
+_employer_email = os.getenv("TEST_EMPLOYER_EMAIL")
+_employer_pass = os.getenv("TEST_EMPLOYER_PASSWORD")
+_admin_email = os.getenv("TEST_ADMIN_EMAIL")
+_admin_pass = os.getenv("TEST_ADMIN_PASSWORD")
+_alt_passwords_str = os.getenv("TEST_ALT_PASSWORDS", "")
+
+assert _worker_email, "TEST_WORKER_EMAIL must be set"
+assert _worker_pass, "TEST_WORKER_PASSWORD must be set"
+assert _employer_email, "TEST_EMPLOYER_EMAIL must be set"
+assert _employer_pass, "TEST_EMPLOYER_PASSWORD must be set"
+assert _admin_email, "TEST_ADMIN_EMAIL must be set"
+assert _admin_pass, "TEST_ADMIN_PASSWORD must be set"
+
 CREDENTIALS = {
-    "worker":    {"email": "trud@test.ru",  "password": "Step@1986", "name": "Трудник"},
-    "employer":  {"email": "org@test.ru",   "password": "Step@1986", "name": "Работодатель"},
-    "admin":     {"email": "admin@test.ru", "password": "Step@1986", "name": "Админ"},
+    "worker":    {"email": _worker_email,  "password": _worker_pass, "name": "Трудник"},
+    "employer":  {"email": _employer_email,   "password": _employer_pass, "name": "Работодатель"},
+    "admin":     {"email": _admin_email, "password": _admin_pass, "name": "Админ"},
 }
 
-# Альтернативные пароли для fallback-попыток
-ALT_PASSWORDS = ["Step@1986", "test123456", "test123"]
+# Альтернативные пароли для fallback-попыток (через запятую в TEST_ALT_PASSWORDS)
+ALT_PASSWORDS = [p.strip() for p in _alt_passwords_str.split(",") if p.strip()] if _alt_passwords_str else []
 
 OUTPUT_FILE = "docs/BUTTON_TEST_RESULTS.txt"
 

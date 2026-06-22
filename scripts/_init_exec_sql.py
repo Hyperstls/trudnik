@@ -5,10 +5,8 @@ import os
 import sys
 import psycopg2
 
-DB_URL = os.environ.get(
-    'DATABASE_URL',
-    'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
-)
+DB_URL = os.environ.get('DATABASE_URL')
+assert DB_URL, "DATABASE_URL environment variable must be set"
 
 EXEC_SQL_DEFINITION = """
 CREATE OR REPLACE FUNCTION public.exec_sql(sql_query text)

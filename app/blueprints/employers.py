@@ -35,20 +35,23 @@ def employers_list():
         # sort == 'rating' (по умолчанию)
         query += '&order=rating.desc'
 
+    # Фильтрация blacklist ДО пагинации: исключаем работодателей, заблокировавших текущего трудника
+    blocked_employer_ids = set()
+    if session.get('role') == 'worker' and session.get('user_id'):
+        bl_resp = supabase_request('GET',
+            f'blacklists?blocked_user_id=eq.{session["user_id"]}&select=user_id')
+        if bl_resp.ok and bl_resp.json():
+            blocked_employer_ids = {b['user_id'] for b in bl_resp.json()}
+            if blocked_employer_ids:
+                blocked_ids_str = ','.join(blocked_employer_ids)
+                query += f'&id=not.in.({blocked_ids_str})'
+
     # Пагинация
     offset = (page - 1) * per_page
     query += f'&limit={per_page}&offset={offset}'
 
     resp = supabase_request('GET', f'profiles?{query}', headers={'Prefer': 'count=exact'})
     employers = resp.json() if resp.ok and resp.json() else []
-
-    # Фильтрация: исключаем работодателей, заблокировавших текущего трудника
-    if session.get('role') == 'worker' and session.get('user_id'):
-        bl_resp = supabase_request('GET',
-            f'blacklists?blocked_user_id=eq.{session["user_id"]}&select=user_id')
-        if bl_resp.ok and bl_resp.json():
-            blocked_employer_ids = {b['user_id'] for b in bl_resp.json()}
-            employers = [e for e in employers if e['id'] not in blocked_employer_ids]
 
     # Подсчёт открытых заданий для каждого работодателя
     open_jobs_counts = {}
@@ -73,8 +76,8 @@ def employers_list():
         if fav_resp.ok and fav_resp.json():
             favorited_ids = {f['target_id'] for f in fav_resp.json()}
 
-    # Определяем total_pages из заголовка content-range
-    total_count = len(employers)
+    # Определяем total_pages из заголовка content-range (теперь точен, т.к. фильтрация на стороне БД)
+    total_count = int(resp.headers.get('Content-Range', '0-0/0').split('/')[-1]) if resp.ok else len(employers)
     total_pages = max(1, (total_count + per_page - 1) // per_page)
 
     return render_template('employers.html',

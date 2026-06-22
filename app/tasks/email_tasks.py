@@ -168,6 +168,7 @@ def send_email_notification(
             subject=subject,
             html_body=html_body,
             text_body=text_body,
+            user_id=user_id,
         )
     except Exception as send_err:
         logger.exception(
@@ -244,11 +245,10 @@ def send_batch_email_notifications(
     self: Task,
     recipients: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Диспатчит email-уведомления списку получателей в очередь Celery (пакетная задача).
+    """Диспатчит email-уведомления списку получателей параллельно через celery.group.
 
-    Важно: результат отражает факт постановки задач в очередь, а не финальную отправку.
-    Реальный статус отправки каждого email будет известен только после выполнения
-    отдельных задач send_email_notification.
+    Вместо синхронного цикла с .delay() (блокирует worker) используется
+    celery.group для параллельной постановки всех задач в очередь.
 
     Args:
         recipients: Список словарей с ключами:
@@ -257,36 +257,43 @@ def send_batch_email_notifications(
 
     Returns:
         Словарь с агрегированным результатом диспатча:
-        {'dispatched': int, 'failed_to_dispatch': int, 'dead': int}.
+        {'dispatched': int, 'failed_to_dispatch': int, 'total': int}.
     """
-    results: dict[str, int] = {"dispatched": 0, "failed_to_dispatch": 0, "dead": 0}
+    from celery import group
 
-    for recipient in recipients:
-        try:
-            result = send_email_notification.delay(
-                user_id=recipient.get("user_id", 0),
-                notification_id=recipient.get("notification_id", 0),
-                user_email=recipient.get("user_email", ""),
-                user_name=recipient.get("user_name", ""),
-                notification_text=recipient.get("notification_text", ""),
-                notification_type=recipient.get("notification_type", ""),
-                notification_url=recipient.get("notification_url", ""),
-            )
-            # Асинхронный вызов — задачу поставили в очередь
-            results["dispatched"] += 1
-        except Exception as exc:
-            logger.exception(
-                "Ошибка постановки задачи send_email_notification для user=%s",
-                recipient.get("user_id"),
-            )
-            results["failed_to_dispatch"] += 1
+    total = len(recipients)
+    if total == 0:
+        return {"dispatched": 0, "failed_to_dispatch": 0, "total": 0}
 
-    logger.info(
-        "Пакетный диспатч email-задач: %d поставлено в очередь, %d ошибок диспатча",
-        results["dispatched"],
-        results["failed_to_dispatch"],
-    )
-    return results
+    # Формируем список сигнатур задач для параллельной отправки
+    task_sigs = [
+        send_email_notification.s(
+            user_id=recipient.get("user_id", 0),
+            notification_id=recipient.get("notification_id", 0),
+            user_email=recipient.get("user_email", ""),
+            user_name=recipient.get("user_name", ""),
+            notification_text=recipient.get("notification_text", ""),
+            notification_type=recipient.get("notification_type", ""),
+            notification_url=recipient.get("notification_url", ""),
+        )
+        for recipient in recipients
+    ]
+
+    try:
+        # Параллельная постановка всех задач в очередь
+        job = group(task_sigs).apply_async()
+        logger.info(
+            "Пакетный диспатч email-задач через celery.group: %d задач поставлено в очередь (group_id=%s)",
+            total,
+            job.id,
+        )
+        return {"dispatched": total, "failed_to_dispatch": 0, "total": total}
+    except Exception as exc:
+        logger.exception(
+            "Ошибка постановки celery.group для пакетной email-рассылки: %s",
+            exc,
+        )
+        return {"dispatched": 0, "failed_to_dispatch": total, "total": total}
 
 
 @celery_app.task

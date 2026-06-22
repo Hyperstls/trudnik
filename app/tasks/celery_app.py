@@ -59,12 +59,15 @@ celery_app.conf.update(
     task_soft_time_limit=240,     # 4 минуты (мягкое ограничение)
     worker_prefetch_multiplier=1, # Не брать больше одной задачи за раз
     task_acks_late=True,          # Подтверждать после выполнения (не теряем задачи при падении)
+    task_reject_on_worker_lost=True,  # Переотправлять задачи потерянных worker'ов
     # Повторы по умолчанию
     task_default_retry_delay=60,  # 1 минута между попытками
     task_max_retries=3,
     # Переподключение к брокеру при старте
     broker_connection_retry_on_startup=True,
     broker_connection_max_retries=10,
+    # Graceful shutdown
+    worker_shutdown_timeout=60,   # 60 секунд на завершение задач перед SIGKILL
 )
 
 # ═══════════════════════════════════════════════════════════════

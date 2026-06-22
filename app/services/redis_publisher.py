@@ -20,7 +20,10 @@ except ImportError:
 
 
 class RedisPublisher:
-    """Публикует события в Redis Pub/Sub из синхронного Flask-контекста."""
+    """Публикует события в Redis Pub/Sub из синхронного Flask-контекста.
+
+    Поддерживает автоматическое переподключение при потере соединения с Redis.
+    """
 
     _instance = None
     _reconnect_interval = 60  # секунд между попытками переподключения
@@ -40,8 +43,12 @@ class RedisPublisher:
             if now - self._last_attempt_time >= self._reconnect_interval:
                 self._last_attempt_time = now
                 try:
-                    self._client = redis.from_url(self.redis_url, decode_responses=True)
-                    # Не делаем ping() при инициализации — ошибка проявится при первой операции
+                    self._client = redis.from_url(
+                        self.redis_url,
+                        decode_responses=True,
+                        retry_on_timeout=True,
+                        health_check_interval=30,
+                    )
                     logger.info("Redis Publisher подключён к %s", self.redis_url)
                 except redis.ConnectionError as e:
                     logger.warning("Redis недоступен (%s). События не будут публиковаться.", e)
@@ -70,6 +77,8 @@ class RedisPublisher:
             return True
         except Exception as e:
             logger.error("Ошибка публикации в Redis канал '%s': %s", channel, e)
+            # Сбрасываем мёртвое соединение для автоматического переподключения
+            self._client = None
             return False
 
     def publish_notification(self, user_id: int, notification_type: str, data: dict) -> bool:

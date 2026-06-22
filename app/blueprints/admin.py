@@ -4,6 +4,7 @@ from flask import Blueprint, current_app, flash, redirect, render_template, requ
 
 from app.decorators import login_required, role_required, admin_required, handle_errors
 from app.utils import cache_for, sanitize_postgrest, supabase_request, supabase_admin_request, supabase_rpc
+from app.utils.helpers import assert_supabase_ok
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -21,27 +22,65 @@ def admin_panel():
     """Админ-панель: дашборд, пользователи, задания, верификация."""
     tab = request.args.get('tab', 'dashboard')
 
-    # Дашборд: базовая статистика
+    # Дашборд: базовая статистика (точные счётчики через count=exact с limit=0)
     stats = {}
     if tab == 'dashboard':
-        users_resp = supabase_request('GET', 'profiles?select=role&limit=1000')
-        if users_resp.ok and users_resp.json():
-            roles = Counter(u['role'] for u in users_resp.json())
-            stats['total_users'] = sum(roles.values())
-            stats['workers'] = roles.get('worker', 0)
-            stats['employers'] = roles.get('employer', 0)
-            stats['admins'] = roles.get('admin', 0)
+        # Точный подсчёт пользователей по ролям через count=exact
+        users_resp = supabase_request('GET',
+            'profiles?select=role&limit=0',
+            headers={'Prefer': 'count=exact'})
+        if users_resp.ok:
+            total_users = 0
+            content_range = users_resp.headers.get('Content-Range', '')
+            if '/' in content_range:
+                total_users = int(content_range.split('/')[-1])
+            stats['total_users'] = total_users
 
-        jobs_resp = supabase_request('GET', 'jobs?select=status&limit=1000')
-        if jobs_resp.ok and jobs_resp.json():
-            statuses = Counter(j['status'] for j in jobs_resp.json())
-            stats['total_jobs'] = sum(statuses.values())
-            stats['open_jobs'] = statuses.get('open', 0)
-            stats['completed_jobs'] = statuses.get('completed', 0)
-            stats['cancelled_jobs'] = statuses.get('cancelled', 0)
+        # Считаем по ролям отдельными запросами count=exact
+        for role_key in ['worker', 'employer', 'admin']:
+            role_resp = supabase_request('GET',
+                f'profiles?role=eq.{role_key}&select=id&limit=0',
+                headers={'Prefer': 'count=exact'})
+            if role_resp.ok:
+                cr = role_resp.headers.get('Content-Range', '')
+                if '/' in cr:
+                    stats[f'{role_key}s'] = int(cr.split('/')[-1])
+            else:
+                stats[f'{role_key}s'] = 0
 
-        pending_resp = supabase_request('GET', 'profiles?verification_status=eq.pending&select=id')
-        stats['pending_verifications'] = len(pending_resp.json()) if pending_resp.ok and pending_resp.json() else 0
+        # Точный подсчёт заданий по статусам через count=exact
+        jobs_resp = supabase_request('GET',
+            'jobs?select=status&limit=0',
+            headers={'Prefer': 'count=exact'})
+        if jobs_resp.ok:
+            total_jobs = 0
+            content_range = jobs_resp.headers.get('Content-Range', '')
+            if '/' in content_range:
+                total_jobs = int(content_range.split('/')[-1])
+            stats['total_jobs'] = total_jobs
+
+        for status_key in ['open', 'completed', 'cancelled']:
+            status_resp = supabase_request('GET',
+                f'jobs?status=eq.{status_key}&select=id&limit=0',
+                headers={'Prefer': 'count=exact'})
+            if status_resp.ok:
+                cr = status_resp.headers.get('Content-Range', '')
+                if '/' in cr:
+                    stats[f'{status_key}_jobs'] = int(cr.split('/')[-1])
+            else:
+                stats[f'{status_key}_jobs'] = 0
+
+        pending_resp = supabase_request('GET',
+            'profiles?verification_status=eq.pending&select=id&limit=0',
+            headers={'Prefer': 'count=exact'})
+        if pending_resp.ok:
+            cr = pending_resp.headers.get('Content-Range', '')
+            if '/' in cr:
+                stats['pending_verifications'] = int(cr.split('/')[-1])
+            else:
+                stats['pending_verifications'] = 0
+        else:
+            stats['pending_verifications'] = 0
 
     # Пользователи
     users = []
@@ -98,10 +137,24 @@ def admin_panel():
 @login_required
 @admin_required
 def update_user_role(user_id):
+    # Защита: нельзя изменить свою роль (само-лок-аут)
+    if user_id == session.get('user_id'):
+        flash('Нельзя изменить свою роль', 'danger')
+        return redirect(url_for('admin.admin_panel', tab='users'))
+
+    # Защита: нельзя изменить роль другого администратора
+    target_resp = supabase_request('GET', f'profiles?id=eq.{user_id}&select=role')
+    if target_resp.ok and target_resp.json():
+        target_role = target_resp.json()[0].get('role', '')
+        if target_role == 'admin':
+            flash('Нельзя изменить роль другого администратора', 'danger')
+            return redirect(url_for('admin.admin_panel', tab='users'))
+
     new_role = request.form.get('role', '')
     if new_role in ('worker', 'employer', 'admin'):
-        supabase_request('PATCH', f'profiles?id=eq.{user_id}', json={'role': new_role})
-        flash(f'Роль изменена на {new_role}', 'success')
+        resp = supabase_request('PATCH', f'profiles?id=eq.{user_id}', json={'role': new_role})
+        if assert_supabase_ok(resp, 'смена роли пользователя'):
+            flash(f'Роль изменена на {new_role}', 'success')
     else:
         flash('Недопустимая роль', 'danger')
     return redirect(url_for('admin.admin_panel', tab='users'))
@@ -138,8 +191,9 @@ def delete_user(user_id):
 def update_job_status(job_id):
     new_status = request.form.get('status', '')
     if new_status in ('open', 'completed', 'cancelled'):
-        supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': new_status})
-        flash(f'Статус задания изменён на {new_status}', 'success')
+        resp = supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': new_status})
+        if assert_supabase_ok(resp, 'изменение статуса задания'):
+            flash(f'Статус задания изменён на {new_status}', 'success')
     return redirect(url_for('admin.admin_panel', tab='jobs'))
 
 
@@ -280,7 +334,8 @@ def reorder_skills():
     if not items:
         return jsonify({'success': False, 'error': 'items required'}), 400
     for item in items:
-        supabase_admin_request('PATCH', f'skills?id=eq.{item["id"]}', json={'sort_order': item['sort_order']})
+        resp = supabase_admin_request('PATCH', f'skills?id=eq.{item["id"]}', json={'sort_order': item['sort_order']})
+        assert_supabase_ok(resp, f'пересортировка навыка {item["id"]}')
     return jsonify({'success': True})
 
 @admin_bp.route('/admin/skills/<skill_id>', methods=['PUT'])
@@ -400,7 +455,8 @@ def reorder_religions():
     if not items:
         return jsonify({'success': False, 'error': 'items required'}), 400
     for item in items:
-        supabase_admin_request('PATCH', f'religions?id=eq.{item["id"]}', json={'sort_order': item['sort_order']})
+        resp = supabase_admin_request('PATCH', f'religions?id=eq.{item["id"]}', json={'sort_order': item['sort_order']})
+        assert_supabase_ok(resp, f'пересортировка вероисповедания {item["id"]}')
     return jsonify({'success': True})
 
 @admin_bp.route('/admin/religions/<religion_id>', methods=['PUT'])
@@ -489,8 +545,9 @@ def reject_employer(user_id):
 @login_required
 @admin_required
 def verify_employer(user_id):
-    supabase_admin_request('PATCH', f'profiles?id=eq.{user_id}', json={'verification_status': 'approved'})
-    flash('Работодатель верифицирован', 'success')
+    resp = supabase_admin_request('PATCH', f'profiles?id=eq.{user_id}', json={'verification_status': 'approved'})
+    if assert_supabase_ok(resp, 'верификация работодателя'):
+        flash('Работодатель верифицирован', 'success')
     return redirect(url_for('admin.admin_panel', tab='verification'))
 
 

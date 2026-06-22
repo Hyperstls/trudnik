@@ -3,11 +3,12 @@ from datetime import datetime, timezone, timedelta
 from flask import Blueprint, current_app, g, jsonify, flash, redirect, render_template, request, session, url_for, abort
 
 from app.config import Config
-from app.decorators import login_required, role_required
+from app.decorators import login_required, rate_limit, role_required, validate_uuid
 from app.utils import (
-    calculate_distance, check_withdraw_window, copy_job, rate_limit,
+    calculate_distance, check_withdraw_window, copy_job,
     sanitize_postgrest, supabase_admin_request, supabase_request, supabase_rpc,
 )
+from app.utils.helpers import assert_supabase_ok
 from app.services.notification_service import create as notify
 from app.services.job_service import (
     check_job_owner,
@@ -73,16 +74,25 @@ def inject_application_count():
     count = 0
     if session.get('role') == 'employer' and 'user_id' in session:
         user_id = session['user_id']
-        if not hasattr(g, '_app_count_cache'):
-            g._app_count_cache = {}
-        if user_id in g._app_count_cache:
-            count = g._app_count_cache[user_id]
+        cache_key = f'app_count:{user_id}'
+        # noqa: локальный импорт — циклическая зависимость (app → jobs → app)
+        from app import _redis_cache_get, _redis_cache_set
+        count = _redis_cache_get(cache_key)
+        if count is not None:
+            return {'pending_app_count': count}
+        # Используем count=exact с limit=0 для точного подсчёта без загрузки данных
+        resp = supabase_request('GET',
+            f'applications?job.employer_id=eq.{user_id}&status=eq.pending&select=id&limit=0',
+            headers={'Prefer': 'count=exact'})
+        if resp.ok:
+            content_range = resp.headers.get('Content-Range', '')
+            if '/' in content_range:
+                count = int(content_range.split('/')[-1])
+            else:
+                count = 0
         else:
-            resp = supabase_request('GET',
-                f'applications?job.employer_id=eq.{user_id}&status=eq.pending&select=id')
-            if resp.ok and resp.json():
-                count = len(resp.json())
-            g._app_count_cache[user_id] = count
+            count = 0
+        _redis_cache_set(cache_key, count, ttl=30)
     return {'pending_app_count': count}
 
 
@@ -117,41 +127,103 @@ def index():
 
     # Запрос только оплаченных открытых заданий (без detailed_description — тяжёлое поле)
     query = 'status=in.(open,completed)&select=id,employer_id,organization_name,org_description,object_description,work_type,date_time,payment_amount,address,city,lat,lng,status,created_at,preferred_religion,max_workers,current_workers,expires_at,tariff,photos:job_photos(*)'
+    # Фильтр по сроку действия: не истёкшие задания (expires_at > now или без срока)
+    query += f'&or=(expires_at.is.null,expires_at=gt.{sanitize_postgrest(now)})'
+
+    # ── Гео-фильтрация через RPC nearby_jobs (серверная, PostGIS) ──
+    geo_job_distances = {}  # {job_id: distance_km}
+    use_rpc_geo = False
+
+    if lat is not None and lng is not None and radius:
+        try:
+            rpc_resp = supabase_rpc('nearby_jobs', {
+                'lat': lat,
+                'lng': lng,
+                'radius_km': radius,
+            }, use_admin=True)
+            if rpc_resp.ok and rpc_resp.json() is not None:
+                rpc_jobs = rpc_resp.json()
+                if not rpc_jobs:
+                    # RPC вернул пустой список — заданий в радиусе нет
+                    selected_skills_list = [s.strip() for s in skills_filter.split(',') if s.strip()] if skills_filter else []
+                    return render_template('index.html', jobs=[], applied_job_ids=[],
+                                           lat=lat, lng=lng, radius=radius, sort=sort,
+                                           selected_skills=selected_skills_list,
+                                           page=page, has_next=False)
+                # Извлекаем ID и расстояния из ответа RPC
+                for job in rpc_jobs:
+                    job_id = job.get('id')
+                    if job_id:
+                        if job.get('lat') is not None and job.get('lng') is not None:
+                            geo_job_distances[job_id] = calculate_distance(lat, lng, job['lat'], job['lng'])
+                        else:
+                            geo_job_distances[job_id] = float('inf')
+                use_rpc_geo = True
+            else:
+                current_app.logger.warning(
+                    'nearby_jobs RPC unavailable (status=%s), falling back to client-side geo-filter',
+                    rpc_resp.status_code
+                )
+        except Exception as e:
+            current_app.logger.warning(
+                'nearby_jobs RPC failed, falling back to client-side geo-filter: %s', str(e)
+            )
+
+    # Если RPC сработал — ограничиваем выборку только заданиями в радиусе
+    if use_rpc_geo and geo_job_distances:
+        job_ids_str = ','.join(str(jid) for jid in geo_job_distances.keys())
+        query += f'&id=in.({job_ids_str})'
+
+    # Остальные фильтры
     if city: query += f'&city=ilike.*{sanitize_postgrest(city)}*'
     if payment_min: query += f'&payment_amount=gte.{sanitize_postgrest(payment_min)}'
     if payment_max: query += f'&payment_amount=lte.{sanitize_postgrest(payment_max)}'
     if religion: query += f'&preferred_religion=eq.{sanitize_postgrest(religion)}'
 
-    # Пагинация: limit + offset. Запрашиваем +1 чтобы определить has_next
-    resp = supabase_request('GET', f'jobs?{query}&order=created_at.desc&limit={per_page + 1}&offset={offset}')
-    jobs = resp.json() if resp.ok else []
-
-    # Фильтрация: открытые, не истёкшие
-    jobs = [j for j in jobs if j.get('status') in ('open', 'completed')]
-    jobs = [j for j in jobs if not j.get('expires_at') or j['expires_at'] > now]
-
-    # Фильтрация: исключаем задания от работодателей, заблокировавших текущего трудника
+    # Фильтрация blacklist ДО пагинации: исключаем задания от работодателей, заблокировавших текущего трудника
+    blocked_employer_ids = set()
     if session.get('role') == 'worker' and 'user_id' in session:
         bl_resp = supabase_request('GET',
             f'blacklists?blocked_user_id=eq.{session["user_id"]}&select=user_id')
         if bl_resp.ok and bl_resp.json():
             blocked_employer_ids = {b['user_id'] for b in bl_resp.json()}
-            jobs = [j for j in jobs if j.get('employer_id') not in blocked_employer_ids]
+            if blocked_employer_ids:
+                blocked_ids_str = ','.join(blocked_employer_ids)
+                query += f'&employer_id=not.in.({blocked_ids_str})'
 
-    # Фильтрация по навыкам (поиск в work_type, object_description, detailed_description)
+    # Фильтрация по навыкам на стороне БД (ilike по work_type и object_description)
     if skills_filter:
         selected_skills = [s.strip().lower() for s in skills_filter.split(',') if s.strip()]
         if selected_skills:
-            jobs = [j for j in jobs if any(
-                sk in (j.get('work_type', '') + ' ' + j.get('object_description', '') + ' ' + j.get('detailed_description', '')).lower()
-                for sk in selected_skills
-            )]
+            or_parts = []
+            for sk in selected_skills:
+                sk_safe = sanitize_postgrest(sk)
+                or_parts.append(f'work_type.ilike.*{sk_safe}*,object_description.ilike.*{sk_safe}*')
+            query += f'&or=({",".join(or_parts)})'
 
-    if lat is not None and lng is not None:
+    # Определяем порядок сортировки на стороне БД
+    if sort in ('payment_asc', 'price_asc'):
+        order_clause = 'payment_amount.asc'
+    elif sort in ('payment_desc', 'price_desc'):
+        order_clause = 'payment_amount.desc'
+    else:
+        # newest, rating, distance — все используют created_at.desc, точная сортировка в Python
+        order_clause = 'created_at.desc'
+
+    # Пагинация: limit + offset. Запрашиваем +1 чтобы определить has_next
+    resp = supabase_request('GET', f'jobs?{query}&order={order_clause}&limit={per_page + 1}&offset={offset}')
+    jobs = resp.json() if resp.ok else []
+
+    # Гео-фильтрация в Python (fallback, если RPC не сработал)
+    if not use_rpc_geo and lat is not None and lng is not None:
         for job in jobs:
             job['distance'] = calculate_distance(lat, lng, job['lat'], job['lng'])
         if radius:
             jobs = [j for j in jobs if j.get('distance', float('inf')) <= radius]
+    elif use_rpc_geo and geo_job_distances:
+        # Проставляем расстояния из словаря, полученного от RPC
+        for job in jobs:
+            job['distance'] = geo_job_distances.get(job['id'], float('inf'))
 
     # Сортировка
     if sort == 'distance' and lat is not None:
@@ -269,14 +341,9 @@ def workers():
 
 
 @jobs_bp.route('/jobs/<job_id>')
+@validate_uuid('job_id')
 def job_detail(job_id):
     """Детальная страница задания."""
-    # Валидация UUID формата перед любыми запросами к БД
-    from uuid import UUID
-    try:
-        UUID(job_id)
-    except (ValueError, AttributeError):
-        abort(404)
     job = get_job_by_id(job_id)
     if not job:
         flash('Задание не найдено', 'danger')
@@ -443,46 +510,38 @@ def job_new():
 
 @jobs_bp.route('/my-jobs')
 @login_required
+@role_required('employer')
 def my_jobs():
-    if session.get('role') != 'employer':
-        flash('Доступ только для работодателей', 'danger')
-        return redirect(url_for('jobs.index'))
-
     user_id = session['user_id']
     status_filter = request.args.get('status', 'all')
 
-    if status_filter == 'all':
-        resp = supabase_request('GET', f'jobs?employer_id=eq.{user_id}&select=*,photos:job_photos(*),applications:applications(count),current_workers,max_workers')
-    elif status_filter == 'open':
-        resp = supabase_request('GET', f'jobs?employer_id=eq.{user_id}&status=eq.open&select=*,photos:job_photos(*),applications:applications(count),current_workers,max_workers')
-    else:
-        resp = supabase_request('GET', f'jobs?employer_id=eq.{user_id}&status=eq.{status_filter}&select=*,photos:job_photos(*),applications:applications(count),current_workers,max_workers')
+    # Единый запрос с or-фильтром вместо двух раздельных запросов
+    base_query = f'jobs?employer_id=eq.{user_id}&select=*,photos:job_photos(*),applications:applications(count),current_workers,max_workers'
+    if status_filter == 'open':
+        base_query += '&status=eq.open'
+    elif status_filter not in ('all', 'open'):
+        base_query += f'&status=eq.{status_filter}'
 
+    resp = supabase_request('GET', base_query, headers={'Prefer': 'count=exact'})
     jobs = resp.json() if resp.ok else []
 
-    # Batch query: получаем количество откликов для всех заданий одним запросом
-    if jobs:
-        job_ids = [j['id'] for j in jobs]
-        ids_filter = ','.join(job_ids)
-        app_resp = supabase_request('GET', f'applications?job_id=in.({ids_filter})&select=job_id')
-        app_counts = {}
-        if app_resp.ok and app_resp.json():
-            for a in app_resp.json():
-                jid = a['job_id']
-                app_counts[jid] = app_counts.get(jid, 0) + 1
-        for job in jobs:
-            job['application_count'] = app_counts.get(job['id'], 0)
+    # Используем встроенный счётчик applications(count) из Supabase embedded resource
+    # (включён в base_query как applications:applications(count))
+    # Убираем дублирующий batch-запрос на отдельное получение количества откликов
+    for job in jobs:
+        apps_data = job.get('applications', [])
+        if isinstance(apps_data, list) and len(apps_data) > 0:
+            job['application_count'] = apps_data[0].get('count', 0) if isinstance(apps_data[0], dict) else 0
+        else:
+            job['application_count'] = 0
 
     return render_template('my_jobs.html', jobs=jobs, current_status=status_filter)
 
 
 @jobs_bp.route('/my-jobs/action', methods=['POST'])
 @login_required
+@role_required('employer')
 def my_jobs_action():
-    if session.get('role') != 'employer':
-        flash('Доступ только для работодателей', 'danger')
-        return redirect(url_for('jobs.index'))
-
     user_id = session['user_id']
     action = request.form.get('action')
     job_ids = request.form.getlist('job_ids')
@@ -495,16 +554,19 @@ def my_jobs_action():
         if not check_job_owner(job_id, user_id):
             continue
         if action == 'restore':
-            supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'open'})
+            restore_resp = supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'open'})
+            assert_supabase_ok(restore_resp, 'восстановление задания')
         elif action == 'cancel':
-            supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
+            cancel_resp = supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
+            assert_supabase_ok(cancel_resp, 'отмена задания')
         elif action == 'delete':
             supabase_rpc('delete_job_cascade', {'p_job_id': job_id}, use_admin=True)
         elif action == 'duplicate':
             resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=*')
             if resp.ok and resp.json():
                 new_job = copy_job(resp.json()[0])
-                supabase_request('POST', 'jobs', json=new_job)
+                dup_resp = supabase_request('POST', 'jobs', json=new_job)
+                assert_supabase_ok(dup_resp, 'дублирование задания')
 
     flash(f'Операция выполнена для {len(job_ids)} заданий', 'success')
     return redirect(url_for('jobs.my_jobs'))
@@ -517,6 +579,7 @@ def my_jobs_action():
 @jobs_bp.route('/repost-job/<job_id>', methods=['POST'])
 @login_required
 @role_required('employer')
+@validate_uuid('job_id')
 def repost_job(job_id):
     if not check_job_owner(job_id, session['user_id']):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
@@ -524,10 +587,11 @@ def repost_job(job_id):
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     if resp.ok and resp.json():
         new_job = copy_job(resp.json()[0])
-        supabase_request('POST', 'jobs', json=new_job)
-        if is_ajax:
-            return jsonify({'success': True, 'message': 'Задание дублировано'})
-        flash('Задание дублировано', 'success')
+        repost_resp = supabase_request('POST', 'jobs', json=new_job)
+        if assert_supabase_ok(repost_resp, 'пересоздание задания'):
+            if is_ajax:
+                return jsonify({'success': True, 'message': 'Задание дублировано'})
+            flash('Задание дублировано', 'success')
     else:
         if is_ajax:
             return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
@@ -539,54 +603,52 @@ def repost_job(job_id):
 @jobs_bp.route('/cancel-job/<job_id>', methods=['GET', 'POST'])
 @login_required
 @role_required('employer')
+@validate_uuid('job_id')
 def cancel_job(job_id):
     if not check_job_owner(job_id, session['user_id']):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
 
-    # Блокировка: нельзя отозвать задание completed с принятыми работниками
-    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status')
-    job_status = None
-    if job_resp.ok and job_resp.json():
-        job_status = job_resp.json()[0].get('status')
+    # Атомарная RPC: проверка статуса + проверка accepted-откликов + отмена задания + reject pending
+    # Заменяет 5 неатомарных HTTP-запросов (GET статуса → GET accepted → PATCH job → PATCH apps → GET rejected)
+    rpc_result = supabase_rpc('cancel_job_atomic', {
+        'p_job_id': job_id,
+        'p_user_id': session['user_id'],
+    }, use_admin=True)
 
-    # Блокировка: нельзя отозвать задание completed с принятыми работниками
-    if job_status == 'completed':
-        accepted_check = supabase_request('GET',
-            f'applications?job_id=eq.{job_id}&status=eq.accepted&select=id')
-        if accepted_check.ok and accepted_check.json():
-            is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-            msg = 'Невозможно отменить задание с принятыми работниками. Сначала попросите работников отозвать отклики.'
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    if not rpc_result.ok:
+        if rpc_result.status_code == 404:
             if is_ajax:
-                return jsonify({'success': False, 'error': msg}), 400
-            flash(msg, 'danger')
+                return jsonify({'success': False, 'error': 'RPC cancel_job_atomic не найдена (миграция 061 не применена)'}), 500
+            flash('Не удалось отозвать задание (RPC недоступна)', 'danger')
             return redirect(url_for('jobs.my_jobs'))
-
-    # Сначала отменить задание, чтобы не потерять отклики при ошибке cancel
-    cancel_resp = supabase_admin_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
-    if not cancel_resp.ok:
-        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
         if is_ajax:
-            return jsonify({'success': False, 'error': 'Не удалось отозвать задание'}), 500
+            return jsonify({'success': False, 'error': 'Ошибка выполнения операции'}), 500
         flash('Не удалось отозвать задание', 'danger')
         return redirect(url_for('jobs.my_jobs'))
 
-    # Только после успешного cancel сбрасываем pending отклики в rejected
-    reject_resp = supabase_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.pending',
-                     json={'status': 'rejected'})
-    if not reject_resp.ok:
-        current_app.logger.error(
-            'Не удалось отклонить pending-отклики для отменённого задания %s: HTTP %s',
-            job_id, reject_resp.status_code)
+    result = rpc_result.json()
+    if not result or not result.get('success'):
+        error_msg = (result or {}).get('error', 'Не удалось отозвать задание')
+        status_code = 400
+        if (result or {}).get('code') == 'has_accepted_workers':
+            status_code = 400
+        if is_ajax:
+            return jsonify({'success': False, 'error': error_msg}), status_code
+        flash(error_msg, 'danger')
+        return redirect(url_for('jobs.my_jobs'))
 
-    # Уведомить заявителей, что задание отозвано
-    apps_resp = supabase_request('GET',
-        f'applications?job_id=eq.{job_id}&status=eq.rejected&select=worker_id')
-    if apps_resp.ok and apps_resp.json():
-        for app in apps_resp.json():
-            notify(app['worker_id'], 'job_cancelled', 'Задание отозвано',
-                   f'Задание #{job_id} было отозвано работодателем',
-                   data={'job_id': job_id, 'link': url_for('jobs.index', _external=True)})
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+    # Уведомить заявителей, что задание отозвано (worker_id получены из RPC)
+    rejected_worker_ids = result.get('rejected_worker_ids', [])
+    if rejected_worker_ids:
+        for worker_id in rejected_worker_ids:
+            if worker_id:  # защита от NULL в массиве
+                notify(worker_id, 'job_cancelled', 'Задание отозвано',
+                       f'Задание #{job_id} было отозвано работодателем',
+                       data={'job_id': job_id, 'link': url_for('jobs.index', _external=True)})
+
+    if is_ajax:
         return jsonify({'success': True, 'message': 'Задание отозвано'})
     flash('Задание отозвано', 'success')
     return redirect(url_for('jobs.my_jobs'))
@@ -595,6 +657,7 @@ def cancel_job(job_id):
 @jobs_bp.route('/restore-job/<job_id>', methods=['GET', 'POST'])
 @login_required
 @role_required('employer')
+@validate_uuid('job_id')
 def restore_job(job_id):
     if not check_job_owner(job_id, session['user_id']):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
@@ -612,18 +675,21 @@ def restore_job(job_id):
     new_status = 'open'
 
     # Сбросить все pending заявки в rejected (иначе unique constraint помешает переоткликнуться)
-    supabase_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.pending',
+    rej_pending_resp = supabase_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.pending',
                      json={'status': 'rejected'})
+    assert_supabase_ok(rej_pending_resp, 'сброс pending заявок при восстановлении')
 
     # Сбросить все accepted заявки в rejected (работники должны заново откликнуться)
-    supabase_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.accepted',
+    rej_accepted_resp = supabase_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.accepted',
                      json={'status': 'rejected'})
+    assert_supabase_ok(rej_accepted_resp, 'сброс accepted заявок при восстановлении')
 
     # Обнулить счётчик текущих работников
-    supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={
+    restore_resp = supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={
         'status': new_status,
         'current_workers': 0
     })
+    assert_supabase_ok(restore_resp, 'восстановление статуса задания')
 
     # Уведомить всех rejected-заявителей, что задание восстановлено
     apps_resp = supabase_request('GET',
@@ -644,37 +710,40 @@ def restore_job(job_id):
 @jobs_bp.route('/api/jobs/<job_id>/force-complete', methods=['POST'])
 @login_required
 @role_required('employer')
+@validate_uuid('job_id')
 def api_force_complete_job(job_id):
     """Принудительное завершение задания работодателем.
-    Переводит из open → completed.
-    Уведомляет всех accepted workers, массово отклоняет pending."""
+    Использует атомарную RPC force_complete_job:
+    проверка владельца + проверка статуса open + массовый reject pending + установка completed
+    в одной транзакции PostgreSQL."""
     if not check_job_owner(job_id, session['user_id']):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
 
-    # Получить задание
-    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status,current_workers,max_workers')
-    if not job_resp.ok or not job_resp.json():
-        return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
+    # Атомарная RPC: reject всех pending + установка completed (заменяет 4 неатомарных запроса)
+    rpc_result = supabase_rpc('force_complete_job', {
+        'p_job_id': job_id,
+        'p_user_id': session['user_id'],
+    }, use_admin=True)
 
-    job = job_resp.json()[0]
-    if job['status'] != 'open':
-        return jsonify({'success': False, 'error': f'Нельзя завершить задание в статусе «{job["status"]}». Ожидается open.'}), 409
+    if not rpc_result.ok:
+        if rpc_result.status_code == 404:
+            return jsonify({'success': False, 'error': 'RPC force_complete_job не найдена (миграция 061 не применена)'}), 500
+        return jsonify({'success': False, 'error': 'Ошибка выполнения операции'}), 500
 
-    # Массово отклонить все pending отклики
-    supabase_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.pending',
-                     json={'status': 'rejected'})
+    result = rpc_result.json()
+    if not result or not result.get('success'):
+        error_msg = (result or {}).get('error', 'Не удалось завершить задание')
+        status_code = 409 if (result or {}).get('code') == 'invalid_status' else 400
+        return jsonify({'success': False, 'error': error_msg}), status_code
 
-    # Перевести задание в completed
-    supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'completed'})
-
-    # Уведомить всех accepted работников
-    apps_resp = supabase_request('GET',
-        f'applications?job_id=eq.{job_id}&status=eq.accepted&select=worker_id')
-    if apps_resp.ok and apps_resp.json():
-        for app in apps_resp.json():
-            notify(app['worker_id'], 'force_complete', 'Задание завершено',
-                   f'Работодатель завершил задание #{job_id}',
-                   data={'job_id': job_id, 'link': url_for('applications.my_applications', _external=True)})
+    # Уведомить всех accepted работников (worker_id получены из RPC)
+    accepted_worker_ids = result.get('accepted_worker_ids', [])
+    if accepted_worker_ids:
+        for worker_id in accepted_worker_ids:
+            if worker_id:
+                notify(worker_id, 'force_complete', 'Задание завершено',
+                       f'Работодатель завершил задание #{job_id}',
+                       data={'job_id': job_id, 'link': url_for('applications.my_applications', _external=True)})
 
     return jsonify({
         'success': True,
@@ -685,6 +754,7 @@ def api_force_complete_job(job_id):
 
 @jobs_bp.route('/delete-job/<job_id>', methods=['GET', 'POST'])
 @login_required
+@validate_uuid('job_id')
 def delete_job(job_id):
     # Разрешаем удаление владельцу-работодателю и админу
     is_admin = session.get('role') == 'admin'
@@ -713,7 +783,9 @@ def delete_job(job_id):
     ]
     for table, condition in cascade_tables:
         supabase_admin_request('DELETE', f'{table}?{condition}')
-    # Уведомления — ищем job_id в тексте (колонки job_id нет в production)
+    # Уведомления — удаляем по прямой колонке job_id (миграция 063)
+    supabase_admin_request('DELETE', f'notifications?job_id=eq.{job_id}')
+    # Fallback: удаляем уведомления, где job_id ещё в тексте/JSON (созданы до миграции)
     supabase_admin_request('DELETE', f'notifications?message=ilike.*{job_id}*')
 
     supabase_admin_request('DELETE', f'jobs?id=eq.{job_id}')
@@ -730,16 +802,10 @@ def delete_job(job_id):
 @jobs_bp.route('/invitations')
 @login_required
 def invitations_page():
-    """HTML-страница приглашений."""
-    user_id = session['user_id']
-    role = session.get('role', 'worker')
-    if role == 'worker':
-        resp = supabase_request('GET',
-            f'invitations?worker_id=eq.{user_id}&select=*,job:jobs(organization_name,payment_amount)&order=created_at.desc')
-    else:
-        resp = supabase_request('GET',
-            f'invitations?employer_id=eq.{user_id}&select=*,job:jobs(organization_name),worker:profiles!invitations_worker_id_fkey(full_name)&order=created_at.desc')
-    invitations = resp.json() if resp.ok else []
+    """HTML-страница приглашений (использует унифицированный сервис)."""
+    # noqa: локальный импорт — циклическая зависимость (jobs → invitation_service → jobs)
+    from app.services.invitation_service import list_invitations as get_invitations
+    invitations = get_invitations()
     return render_template('invitations.html', invitations=invitations)
 
 
@@ -757,6 +823,7 @@ def reject_all_invitations():
 @jobs_bp.route('/jobs/<job_id>/edit', methods=['GET', 'POST'])
 @login_required
 @role_required('employer')
+@validate_uuid('job_id')
 @rate_limit
 def edit_job(job_id):
     # Используем admin_request для обхода RLS — работодатель должен видеть
@@ -842,17 +909,21 @@ def edit_job(job_id):
 
 @jobs_bp.route('/favorite-job/<job_id>', methods=['POST'])
 @login_required
+@validate_uuid('job_id')
 def add_favorite_job(job_id):
-    supabase_request('POST', 'job_favorites', json={'user_id': session['user_id'], 'job_id': job_id})
-    flash('Задание добавлено в избранное', 'success')
+    fav_resp = supabase_request('POST', 'job_favorites', json={'user_id': session['user_id'], 'job_id': job_id})
+    if assert_supabase_ok(fav_resp, 'добавление задания в избранное'):
+        flash('Задание добавлено в избранное', 'success')
     return redirect(request.referrer or url_for('jobs.index'))
 
 
 @jobs_bp.route('/unfavorite-job/<job_id>', methods=['POST'])
 @login_required
+@validate_uuid('job_id')
 def remove_favorite_job(job_id):
-    supabase_request('DELETE', f'job_favorites?user_id=eq.{session["user_id"]}&job_id=eq.{job_id}')
-    flash('Задание удалено из избранного', 'success')
+    unfav_resp = supabase_request('DELETE', f'job_favorites?user_id=eq.{session["user_id"]}&job_id=eq.{job_id}')
+    if assert_supabase_ok(unfav_resp, 'удаление задания из избранного'):
+        flash('Задание удалено из избранного', 'success')
     return redirect(request.referrer or url_for('favorites.favorites'))
 
 

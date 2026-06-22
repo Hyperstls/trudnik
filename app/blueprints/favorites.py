@@ -113,7 +113,7 @@ def check_favorite_api():
         return jsonify({'success': False, 'error': 'Не указан worker_id'})
 
     try:
-        resp = supabase_request('GET', f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{worker_id}')
+        resp = supabase_request('GET', f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{worker_id}&favorite_type=eq.worker')
         is_favorited = resp.ok and len(resp.json()) > 0
         return jsonify({'success': True, 'is_favorited': is_favorited})
     except Exception as e:

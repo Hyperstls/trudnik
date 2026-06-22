@@ -70,7 +70,7 @@ class PushNotificationsManager {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': this._getCSRFToken()
+                    'X-CSRF-Token': this._getCSRFToken()
                 },
                 body: JSON.stringify(subscription.toJSON())
             });
@@ -101,7 +101,7 @@ class PushNotificationsManager {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRFToken': this._getCSRFToken()
+                        'X-CSRF-Token': this._getCSRFToken()
                     },
                     body: JSON.stringify({ endpoint: subscription.endpoint })
                 });

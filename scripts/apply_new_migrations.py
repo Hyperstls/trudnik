@@ -37,61 +37,59 @@ def exec_sql(query: str) -> dict:
 
 def patch_exec_sql_for_ddl() -> bool:
     """
-    Modify exec_sql to support DDL by updating pg_proc catalog.
+    Modify exec_sql to support DDL by recreating the function via direct DB connection.
     
+    Uses CREATE OR REPLACE FUNCTION instead of direct pg_catalog manipulation.
     The new version checks if the query starts with SELECT and wraps it,
     otherwise executes the SQL directly.
     """
+    import psycopg2 as _psycopg2
+    
     print("\n=== Patching exec_sql to support DDL ===")
     
-    # New function source that handles both SELECT and DDL
-    new_source = (
-        "\n"
-        "DECLARE\n"
-        "    result JSONB;\n"
-        "    requesting_user_id uuid;\n"
-        "    trimmed text;\n"
-        "BEGIN\n"
-        "    IF current_setting('role', true) != 'service_role' THEN\n"
-        "        RAISE EXCEPTION 'Only service_role can execute SQL via exec_sql';\n"
-        "    END IF;\n"
-        "    trimmed := trim(sql_query);\n"
-        "    IF lower(substring(trimmed, 1, 6)) = 'select' OR lower(substring(trimmed, 1, 4)) = 'with' THEN\n"
-        "        EXECUTE 'SELECT jsonb_agg(t) FROM (' || sql_query || ') t' INTO result;\n"
-        "        RETURN coalesce(result, '[]'::jsonb);\n"
-        "    ELSE\n"
-        "        EXECUTE sql_query;\n"
-        "        RETURN '[]'::jsonb;\n"
-        "    END IF;\n"
-        "END;\n"
-    )
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        print("  ERROR: DATABASE_URL must be set in environment")
+        return False
     
-    # Use a data-modifying CTE to update pg_proc.prosrc
-    # Escape single quotes by doubling them
-    escaped_source = new_source.replace("'", "''")
+    new_function_sql = """
+CREATE OR REPLACE FUNCTION public.exec_sql(sql_query text)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    result JSONB;
+    requesting_user_id uuid;
+    trimmed text;
+BEGIN
+    IF current_setting('role', true) != 'service_role' THEN
+        RAISE EXCEPTION 'Only service_role can execute SQL via exec_sql';
+    END IF;
+    trimmed := trim(sql_query);
+    IF lower(substring(trimmed, 1, 6)) = 'select' OR lower(substring(trimmed, 1, 4)) = 'with' THEN
+        EXECUTE 'SELECT jsonb_agg(t) FROM (' || sql_query || ') t' INTO result;
+        RETURN coalesce(result, '[]'::jsonb);
+    ELSE
+        EXECUTE sql_query;
+        RETURN '[]'::jsonb;
+    END IF;
+END;
+$$;
+"""
     
-    update_sql = (
-        "WITH updated AS (\n"
-        "    UPDATE pg_catalog.pg_proc SET prosrc = '" + escaped_source + "'\n"
-        "    WHERE proname = 'exec_sql'\n"
-        "      AND pronamespace = 'public'::regnamespace\n"
-        "      AND prorettype = 'jsonb'::regtype\n"
-        "    RETURNING proname, prosrc\n"
-        ") SELECT proname, length(prosrc) AS src_len FROM updated"
-    )
-    
-    result = exec_sql(update_sql)
-    if result["ok"]:
-        data = result["data"]
-        if data and len(data) > 0:
-            print(f"  Updated exec_sql: {data}")
-            print("  exec_sql patched successfully!")
-            return True
-        else:
-            print(f"  No rows updated. Data: {data}")
-            return False
-    else:
-        print(f"  Failed to patch exec_sql: {result['error']}")
+    try:
+        conn = _psycopg2.connect(db_url)
+        conn.autocommit = True
+        cur = conn.cursor()
+        cur.execute(new_function_sql)
+        cur.close()
+        conn.close()
+        print("  exec_sql patched successfully via CREATE OR REPLACE FUNCTION!")
+        return True
+    except Exception as e:
+        print(f"  Failed to patch exec_sql: {e}")
         return False
 
 

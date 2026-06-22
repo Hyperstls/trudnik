@@ -4,9 +4,12 @@
 services:
   trudnik-app:
     environment:
-      - PGRST_JWT_SECRET=CHANGE_ME  # Сгенерировать через python scripts/generate_jwt_secret.py
-      - FLASK_ENV=production
+      - PGRST_JWT_SECRET=${PGRST_JWT_SECRET}
+      - DEPLOYMENT_ENV=production
+      - POSTGREST_URL=${POSTGREST_URL}
 
   trudnik-celery:
     environment:
-      - PGRST_JWT_SECRET=CHANGE_ME  # Сгенерировать через python scripts/generate_jwt_secret.py
+      - PGRST_JWT_SECRET=${PGRST_JWT_SECRET}
+      - DEPLOYMENT_ENV=production
+      - POSTGREST_URL=${POSTGREST_URL}

@@ -4,8 +4,9 @@ from flask import Blueprint, abort, current_app, flash, redirect, render_templat
 from werkzeug.utils import secure_filename
 
 from app.config import Config
-from app.decorators import login_required
-from app.utils import postgrest_admin_request, postgrest_request, postgrest_rpc, upload_to_storage, rate_limit
+from app.decorators import login_required, rate_limit, validate_uuid
+from app.utils import postgrest_admin_request, postgrest_request, postgrest_rpc, upload_to_storage
+from app.utils.helpers import assert_supabase_ok
 
 profile_bp = Blueprint('profile', __name__)
 
@@ -97,8 +98,9 @@ def update_profile():
             flash('Ошибка загрузки фото', 'danger')
 
     try:
-        postgrest_request('PATCH', f'profiles?id=eq.{user_id}', json=data)
-        flash('Профиль обновлён', 'success')
+        update_resp = postgrest_request('PATCH', f'profiles?id=eq.{user_id}', json=data)
+        if assert_supabase_ok(update_resp, 'обновление профиля'):
+            flash('Профиль обновлён', 'success')
     except Exception:
         current_app.logger.exception('Error updating profile for user %s', user_id)
         flash('Не удалось обновить профиль', 'danger')
@@ -109,8 +111,9 @@ def update_profile():
 @login_required
 def delete_photo():
     user_id = session['user_id']
-    postgrest_request('PATCH', f'profiles?id=eq.{user_id}', json={'photo_url': None})
-    flash('Фото удалено', 'success')
+    del_resp = postgrest_request('PATCH', f'profiles?id=eq.{user_id}', json={'photo_url': None})
+    if assert_supabase_ok(del_resp, 'удаление фото профиля'):
+        flash('Фото удалено', 'success')
     return redirect(url_for('profile.profile'))
 
 
@@ -204,19 +207,16 @@ def verify_employer():
                 flash(f'Ошибка при загрузке: {str(e)}', 'danger')
                 return redirect(url_for('profile.verify_employer'))
 
-        postgrest_request('PATCH', f'profiles?id=eq.{user_id}', json=data)
-        flash('Заявка на верификацию отправлена', 'success')
+        verify_resp = postgrest_request('PATCH', f'profiles?id=eq.{user_id}', json=data)
+        if assert_supabase_ok(verify_resp, 'отправка заявки на верификацию'):
+            flash('Заявка на верификацию отправлена', 'success')
         return redirect(url_for('profile.profile'))
     return render_template('verify_employer.html')
 
 
 @profile_bp.route('/profile/<user_id>')
+@validate_uuid('user_id')
 def public_profile(user_id):
-    # Валидация UUID формата перед запросом к БД
-    try:
-        uuid.UUID(user_id)
-    except (ValueError, AttributeError):
-        abort(404)
     resp = postgrest_request('GET', f'profiles?id=eq.{user_id}&select=*')
     profile_user = resp.json()[0] if resp.ok and resp.json() else None
     if not profile_user:

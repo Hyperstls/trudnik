@@ -1,0 +1,1 @@
+print("Generator ready")

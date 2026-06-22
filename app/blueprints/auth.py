@@ -6,7 +6,8 @@ import jwt as _pyjwt
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
 from app.config import Config
-from app.utils import postgrest_admin_request, postgrest_request, rate_limit
+from app.decorators import rate_limit
+from app.utils import postgrest_admin_request, postgrest_request
 
 auth_bp = Blueprint('auth', __name__)
 log = logging.getLogger(__name__)
@@ -235,6 +236,7 @@ def register():
                     return redirect(url_for('jobs.index'))
             else:
                 error_msg = 'Ошибка регистрации'
+                err_data = {}
                 try:
                     err_data = resp.json()
                     if isinstance(err_data, dict):

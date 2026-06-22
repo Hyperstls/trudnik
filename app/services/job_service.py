@@ -15,6 +15,7 @@ from app.utils import (
     sanitize_postgrest,
     supabase_request,
     supabase_admin_request,
+    supabase_rpc,
     check_withdraw_window,
 )
 
@@ -189,6 +190,68 @@ def search_jobs(filters: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         dict с ключами results, total, page, per_page, pages.
     """
+    lat = filters.get('lat')
+    lng = filters.get('lng')
+    radius = filters.get('radius', 20)
+    sort = filters.get('sort', '')
+
+    # Гео-фильтрация через RPC nearby_jobs (серверная, PostGIS)
+    if lat is not None and lng is not None:
+        try:
+            rpc_resp = supabase_rpc('nearby_jobs', {
+                'lat': lat,
+                'lng': lng,
+                'radius_km': radius,
+            })
+            if rpc_resp.ok and rpc_resp.json():
+                jobs_list = rpc_resp.json()
+                # Расчёт точного расстояния + сортировка (без фильтрации по радиусу — RPC уже отфильтровала)
+                jobs_list, _ = _apply_geo_filters(jobs_list, lat, lng, radius=None, sort=sort)
+
+                # Применяем оставшиеся фильтры (не поддерживаемые RPC)
+                status = filters.get('status')
+                if status:
+                    jobs_list = [j for j in jobs_list if j.get('status') == status]
+
+                q = filters.get('q', '')
+                if q:
+                    q_lower = q.lower()
+                    jobs_list = [j for j in jobs_list
+                                 if q_lower in (j.get('object_description', '') + ' ' + j.get('organization_name', '')).lower()]
+
+                min_pay = filters.get('min_pay')
+                if min_pay is not None:
+                    jobs_list = [j for j in jobs_list if j.get('payment_amount', 0) >= min_pay]
+
+                max_pay = filters.get('max_pay')
+                if max_pay is not None:
+                    jobs_list = [j for j in jobs_list if j.get('payment_amount', 0) <= max_pay]
+
+                skills = filters.get('skills', '')
+                if skills:
+                    selected = [s.strip().lower() for s in skills.split(',') if s.strip()]
+                    if selected:
+                        jobs_list = apply_skill_filter(jobs_list, selected)
+
+                total = len(jobs_list)
+                page = max(1, filters.get('page', 1))
+                per_page = min(100, max(1, filters.get('per_page', 20)))
+                offset = (page - 1) * per_page
+                jobs_paginated = jobs_list[offset:offset + per_page]
+
+                return {
+                    'results': jobs_paginated,
+                    'total': total,
+                    'page': page,
+                    'per_page': per_page,
+                    'pages': max(1, (total + per_page - 1) // per_page) if total else 1,
+                }
+        except Exception as e:
+            from flask import current_app
+            current_app.logger.warning('nearby_jobs RPC failed, falling back to client-side geo-filter: %s', str(e))
+            # Падаем в стандартный путь с клиентской гео-фильтрацией
+
+    # Стандартный путь: PostgREST-запрос без гео-фильтрации на стороне БД
     query = build_job_query(filters)
     headers = {'Prefer': 'count=exact'}
     resp = supabase_request('GET', f'jobs?{query}', headers=headers)
@@ -199,30 +262,9 @@ def search_jobs(filters: Dict[str, Any]) -> Dict[str, Any]:
         if resp.ok else 0
     )
 
-    # Гео-фильтрация и расчёт расстояния (клиентская)
-    lat = filters.get('lat')
-    lng = filters.get('lng')
-    radius = filters.get('radius', 20)
-    sort = filters.get('sort', '')
-
+    # Клиентская гео-фильтрация (fallback, если RPC недоступен)
     if lat is not None and lng is not None:
-        try:
-            for job in jobs_list:
-                if job.get('lat') and job.get('lng'):
-                    job['distance'] = calculate_distance(
-                        lat, lng, job['lat'], job['lng']
-                    )
-            if radius:
-                jobs_list = [
-                    j for j in jobs_list
-                    if j.get('distance', float('inf')) <= radius
-                ]
-            if sort == 'distance':
-                jobs_list.sort(key=lambda x: x.get('distance', float('inf')))
-        except (TypeError, ValueError) as e:
-            from flask import current_app
-            current_app.logger.warning('Geo-filter error: %s', str(e))
-            # Возвращаем результаты без гео-фильтрации при некорректных параметрах
+        jobs_list, total = _apply_geo_filters(jobs_list, lat, lng, radius=radius, sort=sort)
 
     # Фильтрация по навыкам (если не использовался FTS)
     skills = filters.get('skills', '')
@@ -269,22 +311,7 @@ def search_workers(filters: Dict[str, Any]) -> Dict[str, Any]:
     sort = filters.get('sort', '')
 
     if lat is not None and lng is not None:
-        try:
-            for w in workers_list:
-                if w.get('lat') and w.get('lng'):
-                    w['distance'] = calculate_distance(
-                        lat, lng, w['lat'], w['lng']
-                    )
-            if radius:
-                workers_list = [
-                    w for w in workers_list
-                    if w.get('distance', float('inf')) <= radius
-                ]
-            if sort == 'distance':
-                workers_list.sort(key=lambda x: x.get('distance', float('inf')))
-        except (TypeError, ValueError) as e:
-            from flask import current_app
-            current_app.logger.warning('Geo-filter error (workers): %s', str(e))
+        workers_list, total = _apply_geo_filters(workers_list, lat, lng, radius=radius, sort=sort)
 
     page = max(1, filters.get('page', 1))
     per_page = min(100, max(1, filters.get('per_page', 20)))
@@ -301,6 +328,52 @@ def search_workers(filters: Dict[str, Any]) -> Dict[str, Any]:
 # ═══════════════════════════════════════════════════════════════
 # Клиентские фильтры (fallback, когда БД-фильтрация невозможна)
 # ═══════════════════════════════════════════════════════════════
+
+
+def _apply_geo_filters(items: List[dict], lat: Optional[float],
+                       lng: Optional[float], radius: Optional[float],
+                       sort: str = '') -> tuple:
+    """Применить гео-фильтрацию к списку элементов (заданий или трудников).
+
+    Вычисляет расстояние от (lat, lng) до каждого элемента,
+    фильтрует по радиусу, сортирует по расстоянию при sort='distance'.
+
+    Args:
+        items: список dict с ключами lat, lng.
+        lat, lng: координаты центра поиска.
+        radius: радиус в км (None — без фильтрации по радиусу).
+        sort: строка сортировки ('distance' или '').
+
+    Returns:
+        (filtered_list, total_count) — отфильтрованный список и общее количество.
+    """
+    if lat is None or lng is None:
+        return items, len(items)
+
+    try:
+        for item in items:
+            if item.get('lat') and item.get('lng'):
+                item['distance'] = calculate_distance(
+                    lat, lng, item['lat'], item['lng']
+                )
+            else:
+                item['distance'] = float('inf')
+
+        filtered = items
+        if radius is not None:
+            filtered = [
+                i for i in items
+                if i.get('distance', float('inf')) <= radius
+            ]
+
+        if sort == 'distance':
+            filtered.sort(key=lambda x: x.get('distance', float('inf')))
+
+        return filtered, len(filtered)
+    except (TypeError, ValueError) as e:
+        from flask import current_app
+        current_app.logger.warning('Geo-filter error: %s', str(e))
+        return items, len(items)
 
 
 def apply_skill_filter(jobs_list: List[dict], selected_skills: List[str]) -> List[dict]:

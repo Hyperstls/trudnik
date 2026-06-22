@@ -25,27 +25,13 @@ def notifications():
     # Фильтруем только "Вас пригласили", а "Приглашение принято" остаётся у работодателя
     general_items = [n for n in items if 'вас пригласили' not in (n.get('message') or '').lower()]
 
-    # Очистка: удаляем уведомления-приглашения трудника, чьи задания уже удалены
-    invitation_items = [n for n in items if 'вас пригласили' in (n.get('message') or '').lower()]
-    if invitation_items:
-        job_ids_in_notifications = set()
-        for n in invitation_items:
-            match = _re_inv.search(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', n.get('message') or '')
-            if match:
-                job_ids_in_notifications.add(match.group(0))
-        if job_ids_in_notifications:
-            ids_filter = ','.join(job_ids_in_notifications)
-            jobs_check = supabase_admin_request('GET', f'jobs?id=in.({ids_filter})&select=id')
-            existing_ids = {j['id'] for j in (jobs_check.json() or [])} if jobs_check.ok else set()
-            for job_id in (job_ids_in_notifications - existing_ids):
-                supabase_admin_request('DELETE', f'notifications?message=ilike.*{job_id}*')
+    # Очистка orphaned-уведомлений вынесена в периодическую Celery-задачу
+    # cleanup_orphaned_notifications (app/tasks/maintenance_tasks.py).
+    # Здесь не делаем синхронных запросов для ускорения загрузки страницы.
+    # Авто-отметка прочитанными убрана — теперь только через явное действие пользователя
 
-    unread_ids = [str(n['id']) for n in general_items if not n.get('is_read')]
-    safe_ids = [uid for uid in unread_ids if _re_inv.match(r'^[a-zA-Z0-9_-]+$', uid)]
-    if safe_ids:
-        supabase_request('PATCH', f'notifications?id=in.({",".join(safe_ids)})', json={'is_read': True})
-
-    return render_template('notifications.html', items=general_items, unread=len(unread_ids))
+    unread_count = len([str(n['id']) for n in general_items if not n.get('is_read')])
+    return render_template('notifications.html', items=general_items, unread=unread_count)
 
 
 @notifications_bp.route('/api/notifications/unread-count')
@@ -95,7 +81,7 @@ def api_delete_all_notifications():
 @notifications_bp.route('/notification/<notification_id>/read', methods=['POST'])
 @login_required
 def mark_read_route(notification_id):
-    mark_read(notification_id)
+    mark_read(notification_id, user_id=session['user_id'])
     return redirect(url_for('notifications.notifications'))
 
 
@@ -227,7 +213,7 @@ def push_unsubscribe():
 
     from app.services.push_service import PushService
     push_service = PushService()
-    success = push_service.delete_subscription(endpoint)
+    success = push_service.delete_subscription(endpoint, user_id=session['user_id'])
     return jsonify({'success': success})
 
 

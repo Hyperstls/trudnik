@@ -69,42 +69,55 @@ def cleanup_expired_subscriptions() -> dict:
     from app.services.push_service import PushService
 
     push_service = PushService()
-    subscriptions = push_service.get_all_subscriptions()
 
     removed = 0
     checked = 0
+    total_processed = 0
+    page_size = 100
+    offset = 0
 
-    for sub in subscriptions:
-        endpoint = sub.get('endpoint', '')
-        if not endpoint:
-            continue
+    # Пагинированный обход всех подписок — не загружаем всё в память
+    while True:
+        subscriptions = push_service.get_all_subscriptions(limit=page_size, offset=offset)
+        if not subscriptions:
+            break
 
-        checked += 1
+        for sub in subscriptions:
+            endpoint = sub.get('endpoint', '')
+            if not endpoint:
+                continue
 
-        # Отправляем тестовый payload с флагом healthcheck для проверки валидности подписки.
-        # Service Worker должен игнорировать сообщения с типом healthcheck, не показывая уведомление.
-        result = push_service.send_notification(sub, {
-            'title': '',
-            'body': '',
-            'tag': 'healthcheck-cleanup',
-            'data': {'type': 'healthcheck', 'action': 'cleanup'}
-        })
+            checked += 1
 
-        if result.get('should_unsubscribe'):
-            push_service.delete_subscription(endpoint)
-            removed += 1
-            logger.info(
-                'Удалена невалидная подписка при очистке: user=%s endpoint=%s',
-                sub.get('user_id', '?'), endpoint[:60]
-            )
+            # Отправляем тестовый payload с флагом healthcheck для проверки валидности подписки.
+            # Service Worker должен игнорировать сообщения с типом healthcheck, не показывая уведомление.
+            result = push_service.send_notification(sub, {
+                'title': '',
+                'body': '',
+                'tag': 'healthcheck-cleanup',
+                'data': {'type': 'healthcheck', 'action': 'cleanup'}
+            })
+
+            if result.get('should_unsubscribe'):
+                push_service.delete_subscription(endpoint)
+                removed += 1
+                logger.info(
+                    'Удалена невалидная подписка при очистке: user=%s endpoint=%s',
+                    sub.get('user_id', '?'), endpoint[:60]
+                )
+
+        total_processed += len(subscriptions)
+        if len(subscriptions) < page_size:
+            break
+        offset += page_size
 
     logger.info(
-        'Очистка push-подписок завершена: проверено=%d удалено=%d из %d',
-        checked, removed, len(subscriptions)
+        'Очистка push-подписок завершена: проверено=%d удалено=%d из %d (обработано страниц)',
+        checked, removed, total_processed
     )
 
     return {
-        'total': len(subscriptions),
+        'total': total_processed,
         'removed': removed,
         'checked': checked,
     }
