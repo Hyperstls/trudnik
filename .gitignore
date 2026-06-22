@@ -1,7 +1,7 @@
 __pycache__/
 *.pyc
 .env
-!.env.amvera
+.env.amvera
 .idea/
 original_app.py
 

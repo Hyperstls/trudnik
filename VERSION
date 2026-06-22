@@ -1,1 +1,1 @@
-c5b3e8b fix: CSP strict-dynamic + nonce для всех script-тегов — логинация и Яндекс.Карты (2026-06-22 10:18:05 +0300)
+434572f fix: Service Worker offline fallback — не показывать offline.html при ошибках fetch когда сервер доступен (2026-06-22 10:38:00 +0300)
