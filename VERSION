@@ -1,1 +1,1 @@
-4ccbb1b fix: 503 login (postgrest_admin_request), timeout 60→10s, anon grants for login_user/register_user (2026-06-23 02:20:57 +0300)
+a8c2469 fix: hardcode POSTGREST_URL with http:// and port :3000 (2026-06-23 03:12:42 +0300)
