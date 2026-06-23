@@ -1,1 +1,1 @@
-365dd59 fix: circular import — app/utils/rate_limit.py больше не импортирует из app.decorators (2026-06-23 00:08:30 +0300)
+4ccbb1b fix: 503 login (postgrest_admin_request), timeout 60→10s, anon grants for login_user/register_user (2026-06-23 02:20:57 +0300)
