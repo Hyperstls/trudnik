@@ -23,7 +23,20 @@ class TestEmailService(unittest.TestCase):
         os.environ['SMTP_USE_TLS'] = 'True'
         os.environ['SMTP_USE_SSL'] = 'False'
         os.environ['SECRET_KEY'] = 'test-secret-key-for-testing'
+        # Stateful Redis mock: хранит ключи в словаре, имитирует incr/expire/get
+        self._redis_state = {}
+        self._redis_mock = MagicMock()
+        self._redis_mock.incr = MagicMock(side_effect=self._mock_redis_incr)
+        self._redis_mock.expire = MagicMock()
+        self._redis_mock.get = MagicMock(side_effect=lambda k: self._redis_state.get(k))
+        self._redis_mock.close = MagicMock()
+        self._redis_patcher = patch('app.services.email_service._redis_lib.from_url', return_value=self._redis_mock)
+        self._redis_patcher.start()
         self.service = EmailService()
+
+    def _mock_redis_incr(self, key):
+        self._redis_state[key] = self._redis_state.get(key, 0) + 1
+        return self._redis_state[key]
 
     # ────────────────────────────────────────────────────────────
     # Отправка одного письма

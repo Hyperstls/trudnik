@@ -4,6 +4,7 @@ import inspect
 import json
 import logging
 import os
+import secrets
 import time
 from threading import Lock
 from typing import Any, Callable, Dict, Optional, TypeVar
@@ -11,6 +12,9 @@ from typing import Any, Callable, Dict, Optional, TypeVar
 import jwt as pyjwt
 import requests as _requests
 from flask import current_app, session
+
+# Публичный алиас для тестов
+requests = _requests
 
 from app.config import Config
 
@@ -196,7 +200,12 @@ def get_service_role_headers() -> Dict[str, str]:
         Словарь с заголовками Authorization и Content-Type.
     """
     token = pyjwt.encode(
-        {'role': 'service_role'},
+        {
+            'role': 'service_role',
+            'exp': int(time.time()) + 300,  # 5 минут
+            'iat': int(time.time()),
+            'jti': secrets.token_hex(8),
+        },
         PGRST_JWT_SECRET,
         algorithm='HS256'
     )
@@ -325,8 +334,9 @@ def refresh_access_token() -> bool:
         return False
 
     try:
+        role = session.get('role', 'authenticated')
         payload = {
-            'role': 'authenticated',
+            'role': role,
             'user_id': str(user_id),
             'exp': int(time.time()) + 3600,
             'iat': int(time.time()),
@@ -585,6 +595,14 @@ def generate_vapid_keys():
 
     return private_b64, public_b64
 
+
+# ═══════════════════════════════════════════════════════════════
+# Алиасы для обратной совместимости
+# ═══════════════════════════════════════════════════════════════
+
+supabase_request = postgrest_request
+supabase_admin_request = postgrest_admin_request
+supabase_rpc = postgrest_rpc
 
 # ═══════════════════════════════════════════════════════════════
 # Mock imports (ленивые, разрешаются при инициализации пакета)

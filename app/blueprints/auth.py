@@ -8,6 +8,7 @@ from flask import Blueprint, flash, redirect, render_template, request, session,
 from app.config import Config
 from app.decorators import rate_limit
 from app.utils import postgrest_admin_request, postgrest_request
+from app.utils.validators import validate_password
 
 auth_bp = Blueprint('auth', __name__)
 log = logging.getLogger(__name__)
@@ -145,8 +146,10 @@ def register():
 
         if not password:
             errors.append('Укажите пароль')
-        elif len(password) < 6:
-            errors.append('Пароль должен содержать минимум 6 символов')
+        else:
+            error_msg = validate_password(password)
+            if error_msg:
+                errors.append(error_msg)
 
         if role not in ('worker', 'employer'):
             errors.append('Выберите роль')

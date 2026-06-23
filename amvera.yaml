@@ -7,12 +7,17 @@ services:
     build:
       dockerfile: Dockerfile
     run:
-      containerPort: 80
+      containerPort: 8000
       persistenceMount: /data
     environment:
       PGRST_JWT_SECRET: ${PGRST_JWT_SECRET}
       DEPLOYMENT_ENV: production
       POSTGREST_URL: ${POSTGREST_URL}
+      SECRET_KEY: ${SECRET_KEY}
+      REDIS_URL: ${REDIS_URL}
+    resources:
+      cpu: 500m
+      memory: 512Mi
 
   trudnik-celery:
     build:
@@ -23,3 +28,36 @@ services:
       PGRST_JWT_SECRET: ${PGRST_JWT_SECRET}
       DEPLOYMENT_ENV: production
       POSTGREST_URL: ${POSTGREST_URL}
+      REDIS_URL: ${REDIS_URL}
+      DATABASE_URL: ${DATABASE_URL}
+    resources:
+      cpu: 250m
+      memory: 256Mi
+
+  trudnik-celery-beat:
+    build:
+      dockerfile: Dockerfile
+    run:
+      command: celery -A app.tasks.celery_app beat --loglevel=info
+      persistenceMount: /data
+    environment:
+      REDIS_URL: ${REDIS_URL}
+      DEPLOYMENT_ENV: production
+    resources:
+      cpu: 100m
+      memory: 128Mi
+
+  trudnik-websocket:
+    build:
+      dockerfile: Dockerfile
+    run:
+      containerPort: 8001
+      command: python asgi.py
+      persistenceMount: /data
+    environment:
+      PGRST_JWT_SECRET: ${PGRST_JWT_SECRET}
+      REDIS_URL: ${REDIS_URL}
+      DEPLOYMENT_ENV: production
+    resources:
+      cpu: 250m
+      memory: 256Mi

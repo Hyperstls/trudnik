@@ -1,7 +1,7 @@
 # Бизнес-логика — Трудник (Trudnik)
 
 > Модель данных, бизнес-процессы, состояния и жизненные циклы.
-> **Актуализировано:** 2026-06-21 | **Ветка:** `main` (монетизация отключена, все задания `is_paid=True`)
+> **Актуализировано:** 2026-06-23 | **Ветка:** `main` (Amvera, нативная аутентификация через PostgREST)
 
 ---
 
@@ -9,9 +9,9 @@
 
 ### Регистрация и аутентификация
 
-Используется **Supabase Auth** (GoTrue). При регистрации (`/auth/v1/signup`) создаётся пользователь в `auth.users`, затем заполняется профиль в публичной таблице `profiles`. При логине (`/auth/v1/token?grant_type=password`) выдаётся JWT-пара: `access_token` (короткоживущий) и `refresh_token` (долгоживущий).
+Используется **нативная аутентификация** через PostgREST RPC-функции. При регистрации (`POST /register`) вызывается `register_user(p_email, p_password, p_full_name, p_role)` — функция создаёт запись в `profiles` с хешированным паролем (pgcrypto). При логине (`POST /login`) вызывается `login_user(p_email, p_password)` — проверяет пароль через `crypt()` и возвращает данные пользователя.
 
-JWT-токены хранятся в серверной сессии Flask (`session['access_token']`, `session['refresh_token']`). При истечении `access_token` декоратор [`login_required`](../app/decorators.py:14) автоматически обновляет его через `refresh_access_token()` ([`app/utils.py:277`](../app/utils.py:277)), используя эндпоинт `/auth/v1/token?grant_type=refresh_token`.
+JWT-токены генерируются на стороне Flask через `pyjwt` с использованием `PGRST_JWT_SECRET` и передаются в заголовках к PostgREST. Токены хранятся в серверной сессии Flask (`session['access_token']`, `session['user_id']`). Для неавторизованных пользователей JWT содержит `role: 'anon'`.
 
 **Ключевые проверки при регистрации:**
 - Обязательные поля: `full_name`, `email`, `password`, `role`
@@ -20,9 +20,9 @@ JWT-токены хранятся в серверной сессии Flask (`ses
 - Навыки сохраняются через связующую таблицу `user_skills` (с валидацией UUID)
 
 **Источники:**
-- [`app/blueprints/auth.py`](../app/blueprints/auth.py:1) — маршруты `/login`, `/register`, `/logout`
-- [`app/decorators.py`](../app/decorators.py:14) — `login_required`
-- [`app/utils.py:277`](../app/utils.py:277) — `refresh_access_token()`
+- [`app/blueprints/auth.py`](../app/blueprints/auth.py) — маршруты `/login`, `/register`, `/logout`
+- [`app/utils/supabase.py`](../app/utils/supabase.py:181) — `get_user_headers()` — генерация JWT
+- [`app/utils/supabase.py`](../app/utils/supabase.py:320) — `postgrest_request()` — запросы к PostgREST
 
 ---
 
@@ -35,7 +35,7 @@ JWT-токены хранятся в серверной сессии Flask (`ses
 3. **`is_paid=True`** — на ветке `main` монетизация отключена, все задания публикуются как оплаченные.
 4. **`status='open'`** — новое задание всегда создаётся в статусе «открыто».
 5. **`max_workers`** — максимальное количество трудников (по умолчанию 1).
-6. **Фото** — загружаются через Supabase Storage в бакет `job-photos`.
+6. **Фото** — загружаются через локальное хранилище в `/uploads/` (эндпоинт `/uploads/<filename>`).
 
 **Источник:** [`app/blueprints/jobs.py:23`](../app/blueprints/jobs.py:23) — стоп-слова, [`app/blueprints/jobs.py:61`](../app/blueprints/jobs.py:61) — форма создания
 
@@ -190,9 +190,9 @@ RPC **`delete_user_cascade(user_id)`** — удаляет пользовател
 **Процесс:**
 1. `POST /api/ratings` — создаёт/обновляет запись в `ratings` (UPSERT по `rater_user_id + rated_user_id + job_id`)
 2. `update_rating()` ([`app/utils.py:546`](../app/utils.py:546)) — пересчитывает средний рейтинг пользователя:
-   - Запрашивает все оценки пользователя через `supabase_admin_request`
-   - Вычисляет среднее арифметическое, округляет до 1 знака
-   - Обновляет поле `rating` в профиле через `supabase_admin_request`
+    - Запрашивает все оценки пользователя через `postgrest_admin_request`
+    - Вычисляет среднее арифметическое, округляет до 1 знака
+    - Обновляет поле `rating` в профиле через `postgrest_admin_request`
 
 **Проверки:**
 - Нельзя оценить себя
@@ -382,7 +382,7 @@ RPC **`delete_user_cascade(user_id)`** — удаляет пользовател
 
 | Таблица | Назначение | Ключевые поля |
 |---------|------------|---------------|
-| `profiles` | Профили пользователей (создаются Supabase Auth) | `id` (UUID), `role`, `full_name`, `city`, `religion`, `skills`, `rating`, `verification_status`, `notification_prefs`, `inn`, `is_self_employed`, `desired_payment`, `experience`, `contact` |
+| `profiles` | Профили пользователей (создаются нативной аутентификацией через `register_user`) | `id` (UUID), `role`, `full_name`, `city`, `religion`, `skills`, `rating`, `verification_status`, `notification_prefs`, `inn`, `is_self_employed`, `desired_payment`, `experience`, `contact` |
 | `jobs` | Задания | `id`, `employer_id` → `profiles`, `status` (open/completed/cancelled), `max_workers`, `current_workers`, `is_paid`, `payment_amount`, `address`, `city`, `lat`, `lng`, `work_type`, `preferred_religion`, `expires_at`, `tariff`, `search_vector` (GIN-index для FTS) |
 | `applications` | Отклики на задания | `id`, `job_id` → `jobs`, `worker_id` → `profiles`, `status` (pending/accepted/rejected/withdrawn), `created_at` |
 | `messages` | Сообщения в чатах | `id` (BIGSERIAL), `application_id` → `applications`, `sender_id` → `profiles`, `content`, `created_at` |
@@ -396,7 +396,7 @@ RPC **`delete_user_cascade(user_id)`** — удаляет пользовател
 | `religions` | Справочник религий | `id`, `name` |
 | `user_skills` | Связь пользователь-навыки | `user_id` → `profiles`, `skill_id` → `skills` |
 | `job_skills` | Связь задание-навыки | `job_id` → `jobs`, `skill_id` → `skills` |
-| `job_photos` | Фото заданий | `id`, `job_id` → `jobs`, `url` (Supabase Storage) |
+| `job_photos` | Фото заданий | `id`, `job_id` → `jobs`, `url` (локальное хранилище `/uploads/`) |
 | `push_subscriptions` | Web Push подписки | `id`, `user_id`, `endpoint`, `p256dh`, `auth`, `created_at` |
 | `email_log` | Лог email-отправки | `id`, `user_id`, `email_to`, `subject`, `status`, `error_message`, `created_at` |
 | `employer_details` | Детали работодателя | `id`, `user_id`, `organization_name`, `description` |
@@ -518,9 +518,9 @@ stateDiagram-v2
 ```
 
 **Два экземпляра:**
-- `_cb_supabase` — для пользовательских запросов (`supabase_request`)
-- `_cb_admin` — для административных запросов (`supabase_admin_request`)
+- `_cb_postgrest` — для пользовательских запросов (`postgrest_request`)
+- `_cb_admin` — для административных запросов (`postgrest_admin_request`)
 
-При разомкнутой цепи возвращается `SupabaseResponse(ok=False, status_code=503, text='Circuit breaker open')`.
+При разомкнутой цепи возвращается `SupabaseResponse(ok=False, status_code=503, text='Circuit breaker open')` (класс сохранён для обратной совместимости).
 
 **Источник:** [`app/utils.py:29`](../app/utils.py:29) — класс `CircuitBreaker`

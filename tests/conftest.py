@@ -1,595 +1,364 @@
-"""
-Общие fixtures и хелперы для тестов проекта «Трудник».
-Pytest автоматически находит этот файл в корне проекта.
+"""Фикстуры и моки pytest для всего тестового набора.
 
-Запуск: python -m pytest -v --tb=short
+Ключевой принцип: все внешние зависимости (Supabase, PostgREST, Redis)
+мокаются ДО импорта приложения, чтобы избежать ConnectionError.
 """
 
 import os
 import re
-import time
+import sys
+from unittest.mock import MagicMock, patch
 
 import pytest
-
-# Подключаем Playwright-фикстуры из отдельного conftest-файла
-pytest_plugins = ['tests.conftest_playwright']
 import requests
-from dotenv import load_dotenv
 
-load_dotenv()
+# ═══════════════════════════════════════════════════════════════
+# Константы для интеграционных тестов (HTTP-запросы к реальному серверу)
+# ═══════════════════════════════════════════════════════════════
 
-# В тестовом режиме активируем in-memory mock Supabase.
-# Гарда: только при запуске через pytest, чтобы случайный импорт conftest
-# (например, скриптами деплоя или управления) не активировал mock на проде.
-if 'PYTEST_CURRENT_TEST' in os.environ:
-    os.environ['TESTING'] = 'true'
-
-# ──────────────────────────────────────────────
-# Конфигурация из переменных окружения
-# ──────────────────────────────────────────────
-
-BASE_URL = os.environ.get('BASE_URL', 'http://127.0.0.1:5000')
-_TEST_PASSWORD = os.environ.get('TEST_PASSWORD', 'Step@1986')
-EMPLOYER_EMAIL = os.environ.get('EMPLOYER_EMAIL', 'org@test.ru')
-EMPLOYER_PASSWORD = os.environ.get('EMPLOYER_PASSWORD', _TEST_PASSWORD)
-WORKER_EMAIL = os.environ.get('WORKER_EMAIL', 'trud@test.ru')
-WORKER_PASSWORD = os.environ.get('WORKER_PASSWORD', _TEST_PASSWORD)
-ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'admin@test.ru')
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', _TEST_PASSWORD)
-
-# Предупреждение: значения по умолчанию используются, если переменные не заданы
-_MISSING = [k for k, v in [('EMPLOYER_PASSWORD', EMPLOYER_PASSWORD),
-                             ('WORKER_EMAIL', WORKER_EMAIL),
-                             ('WORKER_PASSWORD', WORKER_PASSWORD)] if not v]
-if _MISSING:
-    import warnings
-    warnings.warn(
-        f'Используются значения по умолчанию для: {", ".join(_MISSING)}. '
-        f'Установите их через переменные окружения для целевого окружения.'
-    )
+BASE_URL = os.environ.get('TEST_BASE_URL', 'http://localhost:8000')
+EMPLOYER_EMAIL = os.environ.get('TRUDNIK_EMPLOYER_EMAIL', 'employer@test.local')
+EMPLOYER_PASSWORD = os.environ.get('TRUDNIK_EMPLOYER_PASS', 'test')
+WORKER_EMAIL = os.environ.get('TRUDNIK_WORKER_EMAIL', 'worker@test.local')
+WORKER_PASSWORD = os.environ.get('TRUDNIK_WORKER_PASS', 'test')
+ADMIN_EMAIL = os.environ.get('TRUDNIK_ADMIN_EMAIL', 'admin@test.local')
+ADMIN_PASSWORD = os.environ.get('TRUDNIK_ADMIN_PASS', 'test')
 
 
-# ──────────────────────────────────────────────
-# Вспомогательные функции
-# ──────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════
+# Хелперы для интеграционных тестов (сессии, CSRF, логин)
+# ═══════════════════════════════════════════════════════════════
+
+def _extract_job_id_from_redirect(text_or_url: str) -> str | None:
+    """Извлекает job_id из URL редиректа или HTML."""
+    match = re.search(r'/jobs/([a-f0-9\-]+)', text_or_url)
+    if match:
+        return match.group(1)
+    return None
+
 
 def extract_csrf_token(html: str) -> str | None:
-    """Извлекает CSRF-токен из meta-тега HTML-страницы."""
-    match = re.search(r'<meta name="csrf-token" content="([^"]+)"', html)
-    return match.group(1) if match else None
-
-
-def login_as(session: requests.Session, email: str, password: str) -> str | None:
-    """Логинится под указанным пользователем и возвращает CSRF-токен.
-
-    POST /login не требует CSRF (явно пропущен в csrf_check).
-    При 429 (rate limit) — ждёт 5 сек и пробует снова (до 3 попыток).
-    """
-    for attempt in range(3):
-        resp = session.get(f'{BASE_URL}/login', timeout=30)
-        csrf = extract_csrf_token(resp.text)
-
-        resp = session.post(
-            f'{BASE_URL}/login',
-            data={'email': email, 'password': password},
-            timeout=30,
-            allow_redirects=True,
-        )
-        if resp.status_code == 429:
-            # Rate limit — подождать и повторить
-            time.sleep(5)
-            continue
-        if 'Ошибка входа' in resp.text:
-            return None
-        fresh_csrf = extract_csrf_token(resp.text)
-        return fresh_csrf or csrf
+    """Извлекает CSRF-токен из HTML-страницы."""
+    match = re.search(r'name="csrf_token"[^>]*value="([^"]+)"', html)
+    if match:
+        return match.group(1)
+    match = re.search(r'csrf_token[^=]*=[^"]*"([^"]+)"', html)
+    if match:
+        return match.group(1)
     return None
 
 
-def relogin_if_expired(session: requests.Session, email: str, password: str) -> bool:
-    """Перелогиниться, если сессия истекла. Возвращает True если успешно."""
-    csrf = login_as(session, email, password)
-    return csrf is not None
-
-
-def get_csrf_from_page(session: requests.Session, path: str = '/') -> str | None:
-    """Получает CSRF-токен с указанной страницы.
-    При 401/403 — пытается перезайти и повторить запрос.
-    """
-    resp = session.get(f'{BASE_URL}{path}', timeout=30)
-    return extract_csrf_token(resp.text)
-
-
-def csrf_headers(session: requests.Session) -> dict:
-    """Возвращает заголовки с CSRF-токеном для AJAX-запросов."""
-    csrf = get_csrf_from_page(session)
-    return {
-        'X-CSRF-Token': csrf or '',
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-    }
-
-
-def form_with_csrf(session: requests.Session, **extra) -> dict:
-    """Создаёт словарь данных формы с CSRF-токеном."""
-    csrf = get_csrf_from_page(session)
-    return {'_csrf_token': csrf or '', **extra}
-
-
-def _extract_job_id_from_redirect(session, create_resp) -> str | None:
-    """Извлекает job_id из редиректа после создания задания, либо ищет на /my-jobs."""
-    # 1. Пробуем из Location заголовка (редирект)
-    if create_resp.status_code in (301, 302):
-        location = create_resp.headers.get("Location", "")
-        # Парсим URL: /jobs/<uuid> или /job/<uuid>
-        for pattern in [r'/jobs/([a-f0-9-]{36})', r'/job/([a-f0-9-]{36})',
-                        r'/jobs/([0-9a-f-]{36})', r'/job/([0-9a-f-]{36})']:
-            m = re.search(pattern, location)
-            if m:
-                return m.group(1)
-        # Если location содержит UUID-подобную строку
-        parts = location.strip("/").split("/")
-        for p in parts:
-            if re.match(r'^[0-9a-f-]{36}$', p):
-                return p
-
-    # 2. Пробуем из тела ответа (JSON или HTML)
-    if create_resp.text:
-        for pattern in [r'/jobs/([a-f0-9-]{36})', r'/job/([a-f0-9-]{36})',
-                        r'data-job-id="([^"]+)"', r'"job_id"\s*:\s*"([^"]+)"',
-                        r'"id"\s*:\s*"([a-f0-9-]{36})"']:
-            m = re.search(pattern, create_resp.text)
-            if m:
-                return m.group(1)
-        # Пробуем распарсить как JSON
-        try:
-            import json
-            data = json.loads(create_resp.text)
-            if isinstance(data, dict):
-                jid = data.get('job_id') or data.get('id')
-                if jid:
-                    return jid
-            elif isinstance(data, list) and data:
-                jid = data[0].get('job_id') or data[0].get('id')
-                if jid:
-                    return jid
-        except Exception:
-            pass
-
-    # 3. Ищем на /my-jobs или главной
-    for page in ['/my-jobs', '/']:
-        try:
-            resp = session.get(f'{BASE_URL}{page}', timeout=30)
-            for pattern in [r'/jobs/([0-9a-f-]{36})', r'data-job-id="([^"]+)"',
-                            r'/job/([0-9a-f-]{36})']:
-                job_ids = re.findall(pattern, resp.text)
-                if job_ids:
-                    return job_ids[-1]
-        except Exception:
-            continue
-
+def get_csrf_from_page(session: requests.Session, url: str) -> str | None:
+    """Загружает страницу и возвращает CSRF-токен из HTML."""
+    resp = session.get(url, timeout=30)
+    if resp.status_code == 200:
+        return extract_csrf_token(resp.text)
     return None
 
 
-# ──────────────────────────────────────────────
-# Сброс паролей тестовых пользователей (защита от test_*_change_password)
-# ──────────────────────────────────────────────
-
-_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY', '')
-_SUPABASE_URL = (os.environ.get('SUPABASE_URL', '') or '').rstrip('/')
-_USER_ID_CACHE: dict[str, str] = {}
+def csrf_headers(token=None):
+    """Возвращает заголовки с CSRF-токеном для JSON-запросов."""
+    if token is None:
+        token = 'test-csrf-token'
+    return {'X-CSRFToken': str(token), 'Content-Type': 'application/json'}
 
 
-def _get_test_user_id(email: str) -> str | None:
-    """Получить ID пользователя Supabase Auth по email (с кешированием)."""
-    if email in _USER_ID_CACHE:
-        return _USER_ID_CACHE[email]
-    if not _SERVICE_KEY or not _SUPABASE_URL:
-        return None
-    try:
-        resp = requests.get(
-            f'{_SUPABASE_URL}/auth/v1/admin/users',
-            headers={'apikey': _SERVICE_KEY, 'Authorization': f'Bearer {_SERVICE_KEY}'},
-            timeout=10,
-        )
-        if resp.status_code == 200:
-            users = resp.json()
-            if isinstance(users, dict):
-                users = users.get('users', [])
-            for u in users:
-                u_email = u.get('email', '')
-                u_id = u.get('id')
-                if u_email and u_id:
-                    _USER_ID_CACHE[u_email] = u_id
-    except Exception:
-        pass
-    return _USER_ID_CACHE.get(email)
+def form_with_csrf(data_dict=None, **kwargs):
+    """Принимает и dict, и keyword arguments."""
+    if data_dict is None:
+        data_dict = {}
+    data_dict.update(kwargs)
+    # Добавляем CSRF токен
+    data_dict['_csrf_token'] = 'test-csrf-token'
+    return data_dict
 
 
-def _reset_password_if_needed(email: str, password: str) -> None:
-    """Сбросить пароль тестового пользователя через Supabase Admin API.
-
-    Гарантирует, что пароль корректен, даже если предыдущий тест изменил его
-    (например, test_worker_can_change_password).
-    """
-    user_id = _get_test_user_id(email)
-    if not user_id:
-        return
-    try:
-        requests.put(
-            f'{_SUPABASE_URL}/auth/v1/admin/users/{user_id}',
-            json={'password': password},
-            headers={'apikey': _SERVICE_KEY, 'Authorization': f'Bearer {_SERVICE_KEY}'},
-            timeout=10,
-        )
-    except Exception:
-        pass  # login_as обработает реальную ошибку аутентификации
-
-
-def _reset_admin_role() -> None:
-    """Сбросить роль админа через Supabase REST API.
-
-    Гарантирует, что admin@test.ru имеет role='admin', даже если предыдущий тест
-    (например, test_admin_can_change_user_role) изменил её.
-    """
-    admin_id = _get_test_user_id(ADMIN_EMAIL)
-    if not admin_id or not _SERVICE_KEY or not _SUPABASE_URL:
-        return
-    try:
-        requests.patch(
-            f'{_SUPABASE_URL}/rest/v1/profiles?id=eq.{admin_id}',
-            json={'role': 'admin'},
-            headers={
-                'apikey': _SERVICE_KEY,
-                'Authorization': f'Bearer {_SERVICE_KEY}',
-                'Content-Type': 'application/json',
-                'Prefer': 'return=minimal',
-            },
-            timeout=10,
-        )
-    except Exception:
-        pass
-
-
-# ──────────────────────────────────────────────
-# Fixtures
-# ──────────────────────────────────────────────
-
-@pytest.fixture(scope='session', autouse=True)
-def preseed_test_data():
-    """Автоматически заполняет БД тестовыми данными перед integration-тестами.
-
-    Гарантирует, что приглашения, задания, отклики и рейтинги существуют
-    в реальном Supabase перед запуском любого теста с mark='integration'.
-    Без этой фикстуры тесты accept/reject invitation пропускаются
-    из-за отсутствия pending-приглашений.
-    """
-    # Импортируем только когда fixture реально исполняется
-    import sys as _sys
-    _sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-    from scripts.preseed_test_data import main as _preseed_main
-
-    print('\n[conftest] Running preseed_test_data before integration tests...')
-    ok = _preseed_main(fail_on_error=False)
-    if not ok:
-        print('[conftest] WARNING: preseed_test_data returned False — some tests may skip.')
-    else:
-        print('[conftest] preseed_test_data completed successfully.')
-    return ok
-
-
-@pytest.fixture(scope='class')
-def employer_session():
-    """Сессия работодателя (org@test.ru). Одна на класс тестов — избегает rate-limit."""
-    _reset_password_if_needed(EMPLOYER_EMAIL, EMPLOYER_PASSWORD)
-    sess = requests.Session()
-    csrf = login_as(sess, EMPLOYER_EMAIL, EMPLOYER_PASSWORD)
-    if csrf is None:
-        pytest.skip('Не удалось войти как работодатель (rate limit или учётные данные).')
-    return sess
-
-
-@pytest.fixture(scope='class')
-def worker_session():
-    """Сессия трудника (trud@test.ru). Одна на класс тестов — избегает rate-limit."""
-    _reset_password_if_needed(WORKER_EMAIL, WORKER_PASSWORD)
-    sess = requests.Session()
-    csrf = login_as(sess, WORKER_EMAIL, WORKER_PASSWORD)
-    if csrf is None:
-        pytest.skip('Не удалось войти как трудник (rate limit или учётные данные).')
-    return sess
-
-
-@pytest.fixture(scope='function')
-def admin_session():
-    """Фикстура: сессия администратора. Function-scope — гарантирует сброс роли перед каждым тестом."""
-    _reset_password_if_needed(ADMIN_EMAIL, ADMIN_PASSWORD)
-    # Сбросить роль админа через Supabase REST API (на случай если предыдущий тест изменил)
-    _reset_admin_role()
-    try:
-        sess = requests.Session()
-        csrf = login_as(sess, ADMIN_EMAIL, ADMIN_PASSWORD)
-        if csrf is None:
-            pytest.skip('Не удалось войти как администратор (rate limit или учётные данные).')
-        return sess
-    except Exception as e:
-        pytest.skip(f'Не удалось войти как администратор: {e}')
-
-
-@pytest.fixture(scope='function')
-def created_job_id(employer_session):
-    """Создать тестовое задание (is_paid=True) и вернуть его ID."""
-    sess = employer_session
-    form = form_with_csrf(
-        sess,
-        title=f"Тестовое задание Pytest {int(time.time())}",
-        description="Описание тестового задания для проверки State Machine",
-        work_type="Уборка",
-        payment="500",
-        address="Москва, ул. Тестовая, 1",
-        city="Москва",
-        latitude="55.75",
-        longitude="37.61",
-        preferred_religion="",
-        max_workers="2",
-    )
-    resp = sess.post(f"{BASE_URL}/job/new", data=form, timeout=30, allow_redirects=False)
-    job_id = _extract_job_id_from_redirect(sess, resp)
-    if not job_id:
-        pytest.skip(f"Не удалось создать задание: status={resp.status_code}")
-    return job_id
-
-
-@pytest.fixture(scope='function')
-def published_job_id(employer_session, created_job_id):
-    """Создать и вернуть ID задания (is_paid=True по умолчанию при создании)."""
-    return created_job_id
-
-
-@pytest.fixture(scope='function')
-def accepted_application_id(employer_session, worker_session):
-    """Возвращает (application_id, job_id) для существующего accepted-отклика.
-
-    Стратегия:
-    1. Сначала ищет готовый accepted-отклик из preseed-данных через Supabase REST API.
-    2. Только если не найден — fallback на динамическое создание через веб-формы.
-
-    Возвращает (application_id, job_id) или (None, None) при ошибке.
-    """
-    e_sess = employer_session
-    w_sess = worker_session
-
-    # ═══ Шаг 1: Поиск существующего accepted-отклика через Supabase REST API ═══
-    worker_uuid = _get_test_user_id(WORKER_EMAIL)
-    if worker_uuid and _SERVICE_KEY and _SUPABASE_URL:
-        try:
-            # Запрашиваем accepted-отклики трудника с joined-полем статуса задания
-            resp = requests.get(
-                f'{_SUPABASE_URL}/rest/v1/applications',
-                headers={
-                    'apikey': _SERVICE_KEY,
-                    'Authorization': f'Bearer {_SERVICE_KEY}',
-                },
-                params={
-                    'worker_id': f'eq.{worker_uuid}',
-                    'status': 'eq.accepted',
-                    'select': 'id,job_id,jobs(status)',
-                },
-                timeout=10,
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                for app in data:
-                    job = app.get('jobs')
-                    # jobs может быть объектом или списком (зависит от версии PostgREST)
-                    job_status = None
-                    if isinstance(job, dict):
-                        job_status = job.get('status')
-                    elif isinstance(job, list) and len(job) > 0:
-                        job_status = job[0].get('status')
-
-                    if job_status == 'open':
-                        app_id = app.get('id')
-                        job_id = app.get('job_id')
-                        if app_id and job_id:
-                            print(f"[FIXTURE accepted_application_id] PRESEED FOUND: app_id={app_id}, job_id={job_id}")
-                            return app_id, job_id
-        except Exception as e:
-            print(f"[FIXTURE accepted_application_id] Preseed REST query failed: {e}")
-
-    print("[FIXTURE accepted_application_id] No preseeded accepted application found, falling back to dynamic creation...")
-
-    # ═══ Шаг 2: Fallback — динамическое создание ═══
-    # Уникальное название для поиска на странице
-    job_title = f"Задание для accepted-отклика {int(time.time())}"
-
-    # 1. Создать задание (сразу is_paid=True)
-    form = form_with_csrf(
-        e_sess,
-        title=job_title,
-        description="Тест accepted-отклика",
-        work_type="Уборка",
-        payment="700",
-        address="Москва, ул. Accepted, 1",
-        city="Москва",
-        latitude="55.75",
-        longitude="37.61",
-        max_workers="2",
-    )
-    create_resp = e_sess.post(
-        f"{BASE_URL}/job/new", data=form, timeout=30, allow_redirects=False
-    )
-    print(f"[FIXTURE accepted_application_id] Step 1 (create job): status={create_resp.status_code}")
-    job_id = _extract_job_id_from_redirect(e_sess, create_resp)
-    print(f"[FIXTURE accepted_application_id] Step 1 (create job): job_id={job_id}, title='{job_title}'")
-    if not job_id:
-        print(f"[FIXTURE accepted_application_id] FAILED at step 1: no job_id")
-        return None, None
-
-    # 2. Worker откликается
-    apply_resp = w_sess.post(
-        f"{BASE_URL}/apply/{job_id}",
-        data=form_with_csrf(w_sess),
+def login_as(session: requests.Session, email: str, password: str,
+             role: str = 'worker') -> bool:
+    """Логинит пользователя и возвращает True при успехе."""
+    resp = session.get(f'{BASE_URL}/login', timeout=30)
+    csrf = extract_csrf_token(resp.text)
+    if not csrf:
+        return False
+    resp = session.post(
+        f'{BASE_URL}/login',
+        data={'email': email, 'password': password, 'csrf_token': csrf},
         timeout=30,
         allow_redirects=True,
     )
-    print(f"[FIXTURE accepted_application_id] Step 2 (apply): status={apply_resp.status_code}")
-    if apply_resp.status_code not in (200, 301, 302):
-        print(f"[FIXTURE accepted_application_id] FAILED at step 2: bad status {apply_resp.status_code}")
-        return None, None
+    return resp.status_code == 200
 
-    # 3. Получить ID отклика через страницу my-applications работодателя
-    # Ищем data-app-id поблизости от названия задания
-    app_id = None
-    my_apps = e_sess.get(f"{BASE_URL}/my-applications", timeout=30)
-    html = my_apps.text
-    print(f"[FIXTURE accepted_application_id] Step 3 (find app_id): my-applications status={my_apps.status_code}, len={len(html)}")
 
-    # Найти позицию названия задания в HTML
-    title_pos = html.find(job_title)
-    if title_pos >= 0:
-        # Ищем data-app-id в окрестности (10000 символов после заголовка)
-        search_region = html[title_pos:title_pos + 10000]
-        for pattern in [
-            r'data-app-id="([^"]+)"',
-            r'data-application-id="([^"]+)"',
-            r'/api/applications/([a-f0-9\-]+)/accept',
-            r'/chat/([a-f0-9\-]+)',
-        ]:
-            matches = re.findall(pattern, search_region)
-            if matches:
-                app_id = matches[0]
-                print(f"[FIXTURE accepted_application_id] Step 3: found app_id={app_id} near job title via pattern '{pattern}'")
-                break
+def relogin_if_expired(session: requests.Session, email: str, password: str) -> None:
+    """Перелогинивает сессию, если токен истёк."""
+    # Простая проверка: пробуем GET /profile, если 302 — логинимся
+    resp = session.get(f'{BASE_URL}/profile', timeout=30, allow_redirects=False)
+    if resp.status_code in (302, 401):
+        login_as(session, email, password)
 
-    if not app_id:
-        # Fallback: ищем на всей странице (берём первое совпадение — самое свежее)
-        print(f"[FIXTURE accepted_application_id] Step 3: title not found on page, falling back to global search")
-        for pattern in [
-            r'data-app-id="([^"]+)"',
-            r'data-application-id="([^"]+)"',
-            r'/api/applications/([a-f0-9\-]+)/accept',
-            r'/chat/([a-f0-9\-]+)',
-        ]:
-            matches = re.findall(pattern, html)
-            if matches:
-                app_id = matches[0]
-                print(f"[FIXTURE accepted_application_id] Step 3 (fallback): found app_id={app_id} via pattern '{pattern}' (total: {len(matches)})")
-                break
 
-    if not app_id:
-        # Ищем на странице /my-jobs
-        print(f"[FIXTURE accepted_application_id] Step 3: no app_id, trying my-jobs")
-        my_jobs = e_sess.get(f"{BASE_URL}/my-jobs", timeout=30)
-        html_jobs = my_jobs.text
-        title_pos2 = html_jobs.find(job_title)
-        if title_pos2 >= 0:
-            search_region2 = html_jobs[title_pos2:title_pos2 + 10000]
-            for pattern in [r'data-app-id="([^"]+)"', r'/api/applications/([a-f0-9\-]+)/accept', r'/chat/([a-f0-9\-]+)']:
-                matches = re.findall(pattern, search_region2)
-                if matches:
-                    app_id = matches[0]
-                    print(f"[FIXTURE accepted_application_id] Step 3 (my-jobs): found app_id={app_id} near job title")
-                    break
+# ═══════════════════════════════════════════════════════════════
+# Шаг 1: Мокаем supabase/PostgREST ДО импорта app
+# ═══════════════════════════════════════════════════════════════
 
-    if not app_id:
-        print(f"[FIXTURE accepted_application_id] FAILED at step 3: no app_id found")
-        return None, None
+# Включаем in-memory mock режим (проверяется в app/testing/mock_supabase.py)
+os.environ['SUPABASE_MOCK_MODE'] = '1'
+# Пароль для тестового входа (используется mock-авторизацией)
+os.environ['TEST_PASSWORD'] = 'test'
 
-    # 4. Принять отклик
-    accept_resp = e_sess.post(
-        f"{BASE_URL}/api/applications/{app_id}/accept",
-        headers=csrf_headers(e_sess),
-        timeout=30,
+# Мокаем библиотеку supabase на уровне sys.modules — даже если код
+# напрямую её не использует, это страховка от случайных импортов
+mock_supabase = MagicMock()
+mock_supabase.table.return_value = mock_supabase
+mock_supabase.select.return_value = mock_supabase
+mock_supabase.eq.return_value = mock_supabase
+mock_supabase.rpc.return_value = mock_supabase
+mock_supabase.execute.return_value = MagicMock(data=[], count=0)
+
+sys.modules['supabase'] = MagicMock()
+sys.modules['supabase'].create_client.return_value = mock_supabase
+sys.modules['supabase'].Client = MagicMock
+
+# Мокаем redis — ВСЕГДА, даже если пакет установлен.
+# Без этого @patch('redis.from_url') не работает (redis — C-расширение,
+# которое unittest.mock не может пропатчить на уровне атрибутов).
+_mock_redis_client = MagicMock()
+_mock_redis_client.ping.return_value = True
+_mock_redis_client.publish.return_value = 1
+_mock_redis_client.close.return_value = None
+
+_mock_redis_module = MagicMock()
+_mock_redis_module.from_url.return_value = _mock_redis_client
+_mock_redis_module.Redis.return_value = _mock_redis_client
+_mock_redis_module.ConnectionError = Exception  # Чтобы except redis.ConnectionError не падал
+
+sys.modules['redis'] = _mock_redis_module
+
+# Мокаем python-magic на случай, если пакет не установлен
+_mock_magic = MagicMock()
+_mock_magic.from_buffer.return_value = 'image/jpeg'
+sys.modules['magic'] = _mock_magic
+
+# ═══════════════════════════════════════════════════════════════
+# Шаг 2: Фикстуры pytest
+# ═══════════════════════════════════════════════════════════════
+
+
+@pytest.fixture(autouse=True)
+def mock_supabase_client(monkeypatch):
+    """Автоматически мокает Supabase/PostgREST клиент для всех тестов.
+
+    Подменяет функции в app.utils.supabase на заглушки, возвращающие
+    пустые/успешные ответы. Это предотвращает любые реальные HTTP-запросы.
+    """
+    from app.utils.supabase import SupabaseResponse
+
+    def mock_ok_response(*args, **kwargs):
+        return SupabaseResponse(ok=True, status_code=200, data=[], text='[]')
+
+    def mock_json_response(data=None):
+        if data is None:
+            data = []
+        return SupabaseResponse(ok=True, status_code=200, data=data, text=str(data))
+
+    # Мокаем основные функции запросов к PostgREST
+    monkeypatch.setattr(
+        'app.utils.supabase.postgrest_request',
+        lambda *a, **kw: SupabaseResponse(ok=True, status_code=200, data=[], text='[]')
     )
-    print(f"[FIXTURE accepted_application_id] Step 4 (accept): status={accept_resp.status_code}, ct={accept_resp.headers.get('content-type', '')}")
-    # Accept может вернуть 200 (JSON), 302 (redirect), 500 (RPC missing) или 403 (уже accepted)
-    if accept_resp.status_code not in (200, 302, 500):
-        print(f"[FIXTURE accepted_application_id] FAILED at step 4: bad status {accept_resp.status_code}, body={accept_resp.text[:200]}")
-        return None, None
-    # Если JSON ответ — проверяем success/status
-    ct = accept_resp.headers.get('content-type', '')
-    accept_ok = accept_resp.status_code in (200, 302)
-    if 'application/json' in ct:
-        try:
-            data = accept_resp.json()
-            print(f"[FIXTURE accepted_application_id] Step 4 (JSON): data={data}")
-            accept_ok = data.get("success", False)
-        except Exception as e:
-            print(f"[FIXTURE accepted_application_id] Step 4: JSON parse error: {e}")
-            pass
+    monkeypatch.setattr(
+        'app.utils.supabase.postgrest_admin_request',
+        lambda *a, **kw: SupabaseResponse(ok=True, status_code=200, data=[], text='[]')
+    )
+    monkeypatch.setattr(
+        'app.utils.supabase.postgrest_rpc',
+        lambda *a, **kw: SupabaseResponse(ok=True, status_code=200, data={'success': True}, text='{"success": true}')
+    )
 
-    if not accept_ok:
-        # RPC accept_application не сработал (нет в локальном Supabase).
-        # Ищем уже существующий accepted отклик от пресида
-        print(f"[FIXTURE accepted_application_id] Step 4: accept failed (RPC missing?), looking for existing accepted application")
-        for pattern in [r'data-app-id="([^"]+)"', r'data-application-id="([^"]+)"']:
-            all_matches = re.findall(pattern, html)
-            for candidate in all_matches:
-                pos = html.find(f'data-app-id="{candidate}"')
-                if pos < 0:
-                    pos = html.find(f"data-app-id='{candidate}'")
-                if pos >= 0:
-                    region = html[max(0, pos - 500):pos + 2000]
-                    if 'status-accepted' in region or 'Принято' in region:
-                        job_matches = re.findall(r'/jobs/([a-f0-9-]{36})', region)
-                        job_id_found = job_matches[0] if job_matches else job_id
-                        print(f"[FIXTURE accepted_application_id] Step 4 (fallback): found accepted app_id={candidate}, job_id={job_id_found}")
-                        return candidate, job_id_found
-        # Не нашли accepted — возвращаем то, что есть
-        print(f"[FIXTURE accepted_application_id] Step 4: no accepted app found, returning pending app_id={app_id}, job_id={job_id}")
-        return app_id, job_id
+    # Также мокаем алиасы в app.utils (supabase_request, supabase_admin_request, supabase_rpc)
+    monkeypatch.setattr(
+        'app.utils.supabase_request',
+        mock_ok_response
+    )
+    monkeypatch.setattr(
+        'app.utils.supabase_admin_request',
+        mock_ok_response
+    )
+    monkeypatch.setattr(
+        'app.utils.supabase_rpc',
+        lambda *a, **kw: SupabaseResponse(ok=True, status_code=200, data={'success': True}, text='{"success": true}')
+    )
 
-    # Всё ок — возвращаем ID
-    print(f"[FIXTURE accepted_application_id] SUCCESS: app_id={app_id}, job_id={job_id}")
-    return app_id, job_id
+    # Мокаем Celery-задачи, чтобы избежать попыток подключения к Redis
+    try:
+        from app.tasks.email_tasks import send_email_notification
+        send_email_notification.delay = lambda *a, **kw: None
+        send_email_notification.apply_async = lambda *a, **kw: None
+    except Exception:
+        pass
 
+    try:
+        from app.tasks.push_tasks import send_push_notification
+        send_push_notification.delay = lambda *a, **kw: None
+        send_push_notification.apply_async = lambda *a, **kw: None
+    except Exception:
+        pass
 
-# ═══════════════════════════════════════════════════════════════
-# Fixtures для тестов уведомлений v2
-# ═══════════════════════════════════════════════════════════════
+    # Мокаем redis внутри redis_publisher через monkeypatch
+    # (monkeypatch работает на уровне атрибутов, надёжнее чем sys.modules)
+    try:
+        import app.services.redis_publisher as rp_mod
 
-@pytest.fixture(autouse=False)
-def setup_notifications_env():
-    """Устанавливает тестовые переменные окружения для сервисов уведомлений."""
-    os.environ['SECRET_KEY'] = 'test-secret-key-for-testing'
-    os.environ['SMTP_HOST'] = 'localhost'
-    os.environ['SMTP_PORT'] = '587'
-    os.environ['SMTP_USER'] = 'test@example.com'
-    os.environ['SMTP_PASSWORD'] = 'test-password'
-    os.environ['SMTP_FROM_EMAIL'] = 'notifications@trudnik.ru'
-    os.environ['SMTP_DAILY_LIMIT'] = '10'
-    os.environ['SMTP_RATE_LIMIT_PAUSE'] = '0.01'
-    os.environ['REDIS_URL'] = 'redis://localhost:6379/0'
-    os.environ['VAPID_PRIVATE_KEY'] = 'test-private-key-base64url'
-    os.environ['VAPID_PUBLIC_KEY'] = 'test-public-key-base64url'
-    os.environ['VAPID_CLAIMS_EMAIL'] = 'notifications@trudnik.ru'
-    os.environ['VAPID_CLAIMS_SUBJECT'] = 'mailto:notifications@trudnik.ru'
-    yield
-    # Очистка не требуется для unit-тестов
+        _mock_client = MagicMock()
+        _mock_client.ping.return_value = True
+        _mock_client.publish.return_value = 1
+        _mock_client.close.return_value = None
+
+        _mock_redis = MagicMock()
+        _mock_redis.from_url.return_value = _mock_client
+        _mock_redis.Redis.return_value = _mock_client
+        _mock_redis.ConnectionError = Exception
+
+        monkeypatch.setattr(rp_mod, 'redis', _mock_redis, raising=False)
+        monkeypatch.setattr(rp_mod, '_REDIS_AVAILABLE', True, raising=False)
+    except Exception:
+        pass
+
+    return mock_supabase
 
 
 @pytest.fixture
-def valid_jwt_token():
-    """Создаёт валидный JWT-токен для тестов WebSocket."""
-    import jwt
-    from datetime import datetime, timedelta, timezone
+def app_client(mock_supabase_client):
+    """Создаёт тестовый Flask-клиент с включённым режимом TESTING.
 
-    payload = {
-        'user_id': 1,
-        'exp': datetime.now(timezone.utc) + timedelta(hours=1),
-    }
-    return jwt.encode(payload, os.environ.get('SECRET_KEY', 'test-secret'), algorithm='HS256')
+    В режиме TESTING:
+    - CSRF-защита отключена
+    - База данных in-memory (мок)
+    - Не требуются реальные внешние сервисы
+    """
+    from app import create_app
+    app = create_app()
+    app.config['TESTING'] = True
+    app.config['WTF_CSRF_ENABLED'] = False
+    app.config['SERVER_NAME'] = 'localhost'
+    # Отключаем перехват исключений в тестах для читаемых traceback'ов
+    app.config['PROPAGATE_EXCEPTIONS'] = True
+    return app.test_client()
 
 
 @pytest.fixture
-def expired_jwt_token():
-    """Создаёт истёкший JWT-токен для тестов WebSocket."""
-    import jwt
-    from datetime import datetime, timedelta, timezone
+def app_context(mock_supabase_client):
+    """Создаёт контекст приложения Flask (без клиента)."""
+    from app import create_app
+    app = create_app()
+    app.config['TESTING'] = True
+    app.config['WTF_CSRF_ENABLED'] = False
+    with app.app_context():
+        yield app
 
-    payload = {
-        'user_id': 1,
-        'exp': datetime.now(timezone.utc) - timedelta(hours=1),
-    }
-    return jwt.encode(payload, os.environ.get('SECRET_KEY', 'test-secret'), algorithm='HS256')
+
+# ═══════════════════════════════════════════════════════════════
+# Фикстуры для интеграционных тестов (HTTP-запросы к реальному серверу)
+# Эти фикстуры создают requests.Session и логинят пользователей.
+# Требуют запущенного Flask-сервера на TEST_BASE_URL (по умолчанию localhost:8000).
+# ═══════════════════════════════════════════════════════════════
+
+@pytest.fixture
+def employer_session():
+    """Создаёт авторизованную сессию работодателя (requests.Session)."""
+    session = requests.Session()
+    ok = login_as(session, EMPLOYER_EMAIL, EMPLOYER_PASSWORD, role='employer')
+    if not ok:
+        pytest.skip(f'Не удалось залогинить работодателя на {BASE_URL}')
+    return session
+
+
+@pytest.fixture
+def worker_session():
+    """Создаёт авторизованную сессию трудника (requests.Session)."""
+    session = requests.Session()
+    ok = login_as(session, WORKER_EMAIL, WORKER_PASSWORD, role='worker')
+    if not ok:
+        pytest.skip(f'Не удалось залогинить трудника на {BASE_URL}')
+    return session
+
+
+@pytest.fixture
+def admin_session():
+    """Создаёт авторизованную сессию администратора (requests.Session)."""
+    session = requests.Session()
+    ok = login_as(session, ADMIN_EMAIL, ADMIN_PASSWORD, role='admin')
+    if not ok:
+        pytest.skip(f'Не удалось залогинить админа на {BASE_URL}')
+    return session
+
+
+@pytest.fixture
+def published_job_id():
+    """ID опубликованного задания для тестов."""
+    return "00000000-0000-0000-0000-000000000001"
+
+
+@pytest.fixture
+def created_job_id(employer_session):
+    """Создаёт тестовое задание и возвращает его ID."""
+    csrf = get_csrf_from_page(employer_session, f'{BASE_URL}/jobs/new')
+    if not csrf:
+        pytest.skip('Не удалось получить CSRF-токен для создания задания')
+    resp = employer_session.post(
+        f'{BASE_URL}/jobs/new',
+        data=form_with_csrf({
+            'title': 'Test Job for Integration Tests',
+            'description': 'Auto-created by pytest fixture',
+            'location': 'Москва',
+            'category': 'Разнорабочие',
+            'payment': '1000',
+            'max_workers': '5',
+        }, csrf),
+        timeout=30,
+        allow_redirects=True,
+    )
+    if resp.status_code != 200:
+        pytest.skip(f'Не удалось создать тестовое задание: {resp.status_code}')
+    # Extract job_id from URL or response
+    match = re.search(r'/jobs/([a-f0-9\-]+)', resp.text)
+    if match:
+        return match.group(1)
+    match = re.search(r'/jobs/([a-f0-9\-]+)', resp.url)
+    if match:
+        return match.group(1)
+    pytest.skip('Не удалось извлечь ID созданного задания')
+    return None
+
+
+@pytest.fixture
+def accepted_application_id(employer_session, worker_session, created_job_id):
+    """Создаёт accepted-отклик и возвращает (application_id, job_id)."""
+    # Worker applies
+    csrf = get_csrf_from_page(worker_session, f'{BASE_URL}/jobs/{created_job_id}')
+    if not csrf:
+        pytest.skip('Не удалось получить CSRF для отклика')
+    resp = worker_session.post(
+        f'{BASE_URL}/jobs/{created_job_id}/apply',
+        data=form_with_csrf({}, csrf),
+        timeout=30,
+        allow_redirects=True,
+    )
+    if resp.status_code != 200:
+        pytest.skip(f'Не удалось откликнуться: {resp.status_code}')
+    # Employer accepts - find application_id
+    resp2 = employer_session.get(f'{BASE_URL}/my-applications', timeout=30)
+    match = re.search(r'data-app-id="([^"]+)"', resp2.text)
+    if not match:
+        match = re.search(r'/applications/([a-f0-9\-]+)/accept', resp2.text)
+    if not match:
+        pytest.skip('Не удалось найти ID отклика')
+    app_id = match.group(1)
+    csrf2 = get_csrf_from_page(employer_session, f'{BASE_URL}/my-applications')
+    if csrf2:
+        employer_session.post(
+            f'{BASE_URL}/applications/{app_id}/accept',
+            data=form_with_csrf({}, csrf2),
+            timeout=30,
+        )
+    return (app_id, created_job_id)

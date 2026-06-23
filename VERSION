@@ -1,1 +1,1 @@
-2044763 fix: SW must not intercept POST navigations (login/register forms) (2026-06-23 17:32:54 +0300)
+c695d0e Защита от каскадных отказов: улучшенный Circuit Breaker, мониторинг и обработка ошибок Supabase (2026-06-23 18:15:40 +0300)

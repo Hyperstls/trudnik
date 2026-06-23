@@ -25,8 +25,9 @@ def refresh_access_token() -> bool:
         return False
 
     try:
+        role = session.get('role', 'authenticated')
         payload = {
-            'role': 'authenticated',
+            'role': role,
             'user_id': str(user_id),
             'exp': int(time.time()) + 3600,  # 1 час
             'iat': int(time.time()),

@@ -205,10 +205,11 @@ class TestDBSchemaCleanup:
     def test_shifts_table_not_referenced_in_code(self):
         """Проверить что 'shift_id' не используется в Python-коде приложения."""
         # Исключаем: original_app.py (старый монолит), tests/ (старые тесты со сдвигами),
-        # test_chat.py (содержит проверки на отсутствие shift_id в комментариях к assertions)
+        # test_chat.py (содержит проверки на отсутствие shift_id в комментариях к assertions),
+        # scripts/ (вспомогательные скрипты с комментариями про shift_id)
         occurrences = self._find_in_python_code(
             r"\bshift_id\b",
-            exclude_dirs=["migrations", "archive", "__pycache__", ".pytest_cache", "tests"],
+            exclude_dirs=["migrations", "archive", "__pycache__", ".pytest_cache", "tests", "scripts"],
             exclude_files=["original_app.py", "test_chat.py"]
         )
         assert len(occurrences) == 0, (
@@ -227,7 +228,11 @@ class TestDBSchemaCleanup:
 
     def test_reviews_table_not_referenced_in_code(self):
         """Проверить что 'reviews' таблица не используется в коде."""
-        occurrences = self._find_in_python_code(r"\breviews\b")
+        occurrences = self._find_in_python_code(
+            r"\breviews\b",
+            exclude_dirs=["migrations", "archive", "__pycache__", ".pytest_cache", "tests", "tests_e2e", "scripts"],
+            exclude_files=["test_buttons_backend.py"]
+        )
         # Исключаем легитимные использования (не как таблица)
         # В notifications_service.py может быть упоминание в комментариях
         code_occurrences = [

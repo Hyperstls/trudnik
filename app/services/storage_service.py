@@ -23,6 +23,49 @@ _ALLOWED_PHOTO_MIME_TYPES = frozenset({
     'image/bmp',
 })
 
+# Сигнатуры файлов для fallback-проверки MIME (если python-magic недоступен)
+_ALLOWED_SIGNATURES = {
+    b'\xff\xd8\xff': 'image/jpeg',
+    b'\x89PNG\r\n\x1a\n': 'image/png',
+    b'GIF87a': 'image/gif',
+    b'GIF89a': 'image/gif',
+    b'RIFF': 'image/webp',  # WebP внутри RIFF контейнера
+}
+
+
+def _check_mime_by_signature(data: bytes) -> Optional[str]:
+    """Проверить MIME-тип по сигнатурам (magic bytes)."""
+    for sig, mime in _ALLOWED_SIGNATURES.items():
+        if data[:len(sig)] == sig:
+            return mime
+    return None
+
+
+def _detect_mime(data: bytes) -> Optional[str]:
+    """Определить MIME-тип файла: пробуем python-magic, затем сигнатуры."""
+    try:
+        import magic
+        return magic.from_buffer(data[:2048], mime=True)
+    except Exception:
+        pass
+    return _check_mime_by_signature(data)
+
+
+def _validate_path(file_path: str) -> Optional[str]:
+    """Проверить путь на path traversal и нуль-байты.
+    
+    Returns:
+        Безопасный нормализованный путь или None при обнаружении атаки.
+    """
+    if '\x00' in file_path:
+        logger.warning('Path traversal attempt blocked (null byte): %s', file_path)
+        return None
+    safe_path = _os.path.normpath(file_path)
+    if safe_path.startswith(('..', '/', '\\')) or _os.path.isabs(safe_path):
+        logger.warning('Path traversal attempt blocked: %s', file_path)
+        return None
+    return safe_path
+
 
 def upload_to_storage(bucket: str, file_path: str, file_data: bytes,
                        content_type: str) -> Optional[str]:
@@ -44,19 +87,24 @@ def upload_to_storage(bucket: str, file_path: str, file_data: bytes,
         logger.warning('Upload rejected: file too large (%d bytes)', len(file_data))
         return None
 
+    # Path traversal защита
+    safe_path = _validate_path(file_path)
+    if safe_path is None:
+        return None
+
     upload_dir = _os.path.join(
         current_app.config.get('UPLOAD_FOLDER', 'uploads'), bucket
     )
     _os.makedirs(upload_dir, exist_ok=True)
 
-    full_path = _os.path.join(upload_dir, file_path)
+    full_path = _os.path.join(upload_dir, safe_path)
     try:
         with open(full_path, 'wb') as f:
             f.write(file_data)
         logger.info(
-            'File saved: %s/%s (%d bytes)', bucket, file_path, len(file_data)
+            'File saved: %s/%s (%d bytes)', bucket, safe_path, len(file_data)
         )
-        return f'/uploads/{bucket}/{file_path}?t={int(time.time())}'
+        return f'/uploads/{bucket}/{safe_path}?t={int(time.time())}'
     except OSError as e:
         logger.error('File save error: %s', e)
         return None
@@ -86,6 +134,12 @@ def upload_photo(file_data: bytes, bucket: str = 'avatars',
                        len(file_data), MAX_UPLOAD_SIZE)
         return None
 
+    # Проверка MIME-типа (python-magic или fallback по сигнатурам)
+    detected_mime = _detect_mime(file_data)
+    if detected_mime and detected_mime not in _ALLOWED_PHOTO_MIME_TYPES:
+        logger.warning('Photo upload rejected: invalid MIME type %s', detected_mime)
+        return None
+
     # Генерируем уникальное имя файла
     unique_id = uuid.uuid4().hex[:12]
     file_path = f'{folder}/{unique_id}.jpg'
@@ -103,10 +157,15 @@ def delete_from_storage(bucket: str, file_path: str) -> bool:
     Returns:
         True если файл удалён успешно, False если файл не найден или ошибка.
     """
+    # Path traversal защита
+    safe_path = _validate_path(file_path)
+    if safe_path is None:
+        return False
+
     upload_dir = _os.path.join(
         current_app.config.get('UPLOAD_FOLDER', 'uploads'), bucket
     )
-    full_path = _os.path.join(upload_dir, file_path)
+    full_path = _os.path.join(upload_dir, safe_path)
 
     try:
         if _os.path.exists(full_path):

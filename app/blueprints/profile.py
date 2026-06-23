@@ -7,6 +7,7 @@ from app.config import Config
 from app.decorators import login_required, rate_limit, validate_uuid
 from app.utils import postgrest_admin_request, postgrest_request, postgrest_rpc, upload_to_storage
 from app.utils.helpers import assert_supabase_ok
+from app.utils.validators import validate_password
 
 profile_bp = Blueprint('profile', __name__)
 
@@ -121,8 +122,29 @@ def update_profile():
 @login_required
 def delete_photo():
     user_id = session['user_id']
+    # Получаем старый photo_url до удаления
+    old_photo_url = None
+    get_resp = postgrest_request('GET', f'profiles?id=eq.{user_id}&select=photo_url')
+    if get_resp.ok and get_resp.json():
+        data = get_resp.json()
+        if isinstance(data, list) and data:
+            old_photo_url = data[0].get('photo_url')
+
     del_resp = postgrest_request('PATCH', f'profiles?id=eq.{user_id}', json={'photo_url': None})
     if assert_supabase_ok(del_resp, 'удаление фото профиля'):
+        # Удаление файла с диска
+        if old_photo_url:
+            from app.services.storage_service import delete_from_storage
+            # Извлечь путь из URL: /uploads/avatars/... → avatars/...
+            photo_path = old_photo_url.replace('/uploads/', '', 1) if old_photo_url.startswith('/uploads/') else None
+            if photo_path:
+                # Разделить на bucket и file_path (первый сегмент — bucket)
+                parts = photo_path.split('/', 1)
+                if len(parts) == 2:
+                    bucket, file_path = parts
+                    # Удалить query-параметры из file_path
+                    file_path = file_path.split('?')[0]
+                    delete_from_storage(bucket, file_path)
         flash('Фото удалено', 'success')
     return redirect(url_for('profile.profile'))
 
@@ -158,8 +180,12 @@ def change_password():
     if not old_password:
         flash('Укажите текущий пароль', 'danger')
         return redirect(url_for('profile.profile'))
-    if not new_password or len(new_password) < 6:
-        flash('Пароль должен содержать минимум 6 символов', 'danger')
+    if not new_password:
+        flash('Укажите новый пароль', 'danger')
+        return redirect(url_for('profile.profile'))
+    error_msg = validate_password(new_password)
+    if error_msg:
+        flash(error_msg, 'danger')
         return redirect(url_for('profile.profile'))
     if new_password != confirm_password:
         flash('Новые пароли не совпадают', 'danger')
@@ -179,6 +205,11 @@ def change_password():
             else:
                 success = False
             if success:
+                # Инвалидация старой сессии и выпуск нового JWT
+                from app.blueprints.auth import _login_user_session
+                email = session.get('email', '')
+                role = session.get('role', 'authenticated')
+                _login_user_session(user_id, role, email)
                 flash('Пароль успешно изменён', 'success')
             else:
                 flash('Неверный текущий пароль', 'danger')

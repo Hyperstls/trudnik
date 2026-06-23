@@ -45,13 +45,13 @@ BEGIN;
 -- миграцией 058. Здесь только REVOKE + GRANT EXECUTE.
 -- ============================================================================
 
--- RPC: login_user — аутентификация пользователя по email и паролю
-REVOKE EXECUTE ON FUNCTION login_user(text, text) FROM anon, PUBLIC;
-GRANT EXECUTE ON FUNCTION login_user(text, text) TO authenticated, service_role;
+-- RPC: login_user — аутентификация (доступна всем, включая anon)
+REVOKE EXECUTE ON FUNCTION login_user(text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION login_user(text, text) TO anon, authenticated, service_role;
 
--- RPC: register_user — регистрация нового пользователя
-REVOKE EXECUTE ON FUNCTION register_user(text, text, text, text) FROM anon, PUBLIC;
-GRANT EXECUTE ON FUNCTION register_user(text, text, text, text) TO authenticated, service_role;
+-- RPC: register_user — регистрация (доступна всем, включая anon)
+REVOKE EXECUTE ON FUNCTION register_user(text, text, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION register_user(text, text, text, text) TO anon, authenticated, service_role;
 
 -- RPC: change_password — смена пароля с проверкой старого
 REVOKE EXECUTE ON FUNCTION change_password(uuid, text, text) FROM anon, PUBLIC;

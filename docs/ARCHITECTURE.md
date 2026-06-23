@@ -24,7 +24,7 @@
 - **Работодатель (employer)** — публикует задания, управляет откликами, приглашает трудников
 - **Трудник (worker)** — ищет задания, откликается, получает оплату
 
-Архитектурный стиль: **монолитное Flask-приложение**, разбитое на 13 модульных Blueprint'ов, с внешней базой данных Supabase (PostgreSQL) через REST API, фоновыми задачами на Celery и real-time уведомлениями через WebSocket.
+Архитектурный стиль: **монолитное Flask-приложение**, разбитое на 13 модульных Blueprint'ов, с внешней базой данных PostgreSQL (Amvera Managed) через PostgREST API, фоновыми задачами на Celery и real-time уведомлениями через WebSocket.
 
 **Ключевые особенности:**
 - Бесплатный режим (монетизация отключена в main)
@@ -43,8 +43,8 @@
 | **ASGI/WebSocket** | FastAPI + uvicorn (`asgi.py`) |
 | **Фоновые задачи** | Celery (worker + beat) |
 | **Брокер сообщений** | Redis 7 (Celery broker + Pub/Sub + кеш) |
-| **База данных** | Supabase (PostgreSQL + PostgREST + Auth) |
-| **RPC** | PostgreSQL функции (`accept_application`, `reject_application`, `apply_job_atomic`, `delete_job_cascade`, `delete_user_cascade`, `get_job_stats`, `nearby_jobs`) |
+| **База данных** | Amvera Managed PostgreSQL + PostgREST + нативная аутентификация |
+| **RPC** | PostgreSQL функции (`accept_application`, `reject_application`, `apply_job_atomic`, `delete_job_cascade`, `delete_user_cascade`, `get_job_stats`, `nearby_jobs`, `force_complete_job`, `cancel_job_atomic`, `cancel_worker_atomic`, `rate_user_atomic`, `resolve_user_atomic`, `login_user`, `register_user`, `change_password`) |
 | **Фронтенд** | Jinja2 + TailwindCSS + Vanilla JS |
 | **Карты** | Яндекс.Карты API |
 | **Реальное время** | WebSocket (FastAPI) + Redis Pub/Sub |
@@ -368,16 +368,16 @@ Celery Worker → pywebpush (VAPID) → Браузер (Service Worker) → По
 Тесты (PyTest) → `_is_mock_enabled()` → `_test_mock_request()` → In-memory dict БД
 ```
 
-В [`app/utils.py`](../app/utils.py) реализован полноценный in-memory mock Supabase для тестового режима (`TESTING=True`). Mock эмулирует:
+В [`app/testing/mock_supabase.py`](../app/testing/mock_supabase.py) реализован in-memory mock для тестового режима (`TESTING=True`). Mock эмулирует:
 
-- **REST API** — GET/POST/PATCH/DELETE с фильтрацией: `eq`, `neq`, `gt`, `lt`, `ilike`, `in`, `not`, `is.null`
-- **Auth API** — login, signup, logout
+- **PostgREST API** — GET/POST/PATCH/DELETE с фильтрацией: `eq`, `neq`, `gt`, `lt`, `ilike`, `in`, `not`, `is.null`
+- **Auth RPC** — `login_user`, `register_user`
 - **RPC** — `accept_application`, `reject_application`, `apply_job_atomic`, `delete_job_cascade`, `delete_user_cascade`, `get_job_stats`, `get_completed_jobs_between`, `nearby_jobs`
 
-**Активация mock** через [`_is_mock_enabled()`](../app/utils.py:441):
-1. Переменная окружения `SUPABASE_MOCK_MODE=1` (явный opt-in)
-2. Flask-конфигурация `TESTING=True` (устанавливается в [`conftest.py`](../tests/conftest.py))
-3. Файл `.mock_supabase` в корне проекта (legacy, для CI/скриптов)
+**Активация mock** через `_is_mock_enabled()`:
+1. Переменная окружения `TESTING=True`
+2. Flask-конфигурация `TESTING=True` (устанавливается в `conftest.py`)
+3. Файл `.mock_supabase` в корне проекта (legacy)
 
 **Защита от случайной активации:** гарда `PYTEST_CURRENT_TEST` в [`tests/conftest.py:24`](../tests/conftest.py:24) — mock активируется только при запуске через pytest.
 
@@ -385,9 +385,9 @@ Celery Worker → pywebpush (VAPID) → Браузер (Service Worker) → По
 
 - **Валидация email** — RFC 5322 regex в [`app/blueprints/auth.py:15`](../app/blueprints/auth.py:15)
 - **Защита от SQL-инъекций** — проверка ASCII-фрагментов пользовательского ввода в [`app/blueprints/auth.py:25`](../app/blueprints/auth.py:25)
-- **Дифференцированные таймауты** — GET-запросы 15s, мутации (POST/PUT/DELETE) 60s в [`supabase_request()`](../app/utils.py)
+- **Дифференцированные таймауты** — GET-запросы 15s, мутации (POST/PUT/DELETE) 10s в [`postgrest_request()`](../app/utils/supabase.py)
 - **PERMANENT_SESSION_LIFETIME** = 1800 секунд (30 минут)
-- **Условный apikey** в `supabase_admin_request`: `SERVICE_KEY` только для localhost
+- **JWT-аутентификация** — `postgrest_admin_request` использует `PGRST_JWT_SECRET` для service_role-запросов
 
 ---
 
@@ -400,9 +400,9 @@ Celery Worker → pywebpush (VAPID) → Браузер (Service Worker) → По
 | Переменная | Назначение |
 |-----------|-----------|
 | `SECRET_KEY` | Секретный ключ Flask (сессии, JWT, CSRF) |
-| `SUPABASE_URL` | URL Supabase-проекта |
-| `SUPABASE_ANON_KEY` | Анонимный ключ Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service Role ключ (для админ-операций) |
+| `POSTGREST_URL` | URL PostgREST-сервиса (внутренний) |
+| `PGRST_JWT_SECRET` | JWT-секрет для PostgREST |
+| `DATABASE_URL` | Прямое подключение к PostgreSQL |
 | `YANDEX_MAPS_API_KEY` | Ключ Яндекс.Карт |
 | `REDIS_URL` | URL Redis (брокер Celery + Pub/Sub) |
 | `WEBSOCKET_URL` | URL WebSocket-сервера |

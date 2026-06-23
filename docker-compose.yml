@@ -57,6 +57,11 @@ services:
       - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
       - VAPID_CLAIMS_EMAIL=${VAPID_CLAIMS_EMAIL:-notifications@trudnik.ru}
     command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4
+    healthcheck:
+      test: ["CMD", "celery", "-A", "app.tasks.celery_app", "inspect", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   celery_beat:
     build: .
@@ -64,6 +69,8 @@ services:
     restart: unless-stopped
     depends_on:
       - redis
+    volumes:
+      - celery_beat_data:/data
     environment:
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - DATABASE_URL=${DATABASE_URL}
@@ -77,5 +84,32 @@ services:
       - SECRET_KEY=${SECRET_KEY}
     command: celery -A app.tasks.celery_app beat --loglevel=info
 
+  web:
+    build: .
+    container_name: trudnik-web
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DEPLOYMENT_ENV=development
+      - PORT=8000
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./app:/app/app
+      - uploads_data:/data/uploads
+    depends_on:
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    command: python app.py
+
 volumes:
   redis_data:
+  celery_beat_data:
+  uploads_data:

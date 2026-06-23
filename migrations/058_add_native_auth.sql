@@ -22,22 +22,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ============================================
--- Права доступа: REVOKE от анонимов, GRANT для authenticated и service_role
--- ============================================
-
--- RPC: login_user
-REVOKE EXECUTE ON FUNCTION login_user(text, text) FROM anon, PUBLIC;
-GRANT EXECUTE ON FUNCTION login_user(text, text) TO authenticated, service_role;
-
--- RPC: register_user
-REVOKE EXECUTE ON FUNCTION register_user(text, text, text, text) FROM anon, PUBLIC;
-GRANT EXECUTE ON FUNCTION register_user(text, text, text, text) TO authenticated, service_role;
-
--- RPC: change_password
-REVOKE EXECUTE ON FUNCTION change_password(uuid, text, text) FROM anon, PUBLIC;
-GRANT EXECUTE ON FUNCTION change_password(uuid, text, text) TO authenticated, service_role;
-
 -- RPC: регистрация
 CREATE OR REPLACE FUNCTION register_user(
     p_email text, p_password text, p_full_name text, p_role text DEFAULT 'worker'
@@ -54,22 +38,6 @@ BEGIN
     RETURN v_user_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- ============================================
--- Права доступа: REVOKE от анонимов, GRANT для authenticated и service_role
--- ============================================
-
--- RPC: login_user
-REVOKE EXECUTE ON FUNCTION login_user(text, text) FROM anon, PUBLIC;
-GRANT EXECUTE ON FUNCTION login_user(text, text) TO authenticated, service_role;
-
--- RPC: register_user
-REVOKE EXECUTE ON FUNCTION register_user(text, text, text, text) FROM anon, PUBLIC;
-GRANT EXECUTE ON FUNCTION register_user(text, text, text, text) TO authenticated, service_role;
-
--- RPC: change_password
-REVOKE EXECUTE ON FUNCTION change_password(uuid, text, text) FROM anon, PUBLIC;
-GRANT EXECUTE ON FUNCTION change_password(uuid, text, text) TO authenticated, service_role;
 
 -- RPC: смена пароля
 CREATE OR REPLACE FUNCTION change_password(
@@ -88,17 +56,19 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================
--- Права доступа: REVOKE от анонимов, GRANT для authenticated и service_role
+-- Права доступа для нативных auth RPC
+-- login_user и register_user доступны анонимам (для входа/регистрации)
+-- change_password доступен только authenticated пользователям
 -- ============================================
 
--- RPC: login_user
-REVOKE EXECUTE ON FUNCTION login_user(text, text) FROM anon, PUBLIC;
-GRANT EXECUTE ON FUNCTION login_user(text, text) TO authenticated, service_role;
+-- RPC: login_user — аутентификация (доступна всем, включая anon)
+REVOKE EXECUTE ON FUNCTION login_user(text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION login_user(text, text) TO anon, authenticated, service_role;
 
--- RPC: register_user
-REVOKE EXECUTE ON FUNCTION register_user(text, text, text, text) FROM anon, PUBLIC;
-GRANT EXECUTE ON FUNCTION register_user(text, text, text, text) TO authenticated, service_role;
+-- RPC: register_user — регистрация (доступна всем, включая anon)
+REVOKE EXECUTE ON FUNCTION register_user(text, text, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION register_user(text, text, text, text) TO anon, authenticated, service_role;
 
--- RPC: change_password
-REVOKE EXECUTE ON FUNCTION change_password(uuid, text, text) FROM anon, PUBLIC;
-GRANT EXECUTE ON FUNCTION change_password(uuid, text, text) TO authenticated, service_role;
+-- RPC: change_password — смена пароля (только authenticated)
+REVOKE EXECUTE ON FUNCTION change_password(uuid, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION change_password(uuid, text, text) TO authenticated;

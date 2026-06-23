@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-06-23T00:33:21.384301+00:00",
+  "method": "pgAdmin REST API",
+  "steps": {
+    "login": {
+      "status": "[OK]",
+      "csrf_token": "IjliYzE5Yj..."
+    }
+  },
+  "queries": {},
+  "actions": {},
+  "status": "FAILED",
+  "error": "Сервер trudnik-db не найден"
+}
