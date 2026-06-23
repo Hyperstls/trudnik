@@ -189,8 +189,10 @@ def get_user_headers(user_id: Optional[str] = None) -> Dict[str, str]:
     """
     if user_id is None:
         user_id = session.get('user_id', '')
+    # Если пользователь не аутентифицирован — используем роль anon
+    role = 'authenticated' if user_id else 'anon'
     payload = {
-        'role': 'authenticated',
+        'role': role,
         'user_id': str(user_id) if user_id else '',
         'exp': int(time.time()) + 3600,
         'iat': int(time.time()),

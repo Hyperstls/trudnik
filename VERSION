@@ -1,1 +1,1 @@
-26fd19e revert: restore amvera.yaml to original (env var managed in dashboard) (2026-06-23 03:41:41 +0300)
+563c5e4 tmp: debug endpoint to view env vars (2026-06-23 11:33:08 +0300)
