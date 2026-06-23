@@ -65,6 +65,12 @@ class Config:
     PAGINATION_DEFAULT_PER_PAGE = 20
 
     # ═══════════════════════════════════════════════════════════
+    # Circuit Breaker (этап 4.1)
+    # ═══════════════════════════════════════════════════════════
+    CB_FAILURE_THRESHOLD = int(os.getenv('CB_FAILURE_THRESHOLD', '10'))
+    CB_RECOVERY_TIMEOUT = int(os.getenv('CB_RECOVERY_TIMEOUT', '60'))
+
+    # ═══════════════════════════════════════════════════════════
     # Web Push API (VAPID-ключи)
     # ═══════════════════════════════════════════════════════════
     VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')

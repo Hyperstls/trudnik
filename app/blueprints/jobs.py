@@ -306,6 +306,10 @@ def workers():
                 '[WORKERS] Failed to fetch profiles: status=%s text=%s',
                 resp.status_code, (resp.text or '')[:300]
             )
+            if hasattr(resp, 'circuit_open') and resp.circuit_open:
+                flash('Сервис временно недоступен. Результаты поиска могут быть неполными.', 'warning')
+            else:
+                flash('Не удалось загрузить список трудников. Пожалуйста, попробуйте позже.', 'warning')
         workers_list = resp.json() if resp.ok else []
 
         # Сортировка по расстоянию (после загрузки, если есть координаты)

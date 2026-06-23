@@ -96,11 +96,39 @@ class CircuitBreaker:
 
 def _circuit_open_response() -> 'SupabaseResponse':
     """Создать ответ-заглушку при разомкнутой цепи."""
-    return SupabaseResponse(ok=False, status_code=503, text='Circuit breaker open')
+    resp = SupabaseResponse(ok=False, status_code=503, text='Circuit breaker open')
+    resp.circuit_open = True
+    return resp
 
 
-_cb_postgrest = CircuitBreaker(failure_threshold=10, recovery_timeout=60.0)
-_cb_admin = CircuitBreaker(failure_threshold=10, recovery_timeout=60.0)
+_cb_postgrest = CircuitBreaker(
+    failure_threshold=Config.CB_FAILURE_THRESHOLD,
+    recovery_timeout=Config.CB_RECOVERY_TIMEOUT
+)
+_cb_admin = CircuitBreaker(
+    failure_threshold=Config.CB_FAILURE_THRESHOLD,
+    recovery_timeout=Config.CB_RECOVERY_TIMEOUT
+)
+
+
+def get_circuit_breaker_state():
+    """Возвращает состояние обоих Circuit Breaker для мониторинга."""
+    return {
+        'postgrest': {
+            'state': _cb_postgrest.state,
+            'failure_count': _cb_postgrest.failure_count,
+            'failure_threshold': _cb_postgrest.failure_threshold,
+            'recovery_timeout': _cb_postgrest.recovery_timeout,
+            'last_failure_time': _cb_postgrest.last_failure_time,
+        },
+        'admin': {
+            'state': _cb_admin.state,
+            'failure_count': _cb_admin.failure_count,
+            'failure_threshold': _cb_admin.failure_threshold,
+            'recovery_timeout': _cb_admin.recovery_timeout,
+            'last_failure_time': _cb_admin.last_failure_time,
+        }
+    }
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -270,6 +298,7 @@ class SupabaseResponse:
         self._data = data
         self.text = text
         self.headers = headers if headers is not None else {}
+        self.circuit_open = False
 
     def json(self) -> Any:
         """Вернуть распарсенные данные. Приоритет: _data, затем парсинг text."""
@@ -355,6 +384,7 @@ def postgrest_request(method: str, endpoint: str, **kwargs: Any) -> SupabaseResp
         resp = _cb_postgrest.call(_make_request)
         if resp.status_code == 401 and session.get('refresh_token'):
             if refresh_access_token():
+                time.sleep(0.5)  # небольшая задержка перед повтором
                 resp = _cb_postgrest.call(_make_request)
         return resp
     except _requests.RequestException as e:

@@ -8,6 +8,8 @@ from flask import Flask, current_app, g, session, request, abort, redirect, url_
 
 from app.config import Config
 
+import time as _time_module
+_app_start_time = _time_module.time()
 
 # ── Кеш версии с TTL 60 секунд ────────────────────────
 @dataclass
@@ -395,15 +397,22 @@ def create_app():
 
     @app.errorhandler(Exception)
     def handle_supabase_error(e):
+        """Глобальный обработчик ошибок внешних сервисов."""
         import requests as req_lib
         from werkzeug.exceptions import HTTPException
         # Пропускаем HTTP-исключения (abort, 404, 400 и т.д.) — возвращаем как есть
         if isinstance(e, HTTPException):
             return e
-        if isinstance(e, req_lib.ConnectionError):
-            return render_template('error.html', error_code='503',
-                                   error='Сервис временно недоступен. Пожалуйста, попробуйте позже.'), 503
-        raise e
+        if isinstance(e, req_lib.RequestException):
+            current_app.logger.error('External service error: %s', e)
+            return render_template('error.html',
+                error_code='503',
+                error='Внешний сервис (PostgREST) не отвечает. Пожалуйста, попробуйте позже.'), 503
+        # Для остальных ошибок — стандартный 500
+        current_app.logger.exception('Unhandled exception')
+        return render_template('error.html',
+            error_code='500',
+            error='Произошла непредвиденная ошибка. Мы уже работаем над её устранением.'), 500
 
     # ================================
     # Health Check Endpoint
@@ -414,44 +423,66 @@ def create_app():
 
     @app.route('/health')
     def health_check():
-        """Проверка работоспособности приложения и доступности БД."""
+        """Проверка работоспособности приложения."""
+        from app.utils.supabase import get_circuit_breaker_state
+        cb_state = get_circuit_breaker_state()
+
+        # Проверяем БД через admin CB
         try:
             resp = postgrest_admin_request('GET', 'profiles?select=id&limit=1')
-            if resp.ok:
-                return jsonify({"status": "healthy", "database": "connected"}), 200
-            else:
-                return jsonify({"status": "unhealthy", "database": "disconnected"}), 503
-        except Exception:
-            return jsonify({"status": "unhealthy"}), 500
+            db_ok = resp.ok
+        except Exception as e:
+            current_app.logger.error('Health check DB error: %s', e)
+            db_ok = False
 
-    # ═══════════════════════════════════════════════════════════════
-    # Временный отладочный эндпоинт — показать переменные окружения
-    # УДАЛИТЬ ПОСЛЕ ИСПОЛЬЗОВАНИЯ
-    # ═══════════════════════════════════════════════════════════════
+        # Проверяем состояние CB
+        cb_postgrest_open = cb_state['postgrest']['state'] == 'OPEN'
+        cb_admin_open = cb_state['admin']['state'] == 'OPEN'
 
-    @app.route('/debug/env')
-    def debug_env():
-        """Временный эндпоинт для просмотра переменных окружения."""
-        import json as _json
-        secret_vars = [
-            'SECRET_KEY', 'DATABASE_URL', 'REDIS_URL', 'SMTP_PASSWORD',
-            'VAPID_PRIVATE_KEY', 'VAPID_PUBLIC_KEY', 'YANDEX_MAPS_API_KEY',
-            'PGRST_JWT_SECRET', 'POSTGREST_URL', 'DEEPSEEK_API_KEY',
-            'PGPASSWORD', 'PGUSER', 'PGHOST', 'PGPORT', 'PGDATABASE',
-            'SMTP_USER', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_FROM_EMAIL',
-            'SMTP_FROM_NAME', 'VAPID_CLAIMS_EMAIL', 'VAPID_CLAIMS_SUBJECT',
-            'WEBSOCKET_PORT', 'WEBSOCKET_URL', 'DEPLOYMENT_ENV',
-            'WORKER_SITE_URL', 'GIT_VERSION',
-        ]
-        result = {}
-        for key in sorted(os.environ.keys()):
-            if key in secret_vars or any(k in key.upper() for k in ['SECRET', 'PASSWORD', 'KEY', 'TOKEN', 'URL', 'VAPID', 'SMTP', 'PG', 'REDIS', 'JWT', 'MAPS', 'WEBSOCKET', 'DEPLOYMENT', 'WORKER']):
-                result[key] = os.environ[key]
-        return app.response_class(
-            response=_json.dumps(result, indent=2, ensure_ascii=False),
-            status=200,
-            mimetype='application/json'
-        )
+        health_data = {
+            'status': 'ok' if (db_ok and not cb_postgrest_open and not cb_admin_open) else 'degraded',
+            'database': 'ok' if db_ok else 'error',
+            'circuit_breaker': cb_state,
+            'version': get_git_version(project_root),
+            'timestamp': _time_module.strftime('%Y-%m-%dT%H:%M:%SZ', _time_module.gmtime()),
+            'uptime_seconds': int(_time_module.time() - _app_start_time),
+        }
+
+        status_code = 200 if health_data['status'] == 'ok' else 503
+        return jsonify(health_data), status_code
+
+    @app.route('/health/circuit-breaker')
+    def circuit_breaker_health():
+        """Детальная информация о состоянии Circuit Breaker."""
+        from app.utils.supabase import get_circuit_breaker_state
+        return jsonify(get_circuit_breaker_state())
+
+    @app.route('/health/postgrest')
+    def postgrest_health():
+        """Прямая проверка доступности PostgREST."""
+        import requests as req_lib
+        from app.config import Config
+
+        url = f"{Config.POSTGREST_URL}/profiles?select=id&limit=1"
+        start = time.time()
+        try:
+            resp = req_lib.get(url, timeout=5)
+            elapsed = round((time.time() - start) * 1000)
+            return jsonify({
+                'status': 'ok' if resp.ok else 'error',
+                'postgrest_url': Config.POSTGREST_URL,
+                'http_status': resp.status_code,
+                'response_time_ms': elapsed,
+                'response_preview': (resp.text or '')[:200],
+            }), 200 if resp.ok else 503
+        except req_lib.RequestException as e:
+            elapsed = round((time.time() - start) * 1000)
+            return jsonify({
+                'status': 'unreachable',
+                'postgrest_url': Config.POSTGREST_URL,
+                'error': str(e),
+                'response_time_ms': elapsed,
+            }), 503
 
     # В тестовом режиме наполняем in-memory БД начальными данными
     if app.config.get('TESTING'):

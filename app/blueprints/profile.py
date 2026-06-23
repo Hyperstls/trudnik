@@ -21,7 +21,17 @@ def profile():
     user_id = session['user_id']
     try:
         resp = postgrest_request('GET', f'profiles?id=eq.{user_id}&select=*')
-        profile_user = resp.json()[0] if resp.ok and resp.json() else None
+        if hasattr(resp, 'circuit_open') and resp.circuit_open:
+            flash('Сервис временно недоступен. Пожалуйста, попробуйте позже.', 'warning')
+            profile_user = None
+        elif resp.ok and resp.json():
+            try:
+                profile_user = resp.json()[0]
+            except (IndexError, TypeError):
+                profile_user = None
+        else:
+            current_app.logger.error('Error loading profile for user %s: status=%s', user_id, resp.status_code)
+            profile_user = None
     except Exception:
         current_app.logger.exception('Error loading profile for user %s', user_id)
         profile_user = None
