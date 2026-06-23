@@ -1,1 +1,1 @@
-a8c2469 fix: hardcode POSTGREST_URL with http:// and port :3000 (2026-06-23 03:12:42 +0300)
+26fd19e revert: restore amvera.yaml to original (env var managed in dashboard) (2026-06-23 03:41:41 +0300)

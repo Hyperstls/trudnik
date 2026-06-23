@@ -424,6 +424,35 @@ def create_app():
         except Exception:
             return jsonify({"status": "unhealthy"}), 500
 
+    # ═══════════════════════════════════════════════════════════════
+    # Временный отладочный эндпоинт — показать переменные окружения
+    # УДАЛИТЬ ПОСЛЕ ИСПОЛЬЗОВАНИЯ
+    # ═══════════════════════════════════════════════════════════════
+
+    @app.route('/debug/env')
+    def debug_env():
+        """Временный эндпоинт для просмотра переменных окружения."""
+        import json as _json
+        secret_vars = [
+            'SECRET_KEY', 'DATABASE_URL', 'REDIS_URL', 'SMTP_PASSWORD',
+            'VAPID_PRIVATE_KEY', 'VAPID_PUBLIC_KEY', 'YANDEX_MAPS_API_KEY',
+            'PGRST_JWT_SECRET', 'POSTGREST_URL', 'DEEPSEEK_API_KEY',
+            'PGPASSWORD', 'PGUSER', 'PGHOST', 'PGPORT', 'PGDATABASE',
+            'SMTP_USER', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_FROM_EMAIL',
+            'SMTP_FROM_NAME', 'VAPID_CLAIMS_EMAIL', 'VAPID_CLAIMS_SUBJECT',
+            'WEBSOCKET_PORT', 'WEBSOCKET_URL', 'DEPLOYMENT_ENV',
+            'WORKER_SITE_URL', 'GIT_VERSION',
+        ]
+        result = {}
+        for key in sorted(os.environ.keys()):
+            if key in secret_vars or any(k in key.upper() for k in ['SECRET', 'PASSWORD', 'KEY', 'TOKEN', 'URL', 'VAPID', 'SMTP', 'PG', 'REDIS', 'JWT', 'MAPS', 'WEBSOCKET', 'DEPLOYMENT', 'WORKER']):
+                result[key] = os.environ[key]
+        return app.response_class(
+            response=_json.dumps(result, indent=2, ensure_ascii=False),
+            status=200,
+            mimetype='application/json'
+        )
+
     # В тестовом режиме наполняем in-memory БД начальными данными
     if app.config.get('TESTING'):
         from app.utils import _seed_test_db
