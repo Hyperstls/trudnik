@@ -1,1 +1,1 @@
-563c5e4 tmp: debug endpoint to view env vars (2026-06-23 11:33:08 +0300)
+77e4f3e fix: JWT role must be anon for unauthenticated users (not authenticated) (2026-06-23 16:06:02 +0300)
