@@ -68,6 +68,12 @@ def role_required(role: str) -> Callable[[F], F]:
             if 'access_token' not in session:
                 return redirect(url_for('auth.login'))
             resp = postgrest_request('GET', f'profiles?id=eq.{session["user_id"]}&select=role')
+
+            # Проверка на Circuit Breaker OPEN
+            if hasattr(resp, 'circuit_open') and resp.circuit_open:
+                flash('Сервис временно недоступен. Пожалуйста, попробуйте позже.', 'warning')
+                return redirect(url_for('jobs.index'))
+
             data = resp.json()
             if not data or not isinstance(data, list) or not data:
                 flash('Ошибка проверки прав доступа', 'danger')

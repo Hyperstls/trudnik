@@ -1,1 +1,1 @@
-77e4f3e fix: JWT role must be anon for unauthenticated users (not authenticated) (2026-06-23 16:06:02 +0300)
+2044763 fix: SW must not intercept POST navigations (login/register forms) (2026-06-23 17:32:54 +0300)
