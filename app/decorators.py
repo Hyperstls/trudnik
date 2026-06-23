@@ -7,6 +7,7 @@ from typing import Any, Callable, TypeVar
 import jwt
 from flask import abort, current_app, flash, jsonify, redirect, request, session, url_for
 
+from app.config import Config
 from app.utils import refresh_access_token, postgrest_request
 
 F = TypeVar('F', bound=Callable[..., Any])
@@ -33,7 +34,7 @@ def login_required(f: F) -> F:
 
         # Proactive check: не истёк ли токен?
         try:
-            decoded = jwt.decode(token, options={"verify_signature": False})
+            decoded = jwt.decode(token, Config.PGRST_JWT_SECRET, algorithms=['HS256'])
             exp = decoded.get('exp', 0)
             if time.time() > exp:
                 # Токен истёк — пробуем обновить
@@ -233,7 +234,7 @@ def rate_limit(f: F) -> F:
         if current_app.config.get('TESTING'):
             return f(*args, **kwargs)
 
-        user_id = session.get('user_id', 'anonymous')
+        user_id = session.get('user_id') or request.remote_addr or 'anonymous'
         endpoint = request.path
         key = f"ratelimit:{endpoint}:{user_id}"
 

@@ -186,14 +186,50 @@ def _install_auth_mock():
         send_push_notification.apply_async = lambda *a, **kw: None
     except Exception:
         pass
-    # Mock Redis publisher чтобы избежать блокировок при отсутствии Redis
+    # Mock Redis publisher чтобы избежать блокировок при отсутствии Redis.
+    # ВАЖНО: методы должны возвращать осмысленные значения, чтобы unit-тесты
+    # redis_publisher могли проверять реальную логику.
+    # Используем MagicMock-клиент вместо no-op заглушек.
     try:
         from app.services.redis_publisher import RedisPublisher
-        RedisPublisher.publish = lambda self, channel, message: None
-        RedisPublisher.publish_notification = lambda self, *a, **kw: False
-        RedisPublisher.publish_chat_message = lambda self, *a, **kw: False
-        RedisPublisher._get_client = lambda self: None
-        RedisPublisher.__init__ = lambda self, *a, **kw: None
+        # Сохраняем ссылки на оригинальные методы (если ещё не сохранены)
+        if not hasattr(RedisPublisher, '_original_publish'):
+            RedisPublisher._original_publish = RedisPublisher.publish
+            RedisPublisher._original_publish_notification = RedisPublisher.publish_notification
+            RedisPublisher._original_publish_chat_message = RedisPublisher.publish_chat_message
+            RedisPublisher._original_get_client = RedisPublisher._get_client
+            RedisPublisher._original_init = RedisPublisher.__init__
+
+        # Заменяем на работающие заглушки, которые используют мок-клиент
+        # (реальный мок redis предоставляется conftest.py)
+        def _mock_get_client(self):
+            if self._client is not None:
+                return self._client
+            from unittest.mock import MagicMock
+            client = MagicMock()
+            client.ping.return_value = True
+            client.publish.return_value = 1
+            client.close.return_value = None
+            self._client = client
+            return client
+
+        def _mock_publish(self, channel, message):
+            import json
+            client = self._get_client()
+            if client is None:
+                return False
+            try:
+                payload = json.dumps(message, ensure_ascii=False, default=str)
+                client.publish(channel, payload)
+                return True
+            except Exception:
+                self._client = None
+                return False
+
+        RedisPublisher._get_client = _mock_get_client
+        RedisPublisher.publish = _mock_publish
+        # publish_notification и publish_chat_message используют publish, поэтому
+        # оставляем оригинальные (если publish работает, они тоже)
     except Exception:
         pass
 

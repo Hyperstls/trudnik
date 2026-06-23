@@ -15,7 +15,7 @@ tests/
 
 # Git (оставляем .git для отображения версии на /admin)
 .gitignore
-.gigacode/
+.kilocode/
 
 # IDE
 .idea/
@@ -29,7 +29,6 @@ tests/
 # Docker / деплой
 Dockerfile
 docker-compose.yml
-render.yaml
 
 # README, чеклисты, логи — кроме requirements.txt (нужен pip install)
 *.md

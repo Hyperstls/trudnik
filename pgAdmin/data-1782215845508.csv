@@ -1,0 +1,246 @@
+"table_name","column_name","data_type","is_nullable","column_default"
+"_archive_contact_payments","id","uuid","NO","gen_random_uuid()"
+"_archive_contact_payments","employer_id","uuid","NO",NULL
+"_archive_contact_payments","worker_id","uuid","NO",NULL
+"_archive_contact_payments","job_id","uuid","NO",NULL
+"_archive_contact_payments","application_id","uuid","YES",NULL
+"_archive_contact_payments","amount","integer","NO","290"
+"_archive_contact_payments","status","text","NO","'pending'::text"
+"_archive_contact_payments","transaction_id","text","YES","''::text"
+"_archive_contact_payments","created_at","timestamp with time zone","YES","now()"
+"_archive_contact_payments","paid_at","timestamp with time zone","YES",NULL
+"applications","id","uuid","NO","gen_random_uuid()"
+"applications","job_id","uuid","NO",NULL
+"applications","worker_id","uuid","NO",NULL
+"applications","status","text","YES","'pending'::text"
+"applications","created_at","timestamp with time zone","YES","now()"
+"applications","message","text","YES","''::text"
+"applications","contact_paid","boolean","YES","false"
+"applications","contact_payment_id","uuid","YES",NULL
+"blacklists","id","uuid","NO","gen_random_uuid()"
+"blacklists","user_id","uuid","NO",NULL
+"blacklists","blocked_user_id","uuid","NO",NULL
+"blacklists","created_at","timestamp with time zone","YES","now()"
+"contact_payments","id","uuid","NO","gen_random_uuid()"
+"contact_payments","employer_id","uuid","NO",NULL
+"contact_payments","worker_id","uuid","NO",NULL
+"contact_payments","job_id","uuid","NO",NULL
+"contact_payments","application_id","uuid","YES",NULL
+"contact_payments","amount","integer","NO","290"
+"contact_payments","status","text","NO","'pending'::text"
+"contact_payments","transaction_id","text","YES","''::text"
+"contact_payments","created_at","timestamp with time zone","YES","now()"
+"contact_payments","paid_at","timestamp with time zone","YES",NULL
+"email_log","id","bigint","NO","nextval('email_log_id_seq'::regclass)"
+"email_log","notification_id","uuid","YES",NULL
+"email_log","recipient","text","NO",NULL
+"email_log","subject","text","YES","''::text"
+"email_log","status","text","YES","'pending'::text"
+"email_log","created_at","timestamp with time zone","YES","now()"
+"email_log","attempts","integer","YES","0"
+"email_log","last_attempt_at","timestamp with time zone","YES",NULL
+"email_log","error","text","YES",NULL
+"email_log","user_id","uuid","YES",NULL
+"email_log","to_email","text","YES",NULL
+"email_log","template_name","character varying","YES",NULL
+"email_log","sent_at","timestamp with time zone","YES",NULL
+"email_log","error_message","text","YES",NULL
+"employer_details","id","uuid","NO","gen_random_uuid()"
+"employer_details","user_id","uuid","YES",NULL
+"employer_details","name","text","YES","''::text"
+"employer_details","created_at","timestamp with time zone","YES","now()"
+"employer_details","description","text","YES","''::text"
+"employer_details","address","text","YES","''::text"
+"employer_details","city","text","YES","''::text"
+"employer_details","lat","double precision","YES",NULL
+"employer_details","lng","double precision","YES",NULL
+"employer_details","company_name","character varying","YES",NULL
+"employer_details","inn","character varying","YES",NULL
+"employer_details","is_self_employed","boolean","YES","false"
+"favorites","id","uuid","NO","gen_random_uuid()"
+"favorites","user_id","uuid","NO",NULL
+"favorites","target_id","uuid","NO",NULL
+"favorites","created_at","timestamp with time zone","YES","now()"
+"favorites","favorite_type","text","YES","'worker'::text"
+"geography_columns","f_table_catalog","name","YES",NULL
+"geography_columns","f_table_schema","name","YES",NULL
+"geography_columns","f_table_name","name","YES",NULL
+"geography_columns","f_geography_column","name","YES",NULL
+"geography_columns","coord_dimension","integer","YES",NULL
+"geography_columns","srid","integer","YES",NULL
+"geography_columns","type","text","YES",NULL
+"geometry_columns","f_table_catalog","character varying","YES",NULL
+"geometry_columns","f_table_schema","name","YES",NULL
+"geometry_columns","f_table_name","name","YES",NULL
+"geometry_columns","f_geometry_column","name","YES",NULL
+"geometry_columns","coord_dimension","integer","YES",NULL
+"geometry_columns","srid","integer","YES",NULL
+"geometry_columns","type","character varying","YES",NULL
+"invitations","id","uuid","NO","gen_random_uuid()"
+"invitations","employer_id","uuid","NO",NULL
+"invitations","worker_id","uuid","NO",NULL
+"invitations","job_id","uuid","YES",NULL
+"invitations","message","text","YES","''::text"
+"invitations","status","text","YES","'pending'::text"
+"invitations","created_at","timestamp with time zone","YES","now()"
+"invitations","responded_at","timestamp with time zone","YES",NULL
+"job_favorites","id","uuid","NO","gen_random_uuid()"
+"job_favorites","user_id","uuid","NO",NULL
+"job_favorites","job_id","uuid","NO",NULL
+"job_favorites","created_at","timestamp with time zone","YES","now()"
+"job_payments","id","uuid","NO","gen_random_uuid()"
+"job_payments","employer_id","uuid","NO",NULL
+"job_payments","job_id","uuid","NO",NULL
+"job_payments","amount","integer","YES","0"
+"job_payments","status","text","YES","'pending'::text"
+"job_payments","created_at","timestamp with time zone","YES","now()"
+"job_payments","tariff","character varying","YES","'standard'::character varying"
+"job_payments","type","character varying","YES","'publication'::character varying"
+"job_payments","transaction_id","character varying","YES",NULL
+"job_payments","paid_at","timestamp with time zone","YES",NULL
+"job_photos","id","uuid","NO","gen_random_uuid()"
+"job_photos","job_id","uuid","NO",NULL
+"job_photos","url","text","YES","''::text"
+"job_photos","created_at","timestamp with time zone","YES","now()"
+"job_photos","photo_url","text","YES",NULL
+"job_photos","order_num","integer","YES","0"
+"job_skills","job_id","uuid","NO",NULL
+"job_skills","skill_id","uuid","NO",NULL
+"jobs","id","uuid","NO","gen_random_uuid()"
+"jobs","employer_id","uuid","NO",NULL
+"jobs","title","text","NO","''::text"
+"jobs","description","text","YES","''::text"
+"jobs","status","text","YES","'open'::text"
+"jobs","location","text","YES","''::text"
+"jobs","lat","double precision","YES",NULL
+"jobs","lng","double precision","YES",NULL
+"jobs","date_time","timestamp with time zone","YES",NULL
+"jobs","created_at","timestamp with time zone","YES","now()"
+"jobs","updated_at","timestamp with time zone","YES","now()"
+"jobs","organization_name","text","YES","''::text"
+"jobs","max_workers","integer","YES","1"
+"jobs","payment_status","text","YES","'unpaid'::text"
+"jobs","preferred_religion","text","YES","'не важно'::text"
+"jobs","contact_phone","text","YES","''::text"
+"jobs","contact_email","text","YES","''::text"
+"jobs","salary_amount","integer","YES","0"
+"jobs","salary_type","text","YES","'fixed'::text"
+"jobs","currency","text","YES","'RUB'::text"
+"jobs","search_vector","tsvector","YES",NULL
+"jobs","org_description","text","YES","''::text"
+"jobs","object_description","text","YES","''::text"
+"jobs","work_type","character varying","YES","''::character varying"
+"jobs","detailed_description","text","YES","''::text"
+"jobs","address","character varying","YES",NULL
+"jobs","city","character varying","YES",NULL
+"jobs","payment_amount","numeric","YES",NULL
+"jobs","current_workers","integer","YES","0"
+"jobs","tariff","character varying","YES","'standard'::character varying"
+"jobs","is_paid","boolean","YES","false"
+"jobs","paid_at","timestamp with time zone","YES",NULL
+"jobs","expires_at","timestamp with time zone","YES",NULL
+"messages","id","bigint","NO",NULL
+"messages","sender_id","uuid","NO",NULL
+"messages","chat_id","uuid","YES",NULL
+"messages","content","text","YES","''::text"
+"messages","created_at","timestamp with time zone","YES","now()"
+"messages","receiver_id","uuid","YES",NULL
+"messages","application_id","uuid","YES",NULL
+"monetization_settings","id","uuid","NO","gen_random_uuid()"
+"monetization_settings","key","text","NO",NULL
+"monetization_settings","value","text","NO","''::text"
+"monetization_settings","updated_at","timestamp with time zone","YES","now()"
+"notifications","id","uuid","NO","gen_random_uuid()"
+"notifications","user_id","uuid","NO",NULL
+"notifications","type","character varying","NO",NULL
+"notifications","message","text","YES",NULL
+"notifications","is_read","boolean","YES","false"
+"notifications","data","jsonb","YES","'{}'::jsonb"
+"notifications","created_at","timestamp with time zone","YES","now()"
+"notifications","title","text","YES",NULL
+"notifications","job_id","uuid","YES",NULL
+"notifications","application_id","uuid","YES",NULL
+"notifications","shift_id","uuid","YES",NULL
+"profiles","id","uuid","NO","gen_random_uuid()"
+"profiles","role","text","YES","'worker'::text"
+"profiles","created_at","timestamp with time zone","YES","now()"
+"profiles","updated_at","timestamp with time zone","YES","now()"
+"profiles","inn","text","YES","''::text"
+"profiles","is_self_employed","boolean","YES","false"
+"profiles","email_public","text","YES","''::text"
+"profiles","rating","double precision","YES","0"
+"profiles","search_vector","tsvector","YES",NULL
+"profiles","religion_id","uuid","YES",NULL
+"profiles","email","text","YES",NULL
+"profiles","full_name","text","YES","''::text"
+"profiles","phone","text","YES",NULL
+"profiles","photo_url","text","YES",NULL
+"profiles","age","integer","YES",NULL
+"profiles","bio","text","YES",NULL
+"profiles","city","text","YES",NULL
+"profiles","experience","text","YES",NULL
+"profiles","desired_payment","numeric","YES",NULL
+"profiles","verification_status","text","YES","'none'::text"
+"profiles","verification_doc_url","text","YES",NULL
+"profiles","total_reviews","integer","YES","0"
+"profiles","skills","ARRAY","YES","'{}'::text[]"
+"profiles","religion","text","YES","'не указано'::text"
+"profiles","portfolio_link","text","YES","''::text"
+"profiles","contact","text","YES",NULL
+"profiles","notification_prefs","jsonb","YES","'{}'::jsonb"
+"profiles","password_hash","text","YES",NULL
+"push_subscriptions","id","bigint","NO","nextval('push_subscriptions_id_seq'::regclass)"
+"push_subscriptions","user_id","uuid","NO",NULL
+"push_subscriptions","subscription_json","jsonb","YES","'{}'::jsonb"
+"push_subscriptions","created_at","timestamp with time zone","YES","now()"
+"push_subscriptions","user_agent","text","YES",NULL
+"push_subscriptions","endpoint","text","YES",NULL
+"push_subscriptions","p256dh","text","YES",NULL
+"push_subscriptions","auth","text","YES",NULL
+"push_subscriptions","updated_at","timestamp with time zone","YES","now()"
+"ratings","id","uuid","NO","gen_random_uuid()"
+"ratings","rated_user_id","uuid","NO",NULL
+"ratings","rater_user_id","uuid","NO",NULL
+"ratings","rating_type","character varying","NO",NULL
+"ratings","target_type","character varying","NO",NULL
+"ratings","rating","integer","NO",NULL
+"ratings","comment","text","YES",NULL
+"ratings","job_id","uuid","YES",NULL
+"ratings","created_at","timestamp with time zone","YES","now()"
+"ratings","updated_at","timestamp with time zone","YES","now()"
+"receipts","id","uuid","NO","gen_random_uuid()"
+"receipts","contact_payment_id","uuid","YES",NULL
+"receipts","church_name","text","NO","''::text"
+"receipts","church_inn","text","NO","''::text"
+"receipts","service_description","text","NO","''::text"
+"receipts","amount","integer","NO","0"
+"receipts","status","text","NO","'sent'::text"
+"receipts","receipt_json","jsonb","YES","'{}'::jsonb"
+"receipts","created_at","timestamp with time zone","YES","now()"
+"receipts","resent_at","timestamp with time zone","YES",NULL
+"religions","id","uuid","NO","gen_random_uuid()"
+"religions","name","text","NO",NULL
+"religions","created_at","timestamp with time zone","YES","now()"
+"religions","sort_order","integer","YES","0"
+"schema_migrations","version","text","NO",NULL
+"schema_migrations","applied_at","timestamp with time zone","YES","now()"
+"schema_migrations","checksum","text","YES",NULL
+"skills","id","uuid","NO","gen_random_uuid()"
+"skills","name","text","NO",NULL
+"skills","created_at","timestamp with time zone","YES","now()"
+"skills","sort_order","integer","YES","0"
+"spatial_ref_sys","srid","integer","NO",NULL
+"spatial_ref_sys","auth_name","character varying","YES",NULL
+"spatial_ref_sys","auth_srid","integer","YES",NULL
+"spatial_ref_sys","srtext","character varying","YES",NULL
+"spatial_ref_sys","proj4text","character varying","YES",NULL
+"tariff_settings","id","uuid","NO","gen_random_uuid()"
+"tariff_settings","tariff_key","text","NO",NULL
+"tariff_settings","price","integer","YES","0"
+"tariff_settings","duration_days","integer","YES","30"
+"tariff_settings","created_at","timestamp with time zone","YES","now()"
+"tariff_settings","renewal_price","integer","YES",NULL
+"tariff_settings","is_active","boolean","YES","true"
+"tariff_settings","updated_at","timestamp with time zone","YES","now()"
+"user_skills","user_id","uuid","NO",NULL
+"user_skills","skill_id","uuid","NO",NULL

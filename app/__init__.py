@@ -484,6 +484,17 @@ def create_app():
                 'response_time_ms': elapsed,
             }), 503
 
+    # Инициализация Redis для rate limiting (между gunicorn worker'ами)
+    try:
+        import redis as _redis_lib
+        redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+        redis_client = _redis_lib.from_url(redis_url, decode_responses=True)
+        redis_client.ping()
+        app.redis = redis_client
+    except Exception:
+        app.redis = None
+        app.logger.warning('Redis not available, rate limiting disabled')
+
     # В тестовом режиме наполняем in-memory БД начальными данными
     if app.config.get('TESTING'):
         from app.utils import _seed_test_db

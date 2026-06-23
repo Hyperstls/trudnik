@@ -10,16 +10,13 @@ WORKDIR /app
 ENV PIP_CACHE_DIR=/data/pip-cache
 ENV PYTHONPYCACHEPREFIX=/data/pycache
 
-# Установка системных зависимостей
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    git \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Установка Python-зависимостей (pip-кэш в /data — ускоряет повторные сборки)
+# Установка системных зависимостей + Python-зависимостей + очистка
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN apt-get update && apt-get install -y --no-install-recommends gcc libpq-dev && \
+    pip install --no-cache-dir -r requirements.txt && \
+    apt-get purge -y gcc libpq-dev && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
 
 # Копирование кода приложения
 COPY . .
@@ -31,11 +28,13 @@ RUN python -m compileall -q /app
 RUN useradd -m -u 1000 appuser && \
     mkdir -p /data/pip-cache /data/pycache && \
     chown -R appuser:appuser /app /data
-# USER appuser  # Закомментирован: порт 80 требует root на Amvera
+USER appuser
+
+ENV PORT=8000
 
 EXPOSE 8000 8001
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:$PORT/health')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
-CMD ["uvicorn", "asgi:application", "--host", "0.0.0.0", "--port", "80", "--workers", "1"]
+CMD ["uvicorn", "asgi:application", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

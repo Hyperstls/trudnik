@@ -1965,10 +1965,471 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
+-- ============================================================
+-- Миграция 059: Атомарные RPC-процедуры для рефакторинга (Фаза 2)
+-- См. полный файл: migrations/062_combined_refactoring_rpcs.sql
+-- ============================================================
+-- ПРИМЕЧАНИЕ: Миграции 059 и 061 объединены в 062_combined_refactoring_rpcs.sql.
+-- Ниже — полное содержимое 062 (включает все 8 атомарных RPC + права доступа).
+
+-- ============================================================
+-- Миграция 062: Объединённые атомарные RPC Фазы 2 (единый скрипт)
+-- ============================================================
+
+BEGIN;
+
+-- Часть 1: Права доступа для нативных auth RPC (из миграции 058)
+REVOKE EXECUTE ON FUNCTION login_user(text, text) FROM anon, PUBLIC;
+GRANT EXECUTE ON FUNCTION login_user(text, text) TO authenticated, service_role;
+
+REVOKE EXECUTE ON FUNCTION register_user(text, text, text, text) FROM anon, PUBLIC;
+GRANT EXECUTE ON FUNCTION register_user(text, text, text, text) TO authenticated, service_role;
+
+REVOKE EXECUTE ON FUNCTION change_password(uuid, text, text) FROM anon, PUBLIC;
+GRANT EXECUTE ON FUNCTION change_password(uuid, text, text) TO authenticated, service_role;
+
+-- Часть 2: Атомарные RPC (5 из 059 + 3 из 061)
+
+-- RPC: withdraw_application_atomic
+CREATE OR REPLACE FUNCTION public.withdraw_application_atomic(
+    p_application_id uuid,
+    p_user_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    v_worker_id uuid;
+    v_job_id uuid;
+    v_status text;
+BEGIN
+    SELECT worker_id, job_id, status
+    INTO v_worker_id, v_job_id, v_status
+    FROM public.applications
+    WHERE id = p_application_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Заявка не найдена', 'code', 'application_not_found');
+    END IF;
+
+    IF v_worker_id != p_user_id THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Вы не автор этой заявки', 'code', 'not_owner');
+    END IF;
+
+    IF v_status != 'pending' THEN
+        RETURN jsonb_build_object('success', false, 'error', format('Нельзя отозвать заявку в статусе ''%s''', v_status), 'code', 'invalid_status');
+    END IF;
+
+    UPDATE public.applications SET status = 'withdrawn' WHERE id = p_application_id;
+
+    RETURN jsonb_build_object('success', true, 'message', 'Заявка отозвана', 'new_status', 'withdrawn', 'job_id', v_job_id);
+END;
+$$;
+
+-- RPC: cancel_worker_atomic
+CREATE OR REPLACE FUNCTION public.cancel_worker_atomic(
+    p_application_id uuid,
+    p_user_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    v_worker_id uuid;
+    v_job_id uuid;
+    v_app_status text;
+    v_employer_id uuid;
+    v_current_workers int;
+    v_max_workers int;
+    v_job_status text;
+    v_new_workers int;
+    v_new_job_status text;
+    v_notification_id uuid;
+BEGIN
+    SELECT worker_id, job_id, status
+    INTO v_worker_id, v_job_id, v_app_status
+    FROM public.applications
+    WHERE id = p_application_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Заявка не найдена', 'code', 'application_not_found');
+    END IF;
+
+    IF v_app_status != 'accepted' THEN
+        RETURN jsonb_build_object('success', false, 'error', format('Нельзя отменить исполнителя в статусе ''%s''', v_app_status), 'code', 'invalid_status');
+    END IF;
+
+    SELECT employer_id, current_workers, max_workers, status
+    INTO v_employer_id, v_current_workers, v_max_workers, v_job_status
+    FROM public.jobs
+    WHERE id = v_job_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Задание не найдено', 'code', 'job_not_found');
+    END IF;
+
+    IF v_employer_id != p_user_id THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Вы не владелец этого задания', 'code', 'not_owner');
+    END IF;
+
+    UPDATE public.applications SET status = 'cancelled' WHERE id = p_application_id;
+
+    v_new_workers := GREATEST(0, v_current_workers - 1);
+
+    IF v_new_workers = 0 AND v_job_status IN ('completed', 'active', 'in_progress') THEN
+        v_new_job_status := 'open';
+    ELSE
+        v_new_job_status := v_job_status;
+    END IF;
+
+    UPDATE public.jobs SET current_workers = v_new_workers, status = v_new_job_status WHERE id = v_job_id;
+
+    INSERT INTO public.notifications (user_id, type, title, message, data, is_read)
+    VALUES (v_worker_id, 'worker_cancelled', 'Заявка отменена',
+        format('Работодатель отменил ваше участие в задании #%s', v_job_id),
+        jsonb_build_object('job_id', v_job_id, 'application_id', p_application_id), false)
+    RETURNING id INTO v_notification_id;
+
+    RETURN jsonb_build_object('success', true, 'message', 'Исполнитель отменён', 'new_status', 'cancelled',
+        'current_workers', v_new_workers, 'job_status', v_new_job_status, 'notification_id', v_notification_id);
+END;
+$$;
+
+-- RPC: rate_user_atomic
+CREATE OR REPLACE FUNCTION public.rate_user_atomic(
+    p_job_id uuid, p_rater_user_id uuid, p_rated_user_id uuid,
+    p_rating int, p_comment text DEFAULT '', p_rating_type text DEFAULT 'worker', p_target_type text DEFAULT 'worker'
+)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE
+    v_new_avg numeric(3,1);
+    v_new_count int;
+BEGIN
+    IF p_rating < 1 OR p_rating > 5 THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Рейтинг должен быть от 1 до 5', 'code', 'invalid_rating');
+    END IF;
+    IF p_rater_user_id = p_rated_user_id THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Нельзя оценить самого себя', 'code', 'self_rating');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM public.jobs WHERE id = p_job_id AND status = 'completed') THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Оценить можно только завершённое задание', 'code', 'job_not_completed');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = p_rated_user_id) THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Оцениваемый пользователь не найден', 'code', 'user_not_found');
+    END IF;
+
+    INSERT INTO public.ratings (job_id, rater_user_id, rated_user_id, rating, comment, rating_type, target_type, created_at, updated_at)
+    VALUES (p_job_id, p_rater_user_id, p_rated_user_id, p_rating, p_comment, p_rating_type, p_target_type, now(), now())
+    ON CONFLICT (rater_user_id, job_id) DO UPDATE SET rating = EXCLUDED.rating, comment = EXCLUDED.comment, updated_at = now();
+
+    SELECT COALESCE(ROUND(AVG(rating)::numeric, 1), 0), COUNT(*)::int
+    INTO v_new_avg, v_new_count FROM public.ratings WHERE rated_user_id = p_rated_user_id;
+
+    UPDATE public.profiles SET rating = v_new_avg, ratings_count = v_new_count WHERE id = p_rated_user_id;
+
+    RETURN jsonb_build_object('success', true, 'message', 'Оценка сохранена', 'new_avg_rating', v_new_avg, 'new_ratings_count', v_new_count);
+END;
+$$;
+
+-- RPC: update_job_status_atomic
+CREATE OR REPLACE FUNCTION public.update_job_status_atomic(
+    p_job_id uuid, p_new_status text, p_user_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE
+    v_current_status text;
+    v_employer_id uuid;
+    v_allowed boolean;
+BEGIN
+    SELECT status, employer_id INTO v_current_status, v_employer_id FROM public.jobs WHERE id = p_job_id FOR UPDATE;
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Задание не найдено', 'code', 'job_not_found');
+    END IF;
+    IF v_employer_id != p_user_id THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Вы не владелец этого задания', 'code', 'not_owner');
+    END IF;
+
+    v_allowed := false;
+    IF v_current_status = 'active' AND p_new_status IN ('in_progress', 'completed', 'cancelled') THEN v_allowed := true; END IF;
+    IF v_current_status = 'in_progress' AND p_new_status IN ('completed', 'cancelled') THEN v_allowed := true; END IF;
+    IF v_current_status = 'open' AND p_new_status = 'cancelled' THEN v_allowed := true; END IF;
+    IF v_current_status = 'completed' AND p_new_status = 'open' THEN v_allowed := true; END IF;
+    IF v_current_status = 'cancelled' AND p_new_status = 'open' THEN v_allowed := true; END IF;
+    IF v_current_status = p_new_status THEN v_allowed := true; END IF;
+
+    IF NOT v_allowed THEN
+        RETURN jsonb_build_object('success', false, 'error', format('Недопустимый переход статуса: ''%s'' → ''%s''', v_current_status, p_new_status), 'code', 'invalid_transition', 'current_status', v_current_status);
+    END IF;
+
+    UPDATE public.jobs SET status = p_new_status, updated_at = now() WHERE id = p_job_id;
+    RETURN jsonb_build_object('success', true, 'message', 'Статус задания обновлён', 'old_status', v_current_status, 'new_status', p_new_status);
+END;
+$$;
+
+-- RPC: resolve_user_atomic
+CREATE OR REPLACE FUNCTION public.resolve_user_atomic(p_user_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE v_profile record;
+BEGIN
+    SELECT id, full_name, photo_url, avatar_url, rating, role INTO v_profile FROM public.profiles WHERE id = p_user_id;
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Пользователь не найден', 'code', 'user_not_found');
+    END IF;
+    RETURN jsonb_build_object('success', true, 'data', jsonb_build_object(
+        'id', v_profile.id, 'full_name', v_profile.full_name,
+        'photo_url', COALESCE(v_profile.photo_url, v_profile.avatar_url, ''),
+        'avatar_url', COALESCE(v_profile.avatar_url, v_profile.photo_url, ''),
+        'rating', COALESCE(v_profile.rating, 0), 'role', v_profile.role));
+END;
+$$;
+
+-- RPC: cancel_job_atomic
+CREATE OR REPLACE FUNCTION public.cancel_job_atomic(p_job_id uuid, p_user_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE
+    v_employer_id uuid; v_status text; v_accepted_count int; v_rejected_workers uuid[];
+BEGIN
+    SELECT employer_id, status INTO v_employer_id, v_status FROM public.jobs WHERE id = p_job_id FOR UPDATE;
+    IF NOT FOUND THEN RETURN jsonb_build_object('success', false, 'error', 'Задание не найдено', 'code', 'job_not_found'); END IF;
+    IF v_employer_id != p_user_id THEN RETURN jsonb_build_object('success', false, 'error', 'Вы не владелец этого задания', 'code', 'not_owner'); END IF;
+    IF v_status = 'completed' THEN
+        SELECT count(*) INTO v_accepted_count FROM public.applications WHERE job_id = p_job_id AND status = 'accepted';
+        IF v_accepted_count > 0 THEN RETURN jsonb_build_object('success', false, 'error', 'Невозможно отменить задание с принятыми работниками', 'code', 'has_accepted_workers', 'accepted_count', v_accepted_count); END IF;
+    END IF;
+    UPDATE public.jobs SET status = 'cancelled', updated_at = now() WHERE id = p_job_id;
+    WITH updated AS (UPDATE public.applications SET status = 'rejected' WHERE job_id = p_job_id AND status = 'pending' RETURNING worker_id)
+    SELECT array_agg(DISTINCT worker_id) INTO v_rejected_workers FROM updated;
+    RETURN jsonb_build_object('success', true, 'message', 'Задание отменено', 'new_status', 'cancelled', 'rejected_worker_ids', COALESCE(to_jsonb(v_rejected_workers), '[]'::jsonb));
+END;
+$$;
+
+-- RPC: force_complete_job
+CREATE OR REPLACE FUNCTION public.force_complete_job(p_job_id uuid, p_user_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE v_employer_id uuid; v_status text; v_accepted_workers uuid[];
+BEGIN
+    SELECT employer_id, status INTO v_employer_id, v_status FROM public.jobs WHERE id = p_job_id FOR UPDATE;
+    IF NOT FOUND THEN RETURN jsonb_build_object('success', false, 'error', 'Задание не найдено', 'code', 'job_not_found'); END IF;
+    IF v_employer_id != p_user_id THEN RETURN jsonb_build_object('success', false, 'error', 'Вы не владелец этого задания', 'code', 'not_owner'); END IF;
+    IF v_status != 'open' THEN RETURN jsonb_build_object('success', false, 'error', format('Нельзя завершить задание в статусе ''%s''', v_status), 'code', 'invalid_status', 'current_status', v_status); END IF;
+    UPDATE public.applications SET status = 'rejected' WHERE job_id = p_job_id AND status = 'pending';
+    UPDATE public.jobs SET status = 'completed', updated_at = now() WHERE id = p_job_id;
+    SELECT array_agg(DISTINCT worker_id) INTO v_accepted_workers FROM public.applications WHERE job_id = p_job_id AND status = 'accepted';
+    RETURN jsonb_build_object('success', true, 'message', 'Задание завершено', 'new_status', 'completed', 'accepted_worker_ids', COALESCE(to_jsonb(v_accepted_workers), '[]'::jsonb));
+END;
+$$;
+
+-- RPC: accept_invitation_atomic
+CREATE OR REPLACE FUNCTION public.accept_invitation_atomic(p_invitation_id uuid, p_user_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE
+    v_job_id uuid; v_employer_id uuid; v_worker_id uuid; v_inv_status text;
+    v_job_status text; v_current_workers int; v_max_workers int;
+    v_new_count int; v_new_job_status text; v_application_id uuid;
+BEGIN
+    SELECT job_id, employer_id, worker_id, status INTO v_job_id, v_employer_id, v_worker_id, v_inv_status FROM public.invitations WHERE id = p_invitation_id FOR UPDATE;
+    IF NOT FOUND THEN RETURN jsonb_build_object('success', false, 'error', 'Приглашение не найдено', 'code', 'invitation_not_found'); END IF;
+    IF v_worker_id != p_user_id THEN RETURN jsonb_build_object('success', false, 'error', 'Это приглашение адресовано другому пользователю', 'code', 'not_target'); END IF;
+    IF v_inv_status != 'pending' THEN RETURN jsonb_build_object('success', false, 'error', format('Приглашение уже %s', v_inv_status), 'code', 'invitation_not_pending'); END IF;
+    SELECT status, current_workers, max_workers INTO v_job_status, v_current_workers, v_max_workers FROM public.jobs WHERE id = v_job_id FOR UPDATE;
+    IF NOT FOUND THEN RETURN jsonb_build_object('success', false, 'error', 'Задание не найдено', 'code', 'job_not_found'); END IF;
+    IF v_job_status != 'open' THEN RETURN jsonb_build_object('success', false, 'error', format('Задание в статусе ''%s''', v_job_status), 'code', 'job_not_open'); END IF;
+    IF v_current_workers >= v_max_workers THEN RETURN jsonb_build_object('success', false, 'error', 'Все места заняты', 'code', 'no_slots'); END IF;
+    INSERT INTO public.applications (job_id, worker_id, status) VALUES (v_job_id, v_worker_id, 'accepted') ON CONFLICT (job_id, worker_id) DO UPDATE SET status = 'accepted' RETURNING id INTO v_application_id;
+    v_new_count := v_current_workers + 1;
+    v_new_job_status := CASE WHEN v_new_count >= v_max_workers THEN 'completed' ELSE v_job_status END;
+    UPDATE public.jobs SET current_workers = v_new_count, status = v_new_job_status, updated_at = now() WHERE id = v_job_id;
+    UPDATE public.invitations SET status = 'accepted', responded_at = now() WHERE id = p_invitation_id;
+    RETURN jsonb_build_object('success', true, 'message', 'Приглашение принято', 'job_id', v_job_id, 'employer_id', v_employer_id, 'worker_id', v_worker_id, 'application_id', v_application_id, 'current_workers', v_new_count, 'job_status', v_new_job_status);
+END;
+$$;
+
+-- Права доступа для всех 8 RPC
+REVOKE EXECUTE ON FUNCTION public.withdraw_application_atomic(uuid, uuid) FROM anon, PUBLIC;
+GRANT EXECUTE ON FUNCTION public.withdraw_application_atomic(uuid, uuid) TO authenticated, service_role;
+
+REVOKE EXECUTE ON FUNCTION public.cancel_worker_atomic(uuid, uuid) FROM anon, PUBLIC;
+GRANT EXECUTE ON FUNCTION public.cancel_worker_atomic(uuid, uuid) TO authenticated, service_role;
+
+REVOKE EXECUTE ON FUNCTION public.rate_user_atomic(uuid, uuid, uuid, int, text, text, text) FROM anon, PUBLIC;
+GRANT EXECUTE ON FUNCTION public.rate_user_atomic(uuid, uuid, uuid, int, text, text, text) TO authenticated, service_role;
+
+REVOKE EXECUTE ON FUNCTION public.update_job_status_atomic(uuid, text, uuid) FROM anon, PUBLIC;
+GRANT EXECUTE ON FUNCTION public.update_job_status_atomic(uuid, text, uuid) TO authenticated, service_role;
+
+REVOKE EXECUTE ON FUNCTION public.resolve_user_atomic(uuid) FROM anon, PUBLIC;
+GRANT EXECUTE ON FUNCTION public.resolve_user_atomic(uuid) TO authenticated, service_role;
+
+REVOKE EXECUTE ON FUNCTION public.cancel_job_atomic(uuid, uuid) FROM anon, PUBLIC;
+GRANT EXECUTE ON FUNCTION public.cancel_job_atomic(uuid, uuid) TO authenticated, service_role;
+
+REVOKE EXECUTE ON FUNCTION public.force_complete_job(uuid, uuid) FROM anon, PUBLIC;
+GRANT EXECUTE ON FUNCTION public.force_complete_job(uuid, uuid) TO authenticated, service_role;
+
+REVOKE EXECUTE ON FUNCTION public.accept_invitation_atomic(uuid, uuid) FROM anon, PUBLIC;
+GRANT EXECUTE ON FUNCTION public.accept_invitation_atomic(uuid, uuid) TO authenticated, service_role;
+
+COMMIT;
+
+-- ============================================================
+-- Миграция 060: Добавление колонки job_id в push_subscriptions
+-- ============================================================
+
+BEGIN;
+
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'push_subscriptions' AND column_name = 'job_id') THEN
+        ALTER TABLE push_subscriptions ADD COLUMN job_id uuid REFERENCES jobs(id) ON DELETE SET NULL;
+    END IF;
+END $$;
+
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE tablename = 'push_subscriptions' AND indexname = 'idx_push_subscriptions_job_id') THEN
+        CREATE INDEX idx_push_subscriptions_job_id ON push_subscriptions(job_id) WHERE job_id IS NOT NULL;
+    END IF;
+END $$;
+
+COMMIT;
+
+-- ============================================================
+-- Миграция 063: Добавление колонки job_id в таблицу notifications
+-- ============================================================
+
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS job_id UUID REFERENCES jobs(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_notifications_job_id ON notifications(job_id);
+
+UPDATE notifications SET job_id = (data->>'job_id')::uuid
+WHERE data->>'job_id' IS NOT NULL AND job_id IS NULL
+  AND (data->>'job_id') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
+
+CREATE INDEX IF NOT EXISTS idx_notifications_application_id ON notifications(application_id);
+
+-- ============================================================
+-- Миграция 064: Обновление RPC accept_application — поддержка rejected→accepted
+-- ============================================================
+
+BEGIN;
+
+CREATE OR REPLACE FUNCTION accept_application(p_job_id uuid, p_app_id uuid)
+RETURNS json
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+    v_current_workers int; v_max_workers int; v_job_status text;
+    v_new_count int; v_new_status text; v_result json;
+BEGIN
+    SELECT current_workers, max_workers, status INTO v_current_workers, v_max_workers, v_job_status FROM jobs WHERE id = p_job_id FOR UPDATE;
+    IF NOT FOUND THEN RETURN json_build_object('success', false, 'error', 'Задание не найдено'); END IF;
+    IF v_job_status != 'open' THEN RETURN json_build_object('success', false, 'error', 'Задание закрыто для принятия'); END IF;
+    IF v_current_workers >= v_max_workers THEN RETURN json_build_object('success', false, 'error', 'Все места заняты'); END IF;
+
+    v_new_count := v_current_workers + 1;
+    v_new_status := CASE WHEN v_new_count >= v_max_workers THEN 'completed' ELSE 'open' END;
+
+    UPDATE jobs SET status = v_new_status, current_workers = v_new_count WHERE id = p_job_id;
+
+    UPDATE applications SET status = 'accepted' WHERE id = p_app_id AND job_id = p_job_id AND status IN ('pending', 'rejected');
+
+    IF NOT FOUND THEN
+        UPDATE jobs SET status = v_job_status, current_workers = v_current_workers WHERE id = p_job_id;
+        RETURN json_build_object('success', false, 'error', 'Отклик не найден или уже обработан');
+    END IF;
+
+    UPDATE applications SET status = 'rejected' WHERE job_id = p_job_id AND status = 'pending' AND id != p_app_id;
+
+    RETURN json_build_object('success', true, 'message', 'Отклик принят', 'current_workers', v_new_count, 'job_status', v_new_status);
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.accept_application(uuid, uuid) FROM anon, PUBLIC;
+GRANT EXECUTE ON FUNCTION public.accept_application(uuid, uuid) TO authenticated, service_role;
+
+COMMIT;
+
+-- ============================================================
+-- Миграция 065: all_amvera_migrations
+-- ЗАГЛУШКА: полный файл — migrations/065_all_amvera_migrations.sql (38 КБ)
+-- Содержит: полную синхронизацию схемы для Amvera (managed PG + PostgREST)
+-- ============================================================
+
+-- ============================================================
+-- Миграция 066: one_shot_setup
+-- ЗАГЛУШКА: полный файл — migrations/066_one_shot_setup.sql (33 КБ)
+-- Содержит: инициализацию БД с нуля (таблицы, RLS, индексы, RPC)
+-- ============================================================
+
+-- ============================================================
+-- Миграция 067: bootstrap_amvera
+-- ЗАГЛУШКА: полный файл — migrations/067_bootstrap_amvera.sql (83 КБ)
+-- Содержит: полный bootstrap для Amvera (все таблицы, политики, функции)
+-- ============================================================
+
+-- ============================================================
+-- Миграция 068: fix_pgadmin_gaps
+-- ============================================================
+
+-- СЕКЦИЯ 1: Починить CHECK для applications.status (добавить 'cancelled')
+ALTER TABLE applications DROP CONSTRAINT IF EXISTS applications_status_check;
+ALTER TABLE applications ADD CONSTRAINT applications_status_check CHECK (status IN ('pending', 'accepted', 'rejected', 'withdrawn', 'cancelled'));
+
+-- СЕКЦИЯ 2: RLS-политики для employer_details
+ALTER TABLE employer_details ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS employer_details_select_policy ON employer_details;
+DROP POLICY IF EXISTS employer_details_insert_policy ON employer_details;
+DROP POLICY IF EXISTS employer_details_update_policy ON employer_details;
+DROP POLICY IF EXISTS employer_details_select ON employer_details;
+
+CREATE POLICY employer_details_select_policy ON employer_details FOR SELECT USING (current_setting('request.jwt.claim.user_id', true)::uuid = user_id);
+CREATE POLICY employer_details_insert_policy ON employer_details FOR INSERT WITH CHECK (current_setting('request.jwt.claim.user_id', true)::uuid = user_id);
+CREATE POLICY employer_details_update_policy ON employer_details FOR UPDATE USING (current_setting('request.jwt.claim.user_id', true)::uuid = user_id) WITH CHECK (current_setting('request.jwt.claim.user_id', true)::uuid = user_id);
+
+-- СЕКЦИЯ 3: RLS-политики для job_favorites
+DROP POLICY IF EXISTS job_favorites_select_policy ON job_favorites;
+DROP POLICY IF EXISTS job_favorites_insert_policy ON job_favorites;
+DROP POLICY IF EXISTS job_favorites_delete_policy ON job_favorites;
+
+CREATE POLICY job_favorites_select_policy ON job_favorites FOR SELECT USING (current_setting('request.jwt.claim.user_id', true)::uuid = user_id);
+CREATE POLICY job_favorites_insert_policy ON job_favorites FOR INSERT WITH CHECK (current_setting('request.jwt.claim.user_id', true)::uuid = user_id);
+CREATE POLICY job_favorites_delete_policy ON job_favorites FOR DELETE USING (current_setting('request.jwt.claim.user_id', true)::uuid = user_id);
+
+-- СЕКЦИЯ 4: RLS-политики для job_photos
+DROP POLICY IF EXISTS job_photos_select_policy ON job_photos;
+DROP POLICY IF EXISTS job_photos_insert_policy ON job_photos;
+DROP POLICY IF EXISTS job_photos_delete_policy ON job_photos;
+
+CREATE POLICY job_photos_select_policy ON job_photos FOR SELECT USING (EXISTS (SELECT 1 FROM jobs WHERE jobs.id = job_photos.job_id AND jobs.employer_id = current_setting('request.jwt.claim.user_id', true)::uuid));
+CREATE POLICY job_photos_insert_policy ON job_photos FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM jobs WHERE jobs.id = job_photos.job_id AND jobs.employer_id = current_setting('request.jwt.claim.user_id', true)::uuid));
+CREATE POLICY job_photos_delete_policy ON job_photos FOR DELETE USING (EXISTS (SELECT 1 FROM jobs WHERE jobs.id = job_photos.job_id AND jobs.employer_id = current_setting('request.jwt.claim.user_id', true)::uuid));
+
+-- СЕКЦИЯ 5: Удалить лишние индексы
+DROP INDEX IF EXISTS idx_favorites_target_id;
+DROP INDEX IF EXISTS idx_favorites_type;
+
 -- ============================================
 -- ГОТОВО!
 -- Файл готов к выполнению в pgAdmin Query Tool.
 -- Все CREATE TABLE содержат полный набор колонок из актуальных миграций.
 -- Все ALTER TABLE используют IF NOT EXISTS / IF EXISTS.
 -- Все RLS-политики используют current_setting('request.jwt.claim.xxx') вместо auth.uid()/auth.role().
+-- Добавлены миграции 059-068 (для 065-067 см. отдельные файлы).
 -- ============================================

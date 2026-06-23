@@ -1,0 +1,14 @@
+"tablename","policyname","cmd","qual","with_check"
+"email_log","Service can insert email logs","INSERT",NULL,"true"
+"job_skills","read_job_skills","SELECT","true",NULL
+"jobs","Users can read jobs","SELECT","((status = 'open'::text) OR (status = 'completed'::text) OR (status = 'cancelled'::text))",NULL
+"monetization_settings","monetization_settings_select","SELECT","true",NULL
+"notifications","Service can insert notifications","INSERT",NULL,"true"
+"profiles","Service can insert profiles","INSERT",NULL,"true"
+"profiles","Users can read profiles","SELECT","true",NULL
+"ratings","Anyone can read ratings","SELECT","true",NULL
+"religions","read_religions","SELECT","true",NULL
+"skills","read_skills","SELECT","true",NULL
+"spatial_ref_sys","spatial_ref_sys_select","SELECT","true",NULL
+"tariff_settings","Anyone can read tariff settings","SELECT","true",NULL
+"user_skills","read_user_skills","SELECT","true",NULL

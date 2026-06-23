@@ -10,6 +10,7 @@ import os
 import re
 import sys
 import unittest
+import pytest
 from unittest.mock import ANY, MagicMock, patch, PropertyMock
 
 # Отключаем proxy для всех тестов (иначе httpx/openai падает с SOCKS)
@@ -245,7 +246,7 @@ class TestDecorators(unittest.TestCase):
             result = fake_view()
             self.assertEqual(result, 'success')
 
-    @patch('app.decorators.supabase_request')
+    @patch('app.utils.supabase_request')
     def test_role_required_correct_role(self, mock_supabase):
         mock_supabase.return_value = MagicMock(ok=True, json=lambda: [{'role': 'employer'}])
         with patch('app.decorators.session', {'access_token': 'token', 'user_id': 'user-1'}):
@@ -255,7 +256,7 @@ class TestDecorators(unittest.TestCase):
             result = fake_view()
             self.assertEqual(result, 'success')
 
-    @patch('app.decorators.supabase_request')
+    @patch('app.utils.supabase_request')
     def test_role_required_wrong_role(self, mock_supabase):
         mock_supabase.return_value = MagicMock(ok=True, json=lambda: [{'role': 'worker'}])
         with patch('app.decorators.session', {'access_token': 'token', 'user_id': 'user-1'}):
@@ -455,7 +456,7 @@ class TestAuthBlueprint(BaseBlueprintTest):
             json=lambda: {'access_token': 'new-token', 'refresh_token': 'new-refresh',
                           'user': {'id': 'user-1'}}
         )
-        with patch('app.blueprints.auth.supabase_request') as mock_sb:
+        with patch('app.utils.supabase_request') as mock_sb:
             mock_sb.return_value = MagicMock(ok=True, json=lambda: [{'role': 'worker'}])
             resp = self.client.post('/login', data={
                 'email': 'test@test.com', 'password': 'password123',
@@ -482,7 +483,7 @@ class TestAuthBlueprint(BaseBlueprintTest):
     @patch('app.blueprints.auth.requests.post')
     def test_register_post(self, mock_post):
         mock_post.return_value = MagicMock(ok=True, json=lambda: {'user': {'id': 'new-user'}})
-        with patch('app.blueprints.auth.supabase_request') as mock_sb:
+        with patch('app.utils.supabase_request') as mock_sb:
             mock_sb.return_value = MagicMock(ok=True)
             resp = self.client.post('/register', data={
                 'full_name': 'Тест', 'email': 'test@test.com',
@@ -507,7 +508,7 @@ class TestJobsBlueprint(BaseBlueprintTest):
         self.assertEqual(resp.status_code, 200)
 
     def test_job_detail_not_found(self):
-        with patch('app.blueprints.jobs.supabase_request') as mock_sb:
+        with patch('app.utils.supabase_request') as mock_sb:
             mock_sb.return_value = MagicMock(ok=False, json=lambda: [])
             resp = self.client.get('/jobs/999')
         self.assertEqual(resp.status_code, 302)
@@ -524,7 +525,7 @@ class TestJobsBlueprint(BaseBlueprintTest):
 
     def test_job_new_get_employer(self):
         self._login_employer()
-        with patch('app.decorators.supabase_request') as mock_dec_sb:
+        with patch('app.utils.supabase_request') as mock_dec_sb:
             mock_dec_sb.return_value = MagicMock(ok=True, json=lambda: [{'role': 'employer'}])
             resp = self.client.get('/job/new')
         self.assertEqual(resp.status_code, 200)
@@ -557,7 +558,7 @@ class TestJobsBlueprint(BaseBlueprintTest):
 
     def test_remove_favorite_job(self):
         self._login()
-        with patch('app.blueprints.jobs.supabase_request') as mock_sb:
+        with patch('app.utils.supabase_request') as mock_sb:
             mock_sb.return_value = MagicMock(ok=True, json=lambda: [{}])
             resp = self.client.post('/unfavorite-job/job-1')
         self.assertEqual(resp.status_code, 302)
@@ -623,7 +624,7 @@ class TestApplicationsBlueprint(BaseBlueprintTest):
             MagicMock(ok=True, json=lambda: [{'id': 'shift-1'}]),
             MagicMock(ok=True),
         ]
-        with patch('app.blueprints.applications.supabase_request', side_effect=responses):
+        with patch('app.utils.supabase_request', side_effect=responses):
             resp = self.client.post('/api/applications/app-1/accept')
         self.assertEqual(resp.status_code, 200)
         data = resp.get_json()
@@ -637,7 +638,7 @@ class TestApplicationsBlueprint(BaseBlueprintTest):
             MagicMock(ok=True),
             MagicMock(ok=True),
         ]
-        with patch('app.blueprints.applications.supabase_request', side_effect=responses):
+        with patch('app.utils.supabase_request', side_effect=responses):
             resp = self.client.post('/api/applications/app-1/reject')
         self.assertEqual(resp.status_code, 200)
         data = resp.get_json()
@@ -655,7 +656,7 @@ class TestApplicationsBlueprint(BaseBlueprintTest):
             MagicMock(ok=True),
             MagicMock(ok=True),
         ]
-        with patch('app.blueprints.applications.supabase_request', side_effect=responses):
+        with patch('app.utils.supabase_request', side_effect=responses):
             resp = self.client.post('/api/applications/app-1/reject')
         self.assertEqual(resp.status_code, 200)
         data = resp.get_json()
@@ -690,7 +691,7 @@ class TestApplicationsBlueprint(BaseBlueprintTest):
             MagicMock(ok=True),  # PATCH jobs
             MagicMock(ok=True),  # PATCH applications
         ]
-        with patch('app.blueprints.applications.supabase_request', side_effect=responses):
+        with patch('app.utils.supabase_request', side_effect=responses):
             resp = self.client.post('/application/app-1/cancel')
         self.assertEqual(resp.status_code, 302)
 
@@ -721,7 +722,7 @@ class TestProfileBlueprint(BaseBlueprintTest):
         self.assertEqual(resp.status_code, 200)
 
     def test_public_profile_not_found(self):
-        with patch('app.blueprints.profile.supabase_request') as mock_sb:
+        with patch('app.utils.supabase_request') as mock_sb:
             mock_sb.return_value = MagicMock(ok=False, json=lambda: [])
             resp = self.client.get('/profile/nobody')
         self.assertEqual(resp.status_code, 302)
@@ -765,6 +766,7 @@ class TestProfileBlueprint(BaseBlueprintTest):
         self.assertEqual(resp.status_code, 302)
 
 
+@pytest.mark.skip(reason="Модуль shifts удалён миграцией 027")
 class TestShiftsBlueprint(BaseBlueprintTest):
     """Тестирование маршрутов смен"""
 
@@ -856,7 +858,7 @@ class TestFavoritesBlueprint(BaseBlueprintTest):
 
     def test_api_check_favorite(self):
         self._login()
-        with patch('app.blueprints.favorites.supabase_request') as mock_sb:
+        with patch('app.utils.supabase_request') as mock_sb:
             mock_sb.return_value = MagicMock(ok=True, json=lambda: [{'id': 1}])
             resp = self.client.post('/api/favorites/check',
                                     json={'worker_id': 'w-1'},
@@ -867,7 +869,7 @@ class TestFavoritesBlueprint(BaseBlueprintTest):
 
     def test_api_check_favorite_false(self):
         self._login()
-        with patch('app.blueprints.favorites.supabase_request') as mock_sb:
+        with patch('app.utils.supabase_request') as mock_sb:
             mock_sb.return_value = MagicMock(ok=True, json=lambda: [])
             resp = self.client.post('/api/favorites/check',
                                     json={'worker_id': 'w-1'},
@@ -938,9 +940,9 @@ class TestAdminBlueprint(BaseBlueprintTest):
 
     def test_admin_panel(self):
         self._login_admin()
-        with patch('app.decorators.supabase_request') as mock_dec_sb:
+        with patch('app.utils.supabase_request') as mock_dec_sb:
             mock_dec_sb.return_value = MagicMock(ok=True, json=lambda: [{'role': 'admin'}])
-            with patch('app.blueprints.admin.supabase_request') as mock_admin_sb:
+            with patch('app.utils.supabase_request') as mock_admin_sb:
                 mock_admin_sb.return_value = MagicMock(ok=True, json=lambda: [])
                 resp = self.client.get('/admin')
         self.assertEqual(resp.status_code, 200)
@@ -961,6 +963,7 @@ class TestAdminBlueprint(BaseBlueprintTest):
         self.assertEqual(resp.status_code, 302)
 
 
+@pytest.mark.skip(reason="Модуль monetization удалён миграцией 022")
 class TestMonetizationBlueprint(BaseBlueprintTest):
     """Тестирование маршрутов монетизации"""
 
@@ -979,7 +982,7 @@ class TestMonetizationBlueprint(BaseBlueprintTest):
     def test_create_payment_access_denied(self):
         """POST /api/payments/create от не-владельца задания → 403"""
         self._login_employer()
-        with patch('app.blueprints.monetization.supabase_request') as mock_sb:
+        with patch('app.utils.supabase_request') as mock_sb:
             mock_sb.return_value = MagicMock(
                 ok=True, json=lambda: [{'employer_id': 'other-emp'}],
             )
@@ -1010,7 +1013,7 @@ class TestMonetizationBlueprint(BaseBlueprintTest):
 
     def test_payment_status_not_found(self):
         """GET /api/payments/status/<id> несуществующего application → 404"""
-        with patch('app.blueprints.monetization.supabase_request') as mock_sb:
+        with patch('app.utils.supabase_request') as mock_sb:
             mock_sb.return_value = MagicMock(ok=False, json=lambda: [])
             resp = self.client.get('/api/payments/status/nonexistent-id')
         self.assertEqual(resp.status_code, 404)
@@ -1020,7 +1023,7 @@ class TestMonetizationBlueprint(BaseBlueprintTest):
     def test_remind_cheque_not_worker(self):
         """POST /api/cheque/remind/<id> от не-исполнителя → 403"""
         self._login()  # login as worker 'test-user-1'
-        with patch('app.blueprints.monetization.supabase_request') as mock_sb:
+        with patch('app.utils.supabase_request') as mock_sb:
             mock_sb.return_value = MagicMock(
                 ok=True,
                 json=lambda: [{'worker_id': 'other-worker', 'job': {}}],
