@@ -54,7 +54,8 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
 
   // --- Strategy 1: Navigation (HTML pages) — Network-first, fallback to offline page ---
-  if (request.mode === 'navigate') {
+  // POST-навигации (login/register) не перехватываем — пусть браузер обрабатывает сам
+  if (request.mode === 'navigate' && request.method === 'GET') {
     event.respondWith(
       fetch(request)
         .then(response => {
