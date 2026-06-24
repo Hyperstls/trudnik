@@ -158,7 +158,6 @@ def api_save_preference():
 # ============================================================
 
 @notifications_bp.route('/push/vapid-public-key')
-@login_required
 def push_vapid_public_key():
     """Возвращает публичный VAPID-ключ для фронтенда."""
     import os as _os

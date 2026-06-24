@@ -61,6 +61,13 @@ END $$;
 -- Даём права текущему пользователю (postgres/trudnikapp)
 GRANT anon, authenticated, service_role TO CURRENT_USER;
 
+-- Явный грант для пользователя приложения (CloudNativePG создаёт его отдельно от миграций)
+DO $$ BEGIN
+    GRANT anon, authenticated, service_role TO trudnikapp;
+EXCEPTION WHEN undefined_object THEN
+    RAISE NOTICE 'Пользователь trudnikapp ещё не создан — грант будет выдан позже через fix_prod_service_role.sql';
+END $$;
+
 -- ============================================
 -- СЕКЦИЯ 3: СОЗДАНИЕ ТАБЛИЦ
 -- Порядок: от базовых к зависимым (учитывает FK)
