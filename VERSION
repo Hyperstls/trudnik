@@ -1,1 +1,1 @@
-e386acb Fix: port 80 for Amvera compatibility + resolve auto-config conflict (2026-06-24 14:27:15 +0300)
+21960df Fix: auth bcrypt, push VAPID public, service_role grants, PGRST_DB_ANON_ROLE (2026-06-24 15:18:42 +0300)
