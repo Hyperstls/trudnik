@@ -1,1 +1,1 @@
-688c777 Fix: get_user_headers() uses real role from session instead of hardcoded 'authenticated' (2026-06-24 15:34:34 +0300)
+1d5b0bf Fix: exclude /admin from Service Worker navigation interception (2026-06-24 15:47:25 +0300)

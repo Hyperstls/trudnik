@@ -115,8 +115,7 @@ def admin_required(f):
         if not _is_authenticated():
             flash('Пожалуйста, войдите в систему.', 'warning')
             return redirect(url_for('auth.login'))
-        profile = get_user_profile()
-        if not profile or profile.get('role') != 'admin':
+        if session.get('role') != 'admin':
             flash('Доступ запрещён. Требуются права администратора.', 'error')
             return redirect(url_for('jobs.index'))
         return f(*args, **kwargs)
