@@ -28,13 +28,11 @@ RUN python -m compileall -q /app
 RUN useradd -m -u 1000 appuser && \
     mkdir -p /data/pip-cache /data/pycache && \
     chown -R appuser:appuser /app /data
-USER appuser
-
-ENV PORT=8000
+# USER appuser  # Закомментирован: порт 80 требует root на Amvera
 
 EXPOSE 8000 8001
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:80/health')" || exit 1
 
-CMD ["uvicorn", "asgi:application", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+CMD ["uvicorn", "asgi:application", "--host", "0.0.0.0", "--port", "80", "--workers", "1"]
