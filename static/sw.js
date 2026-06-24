@@ -56,6 +56,11 @@ self.addEventListener('fetch', event => {
   // --- Strategy 1: Navigation (HTML pages) — Network-first, fallback to offline page ---
   // POST-навигации (login/register) не перехватываем — пусть браузер обрабатывает сам
   if (request.mode === 'navigate' && request.method === 'GET') {
+    // Не перехватываем /admin — страница делает много долгих запросов к PostgREST,
+    // которые превышают таймаут прокси Amvera. Пусть браузер обрабатывает напрямую.
+    if (url.pathname.startsWith('/admin')) {
+      return;
+    }
     event.respondWith(
       fetch(request)
         .then(response => {

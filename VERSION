@@ -1,1 +1,1 @@
-21960df Fix: auth bcrypt, push VAPID public, service_role grants, PGRST_DB_ANON_ROLE (2026-06-24 15:18:42 +0300)
+688c777 Fix: get_user_headers() uses real role from session instead of hardcoded 'authenticated' (2026-06-24 15:34:34 +0300)
