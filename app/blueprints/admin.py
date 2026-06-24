@@ -26,7 +26,7 @@ def admin_panel():
     stats = {}
     if tab == 'dashboard':
         # Точный подсчёт пользователей по ролям через count=exact
-        users_resp = supabase_request('GET',
+        users_resp = supabase_admin_request('GET',
             'profiles?select=role&limit=0',
             headers={'Prefer': 'count=exact'})
         if users_resp.ok:
@@ -38,7 +38,7 @@ def admin_panel():
 
         # Считаем по ролям отдельными запросами count=exact
         for role_key in ['worker', 'employer', 'admin']:
-            role_resp = supabase_request('GET',
+            role_resp = supabase_admin_request('GET',
                 f'profiles?role=eq.{role_key}&select=id&limit=0',
                 headers={'Prefer': 'count=exact'})
             if role_resp.ok:
@@ -49,7 +49,7 @@ def admin_panel():
                 stats[f'{role_key}s'] = 0
 
         # Точный подсчёт заданий по статусам через count=exact
-        jobs_resp = supabase_request('GET',
+        jobs_resp = supabase_admin_request('GET',
             'jobs?select=status&limit=0',
             headers={'Prefer': 'count=exact'})
         if jobs_resp.ok:
@@ -60,7 +60,7 @@ def admin_panel():
             stats['total_jobs'] = total_jobs
 
         for status_key in ['open', 'completed', 'cancelled']:
-            status_resp = supabase_request('GET',
+            status_resp = supabase_admin_request('GET',
                 f'jobs?status=eq.{status_key}&select=id&limit=0',
                 headers={'Prefer': 'count=exact'})
             if status_resp.ok:
@@ -70,7 +70,7 @@ def admin_panel():
             else:
                 stats[f'{status_key}_jobs'] = 0
 
-        pending_resp = supabase_request('GET',
+        pending_resp = supabase_admin_request('GET',
             'profiles?verification_status=eq.pending&select=id&limit=0',
             headers={'Prefer': 'count=exact'})
         if pending_resp.ok:
@@ -93,7 +93,7 @@ def admin_panel():
         if role_filter:
             query += f'&role=eq.{sanitize_postgrest(role_filter)}'
         query += '&order=full_name.asc'
-        users_resp = supabase_request('GET', query)
+        users_resp = supabase_admin_request('GET', query)
         users = users_resp.json() if users_resp.ok else []
 
     # Задания
@@ -107,14 +107,14 @@ def admin_panel():
         if status_filter:
             query += f'&status=eq.{sanitize_postgrest(status_filter)}'
         query += '&order=created_at.desc'
-        jobs_resp = supabase_request('GET', query)
+        jobs_resp = supabase_admin_request('GET', query)
         jobs = jobs_resp.json() if jobs_resp.ok else []
 
     # Верификация — все работодатели с любым статусом
     pending = []
     verified = []
     if tab == 'verification':
-        resp = supabase_request('GET', 'profiles?verification_status=not.is.null&select=*&order=updated_at.desc&limit=50')
+        resp = supabase_admin_request('GET', 'profiles?verification_status=not.is.null&select=*&order=updated_at.desc&limit=50')
         all_verify = resp.json() if resp.ok else []
         pending = [u for u in all_verify if u.get('verification_status') == 'pending']
         verified = [u for u in all_verify if u.get('verification_status') in ('approved', 'rejected')]
@@ -122,7 +122,7 @@ def admin_panel():
     # Навыки — справочник (загружается через JS, но данные нужны для рендера)
     skills = []
     if tab == 'skills':
-        skills_resp = supabase_request('GET', 'skills?select=*&order=sort_order.asc,name.asc')
+        skills_resp = supabase_admin_request('GET', 'skills?select=*&order=sort_order.asc,name.asc')
         skills = skills_resp.json() if skills_resp.ok else []
 
     return render_template('admin.html',
@@ -143,7 +143,7 @@ def update_user_role(user_id):
         return redirect(url_for('admin.admin_panel', tab='users'))
 
     # Защита: нельзя изменить роль другого администратора
-    target_resp = supabase_request('GET', f'profiles?id=eq.{user_id}&select=role')
+    target_resp = supabase_admin_request('GET', f'profiles?id=eq.{user_id}&select=role')
     if target_resp.ok and target_resp.json():
         target_role = target_resp.json()[0].get('role', '')
         if target_role == 'admin':
@@ -298,9 +298,9 @@ def bulk_delete_jobs():
 @admin_required
 def get_skills():
     # Пробуем сортировку по sort_order; если колонки нет — fallback на name
-    resp = supabase_request('GET', 'skills?select=*&order=sort_order.asc,name.asc')
+    resp = supabase_admin_request('GET', 'skills?select=*&order=sort_order.asc,name.asc')
     if not resp.ok:
-        resp = supabase_request('GET', 'skills?select=*&order=name.asc')
+        resp = supabase_admin_request('GET', 'skills?select=*&order=name.asc')
     return jsonify({'success': True, 'skills': resp.json() if resp.ok else []})
 
 @admin_bp.route('/admin/skills', methods=['POST'])
@@ -313,9 +313,9 @@ def add_skill():
         return jsonify({'success': False, 'error': 'Name required'}), 400
     # Находим максимальный sort_order (если колонка есть) и добавляем +1
     max_order = 0
-    existing = supabase_request('GET', 'skills?select=sort_order&order=sort_order.desc&limit=1')
+    existing = supabase_admin_request('GET', 'skills?select=sort_order&order=sort_order.desc&limit=1')
     if not existing.ok:
-        existing = supabase_request('GET', 'skills?select=id&order=name.desc&limit=1')
+        existing = supabase_admin_request('GET', 'skills?select=id&order=name.desc&limit=1')
     if existing.ok and existing.json():
         item = existing.json()[0] if existing.json() else {}
         max_order = item.get('sort_order', 0)
@@ -420,9 +420,9 @@ def bulk_delete_skills():
 @login_required
 @admin_required
 def get_religions():
-    resp = supabase_request('GET', 'religions?select=*&order=sort_order.asc,name.asc')
+    resp = supabase_admin_request('GET', 'religions?select=*&order=sort_order.asc,name.asc')
     if not resp.ok:
-        resp = supabase_request('GET', 'religions?select=*&order=name.asc')
+        resp = supabase_admin_request('GET', 'religions?select=*&order=name.asc')
     return jsonify({'success': True, 'religions': resp.json() if resp.ok else []})
 
 @admin_bp.route('/admin/religions', methods=['POST'])
@@ -434,9 +434,9 @@ def add_religion():
     if not name:
         return jsonify({'success': False, 'error': 'Name required'}), 400
     max_order = 0
-    existing = supabase_request('GET', 'religions?select=sort_order&order=sort_order.desc&limit=1')
+    existing = supabase_admin_request('GET', 'religions?select=sort_order&order=sort_order.desc&limit=1')
     if not existing.ok:
-        existing = supabase_request('GET', 'religions?select=id&order=name.desc&limit=1')
+        existing = supabase_admin_request('GET', 'religions?select=id&order=name.desc&limit=1')
     if existing.ok and existing.json():
         item = existing.json()[0] if existing.json() else {}
         max_order = item.get('sort_order', 0)

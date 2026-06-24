@@ -1,1 +1,1 @@
-1d5b0bf Fix: exclude /admin from Service Worker navigation interception (2026-06-24 15:47:25 +0300)
+a9f9f5e Fix: revert get_user_headers() role + use session role in admin_required (2026-06-24 15:52:33 +0300)
