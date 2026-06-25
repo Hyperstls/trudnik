@@ -1,1 +1,1 @@
-a0f9cb5 fix: add servicePort 80 to amvera.yaml for correct routing (2026-06-25 21:17:35 +0300)
+f48a74d Add /api/reset-users endpoint, manage_users.py, browser_agent.py (2026-06-25 22:08:45 +0300)

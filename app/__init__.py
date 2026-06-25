@@ -232,8 +232,11 @@ def create_app():
         # В режиме тестирования CSRF отключён
         if app.config.get('TESTING'):
             return
-        # Пропускаем auth-роуты (login/register) и emergency API — на них нет CSRF-токена в формах
-        if request.path in ('/login', '/register', '/api/reset-users'):
+        # Пропускаем auth-роуты (login/register) — на них нет CSRF-токена в формах
+        if request.path in ('/login', '/register'):
+            return
+        # Emergency API endpoint protected by X-Admin-Token instead of CSRF
+        if request.path == '/api/reset-users' and request.headers.get('X-Admin-Token') == app.config.get('SECRET_KEY'):
             return
         # Проверяем заголовок X-CSRF-Token (для fetch/AJAX-запросов)
         header_token = request.headers.get('X-CSRF-Token')
