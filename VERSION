@@ -1,1 +1,1 @@
-d53bd12 Fix /api/fix-permissions: read DB URL from env vars directly, add import os (2026-06-25 22:52:09 +0300)
+546f003 fix: grant service_role and anon roles to trudnikapp for PostgREST (2026-06-25 23:16:00 +0300)
