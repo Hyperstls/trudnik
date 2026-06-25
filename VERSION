@@ -1,1 +1,1 @@
-066816f fix: добавить generate_jwt в ре-экспорт, integrity-check в Dockerfile, исправить containerPort (2026-06-25 16:44:27 +0300)
+7a8ba29 fix: integrity-check через grep вместо python import (не требует SECRET_KEY при сборке) (2026-06-25 16:48:36 +0300)

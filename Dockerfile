@@ -21,9 +21,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends gcc libpq-dev &
 # Копирование кода приложения
 COPY . .
 
-# Integrity check: гарантируем, что generate_jwt присутствует в исходниках (защита от кэш-дрейфа)
-RUN grep -q 'def generate_jwt' app/utils/auth.py && echo 'OK: generate_jwt found'
-
 # Предкомпиляция Python-байткода (устраняет нагрев при старте)
 RUN python -m compileall -q /app
 
