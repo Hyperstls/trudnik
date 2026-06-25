@@ -1,1 +1,1 @@
-b831c35 fix: circuit breaker threshold 5->10, add SECURITY DEFINER + GRANT EXECUTE for auth functions (2026-06-26 01:20:26 +0300)
+c3a3e20 fix: remove unstable auto-migrations 071/072/073, migrations done manually via pgAdmin (2026-06-26 01:34:12 +0300)
