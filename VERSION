@@ -1,1 +1,1 @@
-f4c59d1 fix: добавить DROP FUNCTION перед apply_job_atomic в run_all_safe.sql (2026-06-25 18:14:16 +0300)
+ce2f441 fix: HEALTHCHECK проверяет / вместо /health (эндпоинта нет) (2026-06-25 18:24:21 +0300)
