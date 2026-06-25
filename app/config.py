@@ -5,7 +5,7 @@ load_dotenv()
 
 
 class Config:
-    TESTING = os.environ.get('TESTING', 'False').lower() in ('true', '1', 'yes')
+    TESTING = os.environ.get('TESTING', 'False').strip().lower() in ('true', '1', 'yes')
     _FALLBACK_SECRET = os.environ.get('SECRET_KEY')
     if not _FALLBACK_SECRET:
         raise RuntimeError('SECRET_KEY environment variable is required')
@@ -13,7 +13,7 @@ class Config:
 
     # Amvera PostgREST
     _default_postgrest = 'http://localhost:3000' if os.environ.get('DEPLOYMENT_ENV') != 'production' else ''
-    POSTGREST_URL = os.environ.get('POSTGREST_URL', _default_postgrest)
+    POSTGREST_URL = os.environ.get('POSTGREST_URL', _default_postgrest).strip()
     if os.environ.get('DEPLOYMENT_ENV') == 'production' and not POSTGREST_URL:
         raise RuntimeError('POSTGREST_URL is required in production')
     PGRST_JWT_SECRET = os.environ.get('PGRST_JWT_SECRET', '')

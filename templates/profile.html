@@ -74,6 +74,7 @@
     {# Форма редактирования профиля                 #}
     {# ============================================ #}
     <form method="post" action="/profile/update" enctype="multipart/form-data" class="space-y-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="file" id="photo-input" name="photo" accept="image/*" class="js-auto-submit hidden">
 
         <div class="floating-label-group">

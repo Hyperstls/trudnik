@@ -151,7 +151,7 @@ def mock_supabase_client(monkeypatch):
     Подменяет функции в app.utils.supabase на заглушки, возвращающие
     пустые/успешные ответы. Это предотвращает любые реальные HTTP-запросы.
     """
-    from app.utils.supabase import SupabaseResponse
+    from app.utils import SupabaseResponse
 
     def mock_ok_response(*args, **kwargs):
         return SupabaseResponse(ok=True, status_code=200, data=[], text='[]')
@@ -163,15 +163,15 @@ def mock_supabase_client(monkeypatch):
 
     # Мокаем основные функции запросов к PostgREST
     monkeypatch.setattr(
-        'app.utils.supabase.postgrest_request',
+        'app.utils.postgrest_request',
         lambda *a, **kw: SupabaseResponse(ok=True, status_code=200, data=[], text='[]')
     )
     monkeypatch.setattr(
-        'app.utils.supabase.postgrest_admin_request',
+        'app.utils.postgrest_admin_request',
         lambda *a, **kw: SupabaseResponse(ok=True, status_code=200, data=[], text='[]')
     )
     monkeypatch.setattr(
-        'app.utils.supabase.postgrest_rpc',
+        'app.utils.postgrest_rpc',
         lambda *a, **kw: SupabaseResponse(ok=True, status_code=200, data={'success': True}, text='{"success": true}')
     )
 

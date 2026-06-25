@@ -1,1 +1,1 @@
-a9f9f5e Fix: revert get_user_headers() role + use session role in admin_required (2026-06-24 15:52:33 +0300)
+4ea22f2 Fix: admin GET endpoints use supabase_admin_request (service_role) to bypass RLS (2026-06-24 16:11:34 +0300)

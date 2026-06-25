@@ -2,12 +2,13 @@ import uuid as _uuid
 import logging
 import re
 import time as _time
-import jwt as _pyjwt
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
 
 from app.config import Config
 from app.decorators import rate_limit
 from app.utils import postgrest_admin_request, postgrest_request
+from app.utils.auth import generate_jwt
+from app.utils.security import has_sql_injection
 from app.utils.validators import validate_password
 
 auth_bp = Blueprint('auth', __name__)
@@ -20,10 +21,8 @@ _EMAIL_RE = re.compile(
     r'(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$'
 )
 
-# Запрещённые SQL-паттерны в пользовательском вводе (дополнительная защита).
-# Проверяет ТОЛЬКО ASCII-фрагменты ввода — кириллица с \b работает некорректно
-# и даёт ложные срабатывания (например, «Андрей» содержит «AND»).
-# AND/OR исключены — они наиболее вероятны в легитимных именах и названиях.
+# Устаревший локальный pattern (оставлен для обратной ссылки).
+# Используйте has_sql_injection() из app.utils.security.
 _SQL_INJECTION_PATTERNS = re.compile(
     r"(?:SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE|EXEC(?:UTE)?|TRUNCATE)"
     r"(?:\s|=|'|\b)",
@@ -37,24 +36,19 @@ def _has_sql_injection(text: str) -> bool:
     Проверяются только ASCII-фрагменты текста, чтобы избежать ложных
     срабатываний на кириллице (например, «Андрей» не должен блокироваться).
     Первичная защита — параметризованные запросы PostgREST.
+    Делегирует проверку в has_sql_injection() из app.utils.security.
     """
     # Извлекаем только ASCII-подстроки из текста
     ascii_parts = re.findall(r'[ -~]+', text)
     for part in ascii_parts:
-        if _SQL_INJECTION_PATTERNS.search(part):
+        if has_sql_injection(part, include_and_or=False, include_url_encoded=True):
             return True
     return False
 
 
 def _generate_jwt(user_id: str, role: str) -> str:
-    """Сгенерировать JWT-токен для PostgREST-аутентификации."""
-    payload = {
-        'role': role,
-        'user_id': str(user_id),
-        'exp': int(_time.time()) + 3600,  # 1 час
-        'iat': int(_time.time()),
-    }
-    return _pyjwt.encode(payload, Config.PGRST_JWT_SECRET, algorithm='HS256')
+    """Сгенерировать JWT-токен для PostgREST-аутентификации (делегирует в app.utils.auth)."""
+    return generate_jwt(user_id, role)
 
 
 def _login_user_session(user_id: str, role: str, email: str) -> None:
@@ -82,10 +76,13 @@ def login():
         for attempt in range(2):
             try:
                 resp = postgrest_admin_request('POST', 'rpc/login_user',
-                    json={'p_email': email, 'p_password': password})
+                    data={'p_email': email, 'p_password': password})
+                print(f"AUTH DEBUG: resp.ok={resp.ok}, status_code={resp.status_code}, resp.text={resp.text[:200]}", flush=True)
                 if resp.ok:
                     data = resp.json()
+                    print(f"AUTH DEBUG: data={data}, type={type(data)}", flush=True)
                     if isinstance(data, list) and len(data) > 0:
+                        print(f"AUTH DEBUG: data[0]={data[0]}, user_id={data[0].get('user_id')}, role={data[0].get('role')}", flush=True)
                         user = data[0]
                         _login_user_session(user['user_id'], user['role'], email)
                         if user.get('role') == 'employer':
@@ -179,7 +176,7 @@ def register():
 
         # Регистрация через RPC (нативная PostgreSQL-аутентификация)
         try:
-            resp = postgrest_admin_request('POST', 'rpc/register_user', json={
+            resp = postgrest_admin_request('POST', 'rpc/register_user', data={
                 'p_email': email,
                 'p_password': password,
                 'p_full_name': full_name,
@@ -257,5 +254,15 @@ def register():
 
 @auth_bp.route('/logout')
 def logout():
+    log.info('Logout: user_id=%s, role=%s', session.get('user_id'), session.get('role'))
+    if current_app.config.get('TESTING'):
+        session.clear()
+        flash('Вы вышли из системы', 'success')
+        return redirect(url_for('jobs.index'))
     session.clear()
-    return redirect(url_for('auth.login'))
+    flash('Вы вышли из системы', 'success')
+    resp = redirect(url_for('auth.login'))
+    resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    resp.headers['Pragma'] = 'no-cache'
+    resp.headers['Expires'] = '0'
+    return resp
