@@ -620,8 +620,11 @@ def fix_permissions():
     if not token or token != current_app.config.get('SECRET_KEY', ''):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 401
 
-    # Get database URL from config
-    db_url = current_app.config.get('DATABASE_URL', '')
+    # Get database URL from config (DATABASE_URL is a @property)
+    try:
+        db_url = current_app.config['DATABASE_URL']
+    except KeyError:
+        db_url = ''
     if not db_url:
         return jsonify({'success': False, 'error': 'DATABASE_URL not configured'}), 500
 

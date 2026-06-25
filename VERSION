@@ -1,1 +1,1 @@
-b84c822 Add /api/migrations-status endpoint to check applied migrations (2026-06-25 22:34:27 +0300)
+d3c9465 Add /api/fix-permissions endpoint to fix PostgreSQL grants (2026-06-25 22:46:07 +0300)
