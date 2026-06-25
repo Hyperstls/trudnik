@@ -1,3 +1,4 @@
+import os
 import uuid as _uuid
 import logging
 import re
@@ -66,6 +67,55 @@ _MAX_CITY_LENGTH = 100
 _MAX_EMAIL_LENGTH = 254  # RFC 5321
 
 
+def _get_db_url():
+    """Получить URL для прямого подключения к PostgreSQL (как в admin.py reset_users)."""
+    db_url = os.environ.get('DATABASE_URL') or os.environ.get('PGDATABASE_URL', '')
+    if db_url:
+        return db_url
+    pg_user = os.environ.get('PGUSER', '')
+    pg_password = os.environ.get('PGPASSWORD', '')
+    pg_host = os.environ.get('PGHOST', '')
+    pg_port = os.environ.get('PGPORT', '5432')
+    pg_database = os.environ.get('PGDATABASE', '')
+    if all([pg_user, pg_password, pg_host, pg_database]):
+        return f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_database}"
+    return ''
+
+
+def _login_direct_sql(email: str, password: str) -> dict | None:
+    """Проверить email/password через прямое SQL-подключение (в обход PostgREST RPC).
+
+    Использует pgcrypto crypt() для проверки хеша пароля.
+    Возвращает dict с {id, email, role, full_name} или None при ошибке/неверном пароле.
+    """
+    db_url = _get_db_url()
+    if not db_url:
+        log.error("login: DATABASE_URL not configured")
+        return None
+    try:
+        import psycopg2
+        conn = psycopg2.connect(db_url)
+        conn.autocommit = True
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id, email, role, full_name
+            FROM profiles
+            WHERE email = %s AND password_hash = crypt(%s, password_hash)
+        """, (email, password))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        if row:
+            return {'user_id': str(row[0]), 'email': row[1], 'role': row[2], 'full_name': row[3]}
+        return None
+    except ImportError:
+        log.error("login: psycopg2 not installed")
+        return None
+    except Exception as e:
+        log.error("login: direct SQL error for %s: %s", email, e)
+        return None
+
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 @rate_limit
 def login():
@@ -75,28 +125,15 @@ def login():
         last_error = None
         for attempt in range(2):
             try:
-                resp = postgrest_admin_request('POST', 'rpc/login_user',
-                    data={'p_email': email, 'p_password': password})
-                print(f"AUTH DEBUG: resp.ok={resp.ok}, status_code={resp.status_code}, resp.text={resp.text[:200]}", flush=True)
-                if resp.ok:
-                    data = resp.json()
-                    print(f"AUTH DEBUG: data={data}, type={type(data)}", flush=True)
-                    if isinstance(data, list) and len(data) > 0:
-                        print(f"AUTH DEBUG: data[0]={data[0]}, user_id={data[0].get('user_id')}, role={data[0].get('role')}", flush=True)
-                        user = data[0]
-                        _login_user_session(user['user_id'], user['role'], email)
-                        if user.get('role') == 'employer':
-                            return redirect(url_for('jobs.my_jobs'))
-                        else:
-                            return redirect(url_for('jobs.index'))
+                # Прямое SQL-подключение (обходит PostgREST RPC, т.к. RPC требует service_role)
+                user = _login_direct_sql(email, password)
+                print(f"AUTH DEBUG: direct SQL result={user}", flush=True)
+                if user:
+                    _login_user_session(user['user_id'], user['role'], email)
+                    if user.get('role') == 'employer':
+                        return redirect(url_for('jobs.my_jobs'))
                     else:
-                        flash('Ошибка входа: неверный email или пароль', 'danger')
-                        return render_template('login.html')
-                elif resp.status_code == 429:
-                    log.warning('Auth rate-limited for %s, attempt %d/2', email, attempt + 1)
-                    last_error = 'rate_limited'
-                    _time.sleep(1.5 * (attempt + 1))
-                    continue
+                        return redirect(url_for('jobs.index'))
                 else:
                     flash('Ошибка входа: неверный email или пароль', 'danger')
                     return render_template('login.html')

@@ -1,1 +1,1 @@
-a40ee3b fix: reset-users uses direct SQL (psycopg2), add /api/reset-circuit-breaker endpoint (2026-06-25 23:40:00 +0300)
+6168f05 fix: add /api/reset-circuit-breaker to CSRF whitelist (2026-06-25 23:42:13 +0300)
