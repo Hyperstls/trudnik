@@ -1,1 +1,1 @@
-9640501 fix: 503 Service Unavailable — исправление прав RPC и circuit breaker (2026-06-26 00:35:21 +0300)
+b831c35 fix: circuit breaker threshold 5->10, add SECURITY DEFINER + GRANT EXECUTE for auth functions (2026-06-26 01:20:26 +0300)

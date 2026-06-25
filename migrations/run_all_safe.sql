@@ -2458,12 +2458,12 @@ DROP INDEX IF EXISTS idx_favorites_type;
 -- ============================================
 
 -- Подключаем миграцию 071 (исправление permission denied для auth RPC-функций)
-\i migrations/071_fix_auth_rpc_permissions.sql
+-- \i migrations/071_fix_auth_rpc_permissions.sql
 
 -- Подключаем миграцию 072 (комплексное исправление RPC-прав доступа)
-\i migrations/072_fix_rpc_permissions_comprehensive.sql
+-- \i migrations/072_fix_rpc_permissions_comprehensive.sql
 
 -- Подключаем миграцию 073 (пересоздание auth RPC-функций через DROP + CREATE)
 -- ВНИМАНИЕ: Миграция удаляет и пересоздаёт login_user, register_user, change_password.
 -- Если возможно — выполните вручную через pgAdmin для контроля.
-\i migrations/073_fix_rpc_functions_drop_create.sql
+-- \i migrations/073_fix_rpc_functions_drop_create.sql
