@@ -606,6 +606,39 @@ def job_stats():
 
 
 # ═══════════════════════════════════════════════════════════
+# Diagnostic endpoint: show applied migrations
+# Protected by SECRET_KEY (X-Admin-Token header)
+# ═══════════════════════════════════════════════════════════
+
+@admin_bp.route('/api/migrations-status', methods=['GET'])
+def migrations_status():
+    """Return the list of applied migrations from _migrations tracking table."""
+    import logging
+    log = logging.getLogger(__name__)
+
+    token = request.headers.get('X-Admin-Token', '')
+    if not token or token != current_app.config.get('SECRET_KEY', ''):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+
+    resp = postgrest_admin_request('GET', '_migrations?select=*&order=applied_at.asc')
+    if resp.ok:
+        migrations = resp.json() if isinstance(resp.json(), list) else []
+        return jsonify({
+            'success': True,
+            'count': len(migrations),
+            'migrations': migrations,
+        })
+    else:
+        log.warning("migrations-status: query failed: %s", resp.status_code)
+        return jsonify({
+            'success': False,
+            'count': 0,
+            'migrations': [],
+            'error': f'PostgREST query failed: {resp.status_code}',
+        })
+
+
+# ═══════════════════════════════════════════════════════════
 # Emergency endpoint: reset all users and create test accounts
 # Protected by SECRET_KEY (X-Admin-Token header)
 # ═══════════════════════════════════════════════════════════

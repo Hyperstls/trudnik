@@ -1,1 +1,1 @@
-f48a74d Add /api/reset-users endpoint, manage_users.py, browser_agent.py (2026-06-25 22:08:45 +0300)
+907d582 Fix CSRF bypass: allow /api/reset-users with X-Admin-Token (2026-06-25 22:15:35 +0300)
