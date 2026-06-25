@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for, jsonify
 
 from app.decorators import login_required, role_required, admin_required, handle_errors
@@ -620,12 +621,19 @@ def fix_permissions():
     if not token or token != current_app.config.get('SECRET_KEY', ''):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 401
 
-    # Get database URL from config (DATABASE_URL is a @property)
-    try:
-        db_url = current_app.config['DATABASE_URL']
-    except KeyError:
-        db_url = ''
+    # Get database URL directly from env vars (avoid @property issue)
+    db_url = os.environ.get('DATABASE_URL') or os.environ.get('PGDATABASE_URL', '')
     if not db_url:
+        # Try to construct from PG* vars
+        pg_user = os.environ.get('PGUSER', '')
+        pg_password = os.environ.get('PGPASSWORD', '')
+        pg_host = os.environ.get('PGHOST', '')
+        pg_port = os.environ.get('PGPORT', '5432')
+        pg_database = os.environ.get('PGDATABASE', '')
+        if all([pg_user, pg_password, pg_host, pg_database]):
+            db_url = f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_database}"
+        else:
+            return jsonify({'success': False, 'error': 'DATABASE_URL not configured'}), 500
         return jsonify({'success': False, 'error': 'DATABASE_URL not configured'}), 500
 
     try:

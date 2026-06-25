@@ -1,1 +1,1 @@
-d3c9465 Add /api/fix-permissions endpoint to fix PostgreSQL grants (2026-06-25 22:46:07 +0300)
+26e88bd Fix DATABASE_URL access for /api/fix-permissions (2026-06-25 22:49:03 +0300)
