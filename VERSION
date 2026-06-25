@@ -1,1 +1,1 @@
-546f003 fix: grant service_role and anon roles to trudnikapp for PostgREST (2026-06-25 23:16:00 +0300)
+7b8c0d9 fix: use trudnikapp role instead of service_role/anon/authenticated for PostgREST JWT (2026-06-25 23:32:41 +0300)

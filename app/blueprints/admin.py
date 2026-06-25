@@ -724,7 +724,10 @@ def migrations_status():
 @admin_bp.route('/api/reset-users', methods=['POST'])
 def reset_users():
     """
-    Delete all users and create three test accounts:
+    Delete all users and create three test accounts.
+    Uses DIRECT SQL connection (psycopg2) to bypass PostgREST permission issues.
+
+    Creates:
     - admin@test.ru (admin)
     - org@test.ru (employer)
     - trud@test.ru (worker)
@@ -735,7 +738,6 @@ def reset_users():
     import logging
     log = logging.getLogger(__name__)
 
-    # Security: token check
     token = request.headers.get('X-Admin-Token', '')
     expected_token = current_app.config.get('SECRET_KEY', '')
     if not token or token != expected_token:
@@ -751,74 +753,138 @@ def reset_users():
         'errors': [],
     }
 
-    # --- Step 1: Get all user IDs ---
-    log.info("reset-users: fetching all users...")
-    resp = postgrest_admin_request('GET', 'profiles?select=id,email,role')
-    if not resp.ok:
-        result['success'] = False
-        result['errors'].append(f'Failed to fetch users: {resp.status_code}')
-        return jsonify(result), 500
+    # --- Get database connection ---
+    db_url = os.environ.get('DATABASE_URL') or os.environ.get('PGDATABASE_URL', '')
+    if not db_url:
+        pg_user = os.environ.get('PGUSER', '')
+        pg_password = os.environ.get('PGPASSWORD', '')
+        pg_host = os.environ.get('PGHOST', '')
+        pg_port = os.environ.get('PGPORT', '5432')
+        pg_database = os.environ.get('PGDATABASE', '')
+        if all([pg_user, pg_password, pg_host, pg_database]):
+            db_url = f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_database}"
+        else:
+            return jsonify({'success': False, 'error': 'DATABASE_URL not configured'}), 500
 
-    all_users = resp.json() if isinstance(resp.json(), list) else []
-    log.info("reset-users: found %d users", len(all_users))
+    try:
+        import psycopg2
+        conn = psycopg2.connect(db_url)
+        conn.autocommit = True
+        cur = conn.cursor()
 
-    # --- Step 2: Delete all users ---
-    for user in all_users:
-        uid = user.get('id')
-        email = user.get('email', '?')
-        log.info("reset-users: deleting %s (%s)...", email, uid)
+        # --- Step 1: Get all user IDs ---
+        log.info("reset-users: fetching all users...")
+        cur.execute("SELECT id, email, role FROM profiles ORDER BY created_at")
+        all_users = cur.fetchall()
+        log.info("reset-users: found %d users", len(all_users))
 
-        rpc_resp = postgrest_rpc('delete_user_cascade', {'p_user_id': uid}, use_admin=True)
-        if rpc_resp.ok:
-            rpc_data = rpc_resp.json() if rpc_resp.ok else {}
-            if isinstance(rpc_data, dict) and rpc_data.get('success'):
+        # --- Step 2: Delete all users directly via SQL ---
+        for uid, email, role in all_users:
+            log.info("reset-users: deleting %s (%s)...", email, uid)
+            try:
+                # Delete related records first (same order as delete_user_cascade)
+                if role == 'employer':
+                    # Delete jobs created by this employer
+                    cur.execute("DELETE FROM jobs WHERE employer_id = %s", [uid])
+                cur.execute("DELETE FROM applications WHERE worker_id = %s", [uid])
+                cur.execute("DELETE FROM notifications WHERE user_id = %s", [uid])
+                cur.execute("DELETE FROM favorites WHERE user_id = %s OR target_id = %s", [uid, uid])
+                cur.execute("DELETE FROM job_favorites WHERE user_id = %s", [uid])
+                cur.execute("DELETE FROM blacklists WHERE user_id = %s OR blocked_user_id = %s", [uid, uid])
+                cur.execute("DELETE FROM ratings WHERE rater_user_id = %s OR rated_user_id = %s", [uid, uid])
+                cur.execute("DELETE FROM invitations WHERE employer_id = %s OR worker_id = %s", [uid, uid])
+                cur.execute("DELETE FROM user_skills WHERE user_id = %s", [uid])
+                cur.execute("DELETE FROM push_subscriptions WHERE user_id = %s", [uid])
+                cur.execute("DELETE FROM messages WHERE sender_id = %s", [uid])
+                # Finally delete the profile
+                cur.execute("DELETE FROM profiles WHERE id = %s", [uid])
                 result['deleted'] += 1
-            else:
+                log.info("reset-users: deleted %s ok", email)
+            except Exception as e:
                 result['delete_failed'] += 1
-                result['errors'].append(f'delete_user_cascade returned no success for {email}')
-        else:
-            result['delete_failed'] += 1
-            result['errors'].append(f'delete_user_cascade failed for {email}: {rpc_resp.status_code}')
+                result['errors'].append(f"Failed to delete {email}: {e}")
+                log.error("reset-users: failed to delete %s: %s", email, e)
 
-    log.info("reset-users: deleted=%d, failed=%d", result['deleted'], result['delete_failed'])
+        log.info("reset-users: deleted=%d, failed=%d", result['deleted'], result['delete_failed'])
 
-    # --- Step 3: Create three test users ---
-    test_users = [
-        {'email': 'admin@test.ru', 'password': 'Step@1986', 'full_name': 'Администратор', 'role': 'admin'},
-        {'email': 'org@test.ru',   'password': 'Step@1986', 'full_name': 'Организатор',   'role': 'employer'},
-        {'email': 'trud@test.ru',  'password': 'Step@1986', 'full_name': 'Трудник Тест',  'role': 'worker'},
-    ]
+        # --- Step 3: Create three test users via SQL (using pgcrypto crypt()) ---
+        test_users = [
+            ('admin@test.ru', 'Step@1986', 'Администратор', 'admin'),
+            ('org@test.ru',   'Step@1986', 'Организатор',   'employer'),
+            ('trud@test.ru',  'Step@1986', 'Трудник Тест',  'worker'),
+        ]
 
-    for tu in test_users:
-        log.info("reset-users: creating %s (%s)...", tu['email'], tu['role'])
-        rpc_resp = postgrest_admin_request('POST', 'rpc/register_user', data={
-            'p_email': tu['email'],
-            'p_password': tu['password'],
-            'p_full_name': tu['full_name'],
-            'p_role': tu['role'],
-        })
-        if rpc_resp.ok:
-            new_id = rpc_resp.json()
-            if isinstance(new_id, list) and len(new_id) > 0:
-                new_id = new_id[0] if isinstance(new_id[0], str) else new_id[0].get('register_user')
-            result['created'].append({'email': tu['email'], 'role': tu['role'], 'id': str(new_id)})
-            log.info("reset-users: created %s with id=%s", tu['email'], new_id)
-        else:
-            result['create_failed'].append(tu['email'])
-            result['errors'].append(f'Failed to create {tu["email"]}: {rpc_resp.status_code} {rpc_resp.text[:200]}')
-            log.error("reset-users: failed to create %s: %s", tu['email'], rpc_resp.text[:200])
+        for email, password, full_name, role in test_users:
+            log.info("reset-users: creating %s (%s)...", email, role)
+            try:
+                cur.execute("""
+                    INSERT INTO profiles (id, email, password_hash, full_name, role)
+                    VALUES (gen_random_uuid(), %s, crypt(%s, gen_salt('bf')), %s, %s)
+                    RETURNING id
+                """, (email, password, full_name, role))
+                new_id = cur.fetchone()[0]
+                result['created'].append({'email': email, 'role': role, 'id': str(new_id)})
+                log.info("reset-users: created %s with id=%s", email, new_id)
+            except Exception as e:
+                result['create_failed'].append(email)
+                result['errors'].append(f"Failed to create {email}: {e}")
+                log.error("reset-users: failed to create %s: %s", email, e)
 
-    log.info("reset-users: created=%d, failed=%d", len(result['created']), len(result['create_failed']))
+        log.info("reset-users: created=%d, failed=%d",
+                 len(result['created']), len(result['create_failed']))
 
-    # --- Step 4: Final verification ---
-    verify_resp = postgrest_admin_request('GET', 'profiles?select=email,role')
-    if verify_resp.ok:
-        final_users = verify_resp.json() if isinstance(verify_resp.json(), list) else []
+        # --- Step 4: Final verification ---
+        cur.execute("SELECT email, role FROM profiles ORDER BY role, email")
+        final_users = [{'email': row[0], 'role': row[1]} for row in cur.fetchall()]
         result['final_count'] = len(final_users)
-        result['final_users'] = [{'email': u['email'], 'role': u['role']} for u in final_users]
+        result['final_users'] = final_users
         log.info("reset-users: final user count=%d", len(final_users))
+
+        cur.close()
+        conn.close()
+
+    except ImportError:
+        return jsonify({'success': False, 'error': 'psycopg2 not installed'}), 500
+    except Exception as e:
+        log.error("reset-users: %s", e)
+        return jsonify({'success': False, 'error': str(e)}), 500
 
     if result['delete_failed'] > 0 or len(result['create_failed']) > 0:
         result['success'] = False
 
     return jsonify(result)
+
+
+@admin_bp.route('/api/reset-circuit-breaker', methods=['POST'])
+def reset_circuit_breaker():
+    """
+    Сбросить Circuit Breaker PostgREST-клиента в состояние CLOSED.
+    Полезно после исправления ошибок, чтобы не ждать таймаута.
+
+    Protected by X-Admin-Token header (must match SECRET_KEY).
+    """
+    import logging
+    log = logging.getLogger(__name__)
+
+    token = request.headers.get('X-Admin-Token', '')
+    expected_token = current_app.config.get('SECRET_KEY', '')
+    if not token or token != expected_token:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+
+    try:
+        from app.utils.postgrest_client import _cb_postgrest, _cb_admin, get_circuit_breaker_state
+
+        _cb_postgrest.reset()
+        _cb_admin.reset()
+
+        state = get_circuit_breaker_state()
+        log.info("Circuit Breaker reset: %s", state)
+
+        return jsonify({
+            'success': True,
+            'message': 'Circuit Breaker сброшен в CLOSED',
+            'state': state,
+        })
+    except Exception as e:
+        log.error("reset-circuit-breaker: %s", e)
+        return jsonify({'success': False, 'error': str(e)}), 500
