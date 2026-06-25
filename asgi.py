@@ -11,7 +11,7 @@ flask_asgi = WSGIMiddleware(flask_app)
 
 
 class RouterMiddleware:
-    """ASGI middleware: WebSocket → FastAPI, HTTP → Flask, Lifespan → FastAPI."""
+    """ASGI middleware: WebSocket → FastAPI, HTTP → Flask, Lifespan → FastAPI, /health → FastAPI."""
     
     def __init__(self, ws_app, flask_asgi):
         self.ws_app = ws_app
@@ -23,6 +23,9 @@ class RouterMiddleware:
             logging.getLogger(__name__).warning(f"[ASGI_ROUTER] type={scope.get('type')} path={scope.get('path')}")
         if scope["type"] in ("websocket", "lifespan"):
             # WebSocket and lifespan go to FastAPI (needs lifespan for Redis)
+            await self.ws_app(scope, receive, send)
+        elif scope["type"] == "http" and scope.get("path") == "/health":
+            # Health check goes to FastAPI (Amvera platform health-check)
             await self.ws_app(scope, receive, send)
         else:
             # HTTP goes to Flask

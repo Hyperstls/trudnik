@@ -145,7 +145,7 @@ async def lifespan(app: FastAPI):
     # ── Startup ───────────────────────────────────────────────
     logger.info("Подключение к Redis: %s", REDIS_URL)
     try:
-        redis_client = aioredis.from_url(REDIS_URL, decode_responses=True)
+        redis_client = aioredis.from_url(REDIS_URL, decode_responses=True, socket_connect_timeout=2)
         await redis_client.ping()
         logger.info("Redis подключён успешно")
     except Exception as exc:

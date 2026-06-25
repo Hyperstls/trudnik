@@ -1,1 +1,1 @@
-9d50d25 fix: HEALTHCHECK use /health endpoint instead of / to fix 503 on Amvera (2026-06-25 19:07:12 +0300)
+23caeda fix: increase HEALTHCHECK start-period to 20s to cover migration time (2026-06-25 19:51:07 +0300)
