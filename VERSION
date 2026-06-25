@@ -1,1 +1,1 @@
-bcab771 fix: login uses direct SQL (psycopg2) instead of PostgREST RPC (2026-06-25 23:47:26 +0300)
+9640501 fix: 503 Service Unavailable — исправление прав RPC и circuit breaker (2026-06-26 00:35:21 +0300)
