@@ -1,1 +1,1 @@
-26e88bd Fix DATABASE_URL access for /api/fix-permissions (2026-06-25 22:49:03 +0300)
+d53bd12 Fix /api/fix-permissions: read DB URL from env vars directly, add import os (2026-06-25 22:52:09 +0300)

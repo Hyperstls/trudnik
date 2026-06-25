@@ -613,7 +613,7 @@ def job_stats():
 
 @admin_bp.route('/api/fix-permissions', methods=['POST'])
 def fix_permissions():
-    """Fix PostgreSQL permissions: GRANT ALL to app role (trudnikapp)."""
+    """Fix PostgreSQL permissions: GRANT ALL to app role (trudnikapp) and grant PostgREST roles."""
     import logging
     log = logging.getLogger(__name__)
 
@@ -634,7 +634,6 @@ def fix_permissions():
             db_url = f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_database}"
         else:
             return jsonify({'success': False, 'error': 'DATABASE_URL not configured'}), 500
-        return jsonify({'success': False, 'error': 'DATABASE_URL not configured'}), 500
 
     try:
         import psycopg2
@@ -643,6 +642,13 @@ def fix_permissions():
         cur = conn.cursor()
 
         grants = [
+            # Role grants — критично для PostgREST: даём trudnikapp права
+            # переключаться на роли service_role и anon (SET ROLE)
+            "GRANT service_role TO trudnikapp",
+            "GRANT anon TO trudnikapp",
+            "GRANT authenticated TO trudnikapp",
+            "ALTER ROLE trudnikapp INHERIT",
+            # Object privileges
             "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO trudnikapp",
             "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO trudnikapp",
             "GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO trudnikapp",
