@@ -307,12 +307,6 @@ def create_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(profile_bp)
 
-    # Мгновенный health-check для Amvera ingress (без запросов к БД)
-    # Должен быть зарегистрирован ДО jobs_bp, чтобы иметь приоритет
-    @app.route('/')
-    def root_health_check():
-        return redirect(url_for('jobs.index', tab='jobs'), 302)
-
     app.register_blueprint(jobs_bp)
     app.register_blueprint(jobs_api_bp)
     app.register_blueprint(applications_bp)

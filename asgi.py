@@ -1,8 +1,8 @@
 """
-Unified ASGI entry point for Render.
+Unified ASGI entry point for Amvera.
 Routes /ws WebSocket to FastAPI, everything else to Flask via WSGIMiddleware.
 """
-from fastapi.middleware.wsgi import WSGIMiddleware
+from a2wsgi import WSGIMiddleware
 from app import app as flask_app
 from websocket_server.main import app as ws_app
 

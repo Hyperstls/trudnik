@@ -1,1 +1,1 @@
-c3a3e20 fix: remove unstable auto-migrations 071/072/073, migrations done manually via pgAdmin (2026-06-26 01:34:12 +0300)
+4f21f38 redeploy: update VERSION to trigger Amvera rebuild after migration fix + run_all_safe.sql cleanup (2026-06-26 01:44:13 +0300)
