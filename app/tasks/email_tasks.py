@@ -14,13 +14,13 @@ from celery.exceptions import MaxRetriesExceededError
 
 from .celery_app import celery_app
 from app.services.email_service import EmailService
-from app.utils import supabase_admin_request
+from app.utils import postgrest_admin_request
 
 logger = logging.getLogger(__name__)
 
 
 def _log_to_db(
-    user_id: int,
+    user_id: str,
     notification_id: int,
     to_email: str,
     subject: str,
@@ -61,7 +61,7 @@ def _log_to_db(
         payload["error_message"] = error_message[:1000]  # Ограничиваем длину
 
     try:
-        resp = supabase_admin_request("POST", "email_log", json=payload)
+        resp = postgrest_admin_request("POST", "email_log", json=payload)
         if resp.ok:
             logger.debug(
                 "email_log записан: user=%s notification=%s status=%s",
@@ -85,7 +85,7 @@ def _log_to_db(
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
 def send_email_notification(
     self: Task,
-    user_id: int,
+    user_id: str,
     notification_id: int,
     user_email: str,
     user_name: str,
@@ -307,7 +307,7 @@ def cleanup_old_email_logs():
     try:
         # Удаляем успешные записи старше 30 дней
         thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
-        resp_sent = supabase_admin_request(
+        resp_sent = postgrest_admin_request(
             'DELETE',
             f'email_log?status=eq.sent&created_at=lt.{thirty_days_ago}',
             headers={'Prefer': 'count=exact'}
@@ -323,7 +323,7 @@ def cleanup_old_email_logs():
 
         # Удаляем dead-letter записи старше 7 дней
         seven_days_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
-        resp_dead = supabase_admin_request(
+        resp_dead = postgrest_admin_request(
             'DELETE',
             f'email_log?status=eq.dead&created_at=lt.{seven_days_ago}',
             headers={'Prefer': 'count=exact'}

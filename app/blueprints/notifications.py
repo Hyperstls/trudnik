@@ -9,7 +9,7 @@ from app.services.notification_service import (
     NOTIFICATION_TYPES, DEFAULT_ENABLED_TYPES,
     get_notifications, get_unread_count, mark_all_read, mark_read
 )
-from app.utils import my_query, supabase_request, supabase_admin_request
+from app.utils import my_query, postgrest_request, postgrest_admin_request
 
 notifications_bp = Blueprint('notifications', __name__)
 
@@ -17,7 +17,7 @@ notifications_bp = Blueprint('notifications', __name__)
 @notifications_bp.route('/notifications')
 @login_required
 def notifications():
-    resp = supabase_request('GET',
+    resp = postgrest_request('GET',
         my_query('notifications', extra='&order=created_at.desc&limit=50'))
     items = resp.json() if resp.ok else []
 
@@ -60,7 +60,7 @@ def api_read_all():
 def api_delete_notification(notification_id):
     """Удалить одно уведомление."""
     user_id = session['user_id']
-    resp = supabase_admin_request('DELETE',
+    resp = postgrest_admin_request('DELETE',
         f'notifications?id=eq.{notification_id}&user_id=eq.{user_id}')
     if resp.ok:
         return jsonify({'success': True})
@@ -73,7 +73,7 @@ def api_delete_all_notifications():
     """Удалить все уведомления пользователя (кроме приглашений)."""
     user_id = session['user_id']
     # Удаляем все уведомления, кроме "Вас пригласили" (приглашения трудника)
-    supabase_admin_request('DELETE',
+    postgrest_admin_request('DELETE',
         f'notifications?user_id=eq.{user_id}&message=not.ilike.*вас пригласили*')
     return jsonify({'success': True})
 
@@ -145,7 +145,7 @@ def api_save_preference():
     prefs[notif_type] = enabled
 
     # Сохранить в profiles.notification_prefs
-    resp = supabase_admin_request('PATCH',
+    resp = postgrest_admin_request('PATCH',
         f'profiles?id=eq.{user_id}',
         json={'notification_prefs': prefs})
     if resp.ok:

@@ -1,52 +1,63 @@
 # Трудник — платформа для поиска временной подработки
 
-**Дата:** 2026-06-05
-**Статус:** ✅ Миграция с PythonAnywhere на Render
+**Дата:** 2026-06-24
+**Статус:** ✅ Развёрнуто на Amvera
 
 ---
 
-## 🚀 Деплой на Render
+## 🚀 Деплой на Amvera
 
-Проект автоматически деплоится на [Render](https://dashboard.render.com) при каждом `git push` в ветку `main`.
+Проект деплоится на платформу [Amvera](https://amvera.ru) через конфигурационный файл [`amvera.yaml`](amvera.yaml).
 
-### Первичная настройка на Render
+### Первичный деплой
 
-1. Создать новый **Web Service** на [dashboard.render.com](https://dashboard.render.com)
-2. Подключить GitHub-репозиторий
-3. Настроить параметры:
-   - **Runtime**: Python 3
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `gunicorn app:app --bind 0.0.0.0:$PORT`
-4. Добавить переменные окружения в разделе **Environment**:
-   - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-   - `SECRET_KEY`
-   - `YANDEX_MAPS_API_KEY`
-   - `DEEPSEEK_API_KEY` (опционально)
+```bash
+# Установить CLI (однократно)
+pip install amvera
 
-Либо используйте файл `render.yaml` из корня проекта для конфигурации через **Blueprint** (Infrastructure as Code).
+# Залогиниться
+amvera login
 
-### После деплоя
+# Деплой
+amvera deploy
+```
 
-1. Render автоматически соберёт и запустит приложение
-2. Приложение будет доступно по URL вида `https://trudnik.onrender.com`
+Конфигурация сборки и запуска описана в [`amvera.yaml`](amvera.yaml).
 
 ---
 
 ## 📊 Технологический стек
 
-- **Backend**: Python 3.14 + Flask (Application Factory + Blueprints)
-- **База данных**: Supabase (PostgreSQL)
-- **Фронтенд**: HTML5 + Tailwind CSS (CDN) + Jinja2
-- **Хостинг**: Render (автоматический деплой из GitHub)
-- **WSGI-сервер**: Gunicorn
+- **Backend**: Python 3.12 + Flask (Application Factory + Blueprints)
+- **ASGI-сервер**: Uvicorn
+- **База данных**: PostgreSQL + PostgREST
+- **Кеш / Брокер**: Redis (Pub/Sub + Celery)
+- **Фоновые задачи**: Celery (email, push, maintenance)
+- **Деплой**: Amvera (amvera.yaml)
+
+---
+
+## 📁 Структура проекта
+
+| Директория/Файл | Назначение |
+|-----------------|------------|
+| [`amvera.yaml`](amvera.yaml) | Конфигурация деплоя на Amvera |
+| [`Dockerfile`](Dockerfile) | Docker-образ приложения |
+| [`docker-compose.yml`](docker-compose.yml) | Локальный стек (Flask + PostgreSQL + Redis + Celery) |
+| [`asgi.py`](asgi.py) | Точка входа ASGI (Uvicorn) |
+| [`app/`](app/) | Основной код (Blueprints, services, utils, tasks) |
+| [`app/templates/`](app/templates/) | HTML-шаблоны (Jinja2) |
+| [`app/static/`](app/static/) | Статические файлы |
+| [`migrations/`](migrations/) | SQL-миграции для PostgreSQL |
+| [`scripts/`](scripts/) | Вспомогательные скрипты |
+| [`docs/`](docs/) | Техническая документация |
+| [`archive/`](archive/) | Архив старых скриптов и документации |
+| [`requirements.txt`](requirements.txt) | Python-зависимости (production) |
+| [`requirements-dev.txt`](requirements-dev.txt) | Python-зависимости (development) |
 
 ---
 
 ## 📚 Документация
-
-Подробная техническая документация проекта доступна в индексном хабе **[TESTING_BLUEPRINT.md](TESTING_BLUEPRINT.md)** и в директории **[docs/](docs/)**:
 
 | Документ | Содержание |
 |----------|-----------|
@@ -69,7 +80,10 @@ pip install -r requirements.txt
 # Установка всех зависимостей (включая тестовые)
 pip install -r requirements-dev.txt
 
-# Запуск
+# Запуск полного стека через Docker Compose
+docker-compose up -d
+
+# Или запуск Flask-приложения отдельно
 python app.py
 ```
 
@@ -77,18 +91,20 @@ python app.py
 
 ---
 
-## 📁 Структура проекта
+## 🔔 Переменные окружения
 
-| Директория/Файл | Назначение |
-|-----------------|------------|
-| `app.py` | Точка входа |
-| `app/` | Основной код (Blueprints, утилиты, конфигурация) |
-| `templates/` | HTML-шаблоны (Jinja2) |
-| `static/` | Статические файлы (CSS, JS, иконки) |
-| `migrations/` | SQL-миграции для Supabase |
-| `archive/` | Архив старых скриптов и документации |
-| `render.yaml` | Конфигурация деплоя на Render |
-| `requirements.txt` | Python-зависимости |
+Список переменных окружения — в файле [`.env.example`](.env.example). Скопируйте его в `.env` и заполните значениями.
+
+Основные группы переменных:
+
+| Группа | Переменные |
+|--------|-----------|
+| **Flask** | `SECRET_KEY`, `DEPLOYMENT_ENV` |
+| **PostgreSQL / PostgREST** | `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `PGRST_URL`, `PGRST_JWT_SECRET` |
+| **Redis / Celery** | `REDIS_URL`, `CELERY_BROKER_URL` |
+| **SMTP / Email** | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` |
+| **Внешние API** | `YANDEX_GEOCODER_KEY` |
+| **Загрузки** | `UPLOAD_FOLDER`, `MAX_PHOTO_SIZE_MB` |
 
 ---
 
@@ -104,8 +120,8 @@ python app.py
 
 ### Запуск
 ```bash
-# 1. Установка зависимостей (для разработки: pip install -r requirements-dev.txt)
-pip install -r requirements.txt
+# 1. Установка зависимостей
+pip install -r requirements-dev.txt
 
 # 2. Генерация VAPID-ключей (для push-уведомлений)
 python -c "from app.utils import generate_vapid_keys; k=generate_vapid_keys(); print(f'VAPID_PRIVATE_KEY={k[0]}\nVAPID_PUBLIC_KEY={k[1]}')"
@@ -135,16 +151,6 @@ docker-compose up -d
 ```
 Сервисы: web, redis, websocket, celery_worker, celery_beat
 
-### Переменные окружения
-| Переменная | Назначение | По умолчанию |
-|-----------|-----------|-------------|
-| `REDIS_URL` | URL Redis для Pub/Sub и Celery | `redis://localhost:6379/0` |
-| `WEBSOCKET_PORT` | Порт WebSocket-сервера | `8001` |
-| `SMTP_HOST` | SMTP сервер | `localhost` |
-| `SMTP_PORT` | SMTP порт | `587` |
-| `VAPID_PRIVATE_KEY` | Приватный VAPID-ключ | — |
-| `VAPID_PUBLIC_KEY` | Публичный VAPID-ключ | — |
-
 ---
 
-**Готово к деплою на Render! 🎉**
+**Готово к деплою на Amvera! 🎉**

@@ -1,7 +1,7 @@
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required
-from app.utils import supabase_request, sanitize_postgrest
+from app.utils import postgrest_request, sanitize_postgrest
 
 employers_bp = Blueprint('employers', __name__)
 
@@ -38,7 +38,7 @@ def employers_list():
     # Фильтрация blacklist ДО пагинации: исключаем работодателей, заблокировавших текущего трудника
     blocked_employer_ids = set()
     if session.get('role') == 'worker' and session.get('user_id'):
-        bl_resp = supabase_request('GET',
+        bl_resp = postgrest_request('GET',
             f'blacklists?blocked_user_id=eq.{session["user_id"]}&select=user_id')
         if bl_resp.ok and bl_resp.json():
             blocked_employer_ids = {b['user_id'] for b in bl_resp.json()}
@@ -50,14 +50,14 @@ def employers_list():
     offset = (page - 1) * per_page
     query += f'&limit={per_page}&offset={offset}'
 
-    resp = supabase_request('GET', f'profiles?{query}', headers={'Prefer': 'count=exact'})
+    resp = postgrest_request('GET', f'profiles?{query}', headers={'Prefer': 'count=exact'})
     employers = resp.json() if resp.ok and resp.json() else []
 
     # Подсчёт открытых заданий для каждого работодателя
     open_jobs_counts = {}
     if employers:
         ids = ','.join(e['id'] for e in employers)
-        jobs_resp = supabase_request('GET',
+        jobs_resp = postgrest_request('GET',
             f'jobs?employer_id=in.({ids})&status=eq.open&select=employer_id')
         if jobs_resp.ok and jobs_resp.json():
             for job in jobs_resp.json():
@@ -71,7 +71,7 @@ def employers_list():
     # Проверка избранного (только для трудников)
     favorited_ids = set()
     if session.get('user_id') and session.get('role') == 'worker':
-        fav_resp = supabase_request('GET',
+        fav_resp = postgrest_request('GET',
             f'favorites?user_id=eq.{session["user_id"]}&favorite_type=eq.employer&select=target_id')
         if fav_resp.ok and fav_resp.json():
             favorited_ids = {f['target_id'] for f in fav_resp.json()}
@@ -98,7 +98,7 @@ def employer_detail(employer_id):
     user_id = session.get('user_id')
 
     # Запрос профиля
-    profile_resp = supabase_request('GET',
+    profile_resp = postgrest_request('GET',
         f'profiles?id=eq.{employer_id}&select=*')
     if not profile_resp.ok or not profile_resp.json():
         flash('Работодатель не найден', 'danger')
@@ -113,14 +113,14 @@ def employer_detail(employer_id):
     # Если текущий трудник заблокирован этим работодателем — скрываем задания
     open_jobs = []
     if session.get('role') == 'worker' and session.get('user_id'):
-        bl_check = supabase_request('GET',
+        bl_check = postgrest_request('GET',
             f'blacklists?user_id=eq.{employer_id}&blocked_user_id=eq.{session["user_id"]}&select=user_id')
         is_blocked = bl_check.ok and len(bl_check.json() or []) > 0
     else:
         is_blocked = False
 
     if not is_blocked:
-        jobs_resp = supabase_request('GET',
+        jobs_resp = postgrest_request('GET',
             f'jobs?employer_id=eq.{employer_id}&status=eq.open&select=*,photos:job_photos(*)&order=created_at.desc')
         open_jobs = jobs_resp.json() if jobs_resp.ok and jobs_resp.json() else []
 
@@ -128,13 +128,13 @@ def employer_detail(employer_id):
     is_favorited = False
     already_applied_job_ids = set()
     if session.get('role') == 'worker':
-        fav_resp = supabase_request('GET',
+        fav_resp = postgrest_request('GET',
             f'favorites?user_id=eq.{user_id}&target_id=eq.{employer_id}&favorite_type=eq.employer')
         is_favorited = fav_resp.ok and len(fav_resp.json() or []) > 0
 
         if open_jobs:
             job_ids = ','.join(j['id'] for j in open_jobs)
-            app_resp = supabase_request('GET',
+            app_resp = postgrest_request('GET',
                 f'applications?worker_id=eq.{user_id}&job_id=in.({job_ids})&select=job_id')
             if app_resp.ok and app_resp.json():
                 already_applied_job_ids = {a['job_id'] for a in app_resp.json()}
@@ -153,16 +153,16 @@ def toggle_favorite(employer_id):
     user_id = session['user_id']
 
     try:
-        check = supabase_request('GET',
+        check = postgrest_request('GET',
             f'favorites?user_id=eq.{user_id}&target_id=eq.{employer_id}&favorite_type=eq.employer')
         is_favorited = check.ok and len(check.json() or []) > 0
 
         if is_favorited:
-            supabase_request('DELETE',
+            postgrest_request('DELETE',
                 f'favorites?user_id=eq.{user_id}&target_id=eq.{employer_id}&favorite_type=eq.employer')
             flash('Работодатель удалён из избранного', 'success')
         else:
-            supabase_request('POST', 'favorites', json={
+            postgrest_request('POST', 'favorites', json={
                 'user_id': user_id,
                 'target_id': employer_id,
                 'favorite_type': 'employer'
@@ -190,7 +190,7 @@ def add_employer_favorite_api():
         return jsonify({'success': False, 'error': 'Не указан employer_id'})
 
     try:
-        resp = supabase_request('POST', 'favorites', json={
+        resp = postgrest_request('POST', 'favorites', json={
             'user_id': session['user_id'],
             'target_id': employer_id,
             'favorite_type': 'employer'
@@ -216,7 +216,7 @@ def remove_employer_favorite_api():
         return jsonify({'success': False, 'error': 'Не указан employer_id'})
 
     try:
-        resp = supabase_request('DELETE',
+        resp = postgrest_request('DELETE',
             f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{employer_id}&favorite_type=eq.employer')
         if resp.ok:
             return jsonify({'success': True, 'message': 'Работодатель удалён из избранного'})
@@ -240,7 +240,7 @@ def check_employer_favorite_api():
         return jsonify({'success': False, 'error': 'Не указан employer_id'})
 
     try:
-        resp = supabase_request('GET',
+        resp = postgrest_request('GET',
             f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{employer_id}&favorite_type=eq.employer')
         is_favorited = resp.ok and len(resp.json() or []) > 0
         return jsonify({'success': True, 'is_favorited': is_favorited})

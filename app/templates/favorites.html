@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Избранное{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold text-neutral-800 mb-6">❤️ Избранное</h1>
+
+    <!-- Табы -->
+    <div class="flex gap-1 mb-6 border-b border-neutral-200 pb-2 overflow-x-auto">
+        <a href="?tab=jobs"
+           class="px-4 py-2 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap {{ 'bg-white text-primary-600 border border-b-white border-neutral-200 -mb-[2px]' if tab == 'jobs' else 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100' }}">
+            📋 Задания
+        </a>
+        <a href="?tab=workers"
+           class="px-4 py-2 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap {{ 'bg-white text-primary-600 border border-b-white border-neutral-200 -mb-[2px]' if tab == 'workers' else 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100' }}">
+            👷 Трудники
+        </a>
+        <a href="?tab=employers"
+           class="px-4 py-2 text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap {{ 'bg-white text-primary-600 border border-b-white border-neutral-200 -mb-[2px]' if tab == 'employers' else 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100' }}">
+            🏢 Работодатели
+        </a>
+    </div>
+
+    <!-- Контент табов -->
+    {% if tab == 'jobs' %}
+        {% if favorites %}
+        <div class="grid gap-4 sm:grid-cols-2">
+            {% for job in favorites %}
+            <div class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
+                <div class="flex justify-between items-start">
+                    <a href="{{ url_for('jobs.job_detail', job_id=job.id) }}" class="font-semibold text-primary-600 hover:text-primary-700">{{ job.title }}</a>
+                    <form method="POST" action="{{ url_for('favorites.remove', item_type='job', item_id=job.id) }}" class="flex-shrink-0 ml-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="text-neutral-400 hover:text-danger touch-target" title="Удалить из избранного" aria-label="Удалить из избранного">
+                            ❌
+                        </button>
+                    </form>
+                </div>
+                {% if job.description %}
+                <p class="text-neutral-500 text-sm mt-1 line-clamp-2">{{ job.description }}</p>
+                {% endif %}
+                <div class="flex items-center gap-3 mt-3 text-xs text-neutral-400">
+                    {% if job.city %}<span>📍 {{ job.city }}</span>{% endif %}
+                    {% if job.budget %}<span>💰 {{ job.budget }} ₽</span>{% endif %}
+                    <span>{{ job.created_at }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-white rounded-lg shadow-md p-10 text-center">
+            <span class="text-5xl mb-4 block">⭐</span>
+            <p class="text-neutral-500 text-lg">Нет избранных заданий</p>
+        </div>
+        {% endif %}
+
+    {% elif tab == 'workers' %}
+        {% if favorites %}
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {% for worker in favorites %}
+            <div class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
+                <div class="flex justify-between items-start">
+                    <div class="flex items-center gap-3 min-w-0">
+                        {% if worker.avatar_url %}
+                        <img src="{{ worker.avatar_url }}" alt="" class="w-10 h-10 rounded-full object-cover flex-shrink-0">
+                        {% else %}
+                        <div class="w-10 h-10 rounded-full bg-neutral-200 flex items-center justify-center text-neutral-400 flex-shrink-0">👤</div>
+                        {% endif %}
+                        <div class="min-w-0">
+                            <a href="{{ url_for('profile.view', user_id=worker.id) }}" class="font-semibold text-primary-600 hover:text-primary-700 block truncate">{{ worker.name }}</a>
+                            {% if worker.city %}<p class="text-xs text-neutral-400">📍 {{ worker.city }}</p>{% endif %}
+                        </div>
+                    </div>
+                    <form method="POST" action="{{ url_for('favorites.remove', item_type='worker', item_id=worker.id) }}" class="flex-shrink-0 ml-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="text-neutral-400 hover:text-danger touch-target" title="Удалить из избранного" aria-label="Удалить из избранного">
+                            ❌
+                        </button>
+                    </form>
+                </div>
+                {% if worker.skills %}
+                <div class="flex flex-wrap gap-1 mt-2">
+                    {% for skill in worker.skills[:4] %}
+                    <span class="bg-primary-50 text-primary-700 text-xs px-2 py-0.5 rounded-full">{{ skill.name }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-white rounded-lg shadow-md p-10 text-center">
+            <span class="text-5xl mb-4 block">👷</span>
+            <p class="text-neutral-500 text-lg">Нет избранных трудников</p>
+        </div>
+        {% endif %}
+
+    {% elif tab == 'employers' %}
+        {% if favorites %}
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {% for employer in favorites %}
+            <div class="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
+                <div class="flex justify-between items-start">
+                    <div class="flex items-center gap-3 min-w-0">
+                        {% if employer.avatar_url %}
+                        <img src="{{ employer.avatar_url }}" alt="" class="w-10 h-10 rounded-full object-cover flex-shrink-0">
+                        {% else %}
+                        <div class="w-10 h-10 rounded-full bg-neutral-200 flex items-center justify-center text-neutral-400 flex-shrink-0">🏢</div>
+                        {% endif %}
+                        <div class="min-w-0">
+                            <a href="{{ url_for('profile.view', user_id=employer.id) }}" class="font-semibold text-primary-600 hover:text-primary-700 block truncate">{{ employer.company_name or employer.name }}</a>
+                            {% if employer.city %}<p class="text-xs text-neutral-400">📍 {{ employer.city }}</p>{% endif %}
+                        </div>
+                    </div>
+                    <form method="POST" action="{{ url_for('favorites.remove', item_type='employer', item_id=employer.id) }}" class="flex-shrink-0 ml-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="text-neutral-400 hover:text-danger touch-target" title="Удалить из избранного" aria-label="Удалить из избранного">
+                            ❌
+                        </button>
+                    </form>
+                </div>
+                {% if employer.company_description %}
+                <p class="text-neutral-500 text-sm mt-2 line-clamp-2">{{ employer.company_description }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-white rounded-lg shadow-md p-10 text-center">
+            <span class="text-5xl mb-4 block">🏢</span>
+            <p class="text-neutral-500 text-lg">Нет избранных работодателей</p>
+        </div>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

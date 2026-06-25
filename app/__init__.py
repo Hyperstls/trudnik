@@ -23,28 +23,9 @@ _git_version_cache = _VersionCache()
 # ── Redis-кэш (TTL 30 сек) ──
 # Глобальный кэш между worker'ами через Redis.
 # При отсутствии Redis — graceful degradation (возврат None).
-_redis_client = None
+from app.utils.redis_client import get_redis_client
+
 _REDIS_CACHE_TTL = 30  # секунд
-
-
-def _get_redis_client():
-    """Ленивая инициализация Redis-клиента.
-
-    Returns:
-        Redis-клиент или None, если Redis недоступен.
-    """
-    global _redis_client
-    if _redis_client is not None:
-        return _redis_client
-    try:
-        import redis as _redis_lib
-        redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
-        _redis_client = _redis_lib.from_url(redis_url, decode_responses=True)
-        # Проверяем соединение
-        _redis_client.ping()
-    except Exception:
-        _redis_client = None
-    return _redis_client
 
 
 def _redis_cache_get(key: str):
@@ -57,7 +38,7 @@ def _redis_cache_get(key: str):
         Значение (int) или None, если ключ не найден или Redis недоступен.
     """
     try:
-        client = _get_redis_client()
+        client = get_redis_client()
         if client is None:
             return None
         value = client.get(key)
@@ -77,7 +58,7 @@ def _redis_cache_set(key: str, value: int, ttl: int = _REDIS_CACHE_TTL):
         ttl: время жизни в секундах (по умолчанию 30).
     """
     try:
-        client = _get_redis_client()
+        client = get_redis_client()
         if client is not None:
             client.setex(key, ttl, value)
     except Exception:
@@ -91,7 +72,7 @@ def _redis_cache_delete(key: str):
         key: ключ кэша.
     """
     try:
-        client = _get_redis_client()
+        client = get_redis_client()
         if client is not None:
             client.delete(key)
     except Exception:
@@ -138,6 +119,47 @@ def get_git_version(project_root: str) -> str:
     return version
 
 
+def _wait_for_postgrest(app, max_wait: int = 30, interval: int = 2) -> bool:
+    """Ожидание готовности PostgREST при старте приложения.
+
+    Предотвращает открытие Circuit Breaker из-за race condition
+    при запуске docker-compose стека (Flask может стартовать раньше PostgREST).
+    """
+    import requests as _req
+    postgrest_url = os.environ.get('POSTGREST_URL', 'http://postgrest:3000')
+    deadline = time.time() + max_wait
+    attempt = 0
+    while time.time() < deadline:
+        attempt += 1
+        try:
+            r = _req.get(f'{postgrest_url}/skills?select=id&limit=1', timeout=5)
+            if r.status_code in (200, 401):
+                # 200 = OK, 401 = RLS (ожидаемо без JWT) — PostgREST жив
+                app.logger.info(
+                    'PostgREST ready after %d attempt(s) (status=%d)',
+                    attempt, r.status_code
+                )
+                # Сбрасываем Circuit Breaker'ы после успешного коннекта
+                try:
+                    from app.utils.postgrest_client import _cb_postgrest, _cb_admin
+                    _cb_postgrest.reset()
+                    _cb_admin.reset()
+                except Exception:
+                    pass
+                return True
+            app.logger.warning(
+                'PostgREST attempt %d: unexpected status %d',
+                attempt, r.status_code
+            )
+        except Exception as e:
+            app.logger.warning(
+                'PostgREST attempt %d: %s', attempt, e
+            )
+        time.sleep(interval)
+    app.logger.error('PostgREST not available after %d attempts', attempt)
+    return False
+
+
 def create_app():
     # Корень проекта — родительская директория пакета app/
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -148,6 +170,10 @@ def create_app():
     app.config.from_object(Config)
     app.secret_key = app.config['SECRET_KEY']
 
+    # Дождаться готовности PostgREST перед приёмом запросов
+    # (предотвращает открытие Circuit Breaker из-за race condition при старте docker-compose)
+    _wait_for_postgrest(app)
+
     @app.context_processor
     def inject_global_user():
         return {'current_user_id': session.get('user_id')}
@@ -157,7 +183,7 @@ def create_app():
         """Внедрение CSRF-токена во все шаблоны."""
         if '_csrf_token' not in session:
             session['_csrf_token'] = secrets.token_hex(32)
-        return {'csrf_token': session['_csrf_token']}
+        return {'csrf_token': lambda: session.get('_csrf_token', '')}
 
     @app.context_processor
     def inject_csp_nonce():
@@ -200,7 +226,7 @@ def create_app():
     def csrf_check():
         """Глобальная CSRF-защита: проверка токена для всех мутирующих запросов.
         Пропускаем: GET/HEAD/OPTIONS, тестовые запросы, auth-роуты (login/register).
-        Приоритет: 1) X-CSRF-Token заголовок (fetch/AJAX), 2) _csrf_token в форме/JSON."""
+        Приоритет: 1) X-CSRF-Token заголовок (fetch/AJAX), 2) csrf_token в форме/JSON."""
         if request.method in ('GET', 'HEAD', 'OPTIONS'):
             return
         # В режиме тестирования CSRF отключён
@@ -216,16 +242,17 @@ def create_app():
                 abort(400, description='CSRF-токен недействителен')
             return
         # Для обычных форм (устойчиво к не-form Content-Type, например text/plain)
+        # Все шаблоны используют name="csrf_token" (без подчёркивания)
         token = None
         try:
-            token = request.form.get('_csrf_token')
+            token = request.form.get('csrf_token') or request.form.get('_csrf_token')
         except Exception:
             pass
         # Если не в форме — пробуем JSON (для API-запросов с application/json)
         if not token and request.is_json:
             try:
                 json_data = request.get_json(silent=True) or {}
-                token = json_data.get('_csrf_token')
+                token = json_data.get('csrf_token') or json_data.get('_csrf_token')
             except Exception:
                 pass
         if not token or token != session.get('_csrf_token'):
@@ -344,6 +371,9 @@ def create_app():
 
     @app.route('/sw.js')
     def service_worker():
+        import os
+        if os.environ.get('TESTING', '').strip().lower() in ('true', '1', 'yes'):
+            return '', 404
         return app.send_static_file('sw.js')
 
     @app.route('/offline')
@@ -384,6 +414,10 @@ def create_app():
         app.logger.warning('Static directory listing requested: %s', request.path)
         abort(404)
 
+    @app.route('/favicon.ico')
+    def favicon():
+        return '', 204
+
     @app.errorhandler(404)
     def not_found(_e):
         return render_template('error.html', error_code='404',
@@ -396,7 +430,7 @@ def create_app():
                                error='Внутренняя ошибка сервера'), 500
 
     @app.errorhandler(Exception)
-    def handle_supabase_error(e):
+    def handle_postgrest_error(e):
         """Глобальный обработчик ошибок внешних сервисов."""
         import requests as req_lib
         from werkzeug.exceptions import HTTPException
@@ -424,7 +458,7 @@ def create_app():
     @app.route('/health')
     def health_check():
         """Проверка работоспособности приложения."""
-        from app.utils.supabase import get_circuit_breaker_state
+        from app.utils.postgrest_client import get_circuit_breaker_state
         cb_state = get_circuit_breaker_state()
 
         # Проверяем БД через admin CB
@@ -454,7 +488,7 @@ def create_app():
     @app.route('/health/circuit-breaker')
     def circuit_breaker_health():
         """Детальная информация о состоянии Circuit Breaker."""
-        from app.utils.supabase import get_circuit_breaker_state
+        from app.utils.postgrest_client import get_circuit_breaker_state
         return jsonify(get_circuit_breaker_state())
 
     @app.route('/health/postgrest')
@@ -485,14 +519,12 @@ def create_app():
             }), 503
 
     # Инициализация Redis для rate limiting (между gunicorn worker'ами)
-    try:
-        import redis as _redis_lib
-        redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
-        redis_client = _redis_lib.from_url(redis_url, decode_responses=True)
+    from app.utils.redis_client import get_redis_client
+    redis_client = get_redis_client()
+    if redis_client is not None:
         redis_client.ping()
-        app.redis = redis_client
-    except Exception:
-        app.redis = None
+    app.redis = redis_client
+    if redis_client is None:
         app.logger.warning('Redis not available, rate limiting disabled')
 
     # В тестовом режиме наполняем in-memory БД начальными данными

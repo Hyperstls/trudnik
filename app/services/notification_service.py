@@ -1,7 +1,7 @@
 """Сервис уведомлений: типизация, создание, проверка настроек.
 
 БЕЗОПАСНОСТЬ (service_role):
-    create() и get_user_prefs() используют supabase_admin_request (service_role),
+    create() и get_user_prefs() используют postgrest_admin_request (service_role),
     потому что:
     - Создание уведомлений (INSERT в notifications) — системная операция.
       RLS-политика notifications разрешает INSERT только для service_role
@@ -15,7 +15,7 @@
 
 import logging
 import traceback
-from app.utils import supabase_admin_request, supabase_request
+from app.utils import postgrest_admin_request, postgrest_request
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ DEFAULT_ENABLED_TYPES = {
 def get_user_prefs(user_id):
     """Получить настройки уведомлений пользователя.
     Используем admin_request — вызывается из любого контекста (не только владельцем)."""
-    resp = supabase_admin_request('GET', f'profiles?id=eq.{user_id}&select=notification_prefs')
+    resp = postgrest_admin_request('GET', f'profiles?id=eq.{user_id}&select=notification_prefs')
     if resp.ok and resp.json():
         prefs = resp.json()[0].get('notification_prefs')
         if prefs and isinstance(prefs, dict):
@@ -112,7 +112,7 @@ def create(user_id, notification_type, title, message, data=None, email=None, us
     # Используем admin_request для обхода RLS:
     # уведомления создаются системой (не владельцем), user_id может не совпадать с auth.uid()
     headers = {'Prefer': 'return=representation'}
-    resp = supabase_admin_request('POST', 'notifications', json=base_payload, headers=headers)
+    resp = postgrest_admin_request('POST', 'notifications', json=base_payload, headers=headers)
     if not resp.ok:
         logger.error('Failed to create notification: user=%s type=%s status=%s body=%s',
                      user_id, notification_type, resp.status_code, resp.text)
@@ -163,7 +163,7 @@ def create(user_id, notification_type, title, message, data=None, email=None, us
     user_name = username
     if user_email is None or user_name is None:
         try:
-            profile_resp = supabase_admin_request('GET', f'profiles?id=eq.{user_id}&select=email,username')
+            profile_resp = postgrest_admin_request('GET', f'profiles?id=eq.{user_id}&select=email,username')
             if profile_resp.ok and profile_resp.json():
                 profile = profile_resp.json()[0]
                 if user_email is None:
@@ -231,7 +231,7 @@ def get_notifications(user_id, page=1, per_page=20):
     """Получить уведомления пользователя с пагинацией (JSON-ready)."""
     offset = (page - 1) * per_page
     headers = {'Prefer': 'count=exact'}
-    resp = supabase_request('GET',
+    resp = postgrest_request('GET',
         f'notifications?user_id=eq.{user_id}&order=created_at.desc'
         f'&limit={per_page}&offset={offset}', headers=headers)
     items = resp.json() if resp.ok else []
@@ -245,7 +245,7 @@ def get_notifications(user_id, page=1, per_page=20):
 
 def get_unread_count(user_id):
     """Точный счётчик непрочитанных уведомлений (через count=exact)."""
-    resp = supabase_request('GET',
+    resp = postgrest_request('GET',
         f'notifications?user_id=eq.{user_id}&is_read=eq.false&select=id&limit=0',
         headers={'Prefer': 'count=exact'})
     if resp.ok:
@@ -257,7 +257,7 @@ def get_unread_count(user_id):
 
 def mark_all_read(user_id):
     """Пометить все уведомления пользователя прочитанными."""
-    supabase_request('PATCH',
+    postgrest_request('PATCH',
         f'notifications?user_id=eq.{user_id}&is_read=eq.false',
         json={'is_read': True})
 
@@ -273,7 +273,7 @@ def mark_read(notification_id, user_id=None):
     url = f'notifications?id=eq.{notification_id}'
     if user_id:
         url += f'&user_id=eq.{user_id}'
-    supabase_request('PATCH', url, json={'is_read': True})
+    postgrest_request('PATCH', url, json={'is_read': True})
 
     # Инвалидируем Redis-кэш счётчика непрочитанных уведомлений
     if user_id:

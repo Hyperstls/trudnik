@@ -1,10 +1,9 @@
-from collections import Counter
 from datetime import datetime
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for, jsonify
 
 from app.decorators import login_required, role_required, admin_required, handle_errors
-from app.utils import cache_for, sanitize_postgrest, supabase_request, supabase_admin_request, supabase_rpc
-from app.utils.helpers import assert_supabase_ok
+from app.utils import cache_for, sanitize_postgrest, postgrest_request, postgrest_admin_request, postgrest_rpc
+from app.utils.helpers import assert_postgrest_ok
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -26,7 +25,7 @@ def admin_panel():
     stats = {}
     if tab == 'dashboard':
         # Точный подсчёт пользователей по ролям через count=exact
-        users_resp = supabase_admin_request('GET',
+        users_resp = postgrest_admin_request('GET',
             'profiles?select=role&limit=0',
             headers={'Prefer': 'count=exact'})
         if users_resp.ok:
@@ -38,7 +37,7 @@ def admin_panel():
 
         # Считаем по ролям отдельными запросами count=exact
         for role_key in ['worker', 'employer', 'admin']:
-            role_resp = supabase_admin_request('GET',
+            role_resp = postgrest_admin_request('GET',
                 f'profiles?role=eq.{role_key}&select=id&limit=0',
                 headers={'Prefer': 'count=exact'})
             if role_resp.ok:
@@ -49,7 +48,7 @@ def admin_panel():
                 stats[f'{role_key}s'] = 0
 
         # Точный подсчёт заданий по статусам через count=exact
-        jobs_resp = supabase_admin_request('GET',
+        jobs_resp = postgrest_admin_request('GET',
             'jobs?select=status&limit=0',
             headers={'Prefer': 'count=exact'})
         if jobs_resp.ok:
@@ -60,7 +59,7 @@ def admin_panel():
             stats['total_jobs'] = total_jobs
 
         for status_key in ['open', 'completed', 'cancelled']:
-            status_resp = supabase_admin_request('GET',
+            status_resp = postgrest_admin_request('GET',
                 f'jobs?status=eq.{status_key}&select=id&limit=0',
                 headers={'Prefer': 'count=exact'})
             if status_resp.ok:
@@ -70,7 +69,7 @@ def admin_panel():
             else:
                 stats[f'{status_key}_jobs'] = 0
 
-        pending_resp = supabase_admin_request('GET',
+        pending_resp = postgrest_admin_request('GET',
             'profiles?verification_status=eq.pending&select=id&limit=0',
             headers={'Prefer': 'count=exact'})
         if pending_resp.ok:
@@ -93,7 +92,7 @@ def admin_panel():
         if role_filter:
             query += f'&role=eq.{sanitize_postgrest(role_filter)}'
         query += '&order=full_name.asc'
-        users_resp = supabase_admin_request('GET', query)
+        users_resp = postgrest_admin_request('GET', query)
         users = users_resp.json() if users_resp.ok else []
 
     # Задания
@@ -107,14 +106,23 @@ def admin_panel():
         if status_filter:
             query += f'&status=eq.{sanitize_postgrest(status_filter)}'
         query += '&order=created_at.desc'
-        jobs_resp = supabase_admin_request('GET', query)
+        jobs_resp = postgrest_admin_request('GET', query)
         jobs = jobs_resp.json() if jobs_resp.ok else []
+        # Безопасно извлекаем employer_name из встроенного employer (может быть list или dict)
+        for j in jobs:
+            emp = j.get('employer')
+            if emp and isinstance(emp, list) and len(emp) > 0:
+                j['employer_name'] = emp[0].get('full_name', '—')
+            elif emp and isinstance(emp, dict):
+                j['employer_name'] = emp.get('full_name', '—')
+            else:
+                j['employer_name'] = '—'
 
     # Верификация — все работодатели с любым статусом
     pending = []
     verified = []
     if tab == 'verification':
-        resp = supabase_admin_request('GET', 'profiles?verification_status=not.is.null&select=*&order=updated_at.desc&limit=50')
+        resp = postgrest_admin_request('GET', 'profiles?verification_status=not.is.null&select=*&order=updated_at.desc&limit=50')
         all_verify = resp.json() if resp.ok else []
         pending = [u for u in all_verify if u.get('verification_status') == 'pending']
         verified = [u for u in all_verify if u.get('verification_status') in ('approved', 'rejected')]
@@ -122,7 +130,7 @@ def admin_panel():
     # Навыки — справочник (загружается через JS, но данные нужны для рендера)
     skills = []
     if tab == 'skills':
-        skills_resp = supabase_admin_request('GET', 'skills?select=*&order=sort_order.asc,name.asc')
+        skills_resp = postgrest_admin_request('GET', 'skills?select=*&order=sort_order.asc,name.asc')
         skills = skills_resp.json() if skills_resp.ok else []
 
     return render_template('admin.html',
@@ -143,7 +151,7 @@ def update_user_role(user_id):
         return redirect(url_for('admin.admin_panel', tab='users'))
 
     # Защита: нельзя изменить роль другого администратора
-    target_resp = supabase_admin_request('GET', f'profiles?id=eq.{user_id}&select=role')
+    target_resp = postgrest_admin_request('GET', f'profiles?id=eq.{user_id}&select=role')
     if target_resp.ok and target_resp.json():
         target_role = target_resp.json()[0].get('role', '')
         if target_role == 'admin':
@@ -152,8 +160,8 @@ def update_user_role(user_id):
 
     new_role = request.form.get('role', '')
     if new_role in ('worker', 'employer', 'admin'):
-        resp = supabase_request('PATCH', f'profiles?id=eq.{user_id}', json={'role': new_role})
-        if assert_supabase_ok(resp, 'смена роли пользователя'):
+        resp = postgrest_request('PATCH', f'profiles?id=eq.{user_id}', json={'role': new_role})
+        if assert_postgrest_ok(resp, 'смена роли пользователя'):
             flash(f'Роль изменена на {new_role}', 'success')
     else:
         flash('Недопустимая роль', 'danger')
@@ -165,7 +173,7 @@ def update_user_role(user_id):
 @admin_required
 def delete_user(user_id):
     # 1. Каскадное удаление пользователя через RPC (этап 4.4)
-    rpc_result = supabase_rpc('delete_user_cascade', {'p_user_id': user_id}, use_admin=True)
+    rpc_result = postgrest_rpc('delete_user_cascade', {'p_user_id': user_id}, use_admin=True)
     if not rpc_result.ok:
         current_app.logger.error(
             "Admin delete user RPC: failed for %s: status=%s text=%s",
@@ -191,8 +199,8 @@ def delete_user(user_id):
 def update_job_status(job_id):
     new_status = request.form.get('status', '')
     if new_status in ('open', 'completed', 'cancelled'):
-        resp = supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': new_status})
-        if assert_supabase_ok(resp, 'изменение статуса задания'):
+        resp = postgrest_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': new_status})
+        if assert_postgrest_ok(resp, 'изменение статуса задания'):
             flash(f'Статус задания изменён на {new_status}', 'success')
     return redirect(url_for('admin.admin_panel', tab='jobs'))
 
@@ -208,7 +216,7 @@ def delete_job_admin(job_id):
 
 def _delete_job_cascade(job_id):
     """Каскадное удаление задания и всех связанных записей через RPC (этап 4.4)."""
-    rpc_result = supabase_rpc('delete_job_cascade', {'p_job_id': job_id}, use_admin=True)
+    rpc_result = postgrest_rpc('delete_job_cascade', {'p_job_id': job_id}, use_admin=True)
     if not rpc_result.ok:
         current_app.logger.error(
             "Admin delete job RPC: failed for %s: status=%s text=%s",
@@ -237,7 +245,7 @@ def bulk_delete_users():
 
     for user_id in user_ids:
         # 1. Каскадное удаление через RPC
-        rpc_result = supabase_rpc('delete_user_cascade', {'p_user_id': user_id}, use_admin=True)
+        rpc_result = postgrest_rpc('delete_user_cascade', {'p_user_id': user_id}, use_admin=True)
         if not rpc_result.ok:
             current_app.logger.error(
                 "Bulk delete user RPC: failed for %s: status=%s text=%s",
@@ -275,7 +283,7 @@ def bulk_delete_jobs():
     errors = []
 
     for job_id in job_ids:
-        rpc_result = supabase_rpc('delete_job_cascade', {'p_job_id': job_id}, use_admin=True)
+        rpc_result = postgrest_rpc('delete_job_cascade', {'p_job_id': job_id}, use_admin=True)
         if not rpc_result.ok:
             current_app.logger.error(
                 "Bulk delete job RPC: failed for %s: status=%s text=%s",
@@ -298,9 +306,9 @@ def bulk_delete_jobs():
 @admin_required
 def get_skills():
     # Пробуем сортировку по sort_order; если колонки нет — fallback на name
-    resp = supabase_admin_request('GET', 'skills?select=*&order=sort_order.asc,name.asc')
+    resp = postgrest_admin_request('GET', 'skills?select=*&order=sort_order.asc,name.asc')
     if not resp.ok:
-        resp = supabase_admin_request('GET', 'skills?select=*&order=name.asc')
+        resp = postgrest_admin_request('GET', 'skills?select=*&order=name.asc')
     return jsonify({'success': True, 'skills': resp.json() if resp.ok else []})
 
 @admin_bp.route('/admin/skills', methods=['POST'])
@@ -313,13 +321,13 @@ def add_skill():
         return jsonify({'success': False, 'error': 'Name required'}), 400
     # Находим максимальный sort_order (если колонка есть) и добавляем +1
     max_order = 0
-    existing = supabase_admin_request('GET', 'skills?select=sort_order&order=sort_order.desc&limit=1')
+    existing = postgrest_admin_request('GET', 'skills?select=sort_order&order=sort_order.desc&limit=1')
     if not existing.ok:
-        existing = supabase_admin_request('GET', 'skills?select=id&order=name.desc&limit=1')
+        existing = postgrest_admin_request('GET', 'skills?select=id&order=name.desc&limit=1')
     if existing.ok and existing.json():
         item = existing.json()[0] if existing.json() else {}
         max_order = item.get('sort_order', 0)
-    resp = supabase_admin_request('POST', 'skills', json={'name': name, 'sort_order': max_order + 1})
+    resp = postgrest_admin_request('POST', 'skills', json={'name': name, 'sort_order': max_order + 1})
     if resp.ok:
         return jsonify({'success': True, 'skill': resp.json()[0] if isinstance(resp.json(), list) else resp.json()})
     return jsonify({'success': False, 'error': resp.text}), 400
@@ -334,8 +342,8 @@ def reorder_skills():
     if not items:
         return jsonify({'success': False, 'error': 'items required'}), 400
     for item in items:
-        resp = supabase_admin_request('PATCH', f'skills?id=eq.{item["id"]}', json={'sort_order': item['sort_order']})
-        assert_supabase_ok(resp, f'пересортировка навыка {item["id"]}')
+        resp = postgrest_admin_request('PATCH', f'skills?id=eq.{item["id"]}', json={'sort_order': item['sort_order']})
+        assert_postgrest_ok(resp, f'пересортировка навыка {item["id"]}')
     return jsonify({'success': True})
 
 @admin_bp.route('/admin/skills/<skill_id>', methods=['PUT'])
@@ -346,20 +354,20 @@ def update_skill(skill_id):
     name = (data.get('name', '')).strip()
     if not name:
         return jsonify({'success': False, 'error': 'Name required'}), 400
-    resp = supabase_admin_request('PATCH', f'skills?id=eq.{skill_id}', json={'name': name})
+    resp = postgrest_admin_request('PATCH', f'skills?id=eq.{skill_id}', json={'name': name})
     return jsonify({'success': resp.ok})
 
 @admin_bp.route('/admin/skills/<skill_id>', methods=['DELETE'])
 @login_required
 @admin_required
 def delete_skill(skill_id):
-    resp1 = supabase_admin_request('DELETE', f'user_skills?skill_id=eq.{skill_id}')
-    resp2 = supabase_admin_request('DELETE', f'job_skills?skill_id=eq.{skill_id}')
+    resp1 = postgrest_admin_request('DELETE', f'user_skills?skill_id=eq.{skill_id}')
+    resp2 = postgrest_admin_request('DELETE', f'job_skills?skill_id=eq.{skill_id}')
     if not resp1.ok:
         return jsonify({'success': False, 'error': 'Failed to cleanup user_skills'}), 500
     if not resp2.ok:
         return jsonify({'success': False, 'error': 'Failed to cleanup job_skills'}), 500
-    resp = supabase_admin_request('DELETE', f'skills?id=eq.{skill_id}')
+    resp = postgrest_admin_request('DELETE', f'skills?id=eq.{skill_id}')
     return jsonify({'success': resp.ok})
 
 @admin_bp.route('/admin/bulk-delete-skills', methods=['POST'])
@@ -388,18 +396,18 @@ def bulk_delete_skills():
     failed = 0
 
     # 1. Каскадное удаление дочерних записей
-    resp_user = supabase_admin_request('DELETE', f'user_skills?{skill_id_filter}')
+    resp_user = postgrest_admin_request('DELETE', f'user_skills?{skill_id_filter}')
     if not resp_user.ok:
         errors.append(f'user_skills cleanup failed: {resp_user.text}')
         failed += 1
 
-    resp_job = supabase_admin_request('DELETE', f'job_skills?{skill_id_filter}')
+    resp_job = postgrest_admin_request('DELETE', f'job_skills?{skill_id_filter}')
     if not resp_job.ok:
         errors.append(f'job_skills cleanup failed: {resp_job.text}')
         failed += 1
 
     # 2. Удаление самих навыков
-    resp = supabase_admin_request('DELETE', f'skills?{ids_filter}')
+    resp = postgrest_admin_request('DELETE', f'skills?{ids_filter}')
 
     if not resp.ok:
         return jsonify({
@@ -420,9 +428,9 @@ def bulk_delete_skills():
 @login_required
 @admin_required
 def get_religions():
-    resp = supabase_admin_request('GET', 'religions?select=*&order=sort_order.asc,name.asc')
+    resp = postgrest_admin_request('GET', 'religions?select=*&order=sort_order.asc,name.asc')
     if not resp.ok:
-        resp = supabase_admin_request('GET', 'religions?select=*&order=name.asc')
+        resp = postgrest_admin_request('GET', 'religions?select=*&order=name.asc')
     return jsonify({'success': True, 'religions': resp.json() if resp.ok else []})
 
 @admin_bp.route('/admin/religions', methods=['POST'])
@@ -434,13 +442,13 @@ def add_religion():
     if not name:
         return jsonify({'success': False, 'error': 'Name required'}), 400
     max_order = 0
-    existing = supabase_admin_request('GET', 'religions?select=sort_order&order=sort_order.desc&limit=1')
+    existing = postgrest_admin_request('GET', 'religions?select=sort_order&order=sort_order.desc&limit=1')
     if not existing.ok:
-        existing = supabase_admin_request('GET', 'religions?select=id&order=name.desc&limit=1')
+        existing = postgrest_admin_request('GET', 'religions?select=id&order=name.desc&limit=1')
     if existing.ok and existing.json():
         item = existing.json()[0] if existing.json() else {}
         max_order = item.get('sort_order', 0)
-    resp = supabase_admin_request('POST', 'religions', json={'name': name, 'sort_order': max_order + 1})
+    resp = postgrest_admin_request('POST', 'religions', json={'name': name, 'sort_order': max_order + 1})
     if resp.ok:
         return jsonify({'success': True, 'religion': resp.json()[0] if isinstance(resp.json(), list) else resp.json()})
     return jsonify({'success': False, 'error': resp.text}), 400
@@ -455,8 +463,8 @@ def reorder_religions():
     if not items:
         return jsonify({'success': False, 'error': 'items required'}), 400
     for item in items:
-        resp = supabase_admin_request('PATCH', f'religions?id=eq.{item["id"]}', json={'sort_order': item['sort_order']})
-        assert_supabase_ok(resp, f'пересортировка вероисповедания {item["id"]}')
+        resp = postgrest_admin_request('PATCH', f'religions?id=eq.{item["id"]}', json={'sort_order': item['sort_order']})
+        assert_postgrest_ok(resp, f'пересортировка вероисповедания {item["id"]}')
     return jsonify({'success': True})
 
 @admin_bp.route('/admin/religions/<religion_id>', methods=['PUT'])
@@ -467,14 +475,14 @@ def update_religion(religion_id):
     name = (data.get('name', '')).strip()
     if not name:
         return jsonify({'success': False, 'error': 'Name required'}), 400
-    resp = supabase_admin_request('PATCH', f'religions?id=eq.{religion_id}', json={'name': name})
+    resp = postgrest_admin_request('PATCH', f'religions?id=eq.{religion_id}', json={'name': name})
     return jsonify({'success': resp.ok})
 
 @admin_bp.route('/admin/religions/<religion_id>', methods=['DELETE'])
 @login_required
 @admin_required
 def delete_religion(religion_id):
-    resp = supabase_admin_request('DELETE', f'religions?id=eq.{religion_id}')
+    resp = postgrest_admin_request('DELETE', f'religions?id=eq.{religion_id}')
     return jsonify({'success': resp.ok})
 
 @admin_bp.route('/admin/bulk-delete-religions', methods=['POST'])
@@ -496,7 +504,7 @@ def bulk_delete_religions():
         return jsonify({'deleted': 0, 'failed': len(religion_ids), 'errors': ['Max 50 religions per request']}), 400
 
     ids_filter = f'id=in.({",".join(str(rid) for rid in religion_ids)})'
-    resp = supabase_admin_request('DELETE', f'religions?{ids_filter}')
+    resp = postgrest_admin_request('DELETE', f'religions?{ids_filter}')
 
     if not resp.ok:
         return jsonify({
@@ -519,7 +527,7 @@ def bulk_delete_religions():
 @login_required
 @admin_required
 def approve_employer(user_id):
-    resp = supabase_request('PATCH', f'profiles?id=eq.{user_id}',
+    resp = postgrest_admin_request('PATCH', f'profiles?id=eq.{user_id}',
                      json={'verification_status': 'approved'})
     if resp and resp.ok:
         flash('Работодатель верифицирован', 'success')
@@ -532,7 +540,7 @@ def approve_employer(user_id):
 @login_required
 @admin_required
 def reject_employer(user_id):
-    resp = supabase_request('PATCH', f'profiles?id=eq.{user_id}',
+    resp = postgrest_admin_request('PATCH', f'profiles?id=eq.{user_id}',
                      json={'verification_status': 'rejected'})
     if resp and resp.ok:
         flash('Верификация отклонена', 'warning')
@@ -545,8 +553,8 @@ def reject_employer(user_id):
 @login_required
 @admin_required
 def verify_employer(user_id):
-    resp = supabase_admin_request('PATCH', f'profiles?id=eq.{user_id}', json={'verification_status': 'approved'})
-    if assert_supabase_ok(resp, 'верификация работодателя'):
+    resp = postgrest_admin_request('PATCH', f'profiles?id=eq.{user_id}', json={'verification_status': 'approved'})
+    if assert_postgrest_ok(resp, 'верификация работодателя'):
         flash('Работодатель верифицирован', 'success')
     return redirect(url_for('admin.admin_panel', tab='verification'))
 
@@ -562,7 +570,7 @@ def job_stats():
     """
     try:
         # Пробуем RPC с серверной агрегацией
-        rpc_resp = supabase_rpc('get_job_stats', {}, use_admin=True)
+        rpc_resp = postgrest_rpc('get_job_stats', {}, use_admin=True)
         if rpc_resp.ok and rpc_resp.json():
             data = rpc_resp.json()
             # RPC может вернуть dict или list[dict]
@@ -583,7 +591,7 @@ def job_stats():
                 })
 
         # Fallback: загружаем все статусы и считаем в Python (работает без RPC)
-        resp = supabase_admin_request('GET', 'jobs?select=status')
+        resp = postgrest_admin_request('GET', 'jobs?select=status')
         if resp.ok and resp.json():
             statuses = [j.get('status', '') for j in resp.json()]
             return jsonify({

@@ -6,9 +6,9 @@ from app.config import Config
 from app.decorators import login_required, rate_limit, role_required, validate_uuid
 from app.utils import (
     calculate_distance, check_withdraw_window, copy_job,
-    sanitize_postgrest, supabase_admin_request, supabase_request, supabase_rpc,
+    sanitize_postgrest, postgrest_admin_request, postgrest_request, postgrest_rpc,
 )
-from app.utils.helpers import assert_supabase_ok
+from app.utils.helpers import assert_postgrest_ok
 from app.services.notification_service import create as notify
 from app.services.job_service import (
     check_job_owner,
@@ -81,7 +81,7 @@ def inject_application_count():
         if count is not None:
             return {'pending_app_count': count}
         # Используем count=exact с limit=0 для точного подсчёта без загрузки данных
-        resp = supabase_request('GET',
+        resp = postgrest_request('GET',
             f'applications?job.employer_id=eq.{user_id}&status=eq.pending&select=id&limit=0',
             headers={'Prefer': 'count=exact'})
         if resp.ok:
@@ -136,7 +136,7 @@ def index():
 
     if lat is not None and lng is not None and radius:
         try:
-            rpc_resp = supabase_rpc('nearby_jobs', {
+            rpc_resp = postgrest_rpc('nearby_jobs', {
                 'lat': lat,
                 'lng': lng,
                 'radius_km': radius,
@@ -183,7 +183,7 @@ def index():
     # Фильтрация blacklist ДО пагинации: исключаем задания от работодателей, заблокировавших текущего трудника
     blocked_employer_ids = set()
     if session.get('role') == 'worker' and 'user_id' in session:
-        bl_resp = supabase_request('GET',
+        bl_resp = postgrest_request('GET',
             f'blacklists?blocked_user_id=eq.{session["user_id"]}&select=user_id')
         if bl_resp.ok and bl_resp.json():
             blocked_employer_ids = {b['user_id'] for b in bl_resp.json()}
@@ -211,7 +211,7 @@ def index():
         order_clause = 'created_at.desc'
 
     # Пагинация: limit + offset. Запрашиваем +1 чтобы определить has_next
-    resp = supabase_request('GET', f'jobs?{query}&order={order_clause}&limit={per_page + 1}&offset={offset}')
+    resp = postgrest_request('GET', f'jobs?{query}&order={order_clause}&limit={per_page + 1}&offset={offset}')
     jobs = resp.json() if resp.ok else []
 
     # Гео-фильтрация в Python (fallback, если RPC не сработал)
@@ -234,7 +234,7 @@ def index():
             employer_ids = list({j['employer_id'] for j in jobs if j.get('employer_id')})
             if employer_ids:
                 ids_filter = ','.join(employer_ids)
-                rating_resp = supabase_request('GET',
+                rating_resp = postgrest_request('GET',
                     f'profiles?id=in.({ids_filter})&select=id,rating')
                 if rating_resp.ok and rating_resp.json():
                     rating_map = {p['id']: p.get('rating', 0) or 0 for p in rating_resp.json()}
@@ -247,7 +247,7 @@ def index():
 
     applied_job_ids = []
     if session.get('role') == 'worker' and 'user_id' in session:
-        app_resp = supabase_request('GET',
+        app_resp = postgrest_request('GET',
             f'applications?worker_id=eq.{session["user_id"]}&select=job_id')
         if app_resp.ok and app_resp.json():
             applied_job_ids = [a['job_id'] for a in app_resp.json()]
@@ -300,7 +300,7 @@ def workers():
         elif sort in ('price_desc',):
             order = 'desired_payment.desc.nullslast'
 
-        resp = supabase_request('GET', f'profiles?{query}&order={order}')
+        resp = postgrest_request('GET', f'profiles?{query}&order={order}')
         if not resp.ok:
             current_app.logger.error(
                 '[WORKERS] Failed to fetch profiles: status=%s text=%s',
@@ -329,7 +329,7 @@ def workers():
             worker_ids = [w['id'] for w in workers_list if w.get('id')]
             if worker_ids:
                 ids_filter = ','.join(worker_ids)
-                inv_resp = supabase_request('GET',
+                inv_resp = postgrest_request('GET',
                     f'invitations?employer_id=eq.{session["user_id"]}&worker_id=in.({ids_filter})&status=in.(pending,accepted)&select=worker_id')
                 if inv_resp.ok and inv_resp.json():
                     invited_worker_ids = {inv['worker_id'] for inv in inv_resp.json()}
@@ -363,7 +363,7 @@ def job_detail(job_id):
     # Загружаем профиль работодателя для проверки верификации
     employer = None
     if job.get('employer_id'):
-        emp_resp = supabase_request('GET',
+        emp_resp = postgrest_request('GET',
             f'profiles?id=eq.{job["employer_id"]}&select=id,full_name,verification_status')
         if emp_resp.ok and emp_resp.json():
             employer = emp_resp.json()[0]
@@ -372,7 +372,7 @@ def job_detail(job_id):
     enrich_job_with_references(job)
 
     if is_owner:
-        app_resp = supabase_request('GET', f'applications?job_id=eq.{job_id}&select=id')
+        app_resp = postgrest_request('GET', f'applications?job_id=eq.{job_id}&select=id')
         job['application_count'] = len(app_resp.json()) if app_resp.ok and app_resp.json() else 0
     else:
         job['application_count'] = 0
@@ -382,7 +382,7 @@ def job_detail(job_id):
     my_app_id = None
     can_withdraw = True
     if 'user_id' in session:
-        app_resp = supabase_request('GET',
+        app_resp = postgrest_request('GET',
             f'applications?job_id=eq.{job_id}&worker_id=eq.{session["user_id"]}&select=id,status')
         if app_resp.ok and app_resp.json():
             already_applied = True
@@ -394,7 +394,7 @@ def job_detail(job_id):
     # Проверка: добавлен ли работодатель в избранное у трудника
     is_employer_favorited = False
     if session.get('role') == 'worker' and session.get('user_id') and job.get('employer_id'):
-        fav_check = supabase_request('GET',
+        fav_check = postgrest_request('GET',
             f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{job["employer_id"]}&favorite_type=eq.employer')
         is_employer_favorited = bool(fav_check.json()) if fav_check.ok else False
 
@@ -420,9 +420,9 @@ def job_detail(job_id):
 def job_new():
     """Создание задания (единственный маршрут, заменяет /create-job)"""
     # Загружаем справочники из БД
-    skills_resp = supabase_request('GET', 'skills?select=id,name&order=sort_order.asc,name.asc')
+    skills_resp = postgrest_request('GET', 'skills?select=id,name&order=sort_order.asc,name.asc')
     skills_list = skills_resp.json() if skills_resp.ok else []
-    religions_resp = supabase_request('GET', 'religions?select=id,name&order=sort_order.asc,name.asc')
+    religions_resp = postgrest_request('GET', 'religions?select=id,name&order=sort_order.asc,name.asc')
     religions_list = religions_resp.json() if religions_resp.ok else []
 
     template_data = {
@@ -489,7 +489,7 @@ def job_new():
                 'expires_at': (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
             }
 
-            resp = supabase_request('POST', 'jobs', json=job_data)
+            resp = postgrest_request('POST', 'jobs', json=job_data)
 
             if not resp.ok:
                 current_app.logger.error(f'Failed to create job: {resp.text}')
@@ -526,7 +526,7 @@ def my_jobs():
     elif status_filter not in ('all', 'open'):
         base_query += f'&status=eq.{status_filter}'
 
-    resp = supabase_request('GET', base_query, headers={'Prefer': 'count=exact'})
+    resp = postgrest_request('GET', base_query, headers={'Prefer': 'count=exact'})
     jobs = resp.json() if resp.ok else []
 
     # Используем встроенный счётчик applications(count) из Supabase embedded resource
@@ -558,19 +558,27 @@ def my_jobs_action():
         if not check_job_owner(job_id, user_id):
             continue
         if action == 'restore':
-            restore_resp = supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'open'})
-            assert_supabase_ok(restore_resp, 'восстановление задания')
+            restore_resp = postgrest_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'open'})
+            assert_postgrest_ok(restore_resp, 'восстановление задания')
         elif action == 'cancel':
-            cancel_resp = supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
-            assert_supabase_ok(cancel_resp, 'отмена задания')
+            cancel_resp = postgrest_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
+            assert_postgrest_ok(cancel_resp, 'отмена задания')
         elif action == 'delete':
-            supabase_rpc('delete_job_cascade', {'p_job_id': job_id}, use_admin=True)
+            rpc_result = postgrest_rpc('delete_job_cascade', {'p_job_id': job_id}, use_admin=True)
+            if rpc_result.ok:
+                result_data = rpc_result.json()
+                if result_data.get('success'):
+                    flash('Задание удалено', 'success')
+                else:
+                    flash(f"Ошибка удаления: {result_data.get('error', 'неизвестная ошибка')}", 'error')
+            else:
+                flash(f"Ошибка удаления: {rpc_result.status_code}", 'error')
         elif action == 'duplicate':
-            resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=*')
+            resp = postgrest_request('GET', f'jobs?id=eq.{job_id}&select=*')
             if resp.ok and resp.json():
                 new_job = copy_job(resp.json()[0])
-                dup_resp = supabase_request('POST', 'jobs', json=new_job)
-                assert_supabase_ok(dup_resp, 'дублирование задания')
+                dup_resp = postgrest_request('POST', 'jobs', json=new_job)
+                assert_postgrest_ok(dup_resp, 'дублирование задания')
 
     flash(f'Операция выполнена для {len(job_ids)} заданий', 'success')
     return redirect(url_for('jobs.my_jobs'))
@@ -587,12 +595,12 @@ def my_jobs_action():
 def repost_job(job_id):
     if not check_job_owner(job_id, session['user_id']):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
-    resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=*')
+    resp = postgrest_request('GET', f'jobs?id=eq.{job_id}&select=*')
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     if resp.ok and resp.json():
         new_job = copy_job(resp.json()[0])
-        repost_resp = supabase_request('POST', 'jobs', json=new_job)
-        if assert_supabase_ok(repost_resp, 'пересоздание задания'):
+        repost_resp = postgrest_request('POST', 'jobs', json=new_job)
+        if assert_postgrest_ok(repost_resp, 'пересоздание задания'):
             if is_ajax:
                 return jsonify({'success': True, 'message': 'Задание дублировано'})
             flash('Задание дублировано', 'success')
@@ -614,7 +622,7 @@ def cancel_job(job_id):
 
     # Атомарная RPC: проверка статуса + проверка accepted-откликов + отмена задания + reject pending
     # Заменяет 5 неатомарных HTTP-запросов (GET статуса → GET accepted → PATCH job → PATCH apps → GET rejected)
-    rpc_result = supabase_rpc('cancel_job_atomic', {
+    rpc_result = postgrest_rpc('cancel_job_atomic', {
         'p_job_id': job_id,
         'p_user_id': session['user_id'],
     }, use_admin=True)
@@ -667,7 +675,7 @@ def restore_job(job_id):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
 
     # Получить текущее состояние задания
-    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status,date_time,current_workers')
+    job_resp = postgrest_request('GET', f'jobs?id=eq.{job_id}&select=status,date_time,current_workers')
     if not job_resp.ok or not job_resp.json():
         return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
 
@@ -679,24 +687,24 @@ def restore_job(job_id):
     new_status = 'open'
 
     # Сбросить все pending заявки в rejected (иначе unique constraint помешает переоткликнуться)
-    rej_pending_resp = supabase_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.pending',
+    rej_pending_resp = postgrest_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.pending',
                      json={'status': 'rejected'})
-    assert_supabase_ok(rej_pending_resp, 'сброс pending заявок при восстановлении')
+    assert_postgrest_ok(rej_pending_resp, 'сброс pending заявок при восстановлении')
 
     # Сбросить все accepted заявки в rejected (работники должны заново откликнуться)
-    rej_accepted_resp = supabase_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.accepted',
+    rej_accepted_resp = postgrest_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.accepted',
                      json={'status': 'rejected'})
-    assert_supabase_ok(rej_accepted_resp, 'сброс accepted заявок при восстановлении')
+    assert_postgrest_ok(rej_accepted_resp, 'сброс accepted заявок при восстановлении')
 
     # Обнулить счётчик текущих работников
-    restore_resp = supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={
+    restore_resp = postgrest_request('PATCH', f'jobs?id=eq.{job_id}', json={
         'status': new_status,
         'current_workers': 0
     })
-    assert_supabase_ok(restore_resp, 'восстановление статуса задания')
+    assert_postgrest_ok(restore_resp, 'восстановление статуса задания')
 
     # Уведомить всех rejected-заявителей, что задание восстановлено
-    apps_resp = supabase_request('GET',
+    apps_resp = postgrest_request('GET',
         f'applications?job_id=eq.{job_id}&status=eq.rejected&select=worker_id')
     if apps_resp.ok and apps_resp.json():
         for app in apps_resp.json():
@@ -724,7 +732,7 @@ def api_force_complete_job(job_id):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
 
     # Атомарная RPC: reject всех pending + установка completed (заменяет 4 неатомарных запроса)
-    rpc_result = supabase_rpc('force_complete_job', {
+    rpc_result = postgrest_rpc('force_complete_job', {
         'p_job_id': job_id,
         'p_user_id': session['user_id'],
     }, use_admin=True)
@@ -766,7 +774,7 @@ def delete_job(job_id):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
 
     # Блокировка: предупреждение при наличии принятых откликов (матрица секция 6.1)
-    apps_resp = supabase_request('GET', f'applications?job_id=eq.{job_id}&status=eq.accepted&select=id')
+    apps_resp = postgrest_request('GET', f'applications?job_id=eq.{job_id}&status=eq.accepted&select=id')
     has_accepted = apps_resp.ok and apps_resp.json()
 
     if has_accepted:
@@ -786,13 +794,13 @@ def delete_job(job_id):
         ('invitations', f'job_id=eq.{job_id}'),
     ]
     for table, condition in cascade_tables:
-        supabase_admin_request('DELETE', f'{table}?{condition}')
+        postgrest_admin_request('DELETE', f'{table}?{condition}')
     # Уведомления — удаляем по прямой колонке job_id (миграция 063)
-    supabase_admin_request('DELETE', f'notifications?job_id=eq.{job_id}')
+    postgrest_admin_request('DELETE', f'notifications?job_id=eq.{job_id}')
     # Fallback: удаляем уведомления, где job_id ещё в тексте/JSON (созданы до миграции)
-    supabase_admin_request('DELETE', f'notifications?message=ilike.*{job_id}*')
+    postgrest_admin_request('DELETE', f'notifications?message=ilike.*{job_id}*')
 
-    supabase_admin_request('DELETE', f'jobs?id=eq.{job_id}')
+    postgrest_admin_request('DELETE', f'jobs?id=eq.{job_id}')
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True, 'message': 'Задание удалено'})
     flash('Задание удалено', 'success')
@@ -818,7 +826,7 @@ def invitations_page():
 def reject_all_invitations():
     """Отклонить все ожидающие приглашения текущего пользователя."""
     user_id = session['user_id']
-    supabase_admin_request('PATCH',
+    postgrest_admin_request('PATCH',
         f'invitations?worker_id=eq.{user_id}&status=eq.pending',
         json={'status': 'rejected', 'responded_at': 'now()'})
     return jsonify({'success': True})
@@ -832,7 +840,7 @@ def reject_all_invitations():
 def edit_job(job_id):
     # Используем admin_request для обхода RLS — работодатель должен видеть
     # своё задание в любом статусе (включая неоплаченные)
-    job_resp = supabase_admin_request('GET', f'jobs?id=eq.{job_id}&select=*')
+    job_resp = postgrest_admin_request('GET', f'jobs?id=eq.{job_id}&select=*')
     if not job_resp.ok or not job_resp.json():
         flash('Задание не найдено', 'danger')
         return redirect(url_for('jobs.my_jobs'))
@@ -842,14 +850,14 @@ def edit_job(job_id):
         return redirect(url_for('jobs.my_jobs'))
 
     # Проверить наличие accepted-откликов (P1: блокировка редактирования)
-    apps_check = supabase_request('GET',
+    apps_check = postgrest_request('GET',
         f'applications?job_id=eq.{job_id}&status=eq.accepted&select=id')
     has_accepted = apps_check.ok and apps_check.json()
 
     # Загружаем справочники
-    skills_resp = supabase_request('GET', 'skills?select=id,name&order=sort_order.asc,name.asc')
+    skills_resp = postgrest_request('GET', 'skills?select=id,name&order=sort_order.asc,name.asc')
     skills_list = skills_resp.json() if skills_resp.ok else []
-    religions_resp = supabase_request('GET', 'religions?select=id,name&order=sort_order.asc,name.asc')
+    religions_resp = postgrest_request('GET', 'religions?select=id,name&order=sort_order.asc,name.asc')
     religions_list = religions_resp.json() if religions_resp.ok else []
 
     if request.method == 'POST':
@@ -891,7 +899,7 @@ def edit_job(job_id):
             'preferred_religion': request.form.get('preferred_religion', job.get('preferred_religion', '')),
             'date_time': request.form.get('deadline') or job.get('date_time', ''),
         }
-        resp = supabase_request('PATCH', f'jobs?id=eq.{job_id}', json=data)
+        resp = postgrest_request('PATCH', f'jobs?id=eq.{job_id}', json=data)
         if resp.ok:
             flash('Задание обновлено', 'success')
             return redirect(url_for('jobs.job_detail', job_id=job_id))
@@ -915,8 +923,8 @@ def edit_job(job_id):
 @login_required
 @validate_uuid('job_id')
 def add_favorite_job(job_id):
-    fav_resp = supabase_request('POST', 'job_favorites', json={'user_id': session['user_id'], 'job_id': job_id})
-    if assert_supabase_ok(fav_resp, 'добавление задания в избранное'):
+    fav_resp = postgrest_request('POST', 'job_favorites', json={'user_id': session['user_id'], 'job_id': job_id})
+    if assert_postgrest_ok(fav_resp, 'добавление задания в избранное'):
         flash('Задание добавлено в избранное', 'success')
     return redirect(request.referrer or url_for('jobs.index'))
 
@@ -925,8 +933,8 @@ def add_favorite_job(job_id):
 @login_required
 @validate_uuid('job_id')
 def remove_favorite_job(job_id):
-    unfav_resp = supabase_request('DELETE', f'job_favorites?user_id=eq.{session["user_id"]}&job_id=eq.{job_id}')
-    if assert_supabase_ok(unfav_resp, 'удаление задания из избранного'):
+    unfav_resp = postgrest_request('DELETE', f'job_favorites?user_id=eq.{session["user_id"]}&job_id=eq.{job_id}')
+    if assert_postgrest_ok(unfav_resp, 'удаление задания из избранного'):
         flash('Задание удалено из избранного', 'success')
     return redirect(request.referrer or url_for('favorites.favorites'))
 

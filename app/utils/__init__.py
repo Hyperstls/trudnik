@@ -4,7 +4,7 @@
 """
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 1. Сначала настраиваем mock-зависимости (до импорта supabase-подмодуля)
+# 1. Сначала настраиваем mock-зависимости (до импорта postgrest-подмодуля)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 try:
@@ -50,27 +50,27 @@ except Exception:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 2. Импортируем подмодули и инжектим mock-зависимости в supabase
+# 2. Импортируем подмодули и инжектим mock-зависимости в postgrest
 # ═══════════════════════════════════════════════════════════════════════════════
 
-from app.utils import postgrest_client as _supabase
+from app.utils import postgrest_client as _pgrest
 
-# Инжектим mock-зависимости в модуль supabase
-_supabase._test_db = _test_db
-_supabase._uuid_counter = _uuid_counter
-_supabase._gen_uuid = _gen_uuid
-_supabase._test_auth_tokens = _test_auth_tokens
-_supabase._MockRequestsResponse = _MockRequestsResponse
-_supabase._should_intercept = _should_intercept
-_supabase._mock_post = _mock_post
-_supabase._mock_delete = _mock_delete
-_supabase._install_auth_mock = _install_auth_mock
-_supabase._uninstall_auth_mock = _uninstall_auth_mock
-_supabase._is_mock_enabled = _is_mock_enabled
-_supabase._test_mock_request = _test_mock_request
-_supabase._test_mock_rpc = _test_mock_rpc
-_supabase._reset_test_db = _reset_test_db
-_supabase._seed_test_db = _seed_test_db
+# Инжектим mock-зависимости в модуль postgrest
+_pgrest._test_db = _test_db
+_pgrest._uuid_counter = _uuid_counter
+_pgrest._gen_uuid = _gen_uuid
+_pgrest._test_auth_tokens = _test_auth_tokens
+_pgrest._MockRequestsResponse = _MockRequestsResponse
+_pgrest._should_intercept = _should_intercept
+_pgrest._mock_post = _mock_post
+_pgrest._mock_delete = _mock_delete
+_pgrest._install_auth_mock = _install_auth_mock
+_pgrest._uninstall_auth_mock = _uninstall_auth_mock
+_pgrest._is_mock_enabled = _is_mock_enabled
+_pgrest._test_mock_request = _test_mock_request
+_pgrest._test_mock_rpc = _test_mock_rpc
+_pgrest._reset_test_db = _reset_test_db
+_pgrest._seed_test_db = _seed_test_db
 
 from app.utils import geo as _geo
 from app.utils import formatting as _formatting
@@ -92,28 +92,19 @@ from app.services.push_service import PushService
 # 3. Ре-экспорт всего для обратной совместимости
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# --- Supabase / PostgREST клиент ---
-CircuitBreaker = _supabase.CircuitBreaker
-SupabaseResponse = _supabase.SupabaseResponse
-PostgrestResponse = _supabase.PostgrestResponse
-cache_for = _supabase.cache_for
-POSTGREST_URL = _supabase.POSTGREST_URL
-PGRST_JWT_SECRET = _supabase.PGRST_JWT_SECRET
-get_service_role_headers = _supabase.get_service_role_headers
-get_user_headers = _supabase.get_user_headers
-refresh_access_token = _supabase.refresh_access_token
-postgrest_request = _supabase.postgrest_request
-postgrest_admin_request = _supabase.postgrest_admin_request
-postgrest_rpc = _supabase.postgrest_rpc
+# --- PostgREST клиент ---
+CircuitBreaker = _pgrest.CircuitBreaker
+PostgrestResponse = _pgrest.PostgrestResponse
+cache_for = _pgrest.cache_for
+POSTGREST_URL = _pgrest.POSTGREST_URL
+PGRST_JWT_SECRET = _pgrest.PGRST_JWT_SECRET
+get_service_role_headers = _pgrest.get_service_role_headers
+get_user_headers = _pgrest.get_user_headers
+refresh_access_token = _pgrest.refresh_access_token
+postgrest_request = _pgrest.postgrest_request
+postgrest_admin_request = _pgrest.postgrest_admin_request
+postgrest_rpc = _pgrest.postgrest_rpc
 generate_vapid_keys = PushService.generate_vapid_keys
-
-# Устаревшие алиасы для обратной совместимости
-supabase_request = postgrest_request
-supabase_admin_request = postgrest_admin_request
-supabase_rpc = postgrest_rpc
-SUPABASE_URL = POSTGREST_URL
-SUPABASE_KEY = None
-SERVICE_KEY = None
 
 # --- Гео-вычисления ---
 calculate_distance = _geo.calculate_distance
@@ -167,14 +158,12 @@ get_user_rating = _ratings_service.get_user_rating
 # ═══════════════════════════════════════════════════════════════════════════════
 
 __all__ = [
-    # Supabase/PostgREST
-    'CircuitBreaker', 'SupabaseResponse', 'PostgrestResponse',
+    # PostgREST
+    'CircuitBreaker', 'PostgrestResponse',
     'cache_for',
     'POSTGREST_URL', 'PGRST_JWT_SECRET',
     'get_service_role_headers', 'get_user_headers',
     'postgrest_request', 'postgrest_admin_request', 'postgrest_rpc',
-    'supabase_request', 'supabase_admin_request', 'supabase_rpc',
-    'SUPABASE_URL', 'SUPABASE_KEY', 'SERVICE_KEY',
     'generate_vapid_keys',
     # Auth
     'refresh_access_token', 'get_user_role', 'get_user_profile', 'generate_jwt',

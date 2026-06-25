@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 # --- Переменные окружения для тестов ---
 os.environ['SECRET_KEY'] = 'test-secret-key'
-os.environ['SUPABASE_URL'] = 'https://test.supabase.co'
+os.environ['POSTGREST_URL'] = 'https://test.supabase.co'
 os.environ['SUPABASE_ANON_KEY'] = 'test-anon-key'
 os.environ['SUPABASE_SERVICE_ROLE_KEY'] = 'test-service-role-key'
 os.environ['YANDEX_MAPS_API_KEY'] = 'test-yandex-key'
@@ -31,13 +31,13 @@ from app import create_app
 from app.config import Config
 from app.decorators import login_required, role_required
 from app.utils import (
-    SUPABASE_KEY,
-    SUPABASE_URL,
-    SERVICE_KEY,
+    PGRST_JWT_SECRET,
+    POSTGREST_URL,
+    PGRST_JWT_SECRET,
     calculate_distance,
     copy_job,
     refresh_access_token,
-    supabase_request,
+    postgrest_request,
     update_rating,
     upload_to_storage,
 )
@@ -128,7 +128,7 @@ class TestUtils(unittest.TestCase):
             self.assertFalse(result)
 
     @patch('app.utils.requests.request')
-    def test_supabase_request_success(self, mock_request):
+    def test_postgrest_request_success(self, mock_request):
         mock_request.return_value = MagicMock(
             ok=True, status_code=200,
             json=lambda: [{'id': 1, 'name': 'Test'}]
@@ -138,12 +138,12 @@ class TestUtils(unittest.TestCase):
         mock_session.__contains__ = MagicMock(return_value=True)
         mock_session.__getitem__.return_value = 'token'
         with patch('app.utils.session', mock_session):
-            resp = supabase_request('GET', 'profiles?id=eq.123')
+            resp = postgrest_request('GET', 'profiles?id=eq.123')
         self.assertTrue(resp.ok)
         self.assertEqual(resp.json(), [{'id': 1, 'name': 'Test'}])
 
     @patch('app.utils.requests.request')
-    def test_supabase_request_unauthorized_with_refresh(self, mock_request):
+    def test_postgrest_request_unauthorized_with_refresh(self, mock_request):
         mock_request.side_effect = [
             MagicMock(ok=False, status_code=401),
             MagicMock(ok=True, status_code=200, json=lambda: [{'id': 1}]),
@@ -158,12 +158,12 @@ class TestUtils(unittest.TestCase):
         }[k]
         with patch('app.utils.session', mock_session):
             with patch('app.utils.refresh_access_token', return_value=True):
-                resp = supabase_request('GET', 'profiles?id=eq.123')
+                resp = postgrest_request('GET', 'profiles?id=eq.123')
         self.assertTrue(resp.ok)
         self.assertEqual(mock_request.call_count, 2)
 
     @patch('app.utils.requests.request')
-    def test_supabase_request_network_error(self, mock_request):
+    def test_postgrest_request_network_error(self, mock_request):
         mock_request.side_effect = Exception('Network error')
         mock_session = MagicMock()
         mock_session.get.return_value = 'token'
@@ -171,7 +171,7 @@ class TestUtils(unittest.TestCase):
         mock_session.__getitem__.return_value = 'token'
         with patch('app.utils.session', mock_session):
             # current_app доступен из app_context
-            resp = supabase_request('GET', 'profiles?id=eq.123')
+            resp = postgrest_request('GET', 'profiles?id=eq.123')
         self.assertFalse(resp.ok)
         self.assertEqual(resp.status_code, 0)
 
@@ -195,7 +195,7 @@ class TestUtils(unittest.TestCase):
             url = upload_to_storage('avatars', 'user/file.jpg', b'data', 'image/jpeg')
         self.assertIsNone(url)
 
-    @patch('app.utils.supabase_admin_request')
+    @patch('app.utils.postgrest_admin_request')
     def test_update_rating(self, mock_admin):
         mock_admin.side_effect = [
             MagicMock(ok=True, json=lambda: [{'rating': 5}, {'rating': 4}, {'rating': 3}]),
@@ -246,9 +246,9 @@ class TestDecorators(unittest.TestCase):
             result = fake_view()
             self.assertEqual(result, 'success')
 
-    @patch('app.utils.supabase_request')
-    def test_role_required_correct_role(self, mock_supabase):
-        mock_supabase.return_value = MagicMock(ok=True, json=lambda: [{'role': 'employer'}])
+    @patch('app.utils.postgrest_request')
+    def test_role_required_correct_role(self, mock_postgrest):
+        mock_postgrest.return_value = MagicMock(ok=True, json=lambda: [{'role': 'employer'}])
         with patch('app.decorators.session', {'access_token': 'token', 'user_id': 'user-1'}):
             @role_required('employer')
             def fake_view():
@@ -256,9 +256,9 @@ class TestDecorators(unittest.TestCase):
             result = fake_view()
             self.assertEqual(result, 'success')
 
-    @patch('app.utils.supabase_request')
-    def test_role_required_wrong_role(self, mock_supabase):
-        mock_supabase.return_value = MagicMock(ok=True, json=lambda: [{'role': 'worker'}])
+    @patch('app.utils.postgrest_request')
+    def test_role_required_wrong_role(self, mock_postgrest):
+        mock_postgrest.return_value = MagicMock(ok=True, json=lambda: [{'role': 'worker'}])
         with patch('app.decorators.session', {'access_token': 'token', 'user_id': 'user-1'}):
             with patch('app.decorators.redirect') as mock_redirect:
                 mock_redirect.return_value = 'redirected'
@@ -359,8 +359,8 @@ class TestSupabaseAgent(unittest.TestCase):
 class BaseBlueprintTest(unittest.TestCase):
     """Базовый класс для тестов blueprints с Flask test client"""
 
-    # Все blueprint'ы импортируют supabase_request на уровне модуля,
-    # поэтому нужно патчить каждый отдельно, а не app.utils.supabase_request
+    # Все blueprint'ы импортируют postgrest_request на уровне модуля,
+    # поэтому нужно патчить каждый отдельно, а не app.utils.postgrest_request
     BLUEPRINTS_USING_SUPABASE = [
         'app.blueprints.auth',
         'app.blueprints.profile',
@@ -385,10 +385,10 @@ class BaseBlueprintTest(unittest.TestCase):
         # Важно: blueprint'ы импортируют render_template на уровне модуля,
         # поэтому патчим каждый blueprint отдельно.
         self.patchers = []
-        self.mock_supabase = MagicMock()
+        self.mock_postgrest = MagicMock()
         for mod in self.BLUEPRINTS_USING_SUPABASE:
-            # Патчим supabase_request (есть во всех модулях списка)
-            p = patch(f'{mod}.supabase_request', self.mock_supabase)
+            # Патчим postgrest_request (есть во всех модулях списка)
+            p = patch(f'{mod}.postgrest_request', self.mock_postgrest)
             p.start()
             self.patchers.append(p)
         # Патчим render_template, url_for, flash только в blueprint'ах (не в decorators)
@@ -411,7 +411,7 @@ class BaseBlueprintTest(unittest.TestCase):
         p_d1 = patch('app.decorators.url_for', return_value='/')
         p_d1.start()
         self.patchers.append(p_d1)
-        # Патчим прямые requests.* вызовы в auth.py и profile.py (не через supabase_request)
+        # Патчим прямые requests.* вызовы в auth.py и profile.py (не через postgrest_request)
         self.auth_requests_patcher = patch('app.blueprints.auth.requests', MagicMock())
         self.auth_requests_patcher.start()
         self.patchers.append(self.auth_requests_patcher)
@@ -456,7 +456,7 @@ class TestAuthBlueprint(BaseBlueprintTest):
             json=lambda: {'access_token': 'new-token', 'refresh_token': 'new-refresh',
                           'user': {'id': 'user-1'}}
         )
-        with patch('app.utils.supabase_request') as mock_sb:
+        with patch('app.utils.postgrest_request') as mock_sb:
             mock_sb.return_value = MagicMock(ok=True, json=lambda: [{'role': 'worker'}])
             resp = self.client.post('/login', data={
                 'email': 'test@test.com', 'password': 'password123',
@@ -483,7 +483,7 @@ class TestAuthBlueprint(BaseBlueprintTest):
     @patch('app.blueprints.auth.requests.post')
     def test_register_post(self, mock_post):
         mock_post.return_value = MagicMock(ok=True, json=lambda: {'user': {'id': 'new-user'}})
-        with patch('app.utils.supabase_request') as mock_sb:
+        with patch('app.utils.postgrest_request') as mock_sb:
             mock_sb.return_value = MagicMock(ok=True)
             resp = self.client.post('/register', data={
                 'full_name': 'Тест', 'email': 'test@test.com',
@@ -508,7 +508,7 @@ class TestJobsBlueprint(BaseBlueprintTest):
         self.assertEqual(resp.status_code, 200)
 
     def test_job_detail_not_found(self):
-        with patch('app.utils.supabase_request') as mock_sb:
+        with patch('app.utils.postgrest_request') as mock_sb:
             mock_sb.return_value = MagicMock(ok=False, json=lambda: [])
             resp = self.client.get('/jobs/999')
         self.assertEqual(resp.status_code, 302)
@@ -525,7 +525,7 @@ class TestJobsBlueprint(BaseBlueprintTest):
 
     def test_job_new_get_employer(self):
         self._login_employer()
-        with patch('app.utils.supabase_request') as mock_dec_sb:
+        with patch('app.utils.postgrest_request') as mock_dec_sb:
             mock_dec_sb.return_value = MagicMock(ok=True, json=lambda: [{'role': 'employer'}])
             resp = self.client.get('/job/new')
         self.assertEqual(resp.status_code, 200)
@@ -558,7 +558,7 @@ class TestJobsBlueprint(BaseBlueprintTest):
 
     def test_remove_favorite_job(self):
         self._login()
-        with patch('app.utils.supabase_request') as mock_sb:
+        with patch('app.utils.postgrest_request') as mock_sb:
             mock_sb.return_value = MagicMock(ok=True, json=lambda: [{}])
             resp = self.client.post('/unfavorite-job/job-1')
         self.assertEqual(resp.status_code, 302)
@@ -624,7 +624,7 @@ class TestApplicationsBlueprint(BaseBlueprintTest):
             MagicMock(ok=True, json=lambda: [{'id': 'shift-1'}]),
             MagicMock(ok=True),
         ]
-        with patch('app.utils.supabase_request', side_effect=responses):
+        with patch('app.utils.postgrest_request', side_effect=responses):
             resp = self.client.post('/api/applications/app-1/accept')
         self.assertEqual(resp.status_code, 200)
         data = resp.get_json()
@@ -638,7 +638,7 @@ class TestApplicationsBlueprint(BaseBlueprintTest):
             MagicMock(ok=True),
             MagicMock(ok=True),
         ]
-        with patch('app.utils.supabase_request', side_effect=responses):
+        with patch('app.utils.postgrest_request', side_effect=responses):
             resp = self.client.post('/api/applications/app-1/reject')
         self.assertEqual(resp.status_code, 200)
         data = resp.get_json()
@@ -656,7 +656,7 @@ class TestApplicationsBlueprint(BaseBlueprintTest):
             MagicMock(ok=True),
             MagicMock(ok=True),
         ]
-        with patch('app.utils.supabase_request', side_effect=responses):
+        with patch('app.utils.postgrest_request', side_effect=responses):
             resp = self.client.post('/api/applications/app-1/reject')
         self.assertEqual(resp.status_code, 200)
         data = resp.get_json()
@@ -691,7 +691,7 @@ class TestApplicationsBlueprint(BaseBlueprintTest):
             MagicMock(ok=True),  # PATCH jobs
             MagicMock(ok=True),  # PATCH applications
         ]
-        with patch('app.utils.supabase_request', side_effect=responses):
+        with patch('app.utils.postgrest_request', side_effect=responses):
             resp = self.client.post('/application/app-1/cancel')
         self.assertEqual(resp.status_code, 302)
 
@@ -722,7 +722,7 @@ class TestProfileBlueprint(BaseBlueprintTest):
         self.assertEqual(resp.status_code, 200)
 
     def test_public_profile_not_found(self):
-        with patch('app.utils.supabase_request') as mock_sb:
+        with patch('app.utils.postgrest_request') as mock_sb:
             mock_sb.return_value = MagicMock(ok=False, json=lambda: [])
             resp = self.client.get('/profile/nobody')
         self.assertEqual(resp.status_code, 302)
@@ -858,7 +858,7 @@ class TestFavoritesBlueprint(BaseBlueprintTest):
 
     def test_api_check_favorite(self):
         self._login()
-        with patch('app.utils.supabase_request') as mock_sb:
+        with patch('app.utils.postgrest_request') as mock_sb:
             mock_sb.return_value = MagicMock(ok=True, json=lambda: [{'id': 1}])
             resp = self.client.post('/api/favorites/check',
                                     json={'worker_id': 'w-1'},
@@ -869,7 +869,7 @@ class TestFavoritesBlueprint(BaseBlueprintTest):
 
     def test_api_check_favorite_false(self):
         self._login()
-        with patch('app.utils.supabase_request') as mock_sb:
+        with patch('app.utils.postgrest_request') as mock_sb:
             mock_sb.return_value = MagicMock(ok=True, json=lambda: [])
             resp = self.client.post('/api/favorites/check',
                                     json={'worker_id': 'w-1'},
@@ -940,9 +940,9 @@ class TestAdminBlueprint(BaseBlueprintTest):
 
     def test_admin_panel(self):
         self._login_admin()
-        with patch('app.utils.supabase_request') as mock_dec_sb:
+        with patch('app.utils.postgrest_request') as mock_dec_sb:
             mock_dec_sb.return_value = MagicMock(ok=True, json=lambda: [{'role': 'admin'}])
-            with patch('app.utils.supabase_request') as mock_admin_sb:
+            with patch('app.utils.postgrest_request') as mock_admin_sb:
                 mock_admin_sb.return_value = MagicMock(ok=True, json=lambda: [])
                 resp = self.client.get('/admin')
         self.assertEqual(resp.status_code, 200)
@@ -982,7 +982,7 @@ class TestMonetizationBlueprint(BaseBlueprintTest):
     def test_create_payment_access_denied(self):
         """POST /api/payments/create от не-владельца задания → 403"""
         self._login_employer()
-        with patch('app.utils.supabase_request') as mock_sb:
+        with patch('app.utils.postgrest_request') as mock_sb:
             mock_sb.return_value = MagicMock(
                 ok=True, json=lambda: [{'employer_id': 'other-emp'}],
             )
@@ -1013,7 +1013,7 @@ class TestMonetizationBlueprint(BaseBlueprintTest):
 
     def test_payment_status_not_found(self):
         """GET /api/payments/status/<id> несуществующего application → 404"""
-        with patch('app.utils.supabase_request') as mock_sb:
+        with patch('app.utils.postgrest_request') as mock_sb:
             mock_sb.return_value = MagicMock(ok=False, json=lambda: [])
             resp = self.client.get('/api/payments/status/nonexistent-id')
         self.assertEqual(resp.status_code, 404)
@@ -1023,7 +1023,7 @@ class TestMonetizationBlueprint(BaseBlueprintTest):
     def test_remind_cheque_not_worker(self):
         """POST /api/cheque/remind/<id> от не-исполнителя → 403"""
         self._login()  # login as worker 'test-user-1'
-        with patch('app.utils.supabase_request') as mock_sb:
+        with patch('app.utils.postgrest_request') as mock_sb:
             mock_sb.return_value = MagicMock(
                 ok=True,
                 json=lambda: [{'worker_id': 'other-worker', 'job': {}}],

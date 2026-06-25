@@ -3,7 +3,7 @@ import html as _html
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required, rate_limit, role_required, validate_uuid
-from app.utils import supabase_request
+from app.utils import postgrest_request
 from app.services.notification_service import create as create_notification
 
 try:
@@ -23,12 +23,12 @@ def chats_list():
     if role == 'employer':
         # Заявки, где пользователь — работодатель задания
         # employer_id берётся через join с jobs (нет колонки employer_id в applications)
-        resp = supabase_request('GET',
+        resp = postgrest_request('GET',
             f'applications?or=(worker_id.eq.{user_id},job.employer_id.eq.{user_id})'
             f'&status=eq.accepted&select=id,job:jobs(organization_name,employer_id)')
     else:
         # Заявки, где пользователь — принятый работник
-        resp = supabase_request('GET',
+        resp = postgrest_request('GET',
             f'applications?worker_id=eq.{user_id}&status=eq.accepted'
             f'&select=id,job:jobs(organization_name)')
     return render_template('chats_list.html', chats=resp.json() if resp.ok else [])
@@ -43,7 +43,7 @@ def chat(application_id):
 
     # Проверить, что пользователь — участник заявки
     # employer_id получаем через join с jobs
-    app_resp = supabase_request('GET',
+    app_resp = postgrest_request('GET',
         f'applications?id=eq.{application_id}&select=worker_id,job_id,job:jobs(employer_id)')
     if not app_resp.ok or not app_resp.json():
         flash('Чат не найден', 'danger')
@@ -56,7 +56,7 @@ def chat(application_id):
         return redirect(url_for('chat.chats_list'))
 
     try:
-        resp = supabase_request('GET',
+        resp = postgrest_request('GET',
             f'messages?application_id=eq.{application_id}'
             f'&select=id,sender_id,content,created_at&order=created_at.asc')
         messages = resp.json() if resp.ok else []
@@ -78,7 +78,7 @@ def chat_new(worker_id):
 
     # Ищем accepted-заявку от этого работодателя этому работнику
     # employer_id фильтруется через join с jobs (нет колонки employer_id в applications)
-    resp = supabase_request('GET',
+    resp = postgrest_request('GET',
         f'applications?job.employer_id=eq.{user_id}&worker_id=eq.{worker_id}'
         f'&status=eq.accepted&select=id')
     if resp.ok and resp.json():
@@ -105,7 +105,7 @@ def send_message():
 
     # Проверить, что пользователь — участник заявки
     # employer_id получаем через join с jobs
-    app_resp = supabase_request('GET',
+    app_resp = postgrest_request('GET',
         f'applications?id=eq.{application_id}&select=worker_id,job_id,status,job:jobs(employer_id)')
     if not app_resp.ok or not app_resp.json():
         return jsonify({'status': 'error', 'message': 'Заявка не найдена'}), 404
@@ -124,7 +124,7 @@ def send_message():
 
     # Сохраняем сообщение и получаем его ID из ответа
     headers = {'Prefer': 'return=representation'}
-    msg_resp = supabase_request('POST', 'messages', json={
+    msg_resp = postgrest_request('POST', 'messages', json={
         'application_id': application_id,
         'sender_id': sender_id,
         'content': sanitized_content
@@ -175,7 +175,7 @@ def poll_messages(application_id):
 
     # Проверить доступ
     # employer_id получаем через join с jobs
-    app_resp = supabase_request('GET',
+    app_resp = postgrest_request('GET',
         f'applications?id=eq.{application_id}&select=worker_id,job:jobs(employer_id)')
     if not app_resp.ok or not app_resp.json():
         return jsonify({'messages': [], 'user_id': user_id})
@@ -188,11 +188,11 @@ def poll_messages(application_id):
     query = (f'messages?application_id=eq.{application_id}'
              f'&select=id,sender_id,content,created_at&order=created_at.asc')
     if since_id:
-        since_resp = supabase_request('GET', f'messages?id=eq.{since_id}&select=created_at')
+        since_resp = postgrest_request('GET', f'messages?id=eq.{since_id}&select=created_at')
         if since_resp.ok and since_resp.json():
             since_time = since_resp.json()[0]['created_at']
             query += f'&created_at=gt.{since_time}'
-    resp = supabase_request('GET', query)
+    resp = postgrest_request('GET', query)
     messages = resp.json() if resp.ok else []
     return jsonify({'messages': messages, 'user_id': user_id})
 
@@ -212,7 +212,7 @@ def delete_chats():
     for aid in application_ids:
         # Проверяем, что пользователь — участник заявки
         # employer_id получаем через join с jobs
-        resp = supabase_request('GET',
+        resp = postgrest_request('GET',
             f'applications?id=eq.{aid}&select=id,worker_id,job:jobs(employer_id)')
         if not resp.ok or not resp.json():
             errors.append(f'Чат {aid} не найден')
@@ -224,7 +224,7 @@ def delete_chats():
             continue
 
         # Удаляем сообщения чата
-        supabase_request('DELETE', f'messages?application_id=eq.{aid}')
+        postgrest_request('DELETE', f'messages?application_id=eq.{aid}')
         deleted += 1
 
     return jsonify({

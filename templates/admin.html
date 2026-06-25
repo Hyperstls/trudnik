@@ -186,7 +186,7 @@
                         <input type="checkbox" class="js-job-checkbox rounded border-neutral-300" data-job-id="{{ j.id }}">
                     </td>
                     <td class="px-4 py-3 font-medium text-neutral-900">{{ j.get('organization_name', '—')[:40] }}</td>
-                    <td class="px-4 py-3 text-neutral-600">{{ j.get('employer', {}).get('full_name', '—') }}</td>
+                    <td class="px-4 py-3 text-neutral-600">{{ j.get('employer_name', '—') }}</td>
                     <td class="px-4 py-3">
                         <span class="text-xs px-2 py-0.5 rounded-full font-medium
                             {% if j.get('status') == 'open' %}bg-green-100 text-green-700

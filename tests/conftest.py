@@ -98,26 +98,15 @@ def relogin_if_expired(session: requests.Session, email: str, password: str) -> 
 
 
 # ═══════════════════════════════════════════════════════════════
-# Шаг 1: Мокаем supabase/PostgREST ДО импорта app
+# Шаг 1: Мокаем PostgREST ДО импорта app
 # ═══════════════════════════════════════════════════════════════
 
-# Включаем in-memory mock режим (проверяется в app/testing/mock_supabase.py)
-os.environ['SUPABASE_MOCK_MODE'] = '1'
+# Включаем in-memory mock режим (проверяется в app/testing/mock_postgrest.py)
+os.environ['POSTGREST_MOCK_MODE'] = '1'
 # Пароль для тестового входа (используется mock-авторизацией)
 os.environ['TEST_PASSWORD'] = 'test'
 
-# Мокаем библиотеку supabase на уровне sys.modules — даже если код
-# напрямую её не использует, это страховка от случайных импортов
-mock_supabase = MagicMock()
-mock_supabase.table.return_value = mock_supabase
-mock_supabase.select.return_value = mock_supabase
-mock_supabase.eq.return_value = mock_supabase
-mock_supabase.rpc.return_value = mock_supabase
-mock_supabase.execute.return_value = MagicMock(data=[], count=0)
 
-sys.modules['supabase'] = MagicMock()
-sys.modules['supabase'].create_client.return_value = mock_supabase
-sys.modules['supabase'].Client = MagicMock
 
 # Мокаем redis — ВСЕГДА, даже если пакет установлен.
 # Без этого @patch('redis.from_url') не работает (redis — C-расширение,
@@ -145,48 +134,48 @@ sys.modules['magic'] = _mock_magic
 
 
 @pytest.fixture(autouse=True)
-def mock_supabase_client(monkeypatch):
+def mock_postgrest_client(monkeypatch):
     """Автоматически мокает Supabase/PostgREST клиент для всех тестов.
 
     Подменяет функции в app.utils.supabase на заглушки, возвращающие
     пустые/успешные ответы. Это предотвращает любые реальные HTTP-запросы.
     """
-    from app.utils import SupabaseResponse
+    from app.utils import PostgrestResponse
 
     def mock_ok_response(*args, **kwargs):
-        return SupabaseResponse(ok=True, status_code=200, data=[], text='[]')
+        return PostgrestResponse(ok=True, status_code=200, data=[], text='[]')
 
     def mock_json_response(data=None):
         if data is None:
             data = []
-        return SupabaseResponse(ok=True, status_code=200, data=data, text=str(data))
+        return PostgrestResponse(ok=True, status_code=200, data=data, text=str(data))
 
     # Мокаем основные функции запросов к PostgREST
     monkeypatch.setattr(
         'app.utils.postgrest_request',
-        lambda *a, **kw: SupabaseResponse(ok=True, status_code=200, data=[], text='[]')
+        lambda *a, **kw: PostgrestResponse(ok=True, status_code=200, data=[], text='[]')
     )
     monkeypatch.setattr(
         'app.utils.postgrest_admin_request',
-        lambda *a, **kw: SupabaseResponse(ok=True, status_code=200, data=[], text='[]')
+        lambda *a, **kw: PostgrestResponse(ok=True, status_code=200, data=[], text='[]')
     )
     monkeypatch.setattr(
         'app.utils.postgrest_rpc',
-        lambda *a, **kw: SupabaseResponse(ok=True, status_code=200, data={'success': True}, text='{"success": true}')
+        lambda *a, **kw: PostgrestResponse(ok=True, status_code=200, data={'success': True}, text='{"success": true}')
     )
 
-    # Также мокаем алиасы в app.utils (supabase_request, supabase_admin_request, supabase_rpc)
+    # Также мокаем алиасы в app.utils (postgrest_request, postgrest_admin_request, postgrest_rpc)
     monkeypatch.setattr(
-        'app.utils.supabase_request',
+        'app.utils.postgrest_request',
         mock_ok_response
     )
     monkeypatch.setattr(
-        'app.utils.supabase_admin_request',
+        'app.utils.postgrest_admin_request',
         mock_ok_response
     )
     monkeypatch.setattr(
-        'app.utils.supabase_rpc',
-        lambda *a, **kw: SupabaseResponse(ok=True, status_code=200, data={'success': True}, text='{"success": true}')
+        'app.utils.postgrest_rpc',
+        lambda *a, **kw: PostgrestResponse(ok=True, status_code=200, data={'success': True}, text='{"success": true}')
     )
 
     # Мокаем Celery-задачи, чтобы избежать попыток подключения к Redis
@@ -224,11 +213,11 @@ def mock_supabase_client(monkeypatch):
     except Exception:
         pass
 
-    return mock_supabase
+    return mock_postgrest
 
 
 @pytest.fixture
-def app_client(mock_supabase_client):
+def app_client(mock_postgrest_client):
     """Создаёт тестовый Flask-клиент с включённым режимом TESTING.
 
     В режиме TESTING:
@@ -247,7 +236,7 @@ def app_client(mock_supabase_client):
 
 
 @pytest.fixture
-def app_context(mock_supabase_client):
+def app_context(mock_postgrest_client):
     """Создаёт контекст приложения Flask (без клиента)."""
     from app import create_app
     app = create_app()

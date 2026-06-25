@@ -51,6 +51,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE TABLE IF NOT EXISTS profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     role text NOT NULL DEFAULT 'worker',
+    ratings_count integer DEFAULT 0,
     full_name text NOT NULL DEFAULT '',
     phone text,
     photo_url text,
@@ -86,11 +87,12 @@ CREATE TABLE IF NOT EXISTS religions (
 
 INSERT INTO religions (name) VALUES
     ('Православие'),
-    ('Католичество'),
     ('Ислам'),
-    ('Иудаизм'),
     ('Буддизм'),
-    ('Не важно')
+    ('Иудаизм'),
+    ('Католичество'),
+    ('Протестантизм'),
+    ('Новые религиозные движения')
 ON CONFLICT (name) DO NOTHING;
 
 -- Добавляем religion_id FK (после создания religions)
@@ -105,26 +107,42 @@ CREATE TABLE IF NOT EXISTS skills (
 );
 
 INSERT INTO skills (name) VALUES
-    ('Уборка'),
-    ('Повар'),
-    ('Садоводство'),
-    ('Плотник'),
-    ('Электрик'),
-    ('Маляр'),
-    ('Сантехник'),
-    ('Водитель'),
-    ('Разнорабочий'),
-    ('Столяр'),
-    ('Разгрузка'),
-    ('Штукатур'),
-    ('Плиточник'),
-    ('Кровельщик'),
-    ('Сварщик'),
     ('IT'),
     ('Бухгалтер'),
-    ('Секретарь'),
+    ('Водитель'),
+    ('Кровельщик'),
+    ('Маляр'),
     ('Охрана'),
-    ('Уход за животными')
+    ('Плиточник'),
+    ('Плотник'),
+    ('Повар'),
+    ('Разгрузка'),
+    ('Разнорабочий'),
+    ('Садоводство'),
+    ('Сантехник'),
+    ('Сварщик'),
+    ('Секретарь'),
+    ('Столяр'),
+    ('Уборка'),
+    ('Уход за животными'),
+    ('Штукатур'),
+    ('Электрик'),
+    ('Автомеханик'),
+    ('Выгул собак'),
+    ('Грузчик'),
+    ('Дизайн'),
+    ('IT поддержка'),
+    ('Курьер'),
+    ('Переводы'),
+    ('Покраска'),
+    ('Присмотр за детьми'),
+    ('Ремонт'),
+    ('Репетиторство'),
+    ('Сантехника'),
+    ('Строительство'),
+    ('Фото/видео'),
+    ('Швея'),
+    ('Электрика')
 ON CONFLICT (name) DO NOTHING;
 
 -- 4. jobs — задания (→ profiles)
@@ -142,7 +160,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     lng double precision,
     date_time timestamptz NOT NULL DEFAULT now(),
     payment_amount numeric,
-    status varchar(20) NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'completed', 'cancelled')),
+    status varchar(20) NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'active', 'completed', 'cancelled')),
     max_workers integer DEFAULT 1 CHECK (max_workers >= 1),
     current_workers integer DEFAULT 0 CHECK (current_workers >= 0),
     tariff varchar(20) DEFAULT 'standard',
@@ -1018,7 +1036,7 @@ CREATE OR REPLACE FUNCTION accept_application(
 ) RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
     v_current_workers int;
@@ -1089,7 +1107,7 @@ CREATE OR REPLACE FUNCTION reject_application(
 ) RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
     v_current_status text;
@@ -1156,7 +1174,7 @@ CREATE OR REPLACE FUNCTION delete_job_cascade(
 ) RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
     v_deleted_apps int;
@@ -1211,7 +1229,7 @@ CREATE OR REPLACE FUNCTION delete_user_cascade(
 ) RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
     v_role text;
@@ -1239,6 +1257,10 @@ BEGIN
     DELETE FROM invitations WHERE worker_id = p_user_id;
     DELETE FROM user_skills WHERE user_id = p_user_id;
     DELETE FROM push_subscriptions WHERE user_id = p_user_id;
+    -- Удалить employer_details
+    DELETE FROM public.employer_details WHERE user_id = p_user_id;
+    -- Удалить email_log
+    DELETE FROM public.email_log WHERE user_id = p_user_id;
     DELETE FROM messages WHERE sender_id = p_user_id;
 
     DELETE FROM profiles WHERE id = p_user_id;
@@ -1257,7 +1279,7 @@ CREATE OR REPLACE FUNCTION apply_job_atomic(
 ) RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = ''
 AS $$
 DECLARE
     v_job_status text;
@@ -1979,11 +2001,11 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 BEGIN;
 
 -- Часть 1: Права доступа для нативных auth RPC (из миграции 058)
-REVOKE EXECUTE ON FUNCTION login_user(text, text) FROM anon, PUBLIC;
-GRANT EXECUTE ON FUNCTION login_user(text, text) TO authenticated, service_role;
+REVOKE EXECUTE ON FUNCTION login_user(text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION login_user(text, text) TO anon, authenticated, service_role;
 
-REVOKE EXECUTE ON FUNCTION register_user(text, text, text, text) FROM anon, PUBLIC;
-GRANT EXECUTE ON FUNCTION register_user(text, text, text, text) TO authenticated, service_role;
+REVOKE EXECUTE ON FUNCTION register_user(text, text, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION register_user(text, text, text, text) TO anon, authenticated, service_role;
 
 REVOKE EXECUTE ON FUNCTION change_password(uuid, text, text) FROM anon, PUBLIC;
 GRANT EXECUTE ON FUNCTION change_password(uuid, text, text) TO authenticated, service_role;
@@ -2331,7 +2353,7 @@ BEGIN;
 
 CREATE OR REPLACE FUNCTION accept_application(p_job_id uuid, p_app_id uuid)
 RETURNS json
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $$
 DECLARE
     v_current_workers int; v_max_workers int; v_job_status text;

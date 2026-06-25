@@ -6,16 +6,16 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 
-def update_rating(user_id: str, new_rating: float) -> None:
+def update_rating(user_id: str, _new_rating: float) -> None:
     """Обновить средний рейтинг пользователя.
 
     Args:
         user_id: UUID пользователя.
-        new_rating: новый рейтинг (один отзыв).
+        _new_rating: зарезервирован (новый рейтинг, один отзыв).
 
     Использует admin_request для обхода RLS (вызывается от лица rat'ера, не владельца профиля).
     """
-    from app.utils.supabase import postgrest_admin_request
+    from app.utils.postgrest_client import postgrest_admin_request
 
     ratings_resp = postgrest_admin_request(
         'GET',
@@ -48,7 +48,7 @@ def get_user_rating(user_id: str) -> Optional[Dict[str, Any]]:
           - breakdown: распределение по звёздам {1: count, 2: count, ...}
         Или None при ошибке.
     """
-    from app.utils.supabase import postgrest_request
+    from app.utils.postgrest_client import postgrest_request
 
     resp = postgrest_request(
         'GET',

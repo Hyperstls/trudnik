@@ -93,7 +93,7 @@ def extract_flash_messages(html: str) -> list[str]:
         # Ищем JSON-подобные сообщения об ошибках
         err_pattern = r'"msg"\s*:\s*"([^"]+)"'
         for match in re.finditer(err_pattern, html):
-            messages.append(f"[supabase] {match.group(1)}")
+            messages.append(f"[postgrest] {match.group(1)}")
 
     return messages
 

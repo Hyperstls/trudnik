@@ -88,7 +88,7 @@ class EmailService:
     # Дневной лимит (Redis — общий для всех worker'ов)
     # ═══════════════════════════════════════════════════════════════
 
-    def _check_daily_limit(self, user_id: int = 0) -> bool:
+    def _check_daily_limit(self, user_id: str = "") -> bool:
         """Проверяет, не превышен ли дневной лимит отправки (через Redis).
 
         Ключ: email:daily:{date}:{user_id}
@@ -174,7 +174,7 @@ class EmailService:
         subject: str,
         html_body: str,
         text_body: str = "",
-        user_id: int = 0,
+        user_id: str = "",
     ) -> bool:
         """Отправляет одно email-сообщение через SMTP (с connection pooling).
 
@@ -265,7 +265,7 @@ class EmailService:
             subject = recipient.get("subject", "")
             html_body = recipient.get("html_body", "")
             text_body = recipient.get("text_body", "")
-            user_id = int(recipient.get("user_id", 0))
+            user_id = recipient.get("user_id", "")
 
             if not to_email or not subject or not html_body:
                 result["skipped"] += 1
@@ -335,7 +335,7 @@ class EmailService:
         # Формируем список сигнатур задач для параллельной отправки
         task_sigs = [
             send_email_notification.s(
-                user_id=int(r.get("user_id", 0)),
+                user_id=str(r.get("user_id", "")),
                 notification_id=int(r.get("notification_id", 0)),
                 user_email=r.get("to_email", ""),
                 user_name=r.get("user_name", ""),
@@ -430,7 +430,7 @@ class EmailService:
     # ═══════════════════════════════════════════════════════════════
 
     @staticmethod
-    def create_unsubscribe_token(user_id: int) -> str:
+    def create_unsubscribe_token(user_id: str) -> str:
         """Создаёт HMAC-SHA256 токен для ссылки отписки от рассылки.
 
         Args:

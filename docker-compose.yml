@@ -16,6 +16,57 @@ services:
       timeout: 5s
       retries: 5
 
+  db:
+    image: postgis/postgis:15-3.4-alpine
+    container_name: trudnik-db
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: trudnik
+      POSTGRES_USER: trudnik
+      POSTGRES_PASSWORD: trudnik_dev
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./migrations/067_bootstrap_amvera.sql:/docker-entrypoint-initdb.d/01_bootstrap.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trudnik -d trudnik"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgrest:
+    image: postgrest/postgrest:v12.2.3
+    container_name: trudnik-postgrest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      PGRST_DB_URI: postgres://trudnik:trudnik_dev@db:5432/trudnik
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${PGRST_JWT_SECRET}
+      PGRST_DB_POOL: 10
+      PGRST_SERVER_PORT: "3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: trudnik-pgadmin
+    restart: unless-stopped
+    profiles: ["debug"]
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@trudnik.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      - db
+
   websocket:
     build: .
     container_name: trudnik-websocket
@@ -44,7 +95,7 @@ services:
       - PGHOST=${PGHOST}
       - PGPORT=${PGPORT:-5432}
       - PGDATABASE=${PGDATABASE}
-      - POSTGREST_URL=${POSTGREST_URL:-http://localhost:3000}
+      - POSTGREST_URL=${POSTGREST_URL:-http://postgrest:3000}
       - PGRST_JWT_SECRET=${PGRST_JWT_SECRET}
       - SECRET_KEY=${SECRET_KEY}
       - SMTP_HOST=${SMTP_HOST:-localhost}
@@ -79,7 +130,7 @@ services:
       - PGHOST=${PGHOST}
       - PGPORT=${PGPORT:-5432}
       - PGDATABASE=${PGDATABASE}
-      - POSTGREST_URL=${POSTGREST_URL:-http://localhost:3000}
+      - POSTGREST_URL=${POSTGREST_URL:-http://postgrest:3000}
       - PGRST_JWT_SECRET=${PGRST_JWT_SECRET}
       - SECRET_KEY=${SECRET_KEY}
     command: celery -A app.tasks.celery_app beat --loglevel=info
@@ -95,11 +146,15 @@ services:
       - DEPLOYMENT_ENV=development
       - PORT=8000
       - REDIS_URL=redis://redis:6379/0
+      - POSTGREST_URL=http://postgrest:3000
+      - PGRST_JWT_SECRET=${PGRST_JWT_SECRET}
     volumes:
       - ./app:/app/app
       - uploads_data:/data/uploads
     depends_on:
       redis:
+        condition: service_started
+      postgrest:
         condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -113,3 +168,5 @@ volumes:
   redis_data:
   celery_beat_data:
   uploads_data:
+  pgdata:
+  pgadmin-data:

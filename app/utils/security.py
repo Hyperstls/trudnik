@@ -96,6 +96,55 @@ def validate_uuid(value: Optional[str]) -> bool:
         return False
 
 
+# Канонический предкомпилированный pattern для обнаружения SQL-инъекций.
+# Включает полный набор ключевых слов и разделителей (URL-encoded в том числе).
+_SQL_INJECTION_PATTERN = re.compile(
+    r"(?:SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE|EXEC|EXECUTE|TRUNCATE|DECLARE|WAITFOR|DELAY|OR|AND|HAVING|GROUP\s+BY|ORDER\s+BY)"
+    r"(?:\s|%20|%0a|%0d|/\*|--|#|=|')",
+    re.IGNORECASE
+)
+
+# Вариант без AND/OR — для валидации имён, email, где AND/OR могут быть легитимными
+_SQL_INJECTION_PATTERN_NO_AND_OR = re.compile(
+    r"(?:SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE|EXEC|EXECUTE|TRUNCATE|DECLARE|WAITFOR|DELAY|HAVING|GROUP\s+BY|ORDER\s+BY)"
+    r"(?:\s|%20|%0a|%0d|/\*|--|#|=|')",
+    re.IGNORECASE
+)
+
+
+def has_sql_injection(value: str, include_and_or: bool = False, include_url_encoded: bool = True) -> bool:
+    """Проверить, содержит ли строка признаки SQL-инъекции.
+
+    Использует один канонический regex для обнаружения ключевых слов SQL
+    в сочетании с разделителями (пробелы, комментарии, URL-encode).
+
+    Args:
+        value: строка для проверки.
+        include_and_or: включить AND/OR в проверку (по умолчанию False, т.к. они
+            наиболее вероятны в легитимных именах и названиях).
+        include_url_encoded: включить URL-encoded разделители (%20, %0a и т.д.)
+            в проверку (по умолчанию True).
+
+    Returns:
+        True если строка содержит признаки SQL-инъекции, иначе False.
+    """
+    if not value or not isinstance(value, str):
+        return False
+
+    if include_and_or and include_url_encoded:
+        return bool(_SQL_INJECTION_PATTERN.search(value))
+    elif not include_and_or:
+        return bool(_SQL_INJECTION_PATTERN_NO_AND_OR.search(value))
+    else:
+        # include_and_or=True, include_url_encoded=False — собираем на лету
+        pattern = re.compile(
+            r"(?:SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE|EXEC|EXECUTE|TRUNCATE|DECLARE|WAITFOR|DELAY|OR|AND|HAVING|GROUP\s+BY|ORDER\s+BY)"
+            r"(?:\s|/\*|--|#|=|')",
+            re.IGNORECASE
+        )
+        return bool(pattern.search(value))
+
+
 def generate_csrf_token() -> str:
     """Сгенерировать CSRF-токен.
 

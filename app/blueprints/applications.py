@@ -6,8 +6,8 @@ from flask import Blueprint, current_app, flash, jsonify, redirect, render_templ
 
 from app.config import Config
 from app.decorators import login_required, rate_limit, role_required, validate_uuid
-from app.utils import supabase_request, supabase_admin_request, supabase_rpc
-from app.utils.helpers import assert_supabase_ok
+from app.utils import postgrest_request, postgrest_admin_request, postgrest_rpc
+from app.utils.helpers import assert_postgrest_ok
 from app.services.notification_service import create as notify
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ def apply_job(job_id):
     user_id = session['user_id']
 
     # Быстрая предварительная проверка дубликата (некритичная, только для UX)
-    check = supabase_request('GET', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
+    check = postgrest_request('GET', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
     if check.ok and check.json():
         flash('Вы уже откликались на это задание', 'info')
         return redirect(url_for('jobs.index'))
@@ -32,7 +32,7 @@ def apply_job(job_id):
     # Устраняет TOCTOU race condition между проверкой мест и созданием отклика
     # FALLBACK: если RPC apply_job_atomic не существует (миграция 048 не применена),
     # используем неатомарную логику с проверками через REST API
-    rpc_result = supabase_rpc('apply_job_atomic', {
+    rpc_result = postgrest_rpc('apply_job_atomic', {
         'p_job_id': job_id,
         'p_worker_id': user_id,
     }, use_admin=True)
@@ -99,7 +99,7 @@ def _apply_job_fallback(job_id: str, user_id: str):
     """
     # 1. Получить информацию о задании
     # ↑ Синхронизировать с apply_job_atomic (миграция 048)
-    job_resp = supabase_request(
+    job_resp = postgrest_request(
         'GET',
         f'jobs?id=eq.{job_id}&select=status,current_workers,max_workers,employer_id'
     )
@@ -125,7 +125,7 @@ def _apply_job_fallback(job_id: str, user_id: str):
     # 4. Проверить blacklist (требует service_role для обхода RLS)
     # ↑ Синхронизировать с apply_job_atomic (миграция 048)
     if employer_id:
-        bl_resp = supabase_admin_request(
+        bl_resp = postgrest_admin_request(
             'GET',
             f'blacklists?user_id=eq.{employer_id}&blocked_user_id=eq.{user_id}&select=id'
         )
@@ -138,7 +138,7 @@ def _apply_job_fallback(job_id: str, user_id: str):
 
     # 5. Проверить дубликат отклика
     # ↑ Синхронизировать с apply_job_atomic (миграция 048)
-    dup_resp = supabase_request(
+    dup_resp = postgrest_request(
         'GET',
         f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}&select=id'
     )
@@ -158,7 +158,7 @@ def _apply_job_fallback(job_id: str, user_id: str):
         return redirect(url_for('jobs.index'))
 
     # 7. Создать отклик
-    create_resp = supabase_request('POST', 'applications', json={
+    create_resp = postgrest_request('POST', 'applications', json={
         'job_id': job_id,
         'worker_id': user_id,
         'status': 'pending',
@@ -203,7 +203,7 @@ def apply_selected():
 
     for job_id in job_ids:
         # Атомарная RPC: все проверки (статус, blacklist, свой же заказ, дубликат, слоты) + вставка
-        rpc_result = supabase_rpc('apply_job_atomic', {
+        rpc_result = postgrest_rpc('apply_job_atomic', {
             'p_job_id': job_id,
             'p_worker_id': user_id,
         }, use_admin=True)
@@ -277,7 +277,7 @@ def unapply_job(job_id):
 
     user_id = session['user_id']
     # Найти отклик по job_id + worker_id
-    app_resp = supabase_request(
+    app_resp = postgrest_request(
         'GET',
         f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}&select=id'
     )
@@ -313,7 +313,7 @@ def unapply_selected():
     withdrawn = 0
     errors = 0
     for job_id in job_ids:
-        app_resp = supabase_request(
+        app_resp = postgrest_request(
             'GET',
             f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}&select=id'
         )
@@ -373,7 +373,7 @@ def my_applications():
     per_page = min(100, max(1, request.args.get('per_page', 20, type=int)))
     offset = (page - 1) * per_page
 
-    resp = supabase_request('GET',
+    resp = postgrest_request('GET',
         f'applications?job.employer_id=eq.{user_id}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,skills,desired_payment,inn,phone,email_public),job:jobs(organization_name,date_time,payment_amount,status,current_workers,max_workers)&limit={per_page}&offset={offset}',
         headers={'Prefer': 'count=exact'})
     applications = resp.json() if resp.ok else []
@@ -426,7 +426,7 @@ def api_test():
 def api_handle_application(app_id, action):
     """AJAX-эндпоинт: принять / отклонить / повторно принять отклик"""
     current_app.logger.info('[APPLICATIONS] action=%s app_id=%s user_id=%s', action, app_id, session.get('user_id'))
-    app_resp = supabase_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id,status')
+    app_resp = postgrest_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id,status')
     if not app_resp.ok or not app_resp.json():
         current_app.logger.warning('[APPLICATIONS] app_id=%s FAILED: ok=%s status=%s text=%s', app_id, app_resp.ok, app_resp.status_code, (app_resp.text or '')[:200])
         return jsonify({'success': False, 'error': 'Отклик не найден'}), 404
@@ -436,7 +436,7 @@ def api_handle_application(app_id, action):
     worker_id = app_data['worker_id']
     current_status = app_data.get('status', 'pending')
     # === AUTHORIZATION: проверяем, что задание принадлежит текущему пользователю ===
-    owner_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=employer_id')
+    owner_resp = postgrest_request('GET', f'jobs?id=eq.{job_id}&select=employer_id')
     if not (owner_resp.ok and owner_resp.json()):
         return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
     if owner_resp.json()[0]['employer_id'] != session.get('user_id'):
@@ -448,7 +448,7 @@ def api_handle_application(app_id, action):
             return jsonify({'success': False, 'error': f'Нельзя принять отклик в статусе «{current_status}»'}), 409
 
         # Атомарный accept через RPC (принимает заявки в статусах pending и rejected)
-        rpc_result = supabase_rpc('accept_application', {
+        rpc_result = postgrest_rpc('accept_application', {
             'p_job_id': job_id,
             'p_app_id': app_id,
         }, use_admin=True)
@@ -478,7 +478,7 @@ def api_handle_application(app_id, action):
 
     elif action == 'reject':
         # Атомарный reject через RPC (этап 4.4)
-        rpc_result = supabase_rpc('reject_application', {
+        rpc_result = postgrest_rpc('reject_application', {
             'p_job_id': job_id,
             'p_app_id': app_id,
         }, use_admin=True)
@@ -536,7 +536,7 @@ def api_batch_applications():
     for app_id in app_ids:
         try:
             # Симулируем вызов индивидуального эндпоинта
-            app_resp = supabase_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id,status')
+            app_resp = postgrest_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id,status')
             if not app_resp.ok or not app_resp.json():
                 results['errors'].append({'id': app_id, 'error': 'Отклик не найден'})
                 continue
@@ -581,7 +581,7 @@ def api_batch_applications():
 @validate_uuid('app_id')
 def cancel_application(app_id):
     """Отмена принятого работника"""
-    app_resp = supabase_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id,status')
+    app_resp = postgrest_request('GET', f'applications?id=eq.{app_id}&select=job_id,worker_id,status')
     if not app_resp.ok or not app_resp.json():
         flash('Отклик не найден', 'danger')
         return redirect(url_for('applications.my_applications'))
@@ -596,7 +596,7 @@ def cancel_application(app_id):
         return redirect(url_for('applications.my_applications'))
 
     # Получить информацию о задании
-    job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=status,date_time,organization_name')
+    job_resp = postgrest_request('GET', f'jobs?id=eq.{job_id}&select=status,date_time,organization_name')
     if not job_resp.ok or not job_resp.json():
         flash('Задание не найдено', 'danger')
         return redirect(url_for('applications.my_applications'))
@@ -628,7 +628,7 @@ def cancel_application(app_id):
     # Атомарная отмена через RPC cancel_worker_atomic
     rpc_success = False
     try:
-        rpc_result = supabase_rpc('cancel_worker_atomic', {
+        rpc_result = postgrest_rpc('cancel_worker_atomic', {
             'p_application_id': app_id,
             'p_user_id': session.get('user_id'),
         }, use_admin=True)
@@ -658,22 +658,22 @@ def cancel_application(app_id):
             app_id
         )
         # Уменьшить счетчик работников
-        job_resp = supabase_request('GET', f'jobs?id=eq.{job_id}&select=current_workers,max_workers')
+        job_resp = postgrest_request('GET', f'jobs?id=eq.{job_id}&select=current_workers,max_workers')
         if job_resp.ok and job_resp.json():
             job_data = job_resp.json()[0]
             current_workers = max(0, job_data.get('current_workers', 1) - 1)
 
             # Вернуть статус в open если все ушли
             new_status = 'open' if current_workers == 0 else 'completed'
-            job_patch_resp = supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={
+            job_patch_resp = postgrest_request('PATCH', f'jobs?id=eq.{job_id}', json={
                 'status': new_status,
                 'current_workers': current_workers
             })
-            assert_supabase_ok(job_patch_resp, 'обновление статуса задания при отмене работника')
+            assert_postgrest_ok(job_patch_resp, 'обновление статуса задания при отмене работника')
 
         # Отклонить отклик
-        cancel_resp = supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'rejected'})
-        assert_supabase_ok(cancel_resp, 'отклонение отклика при отмене работника')
+        cancel_resp = postgrest_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'rejected'})
+        assert_postgrest_ok(cancel_resp, 'отклонение отклика при отмене работника')
 
         # Отправить уведомления (только в fallback-пути, RPC создаёт уведомление сама)
         success = notify(worker_id, 'application_rejected', 'Отклик отменен',

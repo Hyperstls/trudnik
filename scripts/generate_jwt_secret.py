@@ -1,36 +1,45 @@
-"""Генерирует PGRST_JWT_SECRET и выводит инструкцию по установке."""
+"""Генерация криптостойкого JWT-секрета для локальной разработки.
+
+Использование:
+    python scripts/generate_jwt_secret.py
+
+Сгенерированный ключ необходимо добавить в .env:
+    PGRST_JWT_SECRET=<сгенерированный_ключ>
+
+Требования:
+    - Минимум 32 символа (рекомендация PostgREST)
+    - Криптостойкая случайная последовательность
+    - Одинаковое значение в PGRST_JWT_SECRET для postgrest и Flask
+"""
+
 import secrets
-import hashlib
 
 
-def generate_secret(length=64):
-    """Генерирует криптографически безопасный секрет."""
-    return secrets.token_hex(length // 2)
+def generate_jwt_secret(byte_length: int = 64) -> str:
+    """Генерирует случайный ключ в hex-формате.
+
+    Args:
+        byte_length: количество случайных байт (по умолчанию 64 → 128 hex-символов).
+
+    Returns:
+        Hex-строка длиной byte_length * 2.
+    """
+    return secrets.token_hex(byte_length)
 
 
-if __name__ == '__main__':
-    secret = generate_secret()
-    print("=" * 70)
-    print("НОВЫЙ PGRST_JWT_SECRET (сохраните его!):")
-    print("=" * 70)
-    print(secret)
+if __name__ == "__main__":
+    secret = generate_jwt_secret()
+    print(f"PGRST_JWT_SECRET={secret}")
     print()
-    print("=" * 70)
-    print("ГДЕ УСТАНОВИТЬ:")
-    print("=" * 70)
+    print("Добавьте эту строку в ваш .env файл:")
+    print(f"  PGRST_JWT_SECRET={secret}")
     print()
-    print("1. В .env файле (локальная разработка):")
-    print(f"   PGRST_JWT_SECRET={secret}")
+    print(f"Характеристики ключа:")
+    print(f"  Длина: {len(secret)} символов")
+    print(f"  Энтропия: {len(secret) * 4} бит")
+    print(f"  Кодировка: hex (0-9, a-f)")
     print()
-    print("2. В amvera.yml (секреты приложения trudnik-app):")
-    print("   secrets:")
-    print("     - name: PGRST_JWT_SECRET")
-    print(f"       value: {secret}")
-    print()
-    print("3. В панели Amvera -> Сервис trudnik-pr (PostgREST):")
-    print("   Переменная окружения: PGRST_JWT_SECRET")
-    print(f"   Значение: {secret}")
-    print()
-    print("4. В панели Amvera -> Сервис trudnik-celery (если есть):")
-    print("   Переменная окружения: PGRST_JWT_SECRET")
-    print(f"   Значение: {secret}")
+    print("!!! Этот ключ должен быть одинаковым в:")
+    print("   - PGRST_JWT_SECRET для сервиса postgrest в docker-compose.yml")
+    print("   - PGRST_JWT_SECRET для сервисов web / celery_worker / celery_beat")
+    print("   - PGRST_JWT_SECRET в вашем .env файле")

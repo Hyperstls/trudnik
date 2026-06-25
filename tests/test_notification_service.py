@@ -10,7 +10,7 @@ class TestNotificationService(unittest.TestCase):
 
     @patch('app.services.notification_service.redis_publisher')
     @patch('app.services.notification_service.get_user_prefs')
-    @patch('app.services.notification_service.supabase_admin_request')
+    @patch('app.services.notification_service.postgrest_admin_request')
     def test_create_notification_success(self, mock_admin, mock_prefs, mock_redis):
         """Уведомление создаётся и публикуется."""
         # Первый вызов: POST notifications → возвращает созданное уведомление
@@ -46,7 +46,7 @@ class TestNotificationService(unittest.TestCase):
         mock_prefs.assert_not_called()
 
     @patch('app.services.notification_service.get_user_prefs')
-    @patch('app.services.notification_service.supabase_admin_request')
+    @patch('app.services.notification_service.postgrest_admin_request')
     def test_create_notification_disabled_by_prefs(self, mock_admin, mock_prefs):
         """Уведомление отключено в настройках — не создаётся."""
         mock_prefs.return_value = {'status_change': False}

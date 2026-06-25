@@ -1,7 +1,7 @@
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required
-from app.utils import supabase_request
+from app.utils import postgrest_request
 
 blacklist_bp = Blueprint('blacklist', __name__)
 
@@ -29,7 +29,7 @@ def blacklist():
     err = _reject_worker()
     if err:
         return err
-    resp = supabase_request('GET',
+    resp = postgrest_request('GET',
         f'blacklists?user_id=eq.{session["user_id"]}&select=blocked:profiles!blacklists_blocked_user_id_fkey(id,full_name,photo_url,skills,city)')
     items = resp.json() if resp.ok else []
     # Разворачиваем вложенные объекты blocked → плоский список
@@ -46,7 +46,7 @@ def block_user(user_id):
     err = _reject_worker()
     if err:
         return err
-    resp = supabase_request('POST', 'blacklists', json={'user_id': session['user_id'], 'blocked_user_id': user_id})
+    resp = postgrest_request('POST', 'blacklists', json={'user_id': session['user_id'], 'blocked_user_id': user_id})
     if resp.ok:
         if _is_ajax():
             return jsonify({'success': True})
@@ -63,7 +63,7 @@ def unblock_user(user_id):
     err = _reject_worker()
     if err:
         return err
-    resp = supabase_request('DELETE', f'blacklists?user_id=eq.{session["user_id"]}&blocked_user_id=eq.{user_id}')
+    resp = postgrest_request('DELETE', f'blacklists?user_id=eq.{session["user_id"]}&blocked_user_id=eq.{user_id}')
     if resp.ok:
         if _is_ajax():
             return jsonify({'success': True})

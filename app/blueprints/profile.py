@@ -6,7 +6,7 @@ from werkzeug.utils import secure_filename
 from app.config import Config
 from app.decorators import login_required, rate_limit, validate_uuid
 from app.utils import postgrest_admin_request, postgrest_request, postgrest_rpc, upload_to_storage
-from app.utils.helpers import assert_supabase_ok
+from app.utils.helpers import assert_postgrest_ok
 from app.utils.validators import validate_password
 
 profile_bp = Blueprint('profile', __name__)
@@ -110,7 +110,7 @@ def update_profile():
 
     try:
         update_resp = postgrest_request('PATCH', f'profiles?id=eq.{user_id}', json=data)
-        if assert_supabase_ok(update_resp, 'обновление профиля'):
+        if assert_postgrest_ok(update_resp, 'обновление профиля'):
             flash('Профиль обновлён', 'success')
     except Exception:
         current_app.logger.exception('Error updating profile for user %s', user_id)
@@ -131,7 +131,7 @@ def delete_photo():
             old_photo_url = data[0].get('photo_url')
 
     del_resp = postgrest_request('PATCH', f'profiles?id=eq.{user_id}', json={'photo_url': None})
-    if assert_supabase_ok(del_resp, 'удаление фото профиля'):
+    if assert_postgrest_ok(del_resp, 'удаление фото профиля'):
         # Удаление файла с диска
         if old_photo_url:
             from app.services.storage_service import delete_from_storage
@@ -249,7 +249,7 @@ def verify_employer():
                 return redirect(url_for('profile.verify_employer'))
 
         verify_resp = postgrest_request('PATCH', f'profiles?id=eq.{user_id}', json=data)
-        if assert_supabase_ok(verify_resp, 'отправка заявки на верификацию'):
+        if assert_postgrest_ok(verify_resp, 'отправка заявки на верификацию'):
             flash('Заявка на верификацию отправлена', 'success')
         return redirect(url_for('profile.profile'))
     return render_template('verify_employer.html')

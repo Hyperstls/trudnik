@@ -92,15 +92,9 @@ def role_required(role: str) -> Callable[[F], F]:
 # ============================================================
 
 def get_user_profile():
-    """Получить профиль текущего пользователя из Supabase."""
-    if 'access_token' not in session:
-        return None
-    resp = postgrest_request('GET', f'profiles?id=eq.{session["user_id"]}&select=*')
-    if resp.ok and resp.json():
-        data = resp.json()
-        if isinstance(data, list) and data:
-            return data[0]
-    return None
+    """Получить профиль текущего пользователя из Supabase (делегирует в app.utils.auth)."""
+    from app.utils.auth import get_user_profile as _get_profile
+    return _get_profile()
 
 
 def _is_authenticated():

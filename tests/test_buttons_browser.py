@@ -24,10 +24,10 @@ ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '')
 _TEST_PASSWORD = os.environ.get('TEST_PASSWORD', '')
 
 LONG_TIMEOUT = 60_000
-SUPABASE_WAIT = 20_000
+POSTGREST_WAIT = 20_000
 
 
-def wait_for_supabase(page: Page, ms: int = SUPABASE_WAIT):
+def wait_for_postgrest(page: Page, ms: int = POSTGREST_WAIT):
     """Ждёт ответа от Supabase после действия, меняющего БД."""
     page.wait_for_timeout(ms)
 
@@ -83,25 +83,25 @@ class TestEmployerJobCreation:
         safe_fill(page, 'input[name="title"]', 'Тестовое задание браузер')
         safe_fill(page, 'textarea[name="description"]', 'Описание тестового задания созданного через браузер')
         safe_click(page, 'button:has-text("Далее"), button:has-text("далее")')
-        wait_for_supabase(page)
+        wait_for_postgrest(page)
 
         if is_visible(page, 'input[name="city"]'):
             safe_fill(page, 'input[name="city"]', 'Москва')
             safe_click(page, 'button:has-text("Далее"), button:has-text("далее")')
-            wait_for_supabase(page)
+            wait_for_postgrest(page)
 
         if is_visible(page, 'input[name="payment_amount"]'):
             safe_fill(page, 'input[name="payment_amount"]', '5000')
         if is_visible(page, 'input[name="max_workers"]'):
             safe_fill(page, 'input[name="max_workers"]', '5')
         safe_click(page, 'button:has-text("Далее"), button:has-text("далее")')
-        wait_for_supabase(page)
+        wait_for_postgrest(page)
 
         submit_btn = page.locator('button:has-text("Создать"), button:has-text("создать"), button[type="submit"]')
         if submit_btn.count() > 0:
             submit_btn.first.click(force=True)
             page.wait_for_load_state('networkidle', timeout=LONG_TIMEOUT)
-            wait_for_supabase(page)
+            wait_for_postgrest(page)
 
         assert any([
             '/my-jobs' in page.url,
@@ -123,20 +123,20 @@ class TestEmployerJobCreation:
             safe_fill(page, 'input[name="title"]', 'Задание для отзыва браузер')
             safe_fill(page, 'textarea[name="description"]', 'Будет отозвано')
             safe_click(page, 'button:has-text("Далее"), button:has-text("далее")')
-            wait_for_supabase(page)
+            wait_for_postgrest(page)
             if is_visible(page, 'input[name="city"]'):
                 safe_fill(page, 'input[name="city"]', 'Москва')
                 safe_click(page, 'button:has-text("Далее"), button:has-text("далее")')
-                wait_for_supabase(page)
+                wait_for_postgrest(page)
             if is_visible(page, 'input[name="payment_amount"]'):
                 safe_fill(page, 'input[name="payment_amount"]', '3000')
             safe_click(page, 'button:has-text("Далее"), button:has-text("далее")')
-            wait_for_supabase(page)
+            wait_for_postgrest(page)
             submit = page.locator('button:has-text("Создать"), button[type="submit"]')
             if submit.count() > 0:
                 submit.first.click(force=True)
                 page.wait_for_load_state('networkidle', timeout=LONG_TIMEOUT)
-                wait_for_supabase(page)
+                wait_for_postgrest(page)
 
         page.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
         page.wait_for_timeout(5000)
@@ -164,7 +164,7 @@ class TestEmployerJobCreation:
         if dup_btn.count() > 0:
             dup_btn.first.click(force=True)
             page.wait_for_load_state('networkidle', timeout=LONG_TIMEOUT)
-            wait_for_supabase(page)
+            wait_for_postgrest(page)
             assert True, "Кнопка «Дублировать» нажата"
         else:
             pytest.skip("Нет заданий для дублирования")
@@ -574,25 +574,25 @@ class TestFullWorkflow:
             safe_fill(emp_page, 'input[name="title"]', 'Комплексный тест браузер')
             safe_fill(emp_page, 'textarea[name="description"]', 'Задание для полного цикла тестирования')
             safe_click(emp_page, 'button:has-text("Далее"), button:has-text("далее")')
-            wait_for_supabase(emp_page)
+            wait_for_postgrest(emp_page)
 
             if is_visible(emp_page, 'input[name="city"]'):
                 safe_fill(emp_page, 'input[name="city"]', 'Москва')
                 safe_click(emp_page, 'button:has-text("Далее"), button:has-text("далее")')
-                wait_for_supabase(emp_page)
+                wait_for_postgrest(emp_page)
 
             if is_visible(emp_page, 'input[name="payment_amount"]'):
                 safe_fill(emp_page, 'input[name="payment_amount"]', '7000')
             if is_visible(emp_page, 'input[name="max_workers"]'):
                 safe_fill(emp_page, 'input[name="max_workers"]', '3')
             safe_click(emp_page, 'button:has-text("Далее"), button:has-text("далее")')
-            wait_for_supabase(emp_page)
+            wait_for_postgrest(emp_page)
 
             submit = emp_page.locator('button:has-text("Создать"), button[type="submit"]')
             if submit.count() > 0:
                 submit.first.click(force=True)
                 emp_page.wait_for_load_state('networkidle', timeout=LONG_TIMEOUT)
-                wait_for_supabase(emp_page)
+                wait_for_postgrest(emp_page)
                 emp_page.wait_for_timeout(3000)
 
             # 2. Трудник откликается

@@ -1,0 +1,5 @@
+"table_name","trigger_name","event_manipulation","action_statement","action_timing","action_orientation"
+"jobs","trg_jobs_search","INSERT","EXECUTE FUNCTION jobs_search_update()","BEFORE","ROW"
+"jobs","trg_jobs_search","UPDATE","EXECUTE FUNCTION jobs_search_update()","BEFORE","ROW"
+"profiles","trg_profiles_search","INSERT","EXECUTE FUNCTION profiles_search_update()","BEFORE","ROW"
+"profiles","trg_profiles_search","UPDATE","EXECUTE FUNCTION profiles_search_update()","BEFORE","ROW"

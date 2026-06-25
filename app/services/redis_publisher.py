@@ -81,7 +81,7 @@ class RedisPublisher:
             self._client = None
             return False
 
-    def publish_notification(self, user_id: int, notification_type: str, data: dict) -> bool:
+    def publish_notification(self, user_id: str, notification_type: str, data: dict) -> bool:
         """Публикует событие уведомления для конкретного пользователя."""
         return self.publish('notifications', {
             'type': 'notification',

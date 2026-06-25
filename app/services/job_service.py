@@ -13,9 +13,9 @@ from typing import Any, Dict, List, Optional
 from app.utils import (
     calculate_distance,
     sanitize_postgrest,
-    supabase_request,
-    supabase_admin_request,
-    supabase_rpc,
+    postgrest_request,
+    postgrest_admin_request,
+    postgrest_rpc,
     check_withdraw_window,
 )
 
@@ -33,7 +33,7 @@ def get_job_by_id(job_id: str) -> Optional[dict]:
     Returns:
         dict или None.
     """
-    resp = supabase_admin_request(
+    resp = postgrest_admin_request(
         'GET',
         f'jobs?id=eq.{job_id}&select=*,photos:job_photos(*)'
     )
@@ -51,14 +51,14 @@ def enrich_job_with_references(job: dict) -> None:
         job: словарь задания (мутабельный).
     """
     if job.get('work_type') and '-' in str(job['work_type']):
-        skill_resp = supabase_request(
+        skill_resp = postgrest_request(
             'GET', f'skills?id=eq.{job["work_type"]}&select=name'
         )
         if skill_resp.ok and skill_resp.json():
             job['work_type'] = skill_resp.json()[0]['name']
 
     if job.get('preferred_religion') and '-' in str(job['preferred_religion']):
-        rel_resp = supabase_request(
+        rel_resp = postgrest_request(
             'GET', f'religions?id=eq.{job["preferred_religion"]}&select=name'
         )
         if rel_resp.ok and rel_resp.json():
@@ -198,7 +198,7 @@ def search_jobs(filters: Dict[str, Any]) -> Dict[str, Any]:
     # Гео-фильтрация через RPC nearby_jobs (серверная, PostGIS)
     if lat is not None and lng is not None:
         try:
-            rpc_resp = supabase_rpc('nearby_jobs', {
+            rpc_resp = postgrest_rpc('nearby_jobs', {
                 'lat': lat,
                 'lng': lng,
                 'radius_km': radius,
@@ -254,7 +254,7 @@ def search_jobs(filters: Dict[str, Any]) -> Dict[str, Any]:
     # Стандартный путь: PostgREST-запрос без гео-фильтрации на стороне БД
     query = build_job_query(filters)
     headers = {'Prefer': 'count=exact'}
-    resp = supabase_request('GET', f'jobs?{query}', headers=headers)
+    resp = postgrest_request('GET', f'jobs?{query}', headers=headers)
 
     jobs_list = resp.json() if resp.ok else []
     total = (
@@ -297,7 +297,7 @@ def search_workers(filters: Dict[str, Any]) -> Dict[str, Any]:
     """
     query = build_worker_query(filters)
     headers = {'Prefer': 'count=exact'}
-    resp = supabase_request('GET', f'profiles?{query}', headers=headers)
+    resp = postgrest_request('GET', f'profiles?{query}', headers=headers)
 
     workers_list = resp.json() if resp.ok else []
     total = (
@@ -463,7 +463,7 @@ def check_job_visibility(job: dict, user_id: Optional[str] = None,
         return True
     # Трудник: проверяем, не заблокирован ли он работодателем задания
     if user_role == 'worker' and user_id and job.get('employer_id'):
-        bl_resp = supabase_request('GET',
+        bl_resp = postgrest_request('GET',
             f'blacklists?user_id=eq.{job["employer_id"]}&blocked_user_id=eq.{user_id}&select=user_id')
         if bl_resp.ok and bl_resp.json():
             return False
@@ -508,7 +508,7 @@ def check_job_owner(job_id: str, user_id: str) -> bool:
     Returns:
         True если пользователь — владелец задания, иначе False.
     """
-    resp = supabase_request(
+    resp = postgrest_request(
         'GET', f'jobs?id=eq.{job_id}&select=employer_id'
     )
     if resp.ok and resp.json():

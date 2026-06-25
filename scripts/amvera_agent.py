@@ -459,7 +459,7 @@ async def step_check_trudnik_app_vars(page: Page) -> dict:
     if page_text:
         # Проверяем ключевые переменные
         checks = {
-            "POSTGREST_URL": "http://amvera-hyperstls-run-trudnik-pr:3000",
+            "POSTGREST_URL": "http://amvera-hyperstls-run-trudnik-pr",
             "PGRST_JWT_SECRET": None,  # Просто проверяем наличие
         }
         for var_name, expected_value in checks.items():

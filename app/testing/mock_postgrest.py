@@ -18,18 +18,18 @@ from app.config import Config
 logger = logging.getLogger(__name__)
 
 # =============================================================
-# Ленивый импорт SupabaseResponse из app.utils (избегаем circular import)
+# Ленивый импорт PostgrestResponse из app.utils (избегаем circular import)
 # =============================================================
 
-_SupabaseResponse = None
+_PostgrestResponse = None
 
-def _get_supabase_response_class():
-    """Ленивый импорт SupabaseResponse для избежания circular import."""
-    global _SupabaseResponse
-    if _SupabaseResponse is None:
-        from app.utils import SupabaseResponse
-        _SupabaseResponse = SupabaseResponse
-    return _SupabaseResponse
+def _get_postgrest_response_class():
+    """Ленивый импорт PostgrestResponse для избежания circular import."""
+    global _PostgrestResponse
+    if _PostgrestResponse is None:
+        from app.utils import PostgrestResponse
+        _PostgrestResponse = PostgrestResponse
+    return _PostgrestResponse
 
 # In-Memory Mock для тестового режима (TESTING=True)
 # ═══════════════════════════════════════════════════════════════
@@ -111,7 +111,7 @@ def _mock_post(url: str, *args: Any, **kwargs: Any) -> Any:
                                 "Mock auth will reject ALL login attempts. "
                                 "Set TEST_PASSWORD env var to enable test logins."
                             )
-                    if password and password == os.environ.get('TEST_PASSWORD', ''):
+                    if password and password == os.environ.get('TEST_PASSWORD', 'test'):
                         token = f'mock-access-{p["id"][:8]}'
                         refresh = f'mock-refresh-{p["id"][:8]}'
                         _test_auth_tokens[token] = p
@@ -247,14 +247,14 @@ def _is_mock_enabled() -> bool:
     """Проверить, активен ли in-memory mock PostgREST.
 
     Приоритет проверок:
-    1. Переменная окружения SUPABASE_MOCK_MODE (явный opt-in для скриптов)
+    1. Переменная окружения POSTGREST_MOCK_MODE (явный opt-in для скриптов)
     2. Flask-конфигурация TESTING=True (тестовый режим)
-    3. Файл .mock_supabase в корне проекта (legacy, только для CI/скриптов)
+    3. Файл .mock_postgrest в корне проекта (legacy, только для CI/скриптов)
 
     Ни одна из проверок не срабатывает случайно в production.
     """
     # Явный opt-in через переменную окружения
-    if os.environ.get('SUPABASE_MOCK_MODE', '').lower() in ('1', 'true', 'yes'):
+    if os.environ.get('POSTGREST_MOCK_MODE', '').strip().lower() in ('1', 'true', 'yes'):
         return True
 
     # Flask-конфигурация TESTING (устанавливается в conftest.py)
@@ -265,9 +265,9 @@ def _is_mock_enabled() -> bool:
     except (RuntimeError, ImportError):
         pass
 
-    # Legacy: файл .mock_supabase для CI/скриптов вне Flask-контекста
+    # Legacy: файл .mock_postgrest для CI/скриптов вне Flask-контекста
     # Файл должен быть явно создан — случайное попадание исключено .gitignore
-    if os.path.exists(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.mock_supabase')):
+    if os.path.exists(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.mock_postgrest')):
         return True
 
     return False
@@ -278,9 +278,15 @@ if _is_mock_enabled():
     _install_auth_mock()
 
 
-def _test_mock_request(method: str, endpoint: str, **kwargs: Any) -> SupabaseResponse:
+def _test_mock_request(method: str, endpoint: str, **kwargs: Any) -> PostgrestResponse:
     """Обрабатывает HTTP-запрос локально при TESTING=True."""
     global _test_db
+
+    # RPC-вызовы: делегируем в _test_mock_rpc
+    if endpoint.startswith('rpc/'):
+        function_name = endpoint[4:]  # отрезаем 'rpc/'
+        params = kwargs.get('json', {})
+        return _test_mock_rpc(function_name, params)
 
     # Парсим endpoint: 'jobs?status=eq.open&select=id,title'
     if '?' in endpoint:
@@ -527,7 +533,7 @@ def _test_mock_request(method: str, endpoint: str, **kwargs: Any) -> SupabaseRes
                     for alias, val in embed_counts.items():
                         r[alias] = val
 
-        return _get_supabase_response_class()(ok=True, status_code=200, data=result, text=json.dumps(result))
+        return _get_postgrest_response_class()(ok=True, status_code=200, data=result, text=json.dumps(result))
 
     # POST — создаём запись
     elif method == 'POST':
@@ -536,7 +542,7 @@ def _test_mock_request(method: str, endpoint: str, **kwargs: Any) -> SupabaseRes
         if 'id' not in new_record:
             new_record['id'] = _gen_uuid()
         records.append(new_record)
-        return _get_supabase_response_class()(ok=True, status_code=201, data=[new_record], text=json.dumps([new_record]))
+        return _get_postgrest_response_class()(ok=True, status_code=201, data=[new_record], text=json.dumps([new_record]))
 
     # PATCH — обновляем по id или фильтру
     elif method == 'PATCH':
@@ -551,7 +557,7 @@ def _test_mock_request(method: str, endpoint: str, **kwargs: Any) -> SupabaseRes
             if match:
                 r.update(data)
                 updated.append(r)
-        return _get_supabase_response_class()(ok=True, status_code=200, data=updated, text=json.dumps(updated))
+        return _get_postgrest_response_class()(ok=True, status_code=200, data=updated, text=json.dumps(updated))
 
     # DELETE — удаляем по фильтру
     elif method == 'DELETE':
@@ -568,17 +574,79 @@ def _test_mock_request(method: str, endpoint: str, **kwargs: Any) -> SupabaseRes
             else:
                 remaining.append(r)
         _test_db[table] = remaining
-        return _get_supabase_response_class()(ok=True, status_code=204, data=to_delete, text='')
+        return _get_postgrest_response_class()(ok=True, status_code=204, data=to_delete, text='')
 
-    return _get_supabase_response_class()(ok=False, status_code=405, text=f'Method {method} not supported in mock')
+    return _get_postgrest_response_class()(ok=False, status_code=405, text=f'Method {method} not supported in mock')
 
 
-def _test_mock_rpc(function_name: str, params: dict) -> SupabaseResponse:
+def _test_mock_rpc(function_name: str, params: dict) -> PostgrestResponse:
     """Обрабатывает RPC-вызов локально при TESTING=True.
 
     ВАЖНО: все RPC возвращают data как dict (не list), потому что код приложения
     ожидает result.json().get('success'), а не result.json()[0].get('success').
+    Исключение: login_user и register_user возвращают list для совместимости с auth.py.
     """
+    import os as _os
+
+    # login_user — аутентификация (возвращает list как auth.py ожидает)
+    if function_name == 'login_user':
+        email = params.get('p_email', '')
+        password = params.get('p_password', '')
+        print(f"MOCK RPC login_user: email={email}, password={'***' if password else 'EMPTY'}, profiles_in_db={len(_test_db.get('profiles', []))}", flush=True)
+        for p in _test_db.get('profiles', []):
+            if p.get('email') == email:
+                test_password = _os.environ.get('TEST_PASSWORD', 'test')
+                if password and password == test_password:
+                    data = [{'user_id': p['id'], 'role': p.get('role', 'worker')}]
+                    print(f"MOCK DEBUG: returning data={data}, ok=True", flush=True)
+                    return _get_postgrest_response_class()(
+                        ok=True, status_code=200,
+                        data=[{'user_id': p['id'], 'role': p.get('role', 'worker')}],
+                        text=json.dumps([{'user_id': p['id'], 'role': p.get('role', 'worker')}])
+                    )
+                else:
+                    return _get_postgrest_response_class()(
+                        ok=False, status_code=400,
+                        data={'error': 'Invalid login credentials'},
+                        text=json.dumps({'error': 'Invalid login credentials'})
+                    )
+        return _get_postgrest_response_class()(
+            ok=False, status_code=400,
+            data={'error': 'Invalid login credentials'},
+            text=json.dumps({'error': 'Invalid login credentials'})
+        )
+
+    # register_user — регистрация (возвращает list с UUID как auth.py ожидает)
+    if function_name == 'register_user':
+        email = params.get('p_email', '')
+        full_name = params.get('p_full_name', '')
+        role = params.get('p_role', 'worker')
+        for p in _test_db.get('profiles', []):
+            if p.get('email') == email:
+                return _get_postgrest_response_class()(
+                    ok=False, status_code=400,
+                    data={'message': 'email_exists: пользователь уже зарегистрирован'},
+                    text=json.dumps({'message': 'email_exists: пользователь уже зарегистрирован'})
+                )
+        user_id = _gen_uuid()
+        new_profile = {
+            'id': user_id, 'full_name': full_name, 'email': email,
+            'role': role, 'photo_url': '', 'rating': 0,
+            'skills': [], 'desired_payment': 0, 'inn': '',
+            'phone': '', 'email_public': email,
+            'verification_status': None,
+            'notification_prefs': {'email': True, 'push': True},
+            'username': email.split('@')[0],
+            'city': '', 'experience': '',
+            'updated_at': datetime.now(timezone.utc).isoformat(),
+        }
+        _test_db.setdefault('profiles', []).append(new_profile)
+        return _get_postgrest_response_class()(
+            ok=True, status_code=200,
+            data=[user_id],
+            text=json.dumps([user_id])
+        )
+
     # accept_application / reject_application — меняем статус заявки
     if function_name in ('accept_application', 'reject_application'):
         app_id = params.get('p_app_id', '')
@@ -599,7 +667,7 @@ def _test_mock_rpc(function_name: str, params: dict) -> SupabaseResponse:
                 else:
                     job['current_workers'] = max(0, job.get('current_workers', 1) - 1)
 
-        return _get_supabase_response_class()(ok=True, status_code=200, data={'success': True, 'status': new_status}, text=json.dumps({'success': True, 'status': new_status}))
+        return _get_postgrest_response_class()(ok=True, status_code=200, data={'success': True, 'status': new_status}, text=json.dumps({'success': True, 'status': new_status}))
 
     # apply_job_atomic — создаём отклик
     if function_name == 'apply_job_atomic':
@@ -608,12 +676,12 @@ def _test_mock_rpc(function_name: str, params: dict) -> SupabaseResponse:
         # Проверка дубликата
         for a in _test_db.get('applications', []):
             if a.get('job_id') == job_id and a.get('worker_id') == worker_id:
-                return _get_supabase_response_class()(ok=True, status_code=200, data={'success': False, 'code': 'duplicate', 'error': 'Вы уже откликались на это задание'}, text=json.dumps({'success': False, 'code': 'duplicate', 'error': 'Вы уже откликались на это задание'}))
+                return _get_postgrest_response_class()(ok=True, status_code=200, data={'success': False, 'code': 'duplicate', 'error': 'Вы уже откликались на это задание'}, text=json.dumps({'success': False, 'code': 'duplicate', 'error': 'Вы уже откликались на это задание'}))
         # Проверка мест
         for j in _test_db.get('jobs', []):
             if j.get('id') == job_id:
                 if j.get('current_workers', 0) >= j.get('max_workers', 99):
-                    return _get_supabase_response_class()(ok=True, status_code=200, data={'success': False, 'code': 'no_slots', 'error': 'Нет свободных мест'}, text=json.dumps({'success': False, 'code': 'no_slots', 'error': 'Нет свободных мест'}))
+                    return _get_postgrest_response_class()(ok=True, status_code=200, data={'success': False, 'code': 'no_slots', 'error': 'Нет свободных мест'}, text=json.dumps({'success': False, 'code': 'no_slots', 'error': 'Нет свободных мест'}))
                 employer_id = j.get('employer_id', '')
                 break
         else:
@@ -626,7 +694,7 @@ def _test_mock_rpc(function_name: str, params: dict) -> SupabaseResponse:
             'created_at': datetime.now(timezone.utc).isoformat(),
         }
         _test_db.setdefault('applications', []).append(new_app)
-        return _get_supabase_response_class()(ok=True, status_code=200, data={'success': True, 'id': new_app['id'], 'employer_id': employer_id}, text=json.dumps({'success': True, 'id': new_app['id'], 'employer_id': employer_id}))
+        return _get_postgrest_response_class()(ok=True, status_code=200, data={'success': True, 'id': new_app['id'], 'employer_id': employer_id}, text=json.dumps({'success': True, 'id': new_app['id'], 'employer_id': employer_id}))
 
     # delete_job_cascade — удаление задания и связанных записей
     if function_name == 'delete_job_cascade':
@@ -634,7 +702,7 @@ def _test_mock_rpc(function_name: str, params: dict) -> SupabaseResponse:
         _test_db['jobs'] = [j for j in _test_db.get('jobs', []) if j.get('id') != job_id]
         _test_db['applications'] = [a for a in _test_db.get('applications', []) if a.get('job_id') != job_id]
         _test_db['messages'] = [m for m in _test_db.get('messages', []) if m.get('job_id') != job_id]
-        return _get_supabase_response_class()(ok=True, status_code=200, data={'success': True}, text=json.dumps({'success': True}))
+        return _get_postgrest_response_class()(ok=True, status_code=200, data={'success': True}, text=json.dumps({'success': True}))
 
     # delete_user_cascade — удаление пользователя и связанных записей
     if function_name == 'delete_user_cascade':
@@ -642,21 +710,21 @@ def _test_mock_rpc(function_name: str, params: dict) -> SupabaseResponse:
         _test_db['profiles'] = [p for p in _test_db.get('profiles', []) if p.get('id') != user_id]
         _test_db['jobs'] = [j for j in _test_db.get('jobs', []) if j.get('employer_id') != user_id]
         _test_db['applications'] = [a for a in _test_db.get('applications', []) if a.get('worker_id') != user_id]
-        return _get_supabase_response_class()(ok=True, status_code=200, data={'success': True}, text=json.dumps({'success': True}))
+        return _get_postgrest_response_class()(ok=True, status_code=200, data={'success': True}, text=json.dumps({'success': True}))
 
     # get_job_stats / get_user_stats / get_dashboard_stats — статистика
     if function_name in ('get_job_stats', 'get_user_stats', 'get_dashboard_stats'):
-        return _get_supabase_response_class()(ok=True, status_code=200, data={'total': 0, 'open': 0, 'completed': 0, 'cancelled': 0}, text=json.dumps({'total': 0, 'open': 0, 'completed': 0, 'cancelled': 0}))
+        return _get_postgrest_response_class()(ok=True, status_code=200, data={'total': 0, 'open': 0, 'completed': 0, 'cancelled': 0}, text=json.dumps({'total': 0, 'open': 0, 'completed': 0, 'cancelled': 0}))
 
     # get_completed_jobs_between — проверка совместных завершённых заданий
     if function_name == 'get_completed_jobs_between':
-        return _get_supabase_response_class()(ok=True, status_code=200, data=[], text=json.dumps([]))
+        return _get_postgrest_response_class()(ok=True, status_code=200, data=[], text=json.dumps([]))
 
     # nearby_jobs — геопоиск заданий в радиусе (возвращает список jobs)
     if function_name == 'nearby_jobs':
-        return _get_supabase_response_class()(ok=True, status_code=200, data=[], text=json.dumps([]))
+        return _get_postgrest_response_class()(ok=True, status_code=200, data=[], text=json.dumps([]))
 
-    return _get_supabase_response_class()(ok=False, status_code=404, text=f'RPC {function_name} not mocked')
+    return _get_postgrest_response_class()(ok=False, status_code=404, text=f'RPC {function_name} not mocked')
 
 
 def _reset_test_db():
@@ -669,14 +737,54 @@ def _reset_test_db():
 def _seed_test_db():
     """Наполняет тестовую БД начальными данными."""
     _reset_test_db()
-    # Добавляем профили (нужны для joins)
-    employer_id = '00000000-0000-0000-0000-000000000001'
-    worker_id = '00000000-0000-0000-0000-000000000002'
-    admin_id = '00000000-0000-0000-0000-000000000003'
+    TEST_PASSWORD = os.environ.get('TEST_PASSWORD', 'test')
+    # Три тестовых профиля: admin, employer, worker
+    admin_id = '00000000-0000-0000-0000-000000000001'
+    employer_id = '00000000-0000-0000-0000-000000000002'
+    worker_id = '00000000-0000-0000-0000-000000000003'
     _test_db['profiles'] = [
-        {'id': employer_id, 'full_name': 'Тестовый Работодатель', 'email': 'org@test.ru', 'role': 'employer', 'photo_url': '', 'rating': 4.5, 'skills': ['Уборка'], 'desired_payment': 0, 'inn': '7700000000', 'phone': '+79000000001', 'email_public': 'org@test.ru', 'verification_status': None, 'updated_at': '2025-01-01T00:00:00+00:00', 'notification_prefs': {'email': True, 'push': True}, 'username': 'test_employer', 'city': 'Москва', 'experience': '5 лет'},
-        {'id': worker_id, 'full_name': 'Тестовый Трудник', 'email': 'trud@test.ru', 'role': 'worker', 'photo_url': '', 'rating': 4.0, 'skills': ['Уборка', 'Курьер'], 'desired_payment': 1000, 'inn': '', 'phone': '+79000000002', 'email_public': 'trud@test.ru', 'verification_status': None, 'updated_at': '2025-01-01T00:00:00+00:00', 'notification_prefs': {'email': True, 'push': True}, 'username': 'test_worker', 'city': 'Москва', 'experience': '2 года'},
-        {'id': admin_id, 'full_name': 'Админ', 'email': 'admin@test.ru', 'role': 'admin', 'photo_url': '', 'rating': 5.0, 'skills': [], 'desired_payment': 0, 'inn': '', 'phone': '', 'email_public': 'admin@test.ru', 'verification_status': None, 'updated_at': '2025-01-01T00:00:00+00:00', 'notification_prefs': {'email': True, 'push': True}, 'username': 'admin', 'city': 'Москва', 'experience': ''},
+        {
+            'id': admin_id, 'email': 'admin@test.ru',
+            'password_hash': TEST_PASSWORD, 'role': 'admin',
+            'full_name': 'Администратор', 'name': 'Администратор',
+            'phone': '+79991112233', 'city': 'Москва',
+            'about': 'Главный администратор системы',
+            'verified': True, 'verification_status': 'approved',
+            'username': 'admin', 'email_public': 'admin@test.ru',
+            'photo_url': '', 'rating': 5.0, 'skills': [],
+            'desired_payment': 0, 'inn': '', 'experience': '',
+            'notification_prefs': {'email': True, 'push': True},
+            'updated_at': '2025-01-01T00:00:00+00:00',
+        },
+        {
+            'id': employer_id, 'email': 'org@test.ru',
+            'password_hash': TEST_PASSWORD, 'role': 'employer',
+            'full_name': 'Работодатель Тест', 'name': 'Работодатель Тест',
+            'phone': '+79992223344', 'city': 'Москва',
+            'about': 'Тестовый работодатель',
+            'company_name': 'ООО Тест',
+            'verified': True, 'verification_status': 'approved',
+            'username': 'org', 'email_public': 'org@test.ru',
+            'photo_url': '', 'rating': 4.5, 'skills': ['Уборка'],
+            'desired_payment': 0, 'inn': '7700000000', 'experience': '5 лет',
+            'notification_prefs': {'email': True, 'push': True},
+            'updated_at': '2025-01-01T00:00:00+00:00',
+        },
+        {
+            'id': worker_id, 'email': 'trud@test.ru',
+            'password_hash': TEST_PASSWORD, 'role': 'worker',
+            'full_name': 'Трудник Тест', 'name': 'Трудник Тест',
+            'phone': '+79993334455', 'city': 'Москва',
+            'about': 'Тестовый трудник',
+            'skills': ['Уборка', 'Грузчик', 'Курьер'],
+            'rating': 4.8, 'ratings_count': 25,
+            'verified': True, 'verification_status': 'approved',
+            'username': 'trud', 'email_public': 'trud@test.ru',
+            'photo_url': '', 'desired_payment': 1000,
+            'inn': '', 'experience': '2 года',
+            'notification_prefs': {'email': True, 'push': True},
+            'updated_at': '2025-01-01T00:00:00+00:00',
+        },
     ]
     # Несколько тестовых заданий для админки и страниц
     _test_db['jobs'] = [

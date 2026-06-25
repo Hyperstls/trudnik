@@ -58,7 +58,11 @@ self.addEventListener('fetch', event => {
   if (request.mode === 'navigate' && request.method === 'GET') {
     // Не перехватываем /admin — страница делает много долгих запросов к PostgREST,
     // которые превышают таймаут прокси Amvera. Пусть браузер обрабатывает напрямую.
-    if (url.pathname.startsWith('/admin')) {
+    // Не перехватываем /logout — сервер возвращает 302 (редирект) с очисткой сессии,
+    // Service Worker не должен кэшировать этот ответ, иначе браузер показывает
+    // "Navigation error — server is reachable but request failed" из-за конфликта
+    // между SW fetch и Set-Cookie очисткой сессии.
+    if (url.pathname.startsWith('/admin') || url.pathname.startsWith('/logout')) {
       return;
     }
     event.respondWith(

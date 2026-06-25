@@ -3,9 +3,10 @@
 import re
 from typing import Optional
 
+from app.utils.security import has_sql_injection as _has_sql_injection
 
-# Предкомпилированный pattern для обнаружения SQL-инъекций
-# AND/OR исключены — они наиболее вероятны в легитимных именах и названиях.
+# Устаревший локальный pattern (оставлен для обратной ссылки).
+# Используйте has_sql_injection() из app.utils.security.
 _SQL_INJECTION_PATTERNS = re.compile(
     r"(?:SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE|EXEC(?:UTE)?|TRUNCATE)"
     r"(?:\s|%20|%0a|%0d|/\*|--|#)",

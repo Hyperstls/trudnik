@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}{{ employer.full_name or 'Работодатель' }}{% endblock %}
+{% block content %}
+
+<div class="max-w-4xl mx-auto">
+    <!-- ====== Профиль работодателя ====== -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div class="flex flex-col sm:flex-row items-start gap-4 mb-6">
+            <!-- Аватар -->
+            <div class="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0 text-3xl">
+                {{ employer.full_name[:1] if employer.full_name else '🏢' }}
+            </div>
+            <div class="flex-1">
+                <div class="flex flex-wrap items-center gap-2 mb-2">
+                    <h1 class="text-2xl md:text-3xl font-bold text-neutral-800">
+                        {{ employer.full_name or 'Без названия' }}
+                    </h1>
+                    {% if employer.verification_status == 'verified' %}
+                    <span class="inline-block bg-success-light text-success text-sm rounded-full px-3 py-0.5 font-medium">✓ Проверен</span>
+                    {% elif employer.verification_status == 'pending' %}
+                    <span class="inline-block bg-warning-light text-warning-dark text-sm rounded-full px-3 py-0.5 font-medium">⏳ На проверке</span>
+                    {% else %}
+                    <span class="inline-block bg-neutral-100 text-neutral-500 text-sm rounded-full px-3 py-0.5 font-medium">Не проверен</span>
+                    {% endif %}
+                </div>
+                {% if employer.city %}
+                <p class="text-neutral-500 flex items-center gap-1 mb-1">
+                    <span>📍</span> {{ employer.city }}
+                </p>
+                {% endif %}
+                <div class="flex items-center gap-3 text-sm">
+                    <span class="font-semibold text-warning">⭐ {{ "%.1f"|format(employer.rating | default(0)) }}</span>
+                    {% if employer.total_reviews %}
+                    <span class="text-neutral-500">({{ employer.total_reviews }} отзывов)</span>
+                    {% endif %}
+                    <span class="text-neutral-400">|</span>
+                    <span class="text-neutral-500">📋 {{ open_jobs | length }} активных заданий</span>
+                </div>
+            </div>
+
+            <!-- Кнопки действий -->
+            <div class="flex items-center gap-2 flex-shrink-0">
+                {% if current_user and current_user.role == 'worker' %}
+                    {% if is_favorited %}
+                    <form method="POST" action="{{ url_for('employers.toggle_favorite', employer_id=employer.id) }}" class="inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="px-4 py-2 border border-danger text-danger hover:bg-danger-light rounded-lg text-sm font-medium transition-colors touch-target">
+                            ❤️ В избранном
+                        </button>
+                    </form>
+                    {% else %}
+                    <form method="POST" action="{{ url_for('employers.toggle_favorite', employer_id=employer.id) }}" class="inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="px-4 py-2 border border-neutral-300 text-neutral-600 hover:text-danger hover:border-danger rounded-lg text-sm font-medium transition-colors touch-target">
+                            🤍 В избранное
+                        </button>
+                    </form>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Описание -->
+        {% if employer.bio %}
+        <div class="prose prose-neutral max-w-none mb-4">
+            <p class="text-neutral-700 whitespace-pre-wrap">{{ employer.bio }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Контакт -->
+        {% if employer.contact %}
+        <div class="flex items-start gap-2 p-3 bg-neutral-50 rounded-lg">
+            <span class="text-xl">📞</span>
+            <div>
+                <p class="text-xs text-neutral-500 font-medium uppercase tracking-wide">Контакт</p>
+                <p class="text-sm text-neutral-800">{{ employer.contact }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ====== Активные задания ====== -->
+    {% if open_jobs %}
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-bold text-neutral-800 mb-4">📋 Активные задания ({{ open_jobs | length }})</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% for job in open_jobs %}
+            <article class="bg-neutral-50 rounded-lg p-4 hover:bg-neutral-100 transition-colors border border-neutral-200">
+                <h3 class="text-base font-semibold text-neutral-800 mb-1">
+                    <a href="{{ url_for('jobs.job_detail', job_id=job.id) }}" class="hover:text-primary-600 transition-colors">
+                        {{ job.organization_name or job.object_description or 'Без названия' }}
+                    </a>
+                </h3>
+                <p class="text-sm text-neutral-500 mb-2 line-clamp-2">{{ job.object_description or job.detailed_description or '' | truncate(100) }}</p>
+                <div class="flex items-center justify-between text-xs text-neutral-400">
+                    <span>💰 {{ job.payment_amount | default(0) | int }} ₽</span>
+                    <span>📍 {{ job.city or '' }}</span>
+                    <span>📅 {{ job.created_at[:10] if job.created_at else '' }}</span>
+                </div>
+                <div class="flex items-center gap-2 mt-2 pt-2 border-t border-neutral-200">
+                    {% if current_user and current_user.role == 'worker' %}
+                        {% if job.id in (already_applied_job_ids or []) %}
+                        <span class="text-xs text-success font-medium">✓ Вы откликнулись</span>
+                        {% else %}
+                        <form method="POST" action="{{ url_for('applications.apply', job_id=job.id) }}" class="inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="px-3 py-1 bg-primary-500 hover:bg-primary-600 text-white text-xs font-medium rounded-lg transition-colors touch-target">
+                                ✋ Откликнуться
+                            </button>
+                        </form>
+                        {% endif %}
+                    {% endif %}
+                    <a href="{{ url_for('jobs.job_detail', job_id=job.id) }}" class="text-xs text-primary-600 hover:text-primary-700 ml-auto">
+                        Подробнее →
+                    </a>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6 text-center">
+        <div class="text-4xl mb-3">📋</div>
+        <h2 class="text-lg font-semibold text-neutral-700 mb-1">Нет активных заданий</h2>
+        <p class="text-sm text-neutral-500">У этого работодателя пока нет открытых заданий</p>
+    </div>
+    {% endif %}
+
+    <!-- ====== Отзывы ====== -->
+    {% if ratings %}
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-bold text-neutral-800 mb-4">⭐ Отзывы ({{ ratings | length }})</h2>
+        <div class="space-y-4">
+            {% for rating in ratings %}
+            <div class="border border-neutral-200 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="font-medium text-neutral-800 text-sm">{{ rating.reviewer_name or 'Пользователь' }}</span>
+                        <span class="text-sm text-warning">
+                            {% for i in range(rating.rating | default(0) | int) %}⭐{% endfor %}
+                        </span>
+                    </div>
+                    <span class="text-xs text-neutral-400">{{ rating.created_at[:10] if rating.created_at else '' }}</span>
+                </div>
+                {% if rating.review %}
+                <p class="text-sm text-neutral-600">{{ rating.review }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

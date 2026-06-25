@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% block title %}Мои задания{% endblock %}
+{% block content %}
+
+<h1 class="text-2xl md:text-3xl font-bold text-neutral-800 mb-6">📋 Мои задания</h1>
+
+<!-- ====== Фильтры ====== -->
+<div class="bg-white rounded-lg shadow-md p-4 mb-6">
+    <div class="flex flex-wrap items-center gap-3">
+        <span class="text-sm font-medium text-neutral-700">Статус:</span>
+        <a href="{{ url_for('jobs.my_jobs') }}" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors touch-target {% if current_status == 'all' %}bg-primary-500 text-white{% else %}bg-neutral-100 text-neutral-600 hover:bg-neutral-200{% endif %}">
+            Все
+        </a>
+        <a href="{{ url_for('jobs.my_jobs', status='open') }}" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors touch-target {% if current_status == 'open' %}bg-success text-white{% else %}bg-neutral-100 text-neutral-600 hover:bg-neutral-200{% endif %}">
+            🟢 Открытые
+        </a>
+        <a href="{{ url_for('jobs.my_jobs', status='in_progress') }}" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors touch-target {% if current_status == 'in_progress' %}bg-warning text-white{% else %}bg-neutral-100 text-neutral-600 hover:bg-neutral-200{% endif %}">
+            🟡 В работе
+        </a>
+        <a href="{{ url_for('jobs.my_jobs', status='completed') }}" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors touch-target {% if current_status == 'completed' %}bg-info text-white{% else %}bg-neutral-100 text-neutral-600 hover:bg-neutral-200{% endif %}">
+            ✅ Завершённые
+        </a>
+        <a href="{{ url_for('jobs.my_jobs', status='cancelled') }}" class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors touch-target {% if current_status == 'cancelled' %}bg-danger text-white{% else %}bg-neutral-100 text-neutral-600 hover:bg-neutral-200{% endif %}">
+            ❌ Отменённые
+        </a>
+    </div>
+</div>
+
+<!-- ====== Массовые действия ====== -->
+{% if jobs %}
+<form id="mass-action-form" method="POST" action="{{ url_for('jobs.my_jobs_action') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="bg-white rounded-lg shadow-md p-4 mb-4 flex flex-wrap items-center gap-3">
+        <button type="button" id="select-all" class="px-3 py-1.5 border border-neutral-300 rounded-lg text-sm font-medium hover:bg-neutral-100 transition-colors touch-target">
+            ☐ Выбрать все
+        </button>
+        <select id="mass-action-select" name="action" class="px-3 py-1.5 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white">
+            <option value="">— Действие —</option>
+            <option value="cancel">❌ Отозвать выбранные</option>
+            <option value="restore">🔄 Восстановить выбранные</option>
+            <option value="duplicate">📋 Дублировать выбранные</option>
+            <option value="delete">🗑️ Удалить выбранные</option>
+        </select>
+        <button type="submit" id="mass-action-btn" class="px-4 py-1.5 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-sm font-medium transition-colors touch-target" disabled>
+            Применить
+        </button>
+    </div>
+
+    <!-- ====== Таблица заданий ====== -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <!-- Desktop-таблица -->
+        <div class="hidden md:block overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-neutral-50 border-b border-neutral-200">
+                    <tr>
+                        <th class="w-10 px-4 py-3">
+                            <input type="checkbox" id="select-all-checkbox" class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                        </th>
+                        <th class="text-left px-4 py-3 font-medium text-neutral-600">Название</th>
+                        <th class="text-left px-4 py-3 font-medium text-neutral-600">Статус</th>
+                        <th class="text-left px-4 py-3 font-medium text-neutral-600">Отклики</th>
+                        <th class="text-left px-4 py-3 font-medium text-neutral-600">Оплата</th>
+                        <th class="text-left px-4 py-3 font-medium text-neutral-600">Дата</th>
+                        <th class="text-right px-4 py-3 font-medium text-neutral-600">Действия</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-neutral-100">
+                    {% for job in jobs %}
+                    <tr class="hover:bg-neutral-50 transition-colors">
+                        <td class="px-4 py-3">
+                            <input type="checkbox" name="job_ids" value="{{ job.id }}" class="job-checkbox rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                        </td>
+                        <td class="px-4 py-3">
+                            <a href="{{ url_for('jobs.job_detail', job_id=job.id) }}" class="text-primary-600 hover:text-primary-700 font-medium">
+                                {{ job.organization_name or job.object_description or 'Без названия' | truncate(50) }}
+                            </a>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="inline-block text-xs font-medium rounded-full px-2 py-0.5
+                                {% if job.status == 'open' %}text-success bg-success-light{% elif job.status == 'in_progress' %}text-warning-dark bg-warning-light{% elif job.status == 'completed' %}text-info-dark bg-info-light{% elif job.status == 'cancelled' %}text-danger bg-danger-light{% endif %}">
+                                {% if job.status == 'open' %}🟢 Открыто{% elif job.status == 'in_progress' %}🟡 В работе{% elif job.status == 'completed' %}✅ Завершено{% elif job.status == 'cancelled' %}❌ Отменено{% else %}{{ job.status }}{% endif %}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-neutral-600">
+                            {{ job.application_count | default(0) }}
+                        </td>
+                        <td class="px-4 py-3 text-neutral-700 font-medium">
+                            {{ job.payment_amount | default(0) | int }} ₽
+                        </td>
+                        <td class="px-4 py-3 text-neutral-500">
+                            {{ job.created_at[:10] if job.created_at else '' }}
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="flex items-center justify-end gap-1">
+                                <a href="{{ url_for('jobs.edit_job', job_id=job.id) }}" class="px-2 py-1 text-xs bg-info-light text-info-dark hover:bg-info hover:text-white rounded transition-colors touch-target" title="Редактировать">
+                                    ✏️
+                                </a>
+                                {% if job.status == 'open' %}
+                                <a href="{{ url_for('applications.view_applications', job_id=job.id) }}" class="px-2 py-1 text-xs bg-primary-100 text-primary-700 hover:bg-primary-500 hover:text-white rounded transition-colors touch-target" title="Отклики">
+                                    📋
+                                </a>
+                                {% endif %}
+                                {% if job.status == 'open' %}
+                                <button type="button" onclick="if(confirm('Отозвать задание?')){ var f=document.createElement('form');f.method='POST';f.action='{{ url_for('jobs.cancel_job', job_id=job.id) }}';var csrf=document.createElement('input');csrf.type='hidden';csrf.name='csrf_token';csrf.value='{{ csrf_token() }}';f.appendChild(csrf);document.body.appendChild(f);f.submit(); }" class="px-2 py-1 text-xs bg-danger-light text-danger hover:bg-danger hover:text-white rounded transition-colors touch-target" title="Отозвать">
+                                    ❌
+                                </button>
+                                {% endif %}
+                                {% if job.status == 'cancelled' %}
+                                <button type="button" onclick="if(confirm('Восстановить задание?')){ var f=document.createElement('form');f.method='POST';f.action='{{ url_for('jobs.restore_job', job_id=job.id) }}';var csrf=document.createElement('input');csrf.type='hidden';csrf.name='csrf_token';csrf.value='{{ csrf_token() }}';f.appendChild(csrf);document.body.appendChild(f);f.submit(); }" class="px-2 py-1 text-xs bg-success-light text-success hover:bg-success hover:text-white rounded transition-colors touch-target" title="Восстановить">
+                                    🔄
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile-карточки -->
+        <div class="md:hidden divide-y divide-neutral-100">
+            {% for job in jobs %}
+            <div class="p-4 space-y-2">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" name="job_ids" value="{{ job.id }}" class="job-checkbox rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                        <a href="{{ url_for('jobs.job_detail', job_id=job.id) }}" class="text-primary-600 hover:text-primary-700 font-medium text-sm">
+                            {{ job.organization_name or job.object_description or 'Без названия' | truncate(40) }}
+                        </a>
+                    </div>
+                    <span class="inline-block text-xs font-medium rounded-full px-2 py-0.5 flex-shrink-0
+                        {% if job.status == 'open' %}text-success bg-success-light{% elif job.status == 'in_progress' %}text-warning-dark bg-warning-light{% elif job.status == 'completed' %}text-info-dark bg-info-light{% elif job.status == 'cancelled' %}text-danger bg-danger-light{% endif %}">
+                        {% if job.status == 'open' %}🟢{% elif job.status == 'in_progress' %}🟡{% elif job.status == 'completed' %}✅{% elif job.status == 'cancelled' %}❌{% endif %}
+                    </span>
+                </div>
+                <div class="flex items-center gap-3 text-xs text-neutral-500">
+                    <span>📋 {{ job.application_count | default(0) }} откликов</span>
+                    <span>💰 {{ job.payment_amount | default(0) | int }} ₽</span>
+                    <span>📅 {{ job.created_at[:10] if job.created_at else '' }}</span>
+                </div>
+                <div class="flex items-center gap-1">
+                    <a href="{{ url_for('jobs.edit_job', job_id=job.id) }}" class="px-2 py-1 text-xs bg-info-light text-info-dark rounded touch-target">✏️</a>
+                    {% if job.status == 'open' %}
+                    <a href="{{ url_for('applications.view_applications', job_id=job.id) }}" class="px-2 py-1 text-xs bg-primary-100 text-primary-700 rounded touch-target">📋</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</form>
+
+<!-- ====== Пагинация ====== -->
+{% if total_pages is defined and total_pages > 1 %}
+<nav class="flex items-center justify-center gap-2 mt-8" aria-label="Пагинация">
+    {% if page > 1 %}
+    <a href="{{ url_for('jobs.my_jobs', page=page-1, status=current_status) }}"
+       class="px-3 py-2 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-100 text-sm font-medium touch-target">
+        ← Назад
+    </a>
+    {% endif %}
+
+    {% set start_page = [page - 2, 1] | max %}
+    {% set end_page = [start_page + 4, total_pages] | min %}
+    {% set start_page = [end_page - 4, 1] | max %}
+
+    {% for p in range(start_page, end_page + 1) %}
+    <a href="{{ url_for('jobs.my_jobs', page=p, status=current_status) }}"
+       class="px-3 py-2 rounded-lg text-sm font-medium touch-target {% if p == page %}bg-primary-500 text-white{% else %}bg-white border border-neutral-300 hover:bg-neutral-100 text-neutral-700{% endif %}">
+        {{ p }}
+    </a>
+    {% endfor %}
+
+    {% if page < total_pages %}
+    <a href="{{ url_for('jobs.my_jobs', page=page+1, status=current_status) }}"
+       class="px-3 py-2 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-100 text-sm font-medium touch-target">
+        Вперёд →
+    </a>
+    {% endif %}
+</nav>
+{% endif %}
+
+{% else %}
+<!-- Пустой результат -->
+<section class="text-center py-16">
+    <div class="text-6xl mb-4">📋</div>
+    <h2 class="text-xl font-semibold text-neutral-700 mb-2">У вас пока нет заданий</h2>
+    <p class="text-neutral-500 mb-6">Создайте первое задание, чтобы найти работников</p>
+    <a href="{{ url_for('jobs.job_new') }}" class="inline-flex items-center px-6 py-3 bg-primary-500 hover:bg-primary-600 text-white rounded-lg font-medium touch-target">
+        ➕ Создать задание
+    </a>
+</section>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    var selectAllCheckbox = document.getElementById('select-all-checkbox');
+    var selectAllBtn = document.getElementById('select-all');
+    var massActionBtn = document.getElementById('mass-action-btn');
+    var massActionSelect = document.getElementById('mass-action-select');
+    var jobCheckboxes = document.querySelectorAll('.job-checkbox');
+
+    function updateMassActionButton() {
+        var anyChecked = document.querySelectorAll('.job-checkbox:checked').length > 0;
+        var actionSelected = massActionSelect.value !== '';
+        massActionBtn.disabled = !(anyChecked && actionSelected);
+    }
+
+    function toggleAll(checked) {
+        jobCheckboxes.forEach(function(cb) { cb.checked = checked; });
+        updateMassActionButton();
+    }
+
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            toggleAll(this.checked);
+        });
+    }
+
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', function() {
+            var allChecked = document.querySelectorAll('.job-checkbox:checked').length === jobCheckboxes.length;
+            toggleAll(!allChecked);
+            if (selectAllCheckbox) selectAllCheckbox.checked = !allChecked;
+        });
+    }
+
+    jobCheckboxes.forEach(function(cb) {
+        cb.addEventListener('change', updateMassActionButton);
+    });
+
+    if (massActionSelect) {
+        massActionSelect.addEventListener('change', updateMassActionButton);
+    }
+
+    // Подтверждение удаления
+    var form = document.getElementById('mass-action-form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            var action = massActionSelect.value;
+            if (action === 'delete') {
+                if (!confirm('Вы уверены, что хотите удалить выбранные задания? Это действие необратимо.')) {
+                    e.preventDefault();
+                }
+            }
+        });
+    }
+})();
+</script>
+{% endblock %}

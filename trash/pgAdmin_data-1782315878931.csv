@@ -1,0 +1,90 @@
+"schemaname","tablename","policyname","permissive","roles","cmd","qual","with_check"
+"public","_archive_contact_payments","contact_payments_insert","PERMISSIVE","{public}","INSERT",NULL,"((current_setting('request.jwt.claim.user_id'::text, true))::uuid = employer_id)"
+"public","_archive_contact_payments","contact_payments_select","PERMISSIVE","{public}","SELECT","(((current_setting('request.jwt.claim.user_id'::text, true))::uuid = employer_id) OR ((current_setting('request.jwt.claim.user_id'::text, true))::uuid = worker_id))",NULL
+"public","_archive_contact_payments","contact_payments_update","PERMISSIVE","{public}","UPDATE","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = employer_id)",NULL
+"public","applications","Users can delete own applications","PERMISSIVE","{public}","DELETE","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = worker_id)",NULL
+"public","applications","Users can insert applications","PERMISSIVE","{public}","INSERT",NULL,"((current_setting('request.jwt.claim.user_id'::text, true))::uuid = worker_id)"
+"public","applications","Users can update own applications","PERMISSIVE","{public}","UPDATE","(((current_setting('request.jwt.claim.user_id'::text, true))::uuid = worker_id) OR (EXISTS ( SELECT 1
+   FROM jobs
+  WHERE ((jobs.id = applications.job_id) AND (jobs.employer_id = (current_setting('request.jwt.claim.user_id'::text, true))::uuid)))))",NULL
+"public","applications","Users can view own applications","PERMISSIVE","{public}","SELECT","(((current_setting('request.jwt.claim.user_id'::text, true))::uuid = worker_id) OR ((current_setting('request.jwt.claim.user_id'::text, true))::uuid IN ( SELECT jobs.employer_id
+   FROM jobs
+  WHERE (jobs.id = applications.job_id))))",NULL
+"public","blacklists","Users can delete their own blacklists","PERMISSIVE","{public}","DELETE","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = user_id)",NULL
+"public","blacklists","Users can insert blacklists","PERMISSIVE","{public}","INSERT",NULL,"((current_setting('request.jwt.claim.user_id'::text, true))::uuid = user_id)"
+"public","blacklists","Users can read their own blacklists","PERMISSIVE","{public}","SELECT","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = user_id)",NULL
+"public","email_log","Service can insert email logs","PERMISSIVE","{public}","INSERT",NULL,"true"
+"public","email_log","Users can view own email logs","PERMISSIVE","{public}","SELECT","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = user_id)",NULL
+"public","employer_details","employer_details_insert_policy","PERMISSIVE","{public}","INSERT",NULL,"((current_setting('request.jwt.claim.user_id'::text, true))::uuid = user_id)"
+"public","employer_details","employer_details_select_policy","PERMISSIVE","{public}","SELECT","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = user_id)",NULL
+"public","employer_details","employer_details_update_policy","PERMISSIVE","{public}","UPDATE","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = user_id)","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = user_id)"
+"public","favorites","Users can delete their own favorites","PERMISSIVE","{public}","DELETE","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = user_id)",NULL
+"public","favorites","Users can insert favorites","PERMISSIVE","{public}","INSERT",NULL,"((current_setting('request.jwt.claim.user_id'::text, true))::uuid = user_id)"
+"public","favorites","Users can read their own favorites","PERMISSIVE","{public}","SELECT","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = user_id)",NULL
+"public","invitations","Employers can insert invitations","PERMISSIVE","{public}","INSERT",NULL,"((current_setting('request.jwt.claim.user_id'::text, true))::uuid = employer_id)"
+"public","invitations","Users can read their invitations","PERMISSIVE","{public}","SELECT","(((current_setting('request.jwt.claim.user_id'::text, true))::uuid = worker_id) OR ((current_setting('request.jwt.claim.user_id'::text, true))::uuid = employer_id))",NULL
+"public","invitations","Workers can update invitations","PERMISSIVE","{public}","UPDATE","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = worker_id)",NULL
+"public","job_favorites","job_favorites_delete_policy","PERMISSIVE","{public}","DELETE","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = user_id)",NULL
+"public","job_favorites","job_favorites_insert_policy","PERMISSIVE","{public}","INSERT",NULL,"((current_setting('request.jwt.claim.user_id'::text, true))::uuid = user_id)"
+"public","job_favorites","job_favorites_select_policy","PERMISSIVE","{public}","SELECT","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = user_id)",NULL
+"public","job_payments","Employers can read own payments","PERMISSIVE","{public}","SELECT","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = employer_id)",NULL
+"public","job_payments","Service can insert payments","PERMISSIVE","{public}","INSERT",NULL,"(employer_id = (current_setting('request.jwt.claim.user_id'::text, true))::uuid)"
+"public","job_payments","Users can update own job payments","PERMISSIVE","{public}","UPDATE","(employer_id = (current_setting('request.jwt.claim.user_id'::text, true))::uuid)",NULL
+"public","job_photos","job_photos_delete_policy","PERMISSIVE","{public}","DELETE","(EXISTS ( SELECT 1
+   FROM jobs
+  WHERE ((jobs.id = job_photos.job_id) AND (jobs.employer_id = (current_setting('request.jwt.claim.user_id'::text, true))::uuid))))",NULL
+"public","job_photos","job_photos_insert_policy","PERMISSIVE","{public}","INSERT",NULL,"(EXISTS ( SELECT 1
+   FROM jobs
+  WHERE ((jobs.id = job_photos.job_id) AND (jobs.employer_id = (current_setting('request.jwt.claim.user_id'::text, true))::uuid))))"
+"public","job_photos","job_photos_select_policy","PERMISSIVE","{public}","SELECT","(EXISTS ( SELECT 1
+   FROM jobs
+  WHERE ((jobs.id = job_photos.job_id) AND (jobs.employer_id = (current_setting('request.jwt.claim.user_id'::text, true))::uuid))))",NULL
+"public","job_skills","employer_job_skills","PERMISSIVE","{public}","ALL","(EXISTS ( SELECT 1
+   FROM jobs
+  WHERE ((jobs.id = job_skills.job_id) AND (jobs.employer_id = (current_setting('request.jwt.claim.user_id'::text, true))::uuid))))",NULL
+"public","job_skills","read_job_skills","PERMISSIVE","{public}","SELECT","true",NULL
+"public","jobs","Employers can delete their own jobs","PERMISSIVE","{public}","DELETE","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = employer_id)",NULL
+"public","jobs","Employers can insert jobs","PERMISSIVE","{public}","INSERT",NULL,"((current_setting('request.jwt.claim.user_id'::text, true))::uuid = employer_id)"
+"public","jobs","Employers can update their own jobs","PERMISSIVE","{public}","UPDATE","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = employer_id)","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = employer_id)"
+"public","jobs","Users can read jobs","PERMISSIVE","{public}","SELECT","((status = 'open'::text) OR (status = 'completed'::text) OR (status = 'cancelled'::text))",NULL
+"public","messages","Application participants can insert messages","PERMISSIVE","{public}","INSERT",NULL,"((current_setting('request.jwt.claim.user_id'::text, true))::uuid = sender_id)"
+"public","messages","Application participants can view messages","PERMISSIVE","{public}","SELECT","((current_setting('request.jwt.claim.user_id'::text, true))::uuid IN ( SELECT applications.worker_id
+   FROM applications
+  WHERE (applications.id = messages.application_id)
+UNION
+ SELECT jobs.employer_id
+   FROM (applications
+     JOIN jobs ON ((jobs.id = applications.job_id)))
+  WHERE (applications.id = messages.application_id)))",NULL
+"public","monetization_settings","monetization_settings_insert","PERMISSIVE","{public}","INSERT",NULL,"(current_setting('request.jwt.claim.role'::text, true) = 'admin'::text)"
+"public","monetization_settings","monetization_settings_select","PERMISSIVE","{public}","SELECT","true",NULL
+"public","monetization_settings","monetization_settings_update","PERMISSIVE","{public}","UPDATE","(current_setting('request.jwt.claim.role'::text, true) = 'admin'::text)",NULL
+"public","notifications","Service can insert notifications","PERMISSIVE","{public}","INSERT",NULL,"true"
+"public","notifications","Users can read their own notifications","PERMISSIVE","{public}","SELECT","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = user_id)",NULL
+"public","profiles","Service can insert profiles","PERMISSIVE","{public}","INSERT",NULL,"true"
+"public","profiles","Users can read profiles","PERMISSIVE","{public}","SELECT","true",NULL
+"public","profiles","Users can update their own profile","PERMISSIVE","{public}","UPDATE","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = id)","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = id)"
+"public","push_subscriptions","Users can create own push subscriptions","PERMISSIVE","{public}","INSERT",NULL,"((current_setting('request.jwt.claim.user_id'::text, true))::uuid = user_id)"
+"public","push_subscriptions","Users can delete own push subscriptions","PERMISSIVE","{public}","DELETE","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = user_id)",NULL
+"public","push_subscriptions","Users can update own push subscriptions","PERMISSIVE","{public}","UPDATE","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = user_id)","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = user_id)"
+"public","push_subscriptions","Users can view own push subscriptions","PERMISSIVE","{public}","SELECT","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = user_id)",NULL
+"public","ratings","Anyone can read ratings","PERMISSIVE","{public}","SELECT","true",NULL
+"public","ratings","Users can update own ratings","PERMISSIVE","{public}","UPDATE","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = rater_user_id)","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = rater_user_id)"
+"public","ratings","Users can upsert own ratings","PERMISSIVE","{public}","INSERT",NULL,"((current_setting('request.jwt.claim.user_id'::text, true))::uuid = rater_user_id)"
+"public","receipts","receipts_insert","PERMISSIVE","{public}","INSERT",NULL,"(current_setting('request.jwt.claim.role'::text, true) = 'admin'::text)"
+"public","receipts","receipts_select","PERMISSIVE","{public}","SELECT","(((current_setting('request.jwt.claim.user_id'::text, true))::uuid IN ( SELECT _archive_contact_payments.employer_id
+   FROM _archive_contact_payments
+  WHERE (_archive_contact_payments.id = receipts.contact_payment_id)
+UNION
+ SELECT _archive_contact_payments.worker_id
+   FROM _archive_contact_payments
+  WHERE (_archive_contact_payments.id = receipts.contact_payment_id))) OR (current_setting('request.jwt.claim.role'::text, true) = 'admin'::text))",NULL
+"public","receipts","receipts_update","PERMISSIVE","{public}","UPDATE","(current_setting('request.jwt.claim.role'::text, true) = 'admin'::text)",NULL
+"public","religions","admin_religions","PERMISSIVE","{public}","ALL","(current_setting('request.jwt.claim.role'::text, true) = 'admin'::text)",NULL
+"public","religions","read_religions","PERMISSIVE","{public}","SELECT","true",NULL
+"public","skills","admin_skills","PERMISSIVE","{public}","ALL","(current_setting('request.jwt.claim.role'::text, true) = 'admin'::text)",NULL
+"public","skills","read_skills","PERMISSIVE","{public}","SELECT","true",NULL
+"public","spatial_ref_sys","spatial_ref_sys_select","PERMISSIVE","{public}","SELECT","true",NULL
+"public","tariff_settings","Anyone can read tariff settings","PERMISSIVE","{public}","SELECT","true",NULL
+"public","user_skills","read_user_skills","PERMISSIVE","{public}","SELECT","true",NULL
+"public","user_skills","user_own_skills","PERMISSIVE","{public}","ALL","((current_setting('request.jwt.claim.user_id'::text, true))::uuid = user_id)",NULL

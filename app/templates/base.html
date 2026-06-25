@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#d97706">
+    {% if not config.get('TESTING') %}
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Трудник">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    {% endif %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}Трудник{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        neutral: {
+                            50: '#fafafa',
+                            100: '#f5f5f5',
+                            200: '#e5e5e5',
+                            300: '#d4d4d4',
+                            400: '#a3a3a3',
+                            500: '#737373',
+                            600: '#525252',
+                            700: '#404040',
+                            800: '#262626',
+                            900: '#171717'
+                        },
+                        primary: {
+                            50: '#fef3c7',
+                            100: '#fde68a',
+                            200: '#fcd34d',
+                            300: '#fbbf24',
+                            400: '#f59e0b',
+                            500: '#d97706',
+                            600: '#b45309',
+                            700: '#92400e'
+                        },
+                        success: {
+                            light: '#d1fae5',
+                            DEFAULT: '#10b981',
+                            dark: '#047857'
+                        },
+                        warning: {
+                            light: '#fef3c7',
+                            DEFAULT: '#f59e0b',
+                            dark: '#d97706'
+                        },
+                        danger: {
+                            light: '#fee2e2',
+                            DEFAULT: '#ef4444',
+                            dark: '#dc2626'
+                        },
+                        info: {
+                            light: '#dbeafe',
+                            DEFAULT: '#3b82f6',
+                            dark: '#2563eb'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Стили для touch-targets минимум 44x44px */
+        .touch-target {
+            min-width: 44px;
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* Анимация появления flash-сообщений */
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateY(-1rem); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .toast-enter {
+            animation: toast-in 0.3s ease-out;
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-neutral-50 min-h-screen flex flex-col font-sans text-neutral-800 pb-16 md:pb-0">
+
+    <!-- ====== Flash Messages (Toast-style) ====== -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div id="toast-container" class="fixed top-16 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+        {% for category, message in messages %}
+        {% set bg_class = {
+            'success': 'bg-success border-success-dark',
+            'error': 'bg-danger border-danger-dark',
+            'danger': 'bg-danger border-danger-dark',
+            'warning': 'bg-warning border-warning-dark',
+            'info': 'bg-info border-info-dark',
+            'message': 'bg-info border-info-dark'
+        }[category] | default('bg-neutral-200 border-neutral-400') %}
+        {% set text_class = {
+            'success': 'text-white',
+            'error': 'text-white',
+            'danger': 'text-white',
+            'warning': 'text-neutral-800',
+            'info': 'text-white',
+            'message': 'text-white'
+        }[category] | default('text-neutral-800') %}
+        <div class="toast-enter {{ bg_class }} {{ text_class }} px-4 py-3 rounded-lg shadow-lg border-l-4 pointer-events-auto flex items-center justify-between gap-3" role="alert">
+            <span>{{ message }}</span>
+            <button type="button" class="touch-target text-current opacity-70 hover:opacity-100 flex-shrink-0" onclick="this.parentElement.remove()" aria-label="Закрыть">&times;</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- ====== Header ====== -->
+    <header class="bg-white shadow-sm sticky top-0 z-40">
+        <div class="container mx-auto px-4 py-2 flex items-center justify-between gap-3">
+            <!-- Логотип -->
+            <a href="{{ url_for('jobs.index') }}" class="flex items-center gap-2 flex-shrink-0 touch-target">
+                <span class="text-2xl">🛠️</span>
+                <span class="text-xl font-bold text-primary-600 hidden sm:inline">Трудник</span>
+            </a>
+
+            <!-- Поиск (desktop) -->
+            <form action="{{ url_for('jobs.search') }}" method="GET" class="hidden md:flex flex-grow max-w-lg" role="search">
+                <div class="relative w-full">
+                    <input type="search" name="q" placeholder="Поиск заданий, навыков, городов..." aria-label="Поиск"
+                           class="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-lg">🔍</span>
+                </div>
+            </form>
+
+            <!-- Правая группа: колокольчик + меню -->
+            <div class="flex items-center gap-2 flex-shrink-0">
+                {% if current_user %}
+                <!-- Колокольчик с бейджем -->
+                <a href="{{ url_for('notifications.index') }}" class="relative touch-target" aria-label="Уведомления">
+                    <span class="text-2xl">🔔</span>
+                    {% if current_user.unread_notifications %}
+                    <span class="absolute -top-0.5 -right-0.5 bg-danger text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1 leading-none">
+                        {{ current_user.unread_notifications }}
+                    </span>
+                    {% endif %}
+                </a>
+
+                <!-- Desktop-меню (ролевое) -->
+                <nav class="hidden md:flex items-center gap-1" aria-label="Основное меню">
+                    {% if current_user.role == 'admin' %}
+                    <a href="{{ url_for('admin.index') }}" class="touch-target px-3 py-2 text-sm text-neutral-600 hover:text-primary-600 rounded-lg hover:bg-neutral-100">Админ-панель</a>
+                    {% endif %}
+                    {% if current_user.role == 'employer' %}
+                    <a href="{{ url_for('jobs.create') }}" class="touch-target px-3 py-2 text-sm text-neutral-600 hover:text-primary-600 rounded-lg hover:bg-neutral-100">Создать задание</a>
+                    <a href="{{ url_for('employers.my_jobs') }}" class="touch-target px-3 py-2 text-sm text-neutral-600 hover:text-primary-600 rounded-lg hover:bg-neutral-100">Мои задания</a>
+                    {% endif %}
+                    <a href="{{ url_for('profile.view', user_id=current_user.id) }}" class="touch-target px-3 py-2 text-sm text-neutral-600 hover:text-primary-600 rounded-lg hover:bg-neutral-100">👤 {{ current_user.name }}</a>
+                    <a href="{{ url_for('auth.logout') }}" class="touch-target px-3 py-2 text-sm text-neutral-600 hover:text-danger rounded-lg hover:bg-neutral-100">Выйти</a>
+                </nav>
+
+                <!-- Гамбургер (mobile) -->
+                <button id="mobile-menu-toggle" class="md:hidden touch-target text-2xl" aria-label="Меню" aria-expanded="false">
+                    ☰
+                </button>
+
+                {% else %}
+                <!-- Гость -->
+                <a href="{{ url_for('auth.login') }}" class="touch-target px-4 py-2 text-sm text-primary-600 hover:text-primary-700 font-medium">Войти</a>
+                <a href="{{ url_for('auth.register') }}" class="touch-target px-4 py-2 text-sm bg-primary-500 hover:bg-primary-600 text-white rounded-lg font-medium">Регистрация</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Mobile-меню (выдвижное) -->
+        <div id="mobile-menu" class="md:hidden hidden bg-white border-t border-neutral-200 px-4 py-3 space-y-2">
+            {% if current_user %}
+            {% if current_user.role == 'admin' %}
+            <a href="{{ url_for('admin.index') }}" class="block touch-target py-2 text-neutral-700 hover:text-primary-600">⚙️ Админ-панель</a>
+            {% endif %}
+            {% if current_user.role == 'employer' %}
+            <a href="{{ url_for('jobs.create') }}" class="block touch-target py-2 text-neutral-700 hover:text-primary-600">➕ Создать задание</a>
+            <a href="{{ url_for('employers.my_jobs') }}" class="block touch-target py-2 text-neutral-700 hover:text-primary-600">📋 Мои задания</a>
+            {% endif %}
+            <a href="{{ url_for('profile.view', user_id=current_user.id) }}" class="block touch-target py-2 text-neutral-700 hover:text-primary-600">👤 Профиль</a>
+            <a href="{{ url_for('auth.logout') }}" class="block touch-target py-2 text-danger hover:text-red-700">🚪 Выйти</a>
+            {% else %}
+            <a href="{{ url_for('auth.login') }}" class="block touch-target py-2 text-primary-600 font-medium">Войти</a>
+            <a href="{{ url_for('auth.register') }}" class="block touch-target py-2 text-primary-600 font-medium">Регистрация</a>
+            {% endif %}
+            <!-- Мобильный поиск -->
+            <form action="{{ url_for('jobs.search') }}" method="GET" class="pt-1" role="search">
+                <div class="relative">
+                    <input type="search" name="q" placeholder="Поиск заданий..." aria-label="Поиск"
+                           class="w-full pl-10 pr-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">🔍</span>
+                </div>
+            </form>
+        </div>
+    </header>
+
+    <!-- ====== Main Content ====== -->
+    <main class="flex-grow container mx-auto px-4 py-6">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- ====== Bottom Nav (mobile only) ====== -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 z-40 safe-area-bottom" aria-label="Главное меню">
+        <div class="flex justify-around items-center h-14">
+            <a href="{{ url_for('jobs.index') }}" class="flex flex-col items-center justify-center touch-target flex-1 text-xs {{ 'text-primary-600' if request.endpoint == 'jobs.index' else 'text-neutral-500' }}">
+                <span class="text-xl">🏠</span>
+                <span class="mt-0.5">Главная</span>
+            </a>
+            <a href="{{ url_for('jobs.browse') }}" class="flex flex-col items-center justify-center touch-target flex-1 text-xs {{ 'text-primary-600' if request.endpoint and request.endpoint.startswith('jobs.') else 'text-neutral-500' }}">
+                <span class="text-xl">👷</span>
+                <span class="mt-0.5">Трудники</span>
+            </a>
+            <a href="{{ url_for('chat.list') }}" class="flex flex-col items-center justify-center touch-target flex-1 text-xs {{ 'text-primary-600' if request.endpoint and request.endpoint.startswith('chat.') else 'text-neutral-500' }}">
+                <span class="text-xl">💬</span>
+                <span class="mt-0.5">Чаты</span>
+            </a>
+            <a href="{{ url_for('favorites.index') }}" class="flex flex-col items-center justify-center touch-target flex-1 text-xs {{ 'text-primary-600' if request.endpoint and request.endpoint.startswith('favorites.') else 'text-neutral-500' }}">
+                <span class="text-xl">❤️</span>
+                <span class="mt-0.5">Избранное</span>
+            </a>
+            <a href="{{ url_for('profile.view_self') if current_user else url_for('auth.login') }}" class="flex flex-col items-center justify-center touch-target flex-1 text-xs {{ 'text-primary-600' if request.endpoint and request.endpoint.startswith('profile.') else 'text-neutral-500' }}">
+                <span class="text-xl">👤</span>
+                <span class="mt-0.5">Профиль</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- ====== Footer ====== -->
+    <footer class="hidden md:block bg-white border-t border-neutral-200 py-4 mt-auto">
+        <div class="container mx-auto px-4 text-center text-sm text-neutral-500">
+            <p>&copy; {{ now().year if now is defined else '2025' }} Трудник — платформа для поиска работы и работников</p>
+            <p class="text-xs mt-1">Версия {{ app_version }}</p>
+        </div>
+    </footer>
+
+    <!-- ====== Offline Bar ====== -->
+    <div id="offline-bar" class="hidden fixed bottom-14 md:bottom-0 left-0 right-0 bg-warning text-neutral-800 text-center py-2 text-sm font-medium z-50">
+        📡 Вы не в сети. Некоторые функции могут быть недоступны.
+    </div>
+
+    <!-- ====== Confirm Modal Container ====== -->
+    <div id="confirm-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+        <div class="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-6">
+            <h3 id="confirm-modal-title" class="text-lg font-bold text-neutral-800 mb-2">Подтверждение</h3>
+            <p id="confirm-modal-message" class="text-neutral-600 mb-6"></p>
+            <div class="flex justify-end gap-3">
+                <button id="confirm-modal-cancel" class="touch-target px-4 py-2 text-sm bg-neutral-200 hover:bg-neutral-300 text-neutral-700 rounded-lg">Отмена</button>
+                <button id="confirm-modal-ok" class="touch-target px-4 py-2 text-sm bg-danger hover:bg-danger-dark text-white rounded-lg">Подтвердить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====== JavaScript ====== -->
+    <script>
+    (function() {
+        // ── Mobile Menu Toggle ──
+        var menuToggle = document.getElementById('mobile-menu-toggle');
+        var mobileMenu = document.getElementById('mobile-menu');
+        if (menuToggle && mobileMenu) {
+            menuToggle.addEventListener('click', function() {
+                var expanded = mobileMenu.classList.toggle('hidden');
+                menuToggle.setAttribute('aria-expanded', !expanded);
+                menuToggle.textContent = expanded ? '☰' : '✕';
+            });
+        }
+
+        // ── CSRF Token Helper ──
+        function getCSRFToken() {
+            var meta = document.querySelector('meta[name="csrf-token"]');
+            return meta ? meta.getAttribute('content') : '';
+        }
+
+        // ── Toast Auto-Dismiss ──
+        var toasts = document.querySelectorAll('#toast-container .toast-enter');
+        toasts.forEach(function(toast) {
+            setTimeout(function() {
+                toast.style.transition = 'opacity 0.3s ease-out';
+                toast.style.opacity = '0';
+                setTimeout(function() { toast.remove(); }, 300);
+            }, 5000);
+        });
+
+        // ── Confirm Modal ──
+        window.showConfirm = function(message, onConfirm) {
+            var modal = document.getElementById('confirm-modal');
+            var msgEl = document.getElementById('confirm-modal-message');
+            var okBtn = document.getElementById('confirm-modal-ok');
+            var cancelBtn = document.getElementById('confirm-modal-cancel');
+
+            if (!modal || !msgEl) return;
+
+            msgEl.textContent = message;
+            modal.classList.remove('hidden');
+
+            function cleanup() {
+                modal.classList.add('hidden');
+                okBtn.removeEventListener('click', handleOk);
+                cancelBtn.removeEventListener('click', handleCancel);
+            }
+
+            function handleOk() {
+                cleanup();
+                if (typeof onConfirm === 'function') onConfirm();
+            }
+
+            function handleCancel() {
+                cleanup();
+            }
+
+            okBtn.addEventListener('click', handleOk);
+            cancelBtn.addEventListener('click', handleCancel);
+
+            // Close on backdrop click
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) cleanup();
+            });
+
+            // Close on Escape
+            document.addEventListener('keydown', function escHandler(e) {
+                if (e.key === 'Escape') {
+                    cleanup();
+                    document.removeEventListener('keydown', escHandler);
+                }
+            });
+        };
+
+        // ── Offline Detection ──
+        function updateOnlineStatus() {
+            var bar = document.getElementById('offline-bar');
+            if (!bar) return;
+            if (navigator.onLine) {
+                bar.classList.add('hidden');
+            } else {
+                bar.classList.remove('hidden');
+            }
+        }
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+        updateOnlineStatus();
+    })();
+    </script>
+
+    {% if config.get('TESTING') %}
+    <script>
+    // Deregister old Service Workers in testing mode
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) { regs.forEach(function(r) { r.unregister(); }); });
+    }
+    </script>
+    {% endif %}
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

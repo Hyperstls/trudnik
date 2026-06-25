@@ -6,7 +6,7 @@
 VAPID-ключи генерируются администратором и задаются через переменные окружения.
 
 БЕЗОПАСНОСТЬ (service_role):
-    Все операции с таблицей push_subscriptions используют supabase_admin_request
+    Все операции с таблицей push_subscriptions используют postgrest_admin_request
     (service_role) по двум причинам:
     1. RLS-политика push_subscriptions имеет SELECT/INSERT/DELETE для auth.uid(),
        но НЕ имеет UPDATE-политики. Метод save_subscription() делает PATCH при
@@ -20,10 +20,10 @@ VAPID-ключи генерируются администратором и за
             USING (auth.uid() = user_id)
             WITH CHECK (auth.uid() = user_id);
     После этого:
-    - save_subscription() сможет использовать supabase_request с токеном пользователя
+    - save_subscription() сможет использовать postgrest_request с токеном пользователя
       при вызове из Flask-контекста.
     - get_user_subscriptions() (SELECT) и delete_subscription() (DELETE) уже сейчас
-      могут работать через supabase_request, но требуют рефакторинга для разделения
+      могут работать через postgrest_request, но требуют рефакторинга для разделения
       контекстов (Flask vs Celery).
 """
 
@@ -34,7 +34,7 @@ import time as _time_module
 import urllib.parse
 from typing import Optional
 
-from app.utils import supabase_admin_request
+from app.utils.postgrest_client import postgrest_admin_request as postgrest_admin_request
 
 logger = logging.getLogger(__name__)
 
@@ -272,14 +272,14 @@ class PushService:
         }
 
         # Проверяем, существует ли уже такая подписка (по endpoint)
-        check = supabase_admin_request(
+        check = postgrest_admin_request(
             'GET',
             f'push_subscriptions?endpoint=eq.{_encode_uri_component(endpoint)}&select=id'
         )
         if check.ok and check.json():
             # Обновляем существующую
             sub_id = check.json()[0]['id']
-            resp = supabase_admin_request(
+            resp = postgrest_admin_request(
                 'PATCH',
                 f'push_subscriptions?id=eq.{sub_id}',
                 json=payload
@@ -287,7 +287,7 @@ class PushService:
             return resp.ok
 
         # Создаём новую
-        resp = supabase_admin_request('POST', 'push_subscriptions', json=payload)
+        resp = postgrest_admin_request('POST', 'push_subscriptions', json=payload)
         if not resp.ok:
             logger.error(
                 'Ошибка сохранения подписки: status=%s body=%s',
@@ -305,7 +305,7 @@ class PushService:
         Returns:
             Список словарей с ключами endpoint, p256dh, auth.
         """
-        resp = supabase_admin_request(
+        resp = postgrest_admin_request(
             'GET',
             f'push_subscriptions?user_id=eq.{user_id}&select=endpoint,p256dh,auth'
         )
@@ -334,7 +334,7 @@ class PushService:
         url = f'push_subscriptions?endpoint=eq.{_encode_uri_component(endpoint)}'
         if user_id:
             url += f'&user_id=eq.{user_id}'
-        resp = supabase_admin_request('DELETE', url)
+        resp = postgrest_admin_request('DELETE', url)
         return resp.ok
 
     def delete_all_user_subscriptions(self, user_id: str) -> bool:
@@ -346,7 +346,7 @@ class PushService:
         Returns:
             True если успешно удалено, иначе False.
         """
-        resp = supabase_admin_request(
+        resp = postgrest_admin_request(
             'DELETE',
             f'push_subscriptions?user_id=eq.{user_id}'
         )
@@ -368,7 +368,7 @@ class PushService:
         Returns:
             Список подписок с полями id, user_id, endpoint, p256dh, auth.
         """
-        resp = supabase_admin_request(
+        resp = postgrest_admin_request(
             'GET',
             f'push_subscriptions?select=id,user_id,endpoint,p256dh,auth&limit={limit}&offset={offset}'
         )
@@ -384,7 +384,7 @@ class PushService:
 
 
 def _encode_uri_component(value: str) -> str:
-    """Кодирует строку для безопасной передачи в URL Supabase PostgREST.
+    """Кодирует строку для безопасной передачи в URL PostgREST.
 
     Заменяет специальные символы на %-коды, используя ограниченный набор
     (совместимо с форматом фильтрации PostgREST eq.{value}).

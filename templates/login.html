@@ -27,7 +27,7 @@
             </div>
 
             <div class="floating-label-group relative">
-                <input type="password" name="password" id="password" placeholder=" " required minlength="6" autocomplete="current-password">
+                <input type="password" name="password" id="password" placeholder=" " required minlength="4" autocomplete="current-password">
                 <label for="password">Пароль</label>
                 <button type="button" id="toggle-password" class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors touch-target" aria-label="Показать пароль" tabindex="-1">
                     <svg id="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     password.addEventListener('blur', function() {
         var group = this.closest('.floating-label-group');
-        if (this.value && this.value.length < 6) {
+        if (this.value && this.value.length < 4) {
             group.classList.add('error');
             group.classList.remove('success');
         } else if (this.value) {
@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', function() {
             email.closest('.floating-label-group').classList.add('error');
             valid = false;
         }
-        if (!password.value || password.value.length < 6) {
+        if (!password.value || password.value.length < 4) {
             password.closest('.floating-label-group').classList.add('error');
             valid = false;
         }

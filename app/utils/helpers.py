@@ -5,10 +5,10 @@ from typing import Optional
 from flask import current_app, flash, session
 
 
-def assert_supabase_ok(resp, operation: str) -> bool:
-    """Проверить успешность ответа Supabase и залогировать/показать ошибку.
+def assert_postgrest_ok(resp, operation: str) -> bool:
+    """Проверить успешность ответа PostgREST и залогировать/показать ошибку.
 
-    Используется для унификации проверок resp.ok во всех вызовах supabase_request,
+    Используется для унификации проверок resp.ok во всех вызовах postgrest_request,
     где проверка отсутствует или неполна (только flash без проверки статуса).
 
     Args:
@@ -23,7 +23,7 @@ def assert_supabase_ok(resp, operation: str) -> bool:
     status = resp.status_code if resp else 'N/A'
     text = (resp.text or '')[:200] if resp else ''
     current_app.logger.error(
-        'Supabase request failed: operation=%s status=%s body=%s',
+        'PostgREST request failed: operation=%s status=%s body=%s',
         operation, status, text,
     )
     flash(f'Ошибка сервера при выполнении операции: {operation}', 'danger')

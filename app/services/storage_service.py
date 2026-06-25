@@ -95,9 +95,20 @@ def upload_to_storage(bucket: str, file_path: str, file_data: bytes,
     upload_dir = _os.path.join(
         current_app.config.get('UPLOAD_FOLDER', 'uploads'), bucket
     )
+    # Разрешить абсолютный путь (защита от race condition смены рабочей директории)
+    upload_dir = _os.path.abspath(upload_dir)
     _os.makedirs(upload_dir, exist_ok=True)
 
     full_path = _os.path.join(upload_dir, safe_path)
+    full_path = _os.path.abspath(full_path)
+    # Создать все промежуточные директории для файла (например, user_id/)
+    dir_path = _os.path.dirname(full_path)
+    logger.debug('Ensuring directory exists: %s', dir_path)
+    _os.makedirs(dir_path, exist_ok=True)
+    # Двойная проверка: убедиться, что директория действительно создалась
+    if not _os.path.isdir(dir_path):
+        logger.error('Failed to create directory (isdir=False after makedirs): %s', dir_path)
+        return None
     try:
         with open(full_path, 'wb') as f:
             f.write(file_data)

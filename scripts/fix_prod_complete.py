@@ -235,8 +235,8 @@ def main():
    Проверь в Amvera Cloud (https://cloud.amvera.ru):
 
    1. trudnik-app → Переменные → POSTGREST_URL
-      Должно быть: http://amvera-hyperstls-run-trudnik-pr:3000
-      (или имя твоего postgrest-сервиса с портом 3000)
+       Должно быть: http://amvera-hyperstls-run-trudnik-pr
+       (или имя твоего postgrest-сервиса, порт назначается Amvera через $PORT)
 
    2. trudnik-pr → Статус
       Должно быть: «Запущено» (зелёный индикатор)

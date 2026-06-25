@@ -137,8 +137,8 @@ class TestPushService(unittest.TestCase):
     # Управление подписками (мокируем Supabase REST API)
     # ────────────────────────────────────────────────────────────
 
-    @patch('app.services.push_service.supabase_admin_request')
-    def test_save_subscription_new(self, mock_supabase: MagicMock) -> None:
+    @patch('app.services.push_service.postgrest_admin_request')
+    def test_save_subscription_new(self, mock_postgrest: MagicMock) -> None:
         """Сохранение новой push-подписки пользователя."""
         # Эмулируем: проверка существующей подписки — пустой ответ
         mock_check_response = MagicMock()
@@ -149,7 +149,7 @@ class TestPushService(unittest.TestCase):
         mock_create_response = MagicMock()
         mock_create_response.ok = True
 
-        mock_supabase.side_effect = [mock_check_response, mock_create_response]
+        mock_postgrest.side_effect = [mock_check_response, mock_create_response]
 
         result = self.service.save_subscription(
             user_id='user-uuid-123',
@@ -164,8 +164,8 @@ class TestPushService(unittest.TestCase):
 
         self.assertTrue(result)
 
-    @patch('app.services.push_service.supabase_admin_request')
-    def test_save_subscription_missing_endpoint(self, mock_supabase: MagicMock) -> None:
+    @patch('app.services.push_service.postgrest_admin_request')
+    def test_save_subscription_missing_endpoint(self, mock_postgrest: MagicMock) -> None:
         """Сохранение подписки без endpoint — возвращает False."""
         result = self.service.save_subscription(
             user_id='user-uuid-123',
@@ -173,26 +173,26 @@ class TestPushService(unittest.TestCase):
         )
 
         self.assertFalse(result)
-        mock_supabase.assert_not_called()
+        mock_postgrest.assert_not_called()
 
-    @patch('app.services.push_service.supabase_admin_request')
-    def test_delete_subscription(self, mock_supabase: MagicMock) -> None:
+    @patch('app.services.push_service.postgrest_admin_request')
+    def test_delete_subscription(self, mock_postgrest: MagicMock) -> None:
         """Удаление push-подписки по endpoint."""
         mock_response = MagicMock()
         mock_response.ok = True
-        mock_supabase.return_value = mock_response
+        mock_postgrest.return_value = mock_response
 
         result = self.service.delete_subscription('https://example.com/push/endpoint')
 
         self.assertTrue(result)
 
-    @patch('app.services.push_service.supabase_admin_request')
-    def test_delete_subscription_empty_endpoint(self, mock_supabase: MagicMock) -> None:
+    @patch('app.services.push_service.postgrest_admin_request')
+    def test_delete_subscription_empty_endpoint(self, mock_postgrest: MagicMock) -> None:
         """Удаление с пустым endpoint — возвращает False."""
         result = self.service.delete_subscription('')
 
         self.assertFalse(result)
-        mock_supabase.assert_not_called()
+        mock_postgrest.assert_not_called()
 
 
 if __name__ == '__main__':

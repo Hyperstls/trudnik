@@ -6,7 +6,7 @@ from typing import Any, Dict
 
 from flask import url_for
 
-from app.utils import supabase_request, supabase_rpc
+from app.utils import postgrest_request, postgrest_rpc
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ def withdraw_application(app_id: str, user_id: str) -> Dict[str, Any]:
         Словарь с ключами success, error/message, new_status.
     """
     # 1. Получить отклик
-    app_resp = supabase_request('GET',
+    app_resp = postgrest_request('GET',
         f'applications?id=eq.{app_id}&select=job_id,worker_id,status')
     if not app_resp.ok or not app_resp.json():
         return {'success': False, 'error': 'Отклик не найден'}
@@ -44,7 +44,7 @@ def withdraw_application(app_id: str, user_id: str) -> Dict[str, Any]:
     job_id = app_data['job_id']
 
     # 2. Получить задание
-    job_resp = supabase_request('GET',
+    job_resp = postgrest_request('GET',
         f'jobs?id=eq.{job_id}&select=status,date_time,current_workers,max_workers,employer_id')
     if not job_resp.ok or not job_resp.json():
         return {'success': False, 'error': 'Задание не найдено'}
@@ -70,35 +70,42 @@ def withdraw_application(app_id: str, user_id: str) -> Dict[str, Any]:
             except (ValueError, TypeError):
                 pass  # Невалидная дата — пропускаем проверку
 
-    # 4. Поменять статус отклика на withdrawn (сначала, чтобы не повредить задание при ошибке)
-    patch_resp = supabase_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'withdrawn'})
-    if not patch_resp.ok:
-        logger.error(
-            "withdraw_application: PATCH application failed for app_id=%s status=%s",
-            app_id, patch_resp.status_code
-        )
-        return {'success': False, 'error': 'Не удалось изменить статус отклика'}
-
-    # 5. Если был accepted — уменьшить current_workers и уведомить работодателя
+    # 4. Если accepted — сначала обновить задание (уменьшить current_workers).
+    #    При ошибке PATCH задания — не менять статус заявки, вернуть ошибку.
+    #    ВНИМАНИЕ: при сетевом сбое между PATCH задания и PATCH заявки
+    #    возможна рассинхронизация. Для атомарности используйте RPC
+    #    withdraw_application_atomic (см. withdraw_application_atomic ниже).
     if current_status == 'accepted':
         current_workers = max(0, job.get('current_workers', 1) - 1)
         new_job_status = job.get('status')
         if current_workers == 0 and new_job_status == 'completed':
             new_job_status = 'open'
 
-        job_patch_resp = supabase_request('PATCH', f'jobs?id=eq.{job_id}', json={
+        job_patch_resp = postgrest_request('PATCH', f'jobs?id=eq.{job_id}', json={
             'current_workers': current_workers,
             'status': new_job_status
         })
         if not job_patch_resp.ok:
             logger.error(
-                "withdraw_application: PATCH job failed for job_id=%s status=%s — application already withdrawn",
+                "withdraw_application: PATCH job failed for job_id=%s status=%s — application NOT changed",
                 job_id, job_patch_resp.status_code
             )
-            # Отклик уже withdrawn, частичный успех
+            return {
+                'success': False,
+                'error': 'Не удалось обновить задание, отклик не изменён'
+            }
+
+    # 5. Поменять статус отклика на withdrawn
+    if current_status == 'accepted':
+        patch_resp = postgrest_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'withdrawn'})
+        if not patch_resp.ok:
+            logger.error(
+                "withdraw_application: PATCH application failed for app_id=%s status=%s — job already updated",
+                app_id, patch_resp.status_code
+            )
             return {
                 'success': True,
-                'message': 'Отклик отозван, но не удалось обновить задание',
+                'message': 'Задание обновлено, но не удалось изменить статус отклика',
                 'new_status': 'withdrawn'
             }
 
@@ -116,10 +123,9 @@ def withdraw_application(app_id: str, user_id: str) -> Dict[str, Any]:
                 "withdraw_application: notify() failed for employer_id=%s job_id=%s",
                 job['employer_id'], job_id
             )
-
-    # 6. Если был pending — удаляем отклик (старая логика unapply)
-    if current_status == 'pending':
-        delete_resp = supabase_request('DELETE', f'applications?id=eq.{app_id}')
+    elif current_status == 'pending':
+        # Для pending — удаляем отклик (старая логика unapply)
+        delete_resp = postgrest_request('DELETE', f'applications?id=eq.{app_id}')
         if not delete_resp.ok:
             logger.error(
                 "withdraw_application: DELETE application failed for app_id=%s status=%s",
@@ -147,7 +153,7 @@ def withdraw_application_atomic(app_id: str, user_id: str) -> Dict[str, Any]:
         Словарь с ключами success, error/message, new_status.
     """
     # Пробуем атомарный путь
-    rpc_resp = supabase_rpc('withdraw_application_atomic', {
+    rpc_resp = postgrest_rpc('withdraw_application_atomic', {
         'p_application_id': app_id,
         'p_user_id': user_id
     })

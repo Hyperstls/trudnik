@@ -18,8 +18,8 @@ from app.services.job_service import (
 from app.services.notification_service import create as notify
 from app.utils import (
     cache_for,
-    supabase_request,
-    supabase_admin_request,
+    postgrest_request,
+    postgrest_admin_request,
     sanitize_postgrest,
 )
 
@@ -34,7 +34,7 @@ jobs_api_bp = Blueprint('jobs_api', __name__)
 @cache_for(seconds=300)
 def api_skills():
     """Получить список навыков (JSON)."""
-    resp = supabase_request(
+    resp = postgrest_request(
         'GET', 'skills?select=*&order=sort_order.asc,name.asc'
     )
     return {'skills': resp.json() if resp.ok else []}
@@ -44,7 +44,7 @@ def api_skills():
 @cache_for(seconds=300)
 def api_religions():
     """Получить список вероисповеданий (JSON)."""
-    resp = supabase_request(
+    resp = postgrest_request(
         'GET', 'religions?select=*&order=sort_order.asc,name.asc'
     )
     return {'religions': resp.json() if resp.ok else []}
@@ -112,7 +112,7 @@ def invite_worker(job_id, worker_id):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
 
     # Проверить, не приглашён ли уже
-    check = supabase_request(
+    check = postgrest_request(
         'GET',
         f'invitations?job_id=eq.{job_id}&worker_id=eq.{worker_id}&select=id'
     )
@@ -120,7 +120,7 @@ def invite_worker(job_id, worker_id):
         return jsonify({'success': False, 'error': 'Приглашение уже отправлено'}), 409
 
     # Проверить, есть ли свободные места
-    job_resp = supabase_request(
+    job_resp = postgrest_request(
         'GET',
         f'jobs?id=eq.{job_id}&select=current_workers,max_workers,organization_name'
     )
@@ -130,7 +130,7 @@ def invite_worker(job_id, worker_id):
             return jsonify({'success': False, 'error': 'Все места заняты'}), 409
 
     msg = request.get_json(silent=True) or {}
-    inv = supabase_request('POST', 'invitations', json={
+    inv = postgrest_request('POST', 'invitations', json={
         'job_id': job_id,
         'employer_id': session['user_id'],
         'worker_id': worker_id,
@@ -176,7 +176,7 @@ def respond_invitation(invitation_id):
 
     if action == 'reject':
         # Отклонение — простая операция, не требует атомарности
-        inv_resp = supabase_request(
+        inv_resp = postgrest_request(
             'GET',
             f'invitations?id=eq.{invitation_id}&select=worker_id,status'
         )
@@ -188,12 +188,12 @@ def respond_invitation(invitation_id):
         if inv['status'] != 'pending':
             return jsonify({'success': False, 'error': f'Приглашение уже {inv["status"]}'}), 409
 
-        supabase_request('PATCH', f'invitations?id=eq.{invitation_id}',
+        postgrest_request('PATCH', f'invitations?id=eq.{invitation_id}',
                          json={'status': 'rejected', 'responded_at': 'now()'})
         return jsonify({'success': True, 'new_status': 'rejected'})
 
     # action == 'accept': атомарная RPC
-    rpc_result = supabase_rpc('accept_invitation_atomic', {
+    rpc_result = postgrest_rpc('accept_invitation_atomic', {
         'p_invitation_id': invitation_id,
         'p_user_id': session['user_id'],
     }, use_admin=True)

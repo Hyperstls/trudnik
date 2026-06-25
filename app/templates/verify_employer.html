@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Верификация работодателя{% endblock %}
+{% block content %}
+<div class="max-w-lg mx-auto">
+    <h1 class="text-2xl font-bold text-neutral-800 mb-4">Верификация работодателя</h1>
+    <p class="text-neutral-600 mb-6">Для подтверждения статуса работодателя загрузите документы. После проверки администратором вы получите уведомление.</p>
+
+    {% if errors %}
+    <div class="bg-danger-light border border-danger text-danger-dark rounded-lg p-4 mb-6">
+        <ul class="list-disc list-inside text-sm">
+            {% for error in errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if verification_status %}
+    <div class="mb-6 p-4 rounded-lg border-l-4 
+        {% if verification_status == 'approved' %}
+            bg-success-light border-success text-success-dark
+        {% elif verification_status == 'pending' %}
+            bg-warning-light border-warning text-warning-dark
+        {% else %}
+            bg-danger-light border-danger text-danger-dark
+        {% endif %}">
+        <p class="font-semibold">
+            {% if verification_status == 'approved' %}✅ Статус: Подтверждён
+            {% elif verification_status == 'pending' %}⏳ Статус: На рассмотрении
+            {% elif verification_status == 'rejected' %}❌ Статус: Отклонён
+            {% else %}📋 Статус: {{ verification_status }}
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data" class="bg-white rounded-lg shadow-md p-6 space-y-5">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div>
+            <label for="company_name" class="block text-sm font-medium text-neutral-700 mb-1">Название компании <span class="text-danger">*</span></label>
+            <input type="text" id="company_name" name="company_name" required
+                   class="w-full border border-neutral-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                   placeholder="ООО «Пример»">
+        </div>
+
+        <div>
+            <label for="inn" class="block text-sm font-medium text-neutral-700 mb-1">ИНН <span class="text-danger">*</span></label>
+            <input type="text" id="inn" name="inn" required
+                   class="w-full border border-neutral-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                   placeholder="1234567890">
+        </div>
+
+        <div>
+            <label for="documents" class="block text-sm font-medium text-neutral-700 mb-1">Документы <span class="text-danger">*</span></label>
+            <input type="file" id="documents" name="documents" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                   class="w-full border border-neutral-300 rounded-lg px-3 py-2 text-sm text-neutral-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-500 file:text-white hover:file:bg-primary-600">
+            <p class="text-xs text-neutral-400 mt-1">Принимаются PDF, JPG, PNG, DOC. Максимальный размер: 10 МБ.</p>
+        </div>
+
+        <div class="pt-2">
+            <button type="submit"
+                    class="bg-primary-500 hover:bg-primary-600 text-white font-medium px-6 py-3 rounded-lg touch-target transition-colors w-full sm:w-auto">
+                📄 Отправить на проверку
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

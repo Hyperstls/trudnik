@@ -75,7 +75,7 @@ class CircuitBreaker:
         with self._lock:
             if isinstance(result, dict) and not result.get('ok', True):
                 self._record_failure()
-            elif isinstance(result, SupabaseResponse) and not result.ok:
+            elif isinstance(result, PostgrestResponse) and not result.ok:
                 self._record_failure()
             else:
                 self.failure_count = 0
@@ -105,9 +105,9 @@ class CircuitBreaker:
             self.state = 'CLOSED'
 
 
-def _circuit_open_response() -> 'SupabaseResponse':
+def _circuit_open_response() -> 'PostgrestResponse':
     """Создать ответ-заглушку при разомкнутой цепи."""
-    resp = SupabaseResponse(ok=False, status_code=503, text='Circuit breaker open')
+    resp = PostgrestResponse(ok=False, status_code=503, text='Circuit breaker open')
     resp.circuit_open = True
     return resp
 
@@ -295,10 +295,10 @@ def _assert_service_key() -> None:
 
 
 # ═══════════════════════════════════════════════════════════════
-# PostgrestResponse / SupabaseResponse
+# PostgrestResponse
 # ═══════════════════════════════════════════════════════════════
 
-class SupabaseResponse:
+class PostgrestResponse:
     """Типизированный ответ от PostgREST API."""
 
     def __init__(self, ok: bool = False, status_code: int = 0,
@@ -321,9 +321,6 @@ class SupabaseResponse:
             return None
 
 
-PostgrestResponse = SupabaseResponse
-
-
 # ═══════════════════════════════════════════════════════════════
 # Auth helpers
 # ═══════════════════════════════════════════════════════════════
@@ -338,7 +335,7 @@ def refresh_access_token() -> bool:
 # HTTP-запросы к PostgREST
 # ═══════════════════════════════════════════════════════════════
 
-def postgrest_request(method: str, endpoint: str, **kwargs: Any) -> SupabaseResponse:
+def postgrest_request(method: str, endpoint: str, **kwargs: Any) -> PostgrestResponse:
     """Сделать HTTP-запрос к PostgREST API с пользовательским JWT-токеном.
 
     Автоматически обновляет access_token при 401. Использует CircuitBreaker.
@@ -350,13 +347,13 @@ def postgrest_request(method: str, endpoint: str, **kwargs: Any) -> SupabaseResp
         **kwargs: дополнительные аргументы для requests (json, headers, etc.).
 
     Returns:
-        SupabaseResponse с полями ok, status_code, json(), text.
+        PostgrestResponse с полями ok, status_code, json(), text.
     """
     if _is_mock_enabled():
         return _test_mock_request(method, endpoint, **kwargs)
     extra_headers = kwargs.pop('headers', None)
 
-    def _make_request() -> SupabaseResponse:
+    def _make_request() -> PostgrestResponse:
         headers = get_user_headers()
         if extra_headers:
             headers.update(extra_headers)
@@ -367,7 +364,7 @@ def postgrest_request(method: str, endpoint: str, **kwargs: Any) -> SupabaseResp
             data = resp.json()
         except Exception:
             data = None
-        return SupabaseResponse(ok=resp.ok, status_code=resp.status_code, data=data, text=resp.text,
+        return PostgrestResponse(ok=resp.ok, status_code=resp.status_code, data=data, text=resp.text,
                                 headers=resp.headers)
 
     try:
@@ -379,13 +376,13 @@ def postgrest_request(method: str, endpoint: str, **kwargs: Any) -> SupabaseResp
         return resp
     except _requests.RequestException as e:
         current_app.logger.error(f"PostgREST request error: {e}")
-        return SupabaseResponse(ok=False, status_code=0, text=str(e))
+        return PostgrestResponse(ok=False, status_code=0, text=str(e))
     except Exception as e:
         current_app.logger.error(f"Unexpected error in postgrest_request: {e}")
-        return SupabaseResponse(ok=False, status_code=0, text=str(e))
+        return PostgrestResponse(ok=False, status_code=0, text=str(e))
 
 
-def postgrest_admin_request(method: str, endpoint: str, **kwargs: Any) -> SupabaseResponse:
+def postgrest_admin_request(method: str, endpoint: str, **kwargs: Any) -> PostgrestResponse:
     """Сделать запрос к PostgREST API с JWT service_role (обход RLS).
 
     Использует _admin_session для переиспользования TCP-соединений.
@@ -403,7 +400,7 @@ def postgrest_admin_request(method: str, endpoint: str, **kwargs: Any) -> Supaba
         **kwargs: дополнительные аргументы для requests.
 
     Returns:
-        SupabaseResponse с полями ok, status_code, json(), text.
+        PostgrestResponse с полями ok, status_code, json(), text.
     """
     _assert_service_key()
 
@@ -432,7 +429,7 @@ def postgrest_admin_request(method: str, endpoint: str, **kwargs: Any) -> Supaba
     if extra_headers:
         headers.update(extra_headers)
 
-    def _make_request() -> SupabaseResponse:
+    def _make_request() -> PostgrestResponse:
         url = f'{POSTGREST_URL.strip()}/{endpoint}'
         _timeout = 15 if method.upper() == 'GET' else 10
         resp = _admin_session.request(method, url, headers=headers, timeout=_timeout, **kwargs)
@@ -440,24 +437,24 @@ def postgrest_admin_request(method: str, endpoint: str, **kwargs: Any) -> Supaba
             data = resp.json()
         except Exception:
             data = None
-        return SupabaseResponse(ok=resp.ok, status_code=resp.status_code, data=data, text=resp.text,
+        return PostgrestResponse(ok=resp.ok, status_code=resp.status_code, data=data, text=resp.text,
                                 headers=resp.headers)
 
     try:
         return _cb_admin.call(_make_request)
     except _requests.RequestException as e:
         current_app.logger.error(f"PostgREST admin request error: {e}")
-        return SupabaseResponse(ok=False, status_code=0, text=str(e))
+        return PostgrestResponse(ok=False, status_code=0, text=str(e))
     except Exception as e:
         current_app.logger.error(f"Unexpected error in postgrest_admin_request: {e}")
-        return SupabaseResponse(ok=False, status_code=0, text=str(e))
+        return PostgrestResponse(ok=False, status_code=0, text=str(e))
 
 
 # ═══════════════════════════════════════════════════════════════
 # RPC-вызовы (этап 4.4)
 # ═══════════════════════════════════════════════════════════════
 
-def postgrest_rpc(function_name: str, params: dict, use_admin: bool = False) -> SupabaseResponse:
+def postgrest_rpc(function_name: str, params: dict, use_admin: bool = False) -> PostgrestResponse:
     """Вызвать хранимую процедуру через PostgREST RPC.
 
     При TESTING=True использует in-memory mock.
@@ -468,7 +465,7 @@ def postgrest_rpc(function_name: str, params: dict, use_admin: bool = False) -> 
         use_admin: если True — использовать service_role key.
 
     Returns:
-        SupabaseResponse с полями ok, status_code, json(), text.
+        PostgrestResponse с полями ok, status_code, json(), text.
     """
     if _is_mock_enabled():
         return _test_mock_rpc(function_name, params)
@@ -478,13 +475,13 @@ def postgrest_rpc(function_name: str, params: dict, use_admin: bool = False) -> 
     else:
         headers = get_user_headers()
 
-    def _make_request() -> SupabaseResponse:
+    def _make_request() -> PostgrestResponse:
         resp = _session.post(url, headers=headers, json=params, timeout=10)
         try:
             data = resp.json()
         except Exception:
             data = None
-        return SupabaseResponse(ok=resp.ok, status_code=resp.status_code, data=data, text=resp.text)
+        return PostgrestResponse(ok=resp.ok, status_code=resp.status_code, data=data, text=resp.text)
 
     try:
         cb = _cb_admin if use_admin else _cb_postgrest
@@ -495,10 +492,10 @@ def postgrest_rpc(function_name: str, params: dict, use_admin: bool = False) -> 
         return resp
     except _requests.RequestException as e:
         current_app.logger.error(f"PostgREST RPC error ({function_name}): {e}")
-        return SupabaseResponse(ok=False, status_code=0, text=str(e))
+        return PostgrestResponse(ok=False, status_code=0, text=str(e))
     except Exception as e:
         current_app.logger.error(f"Unexpected error in postgrest_rpc ({function_name}): {e}")
-        return SupabaseResponse(ok=False, status_code=0, text=str(e))
+        return PostgrestResponse(ok=False, status_code=0, text=str(e))
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -507,14 +504,6 @@ def postgrest_rpc(function_name: str, params: dict, use_admin: bool = False) -> 
 
 MAX_UPLOAD_SIZE = Config.MAX_PHOTO_SIZE_MB * 1024 * 1024  # 5 MB
 
-
-# ═══════════════════════════════════════════════════════════════
-# Алиасы для обратной совместимости
-# ═══════════════════════════════════════════════════════════════
-
-supabase_request = postgrest_request
-supabase_admin_request = postgrest_admin_request
-supabase_rpc = postgrest_rpc
 
 # ═══════════════════════════════════════════════════════════════
 # Mock imports (ленивые, разрешаются при инициализации пакета)

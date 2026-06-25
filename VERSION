@@ -1,1 +1,1 @@
-8dc45e0 fix: убрать integrity-check из Dockerfile (блокирует сборку на Amvera из-за кэша) (2026-06-25 16:56:03 +0300)
+e8740d5 fix: добавить функцию generate_jwt в app/utils/auth.py (2026-06-25 17:02:29 +0300)
