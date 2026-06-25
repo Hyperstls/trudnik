@@ -610,6 +610,67 @@ def job_stats():
 # Protected by SECRET_KEY (X-Admin-Token header)
 # ═══════════════════════════════════════════════════════════
 
+@admin_bp.route('/api/fix-permissions', methods=['POST'])
+def fix_permissions():
+    """Fix PostgreSQL permissions: GRANT ALL to app role (trudnikapp)."""
+    import logging
+    log = logging.getLogger(__name__)
+
+    token = request.headers.get('X-Admin-Token', '')
+    if not token or token != current_app.config.get('SECRET_KEY', ''):
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+
+    # Get database URL from config
+    db_url = current_app.config.get('DATABASE_URL', '')
+    if not db_url:
+        return jsonify({'success': False, 'error': 'DATABASE_URL not configured'}), 500
+
+    try:
+        import psycopg2
+        conn = psycopg2.connect(db_url)
+        conn.autocommit = True
+        cur = conn.cursor()
+
+        grants = [
+            "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO trudnikapp",
+            "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO trudnikapp",
+            "GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO trudnikapp",
+            "GRANT USAGE ON SCHEMA public TO trudnikapp",
+            "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO trudnikapp",
+            "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO trudnikapp",
+            "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO trudnikapp",
+            "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO anon",
+            "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO anon",
+            "GRANT USAGE ON SCHEMA public TO anon",
+        ]
+
+        results = []
+        errors = []
+        for sql in grants:
+            try:
+                cur.execute(sql)
+                results.append(f"OK: {sql[:60]}...")
+            except Exception as e:
+                errors.append(f"FAIL: {sql[:60]}... -> {e}")
+
+        cur.close()
+        conn.close()
+
+        log.info("fix-permissions: %d OK, %d errors", len(results), len(errors))
+        return jsonify({
+            'success': len(errors) == 0,
+            'executed': len(results),
+            'failed': len(errors),
+            'results': results,
+            'errors': errors,
+        })
+    except ImportError:
+        return jsonify({'success': False, 'error': 'psycopg2 not installed'}), 500
+    except Exception as e:
+        log.error("fix-permissions: %s", e)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @admin_bp.route('/api/migrations-status', methods=['GET'])
 def migrations_status():
     """Return the list of applied migrations from _migrations tracking table."""
