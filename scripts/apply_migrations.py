@@ -27,11 +27,12 @@ Dry-run (только показать, что будет применено, б
 
 Или, если нужно явно передать переменную окружения::
 
-    cd /app && DATABASE_URL=postgresql://user:pass@host:port/dbname python scripts/apply_migrations.py
+    cd /app && DATABASE_ADMIN_URL=postgresql://user:pass@host:port/dbname python scripts/apply_migrations.py
 
 Требования
 ----------
-- ``DATABASE_URL`` в переменных окружения (формат: ``postgresql://user:pass@host:port/dbname``)
+- ``DATABASE_ADMIN_URL`` или ``DATABASE_URL`` в переменных окружения (формат: ``postgresql://user:pass@host:port/dbname``)
+  Приоритет: ``DATABASE_ADMIN_URL`` (пользователь с SUPERUSER), затем ``DATABASE_URL`` (fallback).
 - ``psycopg2`` (синхронный драйвер, не psycopg2-binary)
 - Python 3.9+
 """
@@ -71,7 +72,10 @@ except ImportError:
 
 
 def get_database_url() -> str:
-    """Получить ``DATABASE_URL`` из переменных окружения.
+    """Получить URL базы данных из переменных окружения.
+
+    Приоритет: ``DATABASE_ADMIN_URL`` (пользователь с SUPERUSER),
+    затем ``DATABASE_URL`` (обычный пользователь).
 
     Returns
     -------
@@ -81,16 +85,18 @@ def get_database_url() -> str:
     Raises
     ------
     SystemExit(1)
-        Если переменная не установлена или пуста.
+        Если ни одна переменная не установлена или пуста.
     """
-    url = os.environ.get("DATABASE_URL", "").strip()
+    url = os.environ.get('DATABASE_ADMIN_URL') or os.environ.get('DATABASE_URL', '').strip()
     if not url:
         logger.error(
-            "Переменная окружения DATABASE_URL не установлена.\n"
-            "Установите её перед запуском:\n"
-            "  Linux/Mac:  export DATABASE_URL=postgresql://user:pass@host:port/dbname\n"
-            "  Windows:    set DATABASE_URL=postgresql://user:pass@host:port/dbname\n"
-            "  Amvera:     добавьте переменную DATABASE_URL в настройках проекта"
+            "Ни одна из переменных окружения не установлена:\n"
+            "  DATABASE_ADMIN_URL (рекомендуется для миграций, требует SUPERUSER)\n"
+            "  DATABASE_URL (fallback)\n"
+            "Установите одну из них перед запуском:\n"
+            "  Linux/Mac:  export DATABASE_ADMIN_URL=postgresql://user:pass@host:port/dbname\n"
+            "  Windows:    set DATABASE_ADMIN_URL=postgresql://user:pass@host:port/dbname\n"
+            "  Amvera:     добавьте переменную DATABASE_ADMIN_URL в настройках проекта"
         )
         sys.exit(1)
     return url
