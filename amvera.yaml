@@ -14,3 +14,4 @@ run:
   #   containerPort: 80
   #   servicePort: 90
   containerPort: 8000
+  servicePort: 80

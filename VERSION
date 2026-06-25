@@ -1,1 +1,1 @@
-eb2c9cf fix: route /health to FastAPI and add Redis connect timeout to lifespan (2026-06-25 20:07:24 +0300)
+0f544df fix: add lightweight / route and harden Docker HEALTHCHECK (2026-06-25 20:36:19 +0300)
