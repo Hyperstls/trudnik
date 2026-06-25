@@ -1,11 +1,13 @@
-"""Аутентификация: refresh_access_token, get_user_role, get_user_profile, check_password, hash_password."""
+"""Аутентификация: generate_jwt, refresh_access_token, get_user_role, get_user_profile, check_password, hash_password."""
 
 import logging
+import secrets
 import time
+from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
 import bcrypt
-import jwt as pyjwt
+import jwt as _jwt_lib
 from flask import current_app, session
 
 from app.config import Config
@@ -64,10 +66,24 @@ def hash_password(password: str) -> str:
     ).decode('utf-8')
 
 
+def generate_jwt(user_id, role, exp_seconds=3600):
+    """Каноническая генерация JWT-токена."""
+    payload = {
+        'sub': str(user_id),
+        'role': role,
+        'iat': datetime.utcnow(),
+        'exp': datetime.utcnow() + timedelta(seconds=exp_seconds),
+        'jti': secrets.token_hex(8)
+    }
+    secret = current_app.config.get('PGRST_JWT_SECRET', current_app.config.get('SECRET_KEY'))
+    return _jwt_lib.encode(payload, secret, algorithm='HS256')
+
+
 def refresh_access_token() -> bool:
     """Генерирует новый JWT для PostgREST из user_id в сессии.
 
     Достаточно наличия user_id в сессии для генерации свежего токена.
+    Использует каноническую функцию generate_jwt().
     """
     user_id = session.get('user_id')
 
@@ -76,17 +92,7 @@ def refresh_access_token() -> bool:
 
     try:
         role = session.get('role', 'authenticated')
-        payload = {
-            'role': role,
-            'user_id': str(user_id),
-            'exp': int(time.time()) + 3600,  # 1 час
-            'iat': int(time.time()),
-        }
-        token = pyjwt.encode(
-            payload,
-            PGRST_JWT_SECRET,
-            algorithm='HS256'
-        )
+        token = generate_jwt(user_id, role)
         session['access_token'] = token
         session.modified = True
         return True
@@ -113,7 +119,7 @@ def get_user_profile() -> Optional[Dict[str, Any]]:
     if 'access_token' not in session:
         return None
 
-    from app.utils.supabase import postgrest_request
+    from app.utils.postgrest_client import postgrest_request
 
     resp = postgrest_request(
         'GET',

@@ -1,1 +1,1 @@
-7a8ba29 fix: integrity-check через grep вместо python import (не требует SECRET_KEY при сборке) (2026-06-25 16:48:36 +0300)
+8dc45e0 fix: убрать integrity-check из Dockerfile (блокирует сборку на Amvera из-за кэша) (2026-06-25 16:56:03 +0300)
