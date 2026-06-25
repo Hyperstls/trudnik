@@ -295,6 +295,8 @@ $$;
 -- ============================================================================
 
 -- 2. apply_job_atomic: FOR UPDATE на проверку дубликата + явный инкремент current_workers
+DROP FUNCTION IF EXISTS apply_job_atomic(uuid, uuid);
+
 CREATE OR REPLACE FUNCTION public.apply_job_atomic(
     p_job_id uuid,
     p_worker_id uuid
