@@ -8,7 +8,7 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 
 try:
-    from app.testing.mock_supabase import (
+    from app.testing.mock_postgrest import (
         _test_db,
         _uuid_counter,
         _gen_uuid,
@@ -53,7 +53,7 @@ except Exception:
 # 2. Импортируем подмодули и инжектим mock-зависимости в supabase
 # ═══════════════════════════════════════════════════════════════════════════════
 
-from app.utils import supabase as _supabase
+from app.utils import postgrest_client as _supabase
 
 # Инжектим mock-зависимости в модуль supabase
 _supabase._test_db = _test_db
@@ -85,6 +85,7 @@ from app.utils import rate_limit as _rate_limit_mod
 # через app.utils для обратной совместимости)
 from app.services import storage_service as _storage_service
 from app.services import ratings_service as _ratings_service
+from app.services.push_service import PushService
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -104,7 +105,7 @@ refresh_access_token = _supabase.refresh_access_token
 postgrest_request = _supabase.postgrest_request
 postgrest_admin_request = _supabase.postgrest_admin_request
 postgrest_rpc = _supabase.postgrest_rpc
-generate_vapid_keys = _supabase.generate_vapid_keys
+generate_vapid_keys = PushService.generate_vapid_keys
 
 # Устаревшие алиасы для обратной совместимости
 supabase_request = postgrest_request
@@ -144,6 +145,7 @@ my_query = _helpers.my_query
 refresh_access_token = _auth.refresh_access_token
 get_user_role = _auth.get_user_role
 get_user_profile = _auth.get_user_profile
+generate_jwt = _auth.generate_jwt
 
 # --- Валидация ---
 validate_password = _validators.validate_password
@@ -175,7 +177,7 @@ __all__ = [
     'SUPABASE_URL', 'SUPABASE_KEY', 'SERVICE_KEY',
     'generate_vapid_keys',
     # Auth
-    'refresh_access_token', 'get_user_role', 'get_user_profile',
+    'refresh_access_token', 'get_user_role', 'get_user_profile', 'generate_jwt',
     # Validators
     'validate_password', '_SQL_INJECTION_PATTERNS',
     # Storage

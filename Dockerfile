@@ -13,13 +13,16 @@ ENV PYTHONPYCACHEPREFIX=/data/pycache
 # Установка системных зависимостей + Python-зависимостей + очистка
 COPY requirements.txt .
 RUN apt-get update && apt-get install -y --no-install-recommends gcc libpq-dev && \
-    pip install --no-cache-dir -r requirements.txt && \
+    pip install -r requirements.txt && \
     apt-get purge -y gcc libpq-dev && \
     apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/*
 
 # Копирование кода приложения
 COPY . .
+
+# Integrity check: гарантируем, что generate_jwt доступна (защита от кэш-дрейфа)
+RUN python -c "from app.utils.auth import generate_jwt; print('OK: generate_jwt found')"
 
 # Предкомпиляция Python-байткода (устраняет нагрев при старте)
 RUN python -m compileall -q /app
@@ -28,11 +31,11 @@ RUN python -m compileall -q /app
 RUN useradd -m -u 1000 appuser && \
     mkdir -p /data/pip-cache /data/pycache && \
     chown -R appuser:appuser /app /data
-# USER appuser  # Закомментирован: порт 80 требует root на Amvera
+USER appuser
 
-EXPOSE 8000 8001
+EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:80/health')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
-CMD ["uvicorn", "asgi:application", "--host", "0.0.0.0", "--port", "80", "--workers", "1"]
+CMD python scripts/apply_migrations.py && uvicorn asgi:application --host 0.0.0.0 --port 8000 --workers 1

@@ -1,1 +1,1 @@
-4ea22f2 Fix: admin GET endpoints use supabase_admin_request (service_role) to bypass RLS (2026-06-24 16:11:34 +0300)
+e2b87d1 тесты: добавлены Selenium-тесты загрузки/удаления аватара для всех ролей (15 тестов) (2026-06-25 16:17:56 +0300)
