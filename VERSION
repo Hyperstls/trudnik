@@ -1,1 +1,1 @@
-f65565c fix: использовать DATABASE_ADMIN_URL для миграций (нужен SUPERUSER) (2026-06-25 17:59:27 +0300)
+da7291f fix: добавить DROP FUNCTION перед CREATE OR REPLACE в миграции 069 (2026-06-25 18:06:51 +0300)

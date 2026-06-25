@@ -1273,6 +1273,7 @@ END;
 $$;
 
 -- 4h. apply_job_atomic — атомарное создание отклика
+DROP FUNCTION IF EXISTS apply_job_atomic(uuid, uuid);
 CREATE OR REPLACE FUNCTION apply_job_atomic(
     p_job_id uuid,
     p_worker_id uuid
