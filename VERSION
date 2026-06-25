@@ -1,1 +1,1 @@
-23caeda fix: increase HEALTHCHECK start-period to 20s to cover migration time (2026-06-25 19:51:07 +0300)
+eb2c9cf fix: route /health to FastAPI and add Redis connect timeout to lifespan (2026-06-25 20:07:24 +0300)
