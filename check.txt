@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import requests; r = requests.get('https://trudnik-hyperstls.amvera.io/', timeout=10); print('OK:', r.status_code, list(r.text[:100]))
+                         ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\s.prokopenko\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\requests\api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+  File "C:\Users\s.prokopenko\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\requests\api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\s.prokopenko\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\requests\sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+  File "C:\Users\s.prokopenko\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\requests\sessions.py", line 805, in send
+    history = [resp for resp in gen]
+                                ^^^
+  File "C:\Users\s.prokopenko\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\requests\sessions.py", line 217, in resolve_redirects
+    raise TooManyRedirects(
+        f"Exceeded {self.max_redirects} redirects.", response=resp
+    )
+requests.exceptions.TooManyRedirects: Exceeded 30 redirects.

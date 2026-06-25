@@ -31,10 +31,16 @@ class CircuitBreaker:
 
     Три состояния:
     - CLOSED: нормальная работа, запросы проходят
-    - OPEN: цепь разомкнута, запросы не выполняются (таймаут 30 сек)
+    - OPEN: цепь разомкнута, запросы не выполняются (таймаут recovery_timeout сек)
     - HALF_OPEN: пробный запрос для проверки восстановления
 
-    Порог: 5 последовательных ошибок → OPEN → через 30 сек → HALF_OPEN.
+    Порог: failure_threshold последовательных ошибок → OPEN →
+    через recovery_timeout сек → HALF_OPEN.
+
+    Особенности:
+    - 403 (permission denied) НЕ размыкает цепь — это проблема прав, а не доступности
+    - При OPEN состоянии выполняется health-check напрямую (в обход CB)
+      для быстрого восстановления, если сервис снова стал доступен
     """
 
     def __init__(self, failure_threshold: int = 5, recovery_timeout: float = 30.0) -> None:
@@ -44,6 +50,25 @@ class CircuitBreaker:
         self.last_failure_time = 0.0
         self.state = 'CLOSED'  # CLOSED | OPEN | HALF_OPEN
         self._lock = Lock()
+
+    def _check_postgrest_health(self) -> bool:
+        """Проверить доступность PostgREST через health endpoint (в обход CB).
+
+        Выполняет прямой GET-запрос к /health.html PostgREST с коротким таймаутом.
+        Этот метод используется, когда CB находится в состоянии OPEN,
+        чтобы быстро определить, восстановился ли сервис.
+
+        Returns:
+            True, если PostgREST отвечает 200/204/404 (жив), иначе False.
+        """
+        try:
+            import requests as _req
+            postgrest_url = POSTGREST_URL.strip()
+            # /health.html возвращает 200 если PostgREST жив
+            r = _req.get(f'{postgrest_url}/health.html', timeout=5)
+            return r.status_code in (200, 204, 404)
+        except Exception:
+            return False
 
     def call(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         """Выполнить вызов через circuit breaker.
@@ -63,19 +88,36 @@ class CircuitBreaker:
                 if time.time() - self.last_failure_time >= self.recovery_timeout:
                     self.state = 'HALF_OPEN'
                 else:
-                    return _circuit_open_response()
+                    # Пробуем health-check напрямую (в обход CB)
+                    if self._check_postgrest_health():
+                        # Сервис снова доступен — сбрасываем CB
+                        logger.info(
+                            'Circuit Breaker: PostgREST health check OK, '
+                            'resetting from OPEN to CLOSED'
+                        )
+                        self.reset()
+                    else:
+                        return _circuit_open_response()
 
         try:
             result = func(*args, **kwargs)
         except Exception:
             with self._lock:
-                self._record_failure()
+                self._record_failure(exception=True)
             raise
 
         with self._lock:
-            if isinstance(result, dict) and not result.get('ok', True):
-                self._record_failure()
-            elif isinstance(result, PostgrestResponse) and not result.ok:
+            if isinstance(result, PostgrestResponse) and not result.ok:
+                # 403 (permission denied) — не проблема доступности,
+                # не размыкаем цепь (проблема прав, а не сервиса)
+                if result.status_code == 403:
+                    logger.warning(
+                        'Circuit Breaker: 403 Forbidden (permission denied) '
+                        '— NOT recording as failure'
+                    )
+                else:
+                    self._record_failure(status_code=result.status_code)
+            elif isinstance(result, dict) and not result.get('ok', True):
                 self._record_failure()
             else:
                 self.failure_count = 0
@@ -84,15 +126,26 @@ class CircuitBreaker:
 
         return result
 
-    def _record_failure(self) -> None:
-        """Зафиксировать ошибку. При превышении порога — разомкнуть цепь."""
+    def _record_failure(self, status_code: int = 0, exception: bool = False) -> None:
+        """Зафиксировать ошибку. При превышении порога — разомкнуть цепь.
+
+        Args:
+            status_code: HTTP-статус код ответа (0 если неизвестен).
+            exception: True если ошибка вызвана исключением, а не HTTP-ответом.
+        """
         self.failure_count += 1
         self.last_failure_time = time.time()
         if self.failure_count >= self.failure_threshold:
             self.state = 'OPEN'
             try:
+                extra = ''
+                if status_code:
+                    extra = f' (status={status_code})'
+                elif exception:
+                    extra = ' (exception)'
                 current_app.logger.warning(
-                    'Circuit Breaker OPEN after %d failures', self.failure_count
+                    'Circuit Breaker OPEN after %d failures%s',
+                    self.failure_count, extra
                 )
             except Exception:
                 pass

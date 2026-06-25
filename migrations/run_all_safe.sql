@@ -2454,5 +2454,11 @@ DROP INDEX IF EXISTS idx_favorites_type;
 -- Все CREATE TABLE содержат полный набор колонок из актуальных миграций.
 -- Все ALTER TABLE используют IF NOT EXISTS / IF EXISTS.
 -- Все RLS-политики используют current_setting('request.jwt.claim.xxx') вместо auth.uid()/auth.role().
--- Добавлены миграции 059-068 (для 065-067 см. отдельные файлы).
+-- Добавлены миграции 059-071 (для 065-067 см. отдельные файлы).
 -- ============================================
+
+-- Подключаем миграцию 071 (исправление permission denied для auth RPC-функций)
+\i migrations/071_fix_auth_rpc_permissions.sql
+
+-- Подключаем миграцию 072 (комплексное исправление RPC-прав доступа)
+\i migrations/072_fix_rpc_permissions_comprehensive.sql
