@@ -1,1 +1,1 @@
-ce2f441 fix: HEALTHCHECK проверяет / вместо /health (эндпоинта нет) (2026-06-25 18:24:21 +0300)
+9d50d25 fix: HEALTHCHECK use /health endpoint instead of / to fix 503 on Amvera (2026-06-25 19:07:12 +0300)
