@@ -603,3 +603,111 @@ def job_stats():
         return jsonify({"total_jobs": 0, "open_jobs": 0, "completed_jobs": 0, "cancelled_jobs": 0, "error": True})
     except Exception:
         return jsonify({"total_jobs": 0, "open_jobs": 0, "completed_jobs": 0, "cancelled_jobs": 0, "error": True})
+
+
+# ═══════════════════════════════════════════════════════════
+# Emergency endpoint: reset all users and create test accounts
+# Protected by SECRET_KEY (X-Admin-Token header)
+# ═══════════════════════════════════════════════════════════
+
+@admin_bp.route('/api/reset-users', methods=['POST'])
+def reset_users():
+    """
+    Delete all users and create three test accounts:
+    - admin@test.ru (admin)
+    - org@test.ru (employer)
+    - trud@test.ru (worker)
+    All with password Step@1986.
+
+    Protected by X-Admin-Token header (must match SECRET_KEY).
+    """
+    import logging
+    log = logging.getLogger(__name__)
+
+    # Security: token check
+    token = request.headers.get('X-Admin-Token', '')
+    expected_token = current_app.config.get('SECRET_KEY', '')
+    if not token or token != expected_token:
+        log.warning("reset-users: invalid or missing X-Admin-Token")
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+
+    result = {
+        'success': True,
+        'deleted': 0,
+        'delete_failed': 0,
+        'created': [],
+        'create_failed': [],
+        'errors': [],
+    }
+
+    # --- Step 1: Get all user IDs ---
+    log.info("reset-users: fetching all users...")
+    resp = postgrest_admin_request('GET', 'profiles?select=id,email,role')
+    if not resp.ok:
+        result['success'] = False
+        result['errors'].append(f'Failed to fetch users: {resp.status_code}')
+        return jsonify(result), 500
+
+    all_users = resp.json() if isinstance(resp.json(), list) else []
+    log.info("reset-users: found %d users", len(all_users))
+
+    # --- Step 2: Delete all users ---
+    for user in all_users:
+        uid = user.get('id')
+        email = user.get('email', '?')
+        log.info("reset-users: deleting %s (%s)...", email, uid)
+
+        rpc_resp = postgrest_rpc('delete_user_cascade', {'p_user_id': uid}, use_admin=True)
+        if rpc_resp.ok:
+            rpc_data = rpc_resp.json() if rpc_resp.ok else {}
+            if isinstance(rpc_data, dict) and rpc_data.get('success'):
+                result['deleted'] += 1
+            else:
+                result['delete_failed'] += 1
+                result['errors'].append(f'delete_user_cascade returned no success for {email}')
+        else:
+            result['delete_failed'] += 1
+            result['errors'].append(f'delete_user_cascade failed for {email}: {rpc_resp.status_code}')
+
+    log.info("reset-users: deleted=%d, failed=%d", result['deleted'], result['delete_failed'])
+
+    # --- Step 3: Create three test users ---
+    test_users = [
+        {'email': 'admin@test.ru', 'password': 'Step@1986', 'full_name': 'Администратор', 'role': 'admin'},
+        {'email': 'org@test.ru',   'password': 'Step@1986', 'full_name': 'Организатор',   'role': 'employer'},
+        {'email': 'trud@test.ru',  'password': 'Step@1986', 'full_name': 'Трудник Тест',  'role': 'worker'},
+    ]
+
+    for tu in test_users:
+        log.info("reset-users: creating %s (%s)...", tu['email'], tu['role'])
+        rpc_resp = postgrest_admin_request('POST', 'rpc/register_user', data={
+            'p_email': tu['email'],
+            'p_password': tu['password'],
+            'p_full_name': tu['full_name'],
+            'p_role': tu['role'],
+        })
+        if rpc_resp.ok:
+            new_id = rpc_resp.json()
+            if isinstance(new_id, list) and len(new_id) > 0:
+                new_id = new_id[0] if isinstance(new_id[0], str) else new_id[0].get('register_user')
+            result['created'].append({'email': tu['email'], 'role': tu['role'], 'id': str(new_id)})
+            log.info("reset-users: created %s with id=%s", tu['email'], new_id)
+        else:
+            result['create_failed'].append(tu['email'])
+            result['errors'].append(f'Failed to create {tu["email"]}: {rpc_resp.status_code} {rpc_resp.text[:200]}')
+            log.error("reset-users: failed to create %s: %s", tu['email'], rpc_resp.text[:200])
+
+    log.info("reset-users: created=%d, failed=%d", len(result['created']), len(result['create_failed']))
+
+    # --- Step 4: Final verification ---
+    verify_resp = postgrest_admin_request('GET', 'profiles?select=email,role')
+    if verify_resp.ok:
+        final_users = verify_resp.json() if isinstance(verify_resp.json(), list) else []
+        result['final_count'] = len(final_users)
+        result['final_users'] = [{'email': u['email'], 'role': u['role']} for u in final_users]
+        log.info("reset-users: final user count=%d", len(final_users))
+
+    if result['delete_failed'] > 0 or len(result['create_failed']) > 0:
+        result['success'] = False
+
+    return jsonify(result)

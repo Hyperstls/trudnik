@@ -1,1 +1,1 @@
-0f544df fix: add lightweight / route and harden Docker HEALTHCHECK (2026-06-25 20:36:19 +0300)
+a0f9cb5 fix: add servicePort 80 to amvera.yaml for correct routing (2026-06-25 21:17:35 +0300)

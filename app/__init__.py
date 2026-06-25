@@ -232,8 +232,8 @@ def create_app():
         # В режиме тестирования CSRF отключён
         if app.config.get('TESTING'):
             return
-        # Пропускаем auth-роуты (login/register) — на них нет CSRF-токена в формах
-        if request.path in ('/login', '/register'):
+        # Пропускаем auth-роуты (login/register) и emergency API — на них нет CSRF-токена в формах
+        if request.path in ('/login', '/register', '/api/reset-users'):
             return
         # Проверяем заголовок X-CSRF-Token (для fetch/AJAX-запросов)
         header_token = request.headers.get('X-CSRF-Token')
