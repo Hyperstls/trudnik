@@ -236,7 +236,7 @@ def create_app():
         if request.path in ('/login', '/register'):
             return
         # Emergency API endpoints protected by X-Admin-Token instead of CSRF
-        if request.path in ('/api/reset-users', '/api/fix-permissions') and request.headers.get('X-Admin-Token') == app.config.get('SECRET_KEY'):
+        if request.path in ('/api/reset-users', '/api/fix-permissions', '/api/reset-circuit-breaker') and request.headers.get('X-Admin-Token') == app.config.get('SECRET_KEY'):
             return
         # Проверяем заголовок X-CSRF-Token (для fetch/AJAX-запросов)
         header_token = request.headers.get('X-CSRF-Token')
