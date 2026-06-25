@@ -1,1 +1,1 @@
-e8740d5 fix: добавить функцию generate_jwt в app/utils/auth.py (2026-06-25 17:02:29 +0300)
+6194339 refactor: полная очистка от Supabase-алиасов → PostgREST (2026-06-25 17:39:42 +0300)
