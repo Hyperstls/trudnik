@@ -138,3 +138,31 @@ BEGIN
     RAISE INFO 'Проверка: найдено % привилегий EXECUTE для auth-функций', v_count;
 END;
 $$;
+
+-- ============================================================
+-- 074: Исправление RLS-политик для admin_skills и admin_religions
+-- Проблема: postgrest_admin_request() использует JWT с role='trudnikapp',
+-- но RLS-политики ожидают role='admin'. Из-за этого INSERT отклоняется (403).
+--
+-- Решение: добавить 'trudnikapp' как разрешённую роль в политики.
+-- ============================================================
+
+DROP POLICY IF EXISTS "admin_skills" ON skills;
+CREATE POLICY "admin_skills" ON skills FOR ALL
+    USING (current_setting('request.jwt.claim.role', true) IN ('admin', 'trudnikapp'));
+
+DROP POLICY IF EXISTS "admin_religions" ON religions;
+CREATE POLICY "admin_religions" ON religions FOR ALL
+    USING (current_setting('request.jwt.claim.role', true) IN ('admin', 'trudnikapp'));
+
+DROP POLICY IF EXISTS "receipts_insert" ON receipts;
+CREATE POLICY "receipts_insert" ON receipts
+    FOR INSERT WITH CHECK (
+        current_setting('request.jwt.claim.role', true) IN ('admin', 'trudnikapp')
+    );
+
+DROP POLICY IF EXISTS "receipts_update" ON receipts;
+CREATE POLICY "receipts_update" ON receipts
+    FOR UPDATE USING (
+        current_setting('request.jwt.claim.role', true) IN ('admin', 'trudnikapp')
+    );

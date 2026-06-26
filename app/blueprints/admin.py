@@ -333,6 +333,14 @@ def add_skill():
             item = existing.json()[0] if existing.json() else {}
             max_order = item.get('sort_order', 0)
         resp = postgrest_admin_request('POST', 'skills', json={'name': name, 'sort_order': max_order + 1})
+
+        # ===== ДИАГНОСТИКА =====
+        current_app.logger.info(
+            'DIAG add_skill: POST skills status=%s, ok=%s, text="%s"',
+            resp.status_code, resp.ok, resp.text
+        )
+        # =======================
+
         if resp.ok:
             flash(f'Навык «{name}» добавлен', 'success')
         else:
@@ -485,6 +493,14 @@ def add_religion():
             max_order = item.get('sort_order', 0)
 
         resp = postgrest_admin_request('POST', 'religions', json={'name': name, 'sort_order': max_order + 1})
+
+        # ===== ДИАГНОСТИКА =====
+        current_app.logger.info(
+            'DIAG add_religion: POST religions status=%s, ok=%s, text="%s"',
+            resp.status_code, resp.ok, resp.text
+        )
+        # =======================
+
         if resp.ok:
             flash(f'Вероисповедание «{name}» добавлено', 'success')
         elif is_circuit_open(resp):

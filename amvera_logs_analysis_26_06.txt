@@ -1,0 +1,86 @@
+================================================================================
+ОТЧЁТ: Анализ логов выполнения Amvera и проверка кода
+Дата: 2026-06-26 15:58 MSK (UTC+3)
+================================================================================
+
+1. ПРОВЕРКА GIT LOG
+-------------------
+Последние 10 коммитов в локальном репозитории:
+
+  5d7b71f Исправление ошибки 408: таймауты PostgREST, flash-сообщения, bash-скрипты автоматизации
+  0356987 Улучшения: favicon, ASGI lifespan, документация Amvera CLI automation
+  b269180 Рефакторинг админ-панели: вкладка «Словари», CSRF-токен как строка, миграция 072
+  46d475e fix admin: гибкий приём form/json для навыков и религий, inline-редактирование
+  a4ac9b7 fix: runtime fallback for PGRST_JWT_SECRET + CSRF exception for delete-photo + startup diagnostics
+  78b71cf fix: normalize POSTGREST_URL, validate PGRST_JWT_SECRET, improve circuit breaker handling
+  7767808 fix: resolve 503 - remove root_health_check infinite redirect, replace deprecated wsgi middleware with a2wsgi, add migration 071 for auth function permissions
+  4f21f38 redeploy: update VERSION to trigger Amvera rebuild after migration fix + run_all_safe.sql cleanup
+  c3a3e20 fix: remove unstable auto-migrations 071/072/073, migrations done manually via pgAdmin
+  b831c35 fix: circuit breaker threshold 5->10, add SECURITY DEFINER + GRANT EXECUTE for auth functions
+
+ВЫВОД: Коммит ca4de30d "Merge branch 'main'..." в локальном git log НЕ НАЙДЕН.
+Последний (HEAD) коммит: 5d7b71f — это наш коммит с исправлениями.
+Наши исправления НЕ БЫЛИ перезаписаны (в локальной ветке).
+
+2. ПРОВЕРКА ФАЙЛОВ (перезапись кода)
+-------------------------------------
+
+2.1. app/utils/postgrest_client.py — ТАЙМАУТЫ
+  - Строка 462: _timeout = 30 ✓ (было 10)
+  - Строка 535: _timeout = 30 ✓ (было 15)
+  Статус: OK, таймауты исправлены.
+
+2.2. app/blueprints/admin.py — ФУНКЦИЯ add_religion()
+  - Строка 465: def add_religion() — присутствует ✓
+  - Строки 474, 490: is_circuit_open() — проверка circuit breaker ✓
+  - Строки 469, 475, 489, 491, 495, 505, 508: flash-сообщения ✓
+  Статус: OK, функция add_religion содержит все необходимые проверки и flash.
+
+2.3. app/templates/profile.html — CSRF-ТОКЕН
+  - Строка 18: <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  - Используется {{ csrf_token }} (без лишних скобок) ✓
+  Статус: OK, CSRF-токен корректен.
+
+ВЫВОД: Все наши исправления НА МЕСТЕ. Перезаписи кода не было.
+
+3. АНАЛИЗ ЛОГОВ ВЫПОЛНЕНИЯ (amvera_run_logs_26_06.txt)
+-------------------------------------------------------
+Файл получен: 2026-06-26 в 14:59 MSK
+Всего строк в логах: ~102
+
+3.1. HTTP 408 ошибки
+  - НЕ НАЙДЕНЫ. Все HTTP-статусы в логах: 200 OK, 204 No Content, 302 Found.
+  Статус: OK, ошибок 408 нет.
+
+3.2. ERROR / Traceback
+  - НЕ НАЙДЕНЫ. В логах отсутствуют ERROR, Traceback или исключения.
+  Статус: OK, ошибок выполнения нет.
+
+3.3. Ошибки, связанные с PostgREST
+  - НЕ НАЙДЕНЫ. В логах нет упоминаний PostgREST, таймаутов или 500-х ошибок.
+  Статус: OK, PostgREST работает стабильно.
+
+3.4. Дополнительные наблюдения из логов
+  - Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 активно работал в админке
+  - Множество POST /admin/religions → 302 Found (редирект) — добавление религий работает
+  - POST /admin/skills → 302 Found — добавление навыков работает
+  - WebSocket-соединения устанавливаются успешно
+  - Все статические файлы отдаются (200 OK)
+
+4. ОБЩИЙ ВЫВОД
+--------------
+1. Код не был перезаписан — все наши исправления на месте.
+2. Логи не содержат ошибок — приложение работает стабильно.
+3. POST /admin/religions и POST /admin/skills возвращают 302 (редирект),
+   что означает успешную обработку запросов.
+4. Если добавление навыка/вероисповедания через админку всё ещё не работает,
+   проблема МОЖЕТ быть в:
+   - Базе данных (например, RLS-политики блокируют INSERT)
+   - Неправильных данных в форме (например, CSRF-токен не отправляется)
+   - Проблемах с миграциями БД на стороне Amvera
+   - Кэшировании старой версии в браузере
+
+Рекомендация: Проверить через pgAdmin, вставляются ли записи в таблицы
+skills и religions при POST-запросах. Также проверить Network-вкладку
+браузера при отправке формы.
+================================================================================

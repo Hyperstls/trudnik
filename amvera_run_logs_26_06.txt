@@ -1,0 +1,102 @@
+Current region: msk_0
+Current region: msk_0
+INFO:     10.112.202.32:59212 - "GET /sw.js HTTP/1.1" 200 OK
+INFO:     connection open
+2026-06-26 11:57:52 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 подключился по WebSocket (всего онлайн: 1)
+INFO:     10.112.209.41:47880 - "WebSocket /ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiM2Q2MDM1OTUtY2U0OS00MWI1LTlkODAtMmExNGJlMWIwNGI3IiwiZXhwIjoxNzgzMDc5ODcxfQ.gXORdqcDKTWqTIe5pfwAX2S1vUIrcs6USZLePaoPyTg" [accepted]
+2026-06-26 11:57:52 [WARNING] asgi: [ASGI_ROUTER] type=websocket path=/ws
+INFO:     10.112.202.32:59212 - "GET /favicon.ico HTTP/1.1" 204 No Content
+INFO:     10.112.202.32:59212 - "GET /admin/skills HTTP/1.1" 200 OK
+INFO:     10.112.209.41:47874 - "GET /static/manifest.json HTTP/1.1" 200 OK
+[2026-06-26 11:57:51,998] INFO in __init__: Static request: /static/manifest.json | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+2026-06-26 11:57:51 [INFO] app: Static request: /static/manifest.json | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+INFO:     connection closed
+2026-06-26 11:57:51 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 удалён из активных соединений (всего онлайн: 0)
+2026-06-26 11:57:51 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 отключился от WebSocket
+INFO:     10.112.202.32:59212 - "GET /admin?tab=skills HTTP/1.1" 200 OK
+INFO:     10.112.202.32:59212 - "GET /admin?tab=dictionaries HTTP/1.1" 200 OK
+INFO:     10.112.202.32:59212 - "POST /admin/skills HTTP/1.1" 302 Found
+INFO:     10.112.202.32:59212 - "GET /sw.js HTTP/1.1" 200 OK
+INFO:     connection open
+2026-06-26 11:57:46 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 подключился по WebSocket (всего онлайн: 1)
+INFO:     10.112.202.32:59228 - "WebSocket /ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiM2Q2MDM1OTUtY2U0OS00MWI1LTlkODAtMmExNGJlMWIwNGI3IiwiZXhwIjoxNzgzMDc5ODY2fQ.nXG-3ICoXas0Q1JUn9yfUjeJmBRvd5fZBHu9i0pVRLk" [accepted]
+2026-06-26 11:57:46 [WARNING] asgi: [ASGI_ROUTER] type=websocket path=/ws
+INFO:     10.112.202.32:59212 - "GET /favicon.ico HTTP/1.1" 204 No Content
+INFO:     10.112.202.32:59212 - "GET /admin/skills HTTP/1.1" 200 OK
+INFO:     10.112.209.41:48950 - "GET /static/manifest.json HTTP/1.1" 200 OK
+2026-06-26 11:57:46 [INFO] app: Static request: /static/manifest.json | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+[2026-06-26 11:57:46,261] INFO in __init__: Static request: /static/manifest.json | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+INFO:     connection closed
+2026-06-26 11:57:46 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 удалён из активных соединений (всего онлайн: 0)
+2026-06-26 11:57:46 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 отключился от WebSocket
+INFO:     10.112.202.32:59212 - "GET /admin?tab=skills HTTP/1.1" 200 OK
+INFO:     10.112.202.32:55220 - "GET /admin?tab=dictionaries HTTP/1.1" 200 OK
+INFO:     10.112.202.32:55220 - "POST /admin/religions HTTP/1.1" 302 Found
+INFO:     10.112.202.32:51444 - "GET /admin?tab=dictionaries HTTP/1.1" 200 OK
+INFO:     10.112.202.32:51444 - "POST /admin/religions HTTP/1.1" 302 Found
+INFO:     10.112.202.32:51444 - "GET /admin?tab=dictionaries HTTP/1.1" 200 OK
+INFO:     10.112.202.32:51444 - "POST /admin/religions HTTP/1.1" 302 Found
+INFO:     10.112.202.32:51444 - "GET /admin?tab=dictionaries HTTP/1.1" 200 OK
+INFO:     10.112.202.32:51444 - "POST /admin/religions HTTP/1.1" 302 Found
+INFO:     10.112.202.32:51444 - "GET /admin?tab=dictionaries HTTP/1.1" 200 OK
+INFO:     10.112.202.32:51444 - "POST /admin/religions HTTP/1.1" 302 Found
+INFO:     10.112.202.32:51444 - "GET /admin?tab=dictionaries HTTP/1.1" 200 OK
+INFO:     10.112.202.32:51444 - "POST /admin/religions HTTP/1.1" 302 Found
+INFO:     10.112.202.32:51444 - "GET /admin?tab=dictionaries HTTP/1.1" 200 OK
+INFO:     10.112.202.32:51444 - "POST /admin/religions HTTP/1.1" 302 Found
+INFO:     10.112.202.32:51444 - "GET /admin?tab=dictionaries HTTP/1.1" 200 OK
+INFO:     10.112.202.32:51444 - "POST /admin/religions HTTP/1.1" 302 Found
+INFO:     10.112.202.32:51444 - "GET /admin?tab=dictionaries HTTP/1.1" 200 OK
+INFO:     10.112.202.32:51444 - "POST /admin/religions HTTP/1.1" 302 Found
+INFO:     10.112.202.32:44468 - "GET /admin?tab=dictionaries HTTP/1.1" 200 OK
+INFO:     10.112.202.32:44468 - "POST /admin/religions HTTP/1.1" 302 Found
+INFO:     10.112.202.32:44468 - "GET /admin?tab=dictionaries HTTP/1.1" 200 OK
+INFO:     10.112.202.32:44468 - "POST /admin/religions HTTP/1.1" 302 Found
+INFO:     10.112.202.32:44456 - "GET /favicon.ico HTTP/1.1" 204 No Content
+INFO:     connection open
+2026-06-26 11:57:07 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 подключился по WebSocket (всего онлайн: 1)
+INFO:     10.112.202.32:45228 - "WebSocket /ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiM2Q2MDM1OTUtY2U0OS00MWI1LTlkODAtMmExNGJlMWIwNGI3IiwiZXhwIjoxNzgzMDc5ODI3fQ.JICQII-lBqzYEFl9w_R94bZUVqDpKl8Sd0FvwRUivsk" [accepted]
+2026-06-26 11:57:07 [WARNING] asgi: [ASGI_ROUTER] type=websocket path=/ws
+INFO:     10.112.202.32:45228 - "GET /push/vapid-public-key HTTP/1.1" 200 OK
+INFO:     10.112.202.32:45228 - "GET /admin/religions HTTP/1.1" 200 OK
+INFO:     10.112.209.41:58266 - "GET /static/manifest.json HTTP/1.1" 200 OK
+2026-06-26 11:57:07 [INFO] app: Static request: /static/manifest.json | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+[2026-06-26 11:57:07,566] INFO in __init__: Static request: /static/manifest.json | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+INFO:     10.112.202.32:45228 - "GET /static/js/push-notifications.js HTTP/1.1" 200 OK
+2026-06-26 11:57:07 [INFO] app: Static request: /static/js/push-notifications.js | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+[2026-06-26 11:57:07,558] INFO in __init__: Static request: /static/js/push-notifications.js | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+INFO:     10.112.202.32:45228 - "GET /static/js/notifications-ws.js HTTP/1.1" 200 OK
+2026-06-26 11:57:07 [INFO] app: Static request: /static/js/notifications-ws.js | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+[2026-06-26 11:57:07,554] INFO in __init__: Static request: /static/js/notifications-ws.js | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+INFO:     10.112.202.32:44456 - "GET /static/css/tailwind.min.css HTTP/1.1" 200 OK
+INFO:     10.112.202.32:45228 - "GET /static/js/notifications-init.js HTTP/1.1" 200 OK
+2026-06-26 11:57:07 [INFO] app: Static request: /static/css/tailwind.min.css | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+[2026-06-26 11:57:07,550] INFO in __init__: Static request: /static/css/tailwind.min.css | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+2026-06-26 11:57:07 [INFO] app: Static request: /static/js/notifications-init.js | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+[2026-06-26 11:57:07,549] INFO in __init__: Static request: /static/js/notifications-init.js | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+INFO:     10.112.209.41:58266 - "GET /static/manifest.json HTTP/1.1" 200 OK
+2026-06-26 11:57:07 [INFO] app: Static request: /static/manifest.json | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+[2026-06-26 11:57:07,547] INFO in __init__: Static request: /static/manifest.json | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+INFO:     10.112.209.41:49066 - "GET /static/manifest.json HTTP/1.1" 200 OK
+2026-06-26 11:57:07 [INFO] app: Static request: /static/manifest.json | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+[2026-06-26 11:57:07,545] INFO in __init__: Static request: /static/manifest.json | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+INFO:     connection closed
+2026-06-26 11:57:07 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 удалён из активных соединений (всего онлайн: 0)
+2026-06-26 11:57:07 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 отключился от WebSocket
+INFO:     10.112.202.32:45228 - "GET /admin?tab=religions HTTP/1.1" 200 OK
+INFO:     10.112.202.32:45228 - "GET /sw.js HTTP/1.1" 200 OK
+INFO:     connection open
+2026-06-26 11:57:03 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 подключился по WebSocket (всего онлайн: 1)
+INFO:     10.112.202.32:45240 - "WebSocket /ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiM2Q2MDM1OTUtY2U0OS00MWI1LTlkODAtMmExNGJlMWIwNGI3IiwiZXhwIjoxNzgzMDc5ODIzfQ.o0vWFza-P6eDo2KzKYxM0PViaRwgzQEqWzRsXCjFM18" [accepted]
+2026-06-26 11:57:03 [WARNING] asgi: [ASGI_ROUTER] type=websocket path=/ws
+INFO:     10.112.202.32:45228 - "GET /admin/religions HTTP/1.1" 200 OK
+INFO:     10.112.209.41:49066 - "GET /static/manifest.json HTTP/1.1" 200 OK
+2026-06-26 11:57:03 [INFO] app: Static request: /static/manifest.json | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+[2026-06-26 11:57:03,753] INFO in __init__: Static request: /static/manifest.json | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+INFO:     connection closed
+2026-06-26 11:57:03 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 удалён из активных соединений (всего онлайн: 0)
+2026-06-26 11:57:03 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 отключился от WebSocket
+INFO:     10.112.202.32:45228 - "GET /admin?tab=religions HTTP/1.1" 200 OK
+INFO:     connection open
+2026-06-26 11:57:02 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 подключился по WebSocket (всего онлайн: 1)
+INFO:     10.112.202.32:45236 - "WebSocket /ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiM2Q2MDM1OTUtY2U0OS00MWI1LTlkODAtMmExNGJlMWIwNGI3IiwiZXhwIjoxNzgzMDc5ODIyfQ.Tqu6kICfG2C05Vyg45LiT4rZ_cauENC5PsM_xIWICfg" [accepted]
