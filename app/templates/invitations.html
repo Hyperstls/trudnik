@@ -52,13 +52,13 @@
                         <div class="flex items-center justify-end gap-2">
                             {% if invitation.status == 'pending' %}
                             <form method="POST" action="{{ url_for('applications.accept_invitation', invitation_id=invitation.id) }}" class="inline">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                 <button type="submit" class="px-3 py-1.5 bg-success hover:bg-success-dark text-white text-xs font-medium rounded-lg transition-colors touch-target">
                                     ✅ Принять
                                 </button>
                             </form>
                             <form method="POST" action="{{ url_for('applications.decline_invitation', invitation_id=invitation.id) }}" class="inline">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                 <button type="submit" class="px-3 py-1.5 bg-danger-light hover:bg-danger text-danger hover:text-white text-xs font-medium rounded-lg transition-colors touch-target">
                                     ❌ Отклонить
                                 </button>
@@ -103,13 +103,13 @@
                 {% if invitation.status == 'pending' %}
                 <div class="flex items-center gap-2">
                     <form method="POST" action="{{ url_for('applications.accept_invitation', invitation_id=invitation.id) }}" class="inline">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="px-3 py-1.5 bg-success hover:bg-success-dark text-white text-xs font-medium rounded-lg transition-colors touch-target">
                             ✅ Принять
                         </button>
                     </form>
                     <form method="POST" action="{{ url_for('applications.decline_invitation', invitation_id=invitation.id) }}" class="inline">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="px-3 py-1.5 bg-danger-light hover:bg-danger text-danger hover:text-white text-xs font-medium rounded-lg transition-colors touch-target">
                             ❌ Отклонить
                         </button>

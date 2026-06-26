@@ -2467,3 +2467,6 @@ DROP INDEX IF EXISTS idx_favorites_type;
 -- ВНИМАНИЕ: Миграция удаляет и пересоздаёт login_user, register_user, change_password.
 -- Если возможно — выполните вручную через pgAdmin для контроля.
 -- \i migrations/073_fix_rpc_functions_drop_create.sql
+
+-- Подключаем миграцию 072 (исправление навыка №15 — "Церковное служение" → "Служения")
+-- \i migrations/072_fix_skills_v2.sql

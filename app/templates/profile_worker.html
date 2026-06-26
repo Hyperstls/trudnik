@@ -54,7 +54,7 @@
 
             {% if is_favorite %}
             <form method="POST" action="{{ url_for('favorites.remove', user_id=worker.id) }}" class="inline">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button type="submit"
                         class="bg-warning-light hover:bg-warning text-neutral-800 font-medium px-5 py-2.5 rounded-lg touch-target transition-colors inline-flex items-center gap-2">
                     ❤️ В избранном
@@ -62,7 +62,7 @@
             </form>
             {% else %}
             <form method="POST" action="{{ url_for('favorites.add', user_id=worker.id) }}" class="inline">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button type="submit"
                         class="bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-medium px-5 py-2.5 rounded-lg touch-target transition-colors inline-flex items-center gap-2">
                     🤍 В избранное
@@ -72,7 +72,7 @@
 
             {% if is_blacklisted %}
             <form method="POST" action="{{ url_for('blacklist.remove', user_id=worker.id) }}" class="inline">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button type="submit"
                         class="bg-danger-light hover:bg-danger text-danger-dark font-medium px-5 py-2.5 rounded-lg touch-target transition-colors inline-flex items-center gap-2">
                     🚫 В чёрном списке
@@ -80,7 +80,7 @@
             </form>
             {% else %}
             <form method="POST" action="{{ url_for('blacklist.add', user_id=worker.id) }}" class="inline">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button type="submit"
                         class="bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-medium px-5 py-2.5 rounded-lg touch-target transition-colors inline-flex items-center gap-2">
                     🚫 В чёрный список

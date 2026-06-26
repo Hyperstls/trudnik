@@ -118,13 +118,13 @@
                                 👁️
                             </a>
                             <form method="POST" action="{{ url_for('admin.toggle_ban', user_id=user.id) }}" class="inline" onsubmit="return confirm('{{ 'Разбанить' if not user.is_active else 'Забанить' }} пользователя {{ user.name }}?')">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                 <button type="submit" class="touch-target px-2 py-1 text-xs {{ 'bg-warning hover:bg-warning-dark text-white' if user.is_active else 'bg-success hover:bg-success-dark text-white' }} rounded">
                                     {{ '🚫' if user.is_active else '✅' }}
                                 </button>
                             </form>
                             <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.id) }}" class="inline" onsubmit="return confirm('Удалить пользователя {{ user.name }}? Это действие необратимо.')">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                 <button type="submit" class="touch-target px-2 py-1 text-xs bg-danger hover:bg-danger-dark text-white rounded">
                                     🗑️
                                 </button>
@@ -182,13 +182,13 @@
                                 👁️
                             </a>
                             <form method="POST" action="{{ url_for('admin.force_complete_job', job_id=job.id) }}" class="inline" onsubmit="return confirm('Завершить задание «{{ job.title }}» принудительно?')">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                 <button type="submit" class="touch-target px-2 py-1 text-xs bg-info hover:bg-info-dark text-white rounded">
                                     ✅
                                 </button>
                             </form>
                             <form method="POST" action="{{ url_for('admin.delete_job', job_id=job.id) }}" class="inline" onsubmit="return confirm('Удалить задание «{{ job.title }}»?')">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                 <button type="submit" class="touch-target px-2 py-1 text-xs bg-danger hover:bg-danger-dark text-white rounded">
                                     🗑️
                                 </button>
@@ -240,13 +240,13 @@
             {% endif %}
             <div class="flex gap-2 mt-3">
                 <form method="POST" action="{{ url_for('admin.approve_verification', request_id=req.id) }}" class="inline">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="touch-target px-4 py-2 text-sm bg-success hover:bg-success-dark text-white rounded-lg font-medium">
                         ✅ Одобрить
                     </button>
                 </form>
                 <form method="POST" action="{{ url_for('admin.reject_verification', request_id=req.id) }}" class="inline" onsubmit="return confirm('Отклонить верификацию?')">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="touch-target px-4 py-2 text-sm bg-danger hover:bg-danger-dark text-white rounded-lg font-medium">
                         ❌ Отклонить
                     </button>
@@ -269,7 +269,7 @@
     <div class="bg-white rounded-lg shadow-md p-4 md:p-6">
         <h2 class="text-lg font-bold text-neutral-800 mb-4">Навыки</h2>
         <form method="POST" action="{{ url_for('admin.add_skill') }}" class="flex gap-2 mb-4">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="text" name="name" required placeholder="Название навыка..."
                    class="flex-grow px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                    aria-label="Название навыка">
@@ -283,7 +283,7 @@
             <div class="skill-item flex items-center justify-between px-3 py-2 bg-neutral-50 rounded-lg" data-skill-id="{{ skill.id }}">
                 <span class="skill-name text-sm text-neutral-700 cursor-pointer hover:text-primary-600" title="Нажмите для редактирования">{{ skill.name }}</span>
                 <form method="POST" action="{{ url_for('admin.delete_skill', skill_id=skill.id) }}" class="inline" onsubmit="return confirm('Удалить навык «{{ skill.name }}»?')">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="touch-target text-danger hover:text-red-700 text-sm px-2" aria-label="Удалить навык {{ skill.name }}">🗑️</button>
                 </form>
             </div>
@@ -298,7 +298,7 @@
     <div class="bg-white rounded-lg shadow-md p-4 md:p-6">
         <h2 class="text-lg font-bold text-neutral-800 mb-4">Религии</h2>
         <form method="POST" action="{{ url_for('admin.add_religion') }}" class="flex gap-2 mb-4">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="text" name="name" required placeholder="Название..."
                    class="flex-grow px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                    aria-label="Название религии">
@@ -312,7 +312,7 @@
             <div class="religion-item flex items-center justify-between px-3 py-2 bg-neutral-50 rounded-lg" data-religion-id="{{ religion.id }}">
                 <span class="religion-name text-sm text-neutral-700 cursor-pointer hover:text-primary-600" title="Нажмите для редактирования">{{ religion.name }}</span>
                 <form method="POST" action="{{ url_for('admin.delete_religion', religion_id=religion.id) }}" class="inline" onsubmit="return confirm('Удалить религию «{{ religion.name }}»?')">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="touch-target text-danger hover:text-red-700 text-sm px-2" aria-label="Удалить религию {{ religion.name }}">🗑️</button>
                 </form>
             </div>
@@ -352,7 +352,7 @@
                             method: 'PUT',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'X-CSRFToken': getCSRFToken()
+                                'X-CSRF-Token': getCSRFToken()
                             },
                             body: JSON.stringify({name: newName})
                         })

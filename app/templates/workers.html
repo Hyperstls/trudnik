@@ -160,7 +160,7 @@
                 <span class="text-xs text-success font-medium px-2">✓ Приглашён</span>
                 {% else %}
                 <form method="POST" action="{{ url_for('applications.invite', worker_id=worker.id) }}" class="inline">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="px-3 py-1.5 border border-primary-500 text-primary-600 hover:bg-primary-50 text-sm font-medium rounded-lg transition-colors touch-target">
                         📨 Пригласить
                     </button>
@@ -169,7 +169,7 @@
             {% endif %}
             {% if current_user %}
             <form method="POST" action="{{ url_for('favorites.add_worker', worker_id=worker.id) }}" class="inline">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button type="submit" class="px-2 py-1.5 border border-neutral-300 text-neutral-500 hover:text-danger hover:border-danger rounded-lg text-sm transition-colors touch-target" title="В избранное">
                     🤍
                 </button>

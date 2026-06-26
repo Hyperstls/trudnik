@@ -128,16 +128,19 @@ def admin_panel():
         pending = [u for u in all_verify if u.get('verification_status') == 'pending']
         verified = [u for u in all_verify if u.get('verification_status') in ('approved', 'rejected')]
 
-    # Навыки — справочник (загружается через JS, но данные нужны для рендера)
+    # Справочники: навыки и вероисповедания
     skills = []
-    if tab == 'skills':
+    religions = []
+    if tab == 'dictionaries' or tab == 'skills':
         skills_resp = postgrest_admin_request('GET', 'skills?select=*&order=sort_order.asc,name.asc')
         skills = skills_resp.json() if skills_resp.ok else []
+        religions_resp = postgrest_admin_request('GET', 'religions?select=*&order=sort_order.asc,name.asc')
+        religions = religions_resp.json() if religions_resp.ok else []
 
     return render_template('admin.html',
                            tab=tab, stats=stats, users=users,
                            jobs=jobs, pending=pending, verified=verified,
-                           skills=skills)
+                           skills=skills, religions=religions)
 
 
 # ── Управление пользователями ──────────────────────────
@@ -316,24 +319,32 @@ def get_skills():
 @login_required
 @admin_required
 def add_skill():
-    data = request.get_json(silent=True) or {}
-    if not data.get('name'):
-        data['name'] = request.form.get('name', request.form.get('skill_name', '')).strip()
-    name = (data.get('name', '')).strip()
-    if not name:
-        return jsonify({'success': False, 'error': 'Name required'}), 400
-    # Находим максимальный sort_order (если колонка есть) и добавляем +1
-    max_order = 0
-    existing = postgrest_admin_request('GET', 'skills?select=sort_order&order=sort_order.desc&limit=1')
-    if not existing.ok:
-        existing = postgrest_admin_request('GET', 'skills?select=id&order=name.desc&limit=1')
-    if existing.ok and existing.json():
-        item = existing.json()[0] if existing.json() else {}
-        max_order = item.get('sort_order', 0)
-    resp = postgrest_admin_request('POST', 'skills', json={'name': name, 'sort_order': max_order + 1})
-    if resp.ok:
-        return jsonify({'success': True, 'skill': resp.json()[0] if isinstance(resp.json(), list) else resp.json()})
-    return jsonify({'success': False, 'error': resp.text}), 400
+    try:
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash('Название навыка не может быть пустым', 'danger')
+            return redirect(url_for('admin.admin_panel', tab='dictionaries'))
+        # Находим максимальный sort_order (если колонка есть) и добавляем +1
+        max_order = 0
+        existing = postgrest_admin_request('GET', 'skills?select=sort_order&order=sort_order.desc&limit=1')
+        if not existing.ok:
+            existing = postgrest_admin_request('GET', 'skills?select=id&order=name.desc&limit=1')
+        if existing.ok and existing.json():
+            item = existing.json()[0] if existing.json() else {}
+            max_order = item.get('sort_order', 0)
+        resp = postgrest_admin_request('POST', 'skills', json={'name': name, 'sort_order': max_order + 1})
+        if resp.ok:
+            flash(f'Навык «{name}» добавлен', 'success')
+        else:
+            current_app.logger.error(
+                'add_skill: PostgREST error (status %s): %s',
+                resp.status_code, resp.text
+            )
+            flash(f'Ошибка при добавлении навыка: {resp.text}', 'danger')
+    except Exception as e:
+        current_app.logger.exception('add_skill: unexpected error')
+        flash(f'Ошибка: {str(e)}', 'danger')
+    return redirect(url_for('admin.admin_panel', tab='dictionaries'))
 
 @admin_bp.route('/admin/skills/reorder', methods=['POST'])
 @login_required
@@ -353,14 +364,24 @@ def reorder_skills():
 @login_required
 @admin_required
 def update_skill(skill_id):
-    data = request.get_json(silent=True) or {}
-    if not data.get('name'):
-        data['name'] = request.form.get('name', request.form.get('skill_name', '')).strip()
-    name = (data.get('name', '')).strip()
-    if not name:
-        return jsonify({'success': False, 'error': 'Name required'}), 400
-    resp = postgrest_admin_request('PATCH', f'skills?id=eq.{skill_id}', json={'name': name})
-    return jsonify({'success': resp.ok})
+    try:
+        data = request.get_json(silent=True) or {}
+        if not data.get('name'):
+            data['name'] = request.form.get('name', request.form.get('skill_name', '')).strip()
+        name = (data.get('name', '')).strip()
+        if not name:
+            return jsonify({'success': False, 'error': 'Name required'}), 400
+        resp = postgrest_admin_request('PATCH', f'skills?id=eq.{skill_id}', json={'name': name})
+        if not resp.ok:
+            current_app.logger.error(
+                'update_skill(id=%s): PostgREST error (status %s): %s',
+                skill_id, resp.status_code, resp.text
+            )
+            return jsonify({'success': False, 'error': f'PostgREST error: {resp.text}'}), resp.status_code or 400
+        return jsonify({'success': True})
+    except Exception as e:
+        current_app.logger.exception('update_skill(id=%s): unexpected error', skill_id)
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @admin_bp.route('/admin/skills/<skill_id>', methods=['DELETE'])
 @login_required
@@ -442,23 +463,31 @@ def get_religions():
 @login_required
 @admin_required
 def add_religion():
-    data = request.get_json(silent=True) or {}
-    if not data.get('name'):
-        data['name'] = request.form.get('name', request.form.get('religion_name', '')).strip()
-    name = (data.get('name', '')).strip()
-    if not name:
-        return jsonify({'success': False, 'error': 'Name required'}), 400
-    max_order = 0
-    existing = postgrest_admin_request('GET', 'religions?select=sort_order&order=sort_order.desc&limit=1')
-    if not existing.ok:
-        existing = postgrest_admin_request('GET', 'religions?select=id&order=name.desc&limit=1')
-    if existing.ok and existing.json():
-        item = existing.json()[0] if existing.json() else {}
-        max_order = item.get('sort_order', 0)
-    resp = postgrest_admin_request('POST', 'religions', json={'name': name, 'sort_order': max_order + 1})
-    if resp.ok:
-        return jsonify({'success': True, 'religion': resp.json()[0] if isinstance(resp.json(), list) else resp.json()})
-    return jsonify({'success': False, 'error': resp.text}), 400
+    try:
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash('Название вероисповедания не может быть пустым', 'danger')
+            return redirect(url_for('admin.admin_panel', tab='dictionaries'))
+        max_order = 0
+        existing = postgrest_admin_request('GET', 'religions?select=sort_order&order=sort_order.desc&limit=1')
+        if not existing.ok:
+            existing = postgrest_admin_request('GET', 'religions?select=id&order=name.desc&limit=1')
+        if existing.ok and existing.json():
+            item = existing.json()[0] if existing.json() else {}
+            max_order = item.get('sort_order', 0)
+        resp = postgrest_admin_request('POST', 'religions', json={'name': name, 'sort_order': max_order + 1})
+        if resp.ok:
+            flash(f'Вероисповедание «{name}» добавлено', 'success')
+        else:
+            current_app.logger.error(
+                'add_religion: PostgREST error (status %s): %s',
+                resp.status_code, resp.text
+            )
+            flash(f'Ошибка при добавлении вероисповедания: {resp.text}', 'danger')
+    except Exception as e:
+        current_app.logger.exception('add_religion: unexpected error')
+        flash(f'Ошибка: {str(e)}', 'danger')
+    return redirect(url_for('admin.admin_panel', tab='dictionaries'))
 
 @admin_bp.route('/admin/religions/reorder', methods=['POST'])
 @login_required
@@ -478,14 +507,24 @@ def reorder_religions():
 @login_required
 @admin_required
 def update_religion(religion_id):
-    data = request.get_json(silent=True) or {}
-    if not data.get('name'):
-        data['name'] = request.form.get('name', request.form.get('religion_name', '')).strip()
-    name = (data.get('name', '')).strip()
-    if not name:
-        return jsonify({'success': False, 'error': 'Name required'}), 400
-    resp = postgrest_admin_request('PATCH', f'religions?id=eq.{religion_id}', json={'name': name})
-    return jsonify({'success': resp.ok})
+    try:
+        data = request.get_json(silent=True) or {}
+        if not data.get('name'):
+            data['name'] = request.form.get('name', request.form.get('religion_name', '')).strip()
+        name = (data.get('name', '')).strip()
+        if not name:
+            return jsonify({'success': False, 'error': 'Name required'}), 400
+        resp = postgrest_admin_request('PATCH', f'religions?id=eq.{religion_id}', json={'name': name})
+        if not resp.ok:
+            current_app.logger.error(
+                'update_religion(id=%s): PostgREST error (status %s): %s',
+                religion_id, resp.status_code, resp.text
+            )
+            return jsonify({'success': False, 'error': f'PostgREST error: {resp.text}'}), resp.status_code or 400
+        return jsonify({'success': True})
+    except Exception as e:
+        current_app.logger.exception('update_religion(id=%s): unexpected error', religion_id)
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @admin_bp.route('/admin/religions/<religion_id>', methods=['DELETE'])
 @login_required

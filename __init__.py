@@ -196,12 +196,12 @@ def create_app():
     def inject_global_user():
         return {'current_user_id': session.get('user_id')}
 
-    @app.context_processor
-    def inject_csrf_token():
-        """Внедрение CSRF-токена во все шаблоны как строки."""
+    @app.template_global('csrf_token')
+    def _get_csrf_token():
+        """CSRF-токен для форм и meta-тега. Использование в шаблонах: {{ csrf_token() }}."""
         if '_csrf_token' not in session:
             session['_csrf_token'] = secrets.token_hex(32)
-        return {'csrf_token': session.get('_csrf_token', '')}
+        return session.get('_csrf_token', '')
 
     @app.context_processor
     def inject_csp_nonce():

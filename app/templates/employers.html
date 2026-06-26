@@ -104,14 +104,14 @@
             {% if current_user and current_user.role == 'worker' %}
                 {% if employer.id in (favorited_employer_ids or []) %}
                 <form method="POST" action="{{ url_for('employers.toggle_favorite', employer_id=employer.id) }}" class="inline">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="px-2 py-1.5 border border-danger text-danger hover:bg-danger-light rounded-lg text-sm transition-colors touch-target" title="Убрать из избранного">
                         ❤️
                     </button>
                 </form>
                 {% else %}
                 <form method="POST" action="{{ url_for('employers.toggle_favorite', employer_id=employer.id) }}" class="inline">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="px-2 py-1.5 border border-neutral-300 text-neutral-500 hover:text-danger hover:border-danger rounded-lg text-sm transition-colors touch-target" title="В избранное">
                         🤍
                     </button>

@@ -43,14 +43,14 @@
                 {% if current_user and current_user.role == 'worker' %}
                     {% if is_favorited %}
                     <form method="POST" action="{{ url_for('employers.toggle_favorite', employer_id=employer.id) }}" class="inline">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="px-4 py-2 border border-danger text-danger hover:bg-danger-light rounded-lg text-sm font-medium transition-colors touch-target">
                             ❤️ В избранном
                         </button>
                     </form>
                     {% else %}
                     <form method="POST" action="{{ url_for('employers.toggle_favorite', employer_id=employer.id) }}" class="inline">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="px-4 py-2 border border-neutral-300 text-neutral-600 hover:text-danger hover:border-danger rounded-lg text-sm font-medium transition-colors touch-target">
                             🤍 В избранное
                         </button>
@@ -103,7 +103,7 @@
                         <span class="text-xs text-success font-medium">✓ Вы откликнулись</span>
                         {% else %}
                         <form method="POST" action="{{ url_for('applications.apply', job_id=job.id) }}" class="inline">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <button type="submit" class="px-3 py-1 bg-primary-500 hover:bg-primary-600 text-white text-xs font-medium rounded-lg transition-colors touch-target">
                                 ✋ Откликнуться
                             </button>

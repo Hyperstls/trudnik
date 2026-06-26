@@ -48,26 +48,23 @@ END $$;
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM skills LIMIT 1) THEN
-        INSERT INTO skills (id, name) VALUES (gen_random_uuid(), 'Уборка') ON CONFLICT (name) DO NOTHING;
-        INSERT INTO skills (id, name) VALUES (gen_random_uuid(), 'Грузчик') ON CONFLICT (name) DO NOTHING;
-        INSERT INTO skills (id, name) VALUES (gen_random_uuid(), 'Курьер') ON CONFLICT (name) DO NOTHING;
-        INSERT INTO skills (id, name) VALUES (gen_random_uuid(), 'Строительство') ON CONFLICT (name) DO NOTHING;
-        INSERT INTO skills (id, name) VALUES (gen_random_uuid(), 'Ремонт') ON CONFLICT (name) DO NOTHING;
-        INSERT INTO skills (id, name) VALUES (gen_random_uuid(), 'Сантехника') ON CONFLICT (name) DO NOTHING;
-        INSERT INTO skills (id, name) VALUES (gen_random_uuid(), 'Электрика') ON CONFLICT (name) DO NOTHING;
-        INSERT INTO skills (id, name) VALUES (gen_random_uuid(), 'Покраска') ON CONFLICT (name) DO NOTHING;
-        INSERT INTO skills (id, name) VALUES (gen_random_uuid(), 'Садоводство') ON CONFLICT (name) DO NOTHING;
-        INSERT INTO skills (id, name) VALUES (gen_random_uuid(), 'Выгул собак') ON CONFLICT (name) DO NOTHING;
-        INSERT INTO skills (id, name) VALUES (gen_random_uuid(), 'Присмотр за детьми') ON CONFLICT (name) DO NOTHING;
-        INSERT INTO skills (id, name) VALUES (gen_random_uuid(), 'Репетиторство') ON CONFLICT (name) DO NOTHING;
-        INSERT INTO skills (id, name) VALUES (gen_random_uuid(), 'Переводы') ON CONFLICT (name) DO NOTHING;
-        INSERT INTO skills (id, name) VALUES (gen_random_uuid(), 'IT поддержка') ON CONFLICT (name) DO NOTHING;
-        INSERT INTO skills (id, name) VALUES (gen_random_uuid(), 'Дизайн') ON CONFLICT (name) DO NOTHING;
-        INSERT INTO skills (id, name) VALUES (gen_random_uuid(), 'Фото/видео') ON CONFLICT (name) DO NOTHING;
-        INSERT INTO skills (id, name) VALUES (gen_random_uuid(), 'Автомеханик') ON CONFLICT (name) DO NOTHING;
-        INSERT INTO skills (id, name) VALUES (gen_random_uuid(), 'Швея') ON CONFLICT (name) DO NOTHING;
-        INSERT INTO skills (id, name) VALUES (gen_random_uuid(), 'Повар') ON CONFLICT (name) DO NOTHING;
-        INSERT INTO skills (id, name) VALUES (gen_random_uuid(), 'Охрана') ON CONFLICT (name) DO NOTHING;
+        INSERT INTO skills (id, name, sort_order) VALUES
+            (gen_random_uuid(), 'Уборка и хозяйство',          1),
+            (gen_random_uuid(), 'Мелкий ремонт и отделка',      2),
+            (gen_random_uuid(), 'Пение и клирос',               3),
+            (gen_random_uuid(), 'Преподавание и катехизация',   4),
+            (gen_random_uuid(), 'Охрана и дежурство',           5),
+            (gen_random_uuid(), 'Кухня и трапезная',            6),
+            (gen_random_uuid(), 'Работа на территории',         7),
+            (gen_random_uuid(), 'IT и мультимедиа',             8),
+            (gen_random_uuid(), 'Транспорт и доставка',         9),
+            (gen_random_uuid(), 'Бухгалтерия и финансы',       10),
+            (gen_random_uuid(), 'Юридическая поддержка',       11),
+            (gen_random_uuid(), 'Социальная работа',           12),
+            (gen_random_uuid(), 'Организация мероприятий',     13),
+            (gen_random_uuid(), 'Реставрация и декор',         14),
+            (gen_random_uuid(), 'Служения',                    15)
+        ON CONFLICT (name) DO NOTHING;
     END IF;
 END $$;
 

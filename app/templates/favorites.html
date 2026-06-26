@@ -29,7 +29,7 @@
                 <div class="flex justify-between items-start">
                     <a href="{{ url_for('jobs.job_detail', job_id=job.id) }}" class="font-semibold text-primary-600 hover:text-primary-700">{{ job.title }}</a>
                     <form method="POST" action="{{ url_for('favorites.remove', item_type='job', item_id=job.id) }}" class="flex-shrink-0 ml-2">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="text-neutral-400 hover:text-danger touch-target" title="Удалить из избранного" aria-label="Удалить из избранного">
                             ❌
                         </button>
@@ -71,7 +71,7 @@
                         </div>
                     </div>
                     <form method="POST" action="{{ url_for('favorites.remove', item_type='worker', item_id=worker.id) }}" class="flex-shrink-0 ml-2">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="text-neutral-400 hover:text-danger touch-target" title="Удалить из избранного" aria-label="Удалить из избранного">
                             ❌
                         </button>
@@ -112,7 +112,7 @@
                         </div>
                     </div>
                     <form method="POST" action="{{ url_for('favorites.remove', item_type='employer', item_id=employer.id) }}" class="flex-shrink-0 ml-2">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="text-neutral-400 hover:text-danger touch-target" title="Удалить из избранного" aria-label="Удалить из избранного">
                             ❌
                         </button>

@@ -29,7 +29,7 @@
 <!-- ====== Массовые действия ====== -->
 {% if jobs %}
 <form id="mass-action-form" method="POST" action="{{ url_for('jobs.my_jobs_action') }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="bg-white rounded-lg shadow-md p-4 mb-4 flex flex-wrap items-center gap-3">
         <button type="button" id="select-all" class="px-3 py-1.5 border border-neutral-300 rounded-lg text-sm font-medium hover:bg-neutral-100 transition-colors touch-target">
             ☐ Выбрать все
@@ -101,12 +101,12 @@
                                 </a>
                                 {% endif %}
                                 {% if job.status == 'open' %}
-                                <button type="button" onclick="if(confirm('Отозвать задание?')){ var f=document.createElement('form');f.method='POST';f.action='{{ url_for('jobs.cancel_job', job_id=job.id) }}';var csrf=document.createElement('input');csrf.type='hidden';csrf.name='csrf_token';csrf.value='{{ csrf_token() }}';f.appendChild(csrf);document.body.appendChild(f);f.submit(); }" class="px-2 py-1 text-xs bg-danger-light text-danger hover:bg-danger hover:text-white rounded transition-colors touch-target" title="Отозвать">
+                                <button type="button" onclick="if(confirm('Отозвать задание?')){ var f=document.createElement('form');f.method='POST';f.action='{{ url_for('jobs.cancel_job', job_id=job.id) }}';var csrf=document.createElement('input');csrf.type='hidden';csrf.name='csrf_token';csrf.value='{{ csrf_token }}';f.appendChild(csrf);document.body.appendChild(f);f.submit(); }" class="px-2 py-1 text-xs bg-danger-light text-danger hover:bg-danger hover:text-white rounded transition-colors touch-target" title="Отозвать">
                                     ❌
                                 </button>
                                 {% endif %}
                                 {% if job.status == 'cancelled' %}
-                                <button type="button" onclick="if(confirm('Восстановить задание?')){ var f=document.createElement('form');f.method='POST';f.action='{{ url_for('jobs.restore_job', job_id=job.id) }}';var csrf=document.createElement('input');csrf.type='hidden';csrf.name='csrf_token';csrf.value='{{ csrf_token() }}';f.appendChild(csrf);document.body.appendChild(f);f.submit(); }" class="px-2 py-1 text-xs bg-success-light text-success hover:bg-success hover:text-white rounded transition-colors touch-target" title="Восстановить">
+                                <button type="button" onclick="if(confirm('Восстановить задание?')){ var f=document.createElement('form');f.method='POST';f.action='{{ url_for('jobs.restore_job', job_id=job.id) }}';var csrf=document.createElement('input');csrf.type='hidden';csrf.name='csrf_token';csrf.value='{{ csrf_token }}';f.appendChild(csrf);document.body.appendChild(f);f.submit(); }" class="px-2 py-1 text-xs bg-success-light text-success hover:bg-success hover:text-white rounded transition-colors touch-target" title="Восстановить">
                                     🔄
                                 </button>
                                 {% endif %}

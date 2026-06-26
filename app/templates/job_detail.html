@@ -126,7 +126,7 @@
                             </span>
                             {% if my_app_status == 'pending' and can_withdraw %}
                             <form method="POST" action="{{ url_for('applications.withdraw', application_id=my_app_id) }}" class="inline">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                 <button type="submit" class="px-4 py-2 bg-danger-light hover:bg-danger text-danger hover:text-white rounded-lg text-sm font-medium transition-colors touch-target">
                                     Отозвать отклик
                                 </button>
@@ -134,7 +134,7 @@
                             {% endif %}
                         {% else %}
                             <form method="POST" action="{{ url_for('applications.apply', job_id=job.id) }}" class="inline">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                 <button type="submit" class="px-6 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg font-medium transition-colors touch-target">
                                     ✋ Откликнуться
                                 </button>
@@ -143,7 +143,7 @@
                     {% endif %}
                     {% if employer %}
                     <form method="POST" action="{{ url_for('employers.toggle_favorite', employer_id=employer.id) }}" class="inline">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="px-4 py-2 border {% if is_employer_favorited %}border-danger text-danger hover:bg-danger-light{% else %}border-neutral-300 text-neutral-600 hover:bg-neutral-100{% endif %} rounded-lg text-sm font-medium transition-colors touch-target">
                             {% if is_employer_favorited %}❤️ В избранном{% else %}🤍 В избранное{% endif %}
                         </button>
@@ -157,7 +157,7 @@
                     </a>
                     {% if job.status == 'open' %}
                     <form method="POST" action="{{ url_for('jobs.cancel_job', job_id=job.id) }}" class="inline" onsubmit="return confirm('Вы уверены, что хотите отозвать задание?')">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="px-4 py-2 bg-danger-light hover:bg-danger text-danger hover:text-white rounded-lg text-sm font-medium transition-colors touch-target">
                             ❌ Отозвать
                         </button>
@@ -165,7 +165,7 @@
                     {% endif %}
                     {% if job.status == 'cancelled' %}
                     <form method="POST" action="{{ url_for('jobs.restore_job', job_id=job.id) }}" class="inline">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="px-4 py-2 bg-success hover:bg-success-dark text-white rounded-lg text-sm font-medium transition-colors touch-target">
                             🔄 Восстановить
                         </button>

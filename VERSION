@@ -1,1 +1,1 @@
-a4ac9b7 fix: runtime fallback for PGRST_JWT_SECRET + CSRF exception for delete-photo + startup diagnostics (2026-06-26 03:34:19 +0300)
+46d475e fix admin: гибкий приём form/json для навыков и религий, inline-редактирование (2026-06-26 12:32:31 +0300)

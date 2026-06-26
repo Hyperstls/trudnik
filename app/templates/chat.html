@@ -41,7 +41,7 @@
 
     <!-- Форма отправки -->
     <form method="POST" class="bg-white rounded-lg shadow-md p-4 flex gap-2 flex-shrink-0">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="text" name="message" required placeholder="Введите сообщение..." autofocus
                class="flex-grow border border-neutral-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                autocomplete="off">
