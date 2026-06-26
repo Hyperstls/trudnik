@@ -3,7 +3,7 @@ import os
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for, jsonify
 
 from app.decorators import login_required, role_required, admin_required, handle_errors
-from app.utils import cache_for, sanitize_postgrest, postgrest_request, postgrest_admin_request, postgrest_rpc
+from app.utils import cache_for, sanitize_postgrest, postgrest_request, postgrest_admin_request, postgrest_rpc, is_circuit_open
 from app.utils.helpers import assert_postgrest_ok
 
 admin_bp = Blueprint('admin', __name__)
@@ -471,13 +471,32 @@ def add_religion():
         max_order = 0
         existing = postgrest_admin_request('GET', 'religions?select=sort_order&order=sort_order.desc&limit=1')
         if not existing.ok:
-            existing = postgrest_admin_request('GET', 'religions?select=id&order=name.desc&limit=1')
-        if existing.ok and existing.json():
+            if is_circuit_open(existing):
+                flash('Сервис временно недоступен. Попробуйте позже.', 'danger')
+                current_app.logger.warning('add_religion: circuit breaker open, skipping GET fallback')
+                return redirect(url_for('admin.admin_panel', tab='dictionaries'))
+            # Fallback: если не удалось получить sort_order — используем 0
+            current_app.logger.warning(
+                'add_religion: GET max_order failed (status %s), using default 0',
+                existing.status_code
+            )
+        elif existing.json():
             item = existing.json()[0] if existing.json() else {}
             max_order = item.get('sort_order', 0)
+
         resp = postgrest_admin_request('POST', 'religions', json={'name': name, 'sort_order': max_order + 1})
         if resp.ok:
             flash(f'Вероисповедание «{name}» добавлено', 'success')
+        elif is_circuit_open(resp):
+            flash('Сервис временно недоступен. Попробуйте позже.', 'danger')
+            current_app.logger.warning('add_religion: circuit breaker open, POST not executed')
+        elif resp.status_code == 0:
+            # Таймаут / сетевой ошибка — status_code=0 означает, что запрос не дошёл
+            flash('Сервер PostgREST не отвечает. Попробуйте позже.', 'danger')
+            current_app.logger.error(
+                'add_religion: PostgREST timeout/network error (status 0): %s',
+                resp.text
+            )
         else:
             current_app.logger.error(
                 'add_religion: PostgREST error (status %s): %s',

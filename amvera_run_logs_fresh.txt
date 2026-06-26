@@ -1,0 +1,102 @@
+Current region: msk_0
+Current region: msk_0
+INFO:     10.112.209.41:40778 - "GET /sw.js HTTP/1.1" 200 OK
+INFO:     connection open
+2026-06-26 11:31:57 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 подключился по WebSocket (всего онлайн: 1)
+INFO:     10.112.202.32:52012 - "WebSocket /ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiM2Q2MDM1OTUtY2U0OS00MWI1LTlkODAtMmExNGJlMWIwNGI3IiwiZXhwIjoxNzgzMDc4MzE3fQ.XXRFOnY4dsCMZNarUx90wfqVQaLrXi2mHvljbKHWnwU" [accepted]
+2026-06-26 11:31:57 [WARNING] asgi: [ASGI_ROUTER] type=websocket path=/ws
+INFO:     10.112.209.41:40786 - "GET /static/manifest.json HTTP/1.1" 200 OK
+2026-06-26 11:31:57 [INFO] app: Static request: /static/manifest.json | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+[2026-06-26 11:31:57,191] INFO in __init__: Static request: /static/manifest.json | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+INFO:     connection closed
+2026-06-26 11:31:57 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 удалён из активных соединений (всего онлайн: 0)
+2026-06-26 11:31:57 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 отключился от WebSocket
+INFO:     10.112.209.41:40778 - "GET / HTTP/1.1" 200 OK
+INFO:     connection closed
+2026-06-26 11:31:41 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 удалён из активных соединений (всего онлайн: 0)
+2026-06-26 11:31:41 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 отключился от WebSocket
+INFO:     10.112.209.41:46450 - "GET /sw.js HTTP/1.1" 200 OK
+INFO:     10.112.209.41:46450 - "GET /favicon.ico HTTP/1.1" 204 No Content
+INFO:     connection open
+2026-06-26 11:31:15 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 подключился по WebSocket (всего онлайн: 1)
+INFO:     10.112.202.32:54872 - "WebSocket /ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiM2Q2MDM1OTUtY2U0OS00MWI1LTlkODAtMmExNGJlMWIwNGI3IiwiZXhwIjoxNzgzMDc4Mjc1fQ.t50rqBwYNb2FDyLO4IwPB98lQgR-u0W3y6IcNmyZiM0" [accepted]
+2026-06-26 11:31:15 [WARNING] asgi: [ASGI_ROUTER] type=websocket path=/ws
+INFO:     10.112.209.41:49832 - "GET /static/manifest.json HTTP/1.1" 200 OK
+2026-06-26 11:31:15 [INFO] app: Static request: /static/manifest.json | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+[2026-06-26 11:31:15,828] INFO in __init__: Static request: /static/manifest.json | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+INFO:     connection closed
+2026-06-26 11:31:15 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 удалён из активных соединений (всего онлайн: 0)
+2026-06-26 11:31:15 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 отключился от WebSocket
+TypeError: 'str' object is not callable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  File "/app/templates/profile.html", line 77, in block 'content'
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    {% block content %}{% endblock %}
+  File "/app/templates/base.html", line 762, in top-level template code
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    {% from '_icons.html' import star, chat, trash, shield, camera, settings, mail, phone, map_pin, info, smiley %}
+  File "/app/templates/profile.html", line 2, in top-level template code
+    raise rewrite_traceback_stack(source=source)
+  File "/usr/local/lib/python3.12/site-packages/jinja2/environment.py", line 942, in handle_exception
+    self.environment.handle_exception()
+  File "/usr/local/lib/python3.12/site-packages/jinja2/environment.py", line 1295, in render
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+    rv = template.render(context)
+  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 132, in _render
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    return _render(app, template, context)
+  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 151, in render_template
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    return render_template('profile.html', profile_user=profile_user)
+  File "/app/app/blueprints/profile.py", line 39, in profile
+           ^^^^^^^^^^^^^^^^^^
+    return f(*args, **kwargs)
+  File "/app/app/decorators.py", line 50, in decorated
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+  File "/usr/local/lib/python3.12/site-packages/flask/app.py", line 902, in dispatch_request
+         ^^^^^^^^^^^^^^^^^^^^^^^
+    rv = self.dispatch_request()
+  File "/usr/local/lib/python3.12/site-packages/flask/app.py", line 917, in full_dispatch_request
+Traceback (most recent call last):
+INFO:     10.112.209.41:46450 - "GET /profile HTTP/1.1" 500 Internal Server Error
+TypeError: 'str' object is not callable
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  File "/app/templates/profile.html", line 77, in block 'content'
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    {% block content %}{% endblock %}
+  File "/app/templates/base.html", line 762, in top-level template code
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+    {% from '_icons.html' import star, chat, trash, shield, camera, settings, mail, phone, map_pin, info, smiley %}
+  File "/app/templates/profile.html", line 2, in top-level template code
+    raise rewrite_traceback_stack(source=source)
+  File "/usr/local/lib/python3.12/site-packages/jinja2/environment.py", line 942, in handle_exception
+    self.environment.handle_exception()
+  File "/usr/local/lib/python3.12/site-packages/jinja2/environment.py", line 1295, in render
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+    rv = template.render(context)
+  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 132, in _render
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    return _render(app, template, context)
+  File "/usr/local/lib/python3.12/site-packages/flask/templating.py", line 151, in render_template
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    return render_template('profile.html', profile_user=profile_user)
+  File "/app/app/blueprints/profile.py", line 39, in profile
+           ^^^^^^^^^^^^^^^^^^
+    return f(*args, **kwargs)
+  File "/app/app/decorators.py", line 50, in decorated
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+  File "/usr/local/lib/python3.12/site-packages/flask/app.py", line 902, in dispatch_request
+         ^^^^^^^^^^^^^^^^^^^^^^^
+    rv = self.dispatch_request()
+  File "/usr/local/lib/python3.12/site-packages/flask/app.py", line 917, in full_dispatch_request
+Traceback (most recent call last):
+[2026-06-26 11:31:15,255] ERROR in __init__: Unhandled exception
+2026-06-26 11:31:15 [ERROR] app: Unhandled exception
+INFO:     10.112.209.41:46450 - "GET /sw.js HTTP/1.1" 200 OK
+INFO:     10.112.209.41:46450 - "GET /favicon.ico HTTP/1.1" 204 No Content
+INFO:     connection open
+2026-06-26 11:31:12 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 подключился по WebSocket (всего онлайн: 1)

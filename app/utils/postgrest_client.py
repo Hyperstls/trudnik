@@ -459,7 +459,7 @@ def postgrest_request(method: str, endpoint: str, **kwargs: Any) -> PostgrestRes
         if extra_headers:
             headers.update(extra_headers)
         url = f'{POSTGREST_URL.strip()}/{endpoint}'
-        _timeout = 15 if method.upper() == 'GET' else 10
+        _timeout = 30
         resp = _session.request(method, url, headers=headers, timeout=_timeout, **kwargs)
         try:
             data = resp.json()
@@ -532,7 +532,7 @@ def postgrest_admin_request(method: str, endpoint: str, **kwargs: Any) -> Postgr
 
     def _make_request() -> PostgrestResponse:
         url = f'{POSTGREST_URL.strip()}/{endpoint}'
-        _timeout = 15 if method.upper() == 'GET' else 10
+        _timeout = 30
         resp = _admin_session.request(method, url, headers=headers, timeout=_timeout, **kwargs)
         try:
             data = resp.json()
