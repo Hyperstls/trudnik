@@ -1,1 +1,1 @@
-867d37c Add 'Current Version' button to admin dashboard + update VERSION file (2026-06-26 17:42:35 +0300)
+d902c98 fix: increase RPC timeout 10→60s, handle delete_account errors, add cookies.txt to gitignore (2026-06-26 19:17:39 +0300)
