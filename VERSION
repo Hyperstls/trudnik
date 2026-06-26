@@ -1,1 +1,1 @@
-7767808 fix: resolve 503 - remove root_health_check infinite redirect, replace deprecated wsgi middleware with a2wsgi, add migration 071 for auth function permissions (2026-06-26 02:19:46 +0300)
+78b71cf fix: normalize POSTGREST_URL, validate PGRST_JWT_SECRET, improve circuit breaker handling (2026-06-26 03:09:53 +0300)

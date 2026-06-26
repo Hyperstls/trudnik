@@ -75,11 +75,24 @@ def generate_jwt(user_id, role, exp_seconds=3600):
         'exp': datetime.utcnow() + timedelta(seconds=exp_seconds),
         'jti': secrets.token_hex(8)
     }
-    secret = current_app.config.get('PGRST_JWT_SECRET') or current_app.config.get('SECRET_KEY')
+    # Приоритет: 1) Flask config (из Config.PGRST_JWT_SECRET), 2) os.environ (runtime fallback),
+    # 3) SECRET_KEY (последний fallback)
+    import os as _os
+    secret = (
+        current_app.config.get('PGRST_JWT_SECRET')
+        or _os.environ.get('PGRST_JWT_SECRET')
+        or current_app.config.get('SECRET_KEY')
+    )
     if not current_app.config.get('PGRST_JWT_SECRET'):
-        current_app.logger.warning(
-            'PGRST_JWT_SECRET не задан — используется SECRET_KEY как fallback для JWT'
-        )
+        if _os.environ.get('PGRST_JWT_SECRET'):
+            current_app.logger.info(
+                'PGRST_JWT_SECRET найден в os.environ (runtime fallback) — %d байт',
+                len(_os.environ.get('PGRST_JWT_SECRET', '').encode('utf-8'))
+            )
+        else:
+            current_app.logger.warning(
+                'PGRST_JWT_SECRET не задан — используется SECRET_KEY как fallback для JWT'
+            )
     return _jwt_lib.encode(payload, secret, algorithm='HS256')
 
 

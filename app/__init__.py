@@ -170,6 +170,24 @@ def create_app():
     app.config.from_object(Config)
     app.secret_key = app.config['SECRET_KEY']
 
+    # ═══════════════════════════════════════════════════════════════
+    # Диагностика: проверка PGRST_JWT_SECRET при старте
+    # ═══════════════════════════════════════════════════════════════
+    _jwt_secret = app.config.get('PGRST_JWT_SECRET', '') or os.environ.get('PGRST_JWT_SECRET', '')
+    if _jwt_secret:
+        _jwt_bytes = len(_jwt_secret.encode('utf-8'))
+        app.logger.info(
+            'PGRST_JWT_SECRET: %d байт (%s)',
+            _jwt_bytes,
+            'OK' if _jwt_bytes >= 32 else 'СЛИШКОМ КОРОТКИЙ'
+        )
+    else:
+        app.logger.warning(
+            'PGRST_JWT_SECRET не задан! Будет использован SECRET_KEY (%d байт) — '
+            'это небезопасно для production.',
+            len(app.config.get('SECRET_KEY', '').encode('utf-8'))
+        )
+
     # Дождаться готовности PostgREST перед приёмом запросов
     # (предотвращает открытие Circuit Breaker из-за race condition при старте docker-compose)
     _wait_for_postgrest(app)
@@ -234,6 +252,9 @@ def create_app():
             return
         # Пропускаем auth-роуты (login/register) — на них нет CSRF-токена в формах
         if request.path in ('/login', '/register'):
+            return
+        # Пропускаем удаление фото — вызывается через fetch без CSRF-токена
+        if request.path == '/profile/delete-photo':
             return
         # Emergency API endpoints protected by X-Admin-Token instead of CSRF
         if request.path in ('/api/reset-users', '/api/fix-permissions', '/api/reset-circuit-breaker') and request.headers.get('X-Admin-Token') == app.config.get('SECRET_KEY'):
