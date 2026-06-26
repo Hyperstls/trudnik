@@ -1,0 +1,1 @@
+[31mCommand 'logs run' exists but is not currently available because you are not logged in.[0m
