@@ -5,7 +5,7 @@ from flask import Blueprint, current_app, g, jsonify, flash, redirect, render_te
 from app.config import Config
 from app.decorators import login_required, rate_limit, role_required, validate_uuid
 from app.utils import (
-    calculate_distance, check_withdraw_window, copy_job,
+    calculate_distance, check_withdraw_window, copy_job, is_circuit_open,
     sanitize_postgrest, postgrest_admin_request, postgrest_request, postgrest_rpc,
 )
 from app.utils.helpers import assert_postgrest_ok
@@ -306,7 +306,7 @@ def workers():
                 '[WORKERS] Failed to fetch profiles: status=%s text=%s',
                 resp.status_code, (resp.text or '')[:300]
             )
-            if hasattr(resp, 'circuit_open') and resp.circuit_open:
+            if is_circuit_open(resp):
                 flash('Сервис временно недоступен. Результаты поиска могут быть неполными.', 'warning')
             else:
                 flash('Не удалось загрузить список трудников. Пожалуйста, попробуйте позже.', 'warning')

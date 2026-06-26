@@ -5,7 +5,7 @@ from werkzeug.utils import secure_filename
 
 from app.config import Config
 from app.decorators import login_required, rate_limit, validate_uuid
-from app.utils import postgrest_admin_request, postgrest_request, postgrest_rpc, upload_to_storage
+from app.utils import is_circuit_open, postgrest_admin_request, postgrest_request, postgrest_rpc, upload_to_storage
 from app.utils.helpers import assert_postgrest_ok
 from app.utils.validators import validate_password
 
@@ -22,7 +22,7 @@ def profile():
     user_id = session['user_id']
     try:
         resp = postgrest_request('GET', f'profiles?id=eq.{user_id}&select=*')
-        if hasattr(resp, 'circuit_open') and resp.circuit_open:
+        if is_circuit_open(resp):
             flash('Сервис временно недоступен. Пожалуйста, попробуйте позже.', 'warning')
             profile_user = None
         elif resp.ok and resp.json():

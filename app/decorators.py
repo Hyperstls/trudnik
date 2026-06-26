@@ -8,7 +8,7 @@ import jwt
 from flask import abort, current_app, flash, jsonify, redirect, request, session, url_for
 
 from app.config import Config
-from app.utils import refresh_access_token, postgrest_request
+from app.utils import is_circuit_open, refresh_access_token, postgrest_request
 
 F = TypeVar('F', bound=Callable[..., Any])
 
@@ -71,7 +71,7 @@ def role_required(role: str) -> Callable[[F], F]:
             resp = postgrest_request('GET', f'profiles?id=eq.{session["user_id"]}&select=role')
 
             # Проверка на Circuit Breaker OPEN
-            if hasattr(resp, 'circuit_open') and resp.circuit_open:
+            if is_circuit_open(resp):
                 flash('Сервис временно недоступен. Пожалуйста, попробуйте позже.', 'warning')
                 return redirect(url_for('jobs.index'))
 

@@ -75,7 +75,11 @@ def generate_jwt(user_id, role, exp_seconds=3600):
         'exp': datetime.utcnow() + timedelta(seconds=exp_seconds),
         'jti': secrets.token_hex(8)
     }
-    secret = current_app.config.get('PGRST_JWT_SECRET', current_app.config.get('SECRET_KEY'))
+    secret = current_app.config.get('PGRST_JWT_SECRET') or current_app.config.get('SECRET_KEY')
+    if not current_app.config.get('PGRST_JWT_SECRET'):
+        current_app.logger.warning(
+            'PGRST_JWT_SECRET не задан — используется SECRET_KEY как fallback для JWT'
+        )
     return _jwt_lib.encode(payload, secret, algorithm='HS256')
 
 

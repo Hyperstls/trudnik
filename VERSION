@@ -1,1 +1,1 @@
-4f21f38 redeploy: update VERSION to trigger Amvera rebuild after migration fix + run_all_safe.sql cleanup (2026-06-26 01:44:13 +0300)
+7767808 fix: resolve 503 - remove root_health_check infinite redirect, replace deprecated wsgi middleware with a2wsgi, add migration 071 for auth function permissions (2026-06-26 02:19:46 +0300)

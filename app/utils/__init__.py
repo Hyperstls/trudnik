@@ -96,6 +96,7 @@ from app.services.push_service import PushService
 CircuitBreaker = _pgrest.CircuitBreaker
 PostgrestResponse = _pgrest.PostgrestResponse
 cache_for = _pgrest.cache_for
+is_circuit_open = _pgrest.is_circuit_open
 POSTGREST_URL = _pgrest.POSTGREST_URL
 PGRST_JWT_SECRET = _pgrest.PGRST_JWT_SECRET
 get_service_role_headers = _pgrest.get_service_role_headers
@@ -160,7 +161,7 @@ get_user_rating = _ratings_service.get_user_rating
 __all__ = [
     # PostgREST
     'CircuitBreaker', 'PostgrestResponse',
-    'cache_for',
+    'cache_for', 'is_circuit_open',
     'POSTGREST_URL', 'PGRST_JWT_SECRET',
     'get_service_role_headers', 'get_user_headers',
     'postgrest_request', 'postgrest_admin_request', 'postgrest_rpc',

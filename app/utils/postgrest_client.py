@@ -159,10 +159,40 @@ class CircuitBreaker:
 
 
 def _circuit_open_response() -> 'PostgrestResponse':
-    """Создать ответ-заглушку при разомкнутой цепи."""
-    resp = PostgrestResponse(ok=False, status_code=503, text='Circuit breaker open')
+    """Создать ответ-заглушку при разомкнутой цепи.
+
+    Возвращает HTTP 503 (Service Unavailable) с понятным сообщением.
+    Вызывающий код может проверить ``resp.circuit_open`` и/или
+    ``is_circuit_open(resp)`` для принятия решения.
+
+    Returns:
+        PostgrestResponse со статусом 503 и circuit_open=True.
+    """
+    resp = PostgrestResponse(
+        ok=False,
+        status_code=503,
+        text=(
+            'PostgREST service unavailable (circuit breaker open). '
+            'The service is temporarily down. Please try again later.'
+        ),
+    )
     resp.circuit_open = True
     return resp
+
+
+def is_circuit_open(resp: Any) -> bool:
+    """Проверить, является ли ответ результатом разомкнутой цепи Circuit Breaker.
+
+    Удобная обёртка над ``hasattr(resp, 'circuit_open') and resp.circuit_open``.
+    Используйте во всех view-функциях вместо прямой проверки атрибута.
+
+    Args:
+        resp: PostgrestResponse или любой объект с атрибутом circuit_open.
+
+    Returns:
+        True если цепь разомкнута, иначе False.
+    """
+    return hasattr(resp, 'circuit_open') and bool(resp.circuit_open)
 
 
 _cb_postgrest = CircuitBreaker(

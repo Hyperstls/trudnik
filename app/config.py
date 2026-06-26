@@ -1,7 +1,10 @@
+import logging
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 
 class Config:
@@ -14,11 +17,50 @@ class Config:
     # Amvera PostgREST
     _default_postgrest = 'http://localhost:3000' if os.environ.get('DEPLOYMENT_ENV') != 'production' else ''
     POSTGREST_URL = os.environ.get('POSTGREST_URL', _default_postgrest).strip()
+
+    # Нормализация URL: добавляем http:// если схема отсутствует
+    if POSTGREST_URL and not POSTGREST_URL.startswith(('http://', 'https://')):
+        logger.warning(
+            f'POSTGREST_URL не содержит схемы: "{POSTGREST_URL}". '
+            f'Добавлено "http://" по умолчанию.'
+        )
+        POSTGREST_URL = 'http://' + POSTGREST_URL
+
     if os.environ.get('DEPLOYMENT_ENV') == 'production' and not POSTGREST_URL:
         raise RuntimeError('POSTGREST_URL is required in production')
+
+    if not POSTGREST_URL:
+        POSTGREST_URL = 'http://localhost:3000'
+        logger.warning('POSTGREST_URL не задан, установлен fallback: http://localhost:3000')
     PGRST_JWT_SECRET = os.environ.get('PGRST_JWT_SECRET', '')
+    if not PGRST_JWT_SECRET:
+        logger.error(
+            "PGRST_JWT_SECRET не задан! Будет использован SECRET_KEY как fallback "
+            "— это небезопасно для production"
+        )
     if os.environ.get('DEPLOYMENT_ENV') == 'production' and not PGRST_JWT_SECRET:
         raise RuntimeError('PGRST_JWT_SECRET is required in production')
+
+    # ═══════════════════════════════════════════════════════════
+    # Валидация длины PGRST_JWT_SECRET
+    # ═══════════════════════════════════════════════════════════
+    _deployment_env = os.environ.get('DEPLOYMENT_ENV', 'development')
+    _jwt_secret_bytes = len(PGRST_JWT_SECRET.encode('utf-8'))
+    if _jwt_secret_bytes < 32:
+        _msg = (
+            f'PGRST_JWT_SECRET слишком короткий: {_jwt_secret_bytes} байт. '
+            f'Минимальная рекомендуемая длина для HS256 — 32 байта (256 бит).'
+        )
+        if _deployment_env == 'production':
+            logger.error('PRODUCTION SECURITY: ' + _msg)
+        else:
+            logger.warning('SECURITY: ' + _msg)
+    elif _jwt_secret_bytes < 64:
+        _msg = (
+            f'PGRST_JWT_SECRET: {_jwt_secret_bytes} байт — '
+            f'достаточно для HS256 (мин. 32), но рекомендуется 64 байта (512 бит).'
+        )
+        logger.info(_msg)
 
     YANDEX_MAPS_API_KEY = os.environ.get('YANDEX_MAPS_API_KEY', '')
     WORKER_SITE_URL = os.environ.get('WORKER_SITE_URL', 'https://trudnik-hyperstls.amvera.io/')
