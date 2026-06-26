@@ -577,7 +577,7 @@ def postgrest_rpc(function_name: str, params: dict, use_admin: bool = False) -> 
         headers = get_user_headers()
 
     def _make_request() -> PostgrestResponse:
-        resp = _session.post(url, headers=headers, json=params, timeout=10)
+        resp = _session.post(url, headers=headers, json=params, timeout=60)
         try:
             data = resp.json()
         except Exception:

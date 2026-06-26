@@ -155,13 +155,21 @@ def delete_account():
     user_id = session['user_id']
 
     # Каскадное удаление через RPC (этап 4.4)
-    rpc_result = postgrest_rpc('delete_user_cascade', {'p_user_id': user_id}, use_admin=True)
-    if not rpc_result.ok:
-        current_app.logger.error(
-            "Profile delete account RPC: failed for %s: status=%s text=%s",
-            user_id, rpc_result.status_code, (rpc_result.text or '')[:200]
+    try:
+        rpc_result = postgrest_rpc('delete_user_cascade', {'p_user_id': user_id}, use_admin=True)
+        if not rpc_result.ok:
+            current_app.logger.error(
+                "Profile delete account RPC: failed for %s: status=%s text=%s",
+                user_id, rpc_result.status_code, (rpc_result.text or '')[:200]
+            )
+            flash('Ошибка удаления аккаунта. Пожалуйста, попробуйте позже.', 'danger')
+            return redirect(url_for('profile.profile'))
+    except Exception as e:
+        current_app.logger.exception(
+            "Profile delete account RPC: exception for %s: %s",
+            user_id, e
         )
-        flash('Ошибка удаления аккаунта. Пожалуйста, попробуйте позже.', 'danger')
+        flash('Ошибка удаления аккаунта. Сервис временно недоступен.', 'danger')
         return redirect(url_for('profile.profile'))
 
     session.clear()

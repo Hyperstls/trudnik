@@ -47,6 +47,9 @@ data/
 # Amvera CLI logs and diagnostic files
 amvera_*.txt
 
+# Session cookies (curl/wget)
+cookies.txt
+
 # Uploaded files (local storage)
 uploads/*
 !uploads/.gitkeep

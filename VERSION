@@ -1,1 +1,1 @@
-081ee9f DIAG: print(flush=True) для гарантированного вывода в Amvera логи + .gitignore amvera_*.txt (2026-06-26 16:39:28 +0300)
+867d37c Add 'Current Version' button to admin dashboard + update VERSION file (2026-06-26 17:42:35 +0300)
