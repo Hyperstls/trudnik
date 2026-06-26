@@ -270,18 +270,18 @@
         <h2 class="text-lg font-bold text-neutral-800 mb-4">Навыки</h2>
         <form method="POST" action="{{ url_for('admin.add_skill') }}" class="flex gap-2 mb-4">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="text" name="skill_name" required placeholder="Название навыка..."
+            <input type="text" name="name" required placeholder="Название навыка..."
                    class="flex-grow px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                    aria-label="Название навыка">
             <button type="submit" class="touch-target px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-sm font-medium">
                 Добавить
             </button>
         </form>
-        <div class="space-y-2 max-h-80 overflow-y-auto">
+        <div id="skills-list" class="space-y-2 max-h-80 overflow-y-auto">
             {% if skills %}
             {% for skill in skills %}
-            <div class="flex items-center justify-between px-3 py-2 bg-neutral-50 rounded-lg">
-                <span class="text-sm text-neutral-700">{{ skill.name }}</span>
+            <div class="skill-item flex items-center justify-between px-3 py-2 bg-neutral-50 rounded-lg" data-skill-id="{{ skill.id }}">
+                <span class="skill-name text-sm text-neutral-700 cursor-pointer hover:text-primary-600" title="Нажмите для редактирования">{{ skill.name }}</span>
                 <form method="POST" action="{{ url_for('admin.delete_skill', skill_id=skill.id) }}" class="inline" onsubmit="return confirm('Удалить навык «{{ skill.name }}»?')">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="touch-target text-danger hover:text-red-700 text-sm px-2" aria-label="Удалить навык {{ skill.name }}">🗑️</button>
@@ -299,18 +299,18 @@
         <h2 class="text-lg font-bold text-neutral-800 mb-4">Религии</h2>
         <form method="POST" action="{{ url_for('admin.add_religion') }}" class="flex gap-2 mb-4">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="text" name="religion_name" required placeholder="Название..."
+            <input type="text" name="name" required placeholder="Название..."
                    class="flex-grow px-4 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                    aria-label="Название религии">
             <button type="submit" class="touch-target px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-sm font-medium">
                 Добавить
             </button>
         </form>
-        <div class="space-y-2 max-h-80 overflow-y-auto">
+        <div id="religions-list" class="space-y-2 max-h-80 overflow-y-auto">
             {% if religions %}
             {% for religion in religions %}
-            <div class="flex items-center justify-between px-3 py-2 bg-neutral-50 rounded-lg">
-                <span class="text-sm text-neutral-700">{{ religion.name }}</span>
+            <div class="religion-item flex items-center justify-between px-3 py-2 bg-neutral-50 rounded-lg" data-religion-id="{{ religion.id }}">
+                <span class="religion-name text-sm text-neutral-700 cursor-pointer hover:text-primary-600" title="Нажмите для редактирования">{{ religion.name }}</span>
                 <form method="POST" action="{{ url_for('admin.delete_religion', religion_id=religion.id) }}" class="inline" onsubmit="return confirm('Удалить религию «{{ religion.name }}»?')">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="touch-target text-danger hover:text-red-700 text-sm px-2" aria-label="Удалить религию {{ religion.name }}">🗑️</button>
@@ -325,4 +325,86 @@
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    function makeEditable(config) {
+        function attachClick(el) {
+            el.addEventListener('click', function() {
+                var currentName = this.textContent.trim();
+                var itemDiv = this.closest(config.itemSelector);
+                var entityId = itemDiv.getAttribute(config.idAttr);
+                var input = document.createElement('input');
+                input.type = 'text';
+                input.value = currentName;
+                input.className = 'flex-grow px-2 py-1 border border-primary-500 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary-500';
+                input.setAttribute('aria-label', config.inputLabel);
+                this.replaceWith(input);
+                input.focus();
+                input.select();
+                
+                function save() {
+                    var newName = input.value.trim();
+                    if (newName && newName !== currentName) {
+                        fetch(config.urlPrefix + entityId, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': getCSRFToken()
+                            },
+                            body: JSON.stringify({name: newName})
+                        })
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            if (data.success) {
+                                var newSpan = document.createElement('span');
+                                newSpan.className = config.nameClass;
+                                newSpan.textContent = newName;
+                                input.replaceWith(newSpan);
+                                attachClick(newSpan);
+                            } else { revert(); }
+                        })
+                        .catch(function() { revert(); });
+                    } else { revert(); }
+                }
+                
+                function revert() {
+                    var newSpan = document.createElement('span');
+                    newSpan.className = config.nameClass;
+                    newSpan.textContent = currentName;
+                    input.replaceWith(newSpan);
+                    attachClick(newSpan);
+                }
+                
+                input.addEventListener('blur', save);
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
+                    if (e.key === 'Escape') { revert(); }
+                });
+            });
+        }
+        document.querySelectorAll(config.nameSelector).forEach(attachClick);
+    }
+    
+    makeEditable({
+        itemSelector: '.skill-item',
+        nameSelector: '.skill-name',
+        nameClass: 'skill-name text-sm text-neutral-700 cursor-pointer hover:text-primary-600',
+        idAttr: 'data-skill-id',
+        urlPrefix: '/admin/skills/',
+        inputLabel: 'Редактировать название навыка'
+    });
+    
+    makeEditable({
+        itemSelector: '.religion-item',
+        nameSelector: '.religion-name',
+        nameClass: 'religion-name text-sm text-neutral-700 cursor-pointer hover:text-primary-600',
+        idAttr: 'data-religion-id',
+        urlPrefix: '/admin/religions/',
+        inputLabel: 'Редактировать название религии'
+    });
+})();
+</script>
 {% endblock %}

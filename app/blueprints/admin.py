@@ -316,7 +316,9 @@ def get_skills():
 @login_required
 @admin_required
 def add_skill():
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
+    if not data.get('name'):
+        data['name'] = request.form.get('name', request.form.get('skill_name', '')).strip()
     name = (data.get('name', '')).strip()
     if not name:
         return jsonify({'success': False, 'error': 'Name required'}), 400
@@ -351,7 +353,9 @@ def reorder_skills():
 @login_required
 @admin_required
 def update_skill(skill_id):
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
+    if not data.get('name'):
+        data['name'] = request.form.get('name', request.form.get('skill_name', '')).strip()
     name = (data.get('name', '')).strip()
     if not name:
         return jsonify({'success': False, 'error': 'Name required'}), 400
@@ -438,7 +442,9 @@ def get_religions():
 @login_required
 @admin_required
 def add_religion():
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
+    if not data.get('name'):
+        data['name'] = request.form.get('name', request.form.get('religion_name', '')).strip()
     name = (data.get('name', '')).strip()
     if not name:
         return jsonify({'success': False, 'error': 'Name required'}), 400
@@ -472,7 +478,9 @@ def reorder_religions():
 @login_required
 @admin_required
 def update_religion(religion_id):
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
+    if not data.get('name'):
+        data['name'] = request.form.get('name', request.form.get('religion_name', '')).strip()
     name = (data.get('name', '')).strip()
     if not name:
         return jsonify({'success': False, 'error': 'Name required'}), 400

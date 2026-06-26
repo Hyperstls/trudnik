@@ -1,1 +1,1 @@
-78b71cf fix: normalize POSTGREST_URL, validate PGRST_JWT_SECRET, improve circuit breaker handling (2026-06-26 03:09:53 +0300)
+a4ac9b7 fix: runtime fallback for PGRST_JWT_SECRET + CSRF exception for delete-photo + startup diagnostics (2026-06-26 03:34:19 +0300)
