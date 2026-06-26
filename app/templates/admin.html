@@ -59,8 +59,52 @@
         <a href="?tab=dictionaries" class="touch-target px-4 py-3 bg-neutral-100 hover:bg-neutral-200 rounded-lg text-sm text-neutral-700 text-center">
             📚 Управление справочниками
         </a>
+        <button onclick="showVersionModal()" class="touch-target px-4 py-3 bg-neutral-100 hover:bg-neutral-200 rounded-lg text-sm text-neutral-700 text-center cursor-pointer">
+            🔄 Текущая версия
+        </button>
     </div>
 </div>
+
+<!-- Модальное окно с информацией о версии -->
+<div id="versionModal" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 hidden" onclick="closeVersionModal(event)">
+    <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 p-6" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-neutral-800">🔄 Текущая версия</h3>
+            <button onclick="closeVersionModal()" class="text-neutral-400 hover:text-neutral-600 text-2xl leading-none">&times;</button>
+        </div>
+        <div class="space-y-3 text-sm text-neutral-700">
+            <div class="bg-neutral-50 rounded-lg p-4 font-mono text-xs break-all border border-neutral-200">
+                {{ git_version }}
+            </div>
+            <p class="text-neutral-500">
+                Версия определяется автоматически: сначала из переменной окружения <code class="bg-neutral-100 px-1 rounded">GIT_VERSION</code>,
+                затем из файла <code class="bg-neutral-100 px-1 rounded">VERSION</code> в корне проекта,
+                затем из <code class="bg-neutral-100 px-1 rounded">git log</code>.
+            </p>
+            <p class="text-xs text-neutral-400">
+                Версия обновляется при каждом запросе (кэш 60 секунд).
+            </p>
+        </div>
+        <div class="mt-5 flex justify-end">
+            <button onclick="closeVersionModal()" class="touch-target px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-sm font-medium">
+                Закрыть
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function showVersionModal() {
+    document.getElementById('versionModal').classList.remove('hidden');
+    document.getElementById('versionModal').classList.add('flex');
+}
+
+function closeVersionModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('versionModal').classList.add('hidden');
+    document.getElementById('versionModal').classList.remove('flex');
+}
+</script>
 {% endif %}
 
 <!-- ====== Tab: users ====== -->
