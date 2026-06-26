@@ -1,0 +1,20 @@
+Current region: msk_0
+Current region: msk_0
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Application startup complete.
+INFO:     ASGI 'lifespan' protocol appears unsupported.
+INFO:     Waiting for application startup.
+INFO:     Started server process [7]
+INFO:     10.112.209.41:52250 - "GET /sw.js HTTP/1.1" 200 OK
+INFO:     10.112.202.32:42092 - "GET /static/manifest.json HTTP/1.1" 200 OK
+2026-06-26 10:53:08 [INFO] app: Static request: /static/manifest.json | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+[2026-06-26 10:53:08,595] INFO in __init__: Static request: /static/manifest.json | method=GET | user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 YaBrowser/26.4.0.0 Saf
+INFO:     10.112.209.41:52250 - "GET /favicon.ico HTTP/1.1" 204 No Content
+INFO:     connection closed
+2026-06-26 10:53:08 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 удалён из активных соединений (всего онлайн: 0)
+2026-06-26 10:53:08 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 отключился от WebSocket
+INFO:     10.112.209.41:52250 - "GET /login HTTP/1.1" 200 OK
+INFO:     10.112.209.41:52250 - "GET /admin?tab=religions HTTP/1.1" 302 Found
+INFO:     connection closed
+2026-06-26 10:53:03 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 удалён из активных соединений (всего онлайн: 0)
+2026-06-26 10:53:03 [INFO] websocket_server: Пользователь 3d603595-ce49-41b5-9d80-2a14be1b04b7 отключился от WebSocket
