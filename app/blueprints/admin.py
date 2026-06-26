@@ -332,13 +332,11 @@ def add_skill():
         if existing.ok and existing.json():
             item = existing.json()[0] if existing.json() else {}
             max_order = item.get('sort_order', 0)
+        print('DIAG add_skill: before POST', flush=True)
         resp = postgrest_admin_request('POST', 'skills', json={'name': name, 'sort_order': max_order + 1})
 
         # ===== ДИАГНОСТИКА =====
-        current_app.logger.info(
-            'DIAG add_skill: POST skills status=%s, ok=%s, text="%s"',
-            resp.status_code, resp.ok, resp.text
-        )
+        print(f'DIAG add_skill: POST skills status={resp.status_code}, ok={resp.ok}, text="{resp.text[:200]}"', flush=True)
         # =======================
 
         if resp.ok:
@@ -350,6 +348,7 @@ def add_skill():
             )
             flash(f'Ошибка при добавлении навыка: {resp.text}', 'danger')
     except Exception as e:
+        print(f'DIAG add_skill EXCEPTION: {e}', flush=True)
         current_app.logger.exception('add_skill: unexpected error')
         flash(f'Ошибка: {str(e)}', 'danger')
     return redirect(url_for('admin.admin_panel', tab='dictionaries'))
@@ -492,13 +491,11 @@ def add_religion():
             item = existing.json()[0] if existing.json() else {}
             max_order = item.get('sort_order', 0)
 
+        print('DIAG add_religion: before POST', flush=True)
         resp = postgrest_admin_request('POST', 'religions', json={'name': name, 'sort_order': max_order + 1})
 
         # ===== ДИАГНОСТИКА =====
-        current_app.logger.info(
-            'DIAG add_religion: POST religions status=%s, ok=%s, text="%s"',
-            resp.status_code, resp.ok, resp.text
-        )
+        print(f'DIAG add_religion: POST religions status={resp.status_code}, ok={resp.ok}, text="{resp.text[:200]}"', flush=True)
         # =======================
 
         if resp.ok:
@@ -520,6 +517,7 @@ def add_religion():
             )
             flash(f'Ошибка при добавлении вероисповедания: {resp.text}', 'danger')
     except Exception as e:
+        print(f'DIAG add_religion EXCEPTION: {e}', flush=True)
         current_app.logger.exception('add_religion: unexpected error')
         flash(f'Ошибка: {str(e)}', 'danger')
     return redirect(url_for('admin.admin_panel', tab='dictionaries'))

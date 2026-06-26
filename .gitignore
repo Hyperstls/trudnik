@@ -44,6 +44,9 @@ temp_workers_original.txt
 # Docker volumes (PostgreSQL data)
 data/
 
+# Amvera CLI logs and diagnostic files
+amvera_*.txt
+
 # Uploaded files (local storage)
 uploads/*
 !uploads/.gitkeep
