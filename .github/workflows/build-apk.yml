@@ -36,10 +36,22 @@ jobs:
             -keypass ${{ secrets.KEYSTORE_PASSWORD }} \
             -dname "CN=Trudnik, OU=Dev, O=Trudnik, L=Moscow, S=Moscow, C=RU"
 
+      - name: Check if TWA config exists
+        id: check_twa
+        run: |
+          if [ -f "twa-config.json" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "TWA config not found — skipping APK build"
+          fi
+
       - name: Generate TWA project (non-interactive)
+        if: steps.check_twa.outputs.exists == 'true'
         run: node generate_twa_ci.js
 
       - name: Build signed APK
+        if: steps.check_twa.outputs.exists == 'true'
         working-directory: twa-project
         run: bubblewrap build
         env:
@@ -47,12 +59,14 @@ jobs:
           BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
 
       - name: Upload APK artifact
+        if: steps.check_twa.outputs.exists == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: trudnik-apk
           path: twa-project/app-release-signed.apk
 
       - name: Upload AAB artifact (Google Play preferred)
+        if: steps.check_twa.outputs.exists == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: trudnik-aab
