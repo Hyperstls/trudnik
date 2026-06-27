@@ -6,7 +6,7 @@ import sys
 import os
 
 URL = os.environ.get("PROD_URL", "https://trudnik-hyperstls.amvera.io/")
-HEALTH_URL = URL.rstrip("/") + "/api/health"
+HEALTH_URL = URL.rstrip("/") + "/health"
 MAX_ATTEMPTS = 20
 WAIT_SEC = 15
 

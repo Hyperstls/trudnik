@@ -24,7 +24,7 @@
 --   - RLS-политики для всех таблиц (JWT-based через current_setting)
 --   - RPC-функции: 3 auth + 8 атомарных + exec_sql + accept/reject/delete + get_job_stats + nearby_jobs
 --   - Права доступа (REVOKE/GRANT)
---   - Администратор admin@test.ru / Step@1986
+--   - Администратор admin@test.ru / REDACTED
 --
 -- АРХИТЕКТУРА:
 --   - Авторизация через JWT (Flask → PostgREST)
@@ -58,7 +58,7 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
--- service_role должен обходить RLS для админских операций (supabase_admin_request)
+-- service_role должен обходить RLS для админских операций (postgrest_admin_request) — Supabase не используется
 ALTER ROLE service_role WITH BYPASSRLS;
 
 -- Даём права текущему пользователю (postgres/trudnikapp)
@@ -2315,14 +2315,12 @@ INSERT INTO profiles (id, email, password_hash, full_name, role, created_at)
 VALUES (
     gen_random_uuid(),
     'admin@test.ru',
-    crypt('Step@1986', gen_salt('bf')),
+    crypt(current_setting('app.admin_init_password', true), gen_salt('bf', 12)),
     'Администратор',
     'admin',
     now()
 )
-ON CONFLICT (email) DO UPDATE SET
-    password_hash = crypt('Step@1986', gen_salt('bf')),
-    role = 'admin';
+ON CONFLICT DO NOTHING;
 
 -- ============================================================================
 -- ГОТОВО!
@@ -2345,5 +2343,5 @@ ON CONFLICT (email) DO UPDATE SET
 --       update_job_status, resolve_user, cancel_job,
 --       force_complete_job, accept_invitation)
 --   Все REVOKE/GRANT
---   Администратор admin@test.ru / Step@1986
+--   Администратор admin@test.ru / REDACTED
 -- ============================================================================

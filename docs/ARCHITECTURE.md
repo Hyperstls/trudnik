@@ -1,8 +1,8 @@
 # Архитектура приложения «Трудник»
 
-> **Актуализировано:** 2026-06-21
+> **Актуализировано:** 2026-06-27
 > **Ветка:** `main` (монетизация отключена, `is_paid=True` всегда)
-> **Версия документа:** 4.0 — добавлен in-memory mock Supabase, миграции 049–056, новые RPC, безопасность, тестовая инфраструктура
+> **Версия документа:** 5.0 — миграция с Supabase на Amvera/PostgREST завершена, миграции 049–074, новые RPC, безопасность, тестовая инфраструктура
 
 ---
 
@@ -49,8 +49,7 @@
 | **Карты** | Яндекс.Карты API |
 | **Реальное время** | WebSocket (FastAPI) + Redis Pub/Sub |
 | **Push-уведомления** | Web Push API (VAPID) + Email (SMTP) |
-| **Деплой** | Render.com (Docker) |
-| **Тестирование** | PyTest + Playwright + Selenium + In-memory Mock Supabase |
+| **Деплой** | Render.com (Docker) | | **Тестирование** | PyTest + Playwright + Selenium + In-memory Mock PostgREST |
 | **Безопасность** | CSP nonce + CSRF + Rate Limiting + Circuit Breaker + RLS + email-валидация (RFC 5322) + защита от SQL-инъекций + дифференцированные таймауты |
 
 ---
@@ -75,9 +74,9 @@ trudnik/
 │
 ├── app/
 │   ├── __init__.py                 # create_app() — фабрика приложения, security headers, CSRF, контекст-процессоры
-│   ├── config.py                   # Config — переменные окружения (SECRET_KEY, SUPABASE_*, REDIS_URL, SMTP_*, VAPID_*, WEBSOCKET_*)
+│   ├── config.py                   # Config — переменные окружения (SECRET_KEY, POSTGREST_*, REDIS_URL, SMTP_*, VAPID_*, WEBSOCKET_*)
 │   ├── decorators.py               # @login_required, @role_required
-│   ├── utils.py                    # supabase_request, CircuitBreaker, rate_limit, sanitize, хелперы, in-memory mock Supabase
+│   ├── utils.py                    # postgrest_client, CircuitBreaker, rate_limit, sanitize, хелперы, in-memory mock PostgREST
 │   │
 │   ├── blueprints/                 # 13 блюпринтов
 │   │   ├── __init__.py
@@ -109,13 +108,7 @@ trudnik/
 │   │   ├── email_tasks.py          # Фоновые задачи отправки email
 │   │   └── push_tasks.py           # Фоновые задачи push-уведомлений
 │   │
-│   └── templates/                  # Email-шаблоны
-│       └── email/
-│           ├── base_email.html
-│           ├── base_email.txt
-│           ├── chat_message.html
-│           ├── notification.html
-│           └── notification.txt
+│   └── templates/                  # <!-- УСТАРЕЛО: Email-шаблоны в app/templates/ → templates/email/ -->
 │
 ├── templates/                      # Jinja2-шаблоны (30 файлов)
 │   ├── base.html                   # Базовый layout (навигация, заголовки, скрипты, PWA)
@@ -151,7 +144,9 @@ trudnik/
 │
 ├── static/                         # CSS, JS, изображения, PWA (sw.js, manifest.json)
 │
-├── migrations/                     # SQL-миграции (001–056)
+├── websocket_server/               # WebSocket-сервер (FastAPI + Redis Pub/Sub)
+│
+├── migrations/                     # SQL-миграции (001–074)
 │   ├── 001_setup_rls.sql
 │   ├── ... (002–047 — см. историю коммитов)
 │   ├── 047_fix_security_linter_critical.sql
@@ -165,7 +160,7 @@ trudnik/
 │   ├── 055_fix_table_structures.sql          # employer_details, favorites, job_photos, invitations, ratings
 │   ├── 056_add_nearby_jobs_rpc.sql           # RPC nearby_jobs (PostGIS)
 │   ├── ALL_PENDING.sql
-│   └── supabase_check.sql / supabase_schema.json
+│   └── run_all_safe.sql            # <!-- УСТАРЕЛО: supabase_check.sql / supabase_schema.json удалены -->
 │
 ├── docs/                           # Документация
 │   ├── ARCHITECTURE.md             # Этот документ
@@ -182,9 +177,9 @@ trudnik/
 │   ├── PROJECT_CONTEXT.md          # Контекст проекта
 │   └── screenshots/                # Скриншоты UI
 │
-├── supabase/                       # Локальная конфигурация Supabase CLI
-│   ├── config.toml                 # Конфигурация Supabase CLI
-│   └── snippets/                   # SQL-сниппеты
+├── supabase/                       # <!-- УСТАРЕЛО: Локальная конфигурация Supabase CLI — проект мигрировал на Amvera/PostgREST -->
+│   ├── config.toml                 # <!-- УСТАРЕЛО -->
+│   └── snippets/                   # <!-- УСТАРЕЛО -->
 │
 ├── tests/                          # Тестовая инфраструктура
 │   ├── conftest.py                 # Фикстуры (preseed_test_data, class-scope сессии, admin_session)
@@ -193,6 +188,8 @@ trudnik/
 │   ├── test_buttons_browser.py     # Браузерные тесты (Playwright)
 │   ├── test_buttons_frontend.py    # Фронтенд-тесты кнопок
 │   └── ...                         # Прочие тесты
+│
+├── tests_e2e/                      # End-to-end тесты (Playwright/Selenium)
 │
 ├── scripts/                        # Утилиты и скрипты
 │   ├── _apply_all_direct.py        # Прямое применение всех миграций
@@ -253,7 +250,7 @@ flowchart TB
 
     subgraph Infrastructure[Инфраструктура]
         Redis[(Redis 7)]
-        Supabase[(Supabase - PostgreSQL + Auth)]
+        PostgREST[(PostgREST (Amvera) - PostgreSQL)]
         SMTP[SMTP Server]
         PushAPI[Web Push API - VAPID]
     end
@@ -271,7 +268,7 @@ flowchart TB
     Factory --> Decorators
 
     Blueprints --> Services
-    Services -->|REST/PostgREST| Supabase
+    Services -->|REST/PostgREST| PostgREST
     Services -->|Публикация событий| RedisPub
 
     RedisPub -->|PUBLISH| Redis
@@ -297,15 +294,15 @@ flowchart TB
 ### 5.1. REST API (основной)
 
 ```
-Пользователь → Flask Blueprint → Service → supabase_request (HTTP) → Supabase PostgREST → PostgreSQL
+Пользователь → Flask Blueprint → Service → postgrest_client (HTTP) → PostgREST (Amvera) → PostgreSQL
 ```
 
-Все CRUD-операции проходят через [`supabase_request()`](../app/utils.py) — обёртку над HTTP-запросами к PostgREST API Supabase с Circuit Breaker и обработкой ошибок.
+Все CRUD-операции проходят через [`postgrest_client.py`](../app/utils/postgrest_client.py) — обёртку над HTTP-запросами к PostgREST API (Amvera) с Circuit Breaker и обработкой ошибок.
 
 ### 5.2. RPC (атомарные операции)
 
 ```
-Пользователь → Flask Blueprint → supabase_request (POST /rpc/function_name) → PostgreSQL функция
+Пользователь → Flask Blueprint → postgrest_client (POST /rpc/function_name) → PostgreSQL функция
 ```
 
 Ключевые RPC-функции:
@@ -319,9 +316,10 @@ flowchart TB
 ### 5.3. Загрузка файлов
 
 ```
-Пользователь → Flask Blueprint → Supabase Storage API → Supabase Storage Bucket
+Пользователь → Flask Blueprint → Локальное хранилище (uploads/) или Amvera Storage
 ```
 
+<!-- УСТАРЕЛО: Ранее использовался Supabase Storage API → Supabase Storage Bucket -->
 Используется для аватаров пользователей и изображений заданий.
 
 ### 5.4. WebSocket (чат, live-уведомления)
@@ -362,13 +360,13 @@ Celery Worker → pywebpush (VAPID) → Браузер (Service Worker) → По
 - Подписки хранятся в таблице `push_subscriptions`
 - Service Worker (`sw.js`) принимает push-события и показывает браузерные уведомления
 
-### 5.7. In-memory Mock Supabase (тестовый режим)
+### 5.7. In-memory Mock PostgREST (тестовый режим)
 
 ```
 Тесты (PyTest) → `_is_mock_enabled()` → `_test_mock_request()` → In-memory dict БД
 ```
 
-В [`app/testing/mock_supabase.py`](../app/testing/mock_supabase.py) реализован in-memory mock для тестового режима (`TESTING=True`). Mock эмулирует:
+В [`app/testing/mock_postgrest.py`](../app/testing/mock_postgrest.py) реализован in-memory mock для тестового режима (`TESTING=True`). Mock эмулирует:
 
 - **PostgREST API** — GET/POST/PATCH/DELETE с фильтрацией: `eq`, `neq`, `gt`, `lt`, `ilike`, `in`, `not`, `is.null`
 - **Auth RPC** — `login_user`, `register_user`
@@ -377,7 +375,8 @@ Celery Worker → pywebpush (VAPID) → Браузер (Service Worker) → По
 **Активация mock** через `_is_mock_enabled()`:
 1. Переменная окружения `TESTING=True`
 2. Flask-конфигурация `TESTING=True` (устанавливается в `conftest.py`)
-3. Файл `.mock_supabase` в корне проекта (legacy)
+
+<!-- УСТАРЕЛО: Файл `.mock_supabase` в корне проекта (legacy) удалён -->
 
 **Защита от случайной активации:** гарда `PYTEST_CURRENT_TEST` в [`tests/conftest.py:24`](../tests/conftest.py:24) — mock активируется только при запуске через pytest.
 
@@ -385,7 +384,7 @@ Celery Worker → pywebpush (VAPID) → Браузер (Service Worker) → По
 
 - **Валидация email** — RFC 5322 regex в [`app/blueprints/auth.py:15`](../app/blueprints/auth.py:15)
 - **Защита от SQL-инъекций** — проверка ASCII-фрагментов пользовательского ввода в [`app/blueprints/auth.py:25`](../app/blueprints/auth.py:25)
-- **Дифференцированные таймауты** — GET-запросы 15s, мутации (POST/PUT/DELETE) 10s в [`postgrest_request()`](../app/utils/supabase.py)
+- **Дифференцированные таймауты** — GET-запросы 15s, мутации (POST/PUT/DELETE) 10s в [`postgrest_client.py`](../app/utils/postgrest_client.py)
 - **PERMANENT_SESSION_LIFETIME** = 1800 секунд (30 минут)
 - **JWT-аутентификация** — `postgrest_admin_request` использует `PGRST_JWT_SECRET` для service_role-запросов
 

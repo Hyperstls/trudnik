@@ -5,15 +5,43 @@ from werkzeug.utils import secure_filename
 
 from app.config import Config
 from app.decorators import login_required, rate_limit, validate_uuid
+from app.services.storage_service import upload_photo
 from app.utils import is_circuit_open, postgrest_admin_request, postgrest_request, postgrest_rpc, upload_to_storage
 from app.utils.helpers import assert_postgrest_ok
 from app.utils.validators import validate_password
 
 profile_bp = Blueprint('profile', __name__)
 
+# Публичные поля профиля (C27, C28)
+PUBLIC_PROFILE_FIELDS = 'id,role,created_at,updated_at,is_self_employed,email_public,rating,full_name,photo_url,age,bio,city,experience,desired_payment,verification_status,total_reviews,skills,religion,religion_id,portfolio_link'
+
 # Допустимые расширения для загрузки фото
 ALLOWED_PHOTO_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
 MAX_PHOTO_SIZE = Config.MAX_PHOTO_SIZE_MB * 1024 * 1024  # 5 MB
+
+# Сигнатуры для MIME-валидации документов верификации
+_DOCUMENT_SIGNATURES = {
+    b'\xff\xd8\xff': 'image/jpeg',
+    b'\x89PNG\r\n\x1a\n': 'image/png',
+    b'%PDF-': 'application/pdf',
+}
+
+
+def _check_document_mime(data: bytes) -> str | None:
+    """Проверить MIME-тип документа по magic bytes (PDF, JPEG, PNG).
+
+    Args:
+        data: бинарные данные файла.
+
+    Returns:
+        MIME-тип (напр. 'image/jpeg') или None если формат недопустим.
+    """
+    if not data:
+        return None
+    for sig, mime in _DOCUMENT_SIGNATURES.items():
+        if data[:len(sig)] == sig:
+            return mime
+    return None
 
 
 @profile_bp.route('/profile')
@@ -21,7 +49,7 @@ MAX_PHOTO_SIZE = Config.MAX_PHOTO_SIZE_MB * 1024 * 1024  # 5 MB
 def profile():
     user_id = session['user_id']
     try:
-        resp = postgrest_request('GET', f'profiles?id=eq.{user_id}&select=*')
+        resp = postgrest_request('GET', f'profiles?id=eq.{user_id}&select={PUBLIC_PROFILE_FIELDS}')
         if is_circuit_open(resp):
             flash('Сервис временно недоступен. Пожалуйста, попробуйте позже.', 'warning')
             profile_user = None
@@ -86,27 +114,19 @@ def update_profile():
 
     photo = request.files.get('photo')
     if photo and photo.filename:
-        # Проверка расширения: только изображения
-        ext = photo.filename.rsplit('.', 1)[-1].lower() if '.' in photo.filename else ''
-        if ext not in ALLOWED_PHOTO_EXTENSIONS:
-            flash(f'Недопустимый формат файла. Разрешены: {", ".join(sorted(ALLOWED_PHOTO_EXTENSIONS))}', 'danger')
-            return redirect(url_for('profile.profile'))
-
-        # Проверка размера файла (до чтения)
+        # C29: MIME-валидация через upload_photo (magic bytes для JPEG, PNG, WebP)
+        # + проверка размера (max 5MB)
         photo_data = photo.read()
         if len(photo_data) > MAX_PHOTO_SIZE:
             flash(f'Файл слишком большой (максимум {Config.MAX_PHOTO_SIZE_MB} МБ)', 'danger')
             return redirect(url_for('profile.profile'))
 
-        # Безопасное имя файла: uuid + secure_filename
-        safe_name = secure_filename(photo.filename) or f'{uuid.uuid4().hex}.{ext}'
-        file_path = f'{user_id}/{uuid.uuid4().hex}_{safe_name}'
-        photo_url = upload_to_storage('avatars', file_path, photo_data, photo.content_type)
+        photo_url = upload_photo(photo_data, bucket='avatars', folder=user_id)
         if photo_url:
             data['photo_url'] = photo_url
             flash('Фото загружено', 'success')
         else:
-            flash('Ошибка загрузки фото', 'danger')
+            flash('Ошибка загрузки фото. Проверьте формат (JPEG, PNG, WebP) и размер файла.', 'danger')
 
     try:
         update_resp = postgrest_request('PATCH', f'profiles?id=eq.{user_id}', json=data)
@@ -241,12 +261,18 @@ def verify_employer():
         file = request.files.get('document')
         if file and file.filename:
             try:
-                ext = file.filename.rsplit('.', 1)[-1].lower()
-                if ext not in ('pdf', 'jpg', 'jpeg', 'png'):
+                file_data = file.read()
+                # C30: MIME-валидация через magic bytes (PDF, JPEG, PNG)
+                allowed_mime = _check_document_mime(file_data)
+                if not allowed_mime:
                     flash('Недопустимый формат файла. Разрешены PDF, JPG, PNG.', 'danger')
                     return redirect(url_for('profile.verify_employer'))
+
+                ext = allowed_mime.split('/')[-1] if '/' in allowed_mime else 'pdf'
+                if ext == 'jpeg':
+                    ext = 'jpg'
                 path = f'verification/{user_id}/{uuid.uuid4().hex}.{ext}'
-                url = upload_to_storage('verification-docs', path, file.read(), file.content_type)
+                url = upload_to_storage('verification-docs', path, file_data, allowed_mime)
                 if url:
                     data['verification_doc_url'] = url
                 else:
@@ -266,7 +292,7 @@ def verify_employer():
 @profile_bp.route('/profile/<user_id>')
 @validate_uuid('user_id')
 def public_profile(user_id):
-    resp = postgrest_request('GET', f'profiles?id=eq.{user_id}&select=*')
+    resp = postgrest_request('GET', f'profiles?id=eq.{user_id}&select={PUBLIC_PROFILE_FIELDS}')
     profile_user = resp.json()[0] if resp.ok and resp.json() else None
     if not profile_user:
         flash('Пользователь не найден', 'danger')

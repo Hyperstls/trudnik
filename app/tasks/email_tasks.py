@@ -29,7 +29,7 @@ def _log_to_db(
     template_name: str = "",
     attempts: int = 1,
 ) -> bool:
-    """Записывает результат отправки email в таблицу email_log через Supabase REST API.
+    """Записывает результат отправки email в таблицу email_log через PostgREST (Amvera). Supabase не используется.
 
     Args:
         user_id: ID пользователя-получателя.

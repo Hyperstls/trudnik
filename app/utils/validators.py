@@ -49,3 +49,48 @@ def validate_password(password: str) -> Optional[str]:
         return 'Пароль не должен содержать пробелы.'
 
     return None
+
+
+def validate_inn_checksum(inn: str) -> bool:
+    """Проверить контрольную сумму ИНН по алгоритму ФНС.
+
+    Поддерживает 10-значный ИНН (юрлица) и 12-значный ИНН (физлица).
+
+    Алгоритм:
+      - 10-значный ИНН: n10 = ((2*n1+4*n2+10*n3+3*n4+5*n5+9*n6+4*n7+6*n8+8*n9) mod 11) mod 10
+      - 12-значный ИНН: n11 по тем же коэффициентам, n12 с другими коэффициентами
+        (7, 2, 4, 10, 3, 5, 9, 4, 6, 8, 0 для n1-n11)
+
+    Args:
+        inn: строка ИНН (только цифры).
+
+    Returns:
+        True если контрольная сумма валидна, иначе False.
+    """
+    if not inn or not inn.isdigit():
+        return False
+
+    length = len(inn)
+
+    if length == 10:
+        # Юрлица: n10 = ((2*n1+4*n2+10*n3+3*n4+5*n5+9*n6+4*n7+6*n8+8*n9) mod 11) mod 10
+        coeffs = [2, 4, 10, 3, 5, 9, 4, 6, 8]
+        checksum = sum(coeffs[i] * int(inn[i]) for i in range(9))
+        control = (checksum % 11) % 10
+        return control == int(inn[9])
+
+    elif length == 12:
+        # Физлица: n11 с коэффициентами (7,2,4,10,3,5,9,4,6,8)
+        coeffs_11 = [7, 2, 4, 10, 3, 5, 9, 4, 6, 8]
+        checksum_11 = sum(coeffs_11[i] * int(inn[i]) for i in range(10))
+        control_11 = (checksum_11 % 11) % 10
+        if control_11 != int(inn[10]):
+            return False
+
+        # n12 с коэффициентами (3,7,2,4,10,3,5,9,4,6,8)
+        coeffs_12 = [3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8]
+        checksum_12 = sum(coeffs_12[i] * int(inn[i]) for i in range(11))
+        control_12 = (checksum_12 % 11) % 10
+        return control_12 == int(inn[11])
+
+    return False

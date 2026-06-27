@@ -27,6 +27,8 @@ def copy_job(original_job: dict) -> dict:
         'lat': original_job.get('lat', 0),
         'lng': original_job.get('lng', 0),
         'status': 'open',
+        'is_paid': False,
+        'tariff': original_job.get('tariff', 'Базовый'),
         'max_workers': original_job.get('max_workers', 1),
         'current_workers': 0,
     }

@@ -13,13 +13,18 @@ plans/
 tests/
 .pytest_cache/
 
-# Git (оставляем .git для отображения версии на /admin)
+# Git
+.git
+.github
 .gitignore
 .kilocode/
 
 # IDE
 .idea/
 .vscode/
+
+# Uploads (не копировать пользовательские файлы)
+uploads/avatars
 
 # Окружение
 .env

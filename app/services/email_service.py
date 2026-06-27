@@ -77,7 +77,7 @@ class EmailService:
         self._smtp_conn_last_use: float = 0.0
 
         # Jinja2-окружение для шаблонов писем (изолированное, не зависит от Flask)
-        _templates_dir: str = os.path.join(os.path.dirname(__file__), "..", "templates", "email")
+        _templates_dir: str = os.path.join(os.path.dirname(__file__), "..", "..", "templates", "email")
         _templates_dir = os.path.abspath(_templates_dir)
         self._jinja_env: Environment = Environment(
             loader=FileSystemLoader(_templates_dir),

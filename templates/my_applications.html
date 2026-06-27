@@ -1,8 +1,15 @@
 {% extends "base.html" %}
+{% block title %}Мои отклики — Трудник{% endblock %}
 {% from '_icons.html' import star, chat_bubble, send, phone, mail, info, help_circle, eye, eye_off, check, x_close, smiley %}
 
 {% block content %}
 <div class="px-4 pb-28">
+    <!-- Skeleton loader -->
+    <div id="skeleton-loader" class="animate-pulse space-y-3">
+      <div class="h-24 bg-gray-200 rounded"></div>
+      <div class="h-24 bg-gray-200 rounded"></div>
+      <div class="h-24 bg-gray-200 rounded"></div>
+    </div>
     {# ============================================ #}
     {# Заголовок                                    #}
     {# ============================================ #}
@@ -17,7 +24,7 @@
     {# Панель массовых операций (фиксированная снизу) #}
     {# ============================================ #}
     <div id="mass-actions-bar"
-         class="hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-lg border-t border-neutral-200 shadow-2xl px-4 py-3 flex items-center justify-between gap-3 transition-all duration-300 slide-in"
+         class="hidden fixed bottom-20 left-0 right-0 z-50 bg-white/95 backdrop-blur-lg border-t border-neutral-200 shadow-2xl px-4 py-3 flex items-center justify-between gap-3 transition-all duration-300 slide-in"
          style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));">
         <div class="flex items-center gap-3">
             <span class="text-sm text-neutral-600">
@@ -258,5 +265,8 @@
 {% endblock %}
 
 {% block scripts %}
+<script nonce="{{ csp_nonce }}">
+document.getElementById('skeleton-loader').style.display = 'none';
+</script>
 <script src="{{ url_for('static', filename='js/applications.js') }}" nonce="{{ csp_nonce }}"></script>
 {% endblock %}

@@ -26,7 +26,7 @@ app-release*.aab
 # Tailwind CLI binary (downloaded during Render build)
 tailwindcss-linux-x64
 
-server.log
+*.log
 *_output.html
 *_output.txt
 *_output2.txt
@@ -38,7 +38,7 @@ server.log
 # Temp worker file
 temp_workers_original.txt
 
-# Mock Supabase file (test infrastructure)
+# УСТАРЕЛО: Mock Supabase file (test infrastructure) — проект на Amvera, Supabase не используется
 .mock_supabase
 
 # Docker volumes (PostgreSQL data)
@@ -55,4 +55,11 @@ uploads/*
 !uploads/.gitkeep
 !uploads/avatars/.gitkeep
 !uploads/verification_docs/.gitkeep
+
+# Archive env files (should not be committed)
+archive/env_trudnik_*.env
+scripts/env_trudnik_app.env
+
+# Pytest cache
+.pytest_cache/
 

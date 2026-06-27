@@ -11,6 +11,8 @@ class NotificationsWebSocket {
         this.reconnectDelay = 1000; // Начальная задержка 1 сек
         this.maxReconnectDelay = 30000; // Максимальная задержка 30 сек
         this.isConnecting = false;
+        this.pollingTimer = null;
+        this.pollingInterval = 30000; // 30 секунд HTTP-polling
         this.listeners = {
             'notification': [],
             'new_message': [],
@@ -44,6 +46,7 @@ class NotificationsWebSocket {
             console.log('WebSocket подключён');
             this.isConnecting = false;
             this.reconnectAttempts = 0;
+            this._stopPolling();
             this._emit('connected', {});
         };
 
@@ -63,6 +66,7 @@ class NotificationsWebSocket {
 
             if (event.code !== 1000 && event.code !== 1001) {
                 this._scheduleReconnect(token);
+                this._startPolling();
             }
         };
 
@@ -77,6 +81,7 @@ class NotificationsWebSocket {
      */
     disconnect() {
         this.reconnectAttempts = this.maxReconnectAttempts; // Прекращаем переподключения
+        this._stopPolling();
         if (this.ws) {
             this.ws.close(1000, 'Пользователь вышел');
             this.ws = null;
@@ -195,6 +200,51 @@ class NotificationsWebSocket {
 
         // В production WebSocket идёт через reverse proxy на том же хосте/пути /ws
         return `${protocol}//${host}/ws`;
+    }
+
+    /**
+     * Запускает HTTP-polling как fallback при отсутствии WebSocket.
+     */
+    _startPolling() {
+        if (this.pollingTimer) return; // Уже запущен
+        console.log('Запущен HTTP-polling уведомлений (каждые ' + (this.pollingInterval / 1000) + 'с)');
+        this._pollUnreadCount();
+        this.pollingTimer = setInterval(() => this._pollUnreadCount(), this.pollingInterval);
+    }
+
+    /**
+     * Останавливает HTTP-polling.
+     */
+    _stopPolling() {
+        if (this.pollingTimer) {
+            clearInterval(this.pollingTimer);
+            this.pollingTimer = null;
+            console.log('HTTP-polling остановлен');
+        }
+    }
+
+    /**
+     * Выполняет один запрос к /api/notifications/unread-count
+     * и обновляет счётчик уведомлений.
+     */
+    async _pollUnreadCount() {
+        try {
+            const resp = await fetch('/api/notifications/unread-count');
+            if (!resp.ok) return;
+            const data = await resp.json();
+            const count = data.unread_count || data.count || 0;
+            const badge = document.getElementById('notifications-badge');
+            if (badge) {
+                if (count > 0) {
+                    badge.textContent = count > 99 ? '99+' : count;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        } catch (e) {
+            console.warn('Ошибка HTTP-polling уведомлений:', e);
+        }
     }
 
     _scheduleReconnect(token) {

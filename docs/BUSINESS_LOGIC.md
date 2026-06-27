@@ -21,8 +21,8 @@ JWT-токены генерируются на стороне Flask через `
 
 **Источники:**
 - [`app/blueprints/auth.py`](../app/blueprints/auth.py) — маршруты `/login`, `/register`, `/logout`
-- [`app/utils/supabase.py`](../app/utils/supabase.py:181) — `get_user_headers()` — генерация JWT
-- [`app/utils/supabase.py`](../app/utils/supabase.py:320) — `postgrest_request()` — запросы к PostgREST
+- [`app/utils/postgrest_client.py`](../app/utils/postgrest_client.py:181) — `get_user_headers()` — генерация JWT
+- [`app/utils/postgrest_client.py`](../app/utils/postgrest_client.py:320) — `postgrest_request()` — запросы к PostgREST
 
 ---
 
@@ -337,16 +337,18 @@ RPC **`delete_user_cascade(user_id)`** — удаляет пользовател
 
 - **Валидация email** — RFC 5322 regex при регистрации и входе ([`app/blueprints/auth.py:15`](../app/blueprints/auth.py:15))
 - **Защита от SQL-инъекций** — проверка ASCII-фрагментов пользовательского ввода на паттерны SQL-команд ([`app/blueprints/auth.py:25`](../app/blueprints/auth.py:25))
-- **Дифференцированные таймауты** — GET-запросы 15s, мутации (POST/PUT/DELETE) 60s в [`supabase_request()`](../app/utils.py)
+- **Дифференцированные таймауты** — GET-запросы 15s, мутации (POST/PUT/DELETE) 60s в [`postgrest_client.py`](../app/utils/postgrest_client.py)
 - **PERMANENT_SESSION_LIFETIME** = 1800 секунд (30 минут) — Flask-сессии
-- **Условный apikey** в `supabase_admin_request` — `SERVICE_KEY` отправляется только для localhost
+- **Условный apikey** в `postgrest_admin_request` — `SERVICE_KEY` отправляется только для localhost
 
-### Тестовая инфраструктура (Mock Supabase)
+### Тестовая инфраструктура (Mock PostgREST)
 
-При `TESTING=True` (или `SUPABASE_MOCK_MODE=1`) активируется in-memory mock Supabase в [`app/utils.py`](../app/utils.py), который эмулирует:
+При `TESTING=True` активируется in-memory mock PostgREST в [`app/testing/mock_postgrest.py`](../app/testing/mock_postgrest.py), который эмулирует:
 - REST API (GET/POST/PATCH/DELETE с фильтрацией)
 - Auth API (login/signup/logout)
 - RPC-функции (все перечисленные выше)
+
+<!-- УСТАРЕЛО: SUPABASE_MOCK_MODE=1 — удалён, проект мигрировал на Amvera/PostgREST -->
 
 Защита от случайной активации: гарда `PYTEST_CURRENT_TEST` в [`tests/conftest.py:24`](../tests/conftest.py:24).
 
@@ -430,7 +432,7 @@ RPC **`delete_user_cascade(user_id)`** — удаляет пользовател
 | `nearby_jobs(lat FLOAT, lng FLOAT, radius_km INTEGER)` | Геопоиск ближайших заданий в радиусе (PostGIS) | Нет (только чтение) |
 | `exec_sql(query TEXT)` | Выполнение произвольного SQL (только для admin, service_role) | Нет |
 
-**Источник:** [`app/utils.py:466`](../app/utils.py:466) — `supabase_rpc()`, миграции 039, 048, 052, 056
+**Источник:** [`app/utils/postgrest_client.py:466`](../app/utils/postgrest_client.py:466) — `postgrest_rpc()`, миграции 039, 048, 052, 056
 
 ---
 
@@ -521,6 +523,6 @@ stateDiagram-v2
 - `_cb_postgrest` — для пользовательских запросов (`postgrest_request`)
 - `_cb_admin` — для административных запросов (`postgrest_admin_request`)
 
-При разомкнутой цепи возвращается `SupabaseResponse(ok=False, status_code=503, text='Circuit breaker open')` (класс сохранён для обратной совместимости).
+При разомкнутой цепи возвращается `PostgRESTResponse(ok=False, status_code=503, text='Circuit breaker open')`. <!-- УСТАРЕЛО: SupabaseResponse переименован в PostgRESTResponse -->
 
 **Источник:** [`app/utils.py:29`](../app/utils.py:29) — класс `CircuitBreaker`

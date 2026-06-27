@@ -1,11 +1,35 @@
 {% extends "base.html" %}
 {% from '_icons.html' import save, check, close, search, filter_icon %}
+{% block title %}Администрирование — Трудник{% endblock %}
 {% block content %}
+<style nonce="{{ csp_nonce }}">
+    .version-tooltip {
+        position: fixed;
+        z-index: 9999;
+        padding: 6px 12px;
+        background: #1f2937;
+        color: #f9fafb;
+        font-size: 13px;
+        line-height: 1.4;
+        border-radius: 6px;
+        white-space: nowrap;
+        pointer-events: none;
+        opacity: 0;
+        transform: translateY(4px);
+        transition: opacity 0.15s ease, transform 0.15s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+    .version-tooltip.visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+</style>
 <div class="px-4 pb-24 max-w-4xl mx-auto">
     <div class="flex items-center justify-between mb-6">
         <h2 class="text-2xl font-bold text-neutral-900">Панель администратора</h2>
         <div class="flex items-center gap-2">
-            <span class="text-[10px] text-neutral-400 font-mono" title="Версия приложения (git)">{{ git_version }}</span>
+            <span id="git-version" hidden>{{ actual_version }}</span>
+            <button id="current-version-btn" class="action-icon-btn px-4 py-2 text-sm cursor-pointer hover:bg-neutral-100 rounded-lg transition-colors" title="Нажмите, чтобы скопировать версию">🔖 Текущая версия</button>
             <span class="text-xs bg-primary-100 text-primary-700 px-3 py-1 rounded-full font-medium">admin</span>
         </div>
     </div>
@@ -902,7 +926,7 @@ loadStats();
             var checked = document.querySelectorAll('.js-job-checkbox:checked');
             var ids = Array.from(checked).map(function(cb) { return cb.dataset.jobId; });
             if (ids.length === 0) return;
-            var jobName = checked[0].closest('tr').querySelector('td:nth-child(3)').textContent.trim();
+            var jobName = checked[0].closest('tr').querySelector('td:nth-child(2)').textContent.trim();
             var confirmMsg = ids.length === 1
                 ? 'Удалить задание ' + jobName + '?'
                 : 'Удалить ' + ids.length + ' заданий?';
@@ -939,4 +963,6 @@ loadStats();
     }
 })();
 </script>
+
+<script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/admin-version.js') }}"></script>
 {% endblock %}

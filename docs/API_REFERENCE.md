@@ -11,7 +11,7 @@
 |----------|----------|
 | **Базовый URL** | Определяется окружением (локально `http://localhost:5000`, на проде — домен) |
 | **Формат ответов** | HTML (страницы) / JSON (API-эндпоинты). API возвращает `application/json` |
-| **Аутентификация** | JWT-токены Supabase Auth. Токен хранится в сессии Flask (`session['access_token']`), передаётся в заголовке `Authorization: Bearer <token>` при запросах к Supabase REST API |
+| **Аутентификация** | JWT-токены нативной аутентификации (Amvera/PostgREST). Токен хранится в сессии Flask (`session['access_token']`), передаётся в заголовке `Authorization: Bearer <token>` при запросах к PostgREST REST API (Amvera). Supabase не используется |
 | **CSRF-защита** | Глобальная проверка для всех мутирующих запросов (кроме `/login`, `/register`). Токен в `X-CSRF-Token` (AJAX) или `_csrf_token` (форма/JSON) |
 | **Content-Security-Policy** | Строгая CSP с nonce-механизмом для inline-скриптов. `connect-src` разрешает `ws://localhost:* wss://*` для WebSocket |
 | **Rate Limiting** | 10 POST-запросов в минуту с одного IP (in-memory) |
@@ -39,9 +39,9 @@
 | Метод | URL | Доступ | Описание |
 |-------|-----|--------|----------|
 | GET | `/login` | 🔓 public | Форма входа |
-| POST | `/login` | 🔓 public | Аутентификация через Supabase Auth (password grant). Сохраняет `access_token`, `refresh_token`, `user_id`, `role` в сессию. Редирект: employer → `/my-jobs`, worker → `/` |
+| POST | `/login` | 🔓 public | Аутентификация через нативный JWT PostgREST (Amvera). Сохраняет `access_token`, `refresh_token`, `user_id`, `role` в сессию. Редирект: employer → `/my-jobs`, worker → `/`. Supabase не используется |
 | GET | `/register` | 🔓 public | Форма регистрации |
-| POST | `/register` | 🔓 public | Регистрация через Supabase Auth (`/auth/v1/signup`). Создаёт профиль с ролью, навыками (через `user_skills`), ИНН (для worker), контактами. Валидация: обязательные поля, ИНН (12 цифр) |
+| POST | `/register` | 🔓 public | Регистрация через нативную аутентификацию (Amvera). Создаёт профиль с ролью, навыками (через `user_skills`), ИНН (для worker), контактами. Валидация: обязательные поля, ИНН (12 цифр). Supabase Auth не используется |
 | GET | `/logout` | 🔒 auth | Очистка сессии, редирект на `/login` |
 
 ---
@@ -126,7 +126,7 @@
 |-------|-----|--------|----------|
 | GET | `/profile` | 🔒 auth | Просмотр профиля. Для работодателя: показывает статистику, статус верификации |
 | GET | `/profile/update` | 🔒 auth | Форма редактирования профиля |
-| POST | `/profile/update` | 🔒 auth | Сохранение профиля: имя, город, навыки, контакты, фото, ИНН, самозанятость. Загрузка фото через Supabase Storage |
+| POST | `/profile/update` | 🔒 auth | Сохранение профиля: имя, город, навыки, контакты, фото, ИНН, самозанятость. Загрузка фото через локальное хранилище (Amvera). Supabase Storage не используется |
 | POST | `/verify-employer` | 🏢 employer | Запрос верификации работодателя (`verification_status='pending'`) |
 | POST | `/profile/delete-account` | 🔒 auth | Удаление аккаунта. Требует подтверждения паролем. Вызывает RPC `delete_user_cascade` |
 
@@ -265,7 +265,7 @@
 | **409** | Conflict | Дубликат: уже откликались, уже в избранном, уже приглашены, уже в ЧС |
 | **429** | Too Many Requests | Превышен лимит запросов (rate limiting: 10 POST/60 сек с одного IP) |
 | **500** | Internal Server Error | Необработанное исключение. Кастомная страница `error.html` |
-| **503** | Service Unavailable | Circuit Breaker разомкнут; Supabase недоступен; ошибка соединения с БД. Кастомная страница `error.html` |
+| **503** | Service Unavailable | Circuit Breaker разомкнут; PostgREST (Amvera) недоступен; ошибка соединения с БД. Кастомная страница `error.html`. Supabase не используется |
 
 ---
 

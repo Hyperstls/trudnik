@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-AMVERA="C:/Users/s.prokopenko/AppData/Local/Amvera/amvera.exe"
+AMVERA="${AMVERA_CLI:-amvera}"
 SLUG="${1:-trudnik}"
 COMMIT_MSG="${2:-Auto-deploy $(date '+%Y-%m-%d %H:%M:%S')}"
 
@@ -66,7 +66,7 @@ echo -e "${GREEN}============================================${NC}"
 # =============================================
 step "0" "Авторизация в Amvera Cloud"
 echo -e "${YELLOW}🔑 Выполняем вход...${NC}"
-"$AMVERA" login --user Hyperstls --password "Step@1986" 2>&1 || echo -e "${YELLOW}ℹ️  Авторизация не требуется (сессия активна)${NC}"
+"$AMVERA" login --user "${AMVERA_USER:-}" --password "${AMVERA_PASSWORD:-}" 2>&1 || echo -e "${YELLOW}ℹ️  Авторизация не требуется (сессия активна)${NC}"
 
 # =============================================
 # Шаг 1: Статус до деплоя
@@ -105,10 +105,10 @@ step "3" "Push в репозиторий Amvera"
 
 echo -e "${YELLOW}📤 Отправка кода в Amvera Git...${NC}"
 if git remote | grep -q "amvera"; then
-    git push amvera main 2>&1 || {
+    git push amvera main:master 2>&1 || {
         echo -e "${YELLOW}⚠️  Push в amvera не удался. Использую rebuild...${NC}"
     }
-    check_error $? "git push amvera main"
+    check_error $? "git push amvera main:master"
     echo -e "${GREEN}✅ Код отправлен в Amvera${NC}"
 else
     echo -e "${YELLOW}ℹ️  Git remote 'amvera' не найден. Перехожу к rebuild...${NC}"
@@ -139,7 +139,13 @@ if [ $BUILD_EXIT -eq 0 ]; then
     echo "$BUILD_LOG" | tail -20
 
     # Проверка на ошибки в сборке
-    if echo "$BUILD_LOG" | grep -qi "error\|failed\|failure"; then
+    # Попытка парсинга JSON (если API возвращает JSON)
+    if echo "$BUILD_LOG" | python3 -c "import sys,json; d=json.load(sys.stdin); errs=[e for e in d.get('errors',[]) or [] if e]; print('\n'.join(errs))" 2>/dev/null; then
+        echo ""
+        echo -e "${RED}❌ Обнаружены ошибки в сборке (JSON)!${NC}"
+        echo "$BUILD_LOG" | python3 -c "import sys,json; d=json.load(sys.stdin); errs=[e for e in d.get('errors',[]) or [] if e]; print('\n'.join(errs[:10]))" 2>/dev/null
+        HAS_ERRORS=true
+    elif echo "$BUILD_LOG" | grep -qi "error\|failed\|failure"; then
         echo ""
         echo -e "${RED}❌ Обнаружены ошибки в сборке!${NC}"
         echo "$BUILD_LOG" | grep -i "error\|failed\|failure" | head -10
@@ -163,7 +169,13 @@ if [ $RUN_EXIT -eq 0 ]; then
     echo "$RUN_LOG" | tail -20
 
     # Проверка на ошибки в выполнении
-    if echo "$RUN_LOG" | grep -qi "error\|traceback\|exception\|failed"; then
+    # Попытка парсинга JSON (если API возвращает JSON)
+    if echo "$RUN_LOG" | python3 -c "import sys,json; d=json.load(sys.stdin); errs=[e for e in d.get('errors',[]) or [] if e]; print('\n'.join(errs))" 2>/dev/null; then
+        echo ""
+        echo -e "${RED}❌ Обнаружены ошибки в выполнении (JSON)!${NC}"
+        echo "$RUN_LOG" | python3 -c "import sys,json; d=json.load(sys.stdin); errs=[e for e in d.get('errors',[]) or [] if e]; print('\n'.join(errs[:10]))" 2>/dev/null
+        HAS_ERRORS=true
+    elif echo "$RUN_LOG" | grep -qi "error\|traceback\|exception\|failed"; then
         echo ""
         echo -e "${RED}❌ Обнаружены ошибки в выполнении!${NC}"
         echo "$RUN_LOG" | grep -i "error\|traceback\|exception\|failed" | head -10

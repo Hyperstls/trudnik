@@ -18,8 +18,16 @@ document.addEventListener('DOMContentLoaded', function() {
             // Если пользователь на странице уведомлений — добавляем в список
             const notificationsList = document.getElementById('notifications-list');
             if (notificationsList && data.data) {
-                // Добавляем новое уведомление в начало списка
-                // (конкретная реализация зависит от структуры страницы)
+                const notif = data.data;
+                const item = document.createElement('div');
+                item.className = 'flex items-start gap-3 p-4 bg-white border border-neutral-100 rounded-xl hover:bg-neutral-50 transition-colors cursor-pointer';
+                item.innerHTML = '<div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center shrink-0">' +
+                    '<svg class="w-5 h-5 text-primary-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                    '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></div>' +
+                    '<div class="flex-1 min-w-0"><p class="text-sm text-neutral-800">' +
+                    (notif.text || notif.message || 'Новое уведомление') + '</p>' +
+                    '<span class="text-xs text-neutral-400">' + (notif.created_at || 'Только что') + '</span></div>';
+                notificationsList.insertBefore(item, notificationsList.firstChild);
             }
         });
 
@@ -33,8 +41,21 @@ document.addEventListener('DOMContentLoaded', function() {
             // Если пользователь на странице чата — добавляем сообщение
             const chatMessages = document.getElementById('chat-messages');
             if (chatMessages && data.data) {
-                // Добавляем сообщение в чат
-                // (конкретная реализация зависит от структуры страницы)
+                const msg = data.data;
+                const isMine = msg.sender_id === (window.TRUDNIK_CONFIG?.userId || '');
+                const wrapper = document.createElement('div');
+                wrapper.className = 'flex ' + (isMine ? 'justify-end' : 'justify-start') + ' animate-fade-in';
+                const bubble = document.createElement('div');
+                bubble.className = 'max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words ' +
+                    (isMine ? 'bg-primary-500 text-white rounded-br-md' : 'bg-neutral-100 text-neutral-800 rounded-bl-md');
+                bubble.textContent = msg.content || '';
+                const time = document.createElement('div');
+                time.className = 'text-[10px] mt-1 ' + (isMine ? 'text-white/60' : 'text-neutral-400') + ' text-right';
+                time.textContent = (msg.created_at || '').substring(11, 16) || '';
+                bubble.appendChild(time);
+                wrapper.appendChild(bubble);
+                chatMessages.appendChild(wrapper);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
             }
         });
 

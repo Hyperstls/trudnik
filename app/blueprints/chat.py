@@ -4,7 +4,7 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 
 from app.decorators import login_required, rate_limit, role_required, validate_uuid
 from app.utils import postgrest_request
-from app.services.notification_service import create as create_notification
+from app.services.notification_service import create as create_notification, enqueue_notification
 
 try:
     from app.services.redis_publisher import redis_publisher
@@ -138,12 +138,12 @@ def send_message():
     except Exception:
         pass
 
-    # Уведомить получателя
+    # Уведомить получателя (transactional outbox)
     recipient = app_data['worker_id'] if sender_id == employer_id else employer_id
-    create_notification(recipient, 'new_message', 'Новое сообщение',
+    enqueue_notification(recipient, 'new_message', 'Новое сообщение',
                        sanitized_content[:100],
                        data={'application_id': application_id,
-                             'link': url_for('chat.chat', application_id=application_id, _external=True)})
+                              'link': url_for('chat.chat', application_id=application_id, _external=True)})
 
     # Публикуем событие в Redis для мгновенной доставки через WebSocket
     if redis_publisher is not None:

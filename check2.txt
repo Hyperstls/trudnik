@@ -1,5 +1,0 @@
-302 /?tab=jobs <!doctype html>
-<html lang=en>
-<title>Redirecting...</title>
-<h1>Redirecting...</h1>
-<p>You should be redirected automatically to the target URL: <a href="/?tab=jobs">/?tab=jobs</a>. If not, click the

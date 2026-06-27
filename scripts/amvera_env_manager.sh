@@ -18,7 +18,7 @@
 
 set -euo pipefail
 
-AMVERA="C:/Users/s.prokopenko/AppData/Local/Amvera/amvera.exe"
+AMVERA="${AMVERA_CLI:-amvera}"
 ACTION="${1:-list}"
 KEY="${2:-}"
 VALUE="${3:-}"
@@ -39,7 +39,7 @@ echo -e "${CYAN}============================================${NC}"
 # 1. Авторизация (на случай, если сессия истекла)
 echo ""
 echo -e "${YELLOW}🔑 Авторизация...${NC}"
-"$AMVERA" login --user Hyperstls --password "Step@1986" 2>&1 || true
+"$AMVERA" login --user "${AMVERA_USER:-}" --password "${AMVERA_PASSWORD:-}" 2>&1 || true
 
 case "$ACTION" in
     list|show)

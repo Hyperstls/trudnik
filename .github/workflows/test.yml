@@ -36,10 +36,9 @@ jobs:
       CELERY_TASK_ALWAYS_EAGER: 'true'         # Celery-задачи выполняются синхронно
       BASE_URL: 'http://127.0.0.1:5000'       # Базовый URL тестового сервера
 
-      # ── Supabase (из GitHub Secrets) ────────────────────────────────────
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # ── PostgREST / Amvera (из GitHub Secrets) ──────────────────────────
+      POSTGREST_URL: ${{ secrets.POSTGREST_URL }}
+      PGRST_JWT_SECRET: ${{ secrets.PGRST_JWT_SECRET }}
 
       # ── Redis / WebSocket ───────────────────────────────────────────────
       REDIS_URL: 'redis://localhost:6379/0'
@@ -239,9 +238,8 @@ jobs:
       FLASK_ENV: 'testing'
       CELERY_TASK_ALWAYS_EAGER: 'true'
       BASE_URL: 'http://127.0.0.1:5000'
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      POSTGREST_URL: ${{ secrets.POSTGREST_URL }}
+      PGRST_JWT_SECRET: ${{ secrets.PGRST_JWT_SECRET }}
       REDIS_URL: 'redis://localhost:6379/0'
       WEBSOCKET_URL: 'ws://localhost:8001'
       WEBSOCKET_PORT: '8001'

@@ -11,6 +11,7 @@
 """
 
 import io
+import os
 import re
 import sys
 import json
@@ -24,7 +25,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 # ── Конфигурация ──────────────────────────────────────────
 BASE_URL = "https://trudnik-hyperstls.amvera.io"
 ADMIN_EMAIL = "admin@test.ru"
-ADMIN_PASSWORD = "Step@1986"
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '')
 
 # Сессия с сохранением cookies между запросами
 session = requests.Session()

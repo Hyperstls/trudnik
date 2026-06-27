@@ -130,7 +130,7 @@ def remove_favorites_selected():
         return jsonify({'success': False, 'error': 'Не указаны worker_ids'})
 
     try:
-        # Batch delete: используем in.() синтаксис Supabase
+        # Batch delete: используем in.() синтаксис PostgREST — Supabase не используется (устарело)
         ids_filter = ','.join(worker_ids)
         resp = postgrest_request('DELETE',
             f'favorites?user_id=eq.{session["user_id"]}&target_id=in.({ids_filter})')

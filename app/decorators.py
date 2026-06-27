@@ -44,8 +44,9 @@ def login_required(f: F) -> F:
                 session.clear()
                 return redirect(url_for('auth.login'))
         except (jwt.DecodeError, jwt.ExpiredSignatureError, jwt.InvalidTokenError):
-            # Токен невалидный или не JWT — пропускаем, Supabase разберётся
-            pass
+            # Токен невалидный — очищаем сессию и перенаправляем на login
+            session.clear()
+            return redirect(url_for('auth.login'))
 
         return f(*args, **kwargs)
     return decorated  # type: ignore[return-value]
@@ -92,23 +93,40 @@ def role_required(role: str) -> Callable[[F], F]:
 # ============================================================
 
 def get_user_profile():
-    """Получить профиль текущего пользователя из Supabase (делегирует в app.utils.auth)."""
+    """Получить профиль текущего пользователя из PostgREST (Amvera) — делегирует в app.utils.auth. Supabase не используется."""
     from app.utils.auth import get_user_profile as _get_profile
     return _get_profile()
 
 
 def _is_authenticated():
-    """Проверить аутентификацию через сессию Supabase (без flask_login)."""
+    """Проверить аутентификацию через сессию (без flask_login). Supabase не используется — проект на Amvera."""
     return 'access_token' in session and 'user_id' in session
 
 
 def admin_required(f):
-    """Require admin role."""
+    """Require admin role — с DB-перепроверкой через postgrest_admin_request."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not _is_authenticated():
             flash('Пожалуйста, войдите в систему.', 'warning')
             return redirect(url_for('auth.login'))
+        # DB-перепроверка: запрашиваем реальную роль из БД через admin-клиент
+        user_id = session.get('user_id')
+        if user_id:
+            from app.utils import postgrest_admin_request
+            try:
+                resp = postgrest_admin_request('GET', f'profiles?id=eq.{user_id}&select=role')
+                if resp.ok and resp.json():
+                    data = resp.json()
+                    if isinstance(data, list) and data:
+                        db_role = data[0].get('role', '')
+                        if db_role != 'admin':
+                            flash('Доступ запрещён. Требуются права администратора.', 'error')
+                            return redirect(url_for('jobs.index'))
+                        return f(*args, **kwargs)
+            except Exception:
+                pass  # Fallback к проверке сессии
+        # Fallback: проверка по сессии
         if session.get('role') != 'admin':
             flash('Доступ запрещён. Требуются права администратора.', 'error')
             return redirect(url_for('jobs.index'))
@@ -206,7 +224,7 @@ _RATE_WINDOW = 60           # секунд
 _RATE_MAX_REQUESTS = 10     # запросов в окне
 
 
-def rate_limit(f: F) -> F:
+def rate_limit(f: F = None, fail_open: bool = True) -> F:
     """Декоратор: ограничение частоты POST-запросов через Redis.
 
     Использует Redis INCR + EXPIRE вместо in-memory словаря,
@@ -216,10 +234,15 @@ def rate_limit(f: F) -> F:
 
     Args:
         f: функция-обработчик маршрута.
+        fail_open: если True — при ошибке Redis пропускать запрос (graceful degradation).
+                   если False — отклонять запрос (fail-closed, для /login, /register).
 
     Returns:
         Декорированная функция с rate limiting (10 попыток в минуту).
     """
+    if f is None:
+        return lambda func: rate_limit(func, fail_open=fail_open)
+
     @wraps(f)
     def decorated(*args: Any, **kwargs: Any) -> Any:
         if request.method != 'POST':
@@ -234,8 +257,16 @@ def rate_limit(f: F) -> F:
         try:
             redis_client = getattr(current_app, 'redis', None)
             if redis_client is None:
-                # Redis недоступен — разрешаем запрос (graceful degradation)
-                return f(*args, **kwargs)
+                if fail_open:
+                    # Redis недоступен — разрешаем запрос (graceful degradation)
+                    return f(*args, **kwargs)
+                else:
+                    # fail-closed: Redis недоступен — отклоняем запрос
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
+                       'application/json' in request.headers.get('Accept', ''):
+                        return jsonify({'error': 'Сервис временно недоступен. Попробуйте позже.'}), 503
+                    flash('Сервис временно недоступен. Попробуйте позже.', 'danger')
+                    return redirect(url_for('auth.login'))
 
             current = redis_client.incr(key)
             if current == 1:
@@ -248,8 +279,16 @@ def rate_limit(f: F) -> F:
                 flash('Слишком много попыток. Подождите минуту.', 'danger')
                 return redirect(url_for('auth.login'))
         except Exception:
-            # Ошибка Redis — разрешаем запрос (graceful degradation)
-            pass
+            if fail_open:
+                # Ошибка Redis — разрешаем запрос (graceful degradation)
+                pass
+            else:
+                # fail-closed: ошибка Redis — отклоняем запрос
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
+                   'application/json' in request.headers.get('Accept', ''):
+                    return jsonify({'error': 'Сервис временно недоступен. Попробуйте позже.'}), 503
+                flash('Сервис временно недоступен. Попробуйте позже.', 'danger')
+                return redirect(url_for('auth.login'))
 
         return f(*args, **kwargs)
     return decorated  # type: ignore[return-value]

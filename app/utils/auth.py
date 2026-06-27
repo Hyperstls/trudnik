@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 PGRST_JWT_SECRET = Config.PGRST_JWT_SECRET
 
 # Константа: количество раундов bcrypt, совпадает с gen_salt('bf') по умолчанию в PostgreSQL
-BCRYPT_ROUNDS = 6
+BCRYPT_ROUNDS = 12
 
 
 def check_password(password: str, stored_hash: str) -> bool:
@@ -66,14 +66,16 @@ def hash_password(password: str) -> str:
     ).decode('utf-8')
 
 
-def generate_jwt(user_id, role, exp_seconds=3600):
+def generate_jwt(user_id, role, exp_seconds=300):
     """Каноническая генерация JWT-токена."""
+    import uuid as _uuid
+    jti = str(_uuid.uuid4())
     payload = {
         'sub': str(user_id),
         'role': role,
         'iat': datetime.utcnow(),
         'exp': datetime.utcnow() + timedelta(seconds=exp_seconds),
-        'jti': secrets.token_hex(8)
+        'jti': jti
     }
     # Приоритет: 1) модульная переменная PGRST_JWT_SECRET (Config.PGRST_JWT_SECRET),
     # 2) current_app.config (может быть пустой строкой), 3) os.environ (runtime fallback).
@@ -95,7 +97,18 @@ def generate_jwt(user_id, role, exp_seconds=3600):
         'JWT: signing with secret prefix=%s... (%d bytes)',
         secret[:8], len(secret.encode('utf-8'))
     )
-    return _jwt_lib.encode(payload, secret, algorithm='HS256')
+    token = _jwt_lib.encode(payload, secret, algorithm='HS256')
+
+    # Сохраняем jti в Redis с TTL = expiration (для проверки при refresh)
+    try:
+        from app.utils.redis_client import get_redis_client
+        redis_client = get_redis_client()
+        if redis_client:
+            redis_client.setex(f'jti:{jti}', exp_seconds, user_id)
+    except Exception:
+        pass
+
+    return token
 
 
 def refresh_access_token() -> bool:
@@ -103,9 +116,7 @@ def refresh_access_token() -> bool:
 
     Достаточно наличия user_id в сессии для генерации свежего токена.
     Использует каноническую функцию generate_jwt().
-
-    ВАЖНО: Всегда использует роль trudnikapp (текущий пользователь БД PostgREST),
-    т.к. SET ROLE authenticated/anon требует SUPERUSER, которого нет на проде.
+    Роль берётся из сессии (session['role']), fallback — 'authenticated'.
     """
     user_id = session.get('user_id')
 
@@ -113,10 +124,28 @@ def refresh_access_token() -> bool:
         return False
 
     try:
-        # Используем trudnikapp — аутентификатор PostgREST (SET ROLE = no-op).
-        # Не используем session['role'] (authenticated/worker/employer/admin),
-        # т.к. на проде нет SUPERUSER для GRANT этих ролей.
-        token = generate_jwt(user_id, 'trudnikapp')
+        # Проверяем, не заблокирован ли старый jti
+        old_token = session.get('access_token', '')
+        if old_token:
+            try:
+                old_payload = _jwt_lib.decode(
+                    old_token, PGRST_JWT_SECRET, algorithms=['HS256'],
+                    options={'verify_exp': False}
+                )
+                old_jti = old_payload.get('jti', '')
+                if old_jti:
+                    from app.utils.redis_client import get_redis_client
+                    redis_client = get_redis_client()
+                    if redis_client and redis_client.exists(f'jti_blacklist:{old_jti}'):
+                        # jti в чёрном списке — токен отозван
+                        session.clear()
+                        return False
+            except Exception:
+                pass  # Невалидный старый токен — игнорируем, всё равно создаём новый
+
+        # Используем реальную роль из сессии, fallback — 'authenticated'
+        role = session.get('role') or session.get('user', {}).get('role', 'authenticated')
+        token = generate_jwt(user_id, role)
         session['access_token'] = token
         session.modified = True
         return True
@@ -135,7 +164,7 @@ def get_user_role() -> Optional[str]:
 
 
 def get_user_profile() -> Optional[Dict[str, Any]]:
-    """Получить профиль текущего пользователя из Supabase.
+    """Получить профиль текущего пользователя из PostgREST (Amvera). Supabase не используется (устарело).
 
     Returns:
         Словарь профиля или None.
@@ -147,7 +176,7 @@ def get_user_profile() -> Optional[Dict[str, Any]]:
 
     resp = postgrest_request(
         'GET',
-        f'profiles?id=eq.{session["user_id"]}&select=*'
+        f'profiles?id=eq.{session["user_id"]}&select=id,role,created_at,updated_at,is_self_employed,email_public,rating,full_name,photo_url,age,bio,city,experience,desired_payment,verification_status,total_reviews,skills,religion,religion_id,portfolio_link'
     )
     if resp.ok and resp.json():
         data = resp.json()

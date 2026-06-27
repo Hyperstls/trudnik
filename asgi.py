@@ -38,9 +38,6 @@ class RouterMiddleware:
         if scope["type"] in ("websocket",):
             # WebSocket goes to FastAPI
             await self.ws_app(scope, receive, send)
-        elif scope["type"] == "http" and scope.get("path") == "/health":
-            # Health check goes to FastAPI (Amvera platform health-check)
-            await self.ws_app(scope, receive, send)
         else:
             # HTTP goes to Flask
             await self.flask_asgi(scope, receive, send)

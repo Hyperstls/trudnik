@@ -1,11 +1,12 @@
 """Заполнение seed-данных (религии, навыки) на проде через API админа."""
+import os
 import requests
 from bs4 import BeautifulSoup
 import re
 
 BASE = "https://trudnik-hyperstls.amvera.io"
 ADMIN_EMAIL = "admin@test.ru"
-ADMIN_PASSWORD = "Step@1986"
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '')
 
 session = requests.Session()
 

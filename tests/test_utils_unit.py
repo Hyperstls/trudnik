@@ -16,7 +16,7 @@ from datetime import datetime, timezone, timedelta
 import pytest
 
 from app.utils import sanitize_postgrest, check_withdraw_window
-from app.services.job_service import calculate_distance
+from app.utils.geo import calculate_distance
 
 
 # ═══════════════════════════════════════════════════════════════

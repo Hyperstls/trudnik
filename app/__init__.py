@@ -2,7 +2,6 @@ import subprocess
 import secrets
 import os
 import time
-from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from flask import Flask, current_app, g, session, request, abort, redirect, url_for
 
@@ -10,15 +9,6 @@ from app.config import Config
 
 import time as _time_module
 _app_start_time = _time_module.time()
-
-# ── Кеш версии с TTL 60 секунд ────────────────────────
-@dataclass
-class _VersionCache:
-    value: str | None = None
-    timestamp: float = 0.0
-
-_git_version_cache = _VersionCache()
-
 
 # ── Redis-кэш (TTL 30 сек) ──
 # Глобальный кэш между worker'ами через Redis.
@@ -79,46 +69,6 @@ def _redis_cache_delete(key: str):
         pass
 
 
-def get_git_version(project_root: str) -> str:
-    """Получить актуальную git-версию приложения.
-
-    Приоритет:
-      1. Переменная окружения GIT_VERSION
-      2. Файл VERSION в корне проекта
-      3. git log -1 --format=%h %s (%ai)
-      4. 'dev' (fallback)
-
-    Результат кешируется на 60 секунд для снижения нагрузки.
-    """
-    now = time.time()
-    if _git_version_cache.value is not None and (now - _git_version_cache.timestamp) < 60:
-        return _git_version_cache.value
-
-    version = os.environ.get('GIT_VERSION', '')
-
-    if not version:
-        version_file = os.path.join(project_root, 'VERSION')
-        try:
-            with open(version_file, 'r', encoding='utf-8') as f:
-                version = f.read().strip()
-        except Exception:
-            pass
-
-    if not version:
-        try:
-            version = subprocess.check_output(
-                ['git', 'log', '-1', '--format=%h %s (%ai)'],
-                cwd=project_root, stderr=subprocess.DEVNULL,
-                text=True, encoding='utf-8'
-            ).strip()
-        except Exception:
-            version = 'dev'
-
-    _git_version_cache.value = version
-    _git_version_cache.timestamp = now
-    return version
-
-
 def _wait_for_postgrest(app, max_wait: int = 30, interval: int = 2) -> bool:
     """Ожидание готовности PostgREST при старте приложения.
 
@@ -169,6 +119,10 @@ def create_app():
                 static_folder='static')
     app.config.from_object(Config)
     app.secret_key = app.config['SECRET_KEY']
+
+    # ── ProxyFix: корректная обработка заголовков X-Forwarded-* за nginx ──
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
     # ═══════════════════════════════════════════════════════════════
     # Диагностика: проверка PGRST_JWT_SECRET при старте
@@ -225,13 +179,15 @@ def create_app():
             f"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
             f"font-src 'self' https://fonts.gstatic.com; "
             f"img-src 'self' data: https:; "
-            f"connect-src 'self' https://*.maps.yandex.net https://yastatic.net https://geocode-maps.yandex.ru https://fonts.googleapis.com https://fonts.gstatic.com ws://localhost:* wss://*; "
+            f"connect-src 'self' https://*.yandex.ru https://core-renderer-tiles.maps.yandex.net https://*.maps.yandex.net https://yastatic.net https://geocode-maps.yandex.ru https://fonts.googleapis.com https://fonts.gstatic.com ws://localhost:* wss://*; "
             f"worker-src 'self' blob:; "
             f"frame-src 'self'"
         )
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-        response.headers['X-XSS-Protection'] = '1; mode=block'
+        response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
+        response.headers['Cross-Origin-Resource-Policy'] = 'same-origin'
+        response.headers['X-Permitted-Cross-Domain-Policies'] = 'none'
         response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=self'
         # Cache-Control: статические ассеты кешируем на 24 часа, динамику — не кешируем
         if request.path.startswith('/static/'):
@@ -250,15 +206,13 @@ def create_app():
         # В режиме тестирования CSRF отключён
         if app.config.get('TESTING'):
             return
-        # Пропускаем auth-роуты (login/register) — на них нет CSRF-токена в формах
-        if request.path in ('/login', '/register'):
-            return
-        # Пропускаем удаление фото — вызывается через fetch без CSRF-токена
-        if request.path == '/profile/delete-photo':
-            return
         # Emergency API endpoints protected by X-Admin-Token instead of CSRF
-        if request.path in ('/api/reset-users', '/api/fix-permissions', '/api/reset-circuit-breaker') and request.headers.get('X-Admin-Token') == app.config.get('SECRET_KEY'):
-            return
+        if request.path in ('/api/reset-users', '/api/fix-permissions', '/api/reset-circuit-breaker'):
+            import hmac
+            admin_token = request.headers.get('X-Admin-Token', '')
+            expected = app.config.get('ADMIN_API_TOKEN', app.config['SECRET_KEY'])
+            if hmac.compare_digest(admin_token, expected):
+                return
         # Проверяем заголовок X-CSRF-Token (для fetch/AJAX-запросов)
         header_token = request.headers.get('X-CSRF-Token')
         if header_token:
@@ -285,14 +239,6 @@ def create_app():
     # Регистрация контекст-процессоров (вынесены в app/context_processors.py)
     from app.context_processors import register_context_processors
     register_context_processors(app)
-
-    @app.context_processor
-    def inject_git_version():
-        """Версия вычисляется при каждом запросе (с TTL-кешем 60 с)."""
-        return {
-            'git_version': get_git_version(project_root),
-            'worker_site_url': app.config.get('WORKER_SITE_URL', 'https://trudnik-hyperstls.amvera.io/'),
-        }
 
     @app.context_processor
     def inject_sort_url():
@@ -369,22 +315,25 @@ def create_app():
     # из-за проблем с blueprint-роутингом на production/Render)
     # ================================
     from app.blueprints.applications import api_handle_application
-    from app.decorators import login_required, rate_limit
+    from app.decorators import login_required, rate_limit, validate_uuid
 
     @app.route('/api/applications/<app_id>/accept', methods=['POST'])
     @login_required
     @rate_limit
+    @validate_uuid('app_id')
     def api_accept_application(app_id):
         return api_handle_application(app_id, 'accept')
 
     @app.route('/api/applications/<app_id>/reject', methods=['POST'])
     @login_required
     @rate_limit
+    @validate_uuid('app_id')
     def api_reject_application(app_id):
         return api_handle_application(app_id, 'reject')
 
     @app.route('/api/applications/<app_id>/reopen', methods=['POST'])
     @login_required
+    @validate_uuid('app_id')
     def api_reopen_application(app_id):
         return api_handle_application(app_id, 'reopen')
 
@@ -413,7 +362,7 @@ def create_app():
                                    mimetype='application/json')
 
     # ═══════════════════════════════════════════════════════════════
-    # Обслуживание загруженных файлов (замена Supabase Storage)
+    # Обслуживание загруженных файлов — Supabase Storage заменён на локальное хранилище Amvera (устарело)
     # ═══════════════════════════════════════════════════════════════
 
     @app.route('/uploads/<path:filename>')
@@ -502,7 +451,7 @@ def create_app():
             'status': 'ok' if (db_ok and not cb_postgrest_open and not cb_admin_open) else 'degraded',
             'database': 'ok' if db_ok else 'error',
             'circuit_breaker': cb_state,
-            'version': get_git_version(project_root),
+            'version': 'unknown',
             'timestamp': _time_module.strftime('%Y-%m-%dT%H:%M:%SZ', _time_module.gmtime()),
             'uptime_seconds': int(_time_module.time() - _app_start_time),
         }

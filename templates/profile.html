@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from '_icons.html' import star, chat, trash, shield, camera, settings, mail, phone, map_pin, info, smiley %}
+{% block title %}Профиль — Трудник{% endblock %}
 {% block content %}
 <div class="px-4 pb-24 max-w-lg mx-auto" data-user-id="{{ current_user_id }}">
     {% if error_message %}
@@ -74,7 +75,6 @@
     {# Форма редактирования профиля                 #}
     {# ============================================ #}
     <form method="post" action="/profile/update" enctype="multipart/form-data" class="space-y-4">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <input type="file" id="photo-input" name="photo" accept="image/*" class="js-auto-submit hidden">
 
         <div class="floating-label-group">
@@ -110,16 +110,9 @@
                            text-neutral-900 appearance-none
                            bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%23737373%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22M19%209l-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')]
                            bg-[length:20px] bg-[right_12px_center] bg-no-repeat pr-10">
-                <option value="" disabled selected hidden>Не указано</option>
-                <option value="не указано" {% if profile_user.get('religion') == 'не указано' %}selected{% endif %}>Не указано</option>
-                <option value="православие" {% if profile_user.get('religion') == 'православие' %}selected{% endif %}>Православие</option>
-                <option value="католицизм" {% if profile_user.get('religion') == 'католицизм' %}selected{% endif %}>Католицизм</option>
-                <option value="протестантизм" {% if profile_user.get('religion') == 'протестантизм' %}selected{% endif %}>Протестантизм</option>
-                <option value="ислам" {% if profile_user.get('religion') == 'ислам' %}selected{% endif %}>Ислам</option>
-                <option value="иудаизм" {% if profile_user.get('religion') == 'иудаизм' %}selected{% endif %}>Иудаизм</option>
-                <option value="буддизм" {% if profile_user.get('religion') == 'буддизм' %}selected{% endif %}>Буддизм</option>
-                <option value="не важно" {% if profile_user.get('religion') == 'не важно' %}selected{% endif %}>Не важно</option>
+                <option value="">Загрузка...</option>
             </select>
+            <input type="hidden" name="religion_id" id="religion_id" value="">
         </div>
 
         {% if profile_user.get('role') == 'worker' %}
@@ -127,6 +120,8 @@
             <label class="text-sm font-medium text-neutral-700 mb-2 block">Навыки</label>
             <div class="skills-multiselect relative">
                 <div class="selected-skills flex flex-wrap gap-1 mb-2 min-h-[28px]" id="selected-skills"></div>
+                <input type="text" id="skill-search" placeholder="Поиск навыка..."
+                       class="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm mb-1 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15">
                 <button type="button" id="skills-dropdown-btn"
                         class="w-full flex items-center justify-between px-3 py-2.5 border border-neutral-200 rounded-lg bg-white text-sm text-neutral-500 hover:border-neutral-300 transition-colors focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15">
                     <span id="skills-placeholder">Выберите навыки</span>
@@ -187,17 +182,23 @@
     {# ============================================ #}
     <div class="mt-8 p-5 bg-white rounded-2xl shadow-sm border border-neutral-100">
         <h3 class="text-lg font-semibold text-neutral-900 mb-4">Сменить пароль</h3>
-        <form action="/profile/change-password" method="post" class="space-y-3">
+        <form id="change-password-form" action="/profile/change-password" method="post" class="space-y-3">
             <div class="floating-label-group">
-                <input type="password" name="new_password" required minlength="6"
+                <input type="password" name="current_password" id="current-password" required minlength="6"
+                       class="floating-input" placeholder=" ">
+                <label class="floating-label">Текущий пароль</label>
+            </div>
+            <div class="floating-label-group">
+                <input type="password" name="new_password" id="new-password" required minlength="6"
                        class="floating-input" placeholder=" ">
                 <label class="floating-label">Новый пароль</label>
             </div>
             <div class="floating-label-group">
-                <input type="password" name="confirm_password" required minlength="6"
+                <input type="password" name="confirm_password" id="confirm-password" required minlength="6"
                        class="floating-input" placeholder=" ">
-                <label class="floating-label">Подтвердите пароль</label>
+                <label class="floating-label">Подтвердите новый пароль</label>
             </div>
+            <p id="password-match-error" class="text-danger text-xs hidden">Пароли не совпадают</p>
             <button type="submit"
                     class="w-full bg-primary-500 text-white py-3 rounded-xl font-semibold text-sm hover:bg-primary-600 active:scale-[0.97] transition-all duration-200 shadow-sm">
                 Изменить пароль
@@ -256,6 +257,52 @@ document.addEventListener('DOMContentLoaded', function() {
 
 {% if profile_user and profile_user.get('role') == 'worker' %}
 <script nonce="{{ csp_nonce }}">
+// ── Загрузка вероисповеданий из API ──
+(function() {
+    var religionSelect = document.getElementById('religion');
+    if (!religionSelect) return;
+    var currentReligion = '{{ profile_user.get("religion", "") }}';
+    fetch('/api/religions')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var religions = data.religions || [];
+            religionSelect.innerHTML = '<option value="">Не указано</option>' +
+                religions.map(function(r) {
+                    return '<option value="' + r.name + '"' + (r.name === currentReligion ? ' selected' : '') + '>' + r.name + '</option>';
+                }).join('');
+        })
+        .catch(function() {
+            religionSelect.innerHTML = '<option value="">Не указано</option>';
+        });
+})();
+
+// ── Проверка совпадения паролей ──
+(function() {
+    var form = document.getElementById('change-password-form');
+    if (!form) return;
+    var newPass = document.getElementById('new-password');
+    var confirmPass = document.getElementById('confirm-password');
+    var errorEl = document.getElementById('password-match-error');
+
+    form.addEventListener('submit', function(e) {
+        if (newPass.value !== confirmPass.value) {
+            e.preventDefault();
+            errorEl.classList.remove('hidden');
+            window.showToast && window.showToast('Пароли не совпадают', 'error');
+        } else {
+            errorEl.classList.add('hidden');
+        }
+    });
+
+    if (confirmPass) {
+        confirmPass.addEventListener('input', function() {
+            if (newPass.value === confirmPass.value) {
+                errorEl.classList.add('hidden');
+            }
+        });
+    }
+})();
+
 (function() {
     var skillsHidden = document.getElementById('skills-hidden');
     if (!skillsHidden) return;
@@ -266,13 +313,20 @@ document.addEventListener('DOMContentLoaded', function() {
     var skillsList = document.getElementById('skills-list');
     var placeholder = document.getElementById('skills-placeholder');
     var arrow = document.getElementById('skills-arrow');
+    var skillSearch = document.getElementById('skill-search');
 
-    // Текущие выбранные навыки (из hidden input)
-    var selectedSkills = skillsHidden.value ? skillsHidden.value.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
+    // Текущие выбранные навыки (поддержка JSON-массива и comma-separated)
+    var rawSkills = skillsHidden.value;
+    var selectedSkills = [];
+    try {
+        selectedSkills = JSON.parse(rawSkills);
+    } catch(e) {
+        selectedSkills = rawSkills ? rawSkills.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
+    }
 
     function updateUI() {
-        // Обновляем hidden input
-        skillsHidden.value = selectedSkills.join(',');
+        // Обновляем hidden input (JSON-массив)
+        skillsHidden.value = JSON.stringify(selectedSkills);
 
         // Обновляем чипсы
         if (selectedSkills.length === 0) {
@@ -284,12 +338,19 @@ document.addEventListener('DOMContentLoaded', function() {
             placeholder.textContent = 'Выбрано: ' + selectedSkills.length;
             placeholder.classList.remove('text-neutral-500');
             placeholder.classList.add('text-neutral-700');
-            selectedContainer.innerHTML = selectedSkills.map(function(skill) {
-                return '<span class="inline-flex items-center gap-1 bg-primary-50 text-primary-700 px-2.5 py-1 rounded-lg text-xs font-medium">' +
-                    skill +
-                    '<button type="button" class="remove-skill ml-0.5 hover:text-danger transition-colors" data-skill="' + skill + '">&times;</button>' +
-                    '</span>';
-            }).join('');
+            selectedContainer.innerHTML = '';
+            selectedSkills.forEach(function(skill) {
+                var span = document.createElement('span');
+                span.className = 'inline-flex items-center gap-1 bg-primary-50 text-primary-700 px-2.5 py-1 rounded-lg text-xs font-medium';
+                span.textContent = skill;
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'remove-skill ml-0.5 hover:text-danger transition-colors';
+                btn.setAttribute('data-skill', skill);
+                btn.textContent = '\u00d7';
+                span.appendChild(btn);
+                selectedContainer.appendChild(span);
+            });
         }
 
         // Обновляем чекбоксы в выпадающем списке
@@ -297,6 +358,20 @@ document.addEventListener('DOMContentLoaded', function() {
         checkboxes.forEach(function(cb) {
             cb.checked = selectedSkills.indexOf(cb.value) !== -1;
         });
+    }
+
+    // Функция фильтрации навыков по поиску
+    function filterSkills() {
+        var q = (skillSearch && skillSearch.value || '').toLowerCase();
+        var items = skillsList.querySelectorAll('label.skill-filter-item');
+        items.forEach(function(item) {
+            var skillName = (item.getAttribute('data-skill') || '').toLowerCase();
+            item.style.display = skillName.indexOf(q) !== -1 ? 'flex' : 'none';
+        });
+    }
+
+    if (skillSearch) {
+        skillSearch.addEventListener('input', filterSkills);
     }
 
     // Загрузка списка навыков
@@ -309,7 +384,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             skillsList.innerHTML = skills.map(function(s) {
-                return '<label class="flex items-center gap-2 px-2 py-1.5 hover:bg-neutral-50 rounded cursor-pointer text-sm">' +
+                return '<label class="skill-filter-item flex items-center gap-2 px-2 py-1.5 hover:bg-neutral-50 rounded cursor-pointer text-sm" data-skill="' + s.name + '">' +
                     '<input type="checkbox" value="' + s.name + '" class="skill-checkbox rounded border-neutral-300 text-primary-500 focus:ring-primary-500">' +
                     '<span class="text-neutral-700">' + s.name + '</span>' +
                     '</label>';
@@ -345,7 +420,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Закрытие по клику вне
     document.addEventListener('click', function(e) {
-        if (!dropdownBtn.contains(e.target) && !dropdown.contains(e.target)) {
+        if (!dropdownBtn.contains(e.target) && !dropdown.contains(e.target) && (!skillSearch || !skillSearch.contains(e.target))) {
             dropdown.classList.add('hidden');
             arrow.style.transform = 'rotate(0deg)';
         }

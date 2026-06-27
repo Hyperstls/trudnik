@@ -14,7 +14,6 @@
     <meta name="theme-color" content="#d97706">
     <meta name="description" content="Платформа для поиска разовой подработки. Работодатели публикуют задания, исполнители откликаются и выполняют работу.">
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <meta name="git-version" content="{{ git_version }}">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="Трудник">
     <meta name="msapplication-tap-highlight" content="no">
@@ -27,6 +26,14 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap" rel="stylesheet">
     <style nonce="{{ csp_nonce }}">
+        :root {
+            --brand: #2563eb;
+            --brand-dark: #1d4ed8;
+            --danger: #dc2626;
+            --success: #16a34a;
+            --neutral-50: #f9fafb;
+            --neutral-900: #111827;
+        }
         html {
             scrollbar-gutter: stable;
             overflow-x: hidden;
@@ -564,7 +571,7 @@
             {% if session.get('role') == 'employer' %}
             <a href="/my-jobs" class="flex items-center gap-2.5 shrink-0" aria-label="Мои задания">
             {% elif session.get('role') == 'worker' %}
-            <a href="{{ worker_site_url }}" class="flex items-center gap-2.5 shrink-0" aria-label="На главный сайт">
+            <a href="{{ worker_site_url or '/' }}" class="flex items-center gap-2.5 shrink-0" aria-label="На главный сайт">
             {% else %}
             <a href="/" class="flex items-center gap-2.5 shrink-0" aria-label="На главную">
             {% endif %}
@@ -576,8 +583,7 @@
                         <line x1="15" y1="9" x2="15.01" y2="9"/>
                     </svg>
                 </div>
-                <span class="text-lg font-bold tracking-tight text-neutral-800 hidden sm:inline">Трудник</span>
-                <span class="text-lg font-bold tracking-tight text-neutral-800 sm:hidden">Трудник</span>
+                <span class="text-lg font-bold tracking-tight text-neutral-800">Трудник</span>
             </a>
 
             <!-- Поиск (только ПК) -->
@@ -588,7 +594,7 @@
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
-                    <input type="text" name="city" placeholder="Поиск заданий, трудников..." class="w-full pl-9 pr-4 py-2 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                    <input type="text" name="city" placeholder="Поиск по городу..." class="w-full pl-9 pr-4 py-2 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
                 </form>
             </div>
             {% endif %}
@@ -610,7 +616,7 @@
                         <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
                     </svg>
                     {% if unread_notifications is defined and unread_notifications > 0 %}
-                    <span class="absolute -top-0.5 -right-0.5 bg-danger text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border-2 border-white">{{ '99+' if unread_notifications > 99 else unread_notifications }}</span>
+                    <span id="notifications-badge" class="absolute -top-0.5 -right-0.5 bg-danger text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border-2 border-white">{{ '99+' if unread_notifications > 99 else unread_notifications }}</span>
                     {% endif %}
                 </a>
                 <!-- Приглашения (только для трудника) -->
@@ -623,7 +629,7 @@
                         <line x1="22" y1="11" x2="16" y2="11"></line>
                     </svg>
                     {% if pending_invitations is defined and pending_invitations > 0 %}
-                    <span class="absolute -top-0.5 -right-0.5 bg-danger text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border-2 border-white">{{ '99+' if pending_invitations > 99 else pending_invitations }}</span>
+                    <span id="chat-badge" class="absolute -top-0.5 -right-0.5 bg-danger text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border-2 border-white">{{ '99+' if pending_invitations > 99 else pending_invitations }}</span>
                     {% endif %}
                 </a>
                 {% endif %}
@@ -678,7 +684,7 @@
     <!-- ================================ -->
     <!-- Custom Confirm Modal              -->
     <!-- ================================ -->
-    <div id="confirm-modal-backdrop" class="modal-backdrop hidden z-[100]" style="display:none;">
+    <div id="confirm-modal-backdrop" class="modal-backdrop hidden z-[100]" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
         <div class="modal-content animate-scale-in">
             <h3 id="confirm-modal-title" class="text-lg font-bold text-neutral-800 mb-2">Подтвердите действие</h3>
             <p id="confirm-modal-message" class="text-neutral-600 text-sm mb-6"></p>
@@ -772,7 +778,7 @@
         {% if session.get('role') == 'employer' %}
         <!-- Работодатель -->
         <a href="/my-jobs"
-           class="nav-item flex flex-col items-center text-[10px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'my_jobs' in request.endpoint }}"
+           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'my_jobs' in request.endpoint }}"
            aria-label="Мои задания">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
@@ -780,7 +786,7 @@
             <span>Мои задания</span>
         </a>
         <a href="/my-applications"
-           class="nav-item flex flex-col items-center text-[10px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] relative {{ 'active text-primary-500' if request.endpoint and 'my_applications' in request.endpoint }}"
+           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] relative {{ 'active text-primary-500' if request.endpoint and 'my_applications' in request.endpoint }}"
            aria-label="Отклики">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="2" y="3" width="20" height="18" rx="2" ry="2"></rect>
@@ -794,7 +800,7 @@
             {% endif %}
         </a>
         <a href="/workers"
-           class="nav-item flex flex-col items-center text-[10px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'workers' in request.endpoint }}"
+           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'workers' in request.endpoint }}"
            aria-label="Трудники">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -805,7 +811,7 @@
             <span>Трудники</span>
         </a>
         <a href="/favorites"
-           class="nav-item flex flex-col items-center text-[10px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'favorites' in request.endpoint }}"
+           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'favorites' in request.endpoint }}"
            aria-label="Избранное">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
@@ -813,17 +819,26 @@
             <span>Избранное</span>
         </a>
         <a href="/chats"
-           class="nav-item flex flex-col items-center text-[10px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'chats' in request.endpoint }}"
+           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'chats' in request.endpoint }}"
            aria-label="Чаты">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
             </svg>
             <span>Чаты</span>
         </a>
+        <a href="/profile"
+           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and request.endpoint in ('profile.profile', 'profile.profile_edit', 'profile.public_profile') }}"
+           aria-label="Профиль">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Профиль</span>
+        </a>
         {% else %}
         <!-- Трудник -->
         <a href="/"
-           class="nav-item flex flex-col items-center text-[10px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and request.endpoint in ('index', 'main.index') }}"
+           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and request.endpoint in ('index', 'main.index') }}"
            aria-label="Задания">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
@@ -832,7 +847,7 @@
             <span>Задания</span>
         </a>
         <a href="/employers"
-           class="nav-item flex flex-col items-center text-[10px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'employers' in request.endpoint }}"
+           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'employers' in request.endpoint }}"
            aria-label="Работодатели">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
@@ -844,7 +859,7 @@
             <span>Работодатели</span>
         </a>
         <a href="/chats"
-           class="nav-item flex flex-col items-center text-[10px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'chats' in request.endpoint }}"
+           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'chats' in request.endpoint }}"
            aria-label="Чаты">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
@@ -852,12 +867,21 @@
             <span>Чаты</span>
         </a>
         <a href="/favorites"
-           class="nav-item flex flex-col items-center text-[10px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'favorites' in request.endpoint }}"
+           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'favorites' in request.endpoint }}"
            aria-label="Избранное">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
             </svg>
             <span>Избранное</span>
+        </a>
+        <a href="/profile"
+           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and request.endpoint in ('profile.profile', 'profile.profile_edit', 'profile.public_profile') }}"
+           aria-label="Профиль">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Профиль</span>
         </a>
         {% endif %}
     </nav>
@@ -984,10 +1008,16 @@
             okBtn.textContent = options.okText || 'Подтвердить';
             okBtn.className = (options.danger !== false ? 'bg-danger hover:bg-red-700' : 'bg-primary-500 hover:bg-primary-600') + ' text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors';
 
+            var previousActiveElement = document.activeElement;
+
             function close() {
                 backdrop.style.display = 'none';
                 backdrop.classList.add('hidden');
                 document.body.style.overflow = '';
+                // Возврат фокуса
+                if (previousActiveElement && previousActiveElement.focus) {
+                    previousActiveElement.focus();
+                }
             }
 
             okBtn.onclick = function() { close(); if (onConfirm) onConfirm(); };
@@ -998,9 +1028,39 @@
             backdrop.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
 
-            document.addEventListener('keydown', function handler(e) {
-                if (e.key === 'Escape') { close(); document.removeEventListener('keydown', handler); }
-            });
+            // Focus trap: зацикливание табуляции внутри модала
+            var focusableElements = backdrop.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            var firstFocusable = focusableElements[0];
+            var lastFocusable = focusableElements[focusableElements.length - 1];
+
+            // Фокус на кнопку OK
+            if (okBtn) okBtn.focus();
+
+            function trapFocus(e) {
+                if (e.key !== 'Tab') return;
+                if (e.shiftKey) {
+                    if (document.activeElement === firstFocusable) {
+                        e.preventDefault();
+                        lastFocusable.focus();
+                    }
+                } else {
+                    if (document.activeElement === lastFocusable) {
+                        e.preventDefault();
+                        firstFocusable.focus();
+                    }
+                }
+            }
+
+            function handleEscape(e) {
+                if (e.key === 'Escape') {
+                    close();
+                    backdrop.removeEventListener('keydown', handleEscape);
+                    backdrop.removeEventListener('keydown', trapFocus);
+                }
+            }
+
+            backdrop.addEventListener('keydown', trapFocus);
+            backdrop.addEventListener('keydown', handleEscape);
         };
 
         // ========================================

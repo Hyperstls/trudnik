@@ -213,7 +213,7 @@ def mock_postgrest_client(monkeypatch):
     except Exception:
         pass
 
-    return mock_postgrest
+    return
 
 
 @pytest.fixture

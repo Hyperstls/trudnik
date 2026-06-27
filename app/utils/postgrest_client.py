@@ -1,4 +1,4 @@
-"""Supabase/PostgREST-клиент: HTTP-запросы, JWT-заголовки, Circuit Breaker, connection pooling."""
+"""PostgREST-клиент (Amvera): HTTP-запросы, JWT-заголовки, Circuit Breaker, connection pooling. Supabase не используется."""
 
 import inspect
 import json
@@ -293,20 +293,19 @@ _PGRST_DB_ROLE = 'trudnikapp'
 def get_service_role_headers() -> Dict[str, str]:
     """Создать заголовки с JWT для админских операций (обход RLS).
 
-    ВАЖНО: На продакшене (Amvera) нет SUPERUSER-доступа к PostgreSQL,
-    поэтому невозможно выполнить GRANT service_role TO trudnikapp.
-    Вместо этого используется роль trudnikapp — текущий пользователь БД,
-    под которым PostgREST подключается. SET ROLE trudnikapp — no-op.
+    Использует роль 'service_role' для админских запросов к PostgREST.
+    JWT mint'ится с PGRST_JWT_SECRET (тот же секрет, что у PostgREST).
 
     Returns:
         Словарь с заголовками Authorization и Content-Type.
     """
+    import uuid as _uuid
     token = pyjwt.encode(
         {
-            'role': _PGRST_DB_ROLE,
+            'role': 'service_role',
             'exp': int(time.time()) + 300,  # 5 минут
             'iat': int(time.time()),
-            'jti': secrets.token_hex(8),
+            'jti': str(_uuid.uuid4()),
         },
         PGRST_JWT_SECRET,
         algorithm='HS256'
@@ -320,9 +319,7 @@ def get_service_role_headers() -> Dict[str, str]:
 def get_user_headers(user_id: Optional[str] = None) -> Dict[str, str]:
     """Создать заголовки с JWT для аутентифицированного пользователя.
 
-    ВАЖНО: На продакшене (Amvera) нет SUPERUSER-доступа к PostgreSQL,
-    поэтому невозможно SET ROLE authenticated/anon. Используется роль
-    trudnikapp — текущий пользователь БД PostgREST.
+    Роль берётся из сессии Flask (session['user']['role']), fallback — 'authenticated'.
 
     Args:
         user_id: UUID пользователя (если None — берётся из сессии Flask).
@@ -333,9 +330,8 @@ def get_user_headers(user_id: Optional[str] = None) -> Dict[str, str]:
     from app.utils.auth import generate_jwt
     if user_id is None:
         user_id = session.get('user_id', '')
-    # Всегда используем trudnikapp (текущий пользователь PostgREST),
-    # т.к. SET ROLE authenticated/anon требует SUPERUSER
-    role = _PGRST_DB_ROLE
+    # Берём реальную роль из сессии, fallback — 'authenticated'
+    role = session.get('user', {}).get('role') or session.get('role', 'authenticated')
     token = generate_jwt(str(user_id) if user_id else '', role)
     return {
         'Authorization': f'Bearer {token}',

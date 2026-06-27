@@ -1,30 +1,43 @@
 # Безопасность — Трудник (Trudnik)
 
 > Многоуровневая система безопасности: аутентификация, CSRF, CSP, Rate Limiting, Circuit Breaker, ролевая модель, RLS.
-> **Актуализировано:** 2026-06-17 | **Ветка:** `main`
+> **Актуализировано:** 2026-06-27 | **Ветка:** `main` (миграция с Supabase на Amvera/PostgREST завершена)
+
+---
+
+## Устранённые уязвимости
+
+| # | Уязвимость | Статус |
+|---|-----------|--------|
+| 1 | **API-ключ DeepSeek в browser_agent.py** — файл перемещён в [`archive/browser_agent.py`](../archive/browser_agent.py), ключ заменён на заглушку | ✅ Устранено |
+| 2 | **Хардкоженные пароли в cleanup_extra_users.py** — файл перемещён в [`archive/cleanup_extra_users.py`](../archive/cleanup_extra_users.py) | ✅ Устранено |
+| 3 | **Хардкоженные пароли в manage_users.py** — файл перемещён в [`archive/manage_users.py`](../archive/manage_users.py) | ✅ Устранено |
+| 4 | **9 утёкших секретов** — задокументированы в [`archive/secret_change.md`](../archive/secret_change.md); требуется верификация чек-листа | ⚠️ Требуется проверка |
 
 ---
 
 ## Аутентификация
 
-### JWT-токены Supabase Auth
+### Нативная аутентификация через PostgREST (Amvera)
 
-Аутентификация построена на **Supabase Auth (GoTrue)**. Используется JWT-пара:
+Аутентификация построена на **нативных RPC-функциях PostgreSQL** через PostgREST (Amvera).
+
+<!-- УСТАРЕЛО: Ранее использовалась Supabase Auth (GoTrue) -->
 
 | Токен | Время жизни | Хранение | Назначение |
 |-------|-------------|----------|------------|
-| `access_token` | Короткое (1 час) | `session['access_token']` | Авторизация запросов к Supabase REST API |
+| `access_token` | Короткое (1 час) | `session['access_token']` | Авторизация запросов к PostgREST API |
 | `refresh_token` | Долгое (30 дней) | `session['refresh_token']` | Обновление access_token без повторного входа |
 
 **Поток аутентификации:**
 
-1. **Логин** (`POST /login`) — пользователь отправляет email/password → Supabase `/auth/v1/token?grant_type=password` → выдаёт JWT-пару
+1. **Логин** (`POST /login`) — пользователь отправляет email/password → RPC `login_user(p_email, p_password)` → возвращает данные пользователя, Flask генерирует JWT
 2. **Хранение** — токены сохраняются в серверной сессии Flask (подписанные куки)
-3. **Использование** — каждый запрос к Supabase передаёт `Authorization: Bearer <access_token>`
-4. **Автообновление** — при 401 или истечении срока, [`refresh_access_token()`](../app/utils.py:277) вызывает `/auth/v1/token?grant_type=refresh_token`
+3. **Использование** — каждый запрос к PostgREST передаёт `Authorization: Bearer <access_token>`
+4. **Автообновление** — при 401 или истечении срока, [`refresh_access_token()`](../app/utils/postgrest_client.py) обновляет токен
 
 **Регистрация** (`POST /register`):
-- Supabase `/auth/v1/signup` создаёт запись в `auth.users`
+- RPC `register_user(p_email, p_password, p_full_name, p_role)` создаёт запись в `profiles` с хешированным паролем (pgcrypto)
 - Профиль пользователя заполняется через PATCH `profiles` (service_role или токен пользователя)
 - Навыки сохраняются через `user_skills` (с валидацией UUID)
 
@@ -38,7 +51,7 @@
 **Источники:**
 - [`app/blueprints/auth.py`](../app/blueprints/auth.py:1)
 - [`app/decorators.py:14`](../app/decorators.py:14) — `login_required` с автообновлением
-- [`app/utils.py:277`](../app/utils.py:277) — `refresh_access_token()`
+- [`app/utils/postgrest_client.py`](../app/utils/postgrest_client.py) — `refresh_access_token()`
 - [`app/config.py:17`](../app/config.py:17) — настройки сессионных кук
 
 ---
@@ -92,7 +105,7 @@ script-src 'self' 'nonce-{random}' https://cdn.jsdelivr.net https://api-maps.yan
 style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com;
 font-src 'self' https://fonts.gstatic.com;
 img-src 'self' data: https:;
-connect-src 'self' https://*.supabase.co https://*.maps.yandex.net https://yastatic.net https://geocode-maps.yandex.ru ws://localhost:* wss://*;
+connect-src 'self' https://*.amvera.ru https://*.maps.yandex.net https://yastatic.net https://geocode-maps.yandex.ru ws://localhost:* wss://*;
 frame-src 'self'
 ```
 
@@ -113,7 +126,7 @@ Nonce внедряется в шаблоны как `{{ csp_nonce }}` и исп�
 | `script-src` | `api-maps.yandex.ru`, `yastatic.net` | Яндекс.Карты |
 | `style-src` | `cdn.jsdelivr.net`, `fonts.googleapis.com` | Стили, шрифты |
 | `font-src` | `fonts.gstatic.com` | Google Fonts |
-| `connect-src` | `*.supabase.co` | Supabase REST API |
+| `connect-src` | `*.amvera.ru` | PostgREST API (Amvera) |
 | `connect-src` | `*.maps.yandex.net`, `yastatic.net`, `geocode-maps.yandex.ru` | Яндекс.Карты API |
 | `connect-src` | `ws://localhost:*`, `wss://*` | WebSocket-соединения |
 
@@ -191,12 +204,12 @@ content = _html.escape(content)
 
 ### Архитектура
 
-Два экземпляра Circuit Breaker для защиты от каскадных отказов при проблемах с Supabase:
+Два экземпляра Circuit Breaker для защиты от каскадных отказов при проблемах с PostgREST (Amvera):
 
 | Экземпляр | Назначение | Файл |
 |-----------|------------|------|
-| `_cb_supabase` | Пользовательские запросы (`supabase_request`, `supabase_rpc`) | [`app/utils.py:100`](../app/utils.py:100) |
-| `_cb_admin` | Административные запросы (`supabase_admin_request`, `supabase_rpc` с `use_admin=True`) | [`app/utils.py:101`](../app/utils.py:101) |
+| `_cb_postgrest` | Пользовательские запросы (`postgrest_request`, `postgrest_rpc`) | [`app/utils/postgrest_client.py`](../app/utils/postgrest_client.py) |
+| `_cb_admin` | Административные запросы (`postgrest_admin_request`, `postgrest_rpc` с `use_admin=True`) | [`app/utils/postgrest_client.py`](../app/utils/postgrest_client.py) |
 
 ### Три состояния
 
@@ -222,8 +235,6 @@ content = _html.escape(content)
 - Исключение при выполнении HTTP-запроса (`requests.RequestException`)
 - Ответ с `ok=False` (не 2xx статус)
 - `SupabaseResponse` с `ok=False`
-
-**Источник:** [`app/utils.py:29`](../app/utils.py:29) — класс `CircuitBreaker`
 
 ---
 
@@ -258,19 +269,21 @@ content = _html.escape(content)
 
 ### RLS (Row Level Security)
 
-На уровне базы данных Supabase все таблицы защищены RLS-политиками. Пользовательские запросы идут с `Authorization: Bearer <access_token>`, и PostgreSQL автоматически ограничивает доступ на основе `auth.uid()`.
+На уровне базы данных PostgreSQL (Amvera) все таблицы защищены RLS-политиками. Пользовательские запросы идут с `Authorization: Bearer <access_token>`, и PostgreSQL автоматически ограничивает доступ на основе JWT-claims (`user_id`, `role`).
+
+<!-- УСТАРЕЛО: Ранее использовался Supabase auth.uid() -->
 
 **Привилегированные операции** (service_role):
-- `supabase_admin_request()` — обходит RLS, используется только на серверной стороне
-- Защита: проверка `SERVICE_KEY` перед вызовом ([`_assert_service_key()`](../app/utils.py:217))
+- `postgrest_admin_request()` — обходит RLS, используется только на серверной стороне
+- Защита: проверка `PGRST_JWT_SECRET` перед вызовом ([`_assert_service_key()`](../app/utils/postgrest_client.py))
 - Аудит: логирование всех admin-запросов с указанием вызывающего модуля
-- Ограничение контекстов: [`_ADMIN_ALLOWED_PREFIXES`](../app/utils.py:170) — только `app.blueprints`, `app.services`, `app.tasks`, `app.utils`, `scripts`, `tests`
+- Ограничение контекстов: [`_ADMIN_ALLOWED_PREFIXES`](../app/utils/postgrest_client.py) — только `app.blueprints`, `app.services`, `app.tasks`, `app.utils`, `scripts`, `tests`
 - Предупреждения: вызовы из шаблонов логируются как SECURITY WARNING
 
 **Источники:**
 - [`app/decorators.py`](../app/decorators.py:1)
-- [`app/utils.py:165`](../app/utils.py:165) — безопасность service_role
-- [`migrations/001_setup_rls.sql`](../migrations/001_setup_rls.sql:1)
+- [`app/utils/postgrest_client.py`](../app/utils/postgrest_client.py) — безопасность service_role
+- [`migrations/001_setup_rls.sql`](../migrations/archive/001_setup_rls.sql:1)
 
 ---
 
@@ -280,7 +293,7 @@ content = _html.escape(content)
 
 **Что это означает для проекта:**
 - JWT-токены, передаваемые от Flask к PostgREST, идут в открытом виде по внутренней сети
-- Service Role Key (SUPABASE_SERVICE_ROLE_KEY) используется для аутентификации в PostgREST и также передаётся без шифрования
+- Service Role Key (PGRST_JWT_SECRET) используется для аутентификации в PostgREST и также передаётся без шифрования
 - Данные, передаваемые между преднастроенными сервисами Amvera (PostgREST, Redis, PostgreSQL), не шифруются
 
 **Почему это приемлемо:**
@@ -302,13 +315,13 @@ content = _html.escape(content)
 | Уровень | Механизм | Где применяется |
 |---------|----------|-----------------|
 | **Транспортный** | HTTPS (куки Secure), HSTS | Production-окружение |
-| **Аутентификация** | JWT Supabase Auth, автообновление токена | Все запросы |
-| **Авторизация** | `@login_required`, `@role_required`, RLS | Маршруты, БД |
+| **Аутентификация** | JWT (нативная аутентификация PostgREST), автообновление токена | Все запросы |
+| **Авторизация** | `@login_required`, `@role_required`, RLS (PostgREST) | Маршруты, БД |
 | **CSRF** | Глобальный фильтр, двойная проверка (заголовок + тело) | Все мутирующие запросы |
 | **XSS** | CSP с nonce, `html.escape()` в чате, санитизация PostgREST | Шаблоны, API, чат |
 | **Injection** | `sanitize_postgrest()`, whitelist-проверка | Все параметры PostgREST |
 | **Rate Limiting** | In-memory, per-IP, 10 запросов/60 сек | Критические POST-эндпоинты |
-| **Устойчивость** | Circuit Breaker (2 экземпляра), 5 ошибок → 30 сек | Все вызовы Supabase |
+| **Устойчивость** | Circuit Breaker (2 экземпляра), 5 ошибок → 30 сек | Все вызовы PostgREST (Amvera) |
 | **Clickjacking** | `X-Frame-Options: DENY` | Все страницы |
 | **MIME sniffing** | `X-Content-Type-Options: nosniff` | Все ответы |
 | **Браузерные API** | `Permissions-Policy: camera=(), microphone=(), geolocation=self` | Все страницы |

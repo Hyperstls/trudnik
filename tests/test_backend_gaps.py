@@ -220,7 +220,7 @@ class TestCircuitBreaker:
         Симулируем 5 вызовов, возвращающих ошибку, затем проверяем,
         что 6-й вызов возвращает заглушку 503.
         """
-        from app.utils import CircuitBreaker, SupabaseResponse
+        from app.utils import CircuitBreaker, PostgrestResponse
 
         cb = CircuitBreaker(failure_threshold=5, recovery_timeout=30.0)
         assert cb.state == "CLOSED"
@@ -230,7 +230,7 @@ class TestCircuitBreaker:
 
         def failing_call():
             call_count[0] += 1
-            return SupabaseResponse(
+            return PostgrestResponse(
                 ok=False,
                 status_code=500,
                 text="Internal Server Error",
@@ -267,20 +267,20 @@ class TestCircuitBreaker:
 
         Мокаем time.time() для симуляции прошедшего времени.
         """
-        from app.utils import CircuitBreaker, SupabaseResponse
+        from app.utils import CircuitBreaker, PostgrestResponse
 
         cb = CircuitBreaker(failure_threshold=5, recovery_timeout=30.0)
 
         # Симулируем функцию, возвращающую ошибку
         def failing_call():
-            return SupabaseResponse(
+            return PostgrestResponse(
                 ok=False,
                 status_code=500,
                 text="Internal Server Error",
             )
 
         def success_call():
-            return SupabaseResponse(
+            return PostgrestResponse(
                 ok=True,
                 status_code=200,
                 data={"message": "ok"},

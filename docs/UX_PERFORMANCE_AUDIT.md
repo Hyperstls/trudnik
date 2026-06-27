@@ -4,7 +4,7 @@
 
 ---
 
-## 1. Медленные запросы к Supabase
+## 1. Медленные запросы к PostgREST (Amvera)
 
 ### 1.1 N+1 Queries
 
@@ -60,29 +60,23 @@
 
 ## 3. Проблемы с конкурентным доступом (Race Conditions)
 
-### 3.1 CRITICAL: apply_job — TOCTOU race condition
+### 3.1 CRITICAL: apply_job — TOCTOU race condition ✅ **УСТРАНЕНО**
+
+<!-- УСТАРЕЛО: Старый код использовал supabase_request напрямую -->
 
 **Файл:** [`app/blueprints/applications.py:56-60`](../app/blueprints/applications.py:56)
 
-```python
-if current_workers >= max_workers:
-    flash(f'Места в задании заполнены (максимум {max_workers})', 'info')
-    return redirect(url_for('jobs.index'))
+**Проблема:** Между проверкой `current_workers >= max_workers` и вставкой отклика другой трудник мог занять последнее место. Классический **TOCTOU** (Time-of-check to time-of-use).
 
-supabase_request('POST', 'applications', json={'job_id': job_id, 'worker_id': user_id})
-```
+**Решение:** Создана RPC-функция `apply_job_atomic(job_id UUID, worker_id UUID)` с атомарной проверкой и вставкой внутри транзакции PostgreSQL (SECURITY DEFINER).
 
-**Проблема:** Между проверкой `current_workers >= max_workers` (строка 56) и вставкой отклика (строка 60) другой трудник может занять последнее место. Это **классический TOCTOU** (Time-of-check to time-of-use).
-
-**Серьёзность: ВЫСОКАЯ**
-
-**Рекомендация:** Использовать RPC-функцию (как для accept/reject) с атомарной проверкой и вставкой внутри транзакции PostgreSQL.
+**Статус: ✅ Выполнено** — используется `postgrest_rpc('apply_job_atomic', ...)`
 
 ### 3.2 accept_application — защищён
 
 **Файл:** [`app/blueprints/applications.py:289-320`](../app/blueprints/applications.py:289)
 
-Accept/reject уже используют `supabase_rpc('accept_application', ...)` с `use_admin=True` — это атомарная операция внутри PostgreSQL. **Защита реализована.**
+Accept/reject уже используют `postgrest_rpc('accept_application', ...)` с `use_admin=True` — это атомарная операция внутри PostgreSQL. **Защита реализована.**
 
 ### 3.3 Batch accept — частично защищён
 
@@ -104,7 +98,7 @@ Accept/reject уже используют `supabase_rpc('accept_application', ..
 
 ### 4.2 Service Role audit log
 
-**Реализовано:** [`app/utils.py:170-185`](../app/utils.py:170) — белый список разрешённых контекстов для `supabase_admin_request`. Все вызовы service_role логируются с указанием вызывающего модуля.
+**Реализовано:** [`app/utils/postgrest_client.py`](../app/utils/postgrest_client.py) — белый список разрешённых контекстов для `postgrest_admin_request`. Все вызовы service_role логируются с указанием вызывающего модуля.
 
 ---
 
@@ -131,7 +125,7 @@ Accept/reject уже используют `supabase_rpc('accept_application', ..
 ## 6. Общее резюме
 
 ### Критические проблемы:
-1. **TOCTOU race condition в `apply_job`** — разрешение превышения `max_workers`
+1. ~~**TOCTOU race condition в `apply_job`**~~ — ✅ **Устранено:** используется RPC `apply_job_atomic`
 
 ### Высокие:
 2. Декоратор `cache_for` не используется нигде, несмотря на реализацию
@@ -150,7 +144,7 @@ Accept/reject уже используют `supabase_rpc('accept_application', ..
 ### Положительные стороны:
 - Circuit Breaker реализован для защиты от каскадных отказов
 - Connection Pooling (переиспользование HTTP-сессий)
-- RLS-политики Supabase защищают данные на уровне БД
+- RLS-политики PostgREST (Amvera) защищают данные на уровне БД
 - Атомарные RPC для accept/reject операций
 - CSRF-защита с nonce-based CSP
 - Security Headers (HSTS, X-Frame-Options, CSP, etc.)

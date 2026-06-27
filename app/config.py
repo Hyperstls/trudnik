@@ -44,6 +44,19 @@ class Config:
         raise RuntimeError('PGRST_JWT_SECRET is required in production')
 
     # ═══════════════════════════════════════════════════════════
+    # Admin API Token (C8)
+    # ═══════════════════════════════════════════════════════════
+    ADMIN_API_TOKEN = os.environ.get('ADMIN_API_TOKEN', '')
+    DEPLOYMENT_ENV = os.environ.get('DEPLOYMENT_ENV', 'development')
+    if DEPLOYMENT_ENV == 'production' and not ADMIN_API_TOKEN:
+        raise ValueError("ADMIN_API_TOKEN must be set in production")
+
+    # ═══════════════════════════════════════════════════════════
+    # Монетизация (C9)
+    # ═══════════════════════════════════════════════════════════
+    MONETIZATION_ENABLED = os.environ.get('MONETIZATION_ENABLED', 'false').lower() == 'true'
+
+    # ═══════════════════════════════════════════════════════════
     # Валидация длины PGRST_JWT_SECRET
     # ═══════════════════════════════════════════════════════════
     _deployment_env = os.environ.get('DEPLOYMENT_ENV', 'development')
@@ -104,7 +117,7 @@ class Config:
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads'))
     RATE_LIMIT_MAX = 10
     RATE_LIMIT_WINDOW = 60
-    PERMANENT_SESSION_LIFETIME = 1800  # 30 минут — сессия переживает задержки Supabase
+    PERMANENT_SESSION_LIFETIME = 1800  # 30 минут — сессия переживает задержки PostgREST (Amvera) — Supabase не используется (устарело)
     CACHE_MAX_SIZE = 256
     PAGINATION_DEFAULT_PER_PAGE = 20
 

@@ -1,7 +1,14 @@
 {% extends "base.html" %}
 {% from '_icons.html' import star, chat, mail, phone, map_pin, info, briefcase, award, link_icon, smiley %}
+{% block title %}{{ profile_user.get('full_name') or profile_user.get('name') if profile_user else 'Профиль' }} — Трудник{% endblock %}
 {% block content %}
 <div class="px-4 pb-24 max-w-2xl mx-auto">
+    <!-- Breadcrumbs -->
+    <nav class="text-sm text-gray-500 mb-3">
+      <a href="/" class="hover:text-blue-600">Главная</a> →
+      <a href="/workers" class="hover:text-blue-600">Трудники</a> →
+      <span class="text-gray-800">{{ profile_user.get('full_name') or profile_user.get('name') if profile_user else 'Профиль' }}</span>
+    </nav>
     {% if profile_user is none %}
         <div class="flex flex-col items-center justify-center py-16 text-center">
             <div class="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mb-4">

@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Тарифы — Трудник{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+    <div class="text-center mb-10">
+        <h1 class="text-3xl font-bold text-neutral-900 mb-3">Тарифы для работодателей</h1>
+        <p class="text-neutral-500 max-w-lg mx-auto">Выберите подходящий тариф для размещения заданий и поиска трудников</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        <!-- Базовый -->
+        <div class="bg-white rounded-2xl border border-neutral-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+            <div class="text-center mb-5">
+                <div class="w-12 h-12 rounded-xl bg-neutral-100 flex items-center justify-center mx-auto mb-3">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-neutral-600"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                </div>
+                <h3 class="text-lg font-semibold text-neutral-800">Базовый</h3>
+                <div class="mt-2">
+                    <span class="text-3xl font-bold text-neutral-900">0 ₽</span>
+                    <span class="text-neutral-400 text-sm">/мес</span>
+                </div>
+            </div>
+            <ul class="space-y-2.5 mb-6 text-sm text-neutral-600">
+                <li class="flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    3 задания в месяц
+                </li>
+                <li class="flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Базовый поиск трудников
+                </li>
+                <li class="flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Уведомления об откликах
+                </li>
+            </ul>
+            <a href="{{ url_for('jobs.job_new') }}"
+               class="block w-full text-center py-2.5 rounded-full border-2 border-neutral-300 text-neutral-700 font-medium text-sm hover:bg-neutral-50 transition-colors">
+                Начать бесплатно
+            </a>
+        </div>
+
+        <!-- Pro -->
+        <div class="bg-white rounded-2xl border-2 border-primary-400 p-6 shadow-md relative transform scale-[1.02]">
+            <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary-500 text-white text-xs font-semibold px-4 py-1 rounded-full">Популярный</div>
+            <div class="text-center mb-5 mt-2">
+                <div class="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center mx-auto mb-3">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </div>
+                <h3 class="text-lg font-semibold text-neutral-800">Pro</h3>
+                <div class="mt-2">
+                    <span class="text-3xl font-bold text-neutral-900">999 ₽</span>
+                    <span class="text-neutral-400 text-sm">/мес</span>
+                </div>
+            </div>
+            <ul class="space-y-2.5 mb-6 text-sm text-neutral-600">
+                <li class="flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    20 заданий в месяц
+                </li>
+                <li class="flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Продвижение в поиске
+                </li>
+                <li class="flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Расширенные уведомления
+                </li>
+                <li class="flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Приоритет в списке
+                </li>
+            </ul>
+            <a href="{{ url_for('jobs.job_new') }}"
+               class="block w-full text-center py-2.5 rounded-full bg-primary-500 text-white font-medium text-sm hover:bg-primary-600 transition-colors shadow-sm">
+                Выбрать Pro
+            </a>
+        </div>
+
+        <!-- Бизнес -->
+        <div class="bg-white rounded-2xl border border-neutral-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+            <div class="text-center mb-5">
+                <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center mx-auto mb-3">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                </div>
+                <h3 class="text-lg font-semibold text-neutral-800">Бизнес</h3>
+                <div class="mt-2">
+                    <span class="text-3xl font-bold text-neutral-900">2 999 ₽</span>
+                    <span class="text-neutral-400 text-sm">/мес</span>
+                </div>
+            </div>
+            <ul class="space-y-2.5 mb-6 text-sm text-neutral-600">
+                <li class="flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Безлимит заданий
+                </li>
+                <li class="flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Продвижение в поиске
+                </li>
+                <li class="flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Приоритетная поддержка
+                </li>
+                <li class="flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Все функции Pro
+                </li>
+            </ul>
+            <a href="{{ url_for('jobs.job_new') }}"
+               class="block w-full text-center py-2.5 rounded-full border-2 border-amber-400 text-amber-700 font-medium text-sm hover:bg-amber-50 transition-colors">
+                Выбрать Бизнес
+            </a>
+        </div>
+    </div>
+
+    <div class="text-center mt-10 text-sm text-neutral-400">
+        <p>Все цены указаны в рублях. Тариф автоматически продлевается ежемесячно.</p>
+    </div>
+</div>
+{% endblock %}

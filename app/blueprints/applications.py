@@ -8,7 +8,7 @@ from app.config import Config
 from app.decorators import login_required, rate_limit, role_required, validate_uuid
 from app.utils import postgrest_request, postgrest_admin_request, postgrest_rpc
 from app.utils.helpers import assert_postgrest_ok
-from app.services.notification_service import create as notify
+from app.services.notification_service import create as notify, enqueue_notification
 
 logger = logging.getLogger(__name__)
 
@@ -66,18 +66,17 @@ def apply_job(job_id):
         flash(error_msg, category)
         return redirect(url_for('jobs.index'))
 
-    # Успех: уведомить работодателя о новом отклике (фоновый поток)
+    # Успех: уведомить работодателя о новом отклике (transactional outbox)
     employer_id = result.get('employer_id')
     if employer_id:
-        _job_id = job_id  # захват по значению
         _link = url_for('jobs.job_detail', job_id=job_id, _external=True)
         def _notify_employer():
-            success = notify(employer_id, 'application_received', 'Новый отклик',
+            success = enqueue_notification(employer_id, 'application_received', 'Новый отклик',
                    f'На ваше задание поступил новый отклик',
-                   data={'job_id': _job_id, 'link': _link})
+                   data={'job_id': job_id, 'link': _link})
             if not success:
-                logger.error("apply_job: notify() вернул False для employer_id=%s job_id=%s",
-                             employer_id, _job_id)
+                logger.error("apply_job: enqueue_notification() вернул False для employer_id=%s job_id=%s",
+                             employer_id, job_id)
         threading.Thread(target=_notify_employer, daemon=True).start()
 
     flash('Отклик отправлен', 'success')
@@ -167,17 +166,16 @@ def _apply_job_fallback(job_id: str, user_id: str):
         flash('Ошибка при отправке отклика', 'danger')
         return redirect(url_for('jobs.index'))
 
-    # 8. Уведомить работодателя о новом отклике (фоновый поток)
+    # 8. Уведомить работодателя о новом отклике (transactional outbox)
     if employer_id:
-        _job_id = job_id
         _link = url_for('jobs.job_detail', job_id=job_id, _external=True)
         def _notify_employer():
-            success = notify(employer_id, 'application_received', 'Новый отклик',
+            success = enqueue_notification(employer_id, 'application_received', 'Новый отклик',
                    f'На ваше задание поступил новый отклик',
-                   data={'job_id': _job_id, 'link': _link})
+                   data={'job_id': job_id, 'link': _link})
             if not success:
-                logger.error("_apply_job_fallback: notify() вернул False для employer_id=%s job_id=%s",
-                             employer_id, _job_id)
+                logger.error("_apply_job_fallback: enqueue_notification() вернул False для employer_id=%s job_id=%s",
+                             employer_id, job_id)
         threading.Thread(target=_notify_employer, daemon=True).start()
 
     flash('Отклик отправлен', 'success')
@@ -236,19 +234,19 @@ def apply_selected():
                 employer_jobs[employer_id] = []
             employer_jobs[employer_id].append(job_id)
 
-    # Отправляем уведомления работодателям в фоновом потоке
+    # Отправляем уведомления работодателям в фоновом потоке (transactional outbox)
     if employer_jobs:
         _applications_link = url_for('applications.my_applications', _external=True)
         def _notify_employers():
             for emp_id, jids in employer_jobs.items():
                 job_list = ', '.join(f'#{jid}' for jid in jids)
-                success = notify(
+                success = enqueue_notification(
                     emp_id, 'application_received', 'Новые отклики',
                     f'На ваши задания ({job_list}) поступили новые отклики',
                     data={'job_ids': jids, 'link': _applications_link}
                 )
                 if not success:
-                    logger.error("apply_selected: notify() вернул False для employer_id=%s job_ids=%s",
+                    logger.error("apply_selected: enqueue_notification() вернул False для employer_id=%s job_ids=%s",
                                  emp_id, jids)
         threading.Thread(target=_notify_employers, daemon=True).start()
 
@@ -371,26 +369,37 @@ def my_applications():
     skills_filter = request.args.get('skills', '')
     page = max(1, request.args.get('page', 1, type=int))
     per_page = min(100, max(1, request.args.get('per_page', 20, type=int)))
-    offset = (page - 1) * per_page
 
-    resp = postgrest_request('GET',
-        f'applications?job.employer_id=eq.{user_id}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,skills,desired_payment,inn,phone,email_public),job:jobs(organization_name,date_time,payment_amount,status,current_workers,max_workers)&limit={per_page}&offset={offset}',
-        headers={'Prefer': 'count=exact'})
-    applications = resp.json() if resp.ok else []
-    total = 0
-    if resp.ok:
-        content_range = resp.headers.get('Content-Range', '')
-        if '/' in content_range:
-            total = int(content_range.split('/')[-1])
+    selected_skills = [s.strip().lower() for s in skills_filter.split(',') if s.strip()] if skills_filter else []
 
-    # Фильтрация по навыкам (AND — все выбранные навыки должны быть у трудника)
-    if skills_filter:
-        selected_skills = [s.strip().lower() for s in skills_filter.split(',') if s.strip()]
-        if selected_skills:
-            applications = [a for a in applications if a.get('worker') and a['worker'].get('skills') and
+    # C33: При фильтре по навыкам — загружаем все заявки без пагинации,
+    # фильтруем на стороне Python, затем пагинируем. Это гарантирует,
+    # что offset учитывает фильтр и пагинация работает корректно.
+    if selected_skills:
+        # Загружаем все заявки (с разумным верхним пределом 500)
+        resp = postgrest_request('GET',
+            f'applications?job.employer_id=eq.{user_id}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,skills,desired_payment,email_public),job:jobs(organization_name,date_time,payment_amount,status,current_workers,max_workers)&limit=500',
+            headers={'Prefer': 'count=exact'})
+        all_applications = resp.json() if resp.ok else []
+
+        # Фильтрация по навыкам (AND — все выбранные навыки должны быть у трудника)
+        all_applications = [a for a in all_applications if a.get('worker') and a['worker'].get('skills') and
                            all(any(sk.lower() in (ws.lower() if ws else '') for ws in a['worker']['skills']) for sk in selected_skills)]
 
-    selected_skills_list = [s.strip() for s in skills_filter.split(',') if s.strip()] if skills_filter else []
+        total = len(all_applications)
+        offset = (page - 1) * per_page
+        applications = all_applications[offset:offset + per_page]
+    else:
+        offset = (page - 1) * per_page
+        resp = postgrest_request('GET',
+            f'applications?job.employer_id=eq.{user_id}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,skills,desired_payment,email_public),job:jobs(organization_name,date_time,payment_amount,status,current_workers,max_workers)&limit={per_page}&offset={offset}',
+            headers={'Prefer': 'count=exact'})
+        applications = resp.json() if resp.ok else []
+        total = 0
+        if resp.ok:
+            content_range = resp.headers.get('Content-Range', '')
+            if '/' in content_range:
+                total = int(content_range.split('/')[-1])
 
     # Используем встроенные данные заданий из запроса (job:jobs(...))
     # вместо повторного запроса к API
@@ -410,7 +419,7 @@ def my_applications():
     total_pages = max(1, (total + per_page - 1) // per_page) if total else 1
 
     return render_template('my_applications.html', applications=applications, jobs=jobs,
-                           selected_skills=selected_skills_list,
+                           selected_skills=selected_skills,
                            page=page, per_page=per_page, total=total,
                            total_pages=total_pages)
 
@@ -462,12 +471,12 @@ def api_handle_application(app_id, action):
             status_code = 409 if 'места' in error_msg else 400
             return jsonify({'success': False, 'error': error_msg}), status_code
 
-        # Уведомить работника
-        success = notify(worker_id, 'application_accepted', 'Отклик принят',
+        # Уведомить работника (transactional outbox)
+        success = enqueue_notification(worker_id, 'application_accepted', 'Отклик принят',
                f'Ваш отклик на задание #{job_id} был принят',
                data={'job_id': job_id, 'link': url_for('applications.my_applications', _external=True)})
         if not success:
-            logger.error("api_handle_application accept: notify() вернул False для worker_id=%s job_id=%s",
+            logger.error("api_handle_application accept: enqueue_notification() вернул False для worker_id=%s job_id=%s",
                          worker_id, job_id)
 
         return jsonify({
@@ -491,12 +500,12 @@ def api_handle_application(app_id, action):
             error_msg = (result_data or {}).get('error', 'Не удалось отклонить отклик')
             return jsonify({'success': False, 'error': error_msg}), 400
 
-        # Уведомить работника
-        success = notify(worker_id, 'application_rejected', 'Отклик отклонён',
+        # Уведомить работника (transactional outbox)
+        success = enqueue_notification(worker_id, 'application_rejected', 'Отклик отклонён',
                f'Ваш отклик на задание #{job_id} был отклонён',
                data={'job_id': job_id, 'link': url_for('applications.my_applications', _external=True)})
         if not success:
-            logger.error("api_handle_application reject: notify() вернул False для worker_id=%s job_id=%s",
+            logger.error("api_handle_application reject: enqueue_notification() вернул False для worker_id=%s job_id=%s",
                          worker_id, job_id)
 
         return jsonify({
@@ -595,13 +604,17 @@ def cancel_application(app_id):
         flash('Можно отменить только принятого работника', 'danger')
         return redirect(url_for('applications.my_applications'))
 
-    # Получить информацию о задании
-    job_resp = postgrest_request('GET', f'jobs?id=eq.{job_id}&select=status,date_time,organization_name')
+    # C32: Ownership check — убедиться, что задание принадлежит текущему пользователю
+    job_resp = postgrest_request('GET', f'jobs?id=eq.{job_id}&select=status,date_time,organization_name,employer_id')
     if not job_resp.ok or not job_resp.json():
         flash('Задание не найдено', 'danger')
         return redirect(url_for('applications.my_applications'))
 
     job = job_resp.json()[0]
+
+    if job.get('employer_id') != session.get('user_id'):
+        flash('Нет доступа к этому заданию', 'danger')
+        return redirect(url_for('applications.my_applications'))
 
     # Проверить статус задания (нельзя отменить в отозванном)
     if job['status'] == 'cancelled':
@@ -676,11 +689,11 @@ def cancel_application(app_id):
         assert_postgrest_ok(cancel_resp, 'отклонение отклика при отмене работника')
 
         # Отправить уведомления (только в fallback-пути, RPC создаёт уведомление сама)
-        success = notify(worker_id, 'application_rejected', 'Отклик отменен',
+        success = enqueue_notification(worker_id, 'application_rejected', 'Отклик отменен',
                           f'Ваш отклик на задание {job.get("organization_name", "#" + job_id)} был отменен',
                           data={'job_id': job_id, 'link': url_for('applications.my_applications', _external=True)})
         if not success:
-            logger.error("cancel_application: notify() вернул False для worker_id=%s job_id=%s",
+            logger.error("cancel_application: enqueue_notification() вернул False для worker_id=%s job_id=%s",
                          worker_id, job_id)
 
     flash('Работник отменен', 'success')

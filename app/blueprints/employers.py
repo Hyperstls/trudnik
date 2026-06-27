@@ -98,8 +98,9 @@ def employer_detail(employer_id):
     user_id = session.get('user_id')
 
     # Запрос профиля
+    from app.blueprints.profile import PUBLIC_PROFILE_FIELDS
     profile_resp = postgrest_request('GET',
-        f'profiles?id=eq.{employer_id}&select=*')
+        f'profiles?id=eq.{employer_id}&select={PUBLIC_PROFILE_FIELDS}')
     if not profile_resp.ok or not profile_resp.json():
         flash('Работодатель не найден', 'danger')
         return redirect(url_for('employers.employers_list'))

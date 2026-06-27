@@ -9,6 +9,7 @@ Amvera Secrets Dumper — перехватывает API-ответы Amvera с 
 
 import asyncio
 import json
+import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -20,8 +21,8 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 # Конфигурация
 AMVERA_URL = "https://cloud.amvera.ru"
-AMVERA_LOGIN = "Hyperstls"
-AMVERA_PASSWORD = "Step@1986"
+AMVERA_LOGIN = os.environ.get('AMVERA_USER', '')
+AMVERA_PASSWORD = os.environ.get('AMVERA_PASSWORD', '')
 DEFAULT_TIMEOUT = 15000
 NAVIGATION_TIMEOUT = 20000
 SLOW_MO = 150

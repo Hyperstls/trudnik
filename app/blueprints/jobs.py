@@ -9,7 +9,7 @@ from app.utils import (
     sanitize_postgrest, postgrest_admin_request, postgrest_request, postgrest_rpc,
 )
 from app.utils.helpers import assert_postgrest_ok
-from app.services.notification_service import create as notify
+from app.services.notification_service import create as notify, enqueue_notification
 from app.services.job_service import (
     check_job_owner,
     check_job_visibility,
@@ -126,9 +126,13 @@ def index():
     now = datetime.now(timezone.utc).isoformat()
 
     # Запрос только оплаченных открытых заданий (без detailed_description — тяжёлое поле)
-    query = 'status=in.(open,completed)&select=id,employer_id,organization_name,org_description,object_description,work_type,date_time,payment_amount,address,city,lat,lng,status,created_at,preferred_religion,max_workers,current_workers,expires_at,tariff,photos:job_photos(*)'
+    query = 'status=in.(open,completed)&select=id,employer_id,organization_name,org_description,object_description,work_type,date_time,payment_amount,address,city,lat,lng,status,created_at,preferred_religion,max_workers,current_workers,expires_at,tariff,promoted_until,photos:job_photos(*)'
     # Фильтр по сроку действия: не истёкшие задания (expires_at > now или без срока)
     query += f'&or=(expires_at.is.null,expires_at=gt.{sanitize_postgrest(now)})'
+
+    # C38: Если монетизация включена — показываем только оплаченные задания
+    if current_app.config.get('MONETIZATION_ENABLED', False):
+        query += '&is_paid=eq.true'
 
     # ── Гео-фильтрация через RPC nearby_jobs (серверная, PostGIS) ──
     geo_job_distances = {}  # {job_id: distance_km}
@@ -202,13 +206,15 @@ def index():
             query += f'&or=({",".join(or_parts)})'
 
     # Определяем порядок сортировки на стороне БД
+    # C40: Boost для продвигаемых заданий — promoted_until.desc.nullslast в начале
+    base_order = 'promoted_until.desc.nullslast,'
     if sort in ('payment_asc', 'price_asc'):
-        order_clause = 'payment_amount.asc'
+        order_clause = f'{base_order}payment_amount.asc'
     elif sort in ('payment_desc', 'price_desc'):
-        order_clause = 'payment_amount.desc'
+        order_clause = f'{base_order}payment_amount.desc'
     else:
         # newest, rating, distance — все используют created_at.desc, точная сортировка в Python
-        order_clause = 'created_at.desc'
+        order_clause = f'{base_order}created_at.desc'
 
     # Пагинация: limit + offset. Запрашиваем +1 чтобы определить has_next
     resp = postgrest_request('GET', f'jobs?{query}&order={order_clause}&limit={per_page + 1}&offset={offset}')
@@ -410,6 +416,16 @@ def job_detail(job_id):
 
 
 # ──────────────────────────────────────────────
+# Тарифы (монетизация)
+# ──────────────────────────────────────────────
+
+@jobs_bp.route('/pricing')
+def pricing():
+    """Страница с тарифами для работодателей."""
+    return render_template('pricing.html')
+
+
+# ──────────────────────────────────────────────
 # Создание заданий
 # ──────────────────────────────────────────────
 
@@ -432,6 +448,26 @@ def job_new():
     }
 
     if request.method == 'POST':
+        # C38: Проверка квоты для монетизации
+        if current_app.config.get('MONETIZATION_ENABLED', False):
+            user_id = session.get('user_id')
+            if user_id:
+                sub_resp = postgrest_request(
+                    'GET',
+                    f'employer_subscriptions?employer_id=eq.{user_id}&select=tariff,jobs_remaining&limit=1'
+                )
+                if sub_resp.ok:
+                    sub_data = sub_resp.json()
+                    if isinstance(sub_data, list) and len(sub_data) > 0:
+                        remaining = sub_data[0].get('jobs_remaining', 0)
+                        if remaining <= 0:
+                            flash(
+                                'Лимит заданий исчерпан. Перейдите на тариф Pro или Бизнес, чтобы '
+                                'разместить больше заданий. <a href="/pricing">Смотреть тарифы</a>',
+                                'danger'
+                            )
+                            return render_template('job_new.html', **template_data)
+
         try:
             title = request.form.get('title') or 'Храм'
             description = request.form.get('description', '')
@@ -469,6 +505,27 @@ def job_new():
                 flash(deadline_error, 'danger')
                 return render_template('job_new.html', **template_data)
 
+            # C35: Валидация диапазонов
+            payment_amount = float(request.form.get('payment') or 0)
+            max_workers = int(request.form.get('max_workers') or 1)
+            lat = float(request.form.get('latitude') or Config.DEFAULT_LAT)
+            lng = float(request.form.get('longitude') or Config.DEFAULT_LNG)
+
+            validation_errors = []
+            if not (0 <= payment_amount <= 1_000_000):
+                validation_errors.append('Оплата должна быть от 0 до 1 000 000 ₽')
+            if not (1 <= max_workers <= 100):
+                validation_errors.append('Количество работников должно быть от 1 до 100')
+            if not (-90 <= lat <= 90):
+                validation_errors.append('Некорректная широта (должна быть от -90 до 90)')
+            if not (-180 <= lng <= 180):
+                validation_errors.append('Некорректная долгота (должна быть от -180 до 180)')
+
+            if validation_errors:
+                for err in validation_errors:
+                    flash(err, 'danger')
+                return render_template('job_new.html', **template_data)
+
             job_data = {
                 'employer_id': session['user_id'],
                 'organization_name': title,
@@ -477,13 +534,13 @@ def job_new():
                 'work_type': request.form.get('work_type', ''),
                 'detailed_description': description,
                 'date_time': request.form.get('deadline') or datetime.now().isoformat(),
-                'payment_amount': float(request.form.get('payment') or 0),
+                'payment_amount': payment_amount,
                 'address': request.form.get('address', ''),
                 'city': request.form.get('city', ''),
-                'lat': float(request.form.get('latitude') or Config.DEFAULT_LAT),
-                'lng': float(request.form.get('longitude') or Config.DEFAULT_LNG),
+                'lat': lat,
+                'lng': lng,
                 'preferred_religion': request.form.get('preferred_religion', ''),
-                'max_workers': int(request.form.get('max_workers') or 1),
+                'max_workers': max_workers,
                 'current_workers': 0,
                 'status': 'open',
                 'expires_at': (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
@@ -529,7 +586,7 @@ def my_jobs():
     resp = postgrest_request('GET', base_query, headers={'Prefer': 'count=exact'})
     jobs = resp.json() if resp.ok else []
 
-    # Используем встроенный счётчик applications(count) из Supabase embedded resource
+    # Используем встроенный счётчик applications(count) из PostgREST embedded resource — Supabase не используется (устарело)
     # (включён в base_query как applications:applications(count))
     # Убираем дублирующий batch-запрос на отдельное получение количества откликов
     for job in jobs:
@@ -651,12 +708,12 @@ def cancel_job(job_id):
         flash(error_msg, 'danger')
         return redirect(url_for('jobs.my_jobs'))
 
-    # Уведомить заявителей, что задание отозвано (worker_id получены из RPC)
+    # Уведомить заявителей, что задание отозвано (worker_id получены из RPC, transactional outbox)
     rejected_worker_ids = result.get('rejected_worker_ids', [])
     if rejected_worker_ids:
         for worker_id in rejected_worker_ids:
             if worker_id:  # защита от NULL в массиве
-                notify(worker_id, 'job_cancelled', 'Задание отозвано',
+                enqueue_notification(worker_id, 'job_cancelled', 'Задание отозвано',
                        f'Задание #{job_id} было отозвано работодателем',
                        data={'job_id': job_id, 'link': url_for('jobs.index', _external=True)})
 
@@ -674,45 +731,45 @@ def restore_job(job_id):
     if not check_job_owner(job_id, session['user_id']):
         return jsonify({'success': False, 'error': 'Нет доступа'}), 403
 
-    # Получить текущее состояние задания
-    job_resp = postgrest_request('GET', f'jobs?id=eq.{job_id}&select=status,date_time,current_workers')
-    if not job_resp.ok or not job_resp.json():
-        return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
-
-    job = job_resp.json()[0]
-    if job.get('status') != 'cancelled':
-        return jsonify({'success': False, 'error': 'Восстановить можно только отменённое задание'}), 409
-
-    # Определить новый статус: open (если дата в будущем) или сохранить open
-    new_status = 'open'
-
-    # Сбросить все pending заявки в rejected (иначе unique constraint помешает переоткликнуться)
-    rej_pending_resp = postgrest_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.pending',
-                     json={'status': 'rejected'})
-    assert_postgrest_ok(rej_pending_resp, 'сброс pending заявок при восстановлении')
-
-    # Сбросить все accepted заявки в rejected (работники должны заново откликнуться)
-    rej_accepted_resp = postgrest_request('PATCH', f'applications?job_id=eq.{job_id}&status=eq.accepted',
-                     json={'status': 'rejected'})
-    assert_postgrest_ok(rej_accepted_resp, 'сброс accepted заявок при восстановлении')
-
-    # Обнулить счётчик текущих работников
-    restore_resp = postgrest_request('PATCH', f'jobs?id=eq.{job_id}', json={
-        'status': new_status,
-        'current_workers': 0
-    })
-    assert_postgrest_ok(restore_resp, 'восстановление статуса задания')
-
-    # Уведомить всех rejected-заявителей, что задание восстановлено
-    apps_resp = postgrest_request('GET',
-        f'applications?job_id=eq.{job_id}&status=eq.rejected&select=worker_id')
-    if apps_resp.ok and apps_resp.json():
-        for app in apps_resp.json():
-            notify(app['worker_id'], 'status_change', 'Задание восстановлено',
-                   f'Задание #{job_id} снова открыто для откликов',
-                   data={'job_id': job_id, 'link': url_for('jobs.job_detail', job_id=job_id, _external=True)})
+    # C37: Атомарное восстановление через RPC restore_job_atomic
+    # Заменяет 4 отдельных PATCH-запроса одной транзакцией PostgreSQL
+    rpc_result = postgrest_rpc('restore_job_atomic', {
+        'p_job_id': job_id,
+    }, use_admin=True)
 
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    if not rpc_result.ok:
+        if rpc_result.status_code == 404:
+            if is_ajax:
+                return jsonify({'success': False, 'error': 'RPC restore_job_atomic не найдена'}), 500
+            flash('Не удалось восстановить задание (RPC недоступна)', 'danger')
+            return redirect(url_for('jobs.my_jobs'))
+        if is_ajax:
+            return jsonify({'success': False, 'error': 'Ошибка выполнения операции'}), 500
+        flash('Не удалось восстановить задание', 'danger')
+        return redirect(url_for('jobs.my_jobs'))
+
+    result = rpc_result.json()
+    if not result or not result.get('success'):
+        error_msg = (result or {}).get('error', 'Не удалось восстановить задание')
+        status_code = 409 if (result or {}).get('code') == 'not_cancelled' else 400
+        if is_ajax:
+            return jsonify({'success': False, 'error': error_msg}), status_code
+        flash(error_msg, 'danger')
+        return redirect(url_for('jobs.my_jobs'))
+
+    new_status = result.get('new_status', 'open')
+
+    # Уведомить всех rejected-заявителей, что задание восстановлено (transactional outbox)
+    rejected_worker_ids = result.get('rejected_worker_ids', [])
+    if rejected_worker_ids:
+        for worker_id in rejected_worker_ids:
+            if worker_id:
+                enqueue_notification(worker_id, 'status_change', 'Задание восстановлено',
+                       f'Задание #{job_id} снова открыто для откликов',
+                       data={'job_id': job_id, 'link': url_for('jobs.job_detail', job_id=job_id, _external=True)})
+
     if is_ajax:
         return jsonify({'success': True, 'message': 'Задание восстановлено', 'new_status': new_status})
     flash('Задание восстановлено', 'success')
@@ -748,12 +805,12 @@ def api_force_complete_job(job_id):
         status_code = 409 if (result or {}).get('code') == 'invalid_status' else 400
         return jsonify({'success': False, 'error': error_msg}), status_code
 
-    # Уведомить всех accepted работников (worker_id получены из RPC)
+    # Уведомить всех accepted работников (worker_id получены из RPC, transactional outbox)
     accepted_worker_ids = result.get('accepted_worker_ids', [])
     if accepted_worker_ids:
         for worker_id in accepted_worker_ids:
             if worker_id:
-                notify(worker_id, 'force_complete', 'Задание завершено',
+                enqueue_notification(worker_id, 'force_complete', 'Задание завершено',
                        f'Работодатель завершил задание #{job_id}',
                        data={'job_id': job_id, 'link': url_for('applications.my_applications', _external=True)})
 
@@ -888,14 +945,34 @@ def edit_job(job_id):
                     religions_list=religions_list,
                     yandex_api_key=current_app.config['YANDEX_MAPS_API_KEY'])
 
+        # C36: Валидация диапазонов
+        payment_amount = float(request.form.get('payment') or job.get('payment_amount', 0))
+        max_workers = int(request.form.get('max_workers', job.get('max_workers', 1)))
+
+        validation_errors = []
+        if not (0 <= payment_amount <= 1_000_000):
+            validation_errors.append('Оплата должна быть от 0 до 1 000 000 ₽')
+        if not (1 <= max_workers <= 100):
+            validation_errors.append('Количество работников должно быть от 1 до 100')
+
+        if validation_errors:
+            for err in validation_errors:
+                flash(err, 'danger')
+            return render_template('job_new.html',
+                job=job,
+                is_edit=True,
+                skills_list=skills_list,
+                religions_list=religions_list,
+                yandex_api_key=current_app.config['YANDEX_MAPS_API_KEY'])
+
         data = {
             'organization_name': request.form.get('title', job['organization_name']),
             'detailed_description': request.form.get('description', job.get('detailed_description', '')),
             'work_type': request.form.get('work_type', job.get('work_type', '')),
-            'payment_amount': float(request.form.get('payment') or job.get('payment_amount', 0)),
+            'payment_amount': payment_amount,
             'city': request.form.get('city', job.get('city', '')),
             'address': request.form.get('address', job.get('address', '')),
-            'max_workers': int(request.form.get('max_workers', job.get('max_workers', 1))),
+            'max_workers': max_workers,
             'preferred_religion': request.form.get('preferred_religion', job.get('preferred_religion', '')),
             'date_time': request.form.get('deadline') or job.get('date_time', ''),
         }

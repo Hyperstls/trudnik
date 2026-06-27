@@ -1,6 +1,8 @@
 from datetime import datetime
+import json
 import os
 import subprocess
+from pathlib import Path
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for, jsonify
 
 from app.decorators import login_required, role_required, admin_required, handle_errors
@@ -8,6 +10,23 @@ from app.utils import cache_for, sanitize_postgrest, postgrest_request, postgres
 from app.utils.helpers import assert_postgrest_ok
 
 admin_bp = Blueprint('admin', __name__)
+
+
+def log_admin_action(action, table_name=None, record_id=None, old_data=None, new_data=None):
+    """Логирует админское действие в audit_log через PostgREST (C19)."""
+    try:
+        payload = {
+            'user_id': session.get('user', {}).get('id'),
+            'action': action,
+            'table_name': table_name,
+            'record_id': str(record_id) if record_id else None,
+            'old_data': json.dumps(old_data) if old_data else None,
+            'new_data': json.dumps(new_data) if new_data else None,
+            'ip_address': request.remote_addr
+        }
+        postgrest_admin_request('POST', 'audit_log', data=payload)
+    except Exception as e:
+        current_app.logger.warning("Failed to log admin action: %s", e)
 
 
 @admin_bp.route('/api/health')
@@ -139,15 +158,15 @@ def admin_panel():
         religions = religions_resp.json() if religions_resp.ok else []
 
     # Актуальная версия из VERSION-файла или git (для кнопки «Текущая версия»)
+    # C20: VERSION лежит в корне проекта, а не в app/
     try:
-        version_file = os.path.join(current_app.root_path, 'VERSION')
-        if os.path.exists(version_file):
-            with open(version_file, 'r', encoding='utf-8') as f:
-                actual_version = f.read().strip()
+        version_path = Path(current_app.root_path).parent / 'VERSION'
+        if version_path.exists():
+            actual_version = version_path.read_text(encoding='utf-8').strip()
         else:
             actual_version = subprocess.check_output(
                 ['git', 'log', '-1', '--format=%h %s (%ai)'],
-                cwd=current_app.root_path, text=True
+                cwd=str(Path(current_app.root_path).parent), text=True
             ).strip()
     except Exception:
         actual_version = 'dev'
@@ -180,9 +199,10 @@ def update_user_role(user_id):
 
     new_role = request.form.get('role', '')
     if new_role in ('worker', 'employer', 'admin'):
-        resp = postgrest_request('PATCH', f'profiles?id=eq.{user_id}', json={'role': new_role})
+        resp = postgrest_admin_request('PATCH', f'profiles?id=eq.{user_id}', json={'role': new_role})
         if assert_postgrest_ok(resp, 'смена роли пользователя'):
             flash(f'Роль изменена на {new_role}', 'success')
+            log_admin_action('update_role', table_name='profiles', record_id=user_id, old_data=None, new_data={'role': new_role})
     else:
         flash('Недопустимая роль', 'danger')
     return redirect(url_for('admin.admin_panel', tab='users'))
@@ -207,6 +227,7 @@ def delete_user(user_id):
     # Amvera: удаление из auth.users не требуется — Supabase Auth не используется (устарело)
     # Пользователь удалён каскадно через RPC delete_user_cascade
 
+    log_admin_action('delete_user', table_name='profiles', record_id=user_id)
     flash('Пользователь удалён', 'success')
     return redirect(url_for('admin.admin_panel', tab='users'))
 
@@ -219,9 +240,10 @@ def delete_user(user_id):
 def update_job_status(job_id):
     new_status = request.form.get('status', '')
     if new_status in ('open', 'completed', 'cancelled'):
-        resp = postgrest_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': new_status})
+        resp = postgrest_admin_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': new_status})
         if assert_postgrest_ok(resp, 'изменение статуса задания'):
             flash(f'Статус задания изменён на {new_status}', 'success')
+            log_admin_action('update_status', table_name='jobs', record_id=job_id, old_data=None, new_data={'status': new_status})
     return redirect(url_for('admin.admin_panel', tab='jobs'))
 
 
@@ -230,6 +252,7 @@ def update_job_status(job_id):
 @admin_required
 def delete_job_admin(job_id):
     _delete_job_cascade(job_id)
+    log_admin_action('delete_job', table_name='jobs', record_id=job_id)
     flash('Задание удалено', 'success')
     return redirect(url_for('admin.admin_panel', tab='jobs'))
 
@@ -339,7 +362,7 @@ def add_skill():
         name = request.form.get('name', '').strip()
         if not name:
             flash('Название навыка не может быть пустым', 'danger')
-            return redirect(url_for('admin.admin_panel', tab='dictionaries'))
+            return redirect(url_for('admin.admin_panel', tab='skills'))
         # Находим максимальный sort_order (если колонка есть) и добавляем +1
         max_order = 0
         existing = postgrest_admin_request('GET', 'skills?select=sort_order&order=sort_order.desc&limit=1')
@@ -348,11 +371,11 @@ def add_skill():
         if existing.ok and existing.json():
             item = existing.json()[0] if existing.json() else {}
             max_order = item.get('sort_order', 0)
-        print('DIAG add_skill: before POST', flush=True)
+        current_app.logger.debug('add_skill: before POST')
         resp = postgrest_admin_request('POST', 'skills', json={'name': name, 'sort_order': max_order + 1})
 
         # ===== ДИАГНОСТИКА =====
-        print(f'DIAG add_skill: POST skills status={resp.status_code}, ok={resp.ok}, text="{resp.text[:200]}"', flush=True)
+        current_app.logger.debug('add_skill: POST skills status=%s, ok=%s, text="%s"', resp.status_code, resp.ok, resp.text[:200])
         # =======================
 
         if resp.ok:
@@ -364,10 +387,10 @@ def add_skill():
             )
             flash(f'Ошибка при добавлении навыка: {resp.text}', 'danger')
     except Exception as e:
-        print(f'DIAG add_skill EXCEPTION: {e}', flush=True)
+        current_app.logger.debug('add_skill EXCEPTION: %s', e)
         current_app.logger.exception('add_skill: unexpected error')
         flash(f'Ошибка: {str(e)}', 'danger')
-    return redirect(url_for('admin.admin_panel', tab='dictionaries'))
+    return redirect(url_for('admin.admin_panel', tab='skills'))
 
 @admin_bp.route('/admin/skills/reorder', methods=['POST'])
 @login_required
@@ -410,14 +433,14 @@ def update_skill(skill_id):
 @login_required
 @admin_required
 def delete_skill(skill_id):
-    resp1 = postgrest_admin_request('DELETE', f'user_skills?skill_id=eq.{skill_id}')
-    resp2 = postgrest_admin_request('DELETE', f'job_skills?skill_id=eq.{skill_id}')
-    if not resp1.ok:
-        return jsonify({'success': False, 'error': 'Failed to cleanup user_skills'}), 500
-    if not resp2.ok:
-        return jsonify({'success': False, 'error': 'Failed to cleanup job_skills'}), 500
-    resp = postgrest_admin_request('DELETE', f'skills?id=eq.{skill_id}')
-    return jsonify({'success': resp.ok})
+    rpc_result = postgrest_rpc('delete_skill_cascade', {'p_skill_id': skill_id}, use_admin=True)
+    if not rpc_result.ok:
+        current_app.logger.error(
+            'delete_skill RPC: failed for %s: status=%s text=%s',
+            skill_id, rpc_result.status_code, (rpc_result.text or '')[:200]
+        )
+        return jsonify({'success': False, 'error': f'RPC failed: {rpc_result.text}'}), 500
+    return jsonify({'success': True})
 
 @admin_bp.route('/admin/bulk-delete-skills', methods=['POST'])
 @login_required
@@ -490,14 +513,14 @@ def add_religion():
         name = request.form.get('name', '').strip()
         if not name:
             flash('Название вероисповедания не может быть пустым', 'danger')
-            return redirect(url_for('admin.admin_panel', tab='dictionaries'))
+            return redirect(url_for('admin.admin_panel', tab='religions'))
         max_order = 0
         existing = postgrest_admin_request('GET', 'religions?select=sort_order&order=sort_order.desc&limit=1')
         if not existing.ok:
             if is_circuit_open(existing):
                 flash('Сервис временно недоступен. Попробуйте позже.', 'danger')
                 current_app.logger.warning('add_religion: circuit breaker open, skipping GET fallback')
-                return redirect(url_for('admin.admin_panel', tab='dictionaries'))
+                return redirect(url_for('admin.admin_panel', tab='religions'))
             # Fallback: если не удалось получить sort_order — используем 0
             current_app.logger.warning(
                 'add_religion: GET max_order failed (status %s), using default 0',
@@ -507,11 +530,11 @@ def add_religion():
             item = existing.json()[0] if existing.json() else {}
             max_order = item.get('sort_order', 0)
 
-        print('DIAG add_religion: before POST', flush=True)
+        current_app.logger.debug('add_religion: before POST')
         resp = postgrest_admin_request('POST', 'religions', json={'name': name, 'sort_order': max_order + 1})
 
         # ===== ДИАГНОСТИКА =====
-        print(f'DIAG add_religion: POST religions status={resp.status_code}, ok={resp.ok}, text="{resp.text[:200]}"', flush=True)
+        current_app.logger.debug('add_religion: POST religions status=%s, ok=%s, text="%s"', resp.status_code, resp.ok, resp.text[:200])
         # =======================
 
         if resp.ok:
@@ -533,10 +556,10 @@ def add_religion():
             )
             flash(f'Ошибка при добавлении вероисповедания: {resp.text}', 'danger')
     except Exception as e:
-        print(f'DIAG add_religion EXCEPTION: {e}', flush=True)
+        current_app.logger.debug('add_religion EXCEPTION: %s', e)
         current_app.logger.exception('add_religion: unexpected error')
         flash(f'Ошибка: {str(e)}', 'danger')
-    return redirect(url_for('admin.admin_panel', tab='dictionaries'))
+    return redirect(url_for('admin.admin_panel', tab='religions'))
 
 @admin_bp.route('/admin/religions/reorder', methods=['POST'])
 @login_required
@@ -579,6 +602,14 @@ def update_religion(religion_id):
 @login_required
 @admin_required
 def delete_religion(religion_id):
+    # C18: Сначала обнуляем religion_id у пользователей (FK constraint),
+    # затем удаляем саму религию — атомарный подход
+    nullify_resp = postgrest_admin_request('PATCH', f'profiles?religion_id=eq.{religion_id}', json={'religion_id': None})
+    if not nullify_resp.ok:
+        current_app.logger.warning(
+            'delete_religion: failed to nullify religion_id in profiles for religion %s: status=%s',
+            religion_id, nullify_resp.status_code
+        )
     resp = postgrest_admin_request('DELETE', f'religions?id=eq.{religion_id}')
     return jsonify({'success': resp.ok})
 
@@ -589,6 +620,7 @@ def bulk_delete_religions():
     """Массовое удаление вероисповеданий (до 50 за раз).
 
     Использует оператор in.() PostgREST для одного запроса вместо N.
+    Сначала обнуляет religion_id у пользователей, затем удаляет религии.
     Возвращает сводку: deleted (сколько записей удалено),
     failed и errors при ошибках.
     """
@@ -601,22 +633,33 @@ def bulk_delete_religions():
         return jsonify({'deleted': 0, 'failed': len(religion_ids), 'errors': ['Max 50 religions per request']}), 400
 
     ids_filter = f'id=in.({",".join(str(rid) for rid in religion_ids)})'
+    religion_id_filter = f'religion_id=in.({",".join(str(rid) for rid in religion_ids)})'
+
+    errors = []
+    failed = 0
+
+    # C18: Сначала обнуляем religion_id у пользователей (FK constraint)
+    nullify_resp = postgrest_admin_request('PATCH', f'profiles?{religion_id_filter}', json={'religion_id': None})
+    if not nullify_resp.ok:
+        errors.append(f'profiles nullify failed: {nullify_resp.text}')
+        failed += 1
+
+    # Затем удаляем сами религии
     resp = postgrest_admin_request('DELETE', f'religions?{ids_filter}')
 
     if not resp.ok:
         return jsonify({
             'deleted': 0,
             'failed': len(religion_ids),
-            'errors': [f'religions DELETE failed: {resp.text}']
+            'errors': errors + [f'religions DELETE failed: {resp.text}']
         }), 500
 
     deleted = len(resp.json()) if isinstance(resp.json(), list) else 0
-    errors = []
     missing = len(religion_ids) - deleted
     if missing > 0:
         errors.append(f'{missing} religion(s) not found in database')
 
-    return jsonify({'deleted': deleted, 'failed': 0, 'errors': errors})
+    return jsonify({'deleted': deleted, 'failed': failed, 'errors': errors})
 
 # ── Верификация работодателей ──────────────────────────
 
@@ -627,6 +670,7 @@ def approve_employer(user_id):
     resp = postgrest_admin_request('PATCH', f'profiles?id=eq.{user_id}',
                      json={'verification_status': 'approved'})
     if resp and resp.ok:
+        log_admin_action('verify_approve', table_name='profiles', record_id=user_id, old_data=None, new_data={'verification_status': 'approved'})
         flash('Работодатель верифицирован', 'success')
     else:
         flash('Ошибка при верификации', 'danger')
@@ -640,19 +684,10 @@ def reject_employer(user_id):
     resp = postgrest_admin_request('PATCH', f'profiles?id=eq.{user_id}',
                      json={'verification_status': 'rejected'})
     if resp and resp.ok:
+        log_admin_action('verify_reject', table_name='profiles', record_id=user_id, old_data=None, new_data={'verification_status': 'rejected'})
         flash('Верификация отклонена', 'warning')
     else:
         flash('Ошибка при отклонении', 'danger')
-    return redirect(url_for('admin.admin_panel', tab='verification'))
-
-
-@admin_bp.route('/admin/verify-employer/<user_id>', methods=['POST'])
-@login_required
-@admin_required
-def verify_employer(user_id):
-    resp = postgrest_admin_request('PATCH', f'profiles?id=eq.{user_id}', json={'verification_status': 'approved'})
-    if assert_postgrest_ok(resp, 'верификация работодателя'):
-        flash('Работодатель верифицирован', 'success')
     return redirect(url_for('admin.admin_panel', tab='verification'))
 
 
@@ -710,11 +745,16 @@ def job_stats():
 @admin_bp.route('/api/fix-permissions', methods=['POST'])
 def fix_permissions():
     """Fix PostgreSQL permissions: GRANT ALL to app role (trudnikapp) and grant PostgREST roles."""
+    if os.environ.get('DEPLOYMENT_ENV') == 'production':
+        return jsonify({'error': 'Disabled in production'}), 403
+
     import logging
     log = logging.getLogger(__name__)
 
+    import hmac as _hmac
     token = request.headers.get('X-Admin-Token', '')
-    if not token or token != current_app.config.get('SECRET_KEY', ''):
+    expected = current_app.config.get('ADMIN_API_TOKEN', current_app.config.get('SECRET_KEY', ''))
+    if not _hmac.compare_digest(token, expected):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 401
 
     # Get database URL directly from env vars (avoid @property issue)
@@ -790,8 +830,10 @@ def migrations_status():
     import logging
     log = logging.getLogger(__name__)
 
+    import hmac as _hmac
     token = request.headers.get('X-Admin-Token', '')
-    if not token or token != current_app.config.get('SECRET_KEY', ''):
+    expected = current_app.config.get('ADMIN_API_TOKEN', current_app.config.get('SECRET_KEY', ''))
+    if not _hmac.compare_digest(token, expected):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 401
 
     resp = postgrest_admin_request('GET', '_migrations?select=*&order=applied_at.asc')
@@ -827,16 +869,20 @@ def reset_users():
     - admin@test.ru (admin)
     - org@test.ru (employer)
     - trud@test.ru (worker)
-    All with password Step@1986.
+    All with password from TEST_USER_PASSWORD env var.
 
-    Protected by X-Admin-Token header (must match SECRET_KEY).
+    Protected by X-Admin-Token header (must match ADMIN_API_TOKEN).
     """
+    if os.environ.get('DEPLOYMENT_ENV') == 'production':
+        return jsonify({'error': 'Disabled in production'}), 403
+
     import logging
     log = logging.getLogger(__name__)
 
+    import hmac as _hmac
     token = request.headers.get('X-Admin-Token', '')
-    expected_token = current_app.config.get('SECRET_KEY', '')
-    if not token or token != expected_token:
+    expected_token = current_app.config.get('ADMIN_API_TOKEN', current_app.config.get('SECRET_KEY', ''))
+    if not _hmac.compare_digest(token, expected_token):
         log.warning("reset-users: invalid or missing X-Admin-Token")
         return jsonify({'success': False, 'error': 'Unauthorized'}), 401
 
@@ -904,10 +950,11 @@ def reset_users():
         log.info("reset-users: deleted=%d, failed=%d", result['deleted'], result['delete_failed'])
 
         # --- Step 3: Create three test users via SQL (using pgcrypto crypt()) ---
+        test_password = os.environ.get('TEST_USER_PASSWORD', 'changeme123')
         test_users = [
-            ('admin@test.ru', 'Step@1986', 'Администратор', 'admin'),
-            ('org@test.ru',   'Step@1986', 'Организатор',   'employer'),
-            ('trud@test.ru',  'Step@1986', 'Трудник Тест',  'worker'),
+            ('admin@test.ru', test_password, 'Администратор', 'admin'),
+            ('org@test.ru',   test_password, 'Организатор',   'employer'),
+            ('trud@test.ru',  test_password, 'Трудник Тест',  'worker'),
         ]
 
         for email, password, full_name, role in test_users:
@@ -962,9 +1009,10 @@ def reset_circuit_breaker():
     import logging
     log = logging.getLogger(__name__)
 
+    import hmac as _hmac
     token = request.headers.get('X-Admin-Token', '')
-    expected_token = current_app.config.get('SECRET_KEY', '')
-    if not token or token != expected_token:
+    expected_token = current_app.config.get('ADMIN_API_TOKEN', current_app.config.get('SECRET_KEY', ''))
+    if not _hmac.compare_digest(token, expected_token):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 401
 
     try:

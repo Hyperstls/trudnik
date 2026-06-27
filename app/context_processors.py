@@ -227,6 +227,45 @@ def inject_pending_invitations() -> dict:
     return {'pending_invitations': 0}
 
 
+def inject_worker_site_url() -> dict:
+    """Добавляет URL сайта трудника (для TWA/Telegram Web App) во все шаблоны."""
+    return {'worker_site_url': current_app.config.get('WORKER_SITE_URL', '')}
+
+
+def inject_employer_subscription() -> dict:
+    """Данные подписки работодателя для UI монетизации.
+
+    Возвращает employer_subscription с полями tariff и jobs_remaining
+    для работодателей, если MONETIZATION_ENABLED.
+    Кешируется in-process с TTL 60 секунд.
+    """
+    from app.utils import postgrest_request
+
+    user_id = session.get('user_id')
+    role = session.get('role')
+
+    if not (user_id and role == 'employer'):
+        return {'employer_subscription': None}
+
+    if not current_app.config.get('MONETIZATION_ENABLED', False):
+        return {'employer_subscription': None}
+
+    def _fetch():
+        resp = postgrest_request(
+            'GET',
+            f'employer_subscriptions?employer_id=eq.{user_id}&select=tariff,jobs_remaining&limit=1'
+        )
+        if resp.ok:
+            data = resp.json()
+            if isinstance(data, list) and len(data) > 0:
+                return data[0]
+        # Если записи нет — возвращаем дефолт
+        return {'tariff': 'Базовый', 'jobs_remaining': 3}
+
+    sub = _get_cached_or_fetch(f'sub_{user_id}', _fetch)
+    return {'employer_subscription': sub or {'tariff': 'Базовый', 'jobs_remaining': 3}}
+
+
 def register_context_processors(app):
     """Зарегистрировать все контекст-процессоры на Flask-приложении.
 
@@ -236,3 +275,5 @@ def register_context_processors(app):
     app.context_processor(inject_ws_config)
     app.context_processor(inject_unread_notifications)
     app.context_processor(inject_pending_invitations)
+    app.context_processor(inject_worker_site_url)
+    app.context_processor(inject_employer_subscription)

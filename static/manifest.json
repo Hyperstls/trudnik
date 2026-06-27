@@ -28,26 +28,12 @@
     { "src": "/static/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
     { "src": "/static/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ],
-  "screenshots": [
-    {
-      "src": "/static/screenshots/screen-jobs.png",
-      "sizes": "1080x1920",
-      "type": "image/png",
-      "label": "Лента заданий"
-    },
-    {
-      "src": "/static/screenshots/screen-chat.png",
-      "sizes": "1080x1920",
-      "type": "image/png",
-      "label": "Чаты"
-    }
-  ],
   "shortcuts": [
     {
       "name": "Создать задание",
       "short_name": "Задание",
       "description": "Опубликовать новое задание",
-      "url": "/job-new",
+      "url": "/job/new",
       "icons": [{ "src": "/static/icons/icon-96x96.png", "sizes": "96x96" }]
     },
     {

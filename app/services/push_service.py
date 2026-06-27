@@ -1,7 +1,7 @@
 """Сервис Push-уведомлений (Web Push API) для Trudnik.
 
 Использует pywebpush для отправки push-уведомлений через браузерный Push API.
-Работает с Supabase REST API для хранения подписок (таблица push_subscriptions).
+Работает с PostgREST REST API (Amvera) для хранения подписок (таблица push_subscriptions). Supabase не используется.
 
 VAPID-ключи генерируются администратором и задаются через переменные окружения.
 
@@ -241,7 +241,7 @@ class PushService:
         return results
 
     # ────────────────────────────────────────────────────────────
-    # Работа с БД (Supabase REST API)
+    # Работа с БД через PostgREST (Amvera) — Supabase не используется (устарело)
     # ────────────────────────────────────────────────────────────
 
     def save_subscription(self, user_id: str, subscription_data: dict) -> bool:

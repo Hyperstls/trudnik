@@ -227,6 +227,55 @@ def create(user_id, notification_type, title, message, data=None, email=None, us
     return True
 
 
+def enqueue_notification(user_id, notification_type, title, message, data=None) -> bool:
+    """Записать уведомление в transactional outbox (таблица notification_outbox).
+
+    Это гарантирует at-least-once доставку: Celery-воркер периодически
+    обрабатывает outbox и отправляет накопленные уведомления.
+
+    В отличие от create(), этот метод только пишет в outbox, не выполняет
+    проверку настроек, не отправляет email/push и не публикует в Redis.
+
+    Args:
+        user_id: UUID получателя
+        notification_type: ключ из NOTIFICATION_TYPES
+        title: заголовок
+        message: текст
+        data: dict с доп. данными (job_id, application_id, link)
+
+    Returns:
+        bool: True если запись создана, False при ошибке
+    """
+    if notification_type not in NOTIFICATION_TYPES:
+        logger.warning('enqueue_notification: unknown notification type: %s', notification_type)
+        return False
+
+    payload: dict = {
+        'user_id': user_id,
+        'type': notification_type,
+        'title': title,
+        'body': message,
+        'data': data if data else {},
+        'status': 'pending',
+    }
+    if data and isinstance(data, dict) and data.get('job_id'):
+        payload['job_id'] = data['job_id']
+    if data and isinstance(data, dict) and data.get('application_id'):
+        payload['application_id'] = data['application_id']
+
+    try:
+        resp = postgrest_admin_request('POST', 'notification_outbox', json=payload)
+        if not resp.ok:
+            logger.error('enqueue_notification: failed to write to outbox: user=%s type=%s status=%s body=%s',
+                         user_id, notification_type, resp.status_code, resp.text)
+            return False
+        logger.debug('enqueue_notification: outbox entry created for user=%s type=%s', user_id, notification_type)
+        return True
+    except Exception as e:
+        logger.error('enqueue_notification: exception for user=%s type=%s: %s', user_id, notification_type, e)
+        return False
+
+
 def get_notifications(user_id, page=1, per_page=20):
     """Получить уведомления пользователя с пагинацией (JSON-ready)."""
     offset = (page - 1) * per_page

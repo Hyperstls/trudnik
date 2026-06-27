@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block title %}Регистрация — Трудник{% endblock %}
 {% block content %}
 <div class="min-h-[calc(100vh-3.5rem)] flex items-center justify-center px-4 py-8">
     <div class="w-full max-w-lg bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 sm:p-8 fade-in">
@@ -35,6 +36,7 @@
                         </svg>
                         <span>Введите имя</span>
                     </div>
+                    {% if field_errors is defined and field_errors.full_name %}<span class="text-red-500 text-sm">{{ field_errors.full_name }}</span>{% endif %}
                 </div>
 
                 <div class="floating-label-group">
@@ -46,6 +48,7 @@
                         </svg>
                         <span>Введите корректный email</span>
                     </div>
+                    {% if field_errors is defined and field_errors.email %}<span class="text-red-500 text-sm">{{ field_errors.email }}</span>{% endif %}
                 </div>
 
                 <div class="floating-label-group">
@@ -57,6 +60,7 @@
                         </svg>
                         <span>Минимум 6 символов</span>
                     </div>
+                    {% if field_errors is defined and field_errors.password %}<span class="text-red-500 text-sm">{{ field_errors.password }}</span>{% endif %}
                 </div>
 
                 <!-- Role selection cards -->
@@ -81,6 +85,7 @@
                             <div class="text-xs text-neutral-400 mt-0.5">Ищу сотрудников</div>
                         </label>
                     </div>
+                    {% if field_errors is defined and field_errors.role %}<span class="text-red-500 text-sm">{{ field_errors.role }}</span>{% endif %}
                 </div>
 
                 <button type="button" id="to-step-2" class="w-full bg-primary-500 hover:bg-primary-600 active:scale-[0.98] text-white font-bold py-3.5 rounded-xl shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
@@ -109,6 +114,7 @@
                 <div class="floating-label-group">
                     <input type="text" name="city" id="city" placeholder=" " maxlength="50">
                     <label for="city">Город</label>
+                    {% if field_errors is defined and field_errors.city %}<span class="text-red-500 text-sm">{{ field_errors.city }}</span>{% endif %}
                 </div>
 
                 <div class="floating-label-group">
@@ -127,6 +133,8 @@
                         <label class="text-sm font-medium text-neutral-700 mb-2 block">Навыки</label>
                         <div class="skills-multiselect relative">
                             <div class="selected-skills flex flex-wrap gap-1 mb-2 min-h-[28px]" id="selected-skills"></div>
+                            <input type="text" id="skill-search-reg" placeholder="Поиск навыка..."
+                                   class="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm mb-1 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15">
                             <button type="button" id="skills-dropdown-btn"
                                     class="w-full flex items-center justify-between px-3 py-2.5 border border-neutral-200 rounded-lg bg-white text-sm text-neutral-500 hover:border-neutral-300 transition-colors focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15">
                                 <span id="skills-placeholder">Выберите навыки</span>
@@ -141,9 +149,10 @@
                     </div>
 
                     <div class="floating-label-group">
-                        <input type="text" name="inn" id="inn" placeholder=" " maxlength="12">
+                        <input type="text" name="inn" id="inn" placeholder=" " pattern="\d{12}" inputmode="numeric" maxlength="12">
                         <label for="inn">ИНН (12 цифр, опционально)</label>
                         <p class="text-xs text-neutral-400 mt-1 px-1">ИНН (для самозанятых, опционально).</p>
+                        {% if field_errors is defined and field_errors.inn %}<span class="text-red-500 text-sm">{{ field_errors.inn }}</span>{% endif %}
                     </div>
 
                     <label class="flex items-start gap-3 p-3 bg-neutral-50 rounded-xl cursor-pointer">
@@ -330,6 +339,7 @@ document.addEventListener('DOMContentLoaded', loadDictionaries);
     var skillsList = document.getElementById('skills-list');
     var placeholder = document.getElementById('skills-placeholder');
     var arrow = document.getElementById('skills-arrow');
+    var skillSearch = document.getElementById('skill-search-reg');
 
     var selectedSkills = [];
     var selectedIds = [];
@@ -346,17 +356,39 @@ document.addEventListener('DOMContentLoaded', loadDictionaries);
             placeholder.textContent = 'Выбрано: ' + selectedSkills.length;
             placeholder.classList.remove('text-neutral-500');
             placeholder.classList.add('text-neutral-700');
-            selectedContainer.innerHTML = selectedSkills.map(function(skill, i) {
-                return '<span class="inline-flex items-center gap-1 bg-primary-50 text-primary-700 px-2.5 py-1 rounded-lg text-xs font-medium">' +
-                    skill +
-                    '<button type="button" class="remove-skill ml-0.5 hover:text-danger transition-colors" data-skill="' + skill + '" data-idx="' + i + '">&times;</button>' +
-                    '</span>';
-            }).join('');
+            selectedContainer.innerHTML = '';
+            selectedSkills.forEach(function(skill, i) {
+                var span = document.createElement('span');
+                span.className = 'inline-flex items-center gap-1 bg-primary-50 text-primary-700 px-2.5 py-1 rounded-lg text-xs font-medium';
+                span.textContent = skill;
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'remove-skill ml-0.5 hover:text-danger transition-colors';
+                btn.setAttribute('data-skill', skill);
+                btn.setAttribute('data-idx', i);
+                btn.textContent = '\u00d7';
+                span.appendChild(btn);
+                selectedContainer.appendChild(span);
+            });
         }
         var checkboxes = skillsList.querySelectorAll('input[type="checkbox"]');
         checkboxes.forEach(function(cb) {
             cb.checked = selectedSkills.indexOf(cb.value) !== -1;
         });
+    }
+
+    // Функция фильтрации навыков по поиску
+    function filterSkills() {
+        var q = (skillSearch && skillSearch.value || '').toLowerCase();
+        var items = skillsList.querySelectorAll('label.skill-filter-item');
+        items.forEach(function(item) {
+            var skillName = (item.getAttribute('data-skill') || '').toLowerCase();
+            item.style.display = skillName.indexOf(q) !== -1 ? 'flex' : 'none';
+        });
+    }
+
+    if (skillSearch) {
+        skillSearch.addEventListener('input', filterSkills);
     }
 
     fetch('/api/skills')
@@ -369,7 +401,7 @@ document.addEventListener('DOMContentLoaded', loadDictionaries);
             }
             window.__skillsData = skills;
             skillsList.innerHTML = skills.map(function(s) {
-                return '<label class="flex items-center gap-2 px-2 py-1.5 hover:bg-neutral-50 rounded cursor-pointer text-sm">' +
+                return '<label class="skill-filter-item flex items-center gap-2 px-2 py-1.5 hover:bg-neutral-50 rounded cursor-pointer text-sm" data-skill="' + s.name + '">' +
                     '<input type="checkbox" value="' + s.name + '" data-id="' + s.id + '" class="skill-checkbox rounded border-neutral-300 text-primary-500 focus:ring-primary-500">' +
                     '<span class="text-neutral-700">' + s.name + '</span>' +
                     '</label>';
@@ -408,7 +440,7 @@ document.addEventListener('DOMContentLoaded', loadDictionaries);
     });
 
     document.addEventListener('click', function(e) {
-        if (!dropdownBtn.contains(e.target) && !dropdown.contains(e.target)) {
+        if (!dropdownBtn.contains(e.target) && !dropdown.contains(e.target) && (!skillSearch || !skillSearch.contains(e.target))) {
             dropdown.classList.add('hidden');
             arrow.style.transform = 'rotate(0deg)';
         }

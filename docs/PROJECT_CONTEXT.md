@@ -6,7 +6,7 @@
 
 ## Технологический стек
 - **Backend**: Python 3.12 + Flask (Application Factory + Blueprints)
-- **База данных**: Supabase (PostgreSQL) – REST API + Auth + Storage
+- **База данных**: PostgreSQL на Amvera – PostgREST REST API + нативная JWT-аутентификация + локальное хранилище. Supabase не используется (устарело)
 - **Фронтенд**: HTML5 + Tailwind CSS (CDN) + Jinja2
 - **Карты**: Яндекс.Карты (JavaScript API)
 - **Хостинг**: Docker-контейнер на Amvera / любая Docker-совместимая платформа
@@ -19,7 +19,7 @@
 
 ### Корень проекта
 - **`app.py`** – точка входа (создаёт Flask-приложение через `create_app()`)
-- **`.env`** – переменные окружения (Supabase URL, ключи, секреты)
+- **`.env`** – переменные окружения (PostgREST URL, JWT-секреты). Supabase не используется
 - **`requirements.txt`** – зависимости Python
 - **`PROJECT_CONTEXT.md`** – этот файл (контекст и roadmap)
 
@@ -68,10 +68,10 @@ app/
 │   ├── helpers.py
 │   ├── rate_limit.py
 │   ├── security.py
-│   ├── supabase.py
+│   ├── postgrest_client.py  # бывший supabase.py, переименован при миграции на Amvera — Supabase не используется
 │   └── validators.py
 └── testing/
-    └── mock_supabase.py
+    └── mock_postgrest.py  # бывший mock_supabase.py, переименован при миграции на Amvera — Supabase не используется
 ```
 
 ### Шаблоны (`templates/`)
@@ -99,7 +99,7 @@ app/
 ### Миграции (`migrations/`)
 Всего 64 миграции от `001_setup_rls.sql` до `064_update_accept_application.sql`. Применяются через `run_all_safe.sql`.
 
-## База данных Supabase (основные таблицы)
+## База данных (основные таблицы) — PostgreSQL на Amvera, Supabase не используется
 - **`profiles`** – пользователи (роль, навыки, вероисповедание, рейтинг, `photo_url`, `portfolio_link`)
 - **`jobs`** – задания (включая `preferred_religion`, `max_workers`, `current_workers`)
 - **`applications`** – отклики на задания
@@ -114,7 +114,7 @@ app/
 - **`email_log`** – журнал отправленных email
 
 ## Что уже реализовано (основные функции)
-- Регистрация и вход через Supabase Auth (email + пароль)
+- Регистрация и вход через нативную JWT-аутентификацию (email + пароль). Supabase Auth не используется
 - Верификация работодателей (загрузка документа, одобрение админом)
 - Создание заданий с фото и картой (Яндекс)
 - Лента заданий с фильтрами (город, оплата, расстояние, сортировка)
@@ -179,9 +179,9 @@ app/
     - На странице «Чат» отображаются все чаты, разделённые по работодателям/работникам
     - Возможность удалить один или несколько чатов
 11. **Обмен файлами в чате**
-    - Загрузка изображений/документов (используем Supabase Storage)
+    - Загрузка изображений/документов через локальное хранилище (Amvera). Supabase Storage не используется
 12. **Автообновление чата**
-    - Новые сообщения появляются мгновенно (Supabase Realtime, подписка на `messages`)
+    - Новые сообщения появляются мгновенно через WebSocket/Redis Pub-Sub. Supabase Realtime не используется
 
 ### ⭐ Этап 4 – Рейтинг, отзывы и избранное
 13. **Оценка после завершения**

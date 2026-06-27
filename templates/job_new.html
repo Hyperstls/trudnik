@@ -440,8 +440,8 @@
     // Auto-save on any input
     form.addEventListener('input', saveDraft);
 
-    // Load draft on page load
-    loadDraft();
+    // Load draft on page load (only when creating, not editing)
+    {% if not is_edit %}loadDraft();{% endif %}
 
     // Clear draft on successful submit
     form.addEventListener('submit', function() {
