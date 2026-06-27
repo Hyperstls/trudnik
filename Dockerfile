@@ -12,10 +12,8 @@ ENV PYTHONPYCACHEPREFIX=/data/pycache
 
 # Установка системных зависимостей + Python-зависимостей + очистка
 COPY requirements.txt .
-RUN apt-get update && apt-get install -y --no-install-recommends gcc libpq-dev && \
+RUN apt-get update && apt-get install -y --no-install-recommends libpq5 && \
     pip install -r requirements.txt && \
-    apt-get purge -y gcc libpq-dev && \
-    apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/*
 
 # Копирование кода приложения
@@ -31,8 +29,5 @@ RUN useradd -m -u 1000 appuser && \
 USER appuser
 
 EXPOSE 8000
-
-HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
-    CMD python -c "import urllib.request, sys; resp = urllib.request.urlopen('http://localhost:8000/health', timeout=3); sys.exit(0 if resp.status == 200 else 1)" || exit 1
 
 CMD uvicorn asgi:application --host 0.0.0.0 --port 8000 --workers 1

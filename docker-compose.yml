@@ -80,6 +80,12 @@ services:
       - SECRET_KEY=${SECRET_KEY}
       - WEBSOCKET_PORT=8001
     command: uvicorn websocket_server.main:app --host 0.0.0.0 --port 8001 --log-level info
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(3); s.connect(('localhost',8001)); s.close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   celery_worker:
     build: .
@@ -134,6 +140,12 @@ services:
       - PGRST_JWT_SECRET=${PGRST_JWT_SECRET}
       - SECRET_KEY=${SECRET_KEY}
     command: celery -A app.tasks.celery_app beat --loglevel=info
+    healthcheck:
+      test: ["CMD", "celery", "-A", "app.tasks.celery_app", "inspect", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   web:
     build: .
@@ -157,7 +169,7 @@ services:
       postgrest:
         condition: service_started
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3

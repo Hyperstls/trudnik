@@ -1,1 +1,1 @@
-8a9b65d fix: login uses direct SQL (psycopg2) instead of PostgREST for prod compatibility (2026-06-27 09:38:07 +0300)
+914c451 fix: direct SQL login uses correct DATABASE_URL + PostgREST fallback (2026-06-27 10:26:25 +0300)
