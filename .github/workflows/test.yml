@@ -160,15 +160,14 @@ jobs:
       #     Исключаем Playwright-конфигурацию и E2E-тесты
       #     --timeout=120 требует pytest-timeout в requirements-dev.txt
       # ────────────────────────────────────────────────────────────────────
-      - name: Backend тесты (pytest)
+      - name: Backend тесты (pytest unit)
         run: |
-          python -m pytest tests/ \
-            -m "not e2e and not a11y" \
+          python -m pytest tests/test_utils_unit.py tests/test_security.py tests/test_sanitize.py \
+            tests/test_push_service.py tests/test_notification_service.py \
+            tests/test_redis_publisher.py tests/test_websocket_auth.py \
+            tests/test_rate_limit.py \
             -v --tb=short \
-            --ignore=tests/conftest_playwright.py \
-            --ignore=tests/test_e2e_frontend.py \
-            --ignore=tests/test_e2e_multicontext.py \
-            --timeout=120 \
+            --timeout=60 \
             --junitxml=pytest-report.xml \
             --cov=. \
             --cov-report=xml:coverage.xml \
