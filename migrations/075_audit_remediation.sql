@@ -33,6 +33,7 @@ GRANT SELECT (id, role, created_at, updated_at, is_self_employed, email_public,
 -- Обычные пользователи не могут создать админа
 -- ============================================================================
 DROP POLICY IF EXISTS "Service can insert profiles" ON profiles;
+DROP POLICY IF EXISTS "Users can insert own profile" ON profiles;
 CREATE POLICY "Users can insert own profile" ON profiles
     FOR INSERT WITH CHECK (
         current_setting('request.jwt.claim.user_id', true)::uuid = id
@@ -44,6 +45,7 @@ CREATE POLICY "Users can insert own profile" ON profiles
 -- Полный доступ только к своему профилю; остальным — только публичные поля через column-level GRANT
 -- ============================================================================
 DROP POLICY IF EXISTS "Users can read profiles" ON profiles;
+DROP POLICY IF EXISTS "Users can read own full profile" ON profiles;
 CREATE POLICY "Users can read own full profile" ON profiles
     FOR SELECT USING (
         current_setting('request.jwt.claim.user_id', true)::uuid = id
