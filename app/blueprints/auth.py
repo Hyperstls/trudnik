@@ -122,37 +122,20 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
-        last_error = None
-        for attempt in range(2):
-            try:
-                # Используем PostgREST RPC login_user (SECURITY DEFINER — выполняется с правами владельца)
-                # На проде PostgREST требует авторизацию — используем service_role JWT
-                data = postgrest_public_rpc('login_user', {'p_email': email, 'p_password': password}, use_service_role=True)
-                if data is not None and isinstance(data, list) and len(data) > 0:
-                    user_data = data[0]
-                    user = {
-                        'user_id': str(user_data['user_id']),
-                        'role': user_data['role'],
-                        'email': email,
-                        'full_name': user_data.get('full_name', ''),
-                    }
-                    _login_user_session(user['user_id'], user['role'], email)
-                    if user.get('role') == 'employer':
-                        return redirect(url_for('jobs.my_jobs'))
-                    else:
-                        return redirect(url_for('jobs.index'))
-                flash('Ошибка входа: неверный email или пароль', 'danger')
-                return render_template('login.html')
-            except Exception as e:
-                log.warning('Auth connection error for %s, attempt %d/2: %s', email, attempt + 1, e)
-                last_error = str(e)
-                _time.sleep(1.0 * (attempt + 1))
-                continue
-        # Все попытки исчерпаны
-        if last_error == 'rate_limited':
-            flash('Слишком много попыток входа. Пожалуйста, подождите немного.', 'danger')
-        else:
-            flash('Ошибка соединения с сервером авторизации', 'danger')
+        try:
+            # Прямой SQL-запрос к БД через psycopg2 (работает и на проде, и на локале,
+            # в отличие от PostgREST RPC, который недоступен на Amvera)
+            user = _login_direct_sql(email, password)
+            if user:
+                _login_user_session(user['user_id'], user['role'], email)
+                if user.get('role') == 'employer':
+                    return redirect(url_for('jobs.my_jobs'))
+                else:
+                    return redirect(url_for('jobs.index'))
+            flash('Неверный email или пароль', 'error')
+        except Exception as e:
+            current_app.logger.error(f"Login error: {e}")
+            flash('Ошибка сервера. Попробуйте позже.', 'error')
     return render_template('login.html')
 
 

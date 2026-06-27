@@ -1,1 +1,1 @@
-f1480d5 fix: update VERSION and .env.amvera GIT_VERSION to 214f946 (2026-06-27 08:27:25 +0300)
+77eaec3 fix: login uses service_role JWT for PostgREST RPC, WebSocket URL .strip() (2026-06-27 09:00:17 +0300)
