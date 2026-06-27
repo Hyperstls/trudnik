@@ -7,7 +7,7 @@ from flask import Blueprint, current_app, flash, redirect, render_template, requ
 
 from app.config import Config
 from app.decorators import rate_limit
-from app.utils import postgrest_admin_request, postgrest_request
+from app.utils import postgrest_admin_request, postgrest_public_rpc, postgrest_request, postgrest_rpc
 from app.utils.auth import generate_jwt
 from app.utils.security import has_sql_injection
 from app.utils.validators import validate_password
@@ -125,18 +125,24 @@ def login():
         last_error = None
         for attempt in range(2):
             try:
-                # Прямое SQL-подключение (обходит PostgREST RPC, т.к. RPC требует service_role)
-                user = _login_direct_sql(email, password)
-                print(f"AUTH DEBUG: direct SQL result={user}", flush=True)
-                if user:
+                # Используем PostgREST RPC login_user (SECURITY DEFINER — выполняется с правами владельца)
+                # Анонимный вызов без JWT — только Content-Type: application/json
+                data = postgrest_public_rpc('login_user', {'p_email': email, 'p_password': password})
+                if data is not None and isinstance(data, list) and len(data) > 0:
+                    user_data = data[0]
+                    user = {
+                        'user_id': str(user_data['user_id']),
+                        'role': user_data['role'],
+                        'email': email,
+                        'full_name': user_data.get('full_name', ''),
+                    }
                     _login_user_session(user['user_id'], user['role'], email)
                     if user.get('role') == 'employer':
                         return redirect(url_for('jobs.my_jobs'))
                     else:
                         return redirect(url_for('jobs.index'))
-                else:
-                    flash('Ошибка входа: неверный email или пароль', 'danger')
-                    return render_template('login.html')
+                flash('Ошибка входа: неверный email или пароль', 'danger')
+                return render_template('login.html')
             except Exception as e:
                 log.warning('Auth connection error for %s, attempt %d/2: %s', email, attempt + 1, e)
                 last_error = str(e)

@@ -278,7 +278,6 @@ def cache_for(seconds: int = 30) -> Callable[[F], F]:
 POSTGREST_URL = Config.POSTGREST_URL
 PGRST_JWT_SECRET = Config.PGRST_JWT_SECRET
 
-
 # ═══════════════════════════════════════════════════════════════
 # JWT-хелперы для PostgREST-аутентификации
 # ═══════════════════════════════════════════════════════════════
@@ -597,6 +596,36 @@ def postgrest_rpc(function_name: str, params: dict, use_admin: bool = False) -> 
     except Exception as e:
         current_app.logger.error(f"Unexpected error in postgrest_rpc ({function_name}): {e}")
         return PostgrestResponse(ok=False, status_code=0, text=str(e))
+
+
+def postgrest_public_rpc(rpc_name: str, params: dict | None = None, timeout: int = 60) -> dict | list | None:
+    """Вызов PostgREST RPC без JWT-авторизации (публичный анонимный вызов).
+
+    Используется для login_user, register и других публичных RPC,
+    которые не требуют JWT-токена — только Content-Type: application/json.
+
+    Args:
+        rpc_name: имя RPC-функции (например, 'login_user').
+        params: словарь параметров для процедуры.
+        timeout: таймаут запроса в секундах.
+
+    Returns:
+        dict | list | None: JSON-ответ от PostgREST или None при ошибке.
+    """
+    if _is_mock_enabled():
+        return _test_mock_rpc(rpc_name, params or {})
+
+    url = f'{POSTGREST_URL.strip()}/rpc/{rpc_name}'
+    headers = {'Content-Type': 'application/json'}
+    payload = params or {}
+
+    try:
+        resp = _session.post(url, json=payload, headers=headers, timeout=timeout)
+        resp.raise_for_status()
+        return resp.json() if resp.text else []
+    except _requests.RequestException as e:
+        current_app.logger.error(f"postgrest_public_rpc({rpc_name}): {e}")
+        return None
 
 
 # ═══════════════════════════════════════════════════════════════

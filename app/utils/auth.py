@@ -75,24 +75,26 @@ def generate_jwt(user_id, role, exp_seconds=3600):
         'exp': datetime.utcnow() + timedelta(seconds=exp_seconds),
         'jti': secrets.token_hex(8)
     }
-    # Приоритет: 1) Flask config (из Config.PGRST_JWT_SECRET), 2) os.environ (runtime fallback),
-    # 3) SECRET_KEY (последний fallback)
+    # Приоритет: 1) модульная переменная PGRST_JWT_SECRET (Config.PGRST_JWT_SECRET),
+    # 2) current_app.config (может быть пустой строкой), 3) os.environ (runtime fallback).
+    # SECRET_KEY НЕ ИСПОЛЬЗУЕТСЯ — он не совпадает с секретом PostgREST.
     import os as _os
-    secret = (
-        current_app.config.get('PGRST_JWT_SECRET')
-        or _os.environ.get('PGRST_JWT_SECRET')
-        or current_app.config.get('SECRET_KEY')
+    secret = PGRST_JWT_SECRET
+    if not secret:
+        secret = current_app.config.get('PGRST_JWT_SECRET') or _os.environ.get('PGRST_JWT_SECRET', '')
+    if not secret:
+        current_app.logger.error(
+            'PGRST_JWT_SECRET is not configured! JWT signing will fail. '
+            'Set PGRST_JWT_SECRET env var or Config.PGRST_JWT_SECRET.'
+        )
+        raise RuntimeError(
+            'PGRST_JWT_SECRET is not configured. '
+            'JWT tokens must be signed with the same secret as PostgREST.'
+        )
+    current_app.logger.info(
+        'JWT: signing with secret prefix=%s... (%d bytes)',
+        secret[:8], len(secret.encode('utf-8'))
     )
-    if not current_app.config.get('PGRST_JWT_SECRET'):
-        if _os.environ.get('PGRST_JWT_SECRET'):
-            current_app.logger.info(
-                'PGRST_JWT_SECRET найден в os.environ (runtime fallback) — %d байт',
-                len(_os.environ.get('PGRST_JWT_SECRET', '').encode('utf-8'))
-            )
-        else:
-            current_app.logger.warning(
-                'PGRST_JWT_SECRET не задан — используется SECRET_KEY как fallback для JWT'
-            )
     return _jwt_lib.encode(payload, secret, algorithm='HS256')
 
 
@@ -101,6 +103,9 @@ def refresh_access_token() -> bool:
 
     Достаточно наличия user_id в сессии для генерации свежего токена.
     Использует каноническую функцию generate_jwt().
+
+    ВАЖНО: Всегда использует роль trudnikapp (текущий пользователь БД PostgREST),
+    т.к. SET ROLE authenticated/anon требует SUPERUSER, которого нет на проде.
     """
     user_id = session.get('user_id')
 
@@ -108,8 +113,10 @@ def refresh_access_token() -> bool:
         return False
 
     try:
-        role = session.get('role', 'authenticated')
-        token = generate_jwt(user_id, role)
+        # Используем trudnikapp — аутентификатор PostgREST (SET ROLE = no-op).
+        # Не используем session['role'] (authenticated/worker/employer/admin),
+        # т.к. на проде нет SUPERUSER для GRANT этих ролей.
+        token = generate_jwt(user_id, 'trudnikapp')
         session['access_token'] = token
         session.modified = True
         return True

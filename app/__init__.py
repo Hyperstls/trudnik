@@ -126,7 +126,7 @@ def _wait_for_postgrest(app, max_wait: int = 30, interval: int = 2) -> bool:
     при запуске docker-compose стека (Flask может стартовать раньше PostgREST).
     """
     import requests as _req
-    postgrest_url = os.environ.get('POSTGREST_URL', 'http://postgrest:3000')
+    postgrest_url = os.environ.get('POSTGREST_URL', 'http://postgrest:3000').strip()
     deadline = time.time() + max_wait
     attempt = 0
     while time.time() < deadline:

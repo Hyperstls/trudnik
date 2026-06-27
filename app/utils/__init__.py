@@ -105,6 +105,7 @@ refresh_access_token = _pgrest.refresh_access_token
 postgrest_request = _pgrest.postgrest_request
 postgrest_admin_request = _pgrest.postgrest_admin_request
 postgrest_rpc = _pgrest.postgrest_rpc
+postgrest_public_rpc = _pgrest.postgrest_public_rpc
 generate_vapid_keys = PushService.generate_vapid_keys
 
 # --- Гео-вычисления ---
@@ -164,7 +165,7 @@ __all__ = [
     'cache_for', 'is_circuit_open',
     'POSTGREST_URL', 'PGRST_JWT_SECRET',
     'get_service_role_headers', 'get_user_headers',
-    'postgrest_request', 'postgrest_admin_request', 'postgrest_rpc',
+    'postgrest_request', 'postgrest_admin_request', 'postgrest_rpc', 'postgrest_public_rpc',
     'generate_vapid_keys',
     # Auth
     'refresh_access_token', 'get_user_role', 'get_user_profile', 'generate_jwt',
