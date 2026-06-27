@@ -598,16 +598,23 @@ def postgrest_rpc(function_name: str, params: dict, use_admin: bool = False) -> 
         return PostgrestResponse(ok=False, status_code=0, text=str(e))
 
 
-def postgrest_public_rpc(rpc_name: str, params: dict | None = None, timeout: int = 60) -> dict | list | None:
-    """Вызов PostgREST RPC без JWT-авторизации (публичный анонимный вызов).
+def postgrest_public_rpc(rpc_name: str, params: dict | None = None, timeout: int = 60, use_service_role: bool = False) -> dict | list | None:
+    """Вызов PostgREST RPC — анонимный или с service_role JWT.
 
-    Используется для login_user, register и других публичных RPC,
-    которые не требуют JWT-токена — только Content-Type: application/json.
+    По умолчанию (use_service_role=False) выполняется анонимный вызов
+    без JWT — только Content-Type: application/json.
+
+    Если use_service_role=True, запрос отправляется с JWT-токеном
+    роли trudnikapp (service_role), что необходимо на продакшене,
+    где PostgREST требует авторизацию для всех запросов.
+
+    Используется для login_user, register и других публичных RPC.
 
     Args:
         rpc_name: имя RPC-функции (например, 'login_user').
         params: словарь параметров для процедуры.
         timeout: таймаут запроса в секундах.
+        use_service_role: если True — использовать JWT service_role.
 
     Returns:
         dict | list | None: JSON-ответ от PostgREST или None при ошибке.
@@ -616,11 +623,19 @@ def postgrest_public_rpc(rpc_name: str, params: dict | None = None, timeout: int
         return _test_mock_rpc(rpc_name, params or {})
 
     url = f'{POSTGREST_URL.strip()}/rpc/{rpc_name}'
-    headers = {'Content-Type': 'application/json'}
+
+    if use_service_role:
+        headers = get_service_role_headers()
+    else:
+        headers = {'Content-Type': 'application/json'}
+
     payload = params or {}
 
     try:
-        resp = _session.post(url, json=payload, headers=headers, timeout=timeout)
+        if use_service_role:
+            resp = _admin_session.post(url, json=payload, headers=headers, timeout=timeout)
+        else:
+            resp = _session.post(url, json=payload, headers=headers, timeout=timeout)
         resp.raise_for_status()
         return resp.json() if resp.text else []
     except _requests.RequestException as e:

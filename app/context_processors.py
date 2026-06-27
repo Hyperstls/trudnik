@@ -121,8 +121,8 @@ def _redis_cache_delete(key: str):
 def inject_ws_config() -> dict:
     """Добавляет WebSocket-конфигурацию и JWT-токен во все шаблоны."""
     config = {
-        'wsUrl': os.environ.get('WEBSOCKET_URL', ''),
-        'wsPort': os.environ.get('WEBSOCKET_PORT', '8001'),
+        'wsUrl': (os.environ.get('WEBSOCKET_URL', '')).strip(),
+        'wsPort': (os.environ.get('WEBSOCKET_PORT', '8001')).strip(),
         'pushEnabled': bool(os.environ.get('VAPID_PUBLIC_KEY', '')),
         'jwtToken': ''
     }

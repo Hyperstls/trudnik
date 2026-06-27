@@ -1,1 +1,1 @@
-214f946 fix: POSTGREST_URL .strip(), JWT secret, trudnikapp role, postgrest_public_rpc, admin RLS policies (2026-06-27 08:12:19 +0300)
+f1480d5 fix: update VERSION and .env.amvera GIT_VERSION to 214f946 (2026-06-27 08:27:25 +0300)

@@ -126,8 +126,8 @@ def login():
         for attempt in range(2):
             try:
                 # Используем PostgREST RPC login_user (SECURITY DEFINER — выполняется с правами владельца)
-                # Анонимный вызов без JWT — только Content-Type: application/json
-                data = postgrest_public_rpc('login_user', {'p_email': email, 'p_password': password})
+                # На проде PostgREST требует авторизацию — используем service_role JWT
+                data = postgrest_public_rpc('login_user', {'p_email': email, 'p_password': password}, use_service_role=True)
                 if data is not None and isinstance(data, list) and len(data) > 0:
                     user_data = data[0]
                     user = {
