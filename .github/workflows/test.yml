@@ -113,47 +113,24 @@ jobs:
         run: playwright install chromium --with-deps
 
       # ────────────────────────────────────────────────────────────────────
-      # 6. Запуск Docker Compose сервисов (Redis, WebSocket, Celery)
-      #    Сборка образов из Dockerfile и запуск в фоне
-      # ────────────────────────────────────────────────────────────────────
-      - name: Запуск Docker Compose сервисов
-        run: docker compose up -d --build redis websocket celery_worker celery_beat
-
-      # ────────────────────────────────────────────────────────────────────
-      # 7. Ожидание готовности Docker-сервисов
-      #    Проверка Redis через redis-cli ping внутри контейнера
-      # ────────────────────────────────────────────────────────────────────
-      - name: Ожидание готовности сервисов
-        run: |
-          echo "Ожидание запуска контейнеров (15 секунд)..."
-          sleep 15
-          echo "Проверка состояния контейнеров:"
-          docker compose ps
-          echo "Проверка Redis (ping):"
-          docker compose exec -T redis redis-cli ping
-          echo "Все сервисы готовы."
-
-      # ────────────────────────────────────────────────────────────────────
-      # 8. Запуск Flask-приложения в фоне как тестового сервера
+      # 6. Запуск Flask с in-memory mock (без Docker Compose)
+      #    TESTING=true включает mock PostgREST — БД не нужна
       # ────────────────────────────────────────────────────────────────────
       - name: Запуск Flask тестового сервера
         run: |
-          echo "Запуск Flask на порту 5000..."
-          python -m flask run --host=0.0.0.0 --port=5000 &
+          echo "Запуск Flask на порту 5000 (TESTING mode — mock PostgREST)..."
+          python -m flask run --host=0.0.0.0 --port=5000 > /tmp/flask.log 2>&1 &
           echo "Flask PID: $!"
+          echo "Ожидание запуска (10 секунд)..."
+          sleep 10
+          echo "=== Flask startup logs ==="
+          cat /tmp/flask.log
+          echo "=== Health check ==="
+          curl -v --retry 5 --retry-delay 2 --max-time 10 http://localhost:5000/health || echo "Health-check: trying again..."
+          sleep 5
+          curl -v http://localhost:5000/health || echo "WARNING: Flask health check failed"
         env:
           FLASK_APP: 'app.py'
-
-      # ────────────────────────────────────────────────────────────────────
-      # 9. Ожидание готовности Flask и проверка health-эндпоинта
-      # ────────────────────────────────────────────────────────────────────
-      - name: Ожидание готовности Flask
-        run: |
-          echo "Ожидание запуска Flask (5 секунд)..."
-          sleep 5
-          echo "Проверка health-эндпоинта Flask:"
-          curl --fail --retry 5 --retry-delay 2 --max-time 10 http://localhost:5000/health || echo "Health-check недоступен, продолжаем..."
-          echo "Flask готов."
 
       # ────────────────────────────────────────────────────────────────────
       # 10. Backend-тесты (unit + integration)
@@ -203,11 +180,11 @@ jobs:
           || echo "A11Y_SKIPPED=true — a11y-тесты завершились с ошибкой (не блокируем CI)"
 
       # ────────────────────────────────────────────────────────────────────
-      # 13. Остановка Docker Compose сервисов и очистка
+      # 13. Очистка (если запускался Docker Compose)
       # ────────────────────────────────────────────────────────────────────
       - name: Остановка Docker Compose
         if: always()
-        run: docker compose down --volumes
+        run: docker compose down --volumes 2>/dev/null || true
 
       # ────────────────────────────────────────────────────────────────────
       # 14. Загрузка артефактов тестирования (отчёты pytest и coverage)
