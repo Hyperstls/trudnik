@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+import subprocess
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for, jsonify
 
 from app.decorators import login_required, role_required, admin_required, handle_errors
@@ -131,16 +132,31 @@ def admin_panel():
     # Справочники: навыки и вероисповедания
     skills = []
     religions = []
-    if tab == 'dictionaries' or tab == 'skills':
+    if tab == 'dictionaries' or tab == 'skills' or tab == 'religions':
         skills_resp = postgrest_admin_request('GET', 'skills?select=*&order=sort_order.asc,name.asc')
         skills = skills_resp.json() if skills_resp.ok else []
         religions_resp = postgrest_admin_request('GET', 'religions?select=*&order=sort_order.asc,name.asc')
         religions = religions_resp.json() if religions_resp.ok else []
 
+    # Актуальная версия из VERSION-файла или git (для кнопки «Текущая версия»)
+    try:
+        version_file = os.path.join(current_app.root_path, 'VERSION')
+        if os.path.exists(version_file):
+            with open(version_file, 'r', encoding='utf-8') as f:
+                actual_version = f.read().strip()
+        else:
+            actual_version = subprocess.check_output(
+                ['git', 'log', '-1', '--format=%h %s (%ai)'],
+                cwd=current_app.root_path, text=True
+            ).strip()
+    except Exception:
+        actual_version = 'dev'
+
     return render_template('admin.html',
                            tab=tab, stats=stats, users=users,
                            jobs=jobs, pending=pending, verified=verified,
-                           skills=skills, religions=religions)
+                           skills=skills, religions=religions,
+                           actual_version=actual_version)
 
 
 # ── Управление пользователями ──────────────────────────
@@ -188,7 +204,7 @@ def delete_user(user_id):
         flash('Ошибка при удалении пользователя', 'danger')
         return redirect(url_for('admin.admin_panel', tab='users'))
 
-    # Amvera: удаление из auth.users не требуется (нет Supabase Auth)
+    # Amvera: удаление из auth.users не требуется — Supabase Auth не используется (устарело)
     # Пользователь удалён каскадно через RPC delete_user_cascade
 
     flash('Пользователь удалён', 'success')
@@ -261,7 +277,7 @@ def bulk_delete_users():
             errors.append(f'RPC failed for {user_id}')
             continue
 
-        # Amvera: удаление из auth.users не требуется (нет Supabase Auth)
+        # Amvera: удаление из auth.users не требуется — Supabase Auth не используется (устарело)
         # Пользователь удалён каскадно через RPC delete_user_cascade
 
         deleted += 1
