@@ -68,10 +68,26 @@ _MAX_EMAIL_LENGTH = 254  # RFC 5321
 
 
 def _get_db_url():
-    """Получить URL для прямого подключения к PostgreSQL (как в admin.py reset_users)."""
+    """Получить URL для прямого подключения к PostgreSQL (как в admin.py reset_users).
+
+    Приоритет:
+    1. DATABASE_URL из переменных окружения
+    2. PGDATABASE_URL
+    3. Config.DATABASE_URL (собранный из PGUSER/PGPASSWORD/PGHOST/PGPORT/PGDATABASE)
+    4. Отдельные переменные PGUSER/PGPASSWORD/PGHOST/PGPORT/PGDATABASE
+    """
     db_url = os.environ.get('DATABASE_URL') or os.environ.get('PGDATABASE_URL', '')
     if db_url:
+        log.debug("login: using DATABASE_URL from env: %s",
+                  db_url[:db_url.index('@') + 1] + '***' if '@' in db_url else db_url)
         return db_url
+    # Fallback на Config.DATABASE_URL (собирается из отдельных PG-переменных)
+    config_url = Config.DATABASE_URL
+    if config_url:
+        log.debug("login: using Config.DATABASE_URL: %s",
+                  config_url[:config_url.index('@') + 1] + '***' if '@' in config_url else config_url)
+        return config_url
+    # Последняя попытка — собрать из отдельных переменных
     pg_user = os.environ.get('PGUSER', '')
     pg_password = os.environ.get('PGPASSWORD', '')
     pg_host = os.environ.get('PGHOST', '')
@@ -79,22 +95,28 @@ def _get_db_url():
     pg_database = os.environ.get('PGDATABASE', '')
     if all([pg_user, pg_password, pg_host, pg_database]):
         return f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_database}"
+    log.warning("login: no DATABASE_URL configured (env DATABASE_URL, PGDATABASE_URL, "
+                "or PGUSER/PGPASSWORD/PGHOST/PGDATABASE)")
     return ''
-
 
 def _login_direct_sql(email: str, password: str) -> dict | None:
     """Проверить email/password через прямое SQL-подключение (в обход PostgREST RPC).
 
     Использует pgcrypto crypt() для проверки хеша пароля.
-    Возвращает dict с {id, email, role, full_name} или None при ошибке/неверном пароле.
+    Возвращает dict с {user_id, email, role, full_name} или None при ошибке/неверном пароле.
+
+    При ошибке подключения выбрасывает исключение с понятным описанием,
+    чтобы вызывающий код мог попробовать fallback (PostgREST).
     """
     db_url = _get_db_url()
     if not db_url:
-        log.error("login: DATABASE_URL not configured")
-        return None
+        raise RuntimeError(
+            "DATABASE_URL не задан. Установите переменную окружения DATABASE_URL "
+            "или PGUSER/PGPASSWORD/PGHOST/PGPORT/PGDATABASE."
+        )
     try:
         import psycopg2
-        conn = psycopg2.connect(db_url)
+        conn = psycopg2.connect(db_url, connect_timeout=10)
         conn.autocommit = True
         cur = conn.cursor()
         cur.execute("""
@@ -107,14 +129,56 @@ def _login_direct_sql(email: str, password: str) -> dict | None:
         conn.close()
         if row:
             return {'user_id': str(row[0]), 'email': row[1], 'role': row[2], 'full_name': row[3]}
+        log.info("login: invalid credentials for %s (direct SQL)", email)
         return None
     except ImportError:
-        log.error("login: psycopg2 not installed")
+        log.error("login: psycopg2 not installed — cannot use direct SQL")
+        raise RuntimeError(
+            "psycopg2 не установлен. Установите: pip install psycopg2-binary"
+        )
+    except Exception as e:
+        log.error("login: direct SQL connection failed for %s: %s", email, e)
+        raise RuntimeError(
+            f"Не удалось подключиться к БД напрямую: {e}. "
+            f"Проверьте DATABASE_URL (порт, хост, пароль). "
+            f"PostgreSQL должен быть доступен."
+        )
+
+
+def _login_postgrest(email: str, password: str) -> dict | None:
+    """Fallback: проверить email/password через PostgREST RPC login_user.
+
+    Используется если прямой SQL недоступен (например, нет psycopg2 или БД не на локалхосте).
+    Возвращает dict с {user_id, email, role, full_name} или None при ошибке/неверном пароле.
+    """
+    try:
+        from app.utils import postgrest_admin_request
+        resp = postgrest_admin_request('POST', 'rpc/login_user', data={
+            'p_email': email,
+            'p_password': password
+        })
+        if resp and resp.ok:
+            data = resp.json()
+            if isinstance(data, list) and len(data) > 0:
+                user = data[0]
+                return {
+                    'user_id': str(user.get('id', user.get('user_id', ''))),
+                    'email': user.get('email', email),
+                    'role': user.get('role', 'worker'),
+                    'full_name': user.get('full_name', '')
+                }
+            elif isinstance(data, dict):
+                return {
+                    'user_id': str(data.get('id', data.get('user_id', ''))),
+                    'email': data.get('email', email),
+                    'role': data.get('role', 'worker'),
+                    'full_name': data.get('full_name', '')
+                }
+        log.info("login: invalid credentials for %s (PostgREST fallback)", email)
         return None
     except Exception as e:
-        log.error("login: direct SQL error for %s: %s", email, e)
+        log.error("login: PostgREST fallback also failed for %s: %s", email, e)
         return None
-
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 @rate_limit
@@ -133,6 +197,24 @@ def login():
                 else:
                     return redirect(url_for('jobs.index'))
             flash('Неверный email или пароль', 'error')
+        except RuntimeError as sql_err:
+            # Прямой SQL не сработал — пробуем PostgREST fallback
+            log.warning("login: direct SQL unavailable for %s, trying PostgREST fallback: %s",
+                        email, sql_err)
+            try:
+                user = _login_postgrest(email, password)
+                if user:
+                    _login_user_session(user['user_id'], user['role'], email)
+                    if user.get('role') == 'employer':
+                        return redirect(url_for('jobs.my_jobs'))
+                    else:
+                        return redirect(url_for('jobs.index'))
+                flash('Неверный email или пароль', 'error')
+            except Exception as pgrst_err:
+                current_app.logger.error(
+                    f"Login error for {email}: direct SQL and PostgREST both failed: {pgrst_err}"
+                )
+                flash('Ошибка сервера. Попробуйте позже.', 'error')
         except Exception as e:
             current_app.logger.error(f"Login error: {e}")
             flash('Ошибка сервера. Попробуйте позже.', 'error')

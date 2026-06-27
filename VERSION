@@ -1,1 +1,1 @@
-77eaec3 fix: login uses service_role JWT for PostgREST RPC, WebSocket URL .strip() (2026-06-27 09:00:17 +0300)
+8a9b65d fix: login uses direct SQL (psycopg2) instead of PostgREST for prod compatibility (2026-06-27 09:38:07 +0300)
