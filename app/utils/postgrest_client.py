@@ -293,8 +293,9 @@ _PGRST_DB_ROLE = 'trudnikapp'
 def get_service_role_headers() -> Dict[str, str]:
     """Создать заголовки с JWT для админских операций (обход RLS).
 
-    Использует роль 'service_role' для админских запросов к PostgREST.
-    JWT mint'ится с PGRST_JWT_SECRET (тот же секрет, что у PostgREST).
+    Использует роль 'trudnikapp' — ту же роль, под которой PostgREST
+    подключен к PostgreSQL. SET ROLE trudnikapp является no-op,
+    поэтому всегда работает без SUPERUSER.
 
     Returns:
         Словарь с заголовками Authorization и Content-Type.
@@ -302,7 +303,7 @@ def get_service_role_headers() -> Dict[str, str]:
     import uuid as _uuid
     token = pyjwt.encode(
         {
-            'role': 'service_role',
+            'role': 'trudnikapp',
             'exp': int(time.time()) + 300,  # 5 минут
             'iat': int(time.time()),
             'jti': str(_uuid.uuid4()),
