@@ -299,3 +299,66 @@ jobs:
             locust_results_failures.csv
             locust_results_exceptions.csv
           retention-days: 7
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # E2E тесты против STAGING-сервера (реальный сервер + БД)
+  # Запускается при пуше в staging или вручную (workflow_dispatch)
+  # ═══════════════════════════════════════════════════════════════════════════
+  e2e-staging:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/staging' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 20
+
+    env:
+      BASE_URL: ${{ secrets.STAGING_URL }}
+      EMPLOYER_EMAIL: ${{ secrets.STAGING_EMPLOYER_EMAIL }}
+      EMPLOYER_PASSWORD: ${{ secrets.STAGING_EMPLOYER_PASSWORD }}
+      WORKER_EMAIL: ${{ secrets.STAGING_WORKER_EMAIL }}
+      WORKER_PASSWORD: ${{ secrets.STAGING_WORKER_PASSWORD }}
+
+    steps:
+      - name: Клонирование репозитория
+        uses: actions/checkout@v4
+
+      - name: Установка Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Установка зависимостей
+        run: pip install -r requirements-dev.txt
+
+      - name: Установка Playwright браузеров
+        run: playwright install chromium --with-deps
+
+      - name: Ждём готовности staging-сервера
+        run: |
+          echo "Проверяем доступность ${{ secrets.STAGING_URL }}/health..."
+          for i in $(seq 1 12); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" ${{ secrets.STAGING_URL }}/health || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Staging сервер готов (HTTP $STATUS)"
+              exit 0
+            fi
+            echo "Попытка $i/12: HTTP $STATUS — ждём 10 секунд..."
+            sleep 10
+          done
+          echo "WARNING: Staging сервер не ответил за 2 минуты. Продолжаем всё равно."
+
+      - name: E2E тесты против staging
+        run: |
+          python -m pytest tests/test_e2e_frontend.py tests/test_e2e_multicontext.py \
+            -m "e2e and not slow" \
+            -v --tb=short \
+            --browser chromium --headed=false \
+            --timeout=180 \
+            --junitxml=pytest-e2e-staging-report.xml \
+          || echo "E2E_STAGING_FAILED=true — не блокируем CI"
+
+      - name: Загрузка артефактов — E2E staging отчёты
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-staging-reports
+          path: pytest-e2e-staging-report.xml
+          retention-days: 7
