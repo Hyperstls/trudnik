@@ -202,6 +202,68 @@ jobs:
           retention-days: 7
 
   # ═══════════════════════════════════════════════════════════════════════════
+  # E2E тесты против PRODUCTION (пока нет реальных пользователей)
+  # Запускается при пуше в main
+  # ═══════════════════════════════════════════════════════════════════════════
+  e2e-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      BASE_URL: ${{ secrets.E2E_BASE_URL }}
+      EMPLOYER_EMAIL: ${{ secrets.EMPLOYER_EMAIL }}
+      EMPLOYER_PASSWORD: ${{ secrets.EMPLOYER_PASSWORD }}
+      WORKER_EMAIL: ${{ secrets.WORKER_EMAIL }}
+      WORKER_PASSWORD: ${{ secrets.WORKER_PASSWORD }}
+
+    steps:
+      - name: Клонирование репозитория
+        uses: actions/checkout@v4
+
+      - name: Установка Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Установка зависимостей
+        run: pip install -r requirements-dev.txt
+
+      - name: Установка Playwright браузеров
+        run: playwright install chromium --with-deps
+
+      - name: Ждём готовности сервера
+        run: |
+          echo "Проверяем ${{ secrets.E2E_BASE_URL }}/health..."
+          for i in $(seq 1 12); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" ${{ secrets.E2E_BASE_URL }}/health || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Сервер готов (HTTP $STATUS)"
+              exit 0
+            fi
+            echo "Попытка $i/12: HTTP $STATUS — ждём 10 секунд..."
+            sleep 10
+          done
+          echo "WARNING: Сервер не ответил за 2 минуты"
+
+      - name: E2E тесты
+        run: |
+          python -m pytest tests/test_e2e_frontend.py tests/test_e2e_multicontext.py \
+            -m "e2e and not slow" \
+            -v --tb=short \
+            --browser chromium --headed=false \
+            --timeout=180 \
+            --junitxml=pytest-e2e-report.xml \
+          || echo "E2E_FAILED=true — не блокируем CI"
+
+      - name: Загрузка артефактов
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-reports
+          path: pytest-e2e-report.xml
+          retention-days: 7
+
+  # ═══════════════════════════════════════════════════════════════════════════
   # Отдельный job: нагрузочное тестирование Locust
   # Запускается только при ручном запуске (workflow_dispatch)
   # ═══════════════════════════════════════════════════════════════════════════

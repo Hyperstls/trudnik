@@ -1,1 +1,1 @@
-075-audit-remediation-final
+43d3961 ci: run E2E with mock PostgREST — remove Docker Compose, Flask with TESTING=true (2026-06-27 22:27:11 +0300)
