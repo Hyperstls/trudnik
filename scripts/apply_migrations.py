@@ -268,6 +268,17 @@ def main() -> None:
     """Основная логика скрипта."""
     dry_run = "--dry-run" in sys.argv
 
+    # --- Ранний выход: миграции отключены по умолчанию ---
+    # Авто-мигратор отключён для всех автоматических запусков
+    # (Cron Job, Amvera CI). Для ручного запуска установите:
+    #   MIGRATIONS_ENABLED=true python scripts/apply_migrations.py
+    if os.environ.get("MIGRATIONS_ENABLED", "").lower() not in ("true", "1", "yes"):
+        logger.info(
+            "Миграции отключены (MIGRATIONS_ENABLED не установлена). "
+            "Для принудительного запуска: MIGRATIONS_ENABLED=true python scripts/apply_migrations.py"
+        )
+        return
+
     if dry_run:
         logger.info("=== DRY RUN: миграции НЕ будут применены ===")
 
