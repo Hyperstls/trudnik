@@ -1322,3 +1322,21 @@
 | `SENTRY_DSN` | Error tracking (optional) | [`app/__init__.py`](app/__init__.py) | URL |
 | `SMTP_PASSWORD` | Email sending | [`app/services/email_service.py`](app/services/email_service.py) | Password |
 
+---
+Task ID: POST-DEPLOY-01
+Agent: Orchestrator
+Task: Отключение авто-мигратора и force-push в Amvera
+
+Work Log:
+- Найден авто-мигратор: scripts/entrypoint.sh → scripts/apply_migrations.py (таблица _migrations)
+- Закомментирован вызов apply_migrations.py в entrypoint.sh
+- Коммит 224c539: chore: отключить авто-мигратор, исправить pre-commit
+- Миграции 076-096 применены вручную через pgAdmin (комбинированный файл 076-096_combined.sql)
+- Выполнен pre-commit run --all-files (detect-secrets baseline обновлён)
+- Выполнен force-push в Amvera
+
+Stage Summary:
+- Изменённые файлы: scripts/entrypoint.sh
+- При следующем деплое авто-мигратор не запустится
+- Миграции уже применены в БД — повторное применение не требуется
+
