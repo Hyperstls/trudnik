@@ -5,7 +5,7 @@ DECLARE
     keep_id uuid;
 BEGIN
     FOR dup IN
-        SELECT LOWER(email) AS le, MIN(id) AS keep_id
+        SELECT LOWER(email) AS le, (array_agg(id ORDER BY created_at ASC))[1] AS keep_id
         FROM profiles GROUP BY LOWER(email) HAVING COUNT(*) > 1
     LOOP
         keep_id := dup.keep_id;

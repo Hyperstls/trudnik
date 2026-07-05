@@ -1,3 +1,5 @@
+-- DROP старой версии (несовместимые имена параметров)
+DROP FUNCTION IF EXISTS register_user(text, text, text, text) CASCADE;
 CREATE OR REPLACE FUNCTION register_user(
     p_email text, p_password text, p_full_name text, p_role text DEFAULT 'worker'
 ) RETURNS uuid

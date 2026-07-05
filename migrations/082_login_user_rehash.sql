@@ -1,3 +1,4 @@
+DROP FUNCTION IF EXISTS login_user(text, text) CASCADE;
 CREATE OR REPLACE FUNCTION login_user(p_email text, p_password text)
 RETURNS TABLE(user_id uuid, role text, full_name text, email_verified boolean) AS $$
 DECLARE
