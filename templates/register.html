@@ -28,7 +28,7 @@
             <!-- ===== Шаг 1: Аккаунт ===== -->
             <div id="step-1" class="space-y-4">
                 <div class="floating-label-group">
-                    <input type="text" name="full_name" id="full_name" placeholder=" " required maxlength="100">
+                    <input type="text" name="full_name" id="full_name" placeholder=" " required maxlength="100" autocomplete="name">
                     <label for="full_name">Полное имя <span class="text-danger">*</span></label>
                     <div class="error-text">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -52,7 +52,7 @@
                 </div>
 
                 <div class="floating-label-group">
-                    <input type="password" name="password" id="password" placeholder=" " required minlength="6">
+                    <input type="password" name="password" id="password" placeholder=" " required minlength="6" autocomplete="new-password">
                     <label for="password">Пароль <span class="text-danger">*</span></label>
                     <div class="error-text">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -61,6 +61,17 @@
                         <span>Минимум 6 символов</span>
                     </div>
                     {% if field_errors is defined and field_errors.password %}<span class="text-red-500 text-sm">{{ field_errors.password }}</span>{% endif %}
+                    <!-- Password strength indicator -->
+                    <div id="password-strength" class="mt-2 hidden">
+                        <div class="flex gap-1 mb-1">
+                            <div class="strength-segment flex-1 h-1.5 rounded-full bg-neutral-200 transition-colors duration-300" data-seg="1"></div>
+                            <div class="strength-segment flex-1 h-1.5 rounded-full bg-neutral-200 transition-colors duration-300" data-seg="2"></div>
+                            <div class="strength-segment flex-1 h-1.5 rounded-full bg-neutral-200 transition-colors duration-300" data-seg="3"></div>
+                            <div class="strength-segment flex-1 h-1.5 rounded-full bg-neutral-200 transition-colors duration-300" data-seg="4"></div>
+                            <div class="strength-segment flex-1 h-1.5 rounded-full bg-neutral-200 transition-colors duration-300" data-seg="5"></div>
+                        </div>
+                        <p id="strength-text" class="text-xs text-neutral-500"></p>
+                    </div>
                 </div>
 
                 <!-- Role selection cards -->
@@ -112,7 +123,7 @@
                 </div>
 
                 <div class="floating-label-group">
-                    <input type="text" name="city" id="city" placeholder=" " maxlength="50">
+                    <input type="text" name="city" id="city" placeholder=" " maxlength="50" autocomplete="address-level2">
                     <label for="city">Город</label>
                     {% if field_errors is defined and field_errors.city %}<span class="text-red-500 text-sm">{{ field_errors.city }}</span>{% endif %}
                 </div>
@@ -170,6 +181,12 @@
                         <label for="desired_payment">Желаемая оплата за смену</label>
                     </div>
                 </div>
+
+                <!-- Согласие с условиями (152-ФЗ) -->
+                <label class="flex items-start gap-2 text-sm text-neutral-600 mt-3">
+                    <input type="checkbox" name="consent" required class="mt-0.5 rounded border-neutral-300 text-primary-500 focus:ring-primary-500">
+                    <span>Я согласен с <a href="/terms" target="_blank" class="text-primary-500 hover:underline">условиями использования</a> и <a href="/privacy" target="_blank" class="text-primary-500 hover:underline">политикой конфиденциальности</a></span>
+                </label>
 
                 <div class="flex gap-3">
                     <button type="button" id="back-to-step-1" class="flex-1 bg-neutral-100 hover:bg-neutral-200 active:scale-[0.98] text-neutral-700 font-semibold py-3.5 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neutral-300">
@@ -242,6 +259,57 @@
     email.addEventListener('input', validateStep1);
     password.addEventListener('input', validateStep1);
     roleInputs.forEach(function(r) { r.addEventListener('change', validateStep1); });
+
+    // ==========================================
+    // Password strength checker
+    // ==========================================
+    var strengthContainer = document.getElementById('password-strength');
+    var strengthText = document.getElementById('strength-text');
+    var segments = document.querySelectorAll('.strength-segment');
+
+    function updatePasswordStrength() {
+        var val = password.value;
+        if (!val) {
+            if (strengthContainer) strengthContainer.classList.add('hidden');
+            return;
+        }
+        if (strengthContainer) strengthContainer.classList.remove('hidden');
+
+        var score = 0;
+        var feedback = [];
+
+        if (val.length >= 8) score++;
+        else feedback.push('Минимум 8 символов');
+        if (val.length >= 12) score++;
+        if (/[A-Z]/.test(val) && /[a-z]/.test(val)) score++;
+        else feedback.push('Буквы разного регистра');
+        if (/[0-9]/.test(val)) score++;
+        else feedback.push('Добавьте цифры');
+        if (/[^A-Za-z0-9]/.test(val)) score++;
+        else feedback.push('Добавьте спецсимволы');
+
+        var colors = ['bg-danger', 'bg-orange-400', 'bg-yellow-400', 'bg-lime-400', 'bg-green-500'];
+        var labels = ['Очень слабый', 'Слабый', 'Средний', 'Хороший', 'Надёжный'];
+
+        segments.forEach(function(seg, i) {
+            seg.classList.remove('bg-danger', 'bg-orange-400', 'bg-yellow-400', 'bg-lime-400', 'bg-green-500', 'bg-neutral-200');
+            if (i < score) {
+                seg.classList.add(colors[score - 1]);
+            } else {
+                seg.classList.add('bg-neutral-200');
+            }
+        });
+
+        if (strengthText) {
+            if (score > 0) {
+                strengthText.textContent = labels[score - 1] + (feedback.length > 0 ? ' — ' + feedback.join(', ') : '');
+            } else {
+                strengthText.textContent = feedback.join(', ');
+            }
+        }
+    }
+
+    password.addEventListener('input', updatePasswordStrength);
 
     // ==========================================
     // Переключение шагов

@@ -4,6 +4,7 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 
 from app.decorators import login_required, rate_limit, role_required, validate_uuid
 from app.utils import postgrest_request
+from app.utils.redis_client import get_redis_client
 from app.services.notification_service import create as create_notification, enqueue_notification
 
 try:
@@ -98,6 +99,16 @@ def send_message():
     sender_id = session['user_id']
     application_id = data['application_id']
     content = data['content']
+
+    # Per-chat rate limit: 5 сообщений в минуту на пару sender+application_id
+    redis_client = get_redis_client()
+    if redis_client:
+        rate_key = f'chat_rate:{sender_id}:{application_id}'
+        count = redis_client.incr(rate_key)
+        if count == 1:
+            redis_client.expire(rate_key, 60)
+        if count > 5:
+            return jsonify({'error': 'Слишком много сообщений'}), 429
 
     # Серверная валидация длины сообщения
     if len(content) > 2000:

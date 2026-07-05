@@ -1,4 +1,6 @@
 """Blueprint для рейтингов и отзывов."""
+from datetime import datetime, timezone
+
 from flask import Blueprint, jsonify, request, session, current_app, render_template, redirect, flash, url_for
 
 from app.decorators import login_required, rate_limit, role_required, validate_uuid
@@ -143,7 +145,7 @@ def upsert_rating():
         'target_type': target_type,
         'rating': rating,
         'comment': comment,
-        'updated_at': 'now()',
+        'updated_at': datetime.now(timezone.utc).isoformat(),
     }
 
     # Пробуем найти существующую оценку

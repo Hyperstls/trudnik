@@ -13,7 +13,7 @@ from celery import Task
 from celery.exceptions import MaxRetriesExceededError
 
 from .celery_app import celery_app
-from app.services.email_service import EmailService
+from app.services.email_service import get_email_service, create_unsubscribe_token
 from app.utils import postgrest_admin_request
 
 logger = logging.getLogger(__name__)
@@ -112,7 +112,7 @@ def send_email_notification(
     """
     import os
 
-    email_service = EmailService()
+    email_service = get_email_service()
     base_url: str = os.environ.get("BASE_URL", "https://trudnik.ru")
 
     # Выбираем шаблон в зависимости от типа уведомления
@@ -132,7 +132,7 @@ def send_email_notification(
         "notification_type": notification_type,
         "notification_url": notification_url,
         "base_url": base_url,
-        "unsubscribe_url": f"{base_url}/unsubscribe?token={EmailService.create_unsubscribe_token(user_id)}",
+        "unsubscribe_url": f"{base_url}/unsubscribe?token={create_unsubscribe_token(user_id)}",
         "year": date.today().year,
     }
 

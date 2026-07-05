@@ -50,6 +50,7 @@ class CircuitBreaker:
         self.last_failure_time = 0.0
         self.state = 'CLOSED'  # CLOSED | OPEN | HALF_OPEN
         self._lock = Lock()
+        self._last_health_check_time = 0.0
 
     def _check_postgrest_health(self) -> bool:
         """Проверить доступность PostgREST через health endpoint (в обход CB).
@@ -88,6 +89,9 @@ class CircuitBreaker:
                 if time.time() - self.last_failure_time >= self.recovery_timeout:
                     self.state = 'HALF_OPEN'
                 else:
+                    # Rate-limit health-check: не чаще чем recovery_timeout / 4
+                    if time.time() - self._last_health_check_time < self.recovery_timeout / 4:
+                        return _circuit_open_response()
                     # Пробуем health-check напрямую (в обход CB)
                     if self._check_postgrest_health():
                         # Сервис снова доступен — сбрасываем CB
@@ -95,8 +99,10 @@ class CircuitBreaker:
                             'Circuit Breaker: PostgREST health check OK, '
                             'resetting from OPEN to CLOSED'
                         )
+                        self._last_health_check_time = time.time()
                         self.reset()
                     else:
+                        self._last_health_check_time = time.time()
                         return _circuit_open_response()
 
         try:
@@ -303,7 +309,8 @@ def get_service_role_headers() -> Dict[str, str]:
     import uuid as _uuid
     token = pyjwt.encode(
         {
-            'role': 'trudnikapp',
+            'role': 'service_role',
+            'aud': 'authenticated',  # требуется PostgREST (PGRST_JWT_AUD)
             'exp': int(time.time()) + 300,  # 5 минут
             'iat': int(time.time()),
             'jti': str(_uuid.uuid4()),
@@ -593,51 +600,6 @@ def postgrest_rpc(function_name: str, params: dict, use_admin: bool = False) -> 
     except Exception as e:
         current_app.logger.error(f"Unexpected error in postgrest_rpc ({function_name}): {e}")
         return PostgrestResponse(ok=False, status_code=0, text=str(e))
-
-
-def postgrest_public_rpc(rpc_name: str, params: dict | None = None, timeout: int = 60, use_service_role: bool = False) -> dict | list | None:
-    """Вызов PostgREST RPC — анонимный или с service_role JWT.
-
-    По умолчанию (use_service_role=False) выполняется анонимный вызов
-    без JWT — только Content-Type: application/json.
-
-    Если use_service_role=True, запрос отправляется с JWT-токеном
-    роли trudnikapp (service_role), что необходимо на продакшене,
-    где PostgREST требует авторизацию для всех запросов.
-
-    Используется для login_user, register и других публичных RPC.
-
-    Args:
-        rpc_name: имя RPC-функции (например, 'login_user').
-        params: словарь параметров для процедуры.
-        timeout: таймаут запроса в секундах.
-        use_service_role: если True — использовать JWT service_role.
-
-    Returns:
-        dict | list | None: JSON-ответ от PostgREST или None при ошибке.
-    """
-    if _is_mock_enabled():
-        return _test_mock_rpc(rpc_name, params or {})
-
-    url = f'{POSTGREST_URL.strip()}/rpc/{rpc_name}'
-
-    if use_service_role:
-        headers = get_service_role_headers()
-    else:
-        headers = {'Content-Type': 'application/json'}
-
-    payload = params or {}
-
-    try:
-        if use_service_role:
-            resp = _admin_session.post(url, json=payload, headers=headers, timeout=timeout)
-        else:
-            resp = _session.post(url, json=payload, headers=headers, timeout=timeout)
-        resp.raise_for_status()
-        return resp.json() if resp.text else []
-    except _requests.RequestException as e:
-        current_app.logger.error(f"postgrest_public_rpc({rpc_name}): {e}")
-        return None
 
 
 # ═══════════════════════════════════════════════════════════════

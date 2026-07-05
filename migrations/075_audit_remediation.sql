@@ -530,7 +530,7 @@ ALTER TABLE receipts ADD CONSTRAINT receipts_amount_check CHECK (amount >= 0);
 DO $_$ BEGIN
 
 -- Добавляем колонку geom, если ещё нет
-ALTER TABLE jobs ADD COLUMN IF NOT EXISTS geom geometry(Point, 4326);
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS geom public.geometry(public.Point, 4326);
 
 -- GiST-индекс
 CREATE INDEX IF NOT EXISTS idx_jobs_geom ON jobs USING GIST (geom);
@@ -572,7 +572,7 @@ RETURNS TABLE(
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $func$
 DECLARE
-    v_point geometry := ST_SetSRID(ST_MakePoint(p_lng, p_lat), 4326);
+    v_point public.geometry := ST_SetSRID(ST_MakePoint(p_lng, p_lat), 4326);
 BEGIN
     RETURN QUERY
     SELECT

@@ -9,6 +9,9 @@ from app.utils import (
     sanitize_postgrest, postgrest_admin_request, postgrest_request, postgrest_rpc,
 )
 from app.utils.helpers import assert_postgrest_ok
+from app.utils.security import safe_redirect
+from app.utils.errors import safe_error_message
+from app.utils.validators import parse_float
 from app.services.notification_service import create as notify, enqueue_notification
 from app.services.job_service import (
     check_job_owner,
@@ -75,9 +78,8 @@ def inject_application_count():
     if session.get('role') == 'employer' and 'user_id' in session:
         user_id = session['user_id']
         cache_key = f'app_count:{user_id}'
-        # noqa: локальный импорт — циклическая зависимость (app → jobs → app)
-        from app import _redis_cache_get, _redis_cache_set
-        count = _redis_cache_get(cache_key)
+        from app.utils.redis_cache import redis_cache_get, redis_cache_set
+        count = redis_cache_get(cache_key)
         if count is not None:
             return {'pending_app_count': count}
         # Используем count=exact с limit=0 для точного подсчёта без загрузки данных
@@ -92,7 +94,7 @@ def inject_application_count():
                 count = 0
         else:
             count = 0
-        _redis_cache_set(cache_key, count, ttl=30)
+        redis_cache_set(cache_key, count, ttl=30)
     return {'pending_app_count': count}
 
 
@@ -111,8 +113,8 @@ def inject_user_role():
 @jobs_bp.route('/')
 def index():
     city = request.args.get('city', '')
-    payment_min = request.args.get('payment_min', '')
-    payment_max = request.args.get('payment_max', '')
+    payment_min = parse_float(request.args.get('payment_min', ''), 'payment_min', min_val=0)
+    payment_max = parse_float(request.args.get('payment_max', ''), 'payment_max', min_val=0)
     lat = request.args.get('lat', type=float) or session.get('lat')
     lng = request.args.get('lng', type=float) or session.get('lng')
     radius = request.args.get('radius', 20, type=float)
@@ -292,8 +294,30 @@ def workers():
         if filters['payment_to']: query += f'&desired_payment=lte.{sanitize_postgrest(filters["payment_to"])}'
         if filters['rating_min']: query += f'&rating=gte.{sanitize_postgrest(filters["rating_min"])}'
         if filters['skills']:
-            for skill in filters['skills'].split(','):
-                query += f'&skills=cs.{{{sanitize_postgrest(skill.strip())}}}'
+            # Новый подход: фильтрация через таблицу user_skills (вместо profiles.skills text[])
+            skill_names = [s.strip() for s in filters['skills'].split(',') if s.strip()]
+            if skill_names:
+                # Шаг 1: найти skill_id по именам
+                skill_filters = []
+                for sn in skill_names:
+                    skill_filters.append(f'name.ilike.*{sanitize_postgrest(sn)}*')
+                skill_query = ','.join(skill_filters)  # PostgREST or() использует запятые
+                skill_resp = postgrest_request('GET', f'skills?or=({skill_query})&select=id')
+                matched_skill_ids = []
+                if skill_resp.ok and skill_resp.json():
+                    matched_skill_ids = [s['id'] for s in skill_resp.json() if s.get('id')]
+                # Шаг 2: найти user_id по skill_id через user_skills
+                if matched_skill_ids:
+                    ids_filter = ','.join(matched_skill_ids)
+                    us_resp = postgrest_request('GET',
+                        f'user_skills?skill_id=in.({ids_filter})&select=user_id')
+                    if us_resp.ok and us_resp.json():
+                        worker_ids = list(set(us['user_id'] for us in us_resp.json() if us.get('user_id')))
+                        if worker_ids:
+                            wids_filter = ','.join(worker_ids)
+                            query += f'&id=in.({wids_filter})'
+                        else:
+                            query += '&id=eq.00000000-0000-0000-0000-000000000000'  # нет совпадений — пустой результат
         if filters['religion']:
             query += f'&religion=eq.{sanitize_postgrest(filters["religion"])}'
 
@@ -533,7 +557,7 @@ def job_new():
                 'object_description': '',
                 'work_type': request.form.get('work_type', ''),
                 'detailed_description': description,
-                'date_time': request.form.get('deadline') or datetime.now().isoformat(),
+                'date_time': request.form.get('deadline') or datetime.now(timezone.utc).isoformat(),
                 'payment_amount': payment_amount,
                 'address': request.form.get('address', ''),
                 'city': request.form.get('city', ''),
@@ -549,7 +573,7 @@ def job_new():
             resp = postgrest_request('POST', 'jobs', json=job_data)
 
             if not resp.ok:
-                current_app.logger.error(f'Failed to create job: {resp.text}')
+                current_app.logger.error('Failed to create job: status=%s body=%s', resp.status_code, resp.text[:500])
 
             if resp.ok:
                 created_job = resp.json()
@@ -558,7 +582,7 @@ def job_new():
                 flash('Задание успешно создано', 'success')
                 return redirect(url_for('jobs.my_jobs'))
             else:
-                flash(f'Ошибка создания задания: {resp.text}', 'danger')
+                flash(safe_error_message(resp, 'Ошибка при создании задания'), 'danger')
         except Exception as e:
             flash('Ошибка сервера', 'danger')
 
@@ -689,8 +713,8 @@ def cancel_job(job_id):
     if not rpc_result.ok:
         if rpc_result.status_code == 404:
             if is_ajax:
-                return jsonify({'success': False, 'error': 'RPC cancel_job_atomic не найдена (миграция 061 не применена)'}), 500
-            flash('Не удалось отозвать задание (RPC недоступна)', 'danger')
+                return jsonify({'success': False, 'error': 'Сервис не настроен'}), 503
+            flash('Не удалось отозвать задание (сервис недоступен)', 'danger')
             return redirect(url_for('jobs.my_jobs'))
         if is_ajax:
             return jsonify({'success': False, 'error': 'Ошибка выполнения операции'}), 500
@@ -742,8 +766,8 @@ def restore_job(job_id):
     if not rpc_result.ok:
         if rpc_result.status_code == 404:
             if is_ajax:
-                return jsonify({'success': False, 'error': 'RPC restore_job_atomic не найдена'}), 500
-            flash('Не удалось восстановить задание (RPC недоступна)', 'danger')
+                return jsonify({'success': False, 'error': 'Сервис не настроен'}), 503
+            flash('Не удалось восстановить задание (сервис недоступен)', 'danger')
             return redirect(url_for('jobs.my_jobs'))
         if is_ajax:
             return jsonify({'success': False, 'error': 'Ошибка выполнения операции'}), 500
@@ -761,10 +785,10 @@ def restore_job(job_id):
 
     new_status = result.get('new_status', 'open')
 
-    # Уведомить всех rejected-заявителей, что задание восстановлено (transactional outbox)
-    rejected_worker_ids = result.get('rejected_worker_ids', [])
-    if rejected_worker_ids:
-        for worker_id in rejected_worker_ids:
+    # Уведомить всех восстановленных заявителей, что задание восстановлено (transactional outbox)
+    restored_worker_ids = result.get('restored_worker_ids', [])
+    if restored_worker_ids:
+        for worker_id in restored_worker_ids:
             if worker_id:
                 enqueue_notification(worker_id, 'status_change', 'Задание восстановлено',
                        f'Задание #{job_id} снова открыто для откликов',
@@ -796,7 +820,7 @@ def api_force_complete_job(job_id):
 
     if not rpc_result.ok:
         if rpc_result.status_code == 404:
-            return jsonify({'success': False, 'error': 'RPC force_complete_job не найдена (миграция 061 не применена)'}), 500
+            return jsonify({'success': False, 'error': 'Сервис не настроен'}), 503
         return jsonify({'success': False, 'error': 'Ошибка выполнения операции'}), 500
 
     result = rpc_result.json()
@@ -872,7 +896,6 @@ def delete_job(job_id):
 @login_required
 def invitations_page():
     """HTML-страница приглашений (использует унифицированный сервис)."""
-    # noqa: локальный импорт — циклическая зависимость (jobs → invitation_service → jobs)
     from app.services.invitation_service import list_invitations as get_invitations
     invitations = get_invitations()
     return render_template('invitations.html', invitations=invitations)
@@ -885,7 +908,7 @@ def reject_all_invitations():
     user_id = session['user_id']
     postgrest_admin_request('PATCH',
         f'invitations?worker_id=eq.{user_id}&status=eq.pending',
-        json={'status': 'rejected', 'responded_at': 'now()'})
+        json={'status': 'rejected', 'responded_at': datetime.now(timezone.utc).isoformat()})
     return jsonify({'success': True})
 
 
@@ -975,6 +998,7 @@ def edit_job(job_id):
             'max_workers': max_workers,
             'preferred_religion': request.form.get('preferred_religion', job.get('preferred_religion', '')),
             'date_time': request.form.get('deadline') or job.get('date_time', ''),
+            'expires_at': (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
         }
         resp = postgrest_request('PATCH', f'jobs?id=eq.{job_id}', json=data)
         if resp.ok:
@@ -1003,7 +1027,7 @@ def add_favorite_job(job_id):
     fav_resp = postgrest_request('POST', 'job_favorites', json={'user_id': session['user_id'], 'job_id': job_id})
     if assert_postgrest_ok(fav_resp, 'добавление задания в избранное'):
         flash('Задание добавлено в избранное', 'success')
-    return redirect(request.referrer or url_for('jobs.index'))
+    return safe_redirect('jobs.index')
 
 
 @jobs_bp.route('/unfavorite-job/<job_id>', methods=['POST'])
@@ -1013,7 +1037,7 @@ def remove_favorite_job(job_id):
     unfav_resp = postgrest_request('DELETE', f'job_favorites?user_id=eq.{session["user_id"]}&job_id=eq.{job_id}')
     if assert_postgrest_ok(unfav_resp, 'удаление задания из избранного'):
         flash('Задание удалено из избранного', 'success')
-    return redirect(request.referrer or url_for('favorites.favorites'))
+    return safe_redirect('favorites.favorites')
 
 
 # ──────────────────────────────────────────────

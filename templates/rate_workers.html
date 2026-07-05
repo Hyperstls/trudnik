@@ -77,7 +77,7 @@
                 <div class="flex items-center gap-3 mb-3">
                     <div class="w-12 h-12 rounded-full bg-primary-50 flex items-center justify-center shrink-0 overflow-hidden" data-initial="{{ w.full_name[:1].upper() }}">
                         {% if w.photo_url %}
-                        <img src="{{ w.photo_url }}" alt="{{ w.full_name }}"
+                        <img src="{{ w.photo_url }}" alt="{{ w.full_name }}" loading="lazy" decoding="async"
                              class="w-full h-full object-cover"
                               class="js-worker-avatar-img">
                         {% else %}

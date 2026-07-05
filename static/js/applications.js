@@ -44,7 +44,7 @@
         let successCount = 0, failCount = 0;
         for (const item of queue) {
             try {
-                const resp = await fetch(item.url, item.options);
+                const resp = await apiFetch(item.url, item.options);
                 if (resp.ok) {
                     successCount++;
                 } else {
@@ -200,7 +200,7 @@
         }
 
         try {
-            const resp = await fetch('/api/applications/batch', {
+            const resp = await apiFetch('/api/applications/batch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ app_ids: [appId], action: action })
@@ -272,7 +272,7 @@
         $$('.mass-action-btn').forEach(b => b.disabled = true);
 
         try {
-            const resp = await fetch('/api/applications/batch', {
+            const resp = await apiFetch('/api/applications/batch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ app_ids: ids, action: action })

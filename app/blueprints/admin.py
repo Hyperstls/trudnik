@@ -8,6 +8,7 @@ from flask import Blueprint, current_app, flash, redirect, render_template, requ
 from app.decorators import login_required, role_required, admin_required, handle_errors
 from app.utils import cache_for, sanitize_postgrest, postgrest_request, postgrest_admin_request, postgrest_rpc, is_circuit_open
 from app.utils.helpers import assert_postgrest_ok
+from app.utils.errors import safe_error_message
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -385,7 +386,7 @@ def add_skill():
                 'add_skill: PostgREST error (status %s): %s',
                 resp.status_code, resp.text
             )
-            flash(f'Ошибка при добавлении навыка: {resp.text}', 'danger')
+            flash(safe_error_message(resp, 'Ошибка при добавлении навыка'), 'danger')
     except Exception as e:
         current_app.logger.debug('add_skill EXCEPTION: %s', e)
         current_app.logger.exception('add_skill: unexpected error')
@@ -423,7 +424,7 @@ def update_skill(skill_id):
                 'update_skill(id=%s): PostgREST error (status %s): %s',
                 skill_id, resp.status_code, resp.text
             )
-            return jsonify({'success': False, 'error': f'PostgREST error: {resp.text}'}), resp.status_code or 400
+            return jsonify({'success': False, 'error': safe_error_message(resp, 'Ошибка обновления навыка')}), resp.status_code or 400
         return jsonify({'success': True})
     except Exception as e:
         current_app.logger.exception('update_skill(id=%s): unexpected error', skill_id)
@@ -470,12 +471,12 @@ def bulk_delete_skills():
     # 1. Каскадное удаление дочерних записей
     resp_user = postgrest_admin_request('DELETE', f'user_skills?{skill_id_filter}')
     if not resp_user.ok:
-        errors.append(f'user_skills cleanup failed: {resp_user.text}')
+        errors.append('user_skills cleanup failed')
         failed += 1
 
     resp_job = postgrest_admin_request('DELETE', f'job_skills?{skill_id_filter}')
     if not resp_job.ok:
-        errors.append(f'job_skills cleanup failed: {resp_job.text}')
+        errors.append('job_skills cleanup failed')
         failed += 1
 
     # 2. Удаление самих навыков
@@ -485,7 +486,7 @@ def bulk_delete_skills():
         return jsonify({
             'deleted': 0,
             'failed': len(skill_ids),
-            'errors': errors + [f'skills DELETE failed: {resp.text}']
+            'errors': errors + [safe_error_message(resp, 'Ошибка удаления навыков')]
         }), 500
 
     # Подсчёт удалённых: PostgREST возвращает массив удалённых строк
@@ -554,7 +555,7 @@ def add_religion():
                 'add_religion: PostgREST error (status %s): %s',
                 resp.status_code, resp.text
             )
-            flash(f'Ошибка при добавлении вероисповедания: {resp.text}', 'danger')
+            flash(safe_error_message(resp, 'Ошибка при добавлении вероисповедания'), 'danger')
     except Exception as e:
         current_app.logger.debug('add_religion EXCEPTION: %s', e)
         current_app.logger.exception('add_religion: unexpected error')
@@ -592,7 +593,7 @@ def update_religion(religion_id):
                 'update_religion(id=%s): PostgREST error (status %s): %s',
                 religion_id, resp.status_code, resp.text
             )
-            return jsonify({'success': False, 'error': f'PostgREST error: {resp.text}'}), resp.status_code or 400
+            return jsonify({'success': False, 'error': safe_error_message(resp, 'Ошибка обновления вероисповедания')}), resp.status_code or 400
         return jsonify({'success': True})
     except Exception as e:
         current_app.logger.exception('update_religion(id=%s): unexpected error', religion_id)
@@ -641,7 +642,7 @@ def bulk_delete_religions():
     # C18: Сначала обнуляем religion_id у пользователей (FK constraint)
     nullify_resp = postgrest_admin_request('PATCH', f'profiles?{religion_id_filter}', json={'religion_id': None})
     if not nullify_resp.ok:
-        errors.append(f'profiles nullify failed: {nullify_resp.text}')
+        errors.append('profiles nullify failed')
         failed += 1
 
     # Затем удаляем сами религии
@@ -651,7 +652,7 @@ def bulk_delete_religions():
         return jsonify({
             'deleted': 0,
             'failed': len(religion_ids),
-            'errors': errors + [f'religions DELETE failed: {resp.text}']
+            'errors': errors + [safe_error_message(resp, 'Ошибка удаления вероисповеданий')]
         }), 500
 
     deleted = len(resp.json()) if isinstance(resp.json(), list) else 0
@@ -742,88 +743,6 @@ def job_stats():
 # Protected by SECRET_KEY (X-Admin-Token header)
 # ═══════════════════════════════════════════════════════════
 
-@admin_bp.route('/api/fix-permissions', methods=['POST'])
-def fix_permissions():
-    """Fix PostgreSQL permissions: GRANT ALL to app role (trudnikapp) and grant PostgREST roles."""
-    if os.environ.get('DEPLOYMENT_ENV') == 'production':
-        return jsonify({'error': 'Disabled in production'}), 403
-
-    import logging
-    log = logging.getLogger(__name__)
-
-    import hmac as _hmac
-    token = request.headers.get('X-Admin-Token', '')
-    expected = current_app.config.get('ADMIN_API_TOKEN', current_app.config.get('SECRET_KEY', ''))
-    if not _hmac.compare_digest(token, expected):
-        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-
-    # Get database URL directly from env vars (avoid @property issue)
-    db_url = os.environ.get('DATABASE_URL') or os.environ.get('PGDATABASE_URL', '')
-    if not db_url:
-        # Try to construct from PG* vars
-        pg_user = os.environ.get('PGUSER', '')
-        pg_password = os.environ.get('PGPASSWORD', '')
-        pg_host = os.environ.get('PGHOST', '')
-        pg_port = os.environ.get('PGPORT', '5432')
-        pg_database = os.environ.get('PGDATABASE', '')
-        if all([pg_user, pg_password, pg_host, pg_database]):
-            db_url = f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_database}"
-        else:
-            return jsonify({'success': False, 'error': 'DATABASE_URL not configured'}), 500
-
-    try:
-        import psycopg2
-        conn = psycopg2.connect(db_url)
-        conn.autocommit = True
-        cur = conn.cursor()
-
-        grants = [
-            # Role grants — критично для PostgREST: даём trudnikapp права
-            # переключаться на роли service_role и anon (SET ROLE)
-            "GRANT service_role TO trudnikapp",
-            "GRANT anon TO trudnikapp",
-            "GRANT authenticated TO trudnikapp",
-            "ALTER ROLE trudnikapp INHERIT",
-            # Object privileges
-            "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO trudnikapp",
-            "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO trudnikapp",
-            "GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO trudnikapp",
-            "GRANT USAGE ON SCHEMA public TO trudnikapp",
-            "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO trudnikapp",
-            "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO trudnikapp",
-            "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO trudnikapp",
-            "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO anon",
-            "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO anon",
-            "GRANT USAGE ON SCHEMA public TO anon",
-        ]
-
-        results = []
-        errors = []
-        for sql in grants:
-            try:
-                cur.execute(sql)
-                results.append(f"OK: {sql[:60]}...")
-            except Exception as e:
-                errors.append(f"FAIL: {sql[:60]}... -> {e}")
-
-        cur.close()
-        conn.close()
-
-        log.info("fix-permissions: %d OK, %d errors", len(results), len(errors))
-        return jsonify({
-            'success': len(errors) == 0,
-            'executed': len(results),
-            'failed': len(errors),
-            'results': results,
-            'errors': errors,
-        })
-    except ImportError:
-        return jsonify({'success': False, 'error': 'psycopg2 not installed'}), 500
-    except Exception as e:
-        log.error("fix-permissions: %s", e)
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
 @admin_bp.route('/api/migrations-status', methods=['GET'])
 def migrations_status():
     """Return the list of applied migrations from _migrations tracking table."""
@@ -854,150 +773,6 @@ def migrations_status():
         })
 
 
-# ═══════════════════════════════════════════════════════════
-# Emergency endpoint: reset all users and create test accounts
-# Protected by SECRET_KEY (X-Admin-Token header)
-# ═══════════════════════════════════════════════════════════
-
-@admin_bp.route('/api/reset-users', methods=['POST'])
-def reset_users():
-    """
-    Delete all users and create three test accounts.
-    Uses DIRECT SQL connection (psycopg2) to bypass PostgREST permission issues.
-
-    Creates:
-    - admin@test.ru (admin)
-    - org@test.ru (employer)
-    - trud@test.ru (worker)
-    All with password from TEST_USER_PASSWORD env var.
-
-    Protected by X-Admin-Token header (must match ADMIN_API_TOKEN).
-    """
-    if os.environ.get('DEPLOYMENT_ENV') == 'production':
-        return jsonify({'error': 'Disabled in production'}), 403
-
-    import logging
-    log = logging.getLogger(__name__)
-
-    import hmac as _hmac
-    token = request.headers.get('X-Admin-Token', '')
-    expected_token = current_app.config.get('ADMIN_API_TOKEN', current_app.config.get('SECRET_KEY', ''))
-    if not _hmac.compare_digest(token, expected_token):
-        log.warning("reset-users: invalid or missing X-Admin-Token")
-        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-
-    result = {
-        'success': True,
-        'deleted': 0,
-        'delete_failed': 0,
-        'created': [],
-        'create_failed': [],
-        'errors': [],
-    }
-
-    # --- Get database connection ---
-    db_url = os.environ.get('DATABASE_URL') or os.environ.get('PGDATABASE_URL', '')
-    if not db_url:
-        pg_user = os.environ.get('PGUSER', '')
-        pg_password = os.environ.get('PGPASSWORD', '')
-        pg_host = os.environ.get('PGHOST', '')
-        pg_port = os.environ.get('PGPORT', '5432')
-        pg_database = os.environ.get('PGDATABASE', '')
-        if all([pg_user, pg_password, pg_host, pg_database]):
-            db_url = f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_database}"
-        else:
-            return jsonify({'success': False, 'error': 'DATABASE_URL not configured'}), 500
-
-    try:
-        import psycopg2
-        conn = psycopg2.connect(db_url)
-        conn.autocommit = True
-        cur = conn.cursor()
-
-        # --- Step 1: Get all user IDs ---
-        log.info("reset-users: fetching all users...")
-        cur.execute("SELECT id, email, role FROM profiles ORDER BY created_at")
-        all_users = cur.fetchall()
-        log.info("reset-users: found %d users", len(all_users))
-
-        # --- Step 2: Delete all users directly via SQL ---
-        for uid, email, role in all_users:
-            log.info("reset-users: deleting %s (%s)...", email, uid)
-            try:
-                # Delete related records first (same order as delete_user_cascade)
-                if role == 'employer':
-                    # Delete jobs created by this employer
-                    cur.execute("DELETE FROM jobs WHERE employer_id = %s", [uid])
-                cur.execute("DELETE FROM applications WHERE worker_id = %s", [uid])
-                cur.execute("DELETE FROM notifications WHERE user_id = %s", [uid])
-                cur.execute("DELETE FROM favorites WHERE user_id = %s OR target_id = %s", [uid, uid])
-                cur.execute("DELETE FROM job_favorites WHERE user_id = %s", [uid])
-                cur.execute("DELETE FROM blacklists WHERE user_id = %s OR blocked_user_id = %s", [uid, uid])
-                cur.execute("DELETE FROM ratings WHERE rater_user_id = %s OR rated_user_id = %s", [uid, uid])
-                cur.execute("DELETE FROM invitations WHERE employer_id = %s OR worker_id = %s", [uid, uid])
-                cur.execute("DELETE FROM user_skills WHERE user_id = %s", [uid])
-                cur.execute("DELETE FROM push_subscriptions WHERE user_id = %s", [uid])
-                cur.execute("DELETE FROM messages WHERE sender_id = %s", [uid])
-                # Finally delete the profile
-                cur.execute("DELETE FROM profiles WHERE id = %s", [uid])
-                result['deleted'] += 1
-                log.info("reset-users: deleted %s ok", email)
-            except Exception as e:
-                result['delete_failed'] += 1
-                result['errors'].append(f"Failed to delete {email}: {e}")
-                log.error("reset-users: failed to delete %s: %s", email, e)
-
-        log.info("reset-users: deleted=%d, failed=%d", result['deleted'], result['delete_failed'])
-
-        # --- Step 3: Create three test users via SQL (using pgcrypto crypt()) ---
-        test_password = os.environ.get('TEST_USER_PASSWORD', 'changeme123')
-        test_users = [
-            ('admin@test.ru', test_password, 'Администратор', 'admin'),
-            ('org@test.ru',   test_password, 'Организатор',   'employer'),
-            ('trud@test.ru',  test_password, 'Трудник Тест',  'worker'),
-        ]
-
-        for email, password, full_name, role in test_users:
-            log.info("reset-users: creating %s (%s)...", email, role)
-            try:
-                cur.execute("""
-                    INSERT INTO profiles (id, email, password_hash, full_name, role)
-                    VALUES (gen_random_uuid(), %s, crypt(%s, gen_salt('bf')), %s, %s)
-                    RETURNING id
-                """, (email, password, full_name, role))
-                new_id = cur.fetchone()[0]
-                result['created'].append({'email': email, 'role': role, 'id': str(new_id)})
-                log.info("reset-users: created %s with id=%s", email, new_id)
-            except Exception as e:
-                result['create_failed'].append(email)
-                result['errors'].append(f"Failed to create {email}: {e}")
-                log.error("reset-users: failed to create %s: %s", email, e)
-
-        log.info("reset-users: created=%d, failed=%d",
-                 len(result['created']), len(result['create_failed']))
-
-        # --- Step 4: Final verification ---
-        cur.execute("SELECT email, role FROM profiles ORDER BY role, email")
-        final_users = [{'email': row[0], 'role': row[1]} for row in cur.fetchall()]
-        result['final_count'] = len(final_users)
-        result['final_users'] = final_users
-        log.info("reset-users: final user count=%d", len(final_users))
-
-        cur.close()
-        conn.close()
-
-    except ImportError:
-        return jsonify({'success': False, 'error': 'psycopg2 not installed'}), 500
-    except Exception as e:
-        log.error("reset-users: %s", e)
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-    if result['delete_failed'] > 0 or len(result['create_failed']) > 0:
-        result['success'] = False
-
-    return jsonify(result)
-
-
 @admin_bp.route('/api/reset-circuit-breaker', methods=['POST'])
 def reset_circuit_breaker():
     """
@@ -1011,7 +786,11 @@ def reset_circuit_breaker():
 
     import hmac as _hmac
     token = request.headers.get('X-Admin-Token', '')
-    expected_token = current_app.config.get('ADMIN_API_TOKEN', current_app.config.get('SECRET_KEY', ''))
+    expected_token = current_app.config.get('ADMIN_API_TOKEN', '')
+    allowed_ips = [ip.strip() for ip in os.environ.get('ADMIN_API_ALLOWED_IPS', '').split(',') if ip.strip()]
+    if allowed_ips and request.remote_addr not in allowed_ips:
+        current_app.logger.warning('Emergency endpoint access from forbidden IP: %s', request.remote_addr)
+        return jsonify({'error': 'Forbidden'}), 403
     if not _hmac.compare_digest(token, expected_token):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 401
 

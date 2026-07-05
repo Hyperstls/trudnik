@@ -63,3 +63,18 @@ scripts/env_trudnik_app.env
 # Pytest cache
 .pytest_cache/
 
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/
+*.keystore
+*.jks
+*.apk
+*.aab
+twa-project/app/
+scripts/screenshots/
+archive/
+trash/
+Promts/
+

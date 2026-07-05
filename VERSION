@@ -1,1 +1,1 @@
-43d3961 ci: run E2E with mock PostgREST — remove Docker Compose, Flask with TESTING=true (2026-06-27 22:27:11 +0300)
+ae89124 ci: E2E tests against production (no real users yet) (2026-06-29 19:06:25 +0300)

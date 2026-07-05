@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 # Русские названия месяцев (родительный падеж)
 _MONTHS_RU = [
@@ -9,8 +10,8 @@ _MONTHS_RU = [
     'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
 ]
 
-# Московский часовой пояс (UTC+3)
-_MSK_TZ = timezone(timedelta(hours=3))
+# Московский часовой пояс (Europe/Moscow)
+_MSK_TZ = ZoneInfo('Europe/Moscow')
 
 
 def format_datetime(iso_string: Optional[str]) -> str:

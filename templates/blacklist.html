@@ -11,7 +11,7 @@
         <div id="blacklist-item-{{ worker.id }}" class="app-card bg-white rounded-2xl shadow-sm border border-neutral-100 p-4 hover:shadow-md transition-shadow">
             <div class="flex items-center gap-3">
                 {% if worker.photo_url %}
-                 <img src="{{ worker.photo_url }}" alt="{{ worker.full_name }}"
+                 <img src="{{ worker.photo_url }}" alt="{{ worker.full_name }}" loading="lazy" decoding="async"
                       class="js-avatar-img w-12 h-12 rounded-full object-cover border-2 border-neutral-200 shrink-0">
                 <div class="avatar-smiley w-12 h-12 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400" style="display:none">{{ smiley(28) }}</div>
                 {% else %}

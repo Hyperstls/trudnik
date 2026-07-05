@@ -100,4 +100,16 @@ celery_app.conf.beat_schedule = {
             'expires': 43200,  # Задача истекает через 12 часов
         },
     },
+    'drain-notification-outbox': {
+        'task': 'app.tasks.notification_tasks.drain_notification_outbox',
+        'schedule': 10.0,
+        'options': {'expires': 8},
+    },
+    'expire-old-jobs': {
+        'task': 'app.tasks.maintenance_tasks.expire_old_jobs',
+        'schedule': 3600.0,  # Каждый час
+        'options': {
+            'expires': 3000,  # Задача истекает через 50 минут
+        },
+    },
 }

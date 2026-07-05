@@ -281,12 +281,41 @@ self.addEventListener('pushsubscriptionchange', (event) => {
   );
 });
 
-// Хранилище CSRF-токена в Service Worker (обновляется через postMessage из основного потока)
+// Хранилище CSRF-токена в Service Worker (обновляется через postMessage из основного потока + IndexedDB)
 let _csrfToken = '';
 
+// Читаем csrfToken из IndexedDB при активации
+self.addEventListener('activate', event => {
+    event.waitUntil(
+        new Promise((resolve) => {
+            const req = indexedDB.open('TrudnikState', 1);
+            req.onupgradeneeded = (e) => {
+                e.target.result.createObjectStore('state');
+            };
+            req.onsuccess = (e) => {
+                const tx = e.target.result.transaction('state', 'readonly');
+                const getReq = tx.objectStore('state').get('csrfToken');
+                getReq.onsuccess = () => {
+                    _csrfToken = getReq.result || '';
+                    resolve();
+                };
+                getReq.onerror = () => resolve();
+            };
+            req.onerror = () => resolve();
+        })
+    );
+});
+
+// Слушаем сообщения от страницы с обновлённым токеном (сохраняем в IndexedDB)
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SET_CSRF_TOKEN') {
+  if (event.data && (event.data.type === 'SET_CSRF_TOKEN' || event.data.type === 'UPDATE_CSRF_TOKEN')) {
     _csrfToken = event.data.token || '';
+    // Сохраняем в IndexedDB
+    const req = indexedDB.open('TrudnikState', 1);
+    req.onsuccess = (e) => {
+        const tx = e.target.result.transaction('state', 'readwrite');
+        tx.objectStore('state').put(_csrfToken, 'csrfToken');
+    };
   }
 });
 

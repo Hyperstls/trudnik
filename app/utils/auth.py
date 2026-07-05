@@ -72,10 +72,13 @@ def generate_jwt(user_id, role, exp_seconds=300):
     jti = str(_uuid.uuid4())
     payload = {
         'sub': str(user_id),
-        'role': role,
+        'role': 'authenticated',  # PostgreSQL role — всегда 'authenticated'
+        'aud': 'authenticated',  # требуется PostgREST (PGRST_JWT_AUD)
+        'app_role': role,  # 'worker', 'employer', 'admin' — для RLS
+        'user_id': str(user_id),
         'iat': datetime.utcnow(),
         'exp': datetime.utcnow() + timedelta(seconds=exp_seconds),
-        'jti': jti
+        'jti': jti,
     }
     # Приоритет: 1) модульная переменная PGRST_JWT_SECRET (Config.PGRST_JWT_SECRET),
     # 2) current_app.config (может быть пустой строкой), 3) os.environ (runtime fallback).
@@ -152,6 +155,17 @@ def refresh_access_token() -> bool:
     except Exception:
         session.clear()
         return False
+
+
+def login_user_session(user_id: str, role: str, email: str) -> None:
+    """Сохранить данные пользователя в сессии после успешного логина."""
+    session.permanent = True
+    session['access_token'] = generate_jwt(user_id, role)
+    session['refresh_token'] = 'jwt'
+    session['user_id'] = user_id
+    session['role'] = role
+    session['email'] = email
+    session.modified = True
 
 
 def get_user_role() -> Optional[str]:

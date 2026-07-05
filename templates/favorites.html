@@ -14,7 +14,7 @@
         <div class="app-card bg-white rounded-2xl shadow-sm border border-neutral-100 p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
             <a href="/employers/{{ employer.id }}" class="flex items-start gap-3">
                 {% if employer.photo_url %}
-                 <img src="{{ employer.photo_url }}" alt="{{ employer.full_name }}"
+                 <img src="{{ employer.photo_url }}" alt="{{ employer.full_name }}" loading="lazy" decoding="async"
                       class="js-avatar-img w-14 h-14 rounded-full object-cover border-2 border-neutral-200 shrink-0">
                 <div class="avatar-smiley w-14 h-14 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400" style="display:none">{{ smiley(32) }}</div>
                 {% else %}
@@ -69,7 +69,7 @@
                 <input type="checkbox" class="favorite-checkbox w-5 h-5 text-primary-500 rounded border-neutral-300 mt-1" value="{{ item.id }}">
                 <a href="/profile/{{ item.id }}" class="flex-1 min-w-0 flex gap-3">
                     {% if item.photo_url %}
-                     <img src="{{ item.photo_url }}" alt="{{ item.full_name }}"
+                     <img src="{{ item.photo_url }}" alt="{{ item.full_name }}" loading="lazy" decoding="async"
                           class="js-avatar-img w-14 h-14 rounded-full object-cover border-2 border-neutral-200 shrink-0">
                     <div class="avatar-smiley w-14 h-14 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400" style="display:none">{{ smiley(32) }}</div>
                     {% else %}

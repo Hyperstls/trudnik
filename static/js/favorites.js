@@ -34,7 +34,7 @@ function toggleFavorite(workerId, btn, event) {
         // Удаляем из избранного
         updateButtonUI(btn, false);
         
-        fetch('/api/favorites/remove', {
+        apiFetch('/api/favorites/remove', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -61,7 +61,7 @@ function toggleFavorite(workerId, btn, event) {
         // Добавляем в избранное
         updateButtonUI(btn, true);
         
-        fetch('/api/favorites/add', {
+        apiFetch('/api/favorites/add', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

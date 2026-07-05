@@ -7,6 +7,7 @@
 - Резолвинг справочных UUID
 """
 
+import uuid as _uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -18,6 +19,15 @@ from app.utils import (
     postgrest_rpc,
     check_withdraw_window,
 )
+
+
+def _is_uuid(value):
+    """Проверяет, является ли значение валидным UUID."""
+    try:
+        _uuid.UUID(str(value))
+        return True
+    except (ValueError, TypeError, AttributeError):
+        return False
 
 # ═══════════════════════════════════════════════════════════════
 # Хелперы получения данных
@@ -50,14 +60,14 @@ def enrich_job_with_references(job: dict) -> None:
     Args:
         job: словарь задания (мутабельный).
     """
-    if job.get('work_type') and '-' in str(job['work_type']):
+    if job.get('work_type') and _is_uuid(job['work_type']):
         skill_resp = postgrest_request(
             'GET', f'skills?id=eq.{job["work_type"]}&select=name'
         )
         if skill_resp.ok and skill_resp.json():
             job['work_type'] = skill_resp.json()[0]['name']
 
-    if job.get('preferred_religion') and '-' in str(job['preferred_religion']):
+    if job.get('preferred_religion') and _is_uuid(job['preferred_religion']):
         rel_resp = postgrest_request(
             'GET', f'religions?id=eq.{job["preferred_religion"]}&select=name'
         )
@@ -500,11 +510,11 @@ def is_job_filled(job: dict) -> bool:
 
 def check_job_owner(job_id: str, user_id: str) -> bool:
     """Проверить, что задание принадлежит пользователю.
-
+ 
     Args:
         job_id: UUID задания.
         user_id: UUID пользователя.
-
+ 
     Returns:
         True если пользователь — владелец задания, иначе False.
     """
@@ -514,3 +524,145 @@ def check_job_owner(job_id: str, user_id: str) -> bool:
     if resp.ok and resp.json():
         return resp.json()[0].get('employer_id') == user_id
     return False
+
+
+# ═══════════════════════════════════════════════════════════════
+# CRUD-операции (вынесены из blueprints/jobs.py)
+# ═══════════════════════════════════════════════════════════════
+
+
+def get_employer_jobs(employer_id: str, status: str = "",
+                      page: int = 1, per_page: int = 20) -> Dict[str, Any]:
+    """Получить задания работодателя с пагинацией.
+
+    Args:
+        employer_id: UUID работодателя.
+        status: фильтр по статусу (open, completed, cancelled, '' = все).
+        page: номер страницы.
+        per_page: элементов на странице.
+
+    Returns:
+        dict с ключами jobs, total, page, per_page, pages.
+    """
+    query = f'jobs?employer_id=eq.{employer_id}&select=*,photos:job_photos(*)'
+    if status:
+        query += f'&status=eq.{sanitize_postgrest(status)}'
+    query += '&order=created_at.desc'
+
+    offset = (page - 1) * per_page
+    query += f'&limit={per_page}&offset={offset}'
+
+    headers = {'Prefer': 'count=exact'}
+    resp = postgrest_request('GET', query, headers=headers)
+
+    jobs_list = resp.json() if resp.ok else []
+    total = (
+        int(resp.headers.get('Content-Range', '0-0/0').split('/')[-1])
+        if resp.ok else 0
+    )
+
+    return {
+        'jobs': jobs_list,
+        'total': total,
+        'page': page,
+        'per_page': per_page,
+        'pages': max(1, (total + per_page - 1) // per_page) if total else 1,
+    }
+
+
+def create_job(employer_id: str, job_data: Dict[str, Any]) -> Optional[str]:
+    """Создать новое задание через PostgREST RPC.
+
+    Args:
+        employer_id: UUID работодателя.
+        job_data: словарь с полями задания (title, description, address, и т.д.).
+
+    Returns:
+        UUID созданного задания или None при ошибке.
+    """
+    payload = {
+        'p_employer_id': employer_id,
+        'p_title': job_data.get('title', ''),
+        'p_description': job_data.get('description', ''),
+        'p_address': job_data.get('address', ''),
+        'p_city': job_data.get('city', ''),
+        'p_lat': job_data.get('lat'),
+        'p_lng': job_data.get('lng'),
+        'p_work_type': job_data.get('work_type'),
+        'p_payment_amount': job_data.get('payment_amount', 0),
+        'p_date_time': job_data.get('date_time'),
+        'p_max_workers': job_data.get('max_workers', 1),
+        'p_preferred_religion': job_data.get('preferred_religion'),
+        'p_organization_name': job_data.get('organization_name', ''),
+        'p_org_description': job_data.get('org_description', ''),
+        'p_object_description': job_data.get('object_description', ''),
+        'p_detailed_description': job_data.get('detailed_description', ''),
+        'p_contact_phone': job_data.get('contact_phone', ''),
+        'p_contact_email': job_data.get('contact_email', ''),
+        'p_tariff': job_data.get('tariff', 'free'),
+    }
+    resp = postgrest_rpc('create_job', payload)
+    if resp.ok and resp.json():
+        data = resp.json()
+        if isinstance(data, list) and len(data) > 0:
+            return str(data[0].get('id', ''))
+        elif isinstance(data, dict):
+            return str(data.get('id', ''))
+    return None
+
+
+def update_job(job_id: str, employer_id: str, job_data: Dict[str, Any]) -> bool:
+    """Обновить существующее задание через PostgREST RPC.
+
+    Args:
+        job_id: UUID задания.
+        employer_id: UUID работодателя (для проверки владения).
+        job_data: словарь с обновляемыми полями.
+
+    Returns:
+        True при успехе, False при ошибке.
+    """
+    payload = {
+        'p_job_id': job_id,
+        'p_employer_id': employer_id,
+        'p_title': job_data.get('title', ''),
+        'p_description': job_data.get('description', ''),
+        'p_address': job_data.get('address', ''),
+        'p_city': job_data.get('city', ''),
+        'p_lat': job_data.get('lat'),
+        'p_lng': job_data.get('lng'),
+        'p_work_type': job_data.get('work_type'),
+        'p_payment_amount': job_data.get('payment_amount', 0),
+        'p_date_time': job_data.get('date_time'),
+        'p_max_workers': job_data.get('max_workers', 1),
+        'p_preferred_religion': job_data.get('preferred_religion'),
+        'p_organization_name': job_data.get('organization_name', ''),
+        'p_org_description': job_data.get('org_description', ''),
+        'p_object_description': job_data.get('object_description', ''),
+        'p_detailed_description': job_data.get('detailed_description', ''),
+        'p_contact_phone': job_data.get('contact_phone', ''),
+        'p_contact_email': job_data.get('contact_email', ''),
+    }
+    resp = postgrest_rpc('update_job', payload)
+    return resp.ok
+
+
+def get_job_for_edit(job_id: str, employer_id: str) -> Optional[dict]:
+    """Получить задание для редактирования (с проверкой владения).
+
+    Args:
+        job_id: UUID задания.
+        employer_id: UUID работодателя.
+
+    Returns:
+        dict задания или None (не найдено / не владелец).
+    """
+    resp = postgrest_admin_request(
+        'GET',
+        f'jobs?id=eq.{job_id}&select=*,photos:job_photos(*)'
+    )
+    if resp.ok and resp.json():
+        job = resp.json()[0]
+        if job.get('employer_id') == employer_id:
+            return job
+    return None

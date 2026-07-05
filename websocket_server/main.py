@@ -18,7 +18,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import redis.asyncio as aioredis
-from fastapi import FastAPI, Query, WebSocket, WebSocketDisconnect, status
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from .auth import verify_token
@@ -51,7 +51,7 @@ CHAT_CHANNEL: str = "chat"
 # ═══════════════════════════════════════════════════════════════
 
 # Словарь активных WebSocket-соединений: {user_id: WebSocket}
-active_connections: dict[str, WebSocket] = {}
+active_connections: dict[str, set[WebSocket]] = {}
 
 # Клиент Redis (устанавливается в lifespan)
 redis_client: aioredis.Redis | None = None
@@ -106,17 +106,24 @@ async def redis_pubsub_listener() -> None:
                     logger.warning("Сообщение из канала '%s' без user_id, пропускаем", channel)
                     continue
 
-                websocket = active_connections.get(str(user_id))
-                if websocket is not None:
+                websocket_set = active_connections.get(str(user_id), set()).copy()
+                if not websocket_set:
+                    logger.debug("Пользователь %s не в сети", user_id)
+                    continue
+                dead = []
+                for ws in websocket_set:
                     try:
-                        await websocket.send_json(payload)
-                        logger.debug("Отправлено сообщение пользователю %s через канал '%s'", user_id, channel)
+                        await ws.send_json(payload)
+                        logger.debug("Отправлено WS пользователю %s", user_id)
                     except Exception as exc:
-                        logger.error("Ошибка отправки WebSocket-сообщения пользователю %s: %s", user_id, exc)
-                        # Удаляем «мёртвое» соединение
-                        active_connections.pop(str(user_id), None)
-                else:
-                    logger.debug("Пользователь %s не в сети, сообщение из канала '%s' пропущено", user_id, channel)
+                        logger.error("Ошибка отправки WS пользователю %s: %s", user_id, exc)
+                        dead.append(ws)
+                # Удаляем мёртвые соединения
+                if str(user_id) in active_connections:
+                    for ws in dead:
+                        active_connections[str(user_id)].discard(ws)
+                    if not active_connections[str(user_id)]:
+                        del active_connections[str(user_id)]
 
             except json.JSONDecodeError as exc:
                 logger.error("Ошибка разбора JSON из Redis Pub/Sub: %s", exc)
@@ -164,12 +171,13 @@ async def lifespan(app: FastAPI):
     shutdown_event.set()
 
     # Закрываем все активные WebSocket-соединения
-    for uid, ws in list(active_connections.items()):
-        try:
-            await ws.close(code=status.WS_1001_GOING_AWAY)
-        except Exception:
-            pass
-        logger.info("WebSocket-соединение пользователя %s закрыто при завершении сервера", uid)
+    for uid, sockets in list(active_connections.items()):
+        for ws in sockets:
+            try:
+                await ws.close(code=status.WS_1001_GOING_AWAY)
+            except Exception:
+                pass
+        logger.info("WebSocket-соединения пользователя %s закрыты (%d шт)", uid, len(sockets))
     active_connections.clear()
 
     # Останавливаем слушатель Pub/Sub
@@ -197,12 +205,13 @@ app = FastAPI(
 )
 
 # CORS: разрешить все origins для разработки (настраивается через WEBSOCKET_CORS_ORIGINS)
+allow_credentials = '*' not in CORS_ORIGINS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=allow_credentials,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Authorization", "Content-Type", "X-CSRF-Token"],
 )
 
 
@@ -211,56 +220,55 @@ app.add_middleware(
 # ═══════════════════════════════════════════════════════════════
 
 @app.websocket("/ws")
-async def websocket_endpoint(
-    websocket: WebSocket,
-    token: str = Query(..., description="JWT-токен аутентификации"),
-) -> None:
-    """
-    WebSocket-эндпоинт для мгновенной доставки уведомлений и сообщений чата.
-
-    Аутентификация: JWT-токен через query-параметр ?token=...
-    После успешной верификации соединение регистрируется в active_connections.
-    """
-    # Верификация токена
-    payload: dict | None = verify_token(token)
-    if payload is None:
-        logger.warning("Попытка WebSocket-подключения с невалидным токеном")
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Невалидный JWT-токен")
-        return
-
-    user_id: str = str(payload.get("user_id", ""))
-    if not user_id:
-        logger.warning("WebSocket-подключение без user_id в токене")
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Токен не содержит user_id")
-        return
-
-    # Принимаем соединение
+async def websocket_endpoint(websocket: WebSocket) -> None:
     await websocket.accept()
-    active_connections[user_id] = websocket
-    logger.info("Пользователь %s подключился по WebSocket (всего онлайн: %d)", user_id, len(active_connections))
+
+    # Ждём первое сообщение с токеном (timeout 10 сек)
+    try:
+        import asyncio
+        first_msg = await asyncio.wait_for(websocket.receive_text(), timeout=10)
+        data = json.loads(first_msg)
+        if data.get('type') != 'auth' or not data.get('token'):
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Auth required")
+            return
+        payload = verify_token(data['token'])
+    except asyncio.TimeoutError:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Auth timeout")
+        return
+    except (json.JSONDecodeError, Exception):
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Auth error")
+        return
+
+    if payload is None:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token")
+        return
+
+    user_id = str(payload.get("user_id", ""))
+    if not user_id:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="No user_id")
+        return
+
+    # Multi-connection: dict[str, set[WebSocket]]
+    if user_id not in active_connections:
+        active_connections[user_id] = set()
+    if len(active_connections[user_id]) >= 3:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Too many connections")
+        return
+    active_connections[user_id].add(websocket)
 
     try:
-        # Отправляем приветственное сообщение
-        await websocket.send_json({
-            "type": "connected",
-            "user_id": user_id,
-            "message": "Подключение установлено",
-        })
-
-        # Держим соединение открытым, принимая входящие сообщения (ping/pong и т.д.)
+        await websocket.send_json({"type": "connected", "user_id": user_id})
         while True:
-            data = await websocket.receive_text()
-            # Игнорируем входящие сообщения (клиент не должен слать данные, кроме ping)
-            logger.debug("Получено сообщение от пользователя %s: %s", user_id, data[:100])
-
+            await websocket.receive_text()
     except WebSocketDisconnect:
-        logger.info("Пользователь %s отключился от WebSocket", user_id)
+        pass
     except Exception as exc:
-        logger.error("Ошибка WebSocket-соединения пользователя %s: %s", user_id, exc)
+        logger.error("Ошибка WS пользователя %s: %s", user_id, exc)
     finally:
-        # Удаляем соединение из активных
-        active_connections.pop(user_id, None)
-        logger.info("Пользователь %s удалён из активных соединений (всего онлайн: %d)", user_id, len(active_connections))
+        if user_id in active_connections:
+            active_connections[user_id].discard(websocket)
+            if not active_connections[user_id]:
+                del active_connections[user_id]
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -286,6 +294,6 @@ async def healthcheck() -> dict[str, Any]:
     return {
         "status": "ok",
         "redis": redis_status,
-        "active_connections": len(active_connections),
+        "active_connections": sum(len(v) for v in active_connections.values()),
         "version": "2.0.0",
     }

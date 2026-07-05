@@ -1,5 +1,4 @@
 import logging
-import threading
 from datetime import datetime, timezone
 
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
@@ -30,22 +29,18 @@ def apply_job(job_id):
 
     # Атомарная RPC: все проверки + вставка отклика в одной транзакции PostgreSQL
     # Устраняет TOCTOU race condition между проверкой мест и созданием отклика
-    # FALLBACK: если RPC apply_job_atomic не существует (миграция 048 не применена),
-    # используем неатомарную логику с проверками через REST API
     rpc_result = postgrest_rpc('apply_job_atomic', {
         'p_job_id': job_id,
         'p_worker_id': user_id,
     }, use_admin=True)
 
     if not rpc_result.ok:
-        # RPC-функция не найдена (404) — используем fallback
         if rpc_result.status_code == 404:
-            logger.warning(
-                "apply_job: RPC apply_job_atomic not found (migration 048 not applied), "
-                "falling back to non-atomic apply for job_id=%s user_id=%s",
+            logger.error(
+                "apply_job: RPC apply_job_atomic not found for job_id=%s user_id=%s",
                 job_id, user_id
             )
-            return _apply_job_fallback(job_id, user_id)
+            return jsonify({'success': False, 'error': 'Сервис не настроен'}), 503
         flash('Ошибка при отправке отклика', 'danger')
         return redirect(url_for('jobs.index'))
 
@@ -70,113 +65,12 @@ def apply_job(job_id):
     employer_id = result.get('employer_id')
     if employer_id:
         _link = url_for('jobs.job_detail', job_id=job_id, _external=True)
-        def _notify_employer():
-            success = enqueue_notification(employer_id, 'application_received', 'Новый отклик',
-                   f'На ваше задание поступил новый отклик',
-                   data={'job_id': job_id, 'link': _link})
-            if not success:
-                logger.error("apply_job: enqueue_notification() вернул False для employer_id=%s job_id=%s",
-                             employer_id, job_id)
-        threading.Thread(target=_notify_employer, daemon=True).start()
-
-    flash('Отклик отправлен', 'success')
-    return redirect(url_for('jobs.index'))
-
-
-def _apply_job_fallback(job_id: str, user_id: str):
-    """
-    Неатомарный fallback для apply_job, когда RPC apply_job_atomic недоступен.
-
-    Выполняет все проверки (существование задания, статус, blacklist,
-    дубликат, слоты) через REST API и создаёт отклик.
-
-    Используется только когда миграция 048 (apply_job_atomic) не применена.
-
-    ⚠️ ВАЖНО: Логика проверок должна быть синхронизирована с RPC-функцией
-    apply_job_atomic (миграция 048). При изменении правил валидации в RPC
-    необходимо обновить и этот fallback.
-    """
-    # 1. Получить информацию о задании
-    # ↑ Синхронизировать с apply_job_atomic (миграция 048)
-    job_resp = postgrest_request(
-        'GET',
-        f'jobs?id=eq.{job_id}&select=status,current_workers,max_workers,employer_id'
-    )
-    if not job_resp.ok or not job_resp.json():
-        flash('Задание не найдено', 'danger')
-        return redirect(url_for('jobs.index'))
-
-    job = job_resp.json()[0]
-
-    # 2. Проверить, что задание открыто для откликов
-    # ↑ Синхронизировать с apply_job_atomic (миграция 048)
-    if job.get('status') != 'open':
-        flash('На это задание нельзя откликаться', 'info')
-        return redirect(url_for('jobs.index'))
-
-    # 3. Проверить, что работник не откликается на собственное задание
-    # ↑ Синхронизировать с apply_job_atomic (миграция 048)
-    employer_id = job.get('employer_id')
-    if employer_id == user_id:
-        flash('Вы не можете откликаться на собственное задание', 'danger')
-        return redirect(url_for('jobs.index'))
-
-    # 4. Проверить blacklist (требует service_role для обхода RLS)
-    # ↑ Синхронизировать с apply_job_atomic (миграция 048)
-    if employer_id:
-        bl_resp = postgrest_admin_request(
-            'GET',
-            f'blacklists?user_id=eq.{employer_id}&blocked_user_id=eq.{user_id}&select=id'
-        )
-        if bl_resp.ok and bl_resp.json():
-            error_msg = 'Вы не можете откликнуться: работодатель добавил вас в чёрный список'
-            if request.method == 'POST':
-                return jsonify({'success': False, 'error': error_msg}), 403
-            flash(error_msg, 'danger')
-            return redirect(url_for('jobs.index'))
-
-    # 5. Проверить дубликат отклика
-    # ↑ Синхронизировать с apply_job_atomic (миграция 048)
-    dup_resp = postgrest_request(
-        'GET',
-        f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}&select=id'
-    )
-    if dup_resp.ok and dup_resp.json():
-        flash('Вы уже откликались на это задание', 'info')
-        return redirect(url_for('jobs.index'))
-
-    # 6. Проверить наличие свободных мест
-    # ↑ Синхронизировать с apply_job_atomic (миграция 048)
-    # ⚠️ TOCTOU: между этой проверкой и созданием отклика другой запрос может занять место.
-    # Атомарная RPC (apply_job_atomic) устраняет эту гонку — fallback используется только
-    # когда RPC недоступна (миграция 048 не применена).
-    current_workers = job.get('current_workers', 0)
-    max_workers = job.get('max_workers', 1)
-    if current_workers >= max_workers:
-        flash(f'Места в задании заполнены (максимум {max_workers})', 'info')
-        return redirect(url_for('jobs.index'))
-
-    # 7. Создать отклик
-    create_resp = postgrest_request('POST', 'applications', json={
-        'job_id': job_id,
-        'worker_id': user_id,
-        'status': 'pending',
-    })
-    if not create_resp.ok:
-        flash('Ошибка при отправке отклика', 'danger')
-        return redirect(url_for('jobs.index'))
-
-    # 8. Уведомить работодателя о новом отклике (transactional outbox)
-    if employer_id:
-        _link = url_for('jobs.job_detail', job_id=job_id, _external=True)
-        def _notify_employer():
-            success = enqueue_notification(employer_id, 'application_received', 'Новый отклик',
-                   f'На ваше задание поступил новый отклик',
-                   data={'job_id': job_id, 'link': _link})
-            if not success:
-                logger.error("_apply_job_fallback: enqueue_notification() вернул False для employer_id=%s job_id=%s",
-                             employer_id, job_id)
-        threading.Thread(target=_notify_employer, daemon=True).start()
+        success = enqueue_notification(employer_id, 'application_received', 'Новый отклик',
+               f'На ваше задание поступил новый отклик',
+               data={'job_id': job_id, 'link': _link})
+        if not success:
+            logger.error("apply_job: enqueue_notification() вернул False для employer_id=%s job_id=%s",
+                         employer_id, job_id)
 
     flash('Отклик отправлен', 'success')
     return redirect(url_for('jobs.index'))
@@ -234,21 +128,19 @@ def apply_selected():
                 employer_jobs[employer_id] = []
             employer_jobs[employer_id].append(job_id)
 
-    # Отправляем уведомления работодателям в фоновом потоке (transactional outbox)
+    # Отправляем уведомления работодателям (transactional outbox)
     if employer_jobs:
         _applications_link = url_for('applications.my_applications', _external=True)
-        def _notify_employers():
-            for emp_id, jids in employer_jobs.items():
-                job_list = ', '.join(f'#{jid}' for jid in jids)
-                success = enqueue_notification(
-                    emp_id, 'application_received', 'Новые отклики',
-                    f'На ваши задания ({job_list}) поступили новые отклики',
-                    data={'job_ids': jids, 'link': _applications_link}
-                )
-                if not success:
-                    logger.error("apply_selected: enqueue_notification() вернул False для employer_id=%s job_ids=%s",
-                                 emp_id, jids)
-        threading.Thread(target=_notify_employers, daemon=True).start()
+        for emp_id, jids in employer_jobs.items():
+            job_list = ', '.join(f'#{jid}' for jid in jids)
+            success = enqueue_notification(
+                emp_id, 'application_received', 'Новые отклики',
+                f'На ваши задания ({job_list}) поступили новые отклики',
+                data={'job_ids': jids, 'link': _applications_link}
+            )
+            if not success:
+                logger.error("apply_selected: enqueue_notification() вернул False для employer_id=%s job_ids=%s",
+                             emp_id, jids)
 
     if applied > 0:
         flash(f'Отклик отправлен на {applied} заданий', 'success')
@@ -270,7 +162,6 @@ def unapply_job(job_id):
     Находит отклик по job_id + worker_id, затем вызывает атомарный отзыв.
     Сохраняет обратную совместимость URL /unapply/<job_id>.
     """
-    # noqa: локальный импорт — циклическая зависимость (applications → application_service → applications)
     from app.services.application_service import withdraw_application_atomic
 
     user_id = session['user_id']
@@ -639,62 +530,30 @@ def cancel_application(app_id):
                 pass
 
     # Атомарная отмена через RPC cancel_worker_atomic
-    rpc_success = False
-    try:
-        rpc_result = postgrest_rpc('cancel_worker_atomic', {
-            'p_application_id': app_id,
-            'p_user_id': session.get('user_id'),
-        }, use_admin=True)
-        if rpc_result.ok and rpc_result.json():
-            rpc_data = rpc_result.json()
-            if rpc_data and rpc_data.get('success'):
-                rpc_success = True
-                current_app.logger.info(
-                    'cancel_application: RPC cancel_worker_atomic OK for app_id=%s job_id=%s new_status=%s',
-                    app_id, job_id, rpc_data.get('new_status')
-                )
-            else:
-                current_app.logger.warning(
-                    'cancel_application: RPC cancel_worker_atomic returned success=false for app_id=%s: %s',
-                    app_id, (rpc_data or {}).get('error', 'неизвестная ошибка')
-                )
-    except Exception as e:
-        current_app.logger.error(
-            'cancel_application: RPC cancel_worker_atomic exception for app_id=%s: %s',
-            app_id, str(e)
-        )
+    rpc_result = postgrest_rpc('cancel_worker_atomic', {
+        'p_application_id': app_id,
+        'p_user_id': session.get('user_id'),
+    }, use_admin=True)
 
-    # Fallback: если RPC недоступна — используем ручную логику
-    if not rpc_success:
-        current_app.logger.warning(
-            'cancel_application: RPC cancel_worker_atomic failed for app_id=%s, falling back to manual logic',
-            app_id
-        )
-        # Уменьшить счетчик работников
-        job_resp = postgrest_request('GET', f'jobs?id=eq.{job_id}&select=current_workers,max_workers')
-        if job_resp.ok and job_resp.json():
-            job_data = job_resp.json()[0]
-            current_workers = max(0, job_data.get('current_workers', 1) - 1)
+    if not rpc_result.ok:
+        if rpc_result.status_code == 404:
+            logger.error(
+                'cancel_application: RPC cancel_worker_atomic not found for app_id=%s', app_id
+            )
+            return jsonify({'success': False, 'error': 'Сервис не настроен'}), 503
+        flash('Ошибка при отмене работника', 'danger')
+        return redirect(url_for('applications.my_applications'))
 
-            # Вернуть статус в open если все ушли
-            new_status = 'open' if current_workers == 0 else 'completed'
-            job_patch_resp = postgrest_request('PATCH', f'jobs?id=eq.{job_id}', json={
-                'status': new_status,
-                'current_workers': current_workers
-            })
-            assert_postgrest_ok(job_patch_resp, 'обновление статуса задания при отмене работника')
+    rpc_data = rpc_result.json()
+    if not rpc_data or not rpc_data.get('success'):
+        error_msg = (rpc_data or {}).get('error', 'Не удалось отменить работника')
+        flash(error_msg, 'danger')
+        return redirect(url_for('applications.my_applications'))
 
-        # Отклонить отклик
-        cancel_resp = postgrest_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'rejected'})
-        assert_postgrest_ok(cancel_resp, 'отклонение отклика при отмене работника')
-
-        # Отправить уведомления (только в fallback-пути, RPC создаёт уведомление сама)
-        success = enqueue_notification(worker_id, 'application_rejected', 'Отклик отменен',
-                          f'Ваш отклик на задание {job.get("organization_name", "#" + job_id)} был отменен',
-                          data={'job_id': job_id, 'link': url_for('applications.my_applications', _external=True)})
-        if not success:
-            logger.error("cancel_application: enqueue_notification() вернул False для worker_id=%s job_id=%s",
-                         worker_id, job_id)
+    current_app.logger.info(
+        'cancel_application: RPC cancel_worker_atomic OK for app_id=%s job_id=%s new_status=%s',
+        app_id, job_id, rpc_data.get('new_status')
+    )
 
     flash('Работник отменен', 'success')
     return redirect(url_for('applications.my_applications'))

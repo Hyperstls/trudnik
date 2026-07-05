@@ -3,10 +3,14 @@
 import logging
 import os
 import time
+import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from urllib.parse import quote
 
-from flask import current_app, session
+from flask import current_app, g, request, session
+
+from app.utils.redis_cache import redis_cache_get, redis_cache_set
 
 logger = logging.getLogger(__name__)
 
@@ -41,109 +45,36 @@ def _get_cached_or_fetch(key: str, fetch_fn) -> int:
     return value
 
 
-# ── Redis-кэш для контекст-процессоров (TTL 30 сек) ──
-# Глобальный кэш между worker'ами через Redis.
-# При отсутствии Redis — graceful degradation (возврат None).
-_redis_client = None
-_REDIS_CACHE_TTL = 30  # секунд
-
-
-def _get_redis_client():
-    """Ленивая инициализация Redis-клиента.
-
-    Returns:
-        Redis-клиент или None, если Redis недоступен.
-    """
-    global _redis_client
-    if _redis_client is not None:
-        return _redis_client
-    try:
-        import redis as _redis_lib
-        redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
-        _redis_client = _redis_lib.from_url(redis_url, decode_responses=True)
-        _redis_client.ping()
-    except Exception:
-        _redis_client = None
-    return _redis_client
-
-
-def _redis_cache_get(key: str):
-    """Получает значение из Redis-кэша.
-
-    Args:
-        key: ключ кэша.
-
-    Returns:
-        Значение (int) или None, если ключ не найден или Redis недоступен.
-    """
-    try:
-        client = _get_redis_client()
-        if client is None:
-            return None
-        value = client.get(key)
-        if value is not None:
-            return int(value)
-    except Exception:
-        pass
-    return None
-
-
-def _redis_cache_set(key: str, value: int, ttl: int = _REDIS_CACHE_TTL):
-    """Сохраняет значение в Redis-кэш с TTL.
-
-    Args:
-        key: ключ кэша.
-        value: целочисленное значение.
-        ttl: время жизни в секундах (по умолчанию 30).
-    """
-    try:
-        client = _get_redis_client()
-        if client is not None:
-            client.setex(key, ttl, value)
-    except Exception:
-        pass
-
-
-def _redis_cache_delete(key: str):
-    """Удаляет ключ из Redis-кэша.
-
-    Args:
-        key: ключ кэша.
-    """
-    try:
-        client = _get_redis_client()
-        if client is not None:
-            client.delete(key)
-    except Exception:
-        pass
-
-
 def inject_ws_config() -> dict:
     """Добавляет WebSocket-конфигурацию и JWT-токен во все шаблоны."""
+    import uuid as _uuid
+    import jwt as pyjwt
+    from datetime import datetime, timedelta, timezone
+    from app.config import Config
+    
     config = {
-        'wsUrl': (os.environ.get('WEBSOCKET_URL', '')).strip(),
-        'wsPort': (os.environ.get('WEBSOCKET_PORT', '8001')).strip(),
+        'wsUrl': Config.WEBSOCKET_PUBLIC_URL or os.environ.get('WEBSOCKET_URL', ''),
+        'wsPort': os.environ.get('WEBSOCKET_PORT', '8001'),
         'pushEnabled': bool(os.environ.get('VAPID_PUBLIC_KEY', '')),
         'jwtToken': ''
     }
-
-    # Генерируем JWT-токен для аутентифицированных пользователей
+    
     user_id = session.get('user_id')
     if user_id:
         try:
-            import jwt as pyjwt
             token = pyjwt.encode(
                 {
                     'user_id': str(user_id),
-                    'exp': datetime.now(timezone.utc) + timedelta(days=7)
+                    'exp': datetime.now(timezone.utc) + timedelta(hours=1),
+                    'jti': str(_uuid.uuid4()),
                 },
-                current_app.config['SECRET_KEY'],
+                Config.WEBSOCKET_JWT_SECRET or Config.SECRET_KEY,
                 algorithm='HS256'
             )
             config['jwtToken'] = token
         except Exception:
-            pass  # Любая ошибка — не фатально
-
+            pass
+    
     return {'trudnik_ws_config': config}
 
 
@@ -159,7 +90,7 @@ def inject_unread_notifications() -> dict:
     if user_id:
         redis_key = f'unread:{user_id}'
         # Проверяем Redis-кэш (общий для всех worker'ов)
-        count = _redis_cache_get(redis_key)
+        count = redis_cache_get(redis_key)
         if count is not None:
             return {'unread_notifications': count}
 
@@ -182,7 +113,7 @@ def inject_unread_notifications() -> dict:
 
         count = _get_cached_or_fetch(f'notif_{user_id}', _fetch)
         # Сохраняем в Redis для других worker'ов
-        _redis_cache_set(redis_key, count, ttl=30)
+        redis_cache_set(redis_key, count, ttl=30)
         return {'unread_notifications': count}
     return {'unread_notifications': 0}
 
@@ -266,14 +197,50 @@ def inject_employer_subscription() -> dict:
     return {'employer_subscription': sub or {'tariff': 'Базовый', 'jobs_remaining': 3}}
 
 
+def inject_global_user() -> dict:
+    """Добавляет current_user_id во все шаблоны."""
+    return {'current_user_id': session.get('user_id')}
+
+
+def inject_csrf_token() -> dict:
+    """Внедрение CSRF-токена во все шаблоны как строки."""
+    if '_csrf_token' not in session:
+        session['_csrf_token'] = secrets.token_hex(32)
+    return {'csrf_token': session.get('_csrf_token', '')}
+
+
+def inject_csp_nonce() -> dict:
+    """Внедрение CSP nonce во все шаблоны для inline-скриптов."""
+    return {'csp_nonce': getattr(g, 'csp_nonce', '')}
+
+
+def inject_sort_url() -> dict:
+    """Хелпер для построения URL сортировки с сохранением остальных параметров."""
+
+    def sort_url(sort_value):
+        args = dict(request.args)
+        # Заменяем sort и сбрасываем page
+        args['sort'] = sort_value
+        args.pop('page', None)
+        if not args:
+            return '?'
+        return '?' + '&'.join(f'{quote(str(k))}={quote(str(v))}' for k, v in args.items())
+
+    return {'sort_url': sort_url}
+
+
 def register_context_processors(app):
     """Зарегистрировать все контекст-процессоры на Flask-приложении.
 
     Args:
         app: экземпляр Flask.
     """
+    app.context_processor(inject_global_user)
+    app.context_processor(inject_csrf_token)
+    app.context_processor(inject_csp_nonce)
     app.context_processor(inject_ws_config)
     app.context_processor(inject_unread_notifications)
     app.context_processor(inject_pending_invitations)
     app.context_processor(inject_worker_site_url)
     app.context_processor(inject_employer_subscription)
+    app.context_processor(inject_sort_url)

@@ -29,12 +29,12 @@ class NotificationsWebSocket {
         if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.OPEN)) {
             return;
         }
-
         this.isConnecting = true;
+        this.reconnectAttempts = 0;
         const wsUrl = this._getWsUrl();
 
         try {
-            this.ws = new WebSocket(`${wsUrl}?token=${encodeURIComponent(token)}`);
+            this.ws = new WebSocket(wsUrl);  // БЕЗ токена в URL
         } catch (e) {
             console.error('Ошибка создания WebSocket:', e);
             this.isConnecting = false;
@@ -43,19 +43,23 @@ class NotificationsWebSocket {
         }
 
         this.ws.onopen = () => {
-            console.log('WebSocket подключён');
-            this.isConnecting = false;
-            this.reconnectAttempts = 0;
-            this._stopPolling();
-            this._emit('connected', {});
+            // Отправляем токен первым сообщением
+            this.ws.send(JSON.stringify({ type: 'auth', token: token }));
         };
 
         this.ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                this._handleMessage(data);
+                if (data.type === 'connected') {
+                    this.isConnecting = false;
+                    this.reconnectAttempts = 0;
+                    this._stopPolling();
+                    this._emit('connected', {});
+                } else {
+                    this._handleMessage(data);
+                }
             } catch (e) {
-                console.warn('Не удалось разобрать WebSocket сообщение:', event.data);
+                console.warn('Не удалось разобрать WS сообщение:', event.data);
             }
         };
 
@@ -63,7 +67,6 @@ class NotificationsWebSocket {
             console.log(`WebSocket закрыт (код: ${event.code})`);
             this.isConnecting = false;
             this._emit('disconnected', { code: event.code });
-
             if (event.code !== 1000 && event.code !== 1001) {
                 this._scheduleReconnect(token);
                 this._startPolling();
@@ -229,7 +232,7 @@ class NotificationsWebSocket {
      */
     async _pollUnreadCount() {
         try {
-            const resp = await fetch('/api/notifications/unread-count');
+            const resp = await apiFetch('/api/notifications/unread-count');
             if (!resp.ok) return;
             const data = await resp.json();
             const count = data.unread_count || data.count || 0;
@@ -255,7 +258,7 @@ class NotificationsWebSocket {
 
         this.reconnectAttempts++;
         const delay = Math.min(
-            this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1),
+            Math.min(30000, 1000 * Math.pow(2, this.reconnectAttempts)),
             this.maxReconnectDelay
         );
 

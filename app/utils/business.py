@@ -47,6 +47,9 @@ def check_withdraw_window(job_date_time: Optional[str]) -> bool:
         return True
     try:
         job_dt = datetime.fromisoformat(job_date_time.replace('Z', '+00:00'))
+        # Гарантируем timezone-aware сравнение: если дата без tz, считаем её UTC
+        if job_dt.tzinfo is None:
+            job_dt = job_dt.replace(tzinfo=timezone.utc)
         return (job_dt - datetime.now(timezone.utc)).total_seconds() > 12 * 3600
     except (ValueError, TypeError):
         return True

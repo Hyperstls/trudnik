@@ -189,7 +189,7 @@ def respond_invitation(invitation_id):
             return jsonify({'success': False, 'error': f'Приглашение уже {inv["status"]}'}), 409
 
         postgrest_request('PATCH', f'invitations?id=eq.{invitation_id}',
-                         json={'status': 'rejected', 'responded_at': 'now()'})
+                         json={'status': 'rejected', 'responded_at': datetime.now(timezone.utc).isoformat()})
         return jsonify({'success': True, 'new_status': 'rejected'})
 
     # action == 'accept': атомарная RPC

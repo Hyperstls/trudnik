@@ -1,0 +1,2870 @@
+## 0. РОЛЬ И КОНТЕКСТ
+
+Ты — Senior Full-Stack Developer с правом вносить любые изменения в кодовую базу **Trudnik**. Работаешь автономно, принимаешь архитектурные решения, обеспечиваешь качество через тесты. Проект — российская PWA-платформа для поиска разовой подработки.
+
+**Стек:** Python 3.12 + Flask 3.1 + PostgREST v12 + PostgreSQL 15/PostGIS + FastAPI (WebSocket) + Celery + Redis + Jinja2 + Tailwind CSS + ванильный JS + Service Worker. Деплой: Amvera (Docker, supervisord).
+
+**Ключевая особенность:** Flask НЕ использует ORM. Все CRUD — через HTTP-запросы к PostgREST. Прямой SQL (psycopg2) — только в emergency-скриптах и login-fallback.
+
+**Структура:** `app/` (blueprints/, services/, utils/, tasks/), `websocket_server/`, `templates/`, `static/`, `migrations/` (75+ SQL), `scripts/`, `tests/`, `asgi.py`, `Dockerfile`, `docker-compose.yml`, `supervisord.conf`.
+
+---
+
+## 1. СТРАТЕГИЧЕСКОЕ ТРЕБОВАНИЕ: БЕСПЛАТНО СЕЙЧАС, МОНИЗАЦИЯ ПОЗЖЕ
+
+Приложение должно быть **полностью бесплатным** сейчас. Монетизация запрещена к активации, но инфраструктура сохраняется для будущего включения.
+
+### 1.1. Конфигурация
+
+В `app/config.py` добавь:
+```python
+MONETIZATION_ENABLED = os.environ.get('MONETIZATION_ENABLED', 'false').lower() == 'true'
+if MONETIZATION_ENABLED and not os.environ.get('MONETIZATION_READY_ACK'):
+    raise RuntimeError('MONETIZATION_ENABLED=true requires MONETIZATION_READY_ACK env var')
+```
+
+### 1.2. Сервис-заглушка
+
+Создай `app/services/monetization_service.py`:
+```python
+from app.config import Config
+
+class MonetizationService:
+    @staticmethod
+    def is_enabled() -> bool:
+        return Config.MONETIZATION_ENABLED
+
+    @staticmethod
+    def can_create_job(user_id: str) -> bool:
+        if not MonetizationService.is_enabled():
+            return True
+        # TODO: будущая логика с employer_subscriptions.jobs_remaining
+        return True
+
+    @staticmethod
+    def is_job_promoted(job: dict) -> bool:
+        if not MonetizationService.is_enabled():
+            return False
+        from datetime import datetime, timezone
+        promoted = job.get('promoted_until')
+        if not promoted:
+            return False
+        try:
+            return datetime.fromisoformat(str(promoted).replace('Z', '+00:00')) > datetime.now(timezone.utc)
+        except (ValueError, TypeError):
+            return False
+
+    @staticmethod
+    def get_user_tariff(user_id: str) -> str:
+        if not MonetizationService.is_enabled():
+            return 'free'
+        return 'free'
+
+    @staticmethod
+    def get_jobs_remaining(user_id: str) -> int:
+        if not MonetizationService.is_enabled():
+            return 999999
+        return 999999
+```
+
+### 1.3. UI изменения
+
+- Убери квоту заданий из `job_new` (используй `MonetizationService.can_create_job()` — всегда `True`).
+- Скрыть кнопку «Продвинуть задание».
+- `/pricing` — рендери «Монетизация скоро. Сейчас все функции бесплатны.»
+- `base.html` — ссылку на `/pricing` показывай только если `Config.MONETIZATION_ENABLED`.
+
+### 1.4. Сохранить инфраструктуру
+
+НЕ удалять: таблицы `employer_subscriptions`, `job_payments`, `tariff_settings`, `_archive_contact_payments`; колонки `jobs.is_paid`, `jobs.promoted_until`, `jobs.tariff`; `app/services/payment_service.py`. YooKassa webhook endpoint — НЕ создавать сейчас (отложено до активации монетизации).
+
+### 1.5. Будущее включение
+
+Когда решено включить: `MONETIZATION_ENABLED=true` + `MONETIZATION_READY_ACK=true`. Миграция: все задания → `is_paid=true`, все работодатели → `employer_subscriptions (tariff='free', jobs_remaining=10)`. Новые задания → `is_paid=false` до оплаты.
+
+---
+
+## 2. ПРОТОКОЛ ВЫПОЛНЕНИЯ
+
+### 2.1. Worklog
+
+Все изменения фиксируй в `/home/z/my-project/worklog.md` (append-only):
+```markdown
+---
+Task ID: <PHASE-TASK-NUMBER, например 1-B23>
+Agent: Senior Full-Stack Developer
+Task: <название>
+
+Work Log:
+- <шаг 1>
+
+Stage Summary:
+- Изменённые файлы: <список>
+- Созданные миграции: <список>
+- Добавленные тесты: <список>
+- Acceptance criteria: <как проверено>
+```
+
+### 2.2. Коммиты
+
+```
+<type>(<scope>): <PHASE-TASK> - <описание>
+
+# REFACTOR: <дата> — <что и зачем>
+```
+
+Типы: `fix`, `refactor`, `feat`, `security`, `docs`, `test`, `chore`.
+
+### 2.3. Тесты
+
+Для задач с `[TEST]` — добавь тест. Минимальное покрытие изменённых модулей — 70%.
+
+### 2.4. Комментарии
+
+```python
+# REFACTOR: 2026-07-04 — <что>. Причина: <почему>. См. задачу <PHASE-TASK>.
+```
+
+### 2.5. Порядок миграций и деплоя
+
+**КРИТИЧЕСКИ ВАЖНО:** Миграции, изменяющие схему (DROP COLUMN, DELETE), применять ТОЛЬКО после деплоя обновлённого кода. Порядок:
+1. Обновить код (перестать использовать колонку/таблицу).
+2. Деплой кода.
+3. Применить миграцию.
+
+---
+
+## 3. ПОРЯДОК ВЫПОЛНЕНИЯ (ФАЗЫ)
+
+Выполняй фазы строго по порядку. Внутри фазы — задачи можно параллелить, если нет зависимостей.
+
+### ФАЗА 0: ЭКСТРЕННЫЕ ДЕЙСТВИЯ
+
+---
+
+### ЗАДАЧА 0-1: Ротация всех утёкших секретов
+
+**Приоритет:** CRITICAL
+**Depends on:** none
+**Файлы:** `.env`, `.env.staging`, `archive/secret_change.md`, `twa-project/trudnik-release.keystore`, `scripts/env_trudnik_app.env`, `archive/env_trudnik_*.env`
+
+**Проблема:** В репозитории закоммичены: `SECRET_KEY=***REMOVED***...`, `PGRST_JWT_SECRET=***REMOVED***...`, `PGPASSWORD=trudnik_dev`, `ADMIN_API_TOKEN=***REMOVED***...`, `DATABASE_URL=...***REMOVED***@...`, Android keystore.
+
+**Решение:**
+
+1. **Сгенерируй новые секреты** (запиши в новый `.env`, НЕ коммить):
+   ```bash
+   python -c "import secrets; print('SECRET_KEY='+secrets.token_hex(32))"
+   python scripts/generate_jwt_secret.py  # PGRST_JWT_SECRET, 64 байта
+   python -c "import secrets; print('ADMIN_API_TOKEN='+secrets.token_hex(32))"
+   python -c "import secrets; print('WEBSOCKET_JWT_SECRET='+secrets.token_hex(32))"
+   python -c "from app.utils import generate_vapid_keys; print(generate_vapid_keys())"
+   ```
+
+2. **Смени пароль PostgreSQL** `***REMOVED***` / `trudnik_dev` → сложный 32-символьный через Amvera Console.
+
+3. **Смени SMTP-пароль** `trudnik-app@yandex.ru`.
+
+4. **Сгенерируй НОВЫЙ Android keystore:**
+   ```bash
+   keytool -genkey -v -keystore trudnik-release-new.keystore -alias trudnik \
+     -keyalg RSA -keysize 2048 -validity 10000 \
+     -storepass <NEW_STRONG_PASSWORD> -keypass <NEW_STRONG_PASSWORD> \
+     -dname "CN=Trudnik, OU=Dev, O=Trudnik, L=Moscow, S=Moscow, C=RU"
+   ```
+
+5. **Очисти git-историю** (BFG Repo-Cleaner):
+   ```bash
+   # Создай passwords.txt:
+   echo "***REMOVED***==>REDACTED" > passwords.txt
+   echo "***REMOVED***==>REDACTED" >> passwords.txt
+   echo "***REMOVED***==>REDACTED" >> passwords.txt
+   echo "trudnik_dev==>REDACTED" >> passwords.txt
+   echo "***REMOVED***==>REDACTED" >> passwords.txt
+   java -jar bfg.jar --replace-text passwords.txt
+   git reflog expire --expire=now --all
+   git gc --prune=now --aggressive
+   git fetch origin
+   git pull --rebase origin main  # убедиться, что локальная не отстаёт
+   git push --force origin main
+   ```
+
+6. **Удали из git** (если BFG не удалил):
+   ```bash
+   git rm --cached .env .env.staging 2>/dev/null || true
+   git rm -r --cached .idea/ 2>/dev/null || true
+   git rm twa-project/trudnik-release.keystore twa-project/app-release-signed.apk 2>/dev/null || true
+   git rm trash/trudnik-release.keystore 2>/dev/null || true
+   git rm archive/secret_change.md 2>/dev/null || true
+   ```
+
+7. **Обнови `.gitignore`:**
+   ```
+   .env
+   .env.*
+   !.env.example
+   .idea/
+   .vscode/
+   *.keystore
+   *.jks
+   *.apk
+   *.aab
+   twa-project/app/
+   scripts/screenshots/
+   archive/
+   Promts/
+   ```
+
+8. **Pre-commit hook** с `detect-secrets`:
+   ```bash
+   pip install detect-secrets pre-commit
+   detect-secrets scan > .secrets.baseline
+   ```
+   `.pre-commit-config.yaml`:
+   ```yaml
+   repos:
+     - repo: https://github.com/Yelp/detect-secrets
+       rev: v1.5.0
+       hooks:
+         - id: detect-secrets
+           args: ['--baseline', '.secrets.baseline']
+   ```
+
+**Acceptance criteria:**
+- [ ] Новые секреты сгенерированы и установлены в Amvera Console (НЕ в репозитории)
+- [ ] `git log --all -p | grep -i "c998690\|***REMOVED***\|119968bc"` возвращает пусто
+- [ ] `.env` отсутствует в `git ls-files`
+- [ ] `.pre-commit-config.yaml` создан, `pre-commit install` выполнен
+
+---
+
+### ЗАДАЧА 0-2: Заблокировать `POSTGREST_MOCK_MODE` в production
+
+**Приоритет:** CRITICAL
+**Depends on:** none
+**Файлы:** `app/testing/mock_postgrest.py`, `app/config.py`, `tests/conftest.py`
+
+**Проблема:** Env var `POSTGREST_MOCK_MODE=1` активирует in-memory mock, где логин принимает любой email с паролем `test`.
+
+**Решение:**
+
+1. В `app/testing/mock_postgrest.py` функция `_is_mock_enabled()` — добавь в начало:
+```python
+def _is_mock_enabled() -> bool:
+    # НИКОГДА не активировать в production/staging
+    if os.environ.get('DEPLOYMENT_ENV', '') in ('production', 'staging'):
+        return False
+    # ... остальная логика без изменений
+```
+
+2. В `app/config.py` в конце `class Config`:
+```python
+if os.environ.get('DEPLOYMENT_ENV') in ('production', 'staging'):
+    if os.environ.get('POSTGREST_MOCK_MODE', '').lower() in ('1', 'true', 'yes'):
+        raise RuntimeError('FATAL: POSTGREST_MOCK_MODE is set in production! Refusing to start.')
+    if os.environ.get('TEST_PASSWORD'):
+        raise RuntimeError('FATAL: TEST_PASSWORD is set in production! Refusing to start.')
+```
+
+3. В `tests/conftest.py`:
+```python
+def pytest_sessionfinish(session, exitstatus):
+    import os
+    os.environ.pop('POSTGREST_MOCK_MODE', None)
+    os.environ.pop('TEST_PASSWORD', None)
+```
+
+**Acceptance criteria:**
+- [ ] При `DEPLOYMENT_ENV=production` + `POSTGREST_MOCK_MODE=1` — приложение падает при старте
+- [ ] Тесты проходят (mock работает в TESTING режиме)
+
+---
+
+## ФАЗА 1: КРИТИЧЕСКАЯ БЕЗОПАСНОСТЬ
+
+---
+
+### ЗАДАЧА 1-1: Убрать `ADMIN_API_TOKEN` fallback на `SECRET_KEY`
+
+**Приоритет:** CRITICAL
+**Depends on:** 0-1
+**Файлы:** `app/__init__.py` (строки 209-215), `app/blueprints/admin.py` (строки 756, 884, 1014)
+
+**Решение:**
+
+1. Во всех 3 местах замени:
+   ```python
+   # Было:
+   expected = current_app.config.get('ADMIN_API_TOKEN', current_app.config.get('SECRET_KEY', ''))
+   # Стало:
+   expected = current_app.config.get('ADMIN_API_TOKEN', '')
+   ```
+
+2. Добавь IP-whitelist (через env `ADMIN_API_ALLOWED_IPS`) для emergency-эндпоинтов:
+   ```python
+   allowed_ips = [ip.strip() for ip in os.environ.get('ADMIN_API_ALLOWED_IPS', '').split(',') if ip.strip()]
+   if allowed_ips and request.remote_addr not in allowed_ips:
+       current_app.logger.warning('Emergency endpoint access from forbidden IP: %s', request.remote_addr)
+       return jsonify({'error': 'Forbidden'}), 403
+   ```
+
+**Acceptance criteria:**
+- [ ] Без `ADMIN_API_TOKEN` env var — emergency-эндпоинты возвращают 401
+- [ ] Логируется каждая попытка вызова с IP
+
+---
+
+### ЗАДАЧА 1-2: Разделить JWT-секреты для Flask и WebSocket + auth-протокол
+
+**Приоритет:** CRITICAL
+**Depends on:** 0-1
+**Файлы:** `app/config.py`, `app/context_processors.py`, `websocket_server/auth.py`, `websocket_server/main.py`, `static/js/notifications-ws.js`, `static/js/notifications-init.js`
+
+**Проблема:** WS-JWT подписывается `SECRET_KEY` (7 дней, в URL). `websocket_server/auth.py` имеет fallback `"dev-secret-change-me"`. Любой подделает JWT. Токен в URL логируется.
+
+**Решение:**
+
+1. В `app/config.py`:
+```python
+WEBSOCKET_JWT_SECRET = os.environ.get('WEBSOCKET_JWT_SECRET', '')
+if os.environ.get('DEPLOYMENT_ENV') in ('production', 'staging') and not WEBSOCKET_JWT_SECRET:
+    raise RuntimeError('WEBSOCKET_JWT_SECRET is required in production')
+```
+
+2. В `app/context_processors.py` `inject_ws_config()` — замени генерацию токена:
+```python
+from app.config import Config
+import uuid as _uuid
+token = pyjwt.encode(
+    {
+        'user_id': str(user_id),
+        'exp': datetime.now(timezone.utc) + timedelta(hours=1),  # 1 час, не 7 дней
+        'jti': str(_uuid.uuid4()),
+    },
+    Config.WEBSOCKET_JWT_SECRET or Config.SECRET_KEY,  # fallback только для dev
+    algorithm='HS256'
+)
+```
+
+3. В `websocket_server/auth.py`:
+```python
+SECRET_KEY = os.environ.get("WEBSOCKET_JWT_SECRET", "")
+if not SECRET_KEY:
+    logger.error("WEBSOCKET_JWT_SECRET not set — all WebSocket connections will be rejected")
+
+def verify_token(token: str) -> dict | None:
+    if not SECRET_KEY:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        if "user_id" not in payload:
+            return None
+        # Проверка jti blacklist через Redis
+        jti = payload.get('jti')
+        if jti:
+            import redis as _redis
+            r = _redis.from_url(os.environ.get('REDIS_URL', 'redis://localhost:6379/0'), decode_responses=True)
+            if r.exists(f'jti_blacklist:{jti}'):
+                logger.warning('Rejected blacklisted jti: %s', jti)
+                return None
+        return payload
+    except Exception:
+        return None
+```
+
+4. В `websocket_server/main.py` `websocket_endpoint` — убери `token: str = Query(...)`, реализуй auth после `accept()`:
+```python
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket) -> None:
+    await websocket.accept()
+
+    # Ждём первое сообщение с токеном
+    try:
+        first_msg = await asyncio.wait_for(webindowsocket.receive_text(), timeout=10)
+        data = json.loads(first_msg)
+        if data.get('type') != 'auth' or not data.get('token'):
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Auth required")
+            return
+        payload = verify_token(data['token'])
+    except (asyncio.TimeoutError, json.JSONDecodeError, Exception):
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Auth timeout")
+        return
+
+    if payload is None:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token")
+        return
+
+    user_id = str(payload.get("user_id", ""))
+    if not user_id:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="No user_id")
+        return
+
+    # Регистрируем соединение (см. задачу 3-4 для multi-connection)
+    if user_id not in active_connections:
+        active_connections[user_id] = set()
+    if len(active_connections[user_id]) >= 3:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Too many connections")
+        return
+    active_connections[user_id].add(websocket)
+
+    try:
+        await websocket.send_json({"type": "connected", "user_id": user_id})
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        pass
+    finally:
+        if user_id in active_connections:
+            active_connections[user_id].discard(websocket)
+            if not active_connections[user_id]:
+                del active_connections[user_id]
+```
+
+5. В `static/js/notifications-ws.js` `connect()` — отправляй токен первым сообщением:
+```javascript
+connect(token) {
+    if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.OPEN)) {
+        return;
+    }
+    this.isConnecting = true;
+    this.reconnectAttempts = 0;  // сброс при новом подключении
+    const wsUrl = this._getWsUrl();
+
+    try {
+        this.ws = new WebSocket(wsUrl);  // БЕЗ токена в URL
+    } catch (e) {
+        this.isConnecting = false;
+        this._scheduleReconnect(token);
+        return;
+    }
+
+    this.ws.onopen = () => {
+        // Отправляем токен первым сообщением
+        this.ws.send(JSON.stringify({ type: 'auth', token: token }));
+    };
+
+    this.ws.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'connected') {
+                this.isConnecting = false;
+                this._emit('connected', {});
+            } else {
+                this._handleMessage(data);
+            }
+        } catch (e) {
+            console.warn('WS parse error:', e);
+        }
+    };
+
+    this.ws.onclose = (event) => {
+        this.isConnecting = false;
+        this._emit('disconnected', { code: event.code });
+        if (event.code !== 1000 && event.code !== 1001) {
+            this._scheduleReconnect(token);
+            this._startPolling();
+        }
+    };
+
+    this.ws.onerror = (error) => {
+        console.error('WS error:', error);
+        this.isConnecting = false;
+    };
+}
+```
+
+**Acceptance criteria:**
+- [ ] WS-JWT живёт 1 час, подписан `WEBSOCKET_JWT_SECRET`
+- [ ] При пустом `WEBSOCKET_JWT_SECRET` — WS-подключения отклоняются
+- [ ] Токен не в URL (в логах нет `?token=...`)
+- [ ] При `jti` в blacklist — подключение отклоняется
+- [ ] Клиент отправляет `{"type":"auth","token":"..."}` первым сообщением
+
+---
+
+### ЗАДАЧА 1-3: Удалить `postgrest_public_rpc` (анонимные RPC)
+
+**Приоритет:** CRITICAL
+**Depends on:** 0-1
+**Файлы:** `app/utils/postgrest_client.py`, `app/blueprints/auth.py`, миграция `076_lock_down_rpc.sql`
+
+**Решение:**
+
+1. Удали функцию `postgrest_public_rpc` из `postgrest_client.py`.
+
+2. Во всём коде замени вызовы `postgrest_public_rpc(...)` на `postgrest_rpc(...)` или `postgrest_admin_request('POST', f'rpc/{name}', ...)`.
+
+3. Миграция `076_lock_down_rpc.sql`:
+```sql
+-- login_user и register_user — только для authenticated (через RPC с user-JWT)
+-- НО: login_user должен быть доступен до логина. Решение: вызывать через postgrest_admin_request (service_role).
+REVOKE EXECUTE ON FUNCTION login_user(text, text) FROM anon;
+GRANT EXECUTE ON FUNCTION login_user(text, text) TO authenticated, service_role;
+
+REVOKE EXECUTE ON FUNCTION register_user(text, text, text, text) FROM anon;
+GRANT EXECUTE ON FUNCTION register_user(text, text, text, text) TO authenticated, service_role;
+```
+
+**Acceptance criteria:**
+- [ ] `grep -rn "postgrest_public_rpc" app/` возвращает пусто
+- [ ] Анонимный вызов `POST /rpc/login_user` — 401/403
+
+---
+
+### ЗАДАЧА 1-4: Защитить `/uploads/verification-docs/` авторизацией
+
+**Приоритет:** CRITICAL
+**Depends on:** none
+**Файлы:** `app/__init__.py` (строки 368-372), `app/blueprints/core.py` (после задачи 4-1)
+
+**Решение:**
+
+1. Раздели роут:
+```python
+@app.route('/uploads/avatars/<path:filename>')
+def uploaded_avatar(filename):
+    """Аватары — публичные."""
+    upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
+    response = send_from_directory(os.path.join(upload_folder, 'avatars'), filename)
+    response.headers['Cache-Control'] = 'public, max-age=86400'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    return response
+
+@app.route('/uploads/verification-docs/<path:filename>')
+@login_required
+def uploaded_verification_doc(filename):
+    """Документы верификации — только админ или владелец."""
+    from flask import session, abort
+    # filename имеет формат verification/<user_id>/<file>.pdf
+    parts = filename.split('/')
+    # Должно быть 3 части: ['verification', '<user_id>', '<file>.pdf']
+    if len(parts) < 3 or parts[0] != 'verification' or parts[1] != session.get('user_id', ''):
+        if session.get('role') != 'admin':
+            abort(403)
+    upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
+    response = send_from_directory(
+        os.path.join(upload_folder, 'verification-docs'), filename,
+        as_attachment=True  # устанавливает Content-Disposition: attachment
+    )
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    return response
+```
+
+2. Удали старый `/uploads/<path:filename>` route.
+
+**Acceptance criteria:**
+- [ ] `GET /uploads/avatars/<file>` — 200 без auth
+- [ ] `GET /uploads/verification-docs/<file>` — 302 без auth
+- [ ] `GET /uploads/verification-docs/verification/<OTHER_USER_ID>/<file>` — 403
+- [ ] `GET /uploads/verification-docs/verification/<MY_USER_ID>/<file>` — 200
+
+---
+
+### ЗАДАЧА 1-5: Устранить Open Redirect через `request.referrer`
+
+**Приоритет:** CRITICAL
+**Depends on:** none
+**Файлы:** `app/utils/security.py`, `app/blueprints/favorites.py`, `app/blueprints/jobs.py`, `app/blueprints/employers.py`, `app/blueprints/blacklist.py`
+
+**Решение:**
+
+1. В `app/utils/security.py` добавь:
+```python
+from urllib.parse import urlparse
+from flask import request, redirect, url_for
+
+def safe_redirect(default_endpoint: str, referrer: str = None):
+    """Редирект только на same-origin URL, иначе на default_endpoint."""
+    referrer = referrer or request.referrer
+    if referrer:
+        parsed = urlparse(referrer)
+        # Блокировать опасные schemes (javascript:, data:, file:)
+        if parsed.scheme and parsed.scheme not in ('http', 'https', ''):
+            return redirect(url_for(default_endpoint))
+        # Только same-origin
+        if not parsed.netloc or parsed.netloc == request.host:
+            return redirect(referrer)
+    return redirect(url_for(default_endpoint))
+```
+
+2. Замени во всех 7 местах:
+```python
+# Было:
+return redirect(request.referrer or url_for('jobs.index'))
+# Стало:
+from app.utils.security import safe_redirect
+return safe_redirect('jobs.index')
+```
+
+**Acceptance criteria:**
+- [ ] При `Referer: https://evil.ru/` — редирект на `/`
+- [ ] При `Referer: javascript:alert(1)` — редирект на `/`
+- [ ] При `Referer: https://trudnik.ru/jobs/123` — редирект на `/jobs/123`
+
+---
+
+### ЗАДАЧА 1-6: Не раскрывать `resp.text` (внутренние ошибки PostgREST)
+
+**Приоритет:** CRITICAL
+**Depends on:** none
+**Файлы:** `app/utils/errors.py` (новый), `app/blueprints/jobs.py`, `app/blueprints/admin.py`, `app/blueprints/favorites.py`, `app/blueprints/employers.py`
+
+**Решение:**
+
+1. Создай `app/utils/errors.py`:
+```python
+def safe_error_message(resp, default: str = 'Ошибка сервера') -> str:
+    """Извлекает пользовательское сообщение, скрывая технические детали."""
+    if not resp or resp.ok:
+        return default
+    try:
+        data = resp.json()
+        if isinstance(data, dict):
+            code = data.get('code', '')
+            code_map = {
+                '23505': 'Запись с такими данными уже существует',
+                '23503': 'Невозможно удалить: есть связанные записи',
+                '42501': 'Недостаточно прав для выполнения операции',
+                '23502': 'Не заполнено обязательное поле',
+                '23514': 'Значение не удовлетворяет ограничениям',
+                '22P02': 'Некорректный формат данных',
+            }
+            if code in code_map:
+                return code_map[code]
+    except Exception:
+        pass
+    return default
+```
+
+2. Найди все `flash(f'...: {resp.text}', ...)` и `jsonify({'error': f'... {resp.text}'})` — замени на `safe_error_message(resp, '...')`.
+
+3. Полный `resp.text` логируй: `current_app.logger.error('PostgREST error: status=%s body=%s', resp.status_code, resp.text[:500])`.
+
+**Acceptance criteria:**
+- [ ] `grep -rn "resp\.text" app/blueprints/ | grep -i "flash\|jsonify"` возвращает пусто
+- [ ] При ошибке `23505` — пользователь видит «Запись с такими данными уже существует»
+
+---
+
+### ЗАДАЧА 1-7: Разделить JWT `role` (PostgreSQL) и `app_role` (бизнес-роль)
+
+**Приоритет:** CRITICAL
+**Depends on:** 0-1
+**Файлы:** `app/utils/auth.py`, `app/utils/postgrest_client.py`, миграции `077_update_rls_app_role.sql` (обновить и `067_bootstrap_amvera.sql`, и `075_audit_remediation.sql`, и RPC-функции)
+
+**Проблема:** JWT содержит `role: 'worker'/'employer'/'admin'`. PostgREST `SET ROLE worker` падает (роли нет), fallback на `anon`. RLS проверяет `current_setting('request.jwt.claim.role')` — видит `admin`. Несоответствие.
+
+**Решение:**
+
+1. В `app/utils/auth.py:generate_jwt()` — измени payload:
+```python
+payload = {
+    'sub': str(user_id),
+    'role': 'authenticated',  # PostgreSQL role — ВСЕГДА
+    'app_role': role,  # 'worker', 'employer', 'admin' — для RLS
+    'user_id': str(user_id),
+    'iat': now,
+    'exp': now + timedelta(seconds=exp_seconds),
+    'jti': jti,
+}
+```
+
+2. В `app/utils/postgrest_client.py:get_service_role_headers()` — используй `role: 'service_role'` (имеет BYPASSRLS):
+```python
+def get_service_role_headers() -> Dict[str, str]:
+    token = pyjwt.encode(
+        {
+            'role': 'service_role',  # НЕ 'trudnikapp'
+            'exp': int(time.time()) + 300,
+            'iat': int(time.time()),
+            'jti': str(_uuid.uuid4()),
+        },
+        PGRST_JWT_SECRET,
+        algorithm='HS256'
+    )
+    return {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
+```
+**Важно:** Убедись, что `trudnikapp` имеет `GRANT service_role TO trudnikapp` (есть в `067_bootstrap_amvera.sql:69`). Если PostgREST подключён как `trudnikapp` и `trudnikapp` наследует `service_role` — `SET ROLE service_role` сработает.
+
+3. В `app/utils/postgrest_client.py:get_user_headers()` — упрости:
+```python
+def get_user_headers(user_id=None):
+    from app.utils.auth import generate_jwt
+    if user_id is None:
+        user_id = session.get('user_id', '')
+    role = session.get('role', 'authenticated')
+    token = generate_jwt(str(user_id) if user_id else '', role)
+    return {'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'}
+```
+
+4. Создай миграцию `077_update_rls_app_role.sql`:
+```sql
+-- Обновить ВСЕ RLS-политики, проверяющие role, на app_role
+-- Найти все политики в 067_bootstrap_amvera.sql и 075_audit_remediation.sql
+
+-- Примеры (нужно обновить все ~15 политик):
+
+-- 067_bootstrap_amvera.sql:929
+DROP POLICY IF EXISTS "Admins can read audit_log" ON audit_log;
+CREATE POLICY "Admins can read audit_log" ON audit_log
+    FOR SELECT USING (current_setting('request.jwt.claim.app_role', true) = 'admin');
+
+-- 067_bootstrap_amvera.sql:1017 (notifications admin delete)
+DROP POLICY IF EXISTS "Admins can delete notifications" ON notifications;
+CREATE POLICY "Admins can delete notifications" ON notifications
+    FOR DELETE USING (current_setting('request.jwt.claim.app_role', true) = 'admin');
+
+-- 075_audit_remediation.sql:375 (restore_job_atomic ownership)
+-- Обновить RPC-функцию: current_setting('request.jwt.claim.role') → current_setting('request.jwt.claim.app_role')
+-- Это делается в миграции 084 (задача 2-3), но добавь сюда для согласованности
+```
+
+5. Обнови RPC-функции, которые проверяют `current_setting('request.jwt.claim.role')`:
+   - `restore_job_atomic` (075:376) — будет обновлён в задаче 2-3
+   - `cancel_job_atomic` (067:1960) — проверь, есть ли там role-проверка
+   - `force_complete_job` (067:2036) — проверь
+
+**Acceptance criteria:**
+- [ ] JWT содержит `role: 'authenticated'` и `app_role: 'worker'/'employer'/'admin'`
+- [ ] RLS-политики проверяют `current_setting('request.jwt.claim.app_role', true)`
+- [ ] `postgrest_admin_request` использует `role: 'service_role'`
+- [ ] Пользователь с `app_role: 'worker'` не может удалить чужое задание
+
+---
+
+### ЗАДАЧА 1-8: Удалить `exec_sql` RPC
+
+**Приоритет:** CRITICAL
+**Depends on:** 0-1
+**Файлы:** миграция `078_drop_exec_sql.sql`, `scripts/_init_exec_sql.py`, `scripts/check_schema.py`
+
+**Решение:**
+
+1. Миграция `078_drop_exec_sql.sql`:
+```sql
+DROP FUNCTION IF EXISTS public.exec_sql(text) CASCADE;
+REVOKE EXECUTE ON FUNCTION public.exec_sql(text) FROM service_role;
+```
+
+2. Удали `scripts/_init_exec_sql.py`.
+
+3. В `scripts/check_schema.py` — замени `exec_sql(...)` на прямое psycopg2:
+```python
+import psycopg2
+
+def exec_sql_direct(query):
+    db_url = os.environ.get('DATABASE_ADMIN_URL') or os.environ.get('DATABASE_URL')
+    if not db_url:
+        print('DATABASE_URL not set')
+        return []
+    conn = psycopg2.connect(db_url)
+    conn.autocommit = True
+    try:
+        with conn.cursor() as cur:
+            cur.execute(query)
+            if query.strip().upper().startswith('SELECT'):
+                columns = [desc[0] for desc in cur.description]
+                return [dict(zip(columns, row)) for row in cur.fetchall()]
+            return []
+    finally:
+        conn.close()
+```
+
+**Acceptance criteria:**
+- [ ] `DROP FUNCTION exec_sql` применён
+- [ ] `grep -rn "exec_sql" app/` возвращает пусто
+- [ ] `scripts/check_schema.py` работает через psycopg2
+
+---
+
+### ЗАДАЧА 1-9: Добавить email verification при регистрации
+
+**Приоритет:** HIGH
+**Depends on:** 0-1
+**Файлы:** миграция `079_add_email_verification.sql`, `app/blueprints/auth.py`, `templates/verify_email.html` (новый), `templates/register.html`
+
+**Решение:**
+
+1. Миграция `079_add_email_verification.sql`:
+```sql
+-- DEFAULT TRUE: существующие пользователи считаются верифицированными
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT TRUE;
+
+-- Новые регистрации (через RPC) будут получать FALSE явно
+-- (обновим RPC register_user в миграции 080)
+```
+
+2. В `app/blueprints/auth.py` — добавь отдельный salt для email verification:
+```python
+_EMAIL_VERIFICATION_SALT = 'email-verify'
+_EMAIL_VERIFICATION_MAX_AGE = 86400  # 24 часа
+
+def _make_email_serializer() -> URLSafeTimedSerializer:
+    return URLSafeTimedSerializer(
+        current_app.config['SECRET_KEY'],
+        salt=_EMAIL_VERIFICATION_SALT
+    )
+
+def _generate_email_verification_token(email: str) -> str:
+    return _make_email_serializer().dumps(email)
+
+def _verify_email_verification_token(token: str) -> str | None:
+    try:
+        return _make_email_serializer().loads(token, max_age=_EMAIL_VERIFICATION_MAX_AGE)
+    except (SignatureExpired, BadSignature):
+        return None
+```
+
+3. В `register()` — после успешной регистрации:
+   - НЕ логинить пользователя.
+   - Генерировать token, отправлять email со ссылкой `/verify-email/<token>`.
+   - Показать страницу «Проверьте почту».
+   ```python
+   # После patch_resp:
+   verification_token = _generate_email_verification_token(email)
+   verification_url = url_for('auth.verify_email', token=verification_token, _external=True)
+   try:
+       from app.services.email_service import send_email
+       send_email(
+           to_email=email,
+           subject='Подтверждение email — Trudnik',
+           body=f'Для подтверждения email перейдите по ссылке:\n\n{verification_url}\n\nСсылка действительна 24 часа.',
+           html_body=f'<p>Для подтверждения email перейдите по <a href="{verification_url}">ссылке</a>.</p><p>Ссылка действительна 24 часа.</p>'
+       )
+   except Exception as e:
+       log.error('Failed to send verification email: %s', e)
+
+   flash('Регистрация успешна. Проверьте почту для подтверждения email.', 'info')
+   return redirect(url_for('auth.login'))
+   ```
+
+4. Создай endpoint `/verify-email/<token>`:
+```python
+@auth_bp.route('/verify-email/<token>')
+def verify_email(token):
+    email = _verify_email_verification_token(token)
+    if not email:
+        flash('Ссылка недействительна или истекла', 'danger')
+        return redirect(url_for('auth.register'))
+    resp = postgrest_admin_request('PATCH',
+        f'profiles?email=eq.{email}', json={'email_verified': True})
+    if resp.ok:
+        flash('Email подтверждён. Теперь вы можете войти.', 'success')
+        return redirect(url_for('auth.login'))
+    flash('Ошибка подтверждения email', 'danger')
+    return redirect(url_for('auth.register'))
+```
+
+5. В `login()` — проверяй `email_verified`:
+```python
+if user:
+    if not user.get('email_verified', True):
+        flash('Подтвердите email перед входом. Проверьте почту.', 'warning')
+        return render_template('login.html')
+    # ... логин
+```
+
+6. Миграция `080_register_user_sets_email_verified.sql`:
+```sql
+CREATE OR REPLACE FUNCTION register_user(
+    p_email text, p_password text, p_full_name text, p_role text DEFAULT 'worker'
+) RETURNS uuid
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE v_user_id uuid;
+BEGIN
+    IF p_role NOT IN ('worker', 'employer') THEN
+        RAISE EXCEPTION 'invalid_role';
+    END IF;
+    IF EXISTS (SELECT 1 FROM public.profiles WHERE LOWER(email) = LOWER(p_email)) THEN
+        RAISE EXCEPTION 'email_exists';
+    END IF;
+    INSERT INTO public.profiles (id, email, password_hash, full_name, role, email_verified)
+    VALUES (gen_random_uuid(), LOWER(p_email), crypt(p_password, gen_salt('bf', 12)), p_full_name, p_role, FALSE)
+    RETURNING id INTO v_user_id;
+    RETURN v_user_id;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION register_user(text, text, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION register_user(text, text, text, text) TO authenticated, service_role;
+```
+
+**Acceptance criteria:**
+- [ ] Существующие пользователи имеют `email_verified = TRUE`
+- [ ] Новые регистрации имеют `email_verified = FALSE`
+- [ ] После регистрации — email отправляется, пользователь НЕ залогинен
+- [ ] `/verify-email/<valid_token>` — устанавливает `email_verified=true`
+- [ ] Попытка входа без verification — flash «Подтвердите email»
+- [ ] Salt отличается от password-reset
+
+---
+
+### ЗАДАЧА 1-10: Нормализовать email к нижнему регистру
+
+**Приоритет:** CRITICAL
+**Depends on:** 1-9
+**Файлы:** `app/blueprints/auth.py`, миграция `081_normalize_emails.sql`
+
+**Решение:**
+
+1. В `app/blueprints/auth.py` — везде добавь `.lower()` после `.strip()`:
+   - `register()`: `email = request.form.get('email', '').strip().lower()`
+   - `login()`: `email = request.form.get('email', '').strip().lower()`
+   - `password_reset_request()`: аналогично.
+
+2. Миграция `081_normalize_emails.sql`:
+```sql
+-- 1. Перенести зависимости с дубликатов на "выжившие" профили
+-- (для каждой таблицы с FK на profiles.id)
+
+-- applications.worker_id
+UPDATE applications a SET worker_id = keep.keep_id
+FROM (
+    SELECT MIN(p1.id) AS keep_id, LOWER(p1.email) AS le
+    FROM profiles p1 GROUP BY LOWER(p1.email)
+) keep
+WHERE LOWER((SELECT email FROM profiles WHERE id = a.worker_id)) = keep.le
+  AND a.worker_id != keep.keep_id;
+
+-- jobs.employer_id
+UPDATE jobs j SET employer_id = keep.keep_id
+FROM (
+    SELECT MIN(p1.id) AS keep_id, LOWER(p1.email) AS le
+    FROM profiles p1 GROUP BY LOWER(p1.email)
+) keep
+WHERE LOWER((SELECT email FROM profiles WHERE id = j.employer_id)) = keep.le
+  AND j.employer_id != keep.keep_id;
+
+-- ratings.rater_user_id
+UPDATE ratings r SET rater_user_id = keep.keep_id
+FROM (SELECT MIN(id) AS keep_id, LOWER(email) AS le FROM profiles GROUP BY LOWER(email)) keep
+WHERE LOWER((SELECT email FROM profiles WHERE id = r.rater_user_id)) = keep.le
+  AND r.rater_user_id != keep.keep_id;
+
+-- ratings.rated_user_id
+UPDATE ratings r SET rated_user_id = keep.keep_id
+FROM (SELECT MIN(id) AS keep_id, LOWER(email) AS le FROM profiles GROUP BY LOWER(email)) keep
+WHERE LOWER((SELECT email FROM profiles WHERE id = r.rated_user_id)) = keep.le
+  AND r.rated_user_id != keep.keep_id;
+
+-- notifications.user_id
+UPDATE notifications n SET user_id = keep.keep_id
+FROM (SELECT MIN(id) AS keep_id, LOWER(email) AS le FROM profiles GROUP BY LOWER(email)) keep
+WHERE LOWER((SELECT email FROM profiles WHERE id = n.user_id)) = keep.le
+  AND n.user_id != keep.keep_id;
+
+-- favorites.user_id, favorites.target_id
+UPDATE favorites SET user_id = keep.keep_id
+FROM (SELECT MIN(id) AS keep_id, LOWER(email) AS le FROM profiles GROUP BY LOWER(email)) keep
+WHERE LOWER((SELECT email FROM profiles WHERE id = favorites.user_id)) = keep.le
+  AND favorites.user_id != keep.keep_id;
+UPDATE favorites SET target_id = keep.keep_id
+FROM (SELECT MIN(id) AS keep_id, LOWER(email) AS le FROM profiles GROUP BY LOWER(email)) keep
+WHERE LOWER((SELECT email FROM profiles WHERE id = favorites.target_id)) = keep.le
+  AND favorites.target_id != keep.keep_id;
+
+-- blacklists.user_id, blacklists.blocked_user_id
+UPDATE blacklists SET user_id = keep.keep_id
+FROM (SELECT MIN(id) AS keep_id, LOWER(email) AS le FROM profiles GROUP BY LOWER(email)) keep
+WHERE LOWER((SELECT email FROM profiles WHERE id = blacklists.user_id)) = keep.le
+  AND blacklists.user_id != keep.keep_id;
+UPDATE blacklists SET blocked_user_id = keep.keep_id
+FROM (SELECT MIN(id) AS keep_id, LOWER(email) AS le FROM profiles GROUP BY LOWER(email)) keep
+WHERE LOWER((SELECT email FROM profiles WHERE id = blacklists.blocked_user_id)) = keep.le
+  AND blacklists.blocked_user_id != keep.keep_id;
+
+-- messages.sender_id
+UPDATE messages SET sender_id = keep.keep_id
+FROM (SELECT MIN(id) AS keep_id, LOWER(email) AS le FROM profiles GROUP BY LOWER(email)) keep
+WHERE LOWER((SELECT email FROM profiles WHERE id = messages.sender_id)) = keep.le
+  AND messages.sender_id != keep.keep_id;
+
+-- push_subscriptions.user_id
+UPDATE push_subscriptions SET user_id = keep.keep_id
+FROM (SELECT MIN(id) AS keep_id, LOWER(email) AS le FROM profiles GROUP BY LOWER(email)) keep
+WHERE LOWER((SELECT email FROM profiles WHERE id = push_subscriptions.user_id)) = keep.le
+  AND push_subscriptions.user_id != keep.keep_id;
+
+-- user_skills.user_id
+UPDATE user_skills SET user_id = keep.keep_id
+FROM (SELECT MIN(id) AS keep_id, LOWER(email) AS le FROM profiles GROUP BY LOWER(email)) keep
+WHERE LOWER((SELECT email FROM profiles WHERE id = user_skills.user_id)) = keep.le
+  AND user_skills.user_id != keep.keep_id;
+
+-- invitations.employer_id, invitations.worker_id
+UPDATE invitations SET employer_id = keep.keep_id
+FROM (SELECT MIN(id) AS keep_id, LOWER(email) AS le FROM profiles GROUP BY LOWER(email)) keep
+WHERE LOWER((SELECT email FROM profiles WHERE id = invitations.employer_id)) = keep.le
+  AND invitations.employer_id != keep.keep_id;
+UPDATE invitations SET worker_id = keep.keep_id
+FROM (SELECT MIN(id) AS keep_id, LOWER(email) AS le FROM profiles GROUP BY LOWER(email)) keep
+WHERE LOWER((SELECT email FROM profiles WHERE id = invitations.worker_id)) = keep.le
+  AND invitations.worker_id != keep.keep_id;
+
+-- 2. Удалить дубликаты (оставить самый старый)
+DELETE FROM profiles p1 USING profiles p2
+WHERE LOWER(p1.email) = LOWER(p2.email)
+  AND p1.created_at > p2.created_at;
+
+-- 3. Привести к нижнему регистру
+UPDATE profiles SET email = LOWER(email) WHERE email != LOWER(email);
+
+-- 4. Пересоздать индекс как case-insensitive
+DROP INDEX IF EXISTS idx_profiles_email;
+CREATE UNIQUE INDEX idx_profiles_email ON profiles(LOWER(email));
+```
+
+3. В `migrations/067_bootstrap_amvera.sql` (для будущих fresh installs) — обнови `login_user`:
+```sql
+CREATE OR REPLACE FUNCTION login_user(p_email text, p_password text)
+RETURNS TABLE(user_id uuid, role text, full_name text) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT p.id, p.role, p.full_name
+    FROM profiles p
+    WHERE LOWER(p.email) = LOWER(p_email)
+      AND p.password_hash = crypt(p_password, p.password_hash)
+    LIMIT 1;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+**Acceptance criteria:**
+- [ ] Регистрация `User@example.com` → в БД `user@example.com`
+- [ ] Логин `USER@EXAMPLE.COM` → успех
+- [ ] `SELECT email FROM profiles` — все lowercase
+- [ ] Дубликаты удалены, зависимости перенесены
+- [ ] Индекс на `LOWER(email)`
+
+---
+
+### ЗАДАЧА 1-11: Устранить per-email lockout DoS
+
+**Приоритет:** HIGH
+**Depends on:** none
+**Файлы:** `app/blueprints/auth.py`
+
+**Решение:**
+
+1. Добавь per-IP rate limit в `login()`:
+```python
+ip = request.remote_addr or 'unknown'
+ip_key = f"login_ip:{ip}"
+try:
+    ip_attempts = redis_client.incr(ip_key)
+    if ip_attempts == 1:
+        redis_client.expire(ip_key, 3600)  # 1 час
+    if ip_attempts > 20:
+        flash('Слишком много попыток с вашего IP. Подождите час.', 'danger')
+        return render_template('login.html')
+except Exception:
+    pass  # Redis недоступен — fail-open
+```
+
+2. В `_increment_login_attempts` — exponential backoff + сброс:
+```python
+def _increment_login_attempts(lockout_key, attempts_key, email):
+    try:
+        client = get_redis_client()
+        if client is None:
+            return
+        attempts = client.incr(attempts_key)
+        if attempts == 1:
+            client.expire(attempts_key, 900)
+        if attempts >= 5:
+            # Exponential backoff
+            lockout_count_key = f"login_lockout_count:{email}"
+            lockout_count = int(client.get(lockout_count_key) or 0)
+            lockout_duration = 900 * (2 ** lockout_count)  # 900, 1800, 3600, 7200
+            client.setex(lockout_key, lockout_duration, str(lockout_count + 1))
+            client.delete(attempts_key)  # сброс счётчика
+            log.warning('Account locked: %s for %d sec (attempt %d)', email, lockout_duration, lockout_count + 1)
+    except Exception as e:
+        log.warning('Failed: %s', e)
+
+def _clear_login_attempts(lockout_key, attempts_key, email=None):
+    try:
+        client = get_redis_client()
+        if client is None:
+            return
+        client.delete(attempts_key, lockout_key)
+        if email:
+            client.delete(f"login_lockout_count:{email}")
+    except Exception:
+        pass
+```
+
+3. CAPTCHA — отложить до задачи 7-4 (пока только backoff + IP limit).
+
+**Acceptance criteria:**
+- [ ] 20 неудачных попыток с одного IP → блокировка IP на 1 час
+- [ ] 5 неудач для email → блокировка 15 мин, `attempts_key` сброшен
+- [ ] 2-я блокировка того же email → 30 мин
+- [ ] Успешный вход сбрасывает `lockout_count`
+
+---
+
+### ЗАДАЧА 1-12: Унифицировать bcrypt rounds (transparent rehashing)
+
+**Приоритет:** HIGH
+**Depends on:** 0-1
+**Файлы:** `migrations/067_bootstrap_amvera.sql` (строки 1101, 1118), миграция `082_login_user_rehash.sql`
+
+**Решение:**
+
+1. Проверь, что миграция `075_audit_remediation.sql` применена (в ней `gen_salt('bf', 12)`).
+
+2. В `067_bootstrap_amvera.sql` исправь для будущих fresh installs:
+   - Строка 1101: `gen_salt('bf', 12)`
+   - Строка 1118: `gen_salt('bf', 12)`
+
+3. Миграция `082_login_user_rehash.sql` — transparent пере-хеширование в `login_user`:
+```sql
+CREATE OR REPLACE FUNCTION login_user(p_email text, p_password text)
+RETURNS TABLE(user_id uuid, role text, full_name text, email_verified boolean) AS $$
+DECLARE
+    v_id uuid;
+    v_hash text;
+    v_role text;
+    v_name text;
+    v_verified boolean;
+BEGIN
+    SELECT id, password_hash, role, full_name, email_verified
+    INTO v_id, v_hash, v_role, v_name, v_verified
+    FROM profiles
+    WHERE LOWER(email) = LOWER(p_email)
+    LIMIT 1;
+
+    IF v_id IS NULL THEN
+        RETURN;
+    END IF;
+
+    IF v_hash IS NULL OR v_hash != crypt(p_password, v_hash) THEN
+        RETURN;
+    END IF;
+
+    -- Пере-хешировать если rounds < 12 (старые хеши $2a$06$ или $2b$06$)
+    IF v_hash LIKE '$2a$06$%' OR v_hash LIKE '$2b$06$%' THEN
+        UPDATE profiles SET password_hash = crypt(p_password, gen_salt('bf', 12)) WHERE id = v_id;
+    END IF;
+
+    RETURN QUERY SELECT v_id, v_role, v_name, COALESCE(v_verified, true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+REVOKE EXECUTE ON FUNCTION login_user(text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION login_user(text, text) TO authenticated, service_role;
+```
+
+4. В `app/blueprints/auth.py:_login_direct_sql()` — добавь аналогичную логику пере-хеширования:
+```python
+# После проверки пароля:
+if row:
+    # Пере-хешировать если rounds < 12
+    stored_hash = row[4] if len(row) > 4 else None  # password_hash (нужно добавить в SELECT)
+    if stored_hash and (stored_hash.startswith('$2a$06$') or stored_hash.startswith('$2b$06$')):
+        import bcrypt
+        new_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(rounds=12)).decode('utf-8')
+        with conn.cursor() as cur:
+            cur.execute("UPDATE profiles SET password_hash = %s WHERE id = %s", (new_hash, row[0]))
+```
+
+5. НЕ добавляй `password_must_change` — прозрачное пере-хеширование не требует действий пользователя.
+
+**Acceptance criteria:**
+- [ ] `login_user` возвращает `email_verified` (4-я колонка)
+- [ ] При логине со старым хешем ($2a$06$) — пароль проверяется, хеш обновляется до $2a$12$/$2b$12$
+- [ ] Пользователь не замечает пере-хеширование
+- [ ] `grep "gen_salt('bf')" migrations/067_bootstrap_amvera.sql` — пусто (только `gen_salt('bf', 12)`)
+
+---
+
+### ЗАДАЧА 1-13: Удалить emergency-эндпоинты
+
+**Приоритет:** HIGH
+**Depends on:** 1-1
+**Файлы:** `app/blueprints/admin.py`, `scripts/emergency_reset_users.py` (новый), `scripts/emergency_fix_permissions.py` (новый)
+
+**Решение:**
+
+1. Удали из `admin.py` функции `fix_permissions` и `reset_users`.
+
+2. Перенеси логику в `scripts/emergency_reset_users.py` и `scripts/emergency_fix_permissions.py`:
+```python
+#!/usr/bin/env python3
+"""EMERGENCY: Reset all users. CLI-only."""
+import sys
+if '--confirm-i-know-what-i-do' not in sys.argv:
+    print('Add --confirm-i-know-what-i-do to confirm')
+    sys.exit(1)
+# ... логика
+```
+
+3. `/api/reset-circuit-breaker` — оставь, с IP-whitelist (из 1-1).
+
+**Acceptance criteria:**
+- [ ] `GET /api/reset-users` — 404
+- [ ] `GET /api/fix-permissions` — 404
+- [ ] `python scripts/emergency_reset_users.py` без `--confirm` — отказ
+
+---
+
+## ФАЗА 2: КРИТИЧЕСКАЯ ЦЕЛОСТНОСТЬ ДАННЫХ
+
+---
+
+### ЗАДАЧА 2-1: Создать drain-воркер для `notification_outbox`
+
+**Приоритет:** CRITICAL
+**Depends on:** none
+**Файлы:** `app/tasks/notification_tasks.py` (новый), `app/tasks/celery_app.py`, миграция `083_add_outbox_attempts.sql`
+
+**Решение:**
+
+1. Миграция `083_add_outbox_attempts.sql`:
+```sql
+ALTER TABLE notification_outbox ADD COLUMN IF NOT EXISTS attempts INT DEFAULT 0;
+-- Добавить 'skipped' для отключённых уведомлений
+ALTER TABLE notification_outbox DROP CONSTRAINT IF EXISTS notification_outbox_status_check;
+ALTER TABLE notification_outbox ADD CONSTRAINT notification_outbox_status_check
+    CHECK (status IN ('pending','sent','failed','skipped'));
+```
+
+2. Создай `app/tasks/notification_tasks.py`:
+```python
+"""Celery-задача для drain notification_outbox."""
+import logging
+from datetime import datetime, timezone
+from .celery_app import celery_app
+from app.utils import postgrest_admin_request
+from app.services.notification_service import create as notify_create, get_user_prefs
+
+logger = logging.getLogger(__name__)
+
+@celery_app.task(bind=True, max_retries=3, default_retry_delay=10)
+def drain_notification_outbox(self):
+    """Читает pending-записи, отправляет через notification_service.create."""
+    try:
+        resp = postgrest_admin_request('GET',
+            'notification_outbox?status=eq.pending&order=created_at.asc&limit=100')
+        if not resp.ok:
+            logger.error('drain: fetch failed: %s', resp.status_code)
+            return {'processed': 0, 'errors': 1}
+
+        items = resp.json() or []
+        processed = 0
+        failed = 0
+        skipped = 0
+        now_iso = datetime.now(timezone.utc).isoformat()
+
+        for item in items:
+            # Инкремент attempts
+            attempts = (item.get('attempts') or 0) + 1
+            postgrest_admin_request('PATCH',
+                f'notification_outbox?id=eq.{item["id"]}',
+                json={'attempts': attempts})
+
+            if attempts >= 3:
+                postgrest_admin_request('PATCH',
+                    f'notification_outbox?id=eq.{item["id"]}',
+                    json={'status': 'failed', 'processed_at': now_iso})
+                failed += 1
+                continue
+
+            try:
+                # Проверить, отключено ли уведомление
+                prefs = get_user_prefs(item['user_id'])
+                if not prefs.get(item['type'], True):
+                    status = 'skipped'
+                else:
+                    success = notify_create(
+                        user_id=item['user_id'],
+                        notification_type=item['type'],
+                        title=item.get('title', ''),
+                        message=item.get('body', ''),
+                        data=item.get('data', {})
+                    )
+                    status = 'sent' if success else 'failed'
+
+                postgrest_admin_request('PATCH',
+                    f'notification_outbox?id=eq.{item["id"]}',
+                    json={'status': status, 'processed_at': now_iso})
+
+                if status == 'sent':
+                    processed += 1
+                elif status == 'skipped':
+                    skipped += 1
+                else:
+                    failed += 1
+            except Exception as e:
+                logger.error('drain: error item %s: %s', item.get('id'), e)
+                failed += 1
+
+        logger.info('drain: processed=%d skipped=%d failed=%d', processed, skipped, failed)
+        return {'processed': processed, 'skipped': skipped, 'failed': failed}
+
+    except Exception as e:
+        logger.exception('drain: unexpected: %s', e)
+        raise self.retry(exc=e, countdown=30)
+```
+
+3. В `app/tasks/celery_app.py` добавь в `beat_schedule`:
+```python
+'drain-notification-outbox': {
+    'task': 'app.tasks.notification_tasks.drain_notification_outbox',
+    'schedule': 10.0,
+    'options': {'expires': 8},
+},
+```
+
+**Acceptance criteria:**
+- [ ] `drain_notification_outbox` зарегистрирована в Beat
+- [ ] При `enqueue_notification` — запись в outbox, через 10 сек — `status='sent'`
+- [ ] После 3 неудач — `status='failed'`
+- [ ] Отключённые уведомления — `status='skipped'`
+- [ ] `attempts` инкрементируется при каждой попытке
+
+---
+
+### ЗАДАЧА 2-2: Исправить `withdraw_application_atomic` RPC
+
+**Приоритет:** CRITICAL
+**Depends on:** 1-7
+**Файлы:** миграция `084_fix_withdraw_atomic.sql`, `app/services/application_service.py`
+
+**Решение:**
+
+1. Создай `migrations/084_fix_withdraw_atomic.sql`:
+```sql
+CREATE OR REPLACE FUNCTION public.withdraw_application_atomic(
+    p_application_id uuid, p_user_id uuid
+) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE
+    v_worker_id uuid;
+    v_job_id uuid;
+    v_status text;
+    v_job_status text;
+    v_current_workers int;
+    v_max_workers int;
+    v_date_time timestamptz;
+    v_hours_before float8;
+    v_employer_id uuid;
+BEGIN
+    SELECT worker_id, job_id, status
+    INTO v_worker_id, v_job_id, v_status
+    FROM public.applications
+    WHERE id = p_application_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Заявка не найдена', 'code', 'application_not_found');
+    END IF;
+
+    IF v_worker_id != p_user_id THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Вы не автор этой заявки', 'code', 'not_owner');
+    END IF;
+
+    IF v_status = 'withdrawn' THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Заявка уже отозвана', 'code', 'already_withdrawn');
+    END IF;
+
+    IF v_status = 'accepted' THEN
+        SELECT status, current_workers, max_workers, date_time, employer_id
+        INTO v_job_status, v_current_workers, v_max_workers, v_date_time, v_employer_id
+        FROM public.jobs
+        WHERE id = v_job_id
+        FOR UPDATE;
+
+        IF v_date_time IS NOT NULL THEN
+            -- v_date_time - timestamptz, now() - timestamptz, разность - interval
+            v_hours_before := EXTRACT(EPOCH FROM (v_date_time - now())) / 3600.0;
+            IF v_hours_before < 12 THEN
+                RETURN jsonb_build_object(
+                    'success', false,
+                    'error', format('Нельзя отозвать менее чем за 12 часов до начала (осталось %.1f ч)', v_hours_before),
+                    'code', 'too_close_to_start'
+                );
+            END IF;
+        END IF;
+
+        v_current_workers := GREATEST(0, v_current_workers - 1);
+        IF v_current_workers = 0 AND v_job_status = 'completed' THEN
+            v_job_status := 'open';
+        END IF;
+
+        UPDATE public.jobs
+        SET current_workers = v_current_workers, status = v_job_status, updated_at = now()
+        WHERE id = v_job_id;
+    ELSE
+        -- Для pending — получить employer_id для уведомления
+        SELECT employer_id INTO v_employer_id FROM public.jobs WHERE id = v_job_id;
+    END IF;
+
+    UPDATE public.applications
+    SET status = 'withdrawn'
+    WHERE id = p_application_id;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'message', 'Заявка отозвана',
+        'new_status', 'withdrawn',
+        'job_id', v_job_id,
+        'employer_id', v_employer_id
+    );
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.withdraw_application_atomic(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.withdraw_application_atomic(uuid, uuid) TO authenticated, service_role;
+```
+
+2. В `app/services/application_service.py` — удали `withdraw_application()` (неатомарный), оставь только:
+```python
+def withdraw_application_atomic(app_id: str, user_id: str) -> Dict[str, Any]:
+    rpc_resp = postgrest_rpc('withdraw_application_atomic', {
+        'p_application_id': app_id,
+        'p_user_id': user_id
+    }, use_admin=True)
+
+    if not rpc_resp.ok:
+        logger.error('withdraw_application_atomic: RPC failed: %s', rpc_resp.status_code)
+        return {'success': False, 'error': 'Сервис временно недоступен'}
+
+    result = rpc_resp.json()
+    if isinstance(result, str):
+        import json
+        result = json.loads(result)
+
+    if isinstance(result, dict):
+        if result.get('success'):
+            return {
+                'success': True,
+                'message': result.get('message', 'Отклик отозван'),
+                'new_status': 'withdrawn'
+            }
+        return {'success': False, 'error': result.get('error', 'Ошибка отзыва')}
+
+    return {'success': False, 'error': 'Неожиданный ответ сервера'}
+```
+
+3. Удали импорт `withdraw_application` (неатомарного) из `applications.py`.
+
+**Acceptance criteria:**
+- [ ] Отзыв `pending` — `success: true`, возвращает `employer_id`
+- [ ] Отзыв `accepted` > 12 ч — `success: true`, `current_workers` уменьшен
+- [ ] Отзыв `accepted` < 12 ч — `code: 'too_close_to_start'`
+- [ ] `withdraw_application()` (неатомарный) удалён
+- [ ] Тест: 10 параллельных отзывов — `current_workers` корректен
+
+---
+
+### ЗАДАЧА 2-3: Исправить `restore_job_atomic`
+
+**Приоритет:** CRITICAL
+**Depends on:** 1-7
+**Файлы:** миграция `085_fix_restore_job_atomic.sql`, `app/blueprints/jobs.py`
+
+**Решение:**
+
+1. Создай `migrations/085_fix_restore_job_atomic.sql`:
+```sql
+CREATE OR REPLACE FUNCTION public.restore_job_atomic(p_job_id uuid, p_user_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE
+    v_employer_id uuid;
+    v_status text;
+    v_restored_count int;
+    v_restored_worker_ids uuid[];
+BEGIN
+    SELECT employer_id, status INTO v_employer_id, v_status
+    FROM public.jobs WHERE id = p_job_id FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Задание не найдено', 'code', 'job_not_found');
+    END IF;
+
+    -- Используем app_role (после задачи 1-7)
+    IF v_employer_id != p_user_id
+       AND current_setting('request.jwt.claim.app_role', true) NOT IN ('admin', 'service_role') THEN
+        RETURN jsonb_build_object('success', false, 'error', 'not authorized', 'code', 'not_owner');
+    END IF;
+
+    IF v_status != 'cancelled' THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', format('Можно восстановить только отменённое задание (статус: %s)', v_status),
+            'code', 'not_cancelled'
+        );
+    END IF;
+
+    UPDATE public.jobs
+    SET status = 'open', current_workers = 0, updated_at = now()
+    WHERE id = p_job_id;
+
+    -- Меняем rejected на pending (НЕ cancelled!)
+    WITH restored AS (
+        UPDATE public.applications SET status = 'pending'
+        WHERE job_id = p_job_id AND status = 'rejected'
+        RETURNING id, worker_id
+    )
+    SELECT count(*), array_agg(DISTINCT worker_id)
+    INTO v_restored_count, v_restored_worker_ids
+    FROM restored;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'message', 'Задание восстановлено',
+        'job_status', 'open',
+        'current_workers', 0,
+        'restored_applications', v_restored_count,
+        'restored_worker_ids', COALESCE(to_jsonb(v_restored_worker_ids), '[]'::jsonb)
+    );
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.restore_job_atomic(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.restore_job_atomic(uuid, uuid) TO authenticated, service_role;
+```
+
+2. В `app/blueprints/jobs.py:restore_job()` — обнови обработку:
+```python
+result = rpc_result.json()
+if isinstance(result, str):
+    import json
+    result = json.loads(result)
+
+if not result or not result.get('success'):
+    error_msg = (result or {}).get('error', 'Не удалось восстановить задание')
+    status_code = 409 if (result or {}).get('code') == 'not_cancelled' else 400
+    if is_ajax:
+        return jsonify({'success': False, 'error': error_msg}), status_code
+    flash(error_msg, 'danger')
+    return redirect(url_for('jobs.my_jobs'))
+
+restored_worker_ids = result.get('restored_worker_ids', [])
+for worker_id in restored_worker_ids:
+    if worker_id:
+        enqueue_notification(worker_id, 'status_change', 'Задание восстановлено',
+               f'Задание #{job_id} снова открыто',
+               data={'job_id': job_id, 'link': url_for('jobs.job_detail', job_id=job_id, _external=True)})
+```
+
+**Acceptance criteria:**
+- [ ] Восстановление `cancelled` с `rejected`-заявками — `rejected` → `pending`
+- [ ] Восстановление `open` — `code: 'not_cancelled'`
+- [ ] RPC не падает с CHECK violation
+- [ ] Уведомления отправляются восстановленным работникам
+
+---
+
+### ЗАДАЧА 2-4: Исправить `delete_job_cascade` (substring-match)
+
+**Приоритет:** HIGH
+**Depends on:** none
+**Файлы:** миграция `086_fix_delete_job_cascade.sql`
+
+**Решение:**
+```sql
+CREATE OR REPLACE FUNCTION public.delete_job_cascade(p_job_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE
+    v_deleted_apps int;
+    v_deleted_skills int;
+    v_deleted_photos int;
+    v_deleted_favorites int;
+    v_deleted_invitations int;
+    v_deleted_notifications int;
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM jobs WHERE id = p_job_id) THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Задание не найдено');
+    END IF;
+
+    DELETE FROM applications WHERE job_id = p_job_id;
+    GET DIAGNOSTICS v_deleted_apps = ROW_COUNT;
+
+    DELETE FROM job_skills WHERE job_id = p_job_id;
+    GET DIAGNOSTICS v_deleted_skills = ROW_COUNT;
+
+    DELETE FROM job_photos WHERE job_id = p_job_id;
+    GET DIAGNOSTICS v_deleted_photos = ROW_COUNT;
+
+    DELETE FROM job_favorites WHERE job_id = p_job_id;
+    GET DIAGNOSTICS v_deleted_favorites = ROW_COUNT;
+
+    DELETE FROM invitations WHERE job_id = p_job_id;
+    GET DIAGNOSTICS v_deleted_invitations = ROW_COUNT;
+
+    -- Использовать прямую колонку job_id
+    DELETE FROM notifications WHERE job_id = p_job_id;
+    GET DIAGNOSTICS v_deleted_notifications = ROW_COUNT;
+
+    DELETE FROM jobs WHERE id = p_job_id;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'deleted', jsonb_build_object(
+            'applications', v_deleted_apps,
+            'job_skills', v_deleted_skills,
+            'job_photos', v_deleted_photos,
+            'job_favorites', v_deleted_favorites,
+            'invitations', v_deleted_invitations,
+            'notifications', v_deleted_notifications
+        ),
+        'message', 'Задание удалено'
+    );
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.delete_job_cascade(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.delete_job_cascade(uuid) TO service_role;
+```
+
+**Acceptance criteria:**
+- [ ] Уведомления с `job_id` удаляются по индексу
+- [ ] Уведомления БЕЗ `job_id` — НЕ удаляются
+
+---
+
+### ЗАДАЧА 2-5: Исправить naive datetime в `date_time`
+
+**Приоритет:** HIGH
+**Depends on:** 2-2
+**Файлы:** `app/blueprints/jobs.py`, `app/utils/business.py`, миграция `087_normalize_job_datetime.sql`
+
+**Решение:**
+
+1. В `app/blueprints/jobs.py:job_new()` (строка 536) — замени:
+```python
+from datetime import datetime, timezone
+
+deadline = request.form.get('deadline')
+if deadline:
+    try:
+        dt = datetime.fromisoformat(deadline)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        date_time_value = dt.isoformat()
+    except ValueError:
+        flash('Некорректный формат даты', 'danger')
+        return render_template('job_new.html', **template_data)
+else:
+    date_time_value = datetime.now(timezone.utc).isoformat()
+
+job_data = {
+    # ...
+    'date_time': date_time_value,
+    # ...
+}
+```
+
+2. В `app/utils/business.py:check_withdraw_window()`:
+```python
+def check_withdraw_window(job_date_time):
+    if not job_date_time:
+        return True
+    try:
+        job_dt = datetime.fromisoformat(str(job_date_time).replace('Z', '+00:00'))
+        if job_dt.tzinfo is None:
+            job_dt = job_dt.replace(tzinfo=timezone.utc)
+        return (job_dt - datetime.now(timezone.utc)).total_seconds() > 12 * 3600
+    except (ValueError, TypeError):
+        return True
+```
+
+3. Миграция `087_normalize_job_datetime.sql`:
+```sql
+-- Нормализовать naive datetime (предполагаем UTC)
+-- date_time - timestamptz, PostgreSQL хранит в UTC. Если данные записаны как naive,
+-- PostgreSQL уже интерпретировал их в session-timezone (обычно UTC).
+-- Эта миграция — NOOP, но проверим:
+SELECT id, date_time FROM jobs WHERE date_time::text NOT LIKE '%+%' LIMIT 10;
+-- Если есть записи без tz — они уже в UTC (PostgreSQL timestamptz всегда хранит UTC).
+-- Дополнительно ничего не делаем.
+```
+
+**Acceptance criteria:**
+- [ ] Новые задания имеют `date_time` с timezone
+- [ ] Отзыв `accepted` за 11 ч — отказ
+- [ ] Отзыв `accepted` за 13 ч — успех
+
+---
+
+### ЗАДАЧА 2-6: Добавить проверку `expires_at` в `apply_job_atomic`
+
+**Приоритет:** HIGH
+**Depends on:** none
+**Файлы:** миграция `088_apply_job_check_expires.sql`, `app/blueprints/jobs.py`, `app/tasks/maintenance_tasks.py`
+
+**Решение:**
+
+1. Миграция `088_apply_job_check_expires.sql`:
+```sql
+CREATE OR REPLACE FUNCTION public.apply_job_atomic(
+    p_job_id uuid, p_worker_id uuid
+) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE
+    v_job_status text;
+    v_current_workers int;
+    v_max_workers int;
+    v_employer_id uuid;
+    v_expires_at timestamptz;
+    v_blacklisted boolean;
+    v_already_applied boolean;
+BEGIN
+    SELECT status, current_workers, max_workers, employer_id, expires_at
+    INTO v_job_status, v_current_workers, v_max_workers, v_employer_id, v_expires_at
+    FROM jobs
+    WHERE id = p_job_id
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Задание не найдено', 'code', 'job_not_found');
+    END IF;
+
+    IF v_expires_at IS NOT NULL AND v_expires_at < now() THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Срок действия задания истёк', 'code', 'job_expired');
+    END IF;
+
+    IF v_job_status != 'open' THEN
+        RETURN jsonb_build_object('success', false, 'error', 'На это задание нельзя откликаться', 'code', 'job_not_open');
+    END IF;
+
+    IF v_employer_id = p_worker_id THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Нельзя откликаться на собственное задание', 'code', 'own_job');
+    END IF;
+
+    SELECT EXISTS(SELECT 1 FROM blacklists WHERE user_id = v_employer_id AND blocked_user_id = p_worker_id)
+    INTO v_blacklisted;
+
+    IF v_blacklisted THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Вы в чёрном списке', 'code', 'blacklisted');
+    END IF;
+
+    SELECT EXISTS(SELECT 1 FROM applications WHERE job_id = p_job_id AND worker_id = p_worker_id)
+    INTO v_already_applied;
+
+    IF v_already_applied THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Вы уже откликались', 'code', 'duplicate');
+    END IF;
+
+    IF v_current_workers >= v_max_workers THEN
+        RETURN jsonb_build_object('success', false, 'error', format('Места заполнены (макс %s)', v_max_workers), 'code', 'no_slots');
+    END IF;
+
+    INSERT INTO applications (job_id, worker_id, status)
+    VALUES (p_job_id, p_worker_id, 'pending');
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'message', 'Отклик отправлен',
+        'employer_id', v_employer_id
+    );
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.apply_job_atomic(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.apply_job_atomic(uuid, uuid) TO authenticated, service_role;
+```
+
+2. В `jobs.py:edit_job()` — обновляй `expires_at`:
+```python
+data['expires_at'] = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+```
+
+3. В `app/tasks/maintenance_tasks.py` — добавь:
+```python
+@celery_app.task
+def expire_old_jobs():
+    """Переводить истёкшие open-задания в cancelled."""
+    now = datetime.now(timezone.utc).isoformat()
+    resp = postgrest_admin_request('PATCH',
+        f'jobs?expires_at=lt.{now}&status=eq.open',
+        json={'status': 'cancelled'})
+    if resp.ok:
+        count = len(resp.json()) if resp.json() else 0
+        logger.info('Expired %d jobs', count)
+        return {'expired': count}
+    return {'expired': 0, 'error': resp.text[:200]}
+```
+
+4. В `celery_app.py:beat_schedule`:
+```python
+'expire-old-jobs': {
+    'task': 'app.tasks.maintenance_tasks.expire_old_jobs',
+    'schedule': 3600.0,
+},
+```
+
+**Acceptance criteria:**
+- [ ] Отклик на истёкшее задание — `code: 'job_expired'`
+- [ ] При редактировании — `expires_at` продлевается
+- [ ] Celery-задача переводит истёкшие в `cancelled`
+
+---
+
+### ЗАДАЧА 2-7: Устранить DB connection leak
+
+**Приоритет:** HIGH
+**Depends on:** none
+**Файлы:** `app/blueprints/auth.py:_login_direct_sql()`
+
+**Решение:**
+```python
+def _login_direct_sql(email: str, password: str) -> dict | None:
+    db_url = _get_db_url()
+    if not db_url:
+        raise RuntimeError("DATABASE_URL не задан")
+    import psycopg2
+    conn = None
+    try:
+        conn = psycopg2.connect(db_url, connect_timeout=10)
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, email, role, full_name, password_hash
+                FROM profiles
+                WHERE LOWER(email) = LOWER(%s) AND password_hash = crypt(%s, password_hash)
+            """, (email, password))
+            row = cur.fetchone()
+
+            if row:
+                # Пере-хешировать если rounds < 12 (задача 1-12)
+                stored_hash = row[4]
+                if stored_hash and (stored_hash.startswith('$2a$06$') or stored_hash.startswith('$2b$06$')):
+                    import bcrypt
+                    new_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(rounds=12)).decode('utf-8')
+                    cur.execute("UPDATE profiles SET password_hash = %s WHERE id = %s", (new_hash, row[0]))
+
+                return {'user_id': str(row[0]), 'email': row[1], 'role': row[2], 'full_name': row[3]}
+            return None
+    except ImportError:
+        raise RuntimeError("psycopg2 не установлен")
+    except Exception as e:
+        log.error("login: direct SQL failed: %s", e)
+        raise RuntimeError(f"Не удалось подключиться к БД: {e}")
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+```
+
+**Acceptance criteria:**
+- [ ] При exception — `conn.close()` вызывается в `finally`
+
+---
+
+### ЗАДАЧА 2-8: Синхронизировать skills (удалить `profiles.skills`)
+
+**Приоритет:** HIGH
+**Depends:**
+**Файлы:** миграция `089_migrate_skills.sql`, `app/blueprints/auth.py`, `app/blueprints/profile.py`, `app/blueprints/jobs.py`, `templates/workers.html`, `templates/my_applications.html`, `templates/favorites.html`
+
+**Решение:**
+
+1. Сначала обнови код (перестать писать в `profiles.skills`):
+   - `auth.py:register()` — удали `'skills': [...]` из `update_data`. Оставь только `user_skills`.
+   - `profile.py:update_profile()` — удали `data['skills']`. Добавь синхронизацию `user_skills` (DELETE + INSERT).
+   - `jobs.py:workers()` — замени поиск через `user_skills` JOIN.
+   - Обнови шаблоны: `worker.skills` → рендер через JOIN (передавай `worker_skills` отдельно).
+
+2. Деплой кода.
+
+3. Миграция `089_migrate_skills.sql` (после деплоя):
+```sql
+-- Перенести существующие skills в user_skills
+DO $$
+DECLARE
+    p RECORD;
+    s text;
+    skill_id uuid;
+BEGIN
+    FOR p IN SELECT id, skills FROM profiles WHERE skills IS NOT NULL AND skills != '{}' LOOP
+        FOREACH s IN ARRAY p.skills LOOP
+            SELECT id INTO skill_id FROM skills WHERE name = s LIMIT 1;
+            IF skill_id IS NOT NULL THEN
+                INSERT INTO user_skills (user_id, skill_id) VALUES (p.id, skill_id)
+                ON CONFLICT (user_id, skill_id) DO NOTHING;
+            END IF;
+        END LOOP;
+    END LOOP;
+END $$;
+
+ALTER TABLE profiles DROP COLUMN IF EXISTS skills;
+```
+
+4. В `app/blueprints/profile.py` — обнови `PUBLIC_PROFILE_FIELDS`:
+```python
+PUBLIC_PROFILE_FIELDS = 'id,role,created_at,updated_at,is_self_employed,email_public,rating,full_name,photo_url,age,bio,city,experience,desired_payment,verification_status,total_reviews,religion,religion_id,portfolio_link'
+# Убрал 'skills' из select
+```
+
+5. В `app/blueprints/jobs.py:workers()`:
+```python
+if filters['skills']:
+    for skill in filters['skills'].split(','):
+        skill = skill.strip()
+        if not skill:
+            continue
+        skill_resp = postgrest_request('GET', f'skills?name=ilike.*{sanitize_postgrest(skill)}*&select=id&limit=1')
+        if skill_resp.ok and skill_resp.json():
+            skill_id = skill_resp.json()[0]['id']
+            query += f'&id=in.(SELECT user_id FROM user_skills WHERE skill_id=eq.{skill_id})'
+```
+
+**Acceptance criteria:**
+- [ ] Код перестаёт писать в `profiles.skills` ДО миграции
+- [ ] Миграция переносит данные, затем удаляет колонку
+- [ ] Поиск трудников по навыкам работает через JOIN
+
+---
+
+## ФАЗА 3: КРИТИЧЕСКИЙ ФРОНТЕНД (XSS)
+
+---
+
+### ЗАДАЧА 3-1: Устранить XSS в `notifications-init.js`
+
+**Приоритет:** CRITICAL
+**Depends on**
+**Файлы:** `static/js/notifications-init.js`
+
+**Решение:**
+```javascript
+// Добавь в начало файла:
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = String(text || '');
+    return div.innerHTML;
+}
+
+// Замени innerHTML (строки 24-30):
+item.innerHTML = '<div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center shrink-0">' +
+    '<svg class="w-5 h-5 text-primary-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+    '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></div>' +
+    '<div class="flex-1 min-w-0"><p class="text-sm text-neutral-800"></p>' +
+    '<span class="text-xs text-neutral-400"></span></div>';
+item.querySelector('p').textContent = notif.text || notif.message || 'Новое уведомление';
+item.querySelector('span').textContent = notif.created_at || 'Только что';
+```
+
+**Acceptance criteria:**
+- [ ] `<script>alert(1)</script>` — отображается как текст
+
+---
+
+### ЗАДАЧА 3-2: Устранить XSS в `chat.html`
+
+**Приоритет:** CRITICAL
+**Depends on:** none
+**Файлы:** `templates/chat.html`
+
+**Решение:**
+```javascript
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = String(text || '');
+    return div.innerHTML;
+}
+
+// Замени addMessage (строки 94-100):
+bubble.innerHTML = `
+    <div class="max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words
+        ${isMine ? 'bg-primary-500 text-white rounded-br-md' : 'bg-neutral-100 text-neutral-800 rounded-bl-md'}">
+        <span class="msg-content"></span>
+        <div class="text-[10px] mt-1 ${isMine ? 'text-white/60' : 'text-neutral-400'} text-right">${escapeHtml(time)}</div>
+    </div>
+`;
+bubble.querySelector('.msg-content').textContent = msg.content || '';
+```
+
+**Acceptance criteria:**
+- [ ] `<img src=x onerror="alert(1)">` — текст
+
+---
+
+### ЗАДАЧА 3-3: Устранить XSS в `job_detail.html`
+
+**Приоритет:** CRITICAL
+**Depends on:** none
+**Файлы:** `templates/job_detail.html`
+
+**Решение:** Добавь `escapeHtml` функцию, замени все `+ raterName +` на `+ escapeHtml(raterName) +`. Проверь ВСЕ `innerHTML` в файле.
+
+**Acceptance criteria:**
+- [ ] `full_name = "<script>..."` — текст
+
+---
+
+### ЗАДАЧА 3-4: Устранить single-connection eviction в WebSocket
+
+**Приоритет:** CRITICAL
+**Depends on:** 1-2 (код `websocket_endpoint` уже изменён)
+
+**Решение:** В `websocket_server/main.py` — замени `active_connections: dict[str, WebSocket]` на `dict[str, set[WebSocket]]` (уже реализовано в задаче 1-2).
+
+Дополнительно обнови `redis_pubsub_listener`:
+```python
+async def redis_pubsub_listener():
+    # ...
+    sockets = active_connections.get(str(user_id), set()).copy()
+    dead = []
+    for ws in sockets:
+        try:
+            await ws.send_json(payload)
+        except Exception as exc:
+            dead.append(ws)
+    if str(user_id) in active_connections:
+        for ws in dead:
+            active_connections[str(user_id)].discard(ws)
+        if not active_connections[str(user_id)]:
+            del active_connections[str(user_id)]
+```
+
+И `lifespan` shutdown:
+```python
+for uid, sockets in list(active_connections.items()):
+    for ws in sockets:
+        try:
+            await ws.close(code=status.WS_1001_GOING_AWAY)
+        except Exception:
+            pass
+active_connections.clear()
+```
+
+И `healthcheck`:
+```python
+"active_connections": sum(len(v) for v in active_connections.values()),
+```
+
+**Acceptance criteria:**
+- [ ] 2 вкладки — обе получают уведомления
+- [ ] 4-я вкладка — отклоняется
+
+---
+
+### ЗАДАЧА 3-5: Исправить CSRF-токен в `notifications-init.js`
+
+**Приоритет:** HIGH
+**Depends on:** none
+**Файлы:** `app/middleware.py` (после 4-1), `static/js/notifications-init.js`
+
+**Решение:**
+
+1. В `add_security_headers()` — установливай CSRF в cookie:
+```python
+if hasattr(g, 'csp_nonce') and '_csrf_token' in session:
+    response.set_cookie(
+        'csrf_token',
+        session['_csrf_token'],
+        httponly=False,
+        samesite='Lax',
+        secure=request.is_secure
+    )
+```
+
+2. В `notifications-init.js` — читай из `<meta>` или cookie:
+```javascript
+const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+    || document.cookie.split('; ').find(row => row.startsWith('csrf_token='))?.split('=')[1]
+    || '';
+```
+
+**Acceptance criteria:**
+- [ ] Service Worker получает непустой CSRF-токен
+
+---
+
+### ЗАДАЧА 3-6: Ограничить fetch-перехватчик same-origin
+
+**Приоритет:** HIGH
+**Depends on:** none
+**Файлы:** `templates/base.html`
+
+**Решение:** Замени `window.fetch` patch (только same-origin POST/PUT/PATCH/DELETE). См. код в предыдущей версии промта.
+
+**Acceptance criteria:**
+- [ ] Запросы к Yandex Maps — без CSRF
+- [ ] POST к `/api/...` — с CSRF
+
+---
+
+## ФАЗА 4: АРХИТЕКТУРНЫЙ РЕФАКТОРИНГ
+
+---
+
+### ЗАДАЧА 4-1: Разделить `app/__init__.py`
+
+**Приоритет:** HIGH
+**Depends on:** Фазы 0-3
+**Файлы:** `app/__init__.py`, `app/error_handlers.py` (новый), `app/middleware.py` (новый), `app/blueprints/core.py` (новый), `app/utils/startup.py` (новый)
+
+**Решение:**
+
+1. `app/error_handlers.py` — `register_error_handlers(app)` с 404/500/Exception (включая `error_id`).
+
+2. `app/middleware.py` — `register_middleware(app)` с `csrf_check`, `generate_csp_nonce`, `add_security_headers`, `log_static_requests`, `set_request_id`, `add_request_id_header`.
+
+3. `app/blueprints/core.py` — `/health`, `/ready`, `/uploads/avatars/<path>`, `/uploads/verification-docs/<path>` (из 1-4), `/sw.js`, `/offline`, `/.well-known/assetlinks.json`, `/favicon.ico`, `/jobs` (redirect), `/search` (redirect).
+
+4. `app/utils/startup.py` — `_wait_for_postgrest` (не вызывать в `create_app`), `_redis_cache_get/set/delete`.
+
+5. В `app/__init__.py:create_app()` — упрости до ~100 строк, регистрируя middleware, error handlers, blueprints, filters.
+
+6. Удали модуль-уровневый `app = create_app()`. В `asgi.py`:
+```python
+from app import create_app
+app = create_app()
+```
+
+**Acceptance criteria:**
+- [ ] `app/__init__.py` < 100 строк
+- [ ] `import app` не вызывает HTTP-запросов
+
+---
+
+### ЗАДАЧА 4-2: Устранить циклические зависимости
+
+**Приоритет:** HIGH
+**Depends on:** 4-1
+**Файлы:** `app/utils/redis_cache.py` (новый), `app/services/notification_dispatcher.py` (новый), `app/utils/auth.py`
+
+**Решение:**
+1. `app/utils/redis_cache.py` — перенеси `_redis_cache_get/set/delete`.
+2. `app/services/notification_dispatcher.py` — `enqueue_email`, `enqueue_push` (разрывает цикл).
+3. В `notification_service.create()` — вызывай `notification_dispatcher`.
+4. В `app/utils/auth.py` — добавь `login_user_session` (перенеси из `auth.py` blueprint).
+5. Удали `# noqa: локальный импорт`.
+
+**Acceptance criteria:**
+- [ ] `grep -rn "noqa: локальный импорт" app/` — пусто
+
+---
+
+### ЗАДАЧА 4-3: Унифицировать Redis-клиент
+
+**Приоритет:** HIGH
+**Depends on:** 4-2
+**Файлы:** `app/utils/redis_client.py`, `app/context_processors.py`, `app/services/email_service.py`, `app/services/redis_publisher.py`
+
+**Решение:** Thread-safe singleton в `redis_client.py`. Удали дубликаты.
+
+**Acceptance criteria:**
+- [ ] Один Redis-клиент на процесс
+
+---
+
+### ЗАДАЧА 4-4: Консолидация сервисного слоя
+
+**Приоритет:** MEDIUM
+**Depends on:** 4-1, 4-2
+**Файлы:** `app/services/auth_service.py` (новый), `app/services/admin_service.py` (новый), `app/services/job_service.py`
+
+**Решение:** Перенеси бизнес-логику из blueprints в сервисы. Blueprint'ы — тонкие.
+
+**Acceptance criteria:**
+- [ ] `auth.py` < 200 строк, `jobs.py` < 400, `admin_*.py` < 250 каждый
+
+---
+
+### ЗАДАЧА 4-5: Разделить `admin.py`
+
+**Приоритет:** MEDIUM
+**Depends on:** 4-4
+**Файлы:** `app/blueprints/admin_dashboard.py`, `admin_users.py`, `admin_jobs.py`, `admin_dictionaries.py`, `admin_verification.py`, `admin_diagnostics.py`
+
+**Acceptance criteria:**
+- [ ] 6 файлов, каждый < 250 строк
+
+---
+
+### ЗАДАЧА 4-6: Структурированное логирование
+
+**Приоритет:** MEDIUM
+**Depends on:** 4-1
+**Файлы:** `app/utils/logging_config.py`, `app/middleware.py`
+
+**Решение:** Вызови `setup_json_logging()` в `create_app()`. Добавь `set_request_id` middleware. В `JsonFormatter` извлекай `request_id` из `g`.
+
+**Acceptance criteria:**
+- [ ] Логи в JSON с `request_id`
+- [ ] `X-Request-ID` header в ответе
+
+---
+
+### ЗАДАЧА 4-7: Исправить `asgi.py` lifespan
+
+**Приоритет:** HIGH
+**Depends on:** none
+**Файлы:** `asgi.py`
+
+**Решение:** Делегируй lifespan в FastAPI:
+```python
+class RouterMiddleware:
+    def __init__(self, ws_app, flask_asgi):
+        self.ws_app = ws_app
+        self.flask_asgi = flask_asgi
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "lifespan":
+            await self.ws_app(scope, receive, send)
+            return
+        if scope["type"] == "websocket":
+            await self.ws_app(scope, receive, send)
+        else:
+            await self.flask_asgi(scope, receive, send)
+```
+
+**Acceptance criteria:**
+- [ ] При старте — Redis подключается, listener запускается
+
+---
+
+### ЗАДАЧА 4-8: Удалить `app/utils/rate_limit.py`
+
+**Приоритет:** MEDIUM
+**Depends on:** 4-1
+
+**Acceptance criteria:**
+- [ ] Файл удалён, `from app.utils import rate_limit` работает (ре-экспорт)
+
+---
+
+### ЗАДАЧА 4-9: Исправить `Config.DATABASE_URL`
+
+**Приоритет:** MEDIUM
+**Файлы:** `app/config.py`
+
+**Решение:** Замени `@property` на class-атрибут.
+
+**Acceptance criteria:**
+- [ ] `Config.DATABASE_URL` — строка
+
+---
+
+### ЗАДАЧА 4-10: Очистить репозиторий
+
+**Приоритет:** LOW
+**Depends on:** 0-1
+
+**Решение:** Удали `archive/`, `trash/`, `Promts/`, `.idea/`, мусорные файлы.
+
+---
+
+## ФАЗА 5: БЭКЕНД-БАГИ
+
+---
+
+### ЗАДАЧА 5-1: Удалить fallback-логику
+
+**Приоритет:** HIGH
+**Depends on:** 2-2
+**Файлы:** `app/blueprints/applications.py`, `app/blueprints/jobs.py`
+
+**Решение:** Удали функцию `_apply_job_fallback` целиком (не блок) и вызов в `apply_job` (строка 48). Аналогично для `cancel_job`, `force_complete`, `restore_job`. При 404 от RPC — 503.
+
+**Acceptance criteria:**
+- [ ] `grep -rn "_apply_job_fallback\|fallback" app/blueprints/` — минимально
+
+---
+
+### ЗАДАЧА 5-2: Удалить `threading.Thread`
+
+**Приоритет:** HIGH
+**Depends on:** 2-1
+**Файлы:** `app/blueprints/applications.py`
+
+**Решение:** Замени на `enqueue_notification()`.
+
+**Acceptance criteria:**
+- [ ] `grep -rn "threading.Thread" app/blueprints/` — пусто
+
+---
+
+### ЗАДАЧА 5-3: N+1 в admin dashboard → RPC
+
+**Приоритет:** HIGH
+**Файлы:** миграция `090_admin_dashboard_rpc.sql`, `app/blueprints/admin_dashboard.py`
+
+**Решение:** RPC `get_admin_dashboard_stats()` одним SQL. Кешировать 60 сек.
+
+**Acceptance criteria:**
+- [ ] 1 RPC-вызов (не 9)
+
+---
+
+### ЗАДАЧА 5-4: Унифицировать `jsonb` return type
+
+**Приоритет:** MEDIUM
+**Файлы:** миграция `091_unify_rpc_jsonb.sql`
+
+**Решение:** Приведи 5 RPC (`accept_application`, `reject_application`, `delete_job_cascade`, `delete_user_cascade`, `apply_job_atomic`) к `RETURNS jsonb`.
+
+**Acceptance criteria:**
+- [ ] Все RPC возвращают `jsonb`
+
+---
+
+### ЗАДАЧА 5-5: Исправить `enrich_job_with_references`
+
+**Приоритет:** MEDIUM
+**Файлы:** `app/services/job_service.py`
+
+**Решение:** `_is_uuid(value)` вместо `'-' in str(...)`.
+
+**Acceptance criteria:**
+- [ ] `work_type = "IT-поддержка"` — не пытается резолвить как UUID
+
+---
+
+### ЗАДАЧА 5-6: Валидировать числовые query-параметры
+
+**Приоритет:** MEDIUM
+**Файлы:** `app/utils/validators.py`, `app/blueprints/jobs.py`
+
+**Решение:** `parse_float(value, name, min_val, max_val)`.
+
+**Acceptance criteria:**
+- [ ] `?payment_min=abc` — flash, не 500
+
+---
+
+### ЗАДАЧА 5-7: Исправить `delete_user_cascade` (orphaned записи)
+
+**Приоритет:** MEDIUM
+**Файлы:** миграция `092_fix_delete_user_cascade.sql`
+
+**Решение:** Добавь:
+```sql
+DELETE FROM notification_outbox WHERE user_id = p_user_id;
+DELETE FROM job_payments WHERE employer_id = p_user_id;
+DELETE FROM _archive_contact_payments WHERE employer_id = p_user_id OR worker_id = p_user_id;
+UPDATE audit_log SET user_id = NULL WHERE user_id = p_user_id;
+```
+
+**Acceptance criteria:**
+- [ ] Нет orphaned записей
+
+---
+
+### ЗАДАЧА 5-8: `updated_at` triggers
+
+**Приоритет:** MEDIUM
+**Файлы:** миграция `093_add_updated_at_triggers.sql`
+
+**Решение:** `BEFORE UPDATE` trigger для `profiles`, `jobs`, `applications`, `employer_subscriptions`.
+
+**Acceptance criteria:**
+- [ ] `updated_at` обновляется автоматически
+
+---
+
+### ЗАДАЧА 5-9: Удалить `notifications.shift_id`
+
+**Приоритет:** LOW
+**Файлы:** миграция `094_drop_shift_id.sql`
+
+**Acceptance criteria:**
+- [ ] Колонка удалена
+
+---
+
+### ЗАДАЧА 5-10: Удалить `profiles.religion` (text)
+
+**Приоритет:** LOW
+**Файлы:** миграция `095_drop_religion_text.sql`, `app/blueprints/auth.py`, `app/blueprints/profile.py`
+
+**Решение:** Сначала обнови код (перестань писать), затем миграция.
+
+**Acceptance criteria:**
+- [ ] Колонка удалена
+
+---
+
+### ЗАДАЧА 5-11: Заменить `'now()'` строки
+
+**Приоритет:** LOW
+**Файлы:** `app/blueprints/jobs_api.py`, `app/blueprints/jobs.py`, `app/blueprints/ratings.py`
+
+**Решение:** `datetime.now(timezone.utc).isoformat()`.
+
+**Acceptance criteria:**
+- [ ] `grep -rn "'now()'" app/` — пусто
+
+---
+
+### ЗАДАЧА 5-12: Circuit Breaker health-check rate-limit
+
+**Приоритет:** MEDIUM
+**Файлы:** `app/utils/postgrest_client.py`
+
+**Решение:** `_last_health_check_time`, не чаще `recovery_timeout / 4`.
+
+**Acceptance criteria:**
+- [ ] Health-check не чаще `recovery_timeout / 4`
+
+---
+
+### ЗАДАЧА 5-13: Удалить `_wait_for_postgrest` из startup
+
+**Приоритет:** MEDIUM
+**Depends on:** 4-1
+
+**Решение:** `/health` → 200 с `status: degraded`.
+
+---
+
+### ЗАДАЧА 5-14: Email service — модуль-синглтон
+
+**Приоритет:** MEDIUM
+**Файлы:** `app/services/email_service.py`, `app/tasks/email_tasks.py`
+
+**Acceptance criteria:**
+- [ ] SMTP-соединение переиспользуется
+
+---
+
+### ЗАДАЧА 5-15: Per-chat rate limit
+
+**Приоритет:** MEDIUM
+**Файлы:** `app/blueprints/chat.py`
+
+**Решение:** Redis: 5 сообщений/мин на `(sender_id, application_id)`.
+
+---
+
+### ЗАДАЧА 5-16: CORS в WebSocket
+
+**Приоритет:** MEDIUM
+**Файлы:** `websocket_server/main.py`
+
+**Решение:** `allow_credentials = '*' not in CORS_ORIGINS`.
+
+---
+
+## ФАЗА 6: ФРОНТЕНД-БАГИ
+
+---
+
+### ЗАДАЧА 6-1: `notifications-ws.js` reconnect
+
+**Решение:** Сбрасывай `reconnectAttempts = 0` в `connect()` (уже в задаче 1-2).
+
+---
+
+### ЗАДАЧА 6-2: Service Worker CSRF в IndexedDB
+
+**Решение:** Храни в IndexedDB, читай при активации.
+
+---
+
+### ЗАДАЧА 6-3: `apiFetch` обёртка
+
+**Файлы:** `static/js/api.js` (новый)
+
+**Решение:** При 401 — редирект на `/login?next=...`.
+
+---
+
+### ЗАДАЧА 6-4: `chat.html` polling cleanup
+
+**Решение:** `setTimeout` с рекурсией, exponential backoff, `AbortController`, `beforeunload` cleanup.
+
+---
+
+### ЗАДАЧА 6-5: Loading-state на формы
+
+**Файлы:** `static/js/form-guard.js` (новый)
+
+**Решение:** Disable submit 1.5 сек, проверяй `e.defaultPrevented`.
+
+---
+
+### ЗАДАЧА 6-6: Разделить `base.html`
+
+**Файлы:** `static/css/app.css`, `static/js/base.js`, `templates/_components.html`
+
+**Решение:** Вынеси CSS/JS/макросы.
+
+---
+
+### ЗАДАЧА 6-7: `<noscript>` fallback
+
+**Решение:** Добавь блок в `base.html`.
+
+---
+
+### ЗАДАЧА 6-8: `loading="lazy"` на изображения
+
+**Решение:** Макрос `avatar_img`.
+
+---
+
+### ЗАДАЧА 6-9: Double-click protection
+
+**Решение:** Проверяй `e.defaultPrevented`, timeout 1.5 сек.
+
+---
+
+## ФАЗА 7: UX/UI
+
+---
+
+### ЗАДАЧА 7-1: Empty-state макрос
+
+**Файлы:** `templates/_components.html`
+
+---
+
+### ЗАДАЧА 7-2: Иконки в status badges
+
+---
+
+### ЗАДАЧА 7-3: `autocomplete` атрибуты
+
+---
+
+### ЗАДАЧА 7-4: CAPTCHA на регистрацию
+
+**Файлы:** `app/utils/captcha.py` (новый), `templates/register.html`, `app/blueprints/auth.py`
+
+**Решение:** Yandex SmartCaptcha. После реализации — добавить в `login()` после 3-й неудачи (задача 1-11).
+
+---
+
+### ЗАДАЧА 7-5: Password strength checker
+
+**Решение:** Blacklist, HIBP, индикатор силы.
+
+---
+
+### ЗАДАЧА 7-6: Согласие с условиями (152-ФЗ)
+
+**Файлы:** `templates/register.html`, `templates/terms.html`, `templates/privacy.html`, миграция `096_add_consented_at.sql`
+
+---
+
+### ЗАДАЧА 7-7: `format_datetime` zoneinfo
+
+**Файлы:** `app/utils/formatting.py`
+
+**Решение:** `ZoneInfo('Europe/Moscow')`.
+
+---
+
+### ЗАДАЧА 7-8: Breadcrumbs
+
+---
+
+### ЗАДАЧА 7-9: Подтверждение удаления аккаунта
+
+---
+
+## ФАЗА 8: ИНФРАСТРУКТУРА
+
+---
+
+### ЗАДАЧА 8-1: `SESSION_COOKIE_SECURE` в staging
+
+**Файлы:** `app/config.py`
+
+**Решение:**
+```python
+SESSION_COOKIE_SECURE = os.environ.get('DEPLOYMENT_ENV', '') in ('production', 'staging')
+```
+
+---
+
+### ЗАДАЧА 8-2: `Vary: Cookie`
+
+**Файлы:** `app/middleware.py`
+
+**Решение:** Для динамических страниц — `Vary: Cookie`.
+
+---
+
+### ЗАДАЧА 8-3: Разделить Flask и WebSocket на процессы
+
+**Приоритет:** HIGH
+**Depends on:** 1-2
+**Файлы:** `supervisord.conf`, `asgi.py`, `docker-compose.yml`, `amvera.yaml` (reverse proxy)
+
+**Проблема:** `--workers 4` для `asgi.py` создаст 4 процесса, каждый со своим `active_connections`. Redis Pub/Sub доставит в ОДИН процесс.
+
+**Решение:**
+
+1. Раздели на 2 процесса:
+   - Flask (HTTP) — `asgi.py` (только Flask, без WebSocket), `--workers 4`.
+   - WebSocket — `websocket_server/main:app`, `--workers 1`.
+
+2. Упрости `asgi.py`:
+```python
+"""ASGI entry point for Flask only (HTTP). WebSocket is separate."""
+from a2wsgi import WSGIMiddleware
+from app import create_app
+
+flask_app = create_app()
+application = WSGIMiddleware(flask_app, workers=50)
+```
+
+3. В `supervisord.conf`:
+```ini
+[program:uvicorn_flask]
+command=uvicorn asgi:application --host 0.0.0.0 --port 8000 --workers 4 --timeout-graceful-shutdown 30
+directory=/app
+autostart=true
+autorestart=true
+stopsignal=TERM
+stopwaitsecs=35
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+priority=1
+
+[program:uvicorn_ws]
+command=uvicorn websocket_server.main:app --host 0.0.0.0 --port 8001 --workers 1
+directory=/app
+autostart=true
+autorestart=true
+stopsignal=TERM
+stopwaitsecs=10
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+priority=2
+
+[program:celery_worker]
+command=celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4 --time-limit=300 --soft-time-limit=240
+directory=/app
+autostart=true
+autorestart=true
+stopsignal=TERM
+stopwaitsecs=65
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+priority=10
+
+[program:celery_beat]
+command=celery -A app.tasks.celery_app beat --loglevel=info
+directory=/app
+autostart=true
+autorestart=true
+stopsignal=TERM
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+priority=20
+```
+
+4. В Amvera настрой reverse proxy: `/ws` → порт 8001, остальное → порт 8000. Если Amvera не поддерживает path-based routing — используй отдельный домен/поддомен для WS (например, `ws.trudnik.ru`).
+
+5. В `websocket_server/main.py` — используй `WEBSOCKET_CORS_ORIGINS` с явным списком доменов.
+
+6. В `static/js/notifications-ws.js:_getWsUrl()` — определи URL WS:
+```javascript
+_getWsUrl() {
+    if (window.TRUDNIK_CONFIG && window.TRUDNIK_CONFIG.wsUrl) {
+        return window.TRUDNIK_CONFIG.wsUrl;
+    }
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.hostname;
+    // На localhost — отдельный порт 8001
+    if (host === 'localhost' || host === '127.0.0.1') {
+        return `${protocol}//${host}:8001/ws`;
+    }
+    // В production — через reverse proxy на /ws
+    return `${protocol}//${host}/ws`;
+}
+```
+
+7. Обнови `docker-compose.yml` — `web` service использует `asgi:application`, `websocket` service — `websocket_server.main:app`.
+
+**Acceptance criteria:**
+- [ ] 4 uvicorn Flask worker процесса
+- [ ] 1 uvicorn WebSocket worker процесс
+- [ ] WebSocket-соединения принимаются на порту 8001 (или через reverse proxy на `/ws`)
+- [ ] Redis Pub/Sub доставляет сообщения всем соединениям (один WS-процесс — один `active_connections`)
+- [ ] При падении Flask-процесса — WS продолжает работать
+
+---
+
+### ЗАДАЧА 8-4: Docker HEALTHCHECK с readiness
+
+**Файлы:** `app/blueprints/core.py`, `Dockerfile`
+
+**Решение:**
+- `/health` (liveness) — всегда 200.
+- `/ready` (readiness) — 503 если PostgREST/Redis недоступны.
+- Dockerfile: `HEALTHCHECK CMD curl -f http://localhost:8000/ready || exit 1`.
+
+---
+
+### ЗАДАЧА 8-5: `docker-compose.yml` env vars
+
+**Решение:** `${POSTGRES_PASSWORD:-trudnik_dev}`, `${PGRST_JWT_SECRET}`.
+
+---
+
+## ФАЗА 9: МОНИЗАЦИЯ (ПОДГОТОВКА)
+
+---
+
+### ЗАДАЧА 9-1: `monetization_service.py`
+
+(см. раздел 1.2)
+
+---
+
+### ЗАДАЧА 9-2: Скрыть монетизацию из UI
+
+**Файлы:** `app/blueprints/jobs.py:job_new()`, `templates/base.html`, `templates/pricing.html`
+
+**Решение:**
+1. В `job_new()` — используй `MonetizationService.can_create_job()`.
+2. `base.html` — ссылку `/pricing` только если `Config.MONETIZATION_ENABLED`.
+3. `pricing.html` — «Монетизация скоро.»
+
+---
+
+### ЗАДАЧА 9-3: YooKassa webhook — ОТЛОЖЕНО
+
+**Решение:** НЕ создавать сейчас. Создать при активации монетизации.
+
+---
+
+## ФАЗА 10: МОНИТОРИНГ
+
+---
+
+### ЗАДАЧА 10-1: Pre-commit hooks
+
+**Файлы:** `.pre-commit-config.yaml`, `pyproject.toml`
+
+**Решение:** ruff, mypy, detect-secrets.
+
+---
+
+### ЗАДАЧА 10-2: Prometheus метрики
+
+**Файлы:** `app/blueprints/core.py`
+
+**Решение:** `/metrics` endpoint.
+
+---
+
+### ЗАДАЧА 10-3: Backup БД
+
+**Файлы:** `scripts/amvera_db_backup.sh`
+
+**Решение:** Cron Job раз в сутки.
+
+---
+
+## ПРИЛОЖЕНИЕ A: Чек-лист миграций
+
+| Файл | Описание | Задача |
+|------|----------|--------|
+| `076_lock_down_rpc.sql` | REVOKE EXECUTE от anon | 1-3 |
+| `077_update_rls_app_role.sql` | RLS: role → app_role | 1-7 |
+| `078_drop_exec_sql.sql` | DROP FUNCTION exec_sql | 1-8 |
+| `079_add_email_verification.sql` | ADD COLUMN email_verified DEFAULT TRUE | 1-9 |
+| `080_register_user_sets_email_verified.sql` | register_user: email_verified=FALSE | 1-9 |
+| `081_normalize_emails.sql` | LOWER(email), FK-перенос, dedup | 1-10 |
+| `082_login_user_rehash.sql` | login_user: transparent rehash | 1-12 |
+| `083_add_outbox_attempts.sql` | attempts + 'skipped' status | 2-1 |
+| `084_fix_withdraw_atomic.sql` | withdraw: accepted + 12h check | 2-2 |
+| `085_fix_restore_job_atomic.sql` | restore: pending, not cancelled | 2-3 |
+| `086_fix_delete_job_cascade.sql` | notifications по job_id | 2-4 |
+| `087_normalize_job_datetime.sql` | (NOOP, проверка) | 2-5 |
+| `088_apply_job_check_expires.sql` | expires_at check | 2-6 |
+| `089_migrate_skills.sql` | Перенос skills, DROP COLUMN | 2-8 |
+| `090_admin_dashboard_rpc.sql` | RPC get_admin_dashboard_stats | 5-3 |
+| `091_unify_rpc_jsonb.sql` | json → jsonb | 5-4 |
+| `092_fix_delete_user_cascade.sql` | Очистка orphaned | 5-7 |
+| `093_add_updated_at_triggers.sql` | BEFORE UPDATE triggers | 5-8 |
+| `094_drop_shift_id.sql` | DROP COLUMN shift_id | 5-9 |
+| `095_drop_religion_text.sql` | DROP COLUMN religion | 5-10 |
+| `096_add_consented_at.sql` | ADD COLUMN consented_at | 7-6 |
+
+---
+
+## ПРИЛОЖЕНИЕ B: Чек-лист новых файлов
+
+| Файл | Задача |
+|------|--------|
+| `app/services/monetization_service.py` | 9-1 |
+| `app/utils/errors.py` | 1-6 |
+| `app/utils/startup.py` | 4-1 |
+| `app/error_handlers.py` | 4-1 |
+| `app/middleware.py` | 4-1 |
+| `app/blueprints/core.py` | 4-1 |
+| `app/services/auth_service.py` | 4-4 |
+| `app/services/admin_service.py` | 4-4 |
+| `app/services/notification_dispatcher.py` | 4-2 |
+| `app/utils/redis_cache.py` | 4-2 |
+| `app/tasks/notification_tasks.py` | 2-1 |
+| `app/utils/captcha.py` | 7-4 |
+| `scripts/emergency_reset_users.py` | 1-13 |
+| `scripts/emergency_fix_permissions.py` | 1-13 |
+| `static/js/api.js` | 6-3 |
+| `static/js/form-guard.js` | 6-5 |
+| `static/css/app.css` | 6-6 |
+| `static/js/base.js` | 6-6 |
+| `templates/_components.html` | 6-6 |
+| `templates/verify_email.html` | 1-9 |
+| `templates/terms.html` | 7-6 |
+| `templates/privacy.html` | 7-6 |
+| `templates/password_reset_request.html` | (создай) |
+| `templates/password_reset_confirm.html` | (создай) |
+| `.pre-commit-config.yaml` | 0-1, 10-1 |
+| `pyproject.toml` | 10-1 |
+| `.secrets.baseline` | 0-1 |
+
+---
+
+## ПРИЛОЖЕНИЕ C: Definition of Done
+
+1. **Все задачи фаз 0-3 выполнены.**
+2. **Все миграции 076-096 применены** на staging.
+3. **`pytest tests/ -v --cov --cov-fail-under=70`** проходит.
+4. **`grep -rn "resp\.text" app/blueprints/ | grep -i "flash\|jsonify"` — пусто.**
+5. **`grep -rn "threading.Thread" app/blueprints/` — пусто.**
+6. **`grep -rn "noqa: локальный импорт" app/` — пусто.**
+7. **`grep -rn "POSTGREST_MOCK_MODE" .env*` — пусто** (кроме `.env.example`).
+8. **`git log --all -p | grep -i "c998690\|***REMOVED***"` — пусто.**
+9. **`MONETIZATION_ENABLED=false` — приложение работает бесплатно.**
+10. **Pre-commit hooks установлены.**
+11. **`worklog.md` содержит записи для всех задач.**
+12. **Существующие пользователи могут войти** (email_verified = TRUE).
+13. **WebSocket работает при `--workers 4` для Flask** (отдельный процесс для WS).
+14. **Все RPC возвращают `jsonb`** (не `json`).
+15. **RLS проверяет `app_role`** (не `role`).
+
+---
+
+## ФИНАЛЬНЫЕ УКАЗАНИЯ
+
+1. **Начинай с ФАЗЫ 0.**
+2. **После каждой задачи** — коммить и обновляй `worklog.md`.
+3. **Не пропускай acceptance criteria.**
+4. **Миграции, изменяющие схему** — ПОСЛЕ деплоя кода.
+5. **Монетизация (ФАЗА 9)** — НЕ активировать (`MONETIZATION_ENABLED=false`).
+6. **После всех фаз** — проверь Definition of Done.
+
+**Удачи.**
+````

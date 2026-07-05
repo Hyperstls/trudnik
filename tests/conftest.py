@@ -351,3 +351,10 @@ def accepted_application_id(employer_session, worker_session, created_job_id):
             timeout=30,
         )
     return (app_id, created_job_id)
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Очистка env vars после тестов."""
+    import os
+    os.environ.pop('POSTGREST_MOCK_MODE', None)
+    os.environ.pop('TEST_PASSWORD', None)

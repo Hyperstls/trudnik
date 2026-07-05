@@ -1,0 +1,528 @@
+:root {
+    --brand: #2563eb;
+    --brand-dark: #1d4ed8;
+    --danger: #dc2626;
+    --success: #16a34a;
+    --neutral-50: #f9fafb;
+    --neutral-900: #111827;
+}
+html {
+    scrollbar-gutter: stable;
+    overflow-x: hidden;
+}
+body {
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================= */
+/* Line clamp                     */
+/* ============================= */
+.line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+.line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+}
+
+/* ============================= */
+/* Transitions & micro-animations */
+/* ============================= */
+.nav-item, .card, .action-icon-btn {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.action-icon-btn:active {
+    transform: scale(0.95);
+}
+.hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+}
+
+/* ============================= */
+/* Input focus styles             */
+/* ============================= */
+input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: #d97706;
+    box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.15);
+}
+
+/* ============================= */
+/* Bottom navigation              */
+/* ============================= */
+.bottom-nav {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    background-color: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.25rem);
+}
+.bottom-nav a.active {
+    color: #d97706;
+}
+.bottom-nav a.active svg {
+    stroke: #d97706;
+}
+
+/* ============================= */
+/* Action icon buttons (apps)     */
+/* ============================= */
+.action-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+    white-space: nowrap;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+.action-icon-btn:hover {
+    transform: scale(1.05);
+}
+.action-icon-btn:active {
+    transform: scale(0.95);
+}
+.action-icon-btn:focus-visible {
+    outline: 2px solid #d97706;
+    outline-offset: 2px;
+}
+
+/* Accept button */
+.accept-btn {
+    color: #10b981;
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+}
+.accept-btn:hover {
+    background: #10b981;
+    color: white;
+    border-color: #10b981;
+}
+
+/* Reject button */
+.reject-btn {
+    color: #ef4444;
+    border-color: #fecaca;
+    background: #fef2f2;
+}
+.reject-btn:hover {
+    background: #ef4444;
+    color: white;
+    border-color: #ef4444;
+}
+
+/* Reopen button */
+.reopen-btn {
+    color: #3b82f6;
+    border-color: #bfdbfe;
+    background: #eff6ff;
+}
+.reopen-btn:hover {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+}
+
+/* Chat button */
+.chat-btn {
+    color: #3b82f6;
+    border-color: #bfdbfe;
+    background: #eff6ff;
+}
+.chat-btn:hover {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+}
+
+/* Action button (purple) */
+.act-btn {
+    color: #7c3aed;
+    border-color: #ddd6fe;
+    background: #f5f3ff;
+}
+.act-btn:hover {
+    background: #7c3aed;
+    color: white;
+    border-color: #7c3aed;
+}
+
+/* Accepted badge */
+.accepted-badge {
+    color: #10b981;
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+    cursor: default;
+}
+.accepted-badge:hover { transform: none; }
+
+/* Rejected badge */
+.rejected-badge {
+    color: #ef4444;
+    border-color: #fecaca;
+    background: #fef2f2;
+    cursor: default;
+}
+.rejected-badge:hover { transform: none; }
+
+/* Contact button */
+.contact-btn {
+    color: #d97706;
+    border-color: #fde68a;
+    background: #fffbeb;
+}
+.contact-btn:hover {
+    background: #d97706;
+    color: white;
+    border-color: #d97706;
+}
+
+/* ============================= */
+/* Toast notifications            */
+/* ============================= */
+#toast-container {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    left: 1rem;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: none;
+}
+@media (min-width: 768px) {
+    #toast-container {
+        left: auto;
+        right: 1rem;
+        width: 360px;
+    }
+}
+.toast {
+    pointer-events: auto;
+    opacity: 1;
+    transform: translateX(0);
+    transition: all 0.3s ease;
+    border-radius: 12px;
+    padding: 12px 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes slideInMobile {
+    from { transform: translateY(-100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+.animate-slide-in {
+    animation: slideIn 0.3s ease forwards;
+}
+@media (max-width: 767px) {
+    .animate-slide-in {
+        animation: slideInMobile 0.3s ease forwards;
+    }
+}
+
+/* ============================= */
+/* Status badge                   */
+/* ============================= */
+.status-badge {
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    user-select: none;
+}
+/* Статусы заданий */
+.status-open {
+    background: #dbeafe;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+.status-in-progress {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+.status-active {
+    background: #d1fae5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+}
+.status-completed {
+    background: #f3f4f6;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+}
+.status-cancelled {
+    background: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+/* Статусы откликов */
+.status-pending {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+.status-accepted {
+    background: #d1fae5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+}
+.status-rejected {
+    background: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+.status-withdrawn {
+    background: #f3f4f6;
+    color: #9ca3af;
+    border: 1px solid #e5e7eb;
+}
+.app-card {
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.app-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+/* ============================= */
+/* Mass actions bar               */
+/* ============================= */
+#mass-actions-bar {
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    background-color: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* ============================= */
+/* Floating label forms           */
+/* ============================= */
+.floating-label-group {
+    position: relative;
+    margin-bottom: 1.25rem;
+}
+.floating-label-group input,
+.floating-label-group textarea,
+.floating-label-group select {
+    width: 100%;
+    padding: 1.25rem 1rem 0.5rem;
+    background: #fafafa;
+    border: 1px solid #e5e5e5;
+    border-radius: 12px;
+    font-size: 0.9375rem;
+    transition: all 0.2s ease;
+}
+.floating-label-group input:focus,
+.floating-label-group textarea:focus,
+.floating-label-group select:focus {
+    border-color: #d97706;
+    box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.15);
+    background: white;
+}
+.floating-label-group label {
+    position: absolute;
+    left: 1rem;
+    top: 0.75rem;
+    font-size: 0.9375rem;
+    color: #a3a3a3;
+    transition: all 0.2s ease;
+    pointer-events: none;
+}
+.floating-label-group input:focus ~ label,
+.floating-label-group input:not(:placeholder-shown) ~ label,
+.floating-label-group textarea:focus ~ label,
+.floating-label-group textarea:not(:placeholder-shown) ~ label,
+.floating-label-group select:focus ~ label,
+.floating-label-group select[data-has-value] ~ label {
+    top: 0.35rem;
+    font-size: 0.7rem;
+    color: #d97706;
+}
+.floating-label-group .error-text {
+    display: none;
+    font-size: 0.75rem;
+    color: #ef4444;
+    margin-top: 0.25rem;
+    padding-left: 0.25rem;
+}
+.floating-label-group.error input,
+.floating-label-group.error textarea,
+.floating-label-group.error select {
+    border-color: #ef4444;
+}
+.floating-label-group.error .error-text {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.floating-label-group.success input,
+.floating-label-group.success textarea,
+.floating-label-group.success select {
+    border-color: #10b981;
+}
+
+/* ============================= */
+/* Global select styling          */
+/* ============================= */
+select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23737373'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 20px;
+    padding-right: 40px;
+}
+
+/* ============================= */
+/* Skeleton loader                */
+/* ============================= */
+@keyframes shimmer {
+    0% { background-position: -200px 0; }
+    100% { background-position: 200px 0; }
+}
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 400px 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    border-radius: 8px;
+}
+
+/* ============================= */
+/* Heart animation                */
+/* ============================= */
+@keyframes heartBeat {
+    0% { transform: scale(1); }
+    25% { transform: scale(1.3); }
+    50% { transform: scale(1); }
+    75% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+.heart-animate {
+    animation: heartBeat 0.4s ease-in-out;
+}
+
+/* ============================= */
+/* Fade in page                   */
+/* ============================= */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.fade-in {
+    animation: fadeIn 0.3s ease forwards;
+}
+
+/* ============================= */
+/* Scale in modal                 */
+/* ============================= */
+@keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+.animate-scale-in {
+    animation: scaleIn 0.2s ease forwards;
+}
+
+/* ============================= */
+/* Slide up (bottom drawer)       */
+/* ============================= */
+@keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+.animate-slide-up {
+    animation: slideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+/* ============================= */
+/* Filter drawer (right-side)      */
+/* ============================= */
+.filter-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: 320px;
+    max-width: 85vw;
+    z-index: 50;
+    background: white;
+    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.12);
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    overflow-y: auto;
+}
+.filter-drawer.open {
+    transform: translateX(0);
+}
+
+/* ============================= */
+/* Payment modal                  */
+/* ============================= */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+.modal-content {
+    background: white;
+    border-radius: 20px;
+    padding: 1.5rem;
+    max-width: 440px;
+    width: 100%;
+    animation: scaleIn 0.2s ease forwards;
+}
+
+/* ============================= */
+/* Touch-friendly                 */
+/* ============================= */
+.touch-target {
+    min-width: 44px;
+    min-height: 44px;
+}
+
+/* ============================= */
+/* Loading overlay spinner        */
+/* ============================= */
+@keyframes spin { to { transform: rotate(360deg); } }

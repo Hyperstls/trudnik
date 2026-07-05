@@ -27,7 +27,7 @@
     <div class="flex flex-col items-center mb-6">
         <div class="relative">
             {% if profile_user.get('photo_url') %}
-            <img src="{{ profile_user.get('photo_url') }}"
+            <img src="{{ profile_user.get('photo_url') }}" loading="lazy" decoding="async"
                  class="w-24 h-24 rounded-full object-cover border-4 border-primary-500 shadow-lg"
                  alt="Фото {{ profile_user.get('full_name') or profile_user.get('name') }}"
                  crossorigin="anonymous">

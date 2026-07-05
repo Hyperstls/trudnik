@@ -3,6 +3,12 @@
  */
 
 document.addEventListener('DOMContentLoaded', function() {
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = String(text || '');
+        return div.innerHTML;
+    }
+
     // Инициализация WebSocket (только для аутентифицированных пользователей)
     const token = window.TRUDNIK_CONFIG?.jwtToken;
     if (token && window.NotificationsWS) {
@@ -24,9 +30,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 item.innerHTML = '<div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center shrink-0">' +
                     '<svg class="w-5 h-5 text-primary-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
                     '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></div>' +
-                    '<div class="flex-1 min-w-0"><p class="text-sm text-neutral-800">' +
-                    (notif.text || notif.message || 'Новое уведомление') + '</p>' +
-                    '<span class="text-xs text-neutral-400">' + (notif.created_at || 'Только что') + '</span></div>';
+                    '<div class="flex-1 min-w-0"><p class="text-sm text-neutral-800"></p>' +
+                    '<span class="text-xs text-neutral-400"></span></div>';
+                item.querySelector('p').textContent = notif.text || notif.message || 'Новое уведомление';
+                item.querySelector('span').textContent = notif.created_at || 'Только что';
                 notificationsList.insertBefore(item, notificationsList.firstChild);
             }
         });
@@ -67,10 +74,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Передаём CSRF-токен в Service Worker (нужен для pushsubscriptionchange)
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        const csrfToken = document.cookie
-            .split('; ')
-            .find(row => row.startsWith('csrf_token='))
-            ?.split('=')[1] || '';
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+            || document.cookie.split('; ').find(row => row.startsWith('csrf_token='))?.split('=')[1]
+            || '';
         if (csrfToken) {
             navigator.serviceWorker.controller.postMessage({
                 type: 'SET_CSRF_TOKEN',

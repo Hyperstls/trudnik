@@ -2,6 +2,7 @@ from flask import Blueprint, current_app, flash, jsonify, redirect, render_templ
 
 from app.decorators import login_required
 from app.utils import postgrest_request, sanitize_postgrest
+from app.utils.security import safe_redirect
 
 employers_bp = Blueprint('employers', __name__)
 
@@ -172,9 +173,9 @@ def toggle_favorite(employer_id):
     except Exception as e:
         current_app.logger.error(f"toggle_favorite error: {e}")
         flash('Произошла ошибка при обновлении избранного', 'danger')
-        return redirect(request.referrer or url_for('employers.employers_list'))
+        return safe_redirect('employers.employers_list')
 
-    return redirect(request.referrer or url_for('employers.employers_list'))
+    return safe_redirect('employers.employers_list')
 
 
 # ──────────────────────────────────────────────

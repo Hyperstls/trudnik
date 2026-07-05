@@ -135,23 +135,28 @@ class Config:
     VAPID_CLAIMS_EMAIL = os.environ.get('VAPID_CLAIMS_EMAIL', 'notifications@trudnik.ru')
     VAPID_CLAIMS_SUBJECT = os.environ.get('VAPID_CLAIMS_SUBJECT', 'mailto:notifications@trudnik.ru')
 
-    @property
-    def DATABASE_URL(self):
-        """Формирует PostgreSQL DSN из отдельных переменных окружения."""
-        pg_user = os.environ.get('PGUSER')
-        pg_password = os.environ.get('PGPASSWORD')
-        pg_host = os.environ.get('PGHOST')
-        pg_port = os.environ.get('PGPORT', '5432')
-        pg_database = os.environ.get('PGDATABASE')
-        # Если есть DATABASE_URL — используем его напрямую
-        if direct_url := os.environ.get('DATABASE_URL'):
-            return direct_url
-        # Если нет ни одной переменной — не формируем URL (не используется)
-        if not any([pg_user, pg_password, pg_host, pg_database]):
-            return ''
-        # Если есть хотя бы одна — требуем все
-        missing = [v for v in ['PGUSER', 'PGPASSWORD', 'PGHOST', 'PGDATABASE'] 
-                   if not os.environ.get(v)]
-        if missing:
-            raise RuntimeError(f'Missing database env vars: {", ".join(missing)}')
-        return f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_database}"
+    WEBSOCKET_JWT_SECRET = os.environ.get('WEBSOCKET_JWT_SECRET', '')
+    if os.environ.get('DEPLOYMENT_ENV') in ('production', 'staging') and not WEBSOCKET_JWT_SECRET:
+        raise RuntimeError('WEBSOCKET_JWT_SECRET is required in production')
+    WEBSOCKET_PUBLIC_URL = os.environ.get('WEBSOCKET_PUBLIC_URL', '')
+
+    _direct = os.environ.get('DATABASE_URL')
+    if _direct:
+        DATABASE_URL = _direct.strip()
+    else:
+        _pg_user = os.environ.get('PGUSER')
+        _pg_password = os.environ.get('PGPASSWORD')
+        _pg_host = os.environ.get('PGHOST')
+        _pg_port = os.environ.get('PGPORT', '5432')
+        _pg_database = os.environ.get('PGDATABASE')
+        if all([_pg_user, _pg_password, _pg_host, _pg_database]):
+            DATABASE_URL = f"postgresql://{_pg_user}:{_pg_password}@{_pg_host}:{_pg_port}/{_pg_database}"
+        else:
+            DATABASE_URL = ''
+
+    # Блокировка test-режима в production
+    if os.environ.get('DEPLOYMENT_ENV') in ('production', 'staging'):
+        if os.environ.get('POSTGREST_MOCK_MODE', '').lower() in ('1', 'true', 'yes'):
+            raise RuntimeError('FATAL: POSTGREST_MOCK_MODE is set in production! Refusing to start.')
+        if os.environ.get('TEST_PASSWORD'):
+            raise RuntimeError('FATAL: TEST_PASSWORD is set in production! Refusing to start.')

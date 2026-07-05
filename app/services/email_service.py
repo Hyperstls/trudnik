@@ -9,6 +9,7 @@ import hmac
 import logging
 import os
 import smtplib
+import threading
 import time as _time_module
 import traceback
 from datetime import date, datetime, timezone
@@ -19,16 +20,8 @@ from typing import Any, Optional
 from jinja2 import Environment, FileSystemLoader
 
 logger = logging.getLogger(__name__)
-
-# Безопасный импорт Redis (для Celery-контекста, где нет Flask current_app)
-try:
-    import redis as _redis_lib
-    _REDIS_AVAILABLE = True
-except ImportError:
-    _redis_lib = None  # type: ignore
-    _REDIS_AVAILABLE = False
-
-
+ 
+ 
 class EmailService:
     """SMTP-клиент для отправки email-уведомлений.
 
@@ -65,12 +58,13 @@ class EmailService:
 
         # Redis-клиент для дневного лимита (общий для всех worker'ов)
         self._redis = None
-        if _REDIS_AVAILABLE:
-            try:
-                _redis_url = redis_url if redis_url is not None else os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-                self._redis = _redis_lib.from_url(_redis_url, decode_responses=True)
-            except Exception:
+        try:
+            from app.utils.redis_client import get_redis_client
+            self._redis = get_redis_client()
+            if self._redis is None:
                 logger.warning("Redis недоступен — дневной лимит email не будет соблюдаться между worker'ами")
+        except Exception:
+            logger.warning("Redis недоступен — дневной лимит email не будет соблюдаться между worker'ами")
 
         # SMTP connection pooling: ленивое соединение
         self._smtp_connection: Optional[smtplib.SMTP] = None
@@ -447,3 +441,51 @@ class EmailService:
             hashlib.sha256,
         ).hexdigest()
         return token
+
+
+# ═══════════════════════════════════════════════════════════════
+# Lazy singleton: один экземпляр EmailService на процесс
+# ═══════════════════════════════════════════════════════════════
+
+_email_service_instance: Optional[EmailService] = None
+_email_service_lock = threading.Lock()
+
+
+def get_email_service() -> EmailService:
+    """Вернуть глобальный экземпляр EmailService (lazy singleton).
+
+    SMTP-соединение переиспользуется между вызовами (connection pooling).
+    Потокобезопасно.
+    """
+    global _email_service_instance
+    if _email_service_instance is None:
+        with _email_service_lock:
+            if _email_service_instance is None:
+                _email_service_instance = EmailService()
+    return _email_service_instance
+
+
+def send_email(
+    to_email: str,
+    subject: str,
+    html_body: str,
+    text_body: str = "",
+    user_id: str = "",
+) -> bool:
+    """Отправить email через глобальный синглтон EmailService."""
+    return get_email_service().send_email(to_email, subject, html_body, text_body, user_id)
+
+
+def get_smtp_connection() -> smtplib.SMTP:
+    """Вернуть переиспользуемое SMTP-соединение из синглтона."""
+    return get_email_service()._get_smtp_connection()
+
+
+def render_template(template_name: str, context: dict[str, Any]) -> tuple[str, str]:
+    """Рендерить шаблон через глобальный синглтон EmailService."""
+    return get_email_service().render_template(template_name, context)
+
+
+def create_unsubscribe_token(user_id: str) -> str:
+    """Создать токен отписки (делегирует статическому методу)."""
+    return EmailService.create_unsubscribe_token(user_id)

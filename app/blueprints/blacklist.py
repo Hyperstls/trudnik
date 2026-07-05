@@ -2,6 +2,7 @@ from flask import Blueprint, abort, flash, jsonify, redirect, render_template, r
 
 from app.decorators import login_required
 from app.utils import postgrest_request
+from app.utils.security import safe_redirect
 
 blacklist_bp = Blueprint('blacklist', __name__)
 
@@ -50,11 +51,11 @@ def block_user(user_id):
     if resp.ok:
         if _is_ajax():
             return jsonify({'success': True})
-        return redirect(request.referrer or url_for('jobs.index'))
+        return safe_redirect('jobs.index')
     if _is_ajax():
         return jsonify({'success': False, 'error': 'Ошибка блокировки'}), 400
     flash('Ошибка блокировки', 'danger')
-    return redirect(request.referrer or url_for('jobs.index'))
+    return safe_redirect('jobs.index')
 
 
 @blacklist_bp.route('/unblock/<user_id>', methods=['POST'])

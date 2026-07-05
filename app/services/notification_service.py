@@ -14,7 +14,6 @@
 """
 
 import logging
-import traceback
 from app.utils import postgrest_admin_request, postgrest_request
 
 logger = logging.getLogger(__name__)
@@ -149,14 +148,11 @@ def create(user_id, notification_type, title, message, data=None, email=None, us
             logger.warning("Не удалось опубликовать уведомление в Redis: %s", e)
 
     # Ставим задачи в очередь Celery для email и push
-    # noqa: локальные импорты — циклическая зависимость (tasks → notification_service → tasks)
-    try:
-        from app.tasks.email_tasks import send_email_notification
-        from app.tasks.push_tasks import send_push_notification
-    except ImportError:
-        send_email_notification = None
-        send_push_notification = None
-        logger.warning("Celery tasks не найдены — email/push уведомления отключены")
+    # Используем notification_dispatcher для разрыва циклической зависимости
+    from app.services.notification_dispatcher import (
+        dispatch_email_notification,
+        dispatch_push_notification
+    )
 
     # Получаем email и имя пользователя из профиля (если не переданы явно)
     user_email = email
@@ -176,51 +172,33 @@ def create(user_id, notification_type, title, message, data=None, email=None, us
     # Проверяем настройки уведомлений пользователя
     user_prefs = prefs  # уже получены выше
 
-    # Отправка email через Celery — отдельный try/except
-    if send_email_notification and user_email and user_prefs.get('email_enabled', True):
-        try:
-            send_email_notification.delay(
-                user_id=user_id,
-                notification_id=notification_id,
-                user_email=user_email,
-                user_name=user_name or 'Пользователь',
-                notification_text=full_message,
-                notification_type=notification_type,
-                notification_url=data.get('link', '') if data else ''
-            )
-        except Exception:
-            logger.error(
-                "Не удалось поставить email-задачу в очередь Celery: user=%s type=%s",
-                user_id, notification_type
-            )
-            logger.error(traceback.format_exc())
+    # Отправка email через Celery — диспетчер (notification_dispatcher)
+    if user_email and user_prefs.get('email_enabled', True):
+        dispatch_email_notification(
+            user_id=user_id,
+            notification_id=notification_id,
+            user_email=user_email,
+            user_name=user_name or 'Пользователь',
+            notification_text=full_message,
+            notification_type=notification_type,
+            notification_url=data.get('link', '') if data else ''
+        )
 
-    # Отправка push через Celery — отдельный try/except
-    if send_push_notification and user_prefs.get('push_enabled', True):
-        try:
-            send_push_notification.delay(
-                user_id=user_id,
-                notification_data={
-                    'title': title or 'Trudnik',
-                    'body': message,
-                    'url': data.get('link', '') if data else '',
-                    'notification_id': notification_id,
-                    'type': notification_type,
-                    'tag': f'notification-{notification_id}' if notification_id else None
-                }
-            )
-        except Exception:
-            logger.error(
-                "Не удалось поставить push-задачу в очередь Celery: user=%s type=%s",
-                user_id, notification_type
-            )
-            logger.error(traceback.format_exc())
+    # Отправка push через Celery — диспетчер (notification_dispatcher)
+    if user_prefs.get('push_enabled', True):
+        dispatch_push_notification(
+            user_id=user_id,
+            title=title,
+            message=message,
+            notification_data=data if data else {},
+            notification_id=notification_id,
+            notification_type=notification_type
+        )
 
     # Инвалидируем Redis-кэш счётчика непрочитанных уведомлений
-    # noqa: локальный импорт — циклическая зависимость (app → notification_service → app)
+    from app.utils.redis_cache import redis_cache_delete
     try:
-        from app import _redis_cache_delete
-        _redis_cache_delete(f'unread:{user_id}')
+        redis_cache_delete(f'unread:{user_id}')
     except Exception:
         pass  # Redis недоступен — не фатально
 
@@ -326,9 +304,8 @@ def mark_read(notification_id, user_id=None):
 
     # Инвалидируем Redis-кэш счётчика непрочитанных уведомлений
     if user_id:
-        # noqa: локальный импорт — циклическая зависимость (app → notification_service → app)
+        from app.utils.redis_cache import redis_cache_delete
         try:
-            from app import _redis_cache_delete
-            _redis_cache_delete(f'unread:{user_id}')
+            redis_cache_delete(f'unread:{user_id}')
         except Exception:
             pass  # Redis недоступен — не фатально

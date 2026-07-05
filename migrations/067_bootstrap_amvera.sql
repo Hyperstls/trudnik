@@ -1098,7 +1098,7 @@ BEGIN
         RAISE EXCEPTION 'email_exists';
     END IF;
     INSERT INTO profiles (id, email, password_hash, full_name, role)
-    VALUES (gen_random_uuid(), p_email, crypt(p_password, gen_salt('bf')), p_full_name, p_role)
+    VALUES (gen_random_uuid(), p_email, crypt(p_password, gen_salt('bf', 12)), p_full_name, p_role)
     RETURNING id INTO v_user_id;
     RETURN v_user_id;
 END;
@@ -1115,7 +1115,7 @@ BEGIN
     IF v_hash IS NULL OR v_hash != crypt(p_old_password, v_hash) THEN
         RETURN false;
     END IF;
-    UPDATE profiles SET password_hash = crypt(p_new_password, gen_salt('bf')) WHERE id = p_user_id;
+    UPDATE profiles SET password_hash = crypt(p_new_password, gen_salt('bf', 12)) WHERE id = p_user_id;
     RETURN true;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

@@ -1,8 +1,16 @@
 {% extends "base.html" %}
 {% from '_icons.html' import star, heart, map_pin, clock, dollar, phone, smiley, avatar, award, briefcase %}
+{% from '_components.html' import breadcrumbs %}
 {% block title %}{{ employer.full_name }} — Работодатель{% endblock %}
 {% block content %}
 <div class="px-4 pb-24 max-w-2xl mx-auto fade-in">
+
+    <!-- Breadcrumbs -->
+    {{ breadcrumbs([
+        {'label': 'Главная', 'url': '/'},
+        {'label': 'Работодатели', 'url': '/employers'},
+        {'label': employer.full_name}
+    ]) }}
 
     {# ============================================ #}
     {# Шапка профиля                                 #}
@@ -11,7 +19,7 @@
         <div class="flex items-start gap-4">
             {# Аватар #}
             {% if employer.photo_url %}
-            <img src="{{ employer.photo_url }}" alt="{{ employer.full_name }}"
+            <img src="{{ employer.photo_url }}" alt="{{ employer.full_name }}" loading="lazy" decoding="async"
                  class="js-avatar-img w-20 h-20 rounded-full object-cover border-2 border-neutral-200 shrink-0">
             <div class="avatar-smiley w-20 h-20 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400" style="display:none">{{ smiley(40) }}</div>
             {% else %}

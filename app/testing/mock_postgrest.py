@@ -244,6 +244,10 @@ def _uninstall_auth_mock():
 
 
 def _is_mock_enabled() -> bool:
+    # НИКОГДА не активировать в production/staging
+    if os.environ.get('DEPLOYMENT_ENV', '') in ('production', 'staging'):
+        return False
+
     """Проверить, активен ли in-memory mock PostgREST.
 
     Приоритет проверок:

@@ -8,12 +8,13 @@ from app.decorators import login_required, rate_limit, validate_uuid
 from app.services.storage_service import upload_photo
 from app.utils import is_circuit_open, postgrest_admin_request, postgrest_request, postgrest_rpc, upload_to_storage
 from app.utils.helpers import assert_postgrest_ok
+from app.utils.redis_client import get_redis_client
 from app.utils.validators import validate_password
 
 profile_bp = Blueprint('profile', __name__)
 
 # Публичные поля профиля (C27, C28)
-PUBLIC_PROFILE_FIELDS = 'id,role,created_at,updated_at,is_self_employed,email_public,rating,full_name,photo_url,age,bio,city,experience,desired_payment,verification_status,total_reviews,skills,religion,religion_id,portfolio_link'
+PUBLIC_PROFILE_FIELDS = 'id,role,created_at,updated_at,is_self_employed,email_public,rating,full_name,photo_url,age,bio,city,experience,desired_payment,verification_status,total_reviews,religion_id,portfolio_link'
 
 # Допустимые расширения для загрузки фото
 ALLOWED_PHOTO_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
@@ -83,11 +84,10 @@ def update_profile():
         'phone': request.form.get('phone'),
         'bio': bio,
         'city': request.form.get('city'),
-        'religion': request.form.get('religion', 'не указано'),
         'portfolio_link': request.form.get('portfolio_link', ''),
     }
     skills_str = request.form.get('skills', '')
-    data['skills'] = [s.strip() for s in skills_str.split(',') if s.strip()] if skills_str else []
+    skill_ids = request.form.getlist('skill_ids')  # новый формат — список ID навыков
 
     if request.form.get('experience') is not None:
         data['experience'] = request.form.get('experience')
@@ -132,6 +132,23 @@ def update_profile():
         update_resp = postgrest_request('PATCH', f'profiles?id=eq.{user_id}', json=data)
         if assert_postgrest_ok(update_resp, 'обновление профиля'):
             flash('Профиль обновлён', 'success')
+
+        # Синхронизация навыков через user_skills (вместо profiles.skills)
+        if skill_ids:
+            # Удаляем старые связи
+            postgrest_request('DELETE', f'user_skills?user_id=eq.{user_id}')
+            # Вставляем новые
+            for sid in skill_ids:
+                sid = sid.strip()
+                if not sid:
+                    continue
+                try:
+                    uuid.UUID(sid)
+                except (ValueError, AttributeError):
+                    continue
+                postgrest_request('POST', 'user_skills', json={
+                    'user_id': user_id, 'skill_id': sid
+                })
     except Exception:
         current_app.logger.exception('Error updating profile for user %s', user_id)
         flash('Не удалось обновить профиль', 'danger')
@@ -173,6 +190,18 @@ def delete_photo():
 @login_required
 def delete_account():
     user_id = session['user_id']
+
+    # Rate-limit: 1 запрос в час
+    key = f'delete_account:{user_id}'
+    try:
+        redis_client = get_redis_client()
+        if redis_client:
+            if redis_client.exists(key):
+                flash('Попробуйте позже (не чаще раза в час)', 'warning')
+                return redirect(url_for('profile.profile'))
+            redis_client.setex(key, 3600, '1')
+    except Exception:
+        pass  # Redis недоступен — fail-open
 
     # Каскадное удаление через RPC (этап 4.4)
     try:
@@ -234,10 +263,10 @@ def change_password():
                 success = False
             if success:
                 # Инвалидация старой сессии и выпуск нового JWT
-                from app.blueprints.auth import _login_user_session
+                from app.utils.auth import login_user_session
                 email = session.get('email', '')
                 role = session.get('role', 'authenticated')
-                _login_user_session(user_id, role, email)
+                login_user_session(user_id, role, email)
                 flash('Пароль успешно изменён', 'success')
             else:
                 flash('Неверный текущий пароль', 'danger')

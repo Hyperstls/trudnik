@@ -7,6 +7,7 @@
 
 import logging
 import re as _re
+from datetime import datetime, timezone
 from typing import Any
 
 from .celery_app import celery_app
@@ -179,5 +180,51 @@ def cleanup_orphaned_notifications() -> dict[str, Any]:
         'deleted_by_app_id': deleted_by_app_id,
         'deleted_by_message': deleted_by_message,
         'total': total,
+        'errors': errors,
+    }
+
+
+@celery_app.task
+def expire_old_jobs() -> dict[str, Any]:
+    """Переводит просроченные задания из 'open' в 'expired'.
+
+    Периодическая задача (рекомендуется запускать раз в час через Celery Beat).
+    Находит задания со статусом 'open', у которых expires_at < now(),
+    и меняет их статус на 'expired'.
+
+    Returns:
+        Словарь с результатами: {'expired_count': int, 'errors': int}
+    """
+    expired_count = 0
+    errors = 0
+
+    try:
+        resp = postgrest_admin_request(
+            'PATCH',
+            'jobs?status=eq.open&expires_at=lt.now()',
+            json={'status': 'expired', 'updated_at': datetime.now(timezone.utc).isoformat()}
+        )
+        if resp.ok:
+            content_range = resp.headers.get('Content-Range', '')
+            if '/' in content_range:
+                try:
+                    expired_count = int(content_range.split('/')[-1])
+                except (ValueError, IndexError):
+                    pass
+        else:
+            errors += 1
+            logger.error(
+                'Ошибка при переводе просроченных заданий в expired: status=%s body=%s',
+                resp.status_code,
+                (resp.text or '')[:500]
+            )
+    except Exception as e:
+        logger.exception('Ошибка при expire_old_jobs: %s', e)
+        errors += 1
+
+    logger.info('expire_old_jobs: переведено в expired=%d, ошибок=%d', expired_count, errors)
+
+    return {
+        'expired_count': expired_count,
         'errors': errors,
     }
