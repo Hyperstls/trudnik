@@ -79,7 +79,7 @@ from app.utils import business as _business
 from app.utils import helpers as _helpers
 from app.utils import auth as _auth
 from app.utils import validators as _validators
-from app.decorators import rate_limit
+from app.utils.rate_limit_decorator import rate_limit
 
 # Сервисы (логически относятся к app.services, но ре-экспортируются
 # через app.utils для обратной совместимости)

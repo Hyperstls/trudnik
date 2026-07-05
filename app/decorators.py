@@ -5,10 +5,10 @@ from functools import wraps
 from typing import Any, Callable, TypeVar
 
 import jwt
-from flask import abort, current_app, flash, jsonify, redirect, request, session, url_for
+from flask import abort, current_app, flash, redirect, session, url_for
 
 from app.config import Config
-from app.utils import is_circuit_open, refresh_access_token, postgrest_request
+from app.utils.rate_limit_decorator import rate_limit  # noqa: F401 — ре-экспорт для обратной совместимости
 
 F = TypeVar('F', bound=Callable[..., Any])
 
@@ -39,7 +39,8 @@ def login_required(f: F) -> F:
             if time.time() > exp:
                 # Токен истёк — пробуем обновить
                 if session.get('refresh_token'):
-                    if refresh_access_token():
+                    from app.utils import refresh_access_token as _refresh_token
+                    if _refresh_token():
                         return f(*args, **kwargs)
                 session.clear()
                 return redirect(url_for('auth.login'))
@@ -69,10 +70,11 @@ def role_required(role: str) -> Callable[[F], F]:
         def decorated(*args: Any, **kwargs: Any) -> Any:
             if 'access_token' not in session:
                 return redirect(url_for('auth.login'))
-            resp = postgrest_request('GET', f'profiles?id=eq.{session["user_id"]}&select=role')
+            from app.utils import postgrest_request as _pgreq, is_circuit_open as _is_open
+            resp = _pgreq('GET', f'profiles?id=eq.{session["user_id"]}&select=role')
 
             # Проверка на Circuit Breaker OPEN
-            if is_circuit_open(resp):
+            if _is_open(resp):
                 flash('Сервис временно недоступен. Пожалуйста, попробуйте позже.', 'warning')
                 return redirect(url_for('jobs.index'))
 
@@ -216,81 +218,6 @@ def validate_uuid(*param_names: str):
     return decorator
 
 
-# ============================================================
-# Rate Limiting (Redis-based — общий для всех gunicorn worker'ов)
-# ============================================================
 
-_RATE_WINDOW = 60           # секунд
-_RATE_MAX_REQUESTS = 10     # запросов в окне
-
-
-def rate_limit(f: F = None, fail_open: bool = True) -> F:
-    """Декоратор: ограничение частоты POST-запросов через Redis.
-
-    Использует Redis INCR + EXPIRE вместо in-memory словаря,
-    что корректно работает с несколькими gunicorn worker'ами.
-
-    Ключ: ratelimit:{endpoint}:{user_id}
-
-    Args:
-        f: функция-обработчик маршрута.
-        fail_open: если True — при ошибке Redis пропускать запрос (graceful degradation).
-                   если False — отклонять запрос (fail-closed, для /login, /register).
-
-    Returns:
-        Декорированная функция с rate limiting (10 попыток в минуту).
-    """
-    if f is None:
-        return lambda func: rate_limit(func, fail_open=fail_open)
-
-    @wraps(f)
-    def decorated(*args: Any, **kwargs: Any) -> Any:
-        if request.method != 'POST':
-            return f(*args, **kwargs)
-        if current_app.config.get('TESTING'):
-            return f(*args, **kwargs)
-
-        user_id = session.get('user_id') or request.remote_addr or 'anonymous'
-        endpoint = request.path
-        key = f"ratelimit:{endpoint}:{user_id}"
-
-        try:
-            redis_client = getattr(current_app, 'redis', None)
-            if redis_client is None:
-                if fail_open:
-                    # Redis недоступен — разрешаем запрос (graceful degradation)
-                    return f(*args, **kwargs)
-                else:
-                    # fail-closed: Redis недоступен — отклоняем запрос
-                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
-                       'application/json' in request.headers.get('Accept', ''):
-                        return jsonify({'error': 'Сервис временно недоступен. Попробуйте позже.'}), 503
-                    flash('Сервис временно недоступен. Попробуйте позже.', 'danger')
-                    return redirect(url_for('auth.login'))
-
-            current = redis_client.incr(key)
-            if current == 1:
-                redis_client.expire(key, _RATE_WINDOW)
-
-            if current > _RATE_MAX_REQUESTS:
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
-                   'application/json' in request.headers.get('Accept', ''):
-                    return jsonify({'error': 'Слишком много попыток. Подождите минуту.'}), 429
-                flash('Слишком много попыток. Подождите минуту.', 'danger')
-                return redirect(url_for('auth.login'))
-        except Exception:
-            if fail_open:
-                # Ошибка Redis — разрешаем запрос (graceful degradation)
-                pass
-            else:
-                # fail-closed: ошибка Redis — отклоняем запрос
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
-                   'application/json' in request.headers.get('Accept', ''):
-                    return jsonify({'error': 'Сервис временно недоступен. Попробуйте позже.'}), 503
-                flash('Сервис временно недоступен. Попробуйте позже.', 'danger')
-                return redirect(url_for('auth.login'))
-
-        return f(*args, **kwargs)
-    return decorated  # type: ignore[return-value]
 
 
