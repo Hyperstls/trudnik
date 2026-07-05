@@ -39,6 +39,12 @@ celery_app: Celery = Celery(
     "trudnik_tasks",
     broker=_broker_url,
     backend=_backend_url,
+    include=[
+        "app.tasks.notification_tasks",
+        "app.tasks.email_tasks",
+        "app.tasks.push_tasks",
+        "app.tasks.maintenance_tasks",
+    ],
 )
 
 # ═══════════════════════════════════════════════════════════════
@@ -71,11 +77,8 @@ celery_app.conf.update(
 )
 
 # ═══════════════════════════════════════════════════════════════
-# Автоматическое обнаружение задач
+# Регистрация задач — модули явно указаны через include= в Celery()
 # ═══════════════════════════════════════════════════════════════
-
-# Позже сюда добавятся email_tasks и push_tasks
-celery_app.autodiscover_tasks(["app.tasks"], force=True)
 
 # Расписание Celery Beat для периодических задач
 celery_app.conf.beat_schedule = {
