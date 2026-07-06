@@ -526,3 +526,25 @@ select {
 /* Loading overlay spinner        */
 /* ============================= */
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ============================= */
+/* F4: Button loading state       */
+/* ============================= */
+.btn-loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.7;
+}
+.btn-loading::after {
+    content: '';
+    position: absolute;
+    width: 1em;
+    height: 1em;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    right: 0.5em;
+    top: 50%;
+    transform: translateY(-50%);
+}

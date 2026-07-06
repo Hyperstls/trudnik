@@ -419,5 +419,22 @@
         };
     })();
     </script>
+    <!-- F4: Loading state для submit кнопок -->
+    <script nonce="{{ csp_nonce }}">
+    document.addEventListener('submit', function(e) {
+        const form = e.target;
+        const btn = form.querySelector('[type="submit"]');
+        if (btn && !btn.dataset.noLoading) {
+            btn.classList.add('btn-loading');
+            btn.disabled = true;
+            btn.dataset.originalText = btn.textContent;
+            // Восстанавливаем через 10 секунд (fallback)
+            setTimeout(function() {
+                btn.classList.remove('btn-loading');
+                btn.disabled = false;
+            }, 10000);
+        }
+    });
+    </script>
 </body>
 </html>
