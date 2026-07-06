@@ -108,7 +108,7 @@
     </div>
     <div id="bulk-delete-users-bar" class="mb-3 hidden">
         <button type="button" class="js-bulk-delete-users-btn px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50" disabled>
-            Удалить выбранных (<span id="users-selected-count">0</span>)
+            Удалить выбранных (<output id="users-selected-count" aria-live="polite">0</output>)
         </button>
     </div>
     <div class="bg-white rounded-xl border border-neutral-100 shadow-sm overflow-x-auto">
@@ -189,7 +189,7 @@
     </div>
     <div id="bulk-delete-jobs-bar" class="mb-3 hidden">
         <button type="button" class="js-bulk-delete-jobs-btn px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50" disabled>
-            Удалить выбранные (<span id="jobs-selected-count">0</span>)
+            Удалить выбранные (<output id="jobs-selected-count" aria-live="polite">0</output>)
         </button>
     </div>
     <div class="bg-white rounded-xl border border-neutral-100 shadow-sm overflow-x-auto">
@@ -367,7 +367,7 @@
         </div>
         <div id="bulk-delete-skills-bar" class="mb-3 hidden">
             <button type="button" class="js-bulk-delete-skills-btn px-3 py-1.5 text-sm font-medium bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                Удалить выбранные навыки (<span id="skills-selected-count">0</span>)
+                Удалить выбранные навыки (<output id="skills-selected-count" aria-live="polite">0</output>)
             </button>
         </div>
         <label class="flex items-center gap-2 mb-2 text-sm text-neutral-500 cursor-pointer select-none">
@@ -394,7 +394,7 @@
         </div>
         <div id="bulk-delete-religions-bar" class="mb-3 hidden">
             <button type="button" class="js-bulk-delete-religions-btn px-3 py-1.5 text-sm font-medium bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                Удалить выбранные вероисповедания (<span id="religions-selected-count">0</span>)
+                Удалить выбранные вероисповедания (<output id="religions-selected-count" aria-live="polite">0</output>)
             </button>
         </div>
         <label class="flex items-center gap-2 mb-2 text-sm text-neutral-500 cursor-pointer select-none">
@@ -884,7 +884,7 @@ loadStats();
                 .catch(function(err) {
                     if (window.showToast) window.showToast('Ошибка соединения', 'danger');
                     bulkBtnUsers.disabled = false;
-                    bulkBtnUsers.innerHTML = 'Удалить выбранных (<span id="users-selected-count">' + ids.length + '</span>)';
+                    bulkBtnUsers.innerHTML = 'Удалить выбранных (<output id="users-selected-count" aria-live="polite">' + ids.length + '</output>)';
                     usersCountSpan = document.getElementById('users-selected-count');
                 });
             });
@@ -962,7 +962,7 @@ loadStats();
                 .catch(function(err) {
                     if (window.showToast) window.showToast('Ошибка соединения', 'danger');
                     bulkBtnJobs.disabled = false;
-                    bulkBtnJobs.innerHTML = 'Удалить выбранные (<span id="jobs-selected-count">' + ids.length + '</span>)';
+                    bulkBtnJobs.innerHTML = 'Удалить выбранные (<output id="jobs-selected-count" aria-live="polite">' + ids.length + '</output>)';
                     jobsCountSpan = document.getElementById('jobs-selected-count');
                 });
             });

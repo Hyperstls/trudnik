@@ -80,9 +80,9 @@
                 {{ select_all(16) }}
                 <span id="select-all-text">Выбрать все</span>
             </button>
-            <span id="selected-count" class="text-sm text-neutral-500 ml-1 hidden">
-                Выбрано: <strong id="count" class="text-neutral-800">0</strong>
-            </span>
+            <output id="selected-count" aria-live="polite" class="text-sm text-neutral-500 ml-1 hidden">
+                Выбрано: <output id="count" aria-live="polite" class="text-neutral-800">0</output>
+            </output>
             <div class="flex gap-1.5 ml-auto">
                 <button type="submit" name="action" value="restore"
                         class="action-icon-btn accept-btn" title="Вернуть" aria-label="Вернуть выбранные задания">

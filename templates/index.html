@@ -44,7 +44,7 @@
     {% if session.get('role') == 'worker' %}
     <!-- Mass actions bar (floating) -->
     <div id="mass-actions-bar" class="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-4 sm:w-auto bg-white rounded-2xl shadow-lg border border-neutral-200 px-4 py-3 flex items-center gap-2 z-30 hidden animate-slide-in" style="max-width: 100%; overflow-x: auto;">
-        <span id="selected-count" class="text-sm font-semibold text-neutral-600 whitespace-nowrap">0 выбрано</span>
+        <output id="selected-count" aria-live="polite" class="text-sm font-semibold text-neutral-600 whitespace-nowrap">0 выбрано</output>
         <div class="h-6 w-px bg-neutral-200"></div>
         <button type="button" id="select-all-btn" class="text-xs text-neutral-500 hover:text-neutral-700 font-medium underline underline-offset-2 transition-colors whitespace-nowrap">Выбрать все</button>
         <div class="h-6 w-px bg-neutral-200"></div>

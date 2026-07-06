@@ -94,11 +94,12 @@
                         </div>
                     </div>
                     {# Статус: оценён / не оценён #}
-                    <span class="text-xs font-medium px-2 py-1 rounded-full shrink-0
+                    <output class="text-xs font-medium px-2 py-1 rounded-full shrink-0
                         {% if existing %}bg-green-50 text-green-700{% else %}bg-amber-50 text-amber-700{% endif %}"
-                        id="status-badge-{{ w.worker_id }}">
+                        id="status-badge-{{ w.worker_id }}"
+                        aria-live="polite">
                         {% if existing %}✓ Оценён{% else %}Не оценён{% endif %}
-                    </span>
+                    </output>
                 </div>
 
                 {# --- Форма оценки --- #}
