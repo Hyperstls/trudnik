@@ -149,7 +149,7 @@ def upsert_rating():
     }
 
     # Пробуем найти существующую оценку
-    existing = postgrest_request(
+    existing = postgrest_admin_request(
         'GET',
         f'ratings?rater_user_id=eq.{rater_user_id}&job_id=eq.{job_id}&select=id'
     )
@@ -169,7 +169,7 @@ def upsert_rating():
         is_new = True
 
         # Если INSERT упал с конфликтом уникальности — обновляем
-        if not resp.ok and 'violates unique constraint' in (resp.text or '').lower():
+        if not resp.ok and resp.text and 'violates unique constraint' in resp.text.lower():
             existing2 = postgrest_admin_request(
                 'GET',
                 f'ratings?rater_user_id=eq.{rater_user_id}&job_id=eq.{job_id}&select=id'
