@@ -52,7 +52,12 @@ def favorites():
 def add_favorite(target_id):
     resp = postgrest_request('POST', 'favorites', json={'user_id': session['user_id'], 'target_id': target_id, 'favorite_type': 'worker'})
     if not resp.ok:
-        flash('Не удалось добавить в избранное', 'danger')
+        # C5: Обработка дубликата (race condition при параллельных запросах)
+        error_text = resp.text if hasattr(resp, 'text') else ''
+        if 'duplicate' in error_text.lower() or resp.status_code == 409:
+            flash('Трудник уже в избранном', 'info')
+        else:
+            flash('Не удалось добавить в избранное', 'danger')
     return safe_redirect('jobs.index')
 
 
