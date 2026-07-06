@@ -40,6 +40,16 @@ window.showToast = function(message, type) {
     var toast = document.createElement('div');
     toast.className = 'toast animate-slide-in';
 
+    // F2: Добавляем role для accessibility
+    // role="alert" для ошибок (assertive), role="status" для остальных (polite)
+    if (type === 'error' || type === 'danger') {
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+    } else {
+        toast.setAttribute('role', 'status');
+        toast.setAttribute('aria-live', 'polite');
+    }
+
     var bgColors = {
         success: 'bg-success text-white',
         error: 'bg-danger text-white',
