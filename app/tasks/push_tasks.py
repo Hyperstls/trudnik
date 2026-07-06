@@ -99,12 +99,19 @@ def cleanup_expired_subscriptions() -> dict:
             })
 
             if result.get('should_unsubscribe'):
-                push_service.delete_subscription(endpoint)
-                removed += 1
-                logger.info(
-                    'Удалена невалидная подписка при очистке: user=%s endpoint=%s',
-                    sub.get('user_id', '?'), endpoint[:60]
-                )
+                user_id = sub.get('user_id', '')
+                if user_id:
+                    push_service.delete_subscription(endpoint, user_id=user_id)
+                    removed += 1
+                    logger.info(
+                        'Удалена невалидная подписка при очистке: user=%s endpoint=%s',
+                        user_id, endpoint[:60]
+                    )
+                else:
+                    logger.warning(
+                        'Не удалось удалить подписку: отсутствует user_id для endpoint=%s',
+                        endpoint[:60]
+                    )
 
         total_processed += len(subscriptions)
         if len(subscriptions) < page_size:
