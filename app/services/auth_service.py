@@ -76,7 +76,7 @@ def login_direct_sql(email: str, password: str) -> dict | None:
             conn.autocommit = True
             cur = conn.cursor()
             cur.execute("""
-                SELECT id, email, role, full_name, COALESCE(email_verified, true)
+                SELECT id, email, role, full_name, COALESCE(email_verified, false)
                 FROM profiles
                 WHERE email = %s AND password_hash = crypt(%s, password_hash)
             """, (email, password))
@@ -125,7 +125,7 @@ def login_postgrest(email: str, password: str) -> dict | None:
                     'email': user.get('email', email),
                     'role': user.get('role', 'worker'),
                     'full_name': user.get('full_name', ''),
-                    'email_verified': user.get('email_verified', True)
+                    'email_verified': user.get('email_verified', False)
                 }
             elif isinstance(data, dict):
                 return {
@@ -133,7 +133,7 @@ def login_postgrest(email: str, password: str) -> dict | None:
                     'email': data.get('email', email),
                     'role': data.get('role', 'worker'),
                     'full_name': data.get('full_name', ''),
-                    'email_verified': data.get('email_verified', True)
+                    'email_verified': data.get('email_verified', False)
                 }
         logger.info("login: invalid credentials for %s (PostgREST fallback)", email)
         return None
