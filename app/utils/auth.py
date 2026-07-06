@@ -168,6 +168,27 @@ def login_user_session(user_id: str, role: str, email: str) -> None:
     session.modified = True
 
 
+def is_jti_blacklisted(jti: str) -> bool:
+    """Проверить, находится ли jti в чёрном списке (отозванный токен).
+
+    Args:
+        jti: JWT ID токена.
+
+    Returns:
+        True если jti в blacklist (токен отозван), иначе False.
+    """
+    if not jti:
+        return False
+    try:
+        from app.utils.redis_client import get_redis_client
+        redis_client = get_redis_client()
+        if redis_client:
+            return bool(redis_client.exists(f'jti_blacklist:{jti}'))
+    except Exception as e:
+        logger.warning('is_jti_blacklisted Redis error: %s', e, exc_info=True)
+    return False
+
+
 def get_user_role() -> Optional[str]:
     """Получить роль текущего пользователя из сессии.
 

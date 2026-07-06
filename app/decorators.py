@@ -44,6 +44,14 @@ def login_required(f: F) -> F:
                         return f(*args, **kwargs)
                 session.clear()
                 return redirect(url_for('auth.login'))
+            
+            # X7: Проверка jti-blacklist (отозванные токены)
+            jti = decoded.get('jti')
+            if jti:
+                from app.utils.auth import is_jti_blacklisted
+                if is_jti_blacklisted(jti):
+                    session.clear()
+                    return redirect(url_for('auth.login'))
         except (jwt.DecodeError, jwt.ExpiredSignatureError, jwt.InvalidTokenError):
             # Токен невалидный — очищаем сессию и перенаправляем на login
             session.clear()
