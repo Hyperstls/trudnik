@@ -1,5 +1,6 @@
 import html as _html
 import logging
+import uuid
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
@@ -139,6 +140,14 @@ def send_message():
     sender_id = session['user_id']
     application_id = data['application_id']
     content = data['content']
+    
+    # C3: Извлекаем client_message_id для идемпотентности
+    client_msg_id = data.get('client_message_id')
+    if client_msg_id:
+        try:
+            uuid.UUID(client_msg_id)
+        except ValueError:
+            return jsonify({'error': 'invalid client_message_id'}), 400
 
     # A3: Per-chat rate limit через атомарный Lua-скрипт
     redis_client = get_redis_client()
@@ -171,13 +180,26 @@ def send_message():
 
     # Сохраняем сообщение и получаем его ID из ответа
     headers = {'Prefer': 'return=representation'}
-    msg_resp = postgrest_request('POST', 'messages', json={
+    msg_data = {
         'application_id': application_id,
         'sender_id': sender_id,
         'content': sanitized_content
-    }, headers=headers)
+    }
+    if client_msg_id:
+        msg_data['client_message_id'] = client_msg_id
+    
+    msg_resp = postgrest_request('POST', 'messages', json=msg_data, headers=headers)
 
     if not msg_resp.ok:
+        # C3: Обработка дубликата (unique constraint violation)
+        if 'unique' in (msg_resp.text or '').lower() and client_msg_id:
+            # Возвращаем существующее сообщение
+            existing = postgrest_request('GET',
+                f'messages?application_id=eq.{application_id}'
+                f'&client_message_id=eq.{client_msg_id}&select=id')
+            if existing.ok and existing.json():
+                return jsonify({'status': 'ok', 'message_id': existing.json()[0]['id']})
+        
         logger.warning('chat.send_message failed: %s', msg_resp.text)
         return jsonify({'status': 'error', 'message': 'Не удалось отправить сообщение'}), 503
 
