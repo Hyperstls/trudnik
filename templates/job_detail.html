@@ -357,7 +357,7 @@ ymaps.ready(function() {
 // ── Кнопки действий (матрица видимости) ─────────
 window.cancelJobDetail = function(jobId) {
     window.showConfirm('Отозвать задание? Все текущие отклики будут отклонены.', function() {
-        fetch('/cancel-job/' + jobId, {
+        apiFetch('/cancel-job/' + jobId, {
             method: 'POST',
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
@@ -376,7 +376,7 @@ window.cancelJobDetail = function(jobId) {
 
 window.forceCompleteJob = function(jobId) {
     window.showConfirm('Завершить задание? Все непринятые отклики будут отклонены.', function() {
-        fetch('/api/jobs/' + jobId + '/force-complete', {
+        apiFetch('/api/jobs/' + jobId + '/force-complete', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -398,7 +398,7 @@ window.forceCompleteJob = function(jobId) {
 
 window.restoreJobDetail = function(jobId) {
     window.showConfirm('Все предыдущие отклики будут сброшены. Продолжить?', function() {
-        fetch('/restore-job/' + jobId, {
+        apiFetch('/restore-job/' + jobId, {
             method: 'POST',
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
@@ -418,7 +418,7 @@ window.restoreJobDetail = function(jobId) {
 window.withdrawApplication = function(appId) {
     window.showConfirm('Отозвать отклик?', function() {
         var card = document.querySelector('.space-y-3') || document.querySelector('.max-w-2xl');
-        fetch('/api/applications/' + appId + '/withdraw', {
+        apiFetch('/api/applications/' + appId + '/withdraw', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -446,7 +446,7 @@ window.withdrawApplication = function(appId) {
 
 window.deleteJobAdmin = function(jobId) {
     window.showConfirm('Удалить задание безвозвратно? Это действие нельзя отменить.', function() {
-        fetch('/delete-job/' + jobId, {
+        apiFetch('/delete-job/' + jobId, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -626,7 +626,7 @@ document.addEventListener('DOMContentLoaded', function() {
             submitBtn.disabled = true;
             submitBtn.textContent = 'Сохранение...';
 
-            fetch('/api/ratings', {
+            apiFetch('/api/ratings', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

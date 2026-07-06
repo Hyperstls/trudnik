@@ -86,7 +86,7 @@
 <script nonce="{{ csp_nonce }}">
 function deleteNotification(id) {
     window.showConfirm('Удалить уведомление?', function() {
-        fetch('/api/notifications/' + id + '/delete', {method: 'POST'})
+        apiFetch('/api/notifications/' + id + '/delete', {method: 'POST'})
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.success) location.reload();
@@ -96,7 +96,7 @@ function deleteNotification(id) {
 }
 function deleteAllNotifications() {
     window.showConfirm('Удалить все уведомления?', function() {
-        fetch('/api/notifications/delete-all', {method: 'POST'})
+        apiFetch('/api/notifications/delete-all', {method: 'POST'})
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.success) location.reload();

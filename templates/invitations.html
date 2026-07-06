@@ -80,7 +80,7 @@
 
 <script nonce="{{ csp_nonce }}">
 function respondInvite(invitationId, action) {
-    fetch('/api/invitations/' + invitationId + '/respond', {
+    apiFetch('/api/invitations/' + invitationId + '/respond', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({action: action})
@@ -104,7 +104,7 @@ function rejectInvite(invitationId) {
 
 function rejectAllInvites() {
     window.showConfirm('Отклонить все приглашения?', function() {
-        fetch('/api/invitations/reject-all', {
+        apiFetch('/api/invitations/reject-all', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'}
         })

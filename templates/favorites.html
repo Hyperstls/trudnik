@@ -246,7 +246,7 @@ async function inviteWorker(workerId, workerName, btn) {
     span.textContent = '...';
 
     try {
-        const resp = await fetch(`/api/invite/${jobId}/${workerId}`, {
+        const resp = await apiFetch(`/api/invite/${jobId}/${workerId}`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({message: ''})
@@ -339,7 +339,7 @@ function removeSelectedFavorites() {
         return;
     }
     
-    fetch('/api/favorites/remove-selected', {
+    apiFetch('/api/favorites/remove-selected', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ worker_ids: workerIds })

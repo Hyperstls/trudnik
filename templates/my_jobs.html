@@ -297,7 +297,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Функции для действий над отдельными заданиями (кастомные модалки)
     window.duplicateJob = function(jobId) {
         window.showConfirm('Дублировать задание?', function() {
-            fetch('/repost-job/' + jobId, {
+            apiFetch('/repost-job/' + jobId, {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
@@ -316,7 +316,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.cancelJob = function(jobId) {
         window.showConfirm('Отозвать задание? Все текущие отклики будут отклонены.', function() {
-            fetch('/cancel-job/' + jobId, {
+            apiFetch('/cancel-job/' + jobId, {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
@@ -335,7 +335,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.forceCompleteJob = function(jobId) {
         window.showConfirm('Завершить задание? Все непринятые отклики будут отклонены.', function() {
-            fetch('/api/jobs/' + jobId + '/force-complete', {
+            apiFetch('/api/jobs/' + jobId + '/force-complete', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -357,7 +357,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.restoreJob = function(jobId) {
         window.showConfirm('Все предыдущие отклики будут сброшены. Продолжить?', function() {
-            fetch('/restore-job/' + jobId, {
+            apiFetch('/restore-job/' + jobId, {
                 method: 'POST',
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             })
@@ -380,7 +380,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var body = forceConfirm ? JSON.stringify({ confirm: true }) : undefined;
             var headers = { 'X-Requested-With': 'XMLHttpRequest' };
             if (body) { headers['Content-Type'] = 'application/json'; }
-            fetch('/delete-job/' + jobId, {
+            apiFetch('/delete-job/' + jobId, {
                 method: 'POST',
                 headers: headers,
                 body: body

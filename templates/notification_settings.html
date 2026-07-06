@@ -166,7 +166,7 @@ function savePreferences() {
 
     // Сохраняем каждое изменение последовательно
     let promises = changes.map(change =>
-        fetch('/api/notifications/preferences', {
+        apiFetch('/api/notifications/preferences', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
