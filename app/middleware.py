@@ -32,10 +32,14 @@ def csrf_check():
     # Emergency API endpoints protected by X-Admin-Token instead of CSRF
     if request.path in ('/api/reset-users', '/api/fix-permissions', '/api/reset-circuit-breaker'):
         import hmac
-        admin_token = request.headers.get('X-Admin-Token', '')
         expected = current_app.config.get('ADMIN_API_TOKEN', '')
-        if expected and hmac.compare_digest(admin_token, expected):
-            return
+        # X12: fail-closed — если токен не настроен, блокируем доступ
+        if not expected:
+            abort(503)
+        admin_token = request.headers.get('X-Admin-Token', '')
+        if not hmac.compare_digest(admin_token, expected):
+            abort(403)
+        return
     # Проверяем заголовок X-CSRF-Token (для fetch/AJAX-запросов)
     header_token = request.headers.get('X-CSRF-Token')
     if header_token:
