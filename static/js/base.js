@@ -93,6 +93,34 @@ if (window._toastQueue && window._toastQueue.length) {
     window._toastQueue = [];
 }
 
+/**
+ * F7: Focus trap для модальных окон
+ * Удерживает фокус внутри модального окна при навигации Tab
+ * @param {HTMLElement} element - контейнер модального окна
+ */
+window.trapFocus = function(element) {
+    const focusable = element.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    
+    element.addEventListener('keydown', function(e) {
+        if (e.key !== 'Tab') return;
+        if (e.shiftKey) {
+            if (document.activeElement === first) {
+                last.focus();
+                e.preventDefault();
+            }
+        } else {
+            if (document.activeElement === last) {
+                first.focus();
+                e.preventDefault();
+            }
+        }
+    });
+};
+
 // ========================================
 // Custom Confirm Modal
 // ========================================
