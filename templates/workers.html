@@ -41,6 +41,7 @@
                     <button id="toggle-block-btn-{{ worker.id }}"
                             class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                             title="Заблокировать"
+                            aria-label="Заблокировать трудника"
                             data-action="toggle-block"
                             data-blocked="false">
                         🚫
@@ -50,7 +51,8 @@
                     <button class="favorite-btn contact-btn w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
                             data-worker-id="{{ worker.id }}"
                             data-favorited="false"
-                            title="Добавить в избранное">
+                            title="Добавить в избранное"
+                            aria-label="Добавить в избранное">
                         <span class="favorite-icon flex items-center justify-center">{{ star(16) }}</span>
                     </button>
                     {% endif %}

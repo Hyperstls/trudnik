@@ -85,22 +85,22 @@
             </span>
             <div class="flex gap-1.5 ml-auto">
                 <button type="submit" name="action" value="restore"
-                        class="action-icon-btn accept-btn" title="Вернуть">
+                        class="action-icon-btn accept-btn" title="Вернуть" aria-label="Вернуть выбранные задания">
                     {{ restore(18) }}
                     <span class="text-xs ml-1 font-medium hidden sm:inline">Вернуть</span>
                 </button>
                 <button type="submit" name="action" value="cancel"
-                        class="action-icon-btn contact-btn" title="Отозвать">
+                        class="action-icon-btn contact-btn" title="Отозвать" aria-label="Отозвать выбранные задания">
                     {{ x_close(18) }}
                     <span class="text-xs ml-1 font-medium hidden sm:inline">Отозвать</span>
                 </button>
                 <button type="submit" name="action" value="duplicate"
-                        class="action-icon-btn chat-btn" title="Дублировать">
+                        class="action-icon-btn chat-btn" title="Дублировать" aria-label="Дублировать выбранные задания">
                     {{ duplicate(18) }}
                     <span class="text-xs ml-1 font-medium hidden sm:inline">Дублировать</span>
                 </button>
                 <button type="submit" name="action" value="delete"
-                        class="action-icon-btn reject-btn" title="Удалить">
+                        class="action-icon-btn reject-btn" title="Удалить" aria-label="Удалить выбранные задания">
                     {{ trash_detailed(18) }}
                     <span class="text-xs ml-1 font-medium hidden sm:inline">Удалить</span>
                 </button>
@@ -154,8 +154,8 @@
                             <span class="text-[11px] text-neutral-400 mr-0.5">ID:</span>
                             <code class="text-[11px] font-mono text-neutral-300 select-all">{{ job.id }}</code>
                             <button type="button" class="js-copy-job-btn text-neutral-300 hover:text-primary-500 transition-colors p-0.5"
-                                    data-job-id="{{ job.id }}" title="Скопировать ID">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    data-job-id="{{ job.id }}" title="Скопировать ID" aria-label="Скопировать ID задания">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                             </button>
                         </div>
                         {# Кнопки действий (матрица секция 3.1) #}
@@ -171,7 +171,7 @@
 
                             {# Дублировать: все статусы кроме open (матрица) #}
                             <button type="button" class="js-job-act-btn action-icon-btn chat-btn"
-                                    data-action="duplicateJob" data-job-id="{{ job.id }}" title="Дублировать">
+                                    data-action="duplicateJob" data-job-id="{{ job.id }}" title="Дублировать" aria-label="Дублировать задание">
                                 {{ duplicate(16) }}
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Дублировать</span>
                             </button>
@@ -179,8 +179,8 @@
                             {# Завершить: только open #}
                             {% if job.status == 'open' %}
                             <button type="button" class="js-job-act-btn action-icon-btn reject-btn"
-                                    data-action="forceCompleteJob" data-job-id="{{ job.id }}" title="Завершить задание">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                    data-action="forceCompleteJob" data-job-id="{{ job.id }}" title="Завершить задание" aria-label="Завершить задание">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Завершить</span>
                             </button>
                             {% endif %}
@@ -188,7 +188,7 @@
                             {# Отозвать: только open #}
                             {% if job.status == 'open' %}
                             <button type="button" class="js-job-act-btn action-icon-btn contact-btn"
-                                    data-action="cancelJob" data-job-id="{{ job.id }}" title="Отозвать">
+                                    data-action="cancelJob" data-job-id="{{ job.id }}" title="Отозвать" aria-label="Отозвать задание">
                                 {{ x_close(16) }}
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Отозвать</span>
                             </button>
@@ -197,7 +197,7 @@
                             {# Вернуть: только cancelled #}
                             {% if job.status == 'cancelled' %}
                             <button type="button" class="js-job-act-btn action-icon-btn accept-btn"
-                                    data-action="restoreJob" data-job-id="{{ job.id }}" title="Вернуть">
+                                    data-action="restoreJob" data-job-id="{{ job.id }}" title="Вернуть" aria-label="Вернуть задание">
                                 {{ restore(16) }}
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Вернуть</span>
                             </button>
@@ -205,7 +205,7 @@
 
                             {# Удалить: все статусы #}
                             <button type="button" class="js-job-act-btn action-icon-btn reject-btn"
-                                    data-action="deleteJob" data-job-id="{{ job.id }}" title="Удалить">
+                                    data-action="deleteJob" data-job-id="{{ job.id }}" title="Удалить" aria-label="Удалить задание">
                                 {{ trash_detailed(16) }}
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Удалить</span>
                             </button>

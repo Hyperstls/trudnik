@@ -63,8 +63,8 @@
             </div>
             <button class="js-delete-one-btn w-11 h-11 flex items-center justify-center rounded-full bg-white border border-neutral-200 text-neutral-400 hover:text-danger hover:border-danger shadow-sm transition-all"
                 style="position:absolute; top:6px; right:-10px;"
-                data-notif-id="{{ notification.id }}" title="Удалить уведомление">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                data-notif-id="{{ notification.id }}" title="Удалить уведомление" aria-label="Удалить уведомление">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
         </div>
         {% endfor %}

@@ -157,14 +157,14 @@
                     <div class="action-buttons mt-3 flex items-center gap-1.5 flex-wrap">
                         {% if app.status == 'pending' %}
                             <button type="button" data-app-id="{{ app.id }}" data-action="accept"
-                                    class="action-icon-btn accept-btn" title="Принять">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    class="action-icon-btn accept-btn" title="Принять" aria-label="Принять отклик">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <polyline points="20 6 9 17 4 12"></polyline>
                                 </svg>
                             </button>
                             <button type="button" data-app-id="{{ app.id }}" data-action="reject"
-                                    class="action-icon-btn reject-btn" title="Отклонить">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    class="action-icon-btn reject-btn" title="Отклонить" aria-label="Отклонить отклик">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <line x1="18" y1="6" x2="6" y2="18"></line>
                                     <line x1="6" y1="6" x2="18" y2="18"></line>
                                 </svg>
@@ -203,16 +203,16 @@
                             </span>
                             {% if app.id %}
                             <a href="/chat/{{ app.id }}"
-                               class="action-icon-btn chat-btn" title="Чат">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                               class="action-icon-btn chat-btn" title="Чат" aria-label="Открыть чат">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                                 </svg>
                             </a>
                             {% endif %}
 
                             <button type="button" data-app-id="{{ app.id }}" data-action="reject"
-                                    class="action-icon-btn reject-btn" title="Отклонить">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    class="action-icon-btn reject-btn" title="Отклонить" aria-label="Отклонить отклик">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <line x1="18" y1="6" x2="6" y2="18"></line>
                                     <line x1="6" y1="6" x2="18" y2="18"></line>
                                 </svg>
@@ -227,8 +227,8 @@
                                 </svg>
                             </span>
                             <button type="button" data-app-id="{{ app.id }}" data-action="reopen"
-                                    class="action-icon-btn reopen-btn" title="Повторно принять">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    class="action-icon-btn reopen-btn" title="Повторно принять" aria-label="Повторно принять отклик">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <polyline points="23 4 23 10 17 10"></polyline>
                                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                                 </svg>
