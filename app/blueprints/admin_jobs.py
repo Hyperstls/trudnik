@@ -18,8 +18,28 @@ admin_jobs_bp = Blueprint('admin_jobs', __name__, url_prefix='/admin')
 @admin_required
 @validate_uuid('job_id')
 def update_job_status(job_id):
+    """Изменить статус задания (admin).
+    
+    A6: Запрещает переход completed→open при наличии ratings (orphan ratings).
+    """
     new_status = request.form.get('status', '')
     if new_status in ('open', 'completed', 'cancelled'):
+        # A6: Получаем текущий статус для проверки completed→open
+        job_resp = postgrest_admin_request('GET', f'jobs?id=eq.{job_id}&select=status')
+        if not job_resp.ok or not job_resp.json():
+            flash('Задание не найдено', 'danger')
+            return redirect(url_for('admin_dashboard.admin_panel', tab='jobs'))
+        
+        current_status = job_resp.json()[0].get('status')
+        
+        # A6: Запрет перехода completed→open при наличии ratings
+        if current_status == 'completed' and new_status == 'open':
+            ratings_resp = postgrest_admin_request('GET',
+                f'ratings?job_id=eq.{job_id}&select=id&limit=1')
+            if ratings_resp.ok and ratings_resp.json():
+                flash('Нельзя открыть вакансию с существующими оценками', 'danger')
+                return redirect(url_for('admin_dashboard.admin_panel', tab='jobs'))
+        
         resp = postgrest_admin_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': new_status})
         if assert_postgrest_ok(resp, 'изменение статуса задания'):
             flash(f'Статус задания изменён на {new_status}', 'success')
