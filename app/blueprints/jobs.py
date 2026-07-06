@@ -800,9 +800,9 @@ def cancel_job(job_id):
     result = rpc_result.json()
     if not result or not result.get('success'):
         error_msg = (result or {}).get('error', 'Не удалось отозвать задание')
-        status_code = 400
-        if (result or {}).get('code') == 'has_accepted_workers':
-            status_code = 400
+        error_code = (result or {}).get('code', '')
+        # C7: Обработка race condition — 409 для has_accepted_workers
+        status_code = 409 if error_code == 'has_accepted_workers' else 400
         if is_ajax:
             return jsonify({'success': False, 'error': error_msg}), status_code
         flash(error_msg, 'danger')
