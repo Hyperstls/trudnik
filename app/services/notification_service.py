@@ -289,23 +289,24 @@ def mark_all_read(user_id):
         json={'is_read': True})
 
 
-def mark_read(notification_id, user_id=None):
+def mark_read(notification_id, user_id):
     """Пометить одно уведомление прочитанным (с проверкой принадлежности).
 
     Args:
         notification_id: ID уведомления.
-        user_id: UUID пользователя (опционально). Если передан — PATCH только
-                 если уведомление принадлежит этому пользователю.
+        user_id: UUID пользователя (обязательно). PATCH только если уведомление
+                 принадлежит этому пользователю.
     """
-    url = f'notifications?id=eq.{notification_id}'
-    if user_id:
-        url += f'&user_id=eq.{user_id}'
+    if not user_id:
+        logger.error('mark_read: user_id is required')
+        return
+    
+    url = f'notifications?id=eq.{notification_id}&user_id=eq.{user_id}'
     postgrest_request('PATCH', url, json={'is_read': True})
 
     # Инвалидируем Redis-кэш счётчика непрочитанных уведомлений
-    if user_id:
-        from app.utils.redis_cache import redis_cache_delete
-        try:
-            redis_cache_delete(f'unread:{user_id}')
-        except Exception:
-            pass  # Redis недоступен — не фатально
+    from app.utils.redis_cache import redis_cache_delete
+    try:
+        redis_cache_delete(f'unread:{user_id}')
+    except Exception:
+        pass  # Redis недоступен — не фатально
