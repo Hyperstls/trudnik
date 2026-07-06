@@ -630,6 +630,11 @@ def my_jobs():
 @login_required
 @role_required('employer')
 def my_jobs_action():
+    """Bulk-операции над заданиями (cancel/restore/delete/duplicate).
+    
+    A1: Все state-changing операции используют атомарные RPC для предотвращения
+    частичных обновлений и race conditions.
+    """
     user_id = session['user_id']
     action = request.form.get('action')
     job_ids = request.form.getlist('job_ids')
@@ -638,33 +643,101 @@ def my_jobs_action():
         flash('Не выбрано ни одного задания', 'danger')
         return redirect(url_for('jobs.my_jobs'))
 
+    success_count = 0
+    error_count = 0
+    
     for job_id in job_ids:
         if not check_job_owner(job_id, user_id):
+            error_count += 1
             continue
+            
         if action == 'restore':
-            restore_resp = postgrest_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'open'})
-            assert_postgrest_ok(restore_resp, 'восстановление задания')
+            # A1: Используем атомарный RPC вместо прямого PATCH
+            rpc_result = postgrest_rpc('restore_job_atomic', {
+                'p_job_id': job_id,
+                'p_user_id': user_id
+            })
+            if rpc_result.ok:
+                result_data = rpc_result.json()
+                if result_data.get('success'):
+                    success_count += 1
+                else:
+                    error_msg = result_data.get('error', 'неизвестная ошибка')
+                    logger.warning('restore_job_atomic failed for job %s: %s', job_id, error_msg)
+                    flash('Ошибка восстановления: %s' % error_msg, 'warning')
+                    error_count += 1
+            else:
+                logger.warning('restore_job_atomic HTTP error for job %s: status=%s', job_id, rpc_result.status_code)
+                flash('Ошибка восстановления задания', 'warning')
+                error_count += 1
+                
         elif action == 'cancel':
-            cancel_resp = postgrest_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
-            assert_postgrest_ok(cancel_resp, 'отмена задания')
+            # A1: Используем атомарный RPC вместо прямого PATCH
+            # RPC проверяет наличие accepted workers и возвращает 409 если есть
+            rpc_result = postgrest_rpc('cancel_job_atomic', {
+                'p_job_id': job_id,
+                'p_user_id': user_id
+            })
+            if rpc_result.ok:
+                result_data = rpc_result.json()
+                if result_data.get('success'):
+                    success_count += 1
+                else:
+                    error_code = result_data.get('code', '')
+                    error_msg = result_data.get('error', 'неизвестная ошибка')
+                    if error_code == 'has_accepted_workers':
+                        # 409 Conflict: нельзя отменить задание с принятыми работниками
+                        logger.warning('cancel_job_atomic conflict for job %s: %s', job_id, error_msg)
+                        flash('Невозможно отменить: есть принятые работники', 'danger')
+                    else:
+                        logger.warning('cancel_job_atomic failed for job %s: %s', job_id, error_msg)
+                        flash('Ошибка отмены: %s' % error_msg, 'warning')
+                    error_count += 1
+            else:
+                logger.warning('cancel_job_atomic HTTP error for job %s: status=%s', job_id, rpc_result.status_code)
+                flash('Ошибка отмены задания', 'warning')
+                error_count += 1
+                
         elif action == 'delete':
+            # delete_job_cascade уже использует RPC - оставляем как есть
             rpc_result = postgrest_rpc('delete_job_cascade', {'p_job_id': job_id}, use_admin=True)
             if rpc_result.ok:
                 result_data = rpc_result.json()
                 if result_data.get('success'):
-                    flash('Задание удалено', 'success')
+                    success_count += 1
                 else:
-                    flash(f"Ошибка удаления: {result_data.get('error', 'неизвестная ошибка')}", 'error')
+                    error_msg = result_data.get('error', 'неизвестная ошибка')
+                    logger.warning('delete_job_cascade failed for job %s: %s', job_id, error_msg)
+                    flash('Ошибка удаления: %s' % error_msg, 'warning')
+                    error_count += 1
             else:
-                flash(f"Ошибка удаления: {rpc_result.status_code}", 'error')
+                logger.warning('delete_job_cascade HTTP error for job %s: status=%s', job_id, rpc_result.status_code)
+                flash('Ошибка удаления задания', 'warning')
+                error_count += 1
+                
         elif action == 'duplicate':
+            # Дублирование не требует атомарного RPC - это просто копирование
             resp = postgrest_request('GET', f'jobs?id=eq.{job_id}&select=*')
             if resp.ok and resp.json():
                 new_job = copy_job(resp.json()[0])
                 dup_resp = postgrest_request('POST', 'jobs', json=new_job)
-                assert_postgrest_ok(dup_resp, 'дублирование задания')
+                if dup_resp.ok:
+                    success_count += 1
+                else:
+                    logger.warning('duplicate job failed for job %s: status=%s', job_id, dup_resp.status_code)
+                    flash('Ошибка дублирования задания', 'warning')
+                    error_count += 1
+            else:
+                error_count += 1
 
-    flash(f'Операция выполнена для {len(job_ids)} заданий', 'success')
+    # Итоговое сообщение
+    if success_count > 0 and error_count == 0:
+        flash('Операция выполнена для %d заданий' % success_count, 'success')
+    elif success_count > 0 and error_count > 0:
+        flash('Выполнено: %d, ошибок: %d' % (success_count, error_count), 'warning')
+    elif error_count > 0:
+        flash('Операция не выполнена: %d ошибок' % error_count, 'danger')
+        
     return redirect(url_for('jobs.my_jobs'))
 
 
