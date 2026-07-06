@@ -9,19 +9,13 @@ from unittest.mock import patch, MagicMock
 
 
 @pytest.fixture
-def client(app):
-    """Flask test client."""
-    return app.test_client()
-
-
-@pytest.fixture
-def user_session(client):
+def user_session(app_client):
     """Сессия авторизованного пользователя."""
-    with client.session_transaction() as sess:
+    with app_client.session_transaction() as sess:
         sess['user_id'] = '11111111-1111-1111-1111-111111111111'
         sess['role'] = 'worker'
         sess['_csrf_token'] = 'test-csrf-token'
-    return client
+    return app_client
 
 
 class TestChatRateLimitAtomic:

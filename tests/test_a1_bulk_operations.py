@@ -10,19 +10,13 @@ from flask import session
 
 
 @pytest.fixture
-def client(app):
-    """Flask test client."""
-    return app.test_client()
-
-
-@pytest.fixture
-def employer_session(client):
+def employer_session(app_client):
     """Сессия авторизованного работодателя."""
-    with client.session_transaction() as sess:
+    with app_client.session_transaction() as sess:
         sess['user_id'] = '11111111-1111-1111-1111-111111111111'
         sess['role'] = 'employer'
         sess['_csrf_token'] = 'test-csrf-token'
-    return client
+    return app_client
 
 
 class TestBulkCancelUsesAtomicRPC:

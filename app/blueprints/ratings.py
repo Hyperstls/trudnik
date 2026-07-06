@@ -265,7 +265,7 @@ def get_user_rating_details(user_id):
     
     A7: Для анонимных пользователей PII рейтера (email, phone) удаляется.
     """
-    # A7: Используем явный allowlist колонок вместо select=*
+    # A7: Используем явный allowlist колонок (без wildcard)
     resp = postgrest_request(
         'GET',
         f'ratings?rated_user_id=eq.{user_id}&select=id,job_id,rating,comment,rating_type,target_type,created_at,rater:profiles!rater_user_id(full_name,photo_url)&order=created_at.desc&limit=100'

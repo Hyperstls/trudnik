@@ -9,9 +9,9 @@ from unittest.mock import patch, MagicMock
 
 
 @pytest.fixture
-def client(app):
+def client(app_client):
     """Flask test client."""
-    return app.test_client()
+    return app_client
 
 
 class TestRatingsPIIProtection:

@@ -9,19 +9,13 @@ from unittest.mock import patch, MagicMock
 
 
 @pytest.fixture
-def client(app):
-    """Flask test client."""
-    return app.test_client()
-
-
-@pytest.fixture
-def admin_session(client):
+def admin_session(app_client):
     """Сессия авторизованного администратора."""
-    with client.session_transaction() as sess:
+    with app_client.session_transaction() as sess:
         sess['user_id'] = 'admin-admin-admin-admin-adminadminadmin'
         sess['role'] = 'admin'
         sess['_csrf_token'] = 'test-csrf-token'
-    return client
+    return app_client
 
 
 class TestCompletedToOpenWithRatings:

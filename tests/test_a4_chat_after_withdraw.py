@@ -9,25 +9,19 @@ from unittest.mock import patch, MagicMock
 
 
 @pytest.fixture
-def client(app):
-    """Flask test client."""
-    return app.test_client()
-
-
-@pytest.fixture
-def worker_session(client):
+def worker_session(app_client):
     """Сессия авторизованного работника."""
-    with client.session_transaction() as sess:
+    with app_client.session_transaction() as sess:
         sess['user_id'] = '11111111-1111-1111-1111-111111111111'
         sess['role'] = 'worker'
         sess['_csrf_token'] = 'test-csrf-token'
-    return client
+    return app_client
 
 
 @pytest.fixture
-def employer_session(client):
+def employer_session(app_client):
     """Сессия авторизованного работодателя."""
-    with client.session_transaction() as sess:
+    with app_client.session_transaction() as sess:
         sess['user_id'] = '22222222-2222-2222-2222-222222222222'
         sess['role'] = 'employer'
         sess['_csrf_token'] = 'test-csrf-token'
