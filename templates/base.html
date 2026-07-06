@@ -449,5 +449,27 @@
         }
     });
     </script>
+
+    <!-- F9: Keyboard shortcuts -->
+    <script nonce="{{ csp_nonce }}">
+    document.addEventListener('keydown', function(e) {
+        // Alt+H — на главную
+        if (e.altKey && e.key === 'h') {
+            window.location.href = '/';
+        }
+        // Alt+N — уведомления
+        if (e.altKey && e.key === 'n') {
+            window.location.href = '/notifications';
+        }
+        // Escape — закрыть модальное окно
+        if (e.key === 'Escape') {
+            const modal = document.querySelector('[data-modal]:not([hidden])');
+            if (modal) {
+                modal.setAttribute('hidden', '');
+                modal.dispatchEvent(new Event('close'));
+            }
+        }
+    });
+    </script>
 </body>
 </html>
