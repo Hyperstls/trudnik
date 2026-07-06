@@ -3,6 +3,25 @@
 
 ---
 
+## [REFACTOR-01] 2026-07-06 — Рефакторинг Iteration 1+2
+
+**Ветка:** refactor/iteration-1-2-combined
+**Статус:** COMPLETED
+
+### Выполнено:
+- Wave X: 13 критических багов исправлено
+- Wave A: 7 проблем целостности данных
+- Wave B: 10 улучшений безопасности auth/session
+- Wave C: 13 race conditions устранено
+- Wave D: Система идемпотентности (apiFetch + middleware)
+- Wave E: Observability (logging, health, trace ID)
+- Wave F: 29 улучшений a11y и UX
+
+### Новые миграции: 100, 101, 110, 111, 120, 121
+### Новые тесты: ~200 тестов в tests/test_[xabcdef]*.py
+
+---
+
 ## Task ID: 0-1
 **Agent:** Senior Full-Stack Developer
 **Task:** Ротация всех утёкших секретов
