@@ -80,13 +80,15 @@
             <!-- Поиск (только ПК) -->
             {% if session.get('user_id') and request.endpoint != 'auth.login' and request.endpoint != 'auth.register' %}
             <div class="hidden md:flex flex-1 max-w-md mx-4">
-                <form action="/" method="get" class="relative w-full" id="desktop-search-form">
+                <search>
+                <form action="/" method="get" class="relative w-full" id="desktop-search-form" aria-label="Поиск заданий">
                     <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
                     <input type="text" name="city" placeholder="Поиск по городу..." aria-label="Поиск по городу" class="w-full pl-9 pr-4 py-2 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
                 </form>
+                </search>
             </div>
             {% endif %}
 
