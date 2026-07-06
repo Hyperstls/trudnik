@@ -92,6 +92,7 @@
         <form method="get" class="flex gap-2 flex-1">
             <input type="hidden" name="tab" value="users">
             <input type="text" name="search" value="{{ request.args.get('search', '') }}" placeholder="Поиск по имени..."
+                   aria-label="Поиск пользователей по имени"
                    class="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm">
             <select name="role" class="px-3 py-2 border border-neutral-200 rounded-lg text-sm">
                 <option value="">Все роли</option>
@@ -127,7 +128,7 @@
                 {% for u in users %}
                 <tr class="border-t border-neutral-100 hover:bg-neutral-50" data-user-id="{{ u.id }}">
                     <td class="px-2 py-3 text-center">
-                        <input type="checkbox" class="js-user-checkbox rounded border-neutral-300" data-user-id="{{ u.id }}">
+                        <input type="checkbox" class="js-user-checkbox rounded border-neutral-300" data-user-id="{{ u.id }}" aria-label="Выбрать пользователя {{ u.get('full_name', '') }}">
                     </td>
                     <td class="px-4 py-3 font-medium text-neutral-900">{{ u.get('full_name', '—') }}</td>
                     <td class="px-4 py-3 text-neutral-600">{{ u.get('email', '—') }}</td>
@@ -172,6 +173,7 @@
         <form method="get" class="flex gap-2 flex-1">
             <input type="hidden" name="tab" value="jobs">
             <input type="text" name="search" value="{{ request.args.get('search', '') }}" placeholder="Поиск по названию..."
+                   aria-label="Поиск заданий по названию"
                    class="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm">
             <select name="status" class="px-3 py-2 border border-neutral-200 rounded-lg text-sm">
                 <option value="">Все статусы</option>
@@ -207,7 +209,7 @@
                 {% for j in jobs %}
                 <tr class="border-t border-neutral-100 hover:bg-neutral-50" data-job-id="{{ j.id }}">
                     <td class="px-2 py-3 text-center">
-                        <input type="checkbox" class="js-job-checkbox rounded border-neutral-300" data-job-id="{{ j.id }}">
+                        <input type="checkbox" class="js-job-checkbox rounded border-neutral-300" data-job-id="{{ j.id }}" aria-label="Выбрать задание {{ j.get('title', '') }}">
                     </td>
                     <td class="px-4 py-3 font-medium text-neutral-900">{{ j.get('organization_name', '—')[:40] }}</td>
                     <td class="px-4 py-3 text-neutral-600">{{ j.get('employer_name', '—') }}</td>
@@ -358,6 +360,7 @@
     <div class="bg-white rounded-2xl border border-neutral-100 p-5 shadow-sm">
         <div class="flex gap-2 mb-4">
             <input type="text" id="skill-name-input" placeholder="Новый навык..."
+                   aria-label="Название нового навыка"
                    class="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm">
             <button class="js-add-skill-btn px-4 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600">Добавить</button>
         </div>
@@ -384,6 +387,7 @@
     <div class="bg-white rounded-2xl border border-neutral-100 p-5 shadow-sm">
         <div class="flex gap-2 mb-4">
             <input type="text" id="religion-name-input" placeholder="Новое вероисповедание..."
+                   aria-label="Название нового вероисповедания"
                    class="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm">
             <button class="js-add-religion-btn px-4 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600">Добавить</button>
         </div>
@@ -504,10 +508,11 @@ function renderSkills() {
     list.innerHTML = skillsData.map((s, i) => `
         <div class="flex items-center gap-1.5 p-2 border border-neutral-100 rounded-lg bg-white cursor-move"
              id="skill-${s.id}" draggable="true" data-skill-index="${i}">
-            <input type="checkbox" class="js-skill-checkbox rounded border-neutral-300 shrink-0" data-skill-id="${s.id}">
+            <input type="checkbox" class="js-skill-checkbox rounded border-neutral-300 shrink-0" data-skill-id="${s.id}" aria-label="Выбрать навык ${s.name}">
             <span class="text-xs text-neutral-300 cursor-grab mr-1 select-none" title="Перетащите">⋮⋮</span>
             <span class="text-xs text-neutral-400 w-6 text-center">${i + 1}</span>
             <input type="text" value="${s.name}" data-id="${s.id}"
+                   aria-label="Название навыка"
                    class="flex-1 px-2 py-1 border border-neutral-200 rounded text-sm skill-edit">
             <button class="js-save-skill-btn text-xs text-primary-600 hover:underline px-1" data-skill-id="${s.id}">Сохранить</button>
             <button class="js-remove-skill-btn text-xs text-danger hover:underline px-1" data-skill-id="${s.id}">Удалить</button>
@@ -658,10 +663,11 @@ function renderReligions() {
     list.innerHTML = religionsData.map((r, i) => `
         <div class="flex items-center gap-1.5 p-2 border border-neutral-100 rounded-lg bg-white cursor-move"
              id="religion-${r.id}" draggable="true" data-religion-index="${i}">
-            <input type="checkbox" class="js-religion-checkbox rounded border-neutral-300 shrink-0" data-religion-id="${r.id}">
+            <input type="checkbox" class="js-religion-checkbox rounded border-neutral-300 shrink-0" data-religion-id="${r.id}" aria-label="Выбрать вероисповедание ${r.name}">
             <span class="text-xs text-neutral-300 cursor-grab mr-1 select-none" title="Перетащите">⋮⋮</span>
             <span class="text-xs text-neutral-400 w-6 text-center">${i + 1}</span>
             <input type="text" value="${r.name}" data-id="${r.id}"
+                   aria-label="Название вероисповедания"
                    class="flex-1 px-2 py-1 border border-neutral-200 rounded text-sm religion-edit">
             <button class="js-save-religion-btn text-xs text-primary-600 hover:underline px-1" data-religion-id="${r.id}">Сохранить</button>
             <button class="js-remove-religion-btn text-xs text-danger hover:underline px-1" data-religion-id="${r.id}">Удалить</button>

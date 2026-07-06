@@ -66,7 +66,7 @@
         {% for item in items %}
         <div class="app-card bg-white rounded-2xl shadow-sm border border-neutral-100 p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 worker-item-{{ item.id }}" data-worker-id="{{ item.id }}">
             <div class="flex items-start gap-3">
-                <input type="checkbox" class="favorite-checkbox w-5 h-5 text-primary-500 rounded border-neutral-300 mt-1" value="{{ item.id }}">
+                <input type="checkbox" class="favorite-checkbox w-5 h-5 text-primary-500 rounded border-neutral-300 mt-1" value="{{ item.id }}" aria-label="Выбрать {{ item.full_name or 'элемент' }}">
                 <a href="/profile/{{ item.id }}" class="flex-1 min-w-0 flex gap-3">
                     {% if item.photo_url %}
                      <img src="{{ item.photo_url }}" alt="{{ item.full_name }}" loading="lazy" decoding="async"

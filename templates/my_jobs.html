@@ -116,7 +116,7 @@
             <div class="app-card animate-fade-in">
                 <div class="flex items-start gap-3">
                     <input type="checkbox" name="job_ids" value="{{ job.id }}"
-                           class="job-checkbox app-checkbox mt-1.5">
+                           class="job-checkbox app-checkbox mt-1.5" aria-label="Выбрать задание {{ job.organization_name or job.title }}">
                     <div class="flex-1 min-w-0">
                         <div class="flex justify-between items-start gap-2">
                             <a href="/jobs/{{ job.id }}" class="block flex-1 min-w-0">

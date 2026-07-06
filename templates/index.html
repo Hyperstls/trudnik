@@ -66,7 +66,7 @@
             <div class="p-4">
                 {% if session.get('role') == 'worker' %}
                 <div class="flex items-start gap-2">
-                    <input type="checkbox" name="job_ids" value="{{ job.id }}" class="job-checkbox mt-1 rounded border-neutral-300 text-primary-500 focus:ring-primary-500 shrink-0">
+                    <input type="checkbox" name="job_ids" value="{{ job.id }}" class="job-checkbox mt-1 rounded border-neutral-300 text-primary-500 focus:ring-primary-500 shrink-0" aria-label="Выбрать задание {{ job.organization_name or job.title }}">
                     <div class="flex-1 min-w-0">
                 {% else %}
                 <div class="flex-1">
