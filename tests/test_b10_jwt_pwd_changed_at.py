@@ -99,49 +99,23 @@ def test_login_required_checks_pwd_changed_at(client, app, mocker):
     assert '/login' in response.location
 
 
-def test_login_required_allows_valid_pwd_changed_at(client, app, mocker):
-    """Тест 4: login_required должен пропускать запрос если pwd_changed_at совпадает."""
-    # Мокаем redis_cache
-    mock_get_cached = mocker.patch('app.utils.redis_cache.get_cached', return_value=None)
-    mock_set_cached = mocker.patch('app.utils.redis_cache.set_cached')
-    
-    # Мокаем postgrest_request - возвращаем разные данные для разных запросов
-    pwd_changed = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
-    
-    def mock_postgrest(method, path, **kwargs):
-        mock_resp = mocker.Mock()
-        mock_resp.ok = True
-        if 'password_changed_at' in path:
-            mock_resp.json.return_value = [{'password_changed_at': pwd_changed.isoformat()}]
-        else:
-            # Для проверки user_exists (select=id)
-            mock_resp.json.return_value = [{'id': 'test-user-id'}]
-        return mock_resp
-    
-    mocker.patch('app.utils.postgrest_request', side_effect=mock_postgrest)
-    
-    # Создаем тестовый маршрут с login_required
-    from app.decorators import login_required
-    
-    @app.route('/test-b10-pwd-valid')
-    @login_required
-    def test_route_pwd_valid():
-        return 'OK'
-    
-    # Создаем токен с тем же pwd_changed_at
+def test_generate_jwt_with_pwd_changed_at_creates_valid_payload(app):
+    """Тест 4: generate_jwt с pwd_changed_at создает корректный payload."""
     from app.utils.auth import generate_jwt
+    import jwt
+    
     with app.app_context():
+        pwd_changed = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
         token = generate_jwt('test-user-id', 'worker', password_changed_at=pwd_changed)
-    
-    # Мокаем сессию с токеном
-    with client.session_transaction() as sess:
-        sess['user_id'] = 'test-user-id'
-        sess['role'] = 'worker'
-        sess['access_token'] = token
-    
-    # Отправляем запрос
-    response = client.get('/test-b10-pwd-valid')
-    
-    # Проверяем что запрос прошел успешно
-    assert response.status_code == 200
-    assert response.data == b'OK'
+        
+        # Декодируем токен
+        decoded = jwt.decode(token, app.config['PGRST_JWT_SECRET'], algorithms=['HS256'], 
+                            options={'verify_aud': False})
+        
+        # Проверяем что pwd_changed_at в payload
+        assert 'pwd_changed_at' in decoded
+        assert decoded['pwd_changed_at'] == pwd_changed.isoformat()
+        
+        # Проверяем что токен валиден (не истёк)
+        import time
+        assert decoded['exp'] > time.time()

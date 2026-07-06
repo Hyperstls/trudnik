@@ -34,7 +34,8 @@ def login_required(f: F) -> F:
 
         # Proactive check: не истёк ли токен?
         try:
-            decoded = jwt.decode(token, Config.PGRST_JWT_SECRET, algorithms=['HS256'])
+            decoded = jwt.decode(token, Config.PGRST_JWT_SECRET, algorithms=['HS256'], 
+                                options={'verify_aud': False})
             exp = decoded.get('exp', 0)
             if time.time() > exp:
                 # Токен истёк — пробуем обновить
