@@ -124,6 +124,21 @@ REVOKE EXECUTE ON FUNCTION public.reject_application(uuid,uuid) FROM PUBLIC;
 GRANT  EXECUTE ON FUNCTION public.reject_application(uuid,uuid) TO authenticated, service_role;
 
 -- ============================================================================
+-- МИГРАЦИЯ 122: Fix notification_outbox GRANT permissions (drain 403 fix)
+-- ============================================================================
+GRANT SELECT, INSERT, UPDATE, DELETE ON notification_outbox TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON notification_outbox TO service_role;
+GRANT USAGE, SELECT ON SEQUENCE notification_outbox_id_seq TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE notification_outbox_id_seq TO service_role;
+ALTER TABLE notification_outbox ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification_outbox FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS outbox_service_all ON notification_outbox;
+CREATE POLICY outbox_service_all ON notification_outbox
+    FOR ALL TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+-- ============================================================================
 -- МИГРАЦИЯ 121: Добавление client_message_id для идемпотентности чата
 -- ============================================================================
 ALTER TABLE public.messages 

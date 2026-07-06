@@ -248,8 +248,15 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     except asyncio.TimeoutError:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Auth timeout")
         return
+    except WebSocketDisconnect:
+        # Client disconnected before auth — no need to close again
+        return
     except (json.JSONDecodeError, Exception):
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Auth error")
+        # Guard against double-close when connection is already gone
+        try:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Auth error")
+        except RuntimeError:
+            pass
         return
 
     if payload is None:
