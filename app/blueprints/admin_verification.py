@@ -5,7 +5,7 @@
 
 from flask import Blueprint, flash, redirect, request, url_for
 
-from app.decorators import login_required, admin_required
+from app.decorators import login_required, admin_required, validate_uuid
 from app.utils import postgrest_admin_request
 from app.services.admin_service import log_admin_action
 
@@ -15,6 +15,7 @@ admin_verification_bp = Blueprint('admin_verification', __name__, url_prefix='/a
 @admin_verification_bp.route('/approve/<user_id>', methods=['POST'])
 @login_required
 @admin_required
+@validate_uuid('user_id')
 def approve_employer(user_id):
     resp = postgrest_admin_request('PATCH', f'profiles?id=eq.{user_id}',
                      json={'verification_status': 'approved'})
@@ -30,6 +31,7 @@ def approve_employer(user_id):
 @admin_verification_bp.route('/reject/<user_id>', methods=['POST'])
 @login_required
 @admin_required
+@validate_uuid('user_id')
 def reject_employer(user_id):
     resp = postgrest_admin_request('PATCH', f'profiles?id=eq.{user_id}',
                      json={'verification_status': 'rejected'})

@@ -4,7 +4,7 @@ import re as _re_inv
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
-from app.decorators import login_required
+from app.decorators import login_required, validate_uuid
 from app.services.notification_service import (
     NOTIFICATION_TYPES, DEFAULT_ENABLED_TYPES,
     get_notifications, get_unread_count, mark_all_read, mark_read
@@ -57,6 +57,7 @@ def api_read_all():
 
 @notifications_bp.route('/api/notifications/<notification_id>/delete', methods=['POST'])
 @login_required
+@validate_uuid('notification_id')
 def api_delete_notification(notification_id):
     """Удалить одно уведомление."""
     user_id = session['user_id']
@@ -80,6 +81,7 @@ def api_delete_all_notifications():
 
 @notifications_bp.route('/notification/<notification_id>/read', methods=['POST'])
 @login_required
+@validate_uuid('notification_id')
 def mark_read_route(notification_id):
     mark_read(notification_id, user_id=session['user_id'])
     return redirect(url_for('notifications.notifications'))

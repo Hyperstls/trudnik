@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for, jsonify
 
-from app.decorators import login_required, role_required, admin_required, handle_errors
+from app.decorators import login_required, role_required, admin_required, handle_errors, validate_uuid
 from app.utils import cache_for, sanitize_postgrest, postgrest_request, postgrest_admin_request, postgrest_rpc, is_circuit_open
 from app.utils.helpers import assert_postgrest_ok
 from app.utils.errors import safe_error_message
@@ -184,6 +184,7 @@ def admin_panel():
 @admin_bp.route('/admin/users/<user_id>/role', methods=['POST'])
 @login_required
 @admin_required
+@validate_uuid('user_id')
 def update_user_role(user_id):
     # Защита: нельзя изменить свою роль (само-лок-аут)
     if user_id == session.get('user_id'):
@@ -212,6 +213,7 @@ def update_user_role(user_id):
 @admin_bp.route('/admin/users/<user_id>/delete', methods=['POST'])
 @login_required
 @admin_required
+@validate_uuid('user_id')
 def delete_user(user_id):
     # 1. Каскадное удаление пользователя через RPC (этап 4.4)
     rpc_result = postgrest_rpc('delete_user_cascade', {'p_user_id': user_id}, use_admin=True)
@@ -238,6 +240,7 @@ def delete_user(user_id):
 @admin_bp.route('/admin/jobs/<job_id>/status', methods=['POST'])
 @login_required
 @admin_required
+@validate_uuid('job_id')
 def update_job_status(job_id):
     new_status = request.form.get('status', '')
     if new_status in ('open', 'completed', 'cancelled'):
@@ -251,6 +254,7 @@ def update_job_status(job_id):
 @admin_bp.route('/admin/jobs/<job_id>/delete', methods=['POST'])
 @login_required
 @admin_required
+@validate_uuid('job_id')
 def delete_job_admin(job_id):
     _delete_job_cascade(job_id)
     log_admin_action('delete_job', table_name='jobs', record_id=job_id)
@@ -410,6 +414,7 @@ def reorder_skills():
 @admin_bp.route('/admin/skills/<skill_id>', methods=['PUT'])
 @login_required
 @admin_required
+@validate_uuid('skill_id')
 def update_skill(skill_id):
     try:
         data = request.get_json(silent=True) or {}
@@ -433,6 +438,7 @@ def update_skill(skill_id):
 @admin_bp.route('/admin/skills/<skill_id>', methods=['DELETE'])
 @login_required
 @admin_required
+@validate_uuid('skill_id')
 def delete_skill(skill_id):
     rpc_result = postgrest_rpc('delete_skill_cascade', {'p_skill_id': skill_id}, use_admin=True)
     if not rpc_result.ok:
@@ -579,6 +585,7 @@ def reorder_religions():
 @admin_bp.route('/admin/religions/<religion_id>', methods=['PUT'])
 @login_required
 @admin_required
+@validate_uuid('religion_id')
 def update_religion(religion_id):
     try:
         data = request.get_json(silent=True) or {}
@@ -602,6 +609,7 @@ def update_religion(religion_id):
 @admin_bp.route('/admin/religions/<religion_id>', methods=['DELETE'])
 @login_required
 @admin_required
+@validate_uuid('religion_id')
 def delete_religion(religion_id):
     # C18: Сначала обнуляем religion_id у пользователей (FK constraint),
     # затем удаляем саму религию — атомарный подход
@@ -667,6 +675,7 @@ def bulk_delete_religions():
 @admin_bp.route('/admin/approve/<user_id>', methods=['POST'])
 @login_required
 @admin_required
+@validate_uuid('user_id')
 def approve_employer(user_id):
     resp = postgrest_admin_request('PATCH', f'profiles?id=eq.{user_id}',
                      json={'verification_status': 'approved'})
@@ -681,6 +690,7 @@ def approve_employer(user_id):
 @admin_bp.route('/admin/reject/<user_id>', methods=['POST'])
 @login_required
 @admin_required
+@validate_uuid('user_id')
 def reject_employer(user_id):
     resp = postgrest_admin_request('PATCH', f'profiles?id=eq.{user_id}',
                      json={'verification_status': 'rejected'})

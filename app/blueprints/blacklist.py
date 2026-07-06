@@ -1,6 +1,6 @@
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, session, url_for
 
-from app.decorators import login_required
+from app.decorators import login_required, validate_uuid
 from app.utils import postgrest_request
 from app.utils.security import safe_redirect
 
@@ -43,6 +43,7 @@ def blacklist():
 
 @blacklist_bp.route('/blacklist/<user_id>', methods=['POST'])
 @login_required
+@validate_uuid('user_id')
 def block_user(user_id):
     err = _reject_worker()
     if err:
@@ -60,6 +61,7 @@ def block_user(user_id):
 
 @blacklist_bp.route('/unblock/<user_id>', methods=['POST'])
 @login_required
+@validate_uuid('user_id')
 def unblock_user(user_id):
     err = _reject_worker()
     if err:

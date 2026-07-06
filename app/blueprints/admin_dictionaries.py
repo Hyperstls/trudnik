@@ -5,7 +5,7 @@
 
 from flask import Blueprint, current_app, flash, jsonify, redirect, request, url_for
 
-from app.decorators import login_required, admin_required
+from app.decorators import login_required, admin_required, validate_uuid
 from app.utils import postgrest_admin_request, postgrest_rpc, is_circuit_open
 from app.utils.helpers import assert_postgrest_ok
 from app.utils.errors import safe_error_message
@@ -81,6 +81,7 @@ def reorder_skills():
 @admin_dictionaries_bp.route('/skills/<skill_id>', methods=['PUT'])
 @login_required
 @admin_required
+@validate_uuid('skill_id')
 def update_skill(skill_id):
     try:
         data = request.get_json(silent=True) or {}
@@ -105,6 +106,7 @@ def update_skill(skill_id):
 @admin_dictionaries_bp.route('/skills/<skill_id>', methods=['DELETE'])
 @login_required
 @admin_required
+@validate_uuid('skill_id')
 def delete_skill(skill_id):
     rpc_result = postgrest_rpc('delete_skill_cascade', {'p_skill_id': skill_id}, use_admin=True)
     if not rpc_result.ok:
@@ -246,6 +248,7 @@ def reorder_religions():
 @admin_dictionaries_bp.route('/religions/<religion_id>', methods=['PUT'])
 @login_required
 @admin_required
+@validate_uuid('religion_id')
 def update_religion(religion_id):
     try:
         data = request.get_json(silent=True) or {}
@@ -270,6 +273,7 @@ def update_religion(religion_id):
 @admin_dictionaries_bp.route('/religions/<religion_id>', methods=['DELETE'])
 @login_required
 @admin_required
+@validate_uuid('religion_id')
 def delete_religion(religion_id):
     nullify_resp = postgrest_admin_request('PATCH', f'profiles?religion_id=eq.{religion_id}', json={'religion_id': None})
     if not nullify_resp.ok:

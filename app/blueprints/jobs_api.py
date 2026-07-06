@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request, session, current_app, url_for
 
-from app.decorators import login_required, role_required
+from app.decorators import login_required, role_required, validate_uuid
 from app.services.job_service import (
     search_jobs,
     search_workers,
@@ -107,6 +107,7 @@ def api_search_workers():
 @jobs_api_bp.route('/api/invite/<job_id>/<worker_id>', methods=['POST'])
 @login_required
 @role_required('employer')
+@validate_uuid('job_id', 'worker_id')
 def invite_worker(job_id, worker_id):
     """Работодатель приглашает трудника на задание."""
     if not check_job_owner(job_id, session['user_id']):
@@ -165,6 +166,7 @@ def list_invitations():
 @jobs_api_bp.route('/api/invitations/<invitation_id>/respond', methods=['POST'])
 @login_required
 @role_required('worker')
+@validate_uuid('invitation_id')
 def respond_invitation(invitation_id):
     """Трудник принимает или отклоняет приглашение.
     При accept используется атомарная RPC accept_invitation_atomic:

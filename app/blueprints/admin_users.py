@@ -5,7 +5,7 @@
 
 from flask import Blueprint, current_app, flash, jsonify, redirect, request, session, url_for
 
-from app.decorators import login_required, admin_required
+from app.decorators import login_required, admin_required, validate_uuid
 from app.utils import postgrest_admin_request, postgrest_rpc
 from app.utils.helpers import assert_postgrest_ok
 from app.services.admin_service import log_admin_action
@@ -16,6 +16,7 @@ admin_users_bp = Blueprint('admin_users', __name__, url_prefix='/admin')
 @admin_users_bp.route('/users/<user_id>/role', methods=['POST'])
 @login_required
 @admin_required
+@validate_uuid('user_id')
 def update_user_role(user_id):
     if user_id == session.get('user_id'):
         flash('Нельзя изменить свою роль', 'danger')
@@ -43,6 +44,7 @@ def update_user_role(user_id):
 @admin_users_bp.route('/users/<user_id>/delete', methods=['POST'])
 @login_required
 @admin_required
+@validate_uuid('user_id')
 def delete_user(user_id):
     rpc_result = postgrest_rpc('delete_user_cascade', {'p_user_id': user_id}, use_admin=True)
     if not rpc_result.ok:

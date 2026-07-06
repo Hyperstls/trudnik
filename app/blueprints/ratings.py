@@ -206,6 +206,7 @@ def upsert_rating():
 
 @ratings_bp.route('/api/ratings/completed-jobs/<target_user_id>', methods=['GET'])
 @login_required
+@validate_uuid('target_user_id')
 def get_completed_jobs_for_rating(target_user_id):
     """Вернуть список завершённых заданий, в которых участвовали оба пользователя."""
     rater_user_id = session['user_id']

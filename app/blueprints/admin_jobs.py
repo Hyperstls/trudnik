@@ -5,7 +5,7 @@
 
 from flask import Blueprint, current_app, flash, jsonify, redirect, request, url_for
 
-from app.decorators import login_required, admin_required
+from app.decorators import login_required, admin_required, validate_uuid
 from app.utils import postgrest_admin_request, postgrest_rpc
 from app.utils.helpers import assert_postgrest_ok
 from app.services.admin_service import log_admin_action
@@ -16,6 +16,7 @@ admin_jobs_bp = Blueprint('admin_jobs', __name__, url_prefix='/admin')
 @admin_jobs_bp.route('/jobs/<job_id>/status', methods=['POST'])
 @login_required
 @admin_required
+@validate_uuid('job_id')
 def update_job_status(job_id):
     new_status = request.form.get('status', '')
     if new_status in ('open', 'completed', 'cancelled'):
@@ -30,6 +31,7 @@ def update_job_status(job_id):
 @admin_jobs_bp.route('/jobs/<job_id>/delete', methods=['POST'])
 @login_required
 @admin_required
+@validate_uuid('job_id')
 def delete_job_admin(job_id):
     _delete_job_cascade(job_id)
     log_admin_action('delete_job', table_name='jobs', record_id=job_id)

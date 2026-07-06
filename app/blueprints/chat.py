@@ -187,6 +187,7 @@ def send_message():
 
 @chat_bp.route('/api/messages/<application_id>/poll')
 @login_required
+@validate_uuid('application_id')
 def poll_messages(application_id):
     """Polling-эндпоинт: вернуть сообщения новее указанного ID."""
     user_id = session['user_id']

@@ -1,6 +1,6 @@
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 
-from app.decorators import login_required
+from app.decorators import login_required, validate_uuid
 from app.utils import postgrest_request, sanitize_postgrest
 from app.utils.security import safe_redirect
 
@@ -94,6 +94,7 @@ def employers_list():
 
 @employers_bp.route('/employers/<employer_id>')
 @login_required
+@validate_uuid('employer_id')
 def employer_detail(employer_id):
     """Профиль работодателя + его открытые задания."""
     user_id = session.get('user_id')
@@ -150,6 +151,7 @@ def employer_detail(employer_id):
 
 @employers_bp.route('/employers/<employer_id>/favorite', methods=['POST'])
 @login_required
+@validate_uuid('employer_id')
 def toggle_favorite(employer_id):
     """Toggle избранного работодателя (form-based)."""
     user_id = session['user_id']
