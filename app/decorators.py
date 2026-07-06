@@ -53,6 +53,47 @@ def login_required(f: F) -> F:
                     session.clear()
                     return redirect(url_for('auth.login'))
             
+            # B10: Проверка password_changed_at (инвалидация токенов при смене пароля)
+            token_pwd_changed = decoded.get('pwd_changed_at')
+            if token_pwd_changed:
+                user_id = decoded.get('user_id') or decoded.get('sub')
+                if user_id:
+                    cache_key = f'pwd_changed:{user_id}'
+                    from app.utils.redis_cache import get_cached, set_cached
+                    profile_pwd_changed = get_cached(cache_key)
+                    if profile_pwd_changed is None:
+                        from app.utils import postgrest_request as _pgreq
+                        resp = _pgreq('GET', f'profiles?id=eq.{user_id}&select=password_changed_at')
+                        if resp.ok and resp.json():
+                            profile_data = resp.json()[0] if isinstance(resp.json(), list) else resp.json()
+                            profile_pwd_changed = profile_data.get('password_changed_at')
+                            set_cached(cache_key, profile_pwd_changed, ttl=60)
+                    
+                    # Сравниваем: если в профиле пароль изменён ПОСЛЕ выпуска токена, токен недействителен
+                    if profile_pwd_changed:
+                        from datetime import datetime
+                        try:
+                            # Нормализуем оба значения к datetime
+                            if isinstance(profile_pwd_changed, str):
+                                profile_dt = datetime.fromisoformat(profile_pwd_changed.replace('Z', '+00:00'))
+                            else:
+                                profile_dt = profile_pwd_changed
+                            
+                            if isinstance(token_pwd_changed, str):
+                                token_dt = datetime.fromisoformat(token_pwd_changed.replace('Z', '+00:00'))
+                            else:
+                                token_dt = token_pwd_changed
+                            
+                            # Если пароль изменён после выпуска токена - инвалидируем
+                            if profile_dt > token_dt:
+                                session.clear()
+                                return redirect(url_for('auth.login'))
+                        except (ValueError, TypeError):
+                            # Если не удалось распарсить даты - используем строковое сравнение
+                            if str(profile_pwd_changed) != str(token_pwd_changed):
+                                session.clear()
+                                return redirect(url_for('auth.login'))
+            
             # B5: Проверка существования пользователя в profiles (кэш 60 сек)
             user_id = decoded.get('user_id') or decoded.get('sub')
             if user_id:

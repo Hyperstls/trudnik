@@ -66,8 +66,15 @@ def hash_password(password: str) -> str:
     ).decode('utf-8')
 
 
-def generate_jwt(user_id, role, exp_seconds=300):
-    """Каноническая генерация JWT-токена."""
+def generate_jwt(user_id, role, exp_seconds=300, password_changed_at=None):
+    """Каноническая генерация JWT-токена.
+    
+    Args:
+        user_id: ID пользователя
+        role: роль пользователя (worker, employer, admin)
+        exp_seconds: время жизни токена в секундах
+        password_changed_at: datetime когда пароль был изменен (для B10)
+    """
     import uuid as _uuid
     jti = str(_uuid.uuid4())
     payload = {
@@ -80,6 +87,13 @@ def generate_jwt(user_id, role, exp_seconds=300):
         'exp': datetime.utcnow() + timedelta(seconds=exp_seconds),
         'jti': jti,
     }
+    
+    # B10: Добавляем password_changed_at в payload для инвалидации токенов при смене пароля
+    if password_changed_at is not None:
+        if isinstance(password_changed_at, datetime):
+            payload['pwd_changed_at'] = password_changed_at.isoformat()
+        else:
+            payload['pwd_changed_at'] = str(password_changed_at)
     # Приоритет: 1) модульная переменная PGRST_JWT_SECRET (Config.PGRST_JWT_SECRET),
     # 2) current_app.config (может быть пустой строкой), 3) os.environ (runtime fallback).
     # SECRET_KEY НЕ ИСПОЛЬЗУЕТСЯ — он не совпадает с секретом PostgREST.
