@@ -5,16 +5,14 @@
 
 {% macro confirm_modal() %}
 <!-- Custom Confirm Modal -->
-<div id="confirm-modal-backdrop" class="modal-backdrop hidden z-[100]" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
-    <div class="modal-content animate-scale-in">
-        <h3 id="confirm-modal-title" class="text-lg font-bold text-neutral-800 mb-2">Подтвердите действие</h3>
-        <p id="confirm-modal-message" class="text-neutral-600 text-sm mb-6"></p>
-        <div class="flex gap-3 justify-end">
-            <button id="confirm-modal-cancel" class="px-5 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-sm font-medium transition-colors">Отмена</button>
-            <button id="confirm-modal-ok" class="px-5 py-2.5 bg-danger hover:bg-red-700 text-white rounded-xl text-sm font-medium transition-colors">Подтвердить</button>
-        </div>
+<dialog id="confirm-modal" class="modal-content animate-scale-in" aria-labelledby="confirm-modal-title">
+    <h3 id="confirm-modal-title" class="text-lg font-bold text-neutral-800 mb-2">Подтвердите действие</h3>
+    <p id="confirm-modal-message" class="text-neutral-600 text-sm mb-6"></p>
+    <div class="flex gap-3 justify-end">
+        <button id="confirm-modal-cancel" class="px-5 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-sm font-medium transition-colors">Отмена</button>
+        <button id="confirm-modal-ok" class="px-5 py-2.5 bg-danger hover:bg-red-700 text-white rounded-xl text-sm font-medium transition-colors">Подтвердить</button>
     </div>
-</div>
+</dialog>
 {% endmacro %}
 
 {% macro offline_bar() %}
