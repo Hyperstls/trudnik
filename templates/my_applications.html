@@ -177,7 +177,7 @@
                                     <div id="worker-contacts-{{ app.id }}">
                                         {% if app.worker_contacts %}
                                         <p class="text-sm text-neutral-700 mt-1">
-                                            <span class="font-medium">ФИО:</span> {{ app.worker_contacts.full_name or '—' }}
+                                            <span class="font-medium"><abbr title="Фамилия Имя Отчество">ФИО</abbr>:</span> {{ app.worker_contacts.full_name or '—' }}
                                         </p>
                                         <p class="text-sm text-neutral-700">
                                             <span class="font-medium">Тел.:</span> {{ app.worker_contacts.phone or '—' }}

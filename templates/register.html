@@ -160,8 +160,8 @@
 
                     <div class="floating-label-group">
                         <input type="text" name="inn" id="inn" placeholder=" " pattern="\d{12}" inputmode="numeric" maxlength="12">
-                        <label for="inn">ИНН (12 цифр, опционально)</label>
-                        <p class="text-xs text-neutral-400 mt-1 px-1">ИНН (для самозанятых, опционально).</p>
+                        <label for="inn"><abbr title="Идентификационный номер налогоплательщика">ИНН</abbr> (12 цифр, опционально)</label>
+                        <p class="text-xs text-neutral-400 mt-1 px-1"><abbr title="Идентификационный номер налогоплательщика">ИНН</abbr> (для самозанятых, опционально).</p>
                         {% if field_errors is defined and field_errors.inn %}<span class="text-red-500 text-sm">{{ field_errors.inn }}</span>{% endif %}
                     </div>
 
