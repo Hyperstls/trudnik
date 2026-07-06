@@ -46,6 +46,16 @@ def update_user_role(user_id):
 @admin_required
 @validate_uuid('user_id')
 def delete_user(user_id):
+    # Проверяем что target не является admin
+    target_resp = postgrest_admin_request('GET', f'profiles?id=eq.{user_id}&select=role')
+    if target_resp.ok and target_resp.json():
+        target_data = target_resp.json()
+        if isinstance(target_data, list) and target_data:
+            target_role = target_data[0].get('role', '')
+            if target_role == 'admin':
+                flash('Нельзя удалить администратора', 'danger')
+                return redirect(url_for('admin_dashboard.admin_panel', tab='users'))
+    
     rpc_result = postgrest_rpc('delete_user_cascade', {'p_user_id': user_id}, use_admin=True)
     if not rpc_result.ok:
         current_app.logger.error(
@@ -56,6 +66,11 @@ def delete_user(user_id):
     if not result_data.get('success'):
         flash('Ошибка при удалении пользователя', 'danger')
         return redirect(url_for('admin_dashboard.admin_panel', tab='users'))
+
+    # Обновляем password_changed_at для инвалидации всех JWT пользователя
+    from datetime import datetime, timezone
+    postgrest_admin_request('PATCH', f'profiles?id=eq.{user_id}',
+        json={'password_changed_at': datetime.now(timezone.utc).isoformat()})
 
     log_admin_action('delete_user', table_name='profiles', record_id=user_id)
     flash('Пользователь удалён', 'success')
