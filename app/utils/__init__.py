@@ -30,7 +30,9 @@ try:
     if _is_mock_enabled():
         _install_auth_mock()
     _mock_available = True
-except Exception:
+except Exception as e:
+    import logging
+    logging.getLogger(__name__).warning('Failed to initialize test mock: %s', e, exc_info=True)
     _test_db = {}
     _uuid_counter = 0
     _gen_uuid = lambda: ''

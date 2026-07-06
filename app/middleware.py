@@ -50,15 +50,15 @@ def csrf_check():
     token = None
     try:
         token = request.form.get('csrf_token') or request.form.get('_csrf_token')
-    except Exception:
-        pass
+    except Exception as e:
+        current_app.logger.warning('Failed to get CSRF token from form: %s', e, exc_info=True)
     # Если не в форме — пробуем JSON (для API-запросов с application/json)
     if not token and request.is_json:
         try:
             json_data = request.get_json(silent=True) or {}
             token = json_data.get('csrf_token') or json_data.get('_csrf_token')
-        except Exception:
-            pass
+        except Exception as e:
+            current_app.logger.warning('Failed to get CSRF token from JSON: %s', e, exc_info=True)
     if not token or token != session.get('_csrf_token'):
         abort(400, description='CSRF-токен отсутствует или недействителен')
 

@@ -46,8 +46,8 @@ def _detect_mime(data: bytes) -> Optional[str]:
     try:
         import magic
         return magic.from_buffer(data[:2048], mime=True)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning('MIME detection via python-magic failed: %s', e, exc_info=True)
     return _check_mime_by_signature(data)
 
 

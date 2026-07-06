@@ -123,8 +123,8 @@ def create(user_id, notification_type, title, message, data=None, email=None, us
         resp_data = resp.json()
         if isinstance(resp_data, list) and len(resp_data) > 0:
             notification_id = resp_data[0].get('id')
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning('Failed to extract notification_id from response: %s', e, exc_info=True)
 
     # full_message уже вычислен в base_payload['message'] (строка 79)
     full_message = base_payload['message']
@@ -166,8 +166,8 @@ def create(user_id, notification_type, title, message, data=None, email=None, us
                     user_email = profile.get('email')
                 if user_name is None:
                     user_name = profile.get('username', 'Пользователь')
-        except Exception:
-            logger.warning("Не удалось получить профиль для user_id=%s", user_id)
+        except Exception as e:
+            logger.warning("Не удалось получить профиль для user_id=%s: %s", user_id, e, exc_info=True)
 
     # Проверяем настройки уведомлений пользователя
     user_prefs = prefs  # уже получены выше
@@ -199,8 +199,8 @@ def create(user_id, notification_type, title, message, data=None, email=None, us
     from app.utils.redis_cache import redis_cache_delete
     try:
         redis_cache_delete(f'unread:{user_id}')
-    except Exception:
-        pass  # Redis недоступен — не фатально
+    except Exception as e:
+        logger.warning('Failed to invalidate unread cache for user=%s: %s', user_id, e, exc_info=True)
 
     return True
 
@@ -308,5 +308,5 @@ def mark_read(notification_id, user_id):
     from app.utils.redis_cache import redis_cache_delete
     try:
         redis_cache_delete(f'unread:{user_id}')
-    except Exception:
-        pass  # Redis недоступен — не фатально
+    except Exception as e:
+        logger.warning('Failed to clear unread cache: %s', e, exc_info=True)

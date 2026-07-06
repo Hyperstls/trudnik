@@ -1,7 +1,7 @@
-"""Обработчики ошибок Flask: 404, 500, Exception."""
+"""Обработчики ошибок Flask: 401, 403, 404, 500, Exception."""
 
 import logging
-from flask import render_template, current_app
+from flask import render_template, current_app, request, session
 
 logger = logging.getLogger(__name__)
 
@@ -13,8 +13,35 @@ def register_error_handlers(app):
         app: экземпляр Flask.
     """
 
+    @app.errorhandler(401)
+    def unauthorized(e):
+        """Обработчик ошибки 401 Unauthorized."""
+        user_id = session.get('user_id', 'anonymous')
+        logger.warning(
+            'Unauthorized access attempt: path=%s ip=%s user=%s',
+            request.path, request.remote_addr, user_id
+        )
+        return render_template('error.html', error_code='401',
+                               error='Требуется авторизация'), 401
+
+    @app.errorhandler(403)
+    def forbidden(e):
+        """Обработчик ошибки 403 Forbidden."""
+        user_id = session.get('user_id', 'anonymous')
+        logger.warning(
+            'Forbidden access attempt: path=%s ip=%s user=%s',
+            request.path, request.remote_addr, user_id
+        )
+        return render_template('error.html', error_code='403',
+                               error='Доступ запрещён'), 403
+
     @app.errorhandler(404)
-    def not_found(_e):
+    def not_found(e):
+        """Обработчик ошибки 404 Not Found."""
+        logger.info(
+            'Page not found: path=%s ip=%s',
+            request.path, request.remote_addr
+        )
         return render_template('error.html', error_code='404',
                                error='Страница не найдена'), 404
 

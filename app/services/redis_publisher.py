@@ -86,8 +86,8 @@ class RedisPublisher:
         if self._client:
             try:
                 self._client.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning('Failed to close Redis client: %s', e, exc_info=True)
             self._client = None
 
 

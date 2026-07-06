@@ -178,14 +178,16 @@ def _install_auth_mock():
         from app.tasks.email_tasks import send_email_notification
         send_email_notification.delay = lambda *a, **kw: None
         send_email_notification.apply_async = lambda *a, **kw: None
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning('Failed to mock email tasks: %s', e, exc_info=True)
     try:
         from app.tasks.push_tasks import send_push_notification
         send_push_notification.delay = lambda *a, **kw: None
         send_push_notification.apply_async = lambda *a, **kw: None
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning('Failed to mock push tasks: %s', e, exc_info=True)
     # Mock Redis publisher чтобы избежать блокировок при отсутствии Redis.
     # ВАЖНО: методы должны возвращать осмысленные значения, чтобы unit-тесты
     # redis_publisher могли проверять реальную логику.
@@ -230,8 +232,8 @@ def _install_auth_mock():
         RedisPublisher.publish = _mock_publish
         # publish_notification и publish_chat_message используют publish, поэтому
         # оставляем оригинальные (если publish работает, они тоже)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning('Failed to mock Redis publisher: %s', e, exc_info=True)
 
 
 def _uninstall_auth_mock():

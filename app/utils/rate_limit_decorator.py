@@ -66,7 +66,8 @@ def rate_limit(f=None, fail_open: bool = True):
                     return jsonify({'error': 'Слишком много попыток. Подождите минуту.'}), 429
                 flash('Слишком много попыток. Подождите минуту.', 'danger')
                 return redirect(url_for('auth.login'))
-        except Exception:
+        except Exception as e:
+            logger.warning('rate_limit Redis error: %s', e, exc_info=True)
             if fail_open:
                 # Ошибка Redis — разрешаем запрос (graceful degradation)
                 pass

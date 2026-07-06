@@ -29,8 +29,8 @@ def redis_cache_get(key: str):
         value = client.get(key)
         if value is not None:
             return int(value)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning('redis_cache_get failed for key=%s: %s', key, e, exc_info=True)
     return None
 
 
@@ -46,8 +46,8 @@ def redis_cache_set(key: str, value: int, ttl: int = _REDIS_CACHE_TTL):
         client = get_redis_client()
         if client is not None:
             client.setex(key, ttl, value)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning('redis_cache_set failed for key=%s: %s', key, e, exc_info=True)
 
 
 def redis_cache_delete(key: str):
@@ -60,8 +60,8 @@ def redis_cache_delete(key: str):
         client = get_redis_client()
         if client is not None:
             client.delete(key)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning('redis_cache_delete failed for key=%s: %s', key, e, exc_info=True)
 
 
 def get_cached(key: str):
@@ -85,8 +85,8 @@ def get_cached(key: str):
                 return json.loads(value)
             except (json.JSONDecodeError, TypeError):
                 return value.decode('utf-8') if isinstance(value, bytes) else value
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning('get_cached failed for key=%s: %s', key, e, exc_info=True)
     return None
 
 
@@ -104,5 +104,5 @@ def set_cached(key: str, value, ttl: int = 60):
             import json
             serialized = json.dumps(value)
             client.setex(key, ttl, serialized)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning('set_cached failed for key=%s: %s', key, e, exc_info=True)

@@ -356,5 +356,63 @@
     <script src="{{ url_for('static', filename='js/push-notifications.js') }}" nonce="{{ csp_nonce }}"></script>
     {% endif %}
     {% endif %}
+    
+    <!-- Frontend error reporting beacon -->
+    <script nonce="{{ csp_nonce }}">
+    (function() {
+        'use strict';
+        
+        // Перехват обычных JavaScript ошибок
+        window.onerror = function(message, source, lineno, colno, error) {
+            var errorData = {
+                message: String(message || 'Unknown error'),
+                source: String(source || 'unknown'),
+                lineno: lineno || 0,
+                colno: colno || 0,
+                stack: error && error.stack ? String(error.stack) : '',
+                url: window.location.href,
+                userAgent: navigator.userAgent
+            };
+            
+            // Отправляем через sendBeacon (не блокирует закрытие страницы)
+            if (navigator.sendBeacon) {
+                navigator.sendBeacon('/api/client-error', JSON.stringify(errorData));
+            } else {
+                // Fallback на fetch с keepalive
+                fetch('/api/client-error', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(errorData),
+                    keepalive: true
+                }).catch(function() {});
+            }
+        };
+        
+        // Перехват необработанных Promise rejections
+        window.onunhandledrejection = function(event) {
+            var reason = event.reason;
+            var errorData = {
+                message: 'Unhandled Promise rejection: ' + String(reason || 'Unknown'),
+                source: 'promise',
+                lineno: 0,
+                colno: 0,
+                stack: reason && reason.stack ? String(reason.stack) : '',
+                url: window.location.href,
+                userAgent: navigator.userAgent
+            };
+            
+            if (navigator.sendBeacon) {
+                navigator.sendBeacon('/api/client-error', JSON.stringify(errorData));
+            } else {
+                fetch('/api/client-error', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(errorData),
+                    keepalive: true
+                }).catch(function() {});
+            }
+        };
+    })();
+    </script>
 </body>
 </html>

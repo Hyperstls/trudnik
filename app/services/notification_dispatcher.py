@@ -46,12 +46,11 @@ def dispatch_email_notification(user_id, notification_id, user_email, user_name,
             notification_url=notification_url
         )
         return True
-    except Exception:
+    except Exception as e:
         logger.error(
-            "Не удалось поставить email-задачу в очередь Celery: user=%s type=%s",
-            user_id, notification_type
+            "Не удалось поставить email-задачу в очередь Celery: user=%s type=%s: %s",
+            user_id, notification_type, e, exc_info=True
         )
-        logger.error(traceback.format_exc())
         return False
 
 

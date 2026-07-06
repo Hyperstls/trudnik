@@ -1,10 +1,13 @@
 """Безопасность: санитизация ввода, валидация, CSRF-защита."""
 
+import logging
 import re
 import urllib.parse
 import uuid as _uuid
 import secrets
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 # Whitelist: разрешённые символы для PostgREST-параметров
 _ALLOWED_CHARS = set(
@@ -43,8 +46,8 @@ def sanitize_postgrest(value: Any) -> Any:
     # 1. URL-декодирование
     try:
         value = urllib.parse.unquote(value)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning('URL decode failed: %s', e, exc_info=True)
 
     # 2. Удаляем HTML-теги (XSS-векторы: <script>, <style>, <iframe>, <svg>)
     value = _HTML_TAG_RE.sub('', value)

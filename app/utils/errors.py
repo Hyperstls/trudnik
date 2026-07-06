@@ -1,5 +1,9 @@
 """Безопасная обработка ошибок PostgREST."""
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def safe_error_message(resp, default: str = 'Ошибка сервера') -> str:
     """Извлекает пользовательское сообщение, скрывая технические детали.
@@ -27,6 +31,6 @@ def safe_error_message(resp, default: str = 'Ошибка сервера') -> st
             }
             if code in code_map:
                 return code_map[code]
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning('safe_error_message parsing failed: %s', e, exc_info=True)
     return default

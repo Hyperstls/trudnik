@@ -40,8 +40,8 @@ def wait_for_postgrest(app, max_wait: int = 30, interval: int = 2) -> bool:
                     from app.utils.postgrest_client import _cb_postgrest, _cb_admin
                     _cb_postgrest.reset()
                     _cb_admin.reset()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning('Failed to reset circuit breakers: %s', e, exc_info=True)
                 return True
             app.logger.warning(
                 'PostgREST attempt %d: unexpected status %d',

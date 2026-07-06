@@ -63,8 +63,8 @@ class EmailService:
             self._redis = get_redis_client()
             if self._redis is None:
                 logger.warning("Redis недоступен — дневной лимит email не будет соблюдаться между worker'ами")
-        except Exception:
-            logger.warning("Redis недоступен — дневной лимит email не будет соблюдаться между worker'ами")
+        except Exception as e:
+            logger.warning("Redis недоступен — дневной лимит email не будет соблюдаться между worker'ами: %s", e, exc_info=True)
 
         # SMTP connection pooling: ленивое соединение
         self._smtp_connection: Optional[smtplib.SMTP] = None
@@ -109,8 +109,8 @@ class EmailService:
                 ttl_seconds = int((tomorrow - now).total_seconds()) + 1
                 self._redis.expire(key, ttl_seconds)
             return current <= self._daily_limit
-        except Exception:
-            logger.warning("Ошибка Redis при проверке дневного лимита — разрешаем отправку")
+        except Exception as e:
+            logger.warning("Ошибка Redis при проверке дневного лимита — разрешаем отправку: %s", e, exc_info=True)
             return True
 
     def _get_smtp_connection(self) -> smtplib.SMTP:
@@ -134,8 +134,8 @@ class EmailService:
                     # Соединение мертво — закроем и пересоздадим
                     try:
                         self._smtp_connection.close()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning('Failed to close SMTP connection: %s', e, exc_info=True)
                     self._smtp_connection = None
 
         # Создаём новое соединение
@@ -216,18 +216,17 @@ class EmailService:
             logger.info("Email отправлен: to=%s subject=%s", to_email, subject)
             return True
 
-        except Exception:
+        except Exception as e:
             # При ошибке сбрасываем соединение, чтобы переподключиться в следующий раз
             if self._smtp_connection is not None:
                 try:
                     self._smtp_connection.close()
-                except Exception:
-                    pass
+                except Exception as close_e:
+                    logger.warning('Failed to close SMTP connection: %s', close_e, exc_info=True)
                 self._smtp_connection = None
             logger.error(
-                "Ошибка отправки email для %s:\n%s",
-                to_email,
-                traceback.format_exc(),
+                "Ошибка отправки email для %s: %s",
+                to_email, e, exc_info=True
             )
             return False
 
@@ -360,14 +359,14 @@ class EmailService:
         if self._smtp_connection is not None:
             try:
                 self._smtp_connection.quit()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning('Failed to quit SMTP connection: %s', e, exc_info=True)
             self._smtp_connection = None
         if self._redis is not None:
             try:
                 self._redis.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning('Failed to close Redis connection: %s', e, exc_info=True)
             self._redis = None
 
     # ═══════════════════════════════════════════════════════════════
@@ -395,22 +394,20 @@ class EmailService:
         try:
             html_template = self._jinja_env.get_template(f"{template_name}.html")
             html_body = html_template.render(context)
-        except Exception:
+        except Exception as e:
             logger.error(
-                "Ошибка рендеринга HTML-шаблона '%s.html':\n%s",
-                template_name,
-                traceback.format_exc(),
+                "Ошибка рендеринга HTML-шаблона '%s.html': %s",
+                template_name, e, exc_info=True
             )
             html_body = f"<p>Уведомление от Trudnik</p><p>{context.get('notification_text', '')}</p>"
 
         try:
             text_template = self._jinja_env.get_template(f"{template_name}.txt")
             text_body = text_template.render(context)
-        except Exception:
+        except Exception as e:
             logger.error(
-                "Ошибка рендеринга текстового шаблона '%s.txt':\n%s",
-                template_name,
-                traceback.format_exc(),
+                "Ошибка рендеринга текстового шаблона '%s.txt': %s",
+                template_name, e, exc_info=True
             )
             text_body = (
                 f"Уведомление от Trudnik\n\n"

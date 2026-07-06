@@ -59,7 +59,8 @@ def job_stats():
                 "cancelled_jobs": statuses.count('cancelled'),
             })
         return jsonify({"total_jobs": 0, "open_jobs": 0, "completed_jobs": 0, "cancelled_jobs": 0, "error": True})
-    except Exception:
+    except Exception as e:
+        log.error('job_stats failed: %s', e, exc_info=True)
         return jsonify({"total_jobs": 0, "open_jobs": 0, "completed_jobs": 0, "cancelled_jobs": 0, "error": True})
 
 

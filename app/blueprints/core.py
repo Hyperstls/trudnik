@@ -58,15 +58,16 @@ def metrics():
             outbox_data = resp.json()
             if isinstance(outbox_data, list):
                 _outbox_pending.set(len(outbox_data))
-    except Exception:
-        pass
+    except Exception as e:
+        current_app.logger.warning('metrics outbox check failed: %s', e, exc_info=True)
 
     # WebSocket connections (cached in Redis, or 0)
     try:
         from app.utils.redis_client import redis_client
         conns = redis_client.get('trudnik:ws:active_connections')
         _ws_connections.set(int(conns) if conns else 0)
-    except Exception:
+    except Exception as e:
+        current_app.logger.warning('metrics ws connections check failed: %s', e, exc_info=True)
         _ws_connections.set(0)
 
     return generate_latest(_registry), 200, {'Content-Type': CONTENT_TYPE_LATEST}
@@ -77,6 +78,7 @@ def health_check():
     """Проверка работоспособности приложения."""
     from app.utils import postgrest_admin_request
     from app.utils.postgrest_client import get_circuit_breaker_state
+    from app.utils.redis_client import get_redis_client
 
     cb_state = get_circuit_breaker_state()
 
@@ -88,13 +90,25 @@ def health_check():
         current_app.logger.error('Health check DB error: %s', e)
         db_ok = False
 
+    # Проверяем Redis
+    try:
+        redis_client = get_redis_client()
+        redis_ok = redis_client is not None and redis_client.ping()
+    except Exception as e:
+        current_app.logger.error('Health check Redis error: %s', e)
+        redis_ok = False
+
     # Проверяем состояние CB
     cb_postgrest_open = cb_state['postgrest']['state'] == 'OPEN'
     cb_admin_open = cb_state['admin']['state'] == 'OPEN'
 
+    # Общий статус: ok только если все компоненты работают
+    all_ok = db_ok and redis_ok and not cb_postgrest_open and not cb_admin_open
+
     health_data = {
-        'status': 'ok' if (db_ok and not cb_postgrest_open and not cb_admin_open) else 'degraded',
+        'status': 'ok' if all_ok else 'degraded',
         'database': 'ok' if db_ok else 'error',
+        'redis': 'ok' if redis_ok else 'error',
         'circuit_breaker': cb_state,
         'version': 'unknown',
         'timestamp': _time_module.strftime('%Y-%m-%dT%H:%M:%SZ', _time_module.gmtime()),
@@ -253,3 +267,50 @@ def terms():
 def privacy():
     """Страница «Политика конфиденциальности»."""
     return render_template('privacy.html')
+
+
+@core_bp.route('/api/client-error', methods=['POST'])
+def client_error_report():
+    """Приём отчётов об ошибках от frontend JavaScript.
+    
+    Frontend отправляет JSON с информацией об ошибке:
+    - message: текст ошибки
+    - source: источник (URL скрипта)
+    - lineno: номер строки
+    - colno: номер колонки
+    - stack: стек вызовов (если доступен)
+    - url: URL страницы
+    - userAgent: User-Agent браузера
+    
+    Логирует ошибку с уровнем WARNING для мониторинга.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        
+        # Извлекаем информацию об ошибке
+        message = data.get('message', 'Unknown error')[:500]  # Ограничиваем длину
+        source = data.get('source', 'unknown')[:200]
+        lineno = data.get('lineno', 0)
+        colno = data.get('colno', 0)
+        stack = data.get('stack', '')[:1000]  # Ограничиваем стек
+        page_url = data.get('url', request.referrer or 'unknown')[:200]
+        user_agent = data.get('userAgent', request.headers.get('User-Agent', 'unknown'))[:200]
+        
+        # Получаем информацию о пользователе (если есть)
+        user_id = session.get('user_id', 'anonymous')
+        
+        # Логируем ошибку
+        current_app.logger.warning(
+            'Frontend error: user=%s message=%s source=%s line=%s col=%s url=%s userAgent=%s',
+            user_id, message, source, lineno, colno, page_url, user_agent
+        )
+        
+        # Если есть стек, логируем отдельно
+        if stack:
+            current_app.logger.warning('Frontend error stack: %s', stack)
+        
+        return jsonify({'status': 'ok'}), 200
+        
+    except Exception as e:
+        current_app.logger.error('Failed to process client error report: %s', e, exc_info=True)
+        return jsonify({'status': 'error', 'message': 'Internal error'}), 500

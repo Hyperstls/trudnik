@@ -86,8 +86,8 @@ def login():
                 if ip_attempts > 20:
                     flash('Слишком много попыток с вашего IP. Подождите час.', 'danger')
                     return render_template('login.html')
-        except Exception:
-            pass  # Redis недоступен — fail-open
+        except Exception as e:
+            log.warning('login IP rate-limit check failed: %s', e, exc_info=True)
 
         lockout_key = f"login_lockout:{email}"
         attempts_key = f"login_attempts:{email}"
@@ -304,8 +304,8 @@ def register():
                     err_data = resp.json()
                     if isinstance(err_data, dict):
                         error_msg = err_data.get('message') or err_data.get('msg') or error_msg
-                except Exception:
-                    pass
+                except Exception as e:
+                    log.warning('Failed to parse error response: %s', e, exc_info=True)
                 if isinstance(err_data, dict) and 'email_exists' in err_data.get('message', '').lower():
                     error_msg = 'Пользователь с таким email уже зарегистрирован'
                 flash(error_msg, 'danger')
@@ -414,8 +414,8 @@ def _set_reset_rate_limit(email: str) -> None:
         client = get_redis_client()
         if client is not None:
             client.setex(key, _RESET_COOLDOWN, '1')
-    except Exception:
-        pass
+    except Exception as e:
+        log.warning('Failed to set reset rate limit: %s', e, exc_info=True)
 
 
 @auth_bp.route('/password-reset/request', methods=['GET', 'POST'])

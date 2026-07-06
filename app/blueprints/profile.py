@@ -200,8 +200,8 @@ def delete_account():
                 flash('Попробуйте позже (не чаще раза в час)', 'warning')
                 return redirect(url_for('profile.profile'))
             redis_client.setex(key, 3600, '1')
-    except Exception:
-        pass  # Redis недоступен — fail-open
+    except Exception as e:
+        current_app.logger.warning('delete_account rate-limit check failed: %s', e, exc_info=True)
 
     # Каскадное удаление через RPC (этап 4.4)
     try:

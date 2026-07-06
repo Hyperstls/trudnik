@@ -33,9 +33,9 @@ def get_redis_client():
             # Проверяем соединение
             _redis_client.ping()
             logger.info('Redis client connected to %s', redis_url)
-        except Exception:
+        except Exception as e:
             _redis_client = None
-            logger.warning('Redis not available, using graceful degradation')
+            logger.warning('Redis not available, using graceful degradation: %s', e, exc_info=True)
     return _redis_client
 
 

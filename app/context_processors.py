@@ -72,8 +72,8 @@ def inject_ws_config() -> dict:
                 algorithm='HS256'
             )
             config['jwtToken'] = token
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning('Failed to generate WebSocket JWT for user=%s: %s', user_id, e, exc_info=True)
     
     return {'trudnik_ws_config': config}
 

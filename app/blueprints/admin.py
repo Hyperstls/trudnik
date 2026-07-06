@@ -169,7 +169,8 @@ def admin_panel():
                 ['git', 'log', '-1', '--format=%h %s (%ai)'],
                 cwd=str(Path(current_app.root_path).parent), text=True
             ).strip()
-    except Exception:
+    except Exception as e:
+        current_app.logger.warning('Failed to get version: %s', e, exc_info=True)
         actual_version = 'dev'
 
     return render_template('admin.html',

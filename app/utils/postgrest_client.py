@@ -68,7 +68,8 @@ class CircuitBreaker:
             # /health.html возвращает 200 если PostgREST жив
             r = _req.get(f'{postgrest_url}/health.html', timeout=5)
             return r.status_code in (200, 204, 404)
-        except Exception:
+        except Exception as e:
+            logger.warning('PostgREST health check failed: %s', e, exc_info=True)
             return False
 
     def call(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
@@ -107,7 +108,8 @@ class CircuitBreaker:
 
         try:
             result = func(*args, **kwargs)
-        except Exception:
+        except Exception as e:
+            logger.warning('Circuit breaker call failed: %s', e, exc_info=True)
             with self._lock:
                 self._record_failure(exception=True)
             raise
@@ -153,8 +155,8 @@ class CircuitBreaker:
                     'Circuit Breaker OPEN after %d failures%s',
                     self.failure_count, extra
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning('Failed to log circuit breaker state change: %s', e, exc_info=True)
 
     def reset(self) -> None:
         """Сбросить Circuit Breaker в исходное состояние (CLOSED, failures=0)."""
@@ -307,6 +309,8 @@ def get_service_role_headers() -> Dict[str, str]:
         Словарь с заголовками Authorization и Content-Type.
     """
     import uuid as _uuid
+    from flask import g, has_request_context
+    
     token = pyjwt.encode(
         {
             'role': 'service_role',
@@ -318,10 +322,16 @@ def get_service_role_headers() -> Dict[str, str]:
         PGRST_JWT_SECRET,
         algorithm='HS256'
     )
-    return {
+    headers = {
         'Authorization': f'Bearer {token}',
         'Content-Type': 'application/json',
     }
+    
+    # E6: Добавляем X-Request-ID для трассировки запросов
+    if has_request_context() and hasattr(g, 'request_id'):
+        headers['X-Request-ID'] = g.request_id
+    
+    return headers
 
 
 def get_user_headers(user_id: Optional[str] = None) -> Dict[str, str]:
@@ -336,15 +346,23 @@ def get_user_headers(user_id: Optional[str] = None) -> Dict[str, str]:
         Словарь с заголовками Authorization и Content-Type.
     """
     from app.utils.auth import generate_jwt
+    from flask import g, has_request_context
+    
     if user_id is None:
         user_id = session.get('user_id', '')
     # Берём реальную роль из сессии, fallback — 'authenticated'
     role = session.get('user', {}).get('role') or session.get('role', 'authenticated')
     token = generate_jwt(str(user_id) if user_id else '', role)
-    return {
+    headers = {
         'Authorization': f'Bearer {token}',
         'Content-Type': 'application/json',
     }
+    
+    # E6: Добавляем X-Request-ID для трассировки запросов
+    if has_request_context() and hasattr(g, 'request_id'):
+        headers['X-Request-ID'] = g.request_id
+    
+    return headers
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -382,8 +400,8 @@ def _get_caller_info() -> str:
             skip_count += 1
             if skip_count > 20:
                 break
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning('Failed to get caller info: %s', e, exc_info=True)
     return 'unknown'
 
 

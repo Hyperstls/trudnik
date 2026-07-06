@@ -122,8 +122,8 @@ def generate_jwt(user_id, role, exp_seconds=300, password_changed_at=None):
         redis_client = get_redis_client()
         if redis_client:
             redis_client.setex(f'jti:{jti}', exp_seconds, user_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning('Failed to save jti to Redis: %s', e, exc_info=True)
 
     return token
 
@@ -157,8 +157,8 @@ def refresh_access_token() -> bool:
                         # jti в чёрном списке — токен отозван
                         session.clear()
                         return False
-            except Exception:
-                pass  # Невалидный старый токен — игнорируем, всё равно создаём новый
+            except Exception as e:
+                logger.warning('Failed to decode old token: %s', e, exc_info=True)
 
         # Используем реальную роль из сессии, fallback — 'authenticated'
         role = session.get('role') or session.get('user', {}).get('role', 'authenticated')
@@ -166,7 +166,8 @@ def refresh_access_token() -> bool:
         session['access_token'] = token
         session.modified = True
         return True
-    except Exception:
+    except Exception as e:
+        logger.warning('refresh_access_token failed: %s', e, exc_info=True)
         session.clear()
         return False
 

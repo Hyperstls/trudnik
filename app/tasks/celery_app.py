@@ -11,7 +11,8 @@ Backend: Redis (REDIS_URL, db 1)
 import os
 from typing import Any
 
-from celery import Celery
+from celery import Celery, Task
+from flask import has_request_context, g
 
 # ═══════════════════════════════════════════════════════════════
 # Redis URL из переменной окружения
@@ -31,6 +32,29 @@ if "/" in REDIS_URL.rsplit(":", 2)[-1]:
 else:
     _backend_url: str = REDIS_URL + "/1"
 
+
+# ═══════════════════════════════════════════════════════════════
+# E6: Кастомный базовый класс для передачи request_id
+# ═══════════════════════════════════════════════════════════════
+
+class FlaskContextTask(Task):
+    """Базовый класс задач, автоматически передающий Flask контекст.
+    
+    При вызове apply_async() из Flask request context автоматически
+    добавляет request_id в kwargs задачи для трассировки.
+    """
+    
+    def apply_async(self, args=None, kwargs=None, **options):
+        """Переопределяем apply_async для инъекции request_id."""
+        if kwargs is None:
+            kwargs = {}
+        
+        # Если мы в Flask request context, добавляем request_id
+        if has_request_context() and hasattr(g, 'request_id'):
+            kwargs.setdefault('_request_id', g.request_id)
+        
+        return super().apply_async(args, kwargs, **options)
+
 # ═══════════════════════════════════════════════════════════════
 # Экземпляр Celery
 # ═══════════════════════════════════════════════════════════════
@@ -46,6 +70,9 @@ celery_app: Celery = Celery(
         "app.tasks.maintenance_tasks",
     ],
 )
+
+# E6: Устанавливаем FlaskContextTask как базовый класс для всех задач
+celery_app.Task = FlaskContextTask
 
 # ═══════════════════════════════════════════════════════════════
 # Конфигурация

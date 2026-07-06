@@ -208,8 +208,8 @@ def send_message():
         msg_data = msg_resp.json()
         if isinstance(msg_data, list) and len(msg_data) > 0:
             message_id = msg_data[0].get('id')
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning('Failed to extract message_id from response: %s', e, exc_info=True)
 
     # Уведомить получателя (transactional outbox)
     recipient = app_data['worker_id'] if sender_id == employer_id else employer_id

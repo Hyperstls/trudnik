@@ -153,7 +153,8 @@ def is_login_locked_out(lockout_key: str) -> bool:
         if client is None:
             return False
         return client.exists(lockout_key) > 0
-    except Exception:
+    except Exception as e:
+        logger.warning('is_login_locked_out Redis error: %s', e, exc_info=True)
         return False
 
 
@@ -188,5 +189,5 @@ def clear_login_attempts(lockout_key: str, attempts_key: str, email: str = None)
         client.delete(attempts_key, lockout_key)
         if email:
             client.delete(f"login_lockout_count:{email}")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning('clear_login_attempts Redis error: %s', e, exc_info=True)

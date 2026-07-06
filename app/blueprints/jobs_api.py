@@ -78,8 +78,8 @@ def api_search_jobs():
         }
         result = search_jobs(filters)
         return result
-    except Exception:
-        current_app.logger.error('api_search_jobs ERROR: %s', traceback.format_exc())
+    except Exception as e:
+        current_app.logger.error('api_search_jobs ERROR: %s', e, exc_info=True)
         return jsonify({'error': 'Internal search error'}), 500
 
 
