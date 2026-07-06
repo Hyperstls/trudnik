@@ -17,7 +17,7 @@ def log_admin_action(action, table_name=None, record_id=None, old_data=None, new
     """Логирует админское действие в audit_log через PostgREST (C19)."""
     try:
         payload = {
-            'user_id': session.get('user', {}).get('id'),
+            'user_id': session.get('user_id'),
             'action': action,
             'table_name': table_name,
             'record_id': str(record_id) if record_id else None,
