@@ -134,13 +134,19 @@ def admin_required(f):
                             flash('Доступ запрещён. Требуются права администратора.', 'error')
                             return redirect(url_for('jobs.index'))
                         return f(*args, **kwargs)
-            except Exception:
-                pass  # Fallback к проверке сессии
-        # Fallback: проверка по сессии
-        if session.get('role') != 'admin':
-            flash('Доступ запрещён. Требуются права администратора.', 'error')
-            return redirect(url_for('jobs.index'))
-        return f(*args, **kwargs)
+                # X8: DB-запрос не удался или данные невалидные — fail-closed
+                flash('Сервис недоступен', 'danger')
+                return redirect(url_for('jobs.index'))
+            except Exception as e:
+                # X8: fail-closed — при ошибке БД блокируем доступ
+                import logging
+                _logger = logging.getLogger(__name__)
+                _logger.warning('admin_required DB error: %s', e, exc_info=True)
+                flash('Сервис недоступен', 'danger')
+                return redirect(url_for('jobs.index'))
+        # Если user_id не найден в сессии — блокируем
+        flash('Доступ запрещён. Требуются права администратора.', 'error')
+        return redirect(url_for('jobs.index'))
     return decorated_function
 
 
