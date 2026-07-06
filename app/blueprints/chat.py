@@ -10,6 +10,43 @@ from app.services.notification_service import create as create_notification, enq
 
 logger = logging.getLogger(__name__)
 
+# A3: Lua-скрипт для атомарного rate limiting
+# INCR + EXPIRE в одной атомарной операции предотвращает race condition
+_RATE_LIMIT_SCRIPT = """
+local key = KEYS[1]
+local limit = tonumber(ARGV[1])
+local ttl = tonumber(ARGV[2])
+local count = redis.call('INCR', key)
+if count == 1 then
+    redis.call('EXPIRE', key, ttl)
+end
+return count
+"""
+
+
+def _check_chat_rate_limit(redis_client, user_id: str, application_id: str,
+                           limit: int = 5, window: int = 60) -> bool:
+    """Проверить rate limit для чата через атомарный Lua-скрипт.
+    
+    Args:
+        redis_client: Redis клиент
+        user_id: ID отправителя
+        application_id: ID заявки (чата)
+        limit: максимальное количество сообщений в окне
+        window: размер окна в секундах
+        
+    Returns:
+        True если в пределах лимита, False если превышен
+    """
+    key = f'chat_rate:{user_id}:{application_id}'
+    try:
+        count = redis_client.eval(_RATE_LIMIT_SCRIPT, 1, key, limit, window)
+        return count <= limit
+    except Exception as e:
+        logger.warning('chat rate limit check failed: %s', e, exc_info=True)
+        # Fail-open: если Redis недоступен, разрешаем отправку
+        return True
+
 try:
     from app.services.redis_publisher import redis_publisher
 except ImportError:
@@ -103,14 +140,10 @@ def send_message():
     application_id = data['application_id']
     content = data['content']
 
-    # Per-chat rate limit: 5 сообщений в минуту на пару sender+application_id
+    # A3: Per-chat rate limit через атомарный Lua-скрипт
     redis_client = get_redis_client()
     if redis_client:
-        rate_key = f'chat_rate:{sender_id}:{application_id}'
-        count = redis_client.incr(rate_key)
-        if count == 1:
-            redis_client.expire(rate_key, 60)
-        if count > 5:
+        if not _check_chat_rate_limit(redis_client, sender_id, application_id, limit=5, window=60):
             return jsonify({'error': 'Слишком много сообщений'}), 429
 
     # Серверная валидация длины сообщения
