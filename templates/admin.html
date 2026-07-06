@@ -35,7 +35,7 @@
     </div>
 
     <!-- Вкладки -->
-    <nav class="flex gap-1 mb-6 border-b border-neutral-200 overflow-x-auto">
+    <nav class="flex gap-1 mb-6 border-b border-neutral-200 overflow-x-auto" aria-label="Административная навигация">
         {% set tabs = [
             ('dashboard', 'Дашборд'),
             ('users', 'Пользователи'),
@@ -47,7 +47,8 @@
         {% for tid, tlabel in tabs %}
         <a href="?tab={{ tid }}"
            class="px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors
-                  {% if tab == tid %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:text-neutral-700{% endif %}">
+                  {% if tab == tid %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:text-neutral-700{% endif %}"
+           {% if tab == tid %}aria-current="page"{% endif %}>
             {{ tlabel }}
         </a>
         {% endfor %}
