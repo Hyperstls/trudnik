@@ -109,6 +109,108 @@ def add_security_headers(response):
     return response
 
 
+def check_idempotency():
+    """
+    Middleware для идемпотентности (правило R2).
+    Проверяет X-Client-Request-Id для POST/PUT/PATCH/DELETE запросов.
+    При повторном запросе с тем же ID — возвращает кэшированный ответ.
+    """
+    import json
+    import logging
+    import uuid
+    
+    from flask import Response
+    from app.utils.redis_client import get_redis_client
+    
+    logger = logging.getLogger(__name__)
+    
+    if request.method not in ('POST', 'PUT', 'PATCH', 'DELETE'):
+        return None
+    
+    client_request_id = request.headers.get('X-Client-Request-Id')
+    if not client_request_id:
+        return None  # Не все запросы имеют этот заголовок
+    
+    # Валидируем формат UUID
+    try:
+        uuid.UUID(client_request_id)
+    except ValueError:
+        return None  # Игнорируем невалидные ID
+    
+    user_id = session.get('user_id')
+    if not user_id:
+        return None  # Только для авторизованных пользователей
+    
+    cache_key = f'idempotency:{user_id}:{client_request_id}'
+    
+    try:
+        r = get_redis_client()
+        if r is None:
+            return None
+        
+        cached = r.get(cache_key)
+        if cached:
+            data = json.loads(cached)
+            logger.info('idempotency cache hit: %s', cache_key)
+            return Response(
+                data['body'],
+                status=data['status'],
+                headers={
+                    'Content-Type': data.get('content_type', 'application/json'),
+                    'X-Idempotency-Replayed': 'true'
+                }
+            )
+    except Exception as e:
+        logger.warning('idempotency check failed: %s', e, exc_info=True)
+    
+    return None
+
+
+def cache_idempotency_response(response):
+    """
+    After-request hook: кэширует ответ для идемпотентности.
+    """
+    import json
+    import logging
+    
+    from app.utils.redis_client import get_redis_client
+    
+    logger = logging.getLogger(__name__)
+    
+    if request.method not in ('POST', 'PUT', 'PATCH', 'DELETE'):
+        return response
+    
+    client_request_id = request.headers.get('X-Client-Request-Id')
+    if not client_request_id:
+        return response
+    
+    user_id = session.get('user_id')
+    if not user_id:
+        return response
+    
+    # Кэшируем только успешные ответы (2xx)
+    if not (200 <= response.status_code < 300):
+        return response
+    
+    cache_key = f'idempotency:{user_id}:{client_request_id}'
+    
+    try:
+        r = get_redis_client()
+        if r is None:
+            return response
+        
+        data = json.dumps({
+            'body': response.get_data(as_text=True),
+            'status': response.status_code,
+            'content_type': response.content_type,
+        })
+        r.setex(cache_key, 86400, data)  # TTL 24h
+    except Exception as e:
+        logger.warning('idempotency cache store failed: %s', e, exc_info=True)
+    
+    return response
+
+
 def register_middleware(app):
     """Зарегистрировать все middleware-функции на Flask-приложении.
 
@@ -118,4 +220,6 @@ def register_middleware(app):
     app.before_request(generate_csp_nonce)
     app.before_request(set_request_id)
     app.before_request(csrf_check)
+    app.before_request(check_idempotency)
     app.after_request(add_security_headers)
+    app.after_request(cache_idempotency_response)
