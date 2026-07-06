@@ -1340,3 +1340,21 @@ Stage Summary:
 - При следующем деплое авто-мигратор не запустится
 - Миграции уже применены в БД — повторное применение не требуется
 
+---
+Task ID: POST-DEPLOY-02
+Agent: Senior Full-Stack Developer
+Task: Исправление циклического импорта app.utils ↔ app.decorators
+
+Work Log:
+- Обнаружен crash loop на Amvera после деплоя 2677d2c: ImportError в app.utils/__init__.py
+- Диагностирована цепочка: app.__init__ → app.utils.logging_config → app.utils.__init__ → app.decorators → app.utils (still initializing)
+- Создан app/utils/rate_limit_decorator.py — автономный модуль без зависимостей от app.utils или app.decorators
+- В app/decorators.py заменены module-level импорты из app.utils на ленивые импорты внутри login_required() и role_required()
+- В app/utils/__init__.py строка 82: from app.decorators import rate_limit → from app.utils.rate_limit_decorator import rate_limit
+- Удалено тело функции rate_limit из app/decorators.py (теперь импортируется)
+- Коммит 9f5c244 запушен в GitHub и Amvera (force-push)
+
+Stage Summary:
+- Изменённые файлы: app/utils/rate_limit_decorator.py (новый), app/decorators.py, app/utils/__init__.py
+- Созданные миграции: нет
+- Acceptance criteria: python -c "from app import create_app" — не проверено локально (требуется Docker), ожидается верификация на Amvera
