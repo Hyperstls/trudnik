@@ -79,7 +79,7 @@
 
         <div class="floating-label-group">
             <input type="text" name="full_name" value="{{ profile_user.get('full_name') or '' }}"
-                   class="floating-input" placeholder=" " required autocomplete="name">
+                   class="floating-input" placeholder=" " required aria-required="true" autocomplete="name">
             <label class="floating-label">Имя</label>
         </div>
 
@@ -185,17 +185,17 @@
         <h3 class="text-lg font-semibold text-neutral-900 mb-4">Сменить пароль</h3>
         <form id="change-password-form" action="/profile/change-password" method="post" class="space-y-3">
             <div class="floating-label-group">
-                <input type="password" name="current_password" id="current-password" required minlength="6"
+                <input type="password" name="current_password" id="current-password" required aria-required="true" minlength="6"
                        class="floating-input" placeholder=" " autocomplete="current-password">
                 <label class="floating-label">Текущий пароль</label>
             </div>
             <div class="floating-label-group">
-                <input type="password" name="new_password" id="new-password" required minlength="6"
+                <input type="password" name="new_password" id="new-password" required aria-required="true" minlength="6"
                        class="floating-input" placeholder=" " autocomplete="new-password">
                 <label class="floating-label">Новый пароль</label>
             </div>
             <div class="floating-label-group">
-                <input type="password" name="confirm_password" id="confirm-password" required minlength="6"
+                <input type="password" name="confirm_password" id="confirm-password" required aria-required="true" minlength="6"
                        class="floating-input" placeholder=" ">
                 <label class="floating-label">Подтвердите новый пароль</label>
             </div>

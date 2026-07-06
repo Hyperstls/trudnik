@@ -28,7 +28,7 @@
             <!-- ===== Шаг 1: Аккаунт ===== -->
             <div id="step-1" class="space-y-4">
                 <div class="floating-label-group">
-                    <input type="text" name="full_name" id="full_name" placeholder=" " required maxlength="100" autocomplete="name">
+                    <input type="text" name="full_name" id="full_name" placeholder=" " required aria-required="true" maxlength="100" autocomplete="name">
                     <label for="full_name">Полное имя <span class="text-danger">*</span></label>
                     <div class="error-text">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -40,7 +40,7 @@
                 </div>
 
                 <div class="floating-label-group">
-                    <input type="email" name="email" id="email" placeholder=" " required autocomplete="email">
+                    <input type="email" name="email" id="email" placeholder=" " required aria-required="true" autocomplete="email">
                     <label for="email">Email <span class="text-danger">*</span></label>
                     <div class="error-text">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -52,7 +52,7 @@
                 </div>
 
                 <div class="floating-label-group">
-                    <input type="password" name="password" id="password" placeholder=" " required minlength="6" autocomplete="new-password">
+                    <input type="password" name="password" id="password" placeholder=" " required aria-required="true" minlength="6" autocomplete="new-password">
                     <label for="password">Пароль <span class="text-danger">*</span></label>
                     <div class="error-text">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -79,7 +79,7 @@
                     <label class="block text-sm font-semibold text-neutral-700 mb-2">Роль <span class="text-danger">*</span></label>
                     <div class="grid grid-cols-2 gap-3">
                         <label class="role-card cursor-pointer border-2 border-neutral-200 rounded-xl p-4 text-center hover:border-primary-300 transition-all duration-200 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 has-[:checked]:shadow-sm" tabindex="0">
-                            <input type="radio" name="role" value="worker" class="sr-only" required>
+                            <input type="radio" name="role" value="worker" class="sr-only" required aria-required="true">
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-2 text-neutral-400 group-has-[:checked]:text-primary-500">
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                                 <circle cx="12" cy="7" r="4"></circle>
@@ -185,7 +185,7 @@
 
                 <!-- Согласие с условиями (152-ФЗ) -->
                 <label class="flex items-start gap-2 text-sm text-neutral-600 mt-3">
-                    <input type="checkbox" name="consent" required class="mt-0.5 rounded border-neutral-300 text-primary-500 focus:ring-primary-500">
+                    <input type="checkbox" name="consent" required aria-required="true" class="mt-0.5 rounded border-neutral-300 text-primary-500 focus:ring-primary-500">
                     <span>Я согласен с <a href="/terms" target="_blank" rel="noopener noreferrer" class="text-primary-500 hover:underline">условиями использования</a> и <a href="/privacy" target="_blank" rel="noopener noreferrer" class="text-primary-500 hover:underline">политикой конфиденциальности</a></span>
                 </label>
 
