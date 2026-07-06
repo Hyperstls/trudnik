@@ -343,23 +343,26 @@ def api_handle_application(app_id, action):
         return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
 
     if action == 'accept':
-        # Проверка: принимать можно только pending или rejected (повторное принятие)
-        if current_status not in ('pending', 'rejected'):
-            return jsonify({'success': False, 'error': f'Нельзя принять отклик в статусе «{current_status}»'}), 409
-
         # Атомарный accept через RPC (принимает заявки в статусах pending и rejected)
+        # RPC сам проверяет статус с FOR UPDATE — нет TOCTOU race condition
         rpc_result = postgrest_rpc('accept_application', {
             'p_job_id': job_id,
             'p_app_id': app_id,
         }, use_admin=True)
 
         if not rpc_result.ok:
+            current_app.logger.warning('[APPLICATIONS] accept RPC failed: app_id=%s status=%s text=%s', 
+                                       app_id, rpc_result.status_code, (rpc_result.text or '')[:200])
             return jsonify({'success': False, 'error': 'Ошибка выполнения операции'}), 500
 
         result_data = rpc_result.json()
         if not result_data or not result_data.get('success'):
+            error_code = (result_data or {}).get('code', '')
             error_msg = (result_data or {}).get('error', 'Не удалось принять отклик')
-            status_code = 409 if 'места' in error_msg else 400
+            # bad_status = заявка уже обработана (race condition)
+            if error_code == 'bad_status' or 'concurrent' in error_msg.lower():
+                return jsonify({'success': False, 'error': 'Заявка уже обработана'}), 409
+            status_code = 409 if 'места' in error_msg or error_code == 'no_slots' else 400
             return jsonify({'success': False, 'error': error_msg}), status_code
 
         # Уведомить работника (transactional outbox)
@@ -378,17 +381,24 @@ def api_handle_application(app_id, action):
 
     elif action == 'reject':
         # Атомарный reject через RPC (этап 4.4)
+        # RPC сам проверяет статус с FOR UPDATE — нет TOCTOU race condition
         rpc_result = postgrest_rpc('reject_application', {
             'p_job_id': job_id,
             'p_app_id': app_id,
         }, use_admin=True)
 
         if not rpc_result.ok:
+            current_app.logger.warning('[APPLICATIONS] reject RPC failed: app_id=%s status=%s text=%s', 
+                                       app_id, rpc_result.status_code, (rpc_result.text or '')[:200])
             return jsonify({'success': False, 'error': 'Ошибка выполнения операции'}), 500
 
         result_data = rpc_result.json()
         if not result_data or not result_data.get('success'):
+            error_code = (result_data or {}).get('code', '')
             error_msg = (result_data or {}).get('error', 'Не удалось отклонить отклик')
+            # already_rejected = заявка уже обработана (race condition)
+            if error_code == 'already_rejected' or 'concurrent' in error_msg.lower():
+                return jsonify({'success': False, 'error': 'Заявка уже обработана'}), 409
             return jsonify({'success': False, 'error': error_msg}), 400
 
         # Уведомить работника (transactional outbox)
@@ -406,9 +416,8 @@ def api_handle_application(app_id, action):
         })
 
     elif action == 'reopen':
-        if current_status != 'rejected':
-            return jsonify({'success': False, 'error': 'Можно повторно принять только отклонённый отклик'}), 409
-
+        # Повторное принятие отклонённого отклика — делегируем accept
+        # RPC сам проверит статус с FOR UPDATE
         return api_handle_application(app_id, 'accept')
 
     return jsonify({'success': False, 'error': 'Неизвестное действие'}), 400
