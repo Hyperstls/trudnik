@@ -61,7 +61,7 @@
                 {% if employer.created_at %}
                 <div class="flex items-center gap-1 text-xs text-neutral-400 mt-1">
                     {{ clock(14) }}
-                    На платформе с {{ employer.created_at | format_date }}
+                    На платформе с <time datetime="{{ employer.created_at }}">{{ employer.created_at | format_date }}</time>
                 </div>
                 {% endif %}
 
@@ -148,7 +148,7 @@
                                 <span class="w-1 h-1 rounded-full bg-neutral-300"></span>
                                 {% endif %}
                                 {% if job.date_time %}
-                                <span class="inline-flex items-center gap-0.5">{{ clock(12) }}{{ job.date_time | format_date }}</span>
+                                <span class="inline-flex items-center gap-0.5">{{ clock(12) }}<time datetime="{{ job.date_time }}">{{ job.date_time | format_date }}</time></span>
                                 {% endif %}
                             </p>
                             {% endif %}

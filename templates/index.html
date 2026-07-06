@@ -83,7 +83,7 @@
                             {% endif %}
                             <span>{{ job.city }}</span>
                             <span class="w-1 h-1 rounded-full bg-neutral-300"></span>
-                            <span class="inline-flex items-center gap-0.5">{{ clock(12) }}{{ job.date_time | format_date }}</span>
+                            <span class="inline-flex items-center gap-0.5">{{ clock(12) }}<time datetime="{{ job.date_time }}">{{ job.date_time | format_date }}</time></span>
                         </p>
                         <p class="mt-2 text-sm text-neutral-600 line-clamp-2 leading-relaxed">{{ job.object_description }}</p>
                     </a>

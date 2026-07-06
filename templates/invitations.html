@@ -33,7 +33,7 @@
                         </p>
                         {% endif %}
                         <p class="text-xs text-neutral-400 mt-1.5">
-                            {{ inv.created_at | format_date }}
+                            <time datetime="{{ inv.created_at }}">{{ inv.created_at | format_date }}</time>
                             {% if inv.status != 'pending' %}
                             · <span class="{% if inv.status == 'accepted' %}text-success{% else %}text-neutral-500{% endif %}">
                                 {% if inv.status == 'accepted' %}Принято{% elif inv.status == 'rejected' %}Отклонено{% else %}{{ inv.status }}{% endif %}
