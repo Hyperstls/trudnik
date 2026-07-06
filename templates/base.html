@@ -436,5 +436,18 @@
         }
     });
     </script>
+
+    <!-- F5: Confirm dialog для деструктивных действий -->
+    <script nonce="{{ csp_nonce }}">
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('[data-confirm]');
+        if (!btn) return;
+        const message = btn.dataset.confirm || 'Вы уверены?';
+        if (!confirm(message)) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    });
+    </script>
 </body>
 </html>
