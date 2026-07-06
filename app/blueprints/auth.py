@@ -318,6 +318,13 @@ def register():
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
     log.info('Logout: user_id=%s, role=%s', session.get('user_id'), session.get('role'))
+    
+    # Инвалидируем текущий jti перед очисткой сессии
+    jti = session.get('jti')
+    if jti:
+        from app.utils.auth import blacklist_jti
+        blacklist_jti(jti)
+    
     if current_app.config.get('TESTING'):
         session.clear()
         flash('Вы вышли из системы', 'success')
@@ -501,6 +508,20 @@ def password_reset_confirm(token):
                     success = result.get('success', False)
 
                 if success:
+                    # Получаем user_id по email для обновления password_changed_at
+                    user_resp = postgrest_admin_request('GET', 
+                        f'profiles?email=eq.{email}&select=id')
+                    if user_resp.ok and user_resp.json():
+                        user_data = user_resp.json()
+                        if isinstance(user_data, list) and user_data:
+                            user_id = user_data[0].get('id')
+                            if user_id:
+                                # Обновляем password_changed_at
+                                from datetime import datetime, timezone
+                                postgrest_admin_request('PATCH', 
+                                    f'profiles?id=eq.{user_id}',
+                                    json={'password_changed_at': datetime.now(timezone.utc).isoformat()})
+                    
                     flash('Пароль успешно изменён. Теперь вы можете войти.', 'success')
                     return redirect(url_for('auth.login'))
                 else:

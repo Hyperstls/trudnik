@@ -262,6 +262,17 @@ def change_password():
             else:
                 success = False
             if success:
+                # Инвалидируем текущий jti перед выпуском нового токена
+                old_jti = session.get('jti')
+                if old_jti:
+                    from app.utils.auth import blacklist_jti
+                    blacklist_jti(old_jti)
+                
+                # Обновляем password_changed_at в профиле
+                from datetime import datetime, timezone
+                postgrest_request('PATCH', f'profiles?id=eq.{user_id}', 
+                    json={'password_changed_at': datetime.now(timezone.utc).isoformat()})
+                
                 # Инвалидация старой сессии и выпуск нового JWT
                 from app.utils.auth import login_user_session
                 email = session.get('email', '')

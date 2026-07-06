@@ -160,11 +160,21 @@ def refresh_access_token() -> bool:
 def login_user_session(user_id: str, role: str, email: str) -> None:
     """Сохранить данные пользователя в сессии после успешного логина."""
     session.permanent = True
-    session['access_token'] = generate_jwt(user_id, role)
+    token = generate_jwt(user_id, role)
+    session['access_token'] = token
     session['refresh_token'] = 'jwt'
     session['user_id'] = user_id
     session['role'] = role
     session['email'] = email
+    
+    # Извлекаем jti из токена и сохраняем в сессию для последующей инвалидации
+    try:
+        payload = _jwt_lib.decode(token, PGRST_JWT_SECRET, algorithms=['HS256'], 
+                                  options={'verify_exp': False, 'verify_aud': False})
+        session['jti'] = payload.get('jti')
+    except Exception as e:
+        logger.warning('Failed to extract jti from token: %s', e, exc_info=True)
+    
     session.modified = True
 
 
@@ -187,6 +197,24 @@ def is_jti_blacklisted(jti: str) -> bool:
     except Exception as e:
         logger.warning('is_jti_blacklisted Redis error: %s', e, exc_info=True)
     return False
+
+
+def blacklist_jti(jti: str, ttl: int = 86400) -> None:
+    """Добавить JTI в Redis blacklist.
+
+    Args:
+        jti: JWT ID токена.
+        ttl: время жизни в секундах (по умолчанию 24 часа).
+    """
+    if not jti:
+        return
+    try:
+        from app.utils.redis_client import get_redis_client
+        redis_client = get_redis_client()
+        if redis_client:
+            redis_client.setex(f'jti_blacklist:{jti}', ttl, '1')
+    except Exception as e:
+        logger.warning('blacklist_jti failed: %s', e, exc_info=True)
 
 
 def get_user_role() -> Optional[str]:
