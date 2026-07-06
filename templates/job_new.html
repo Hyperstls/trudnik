@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from '_icons.html' import info, map_pin, clock, eye, check, help_circle %}
+{% block title %}{% if is_edit %}Редактирование задания{% else %}Создать задание{% endif %} — Трудник{% endblock %}
 {% block content %}
 <div class="max-w-2xl mx-auto px-4 py-4 fade-in">
     <h1 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-6">{% if is_edit %}Редактирование задания{% else %}Создать задание{% endif %}</h1>
