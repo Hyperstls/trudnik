@@ -261,15 +261,30 @@ def get_completed_jobs_for_rating(target_user_id):
 @ratings_bp.route('/api/ratings/user/<user_id>/details', methods=['GET'])
 @validate_uuid('user_id')
 def get_user_rating_details(user_id):
-    """Получить все детальные оценки пользователя с отзывами."""
+    """Получить все детальные оценки пользователя с отзывами.
+    
+    A7: Для анонимных пользователей PII рейтера (email, phone) удаляется.
+    """
+    # A7: Используем явный allowlist колонок вместо select=*
     resp = postgrest_request(
         'GET',
-        f'ratings?rated_user_id=eq.{user_id}&select=*,rater:profiles!rater_user_id(full_name,photo_url)&order=created_at.desc&limit=100'
+        f'ratings?rated_user_id=eq.{user_id}&select=id,job_id,rating,comment,rating_type,target_type,created_at,rater:profiles!rater_user_id(full_name,photo_url)&order=created_at.desc&limit=100'
     )
     if not resp.ok:
         return jsonify({'success': False, 'error': 'Ошибка загрузки оценок'}), 500
 
     ratings = resp.json() or []
+
+    # A7: Если пользователь не авторизован — strip PII из rater данных
+    if not session.get('user_id'):
+        for rating in ratings:
+            rater = rating.get('rater')
+            if rater and isinstance(rater, dict):
+                # Оставляем только safe поля
+                rating['rater'] = {
+                    'full_name': rater.get('full_name', 'Пользователь'),
+                    'photo_url': rater.get('photo_url', '')
+                }
 
     # Вычисляем средний рейтинг
     avg_rating = 0
