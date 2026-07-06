@@ -20,6 +20,7 @@ from app.utils import (
     cache_for,
     postgrest_request,
     postgrest_admin_request,
+    postgrest_rpc,
     sanitize_postgrest,
 )
 
