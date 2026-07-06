@@ -67,8 +67,8 @@ def job_stats():
 def migrations_status():
     """Return the list of applied migrations from _migrations tracking table."""
     token = request.headers.get('X-Admin-Token', '')
-    expected = current_app.config.get('ADMIN_API_TOKEN', current_app.config.get('SECRET_KEY', ''))
-    if not _hmac.compare_digest(token, expected):
+    expected = current_app.config.get('ADMIN_API_TOKEN', '')
+    if not expected or not _hmac.compare_digest(token, expected):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 401
 
     resp = postgrest_admin_request('GET', '_migrations?select=*&order=applied_at.asc')
@@ -103,7 +103,7 @@ def reset_circuit_breaker():
     if allowed_ips and request.remote_addr not in allowed_ips:
         current_app.logger.warning('Emergency endpoint access from forbidden IP: %s', request.remote_addr)
         return jsonify({'error': 'Forbidden'}), 403
-    if not _hmac.compare_digest(token, expected_token):
+    if not expected_token or not _hmac.compare_digest(token, expected_token):
         return jsonify({'success': False, 'error': 'Unauthorized'}), 401
 
     try:
