@@ -693,7 +693,7 @@ def repost_job(job_id):
     return redirect(url_for('jobs.my_jobs'))
 
 
-@jobs_bp.route('/cancel-job/<job_id>', methods=['GET', 'POST'])
+@jobs_bp.route('/cancel-job/<job_id>', methods=['POST'])
 @login_required
 @role_required('employer')
 @validate_uuid('job_id')
@@ -747,7 +747,7 @@ def cancel_job(job_id):
     return redirect(url_for('jobs.my_jobs'))
 
 
-@jobs_bp.route('/restore-job/<job_id>', methods=['GET', 'POST'])
+@jobs_bp.route('/restore-job/<job_id>', methods=['POST'])
 @login_required
 @role_required('employer')
 @validate_uuid('job_id')
@@ -845,7 +845,7 @@ def api_force_complete_job(job_id):
     })
 
 
-@jobs_bp.route('/delete-job/<job_id>', methods=['GET', 'POST'])
+@jobs_bp.route('/delete-job/<job_id>', methods=['POST'])
 @login_required
 @validate_uuid('job_id')
 def delete_job(job_id):

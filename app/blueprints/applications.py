@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 applications_bp = Blueprint('applications', __name__)
 
 
-@applications_bp.route('/apply/<job_id>', methods=['GET', 'POST'])
+@applications_bp.route('/apply/<job_id>', methods=['POST'])
 @login_required
 @validate_uuid('job_id')
 @rate_limit
