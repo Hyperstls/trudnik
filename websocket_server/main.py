@@ -41,6 +41,7 @@ logger = logging.getLogger("websocket_server")
 REDIS_URL: str = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 CORS_ORIGINS: list[str] = os.environ.get("WEBSOCKET_CORS_ORIGINS", "*").split(",")
 WEBSOCKET_PORT: int = int(os.environ.get("WEBSOCKET_PORT", "8001"))
+APP_URL: str = os.environ.get("APP_URL", "http://localhost:8000")
 
 # Каналы Redis Pub/Sub, которые слушает сервер
 NOTIFICATIONS_CHANNEL: str = "notifications"
@@ -221,6 +222,15 @@ app.add_middleware(
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket) -> None:
+    # B6: Проверка Origin header для защиты от CSRF
+    origin = websocket.headers.get("origin", "")
+    allowed_origins = [APP_URL] + CORS_ORIGINS if CORS_ORIGINS != ["*"] else [APP_URL]
+    
+    if origin and origin not in allowed_origins:
+        logger.warning(f"WebSocket connection rejected: invalid origin {origin}")
+        await websocket.close(code=4003)
+        return
+    
     await websocket.accept()
 
     # Ждём первое сообщение с токеном (timeout 10 сек)
