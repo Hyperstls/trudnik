@@ -14,9 +14,7 @@
 
     <!-- Progress bar -->
     <div class="flex items-center gap-2 mb-6">
-        <div class="flex-1 h-2 rounded-full bg-neutral-200 overflow-hidden">
-            <div id="progress-bar" class="h-full rounded-full bg-primary-500 transition-all duration-500 ease-out" style="width: 25%"></div>
-        </div>
+        <progress id="progress-bar" value="25" max="100" class="flex-1 h-2" aria-label="Прогресс создания задания"></progress>
         <span id="step-label" class="text-xs font-medium text-neutral-500 shrink-0">Шаг 1 из 4</span>
     </div>
 
