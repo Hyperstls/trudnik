@@ -1,6 +1,9 @@
+import logging
 from datetime import datetime, timezone, timedelta
 
 from flask import Blueprint, current_app, g, jsonify, flash, redirect, render_template, request, session, url_for, abort
+
+logger = logging.getLogger(__name__)
 
 from app.config import Config
 from app.decorators import login_required, rate_limit, role_required, validate_uuid
@@ -864,24 +867,12 @@ def delete_job(job_id):
         if not data.get('confirm'):
             return jsonify({'success': False, 'error': 'У задания есть принятые отклики. Подтвердите удаление.', 'needs_confirm': True}), 409
 
-    # Каскадное удаление связанных записей (через service_role для обхода RLS)
-    cascade_tables = [
-        ('applications', f'job_id=eq.{job_id}'),
-        ('job_skills', f'job_id=eq.{job_id}'),
-        ('job_photos', f'job_id=eq.{job_id}'),
-        ('job_favorites', f'job_id=eq.{job_id}'),
-        ('_archive_contact_payments', f'job_id=eq.{job_id}'),
-        ('job_payments', f'job_id=eq.{job_id}'),
-        ('invitations', f'job_id=eq.{job_id}'),
-    ]
-    for table, condition in cascade_tables:
-        postgrest_admin_request('DELETE', f'{table}?{condition}')
-    # Уведомления — удаляем по прямой колонке job_id (миграция 063)
-    postgrest_admin_request('DELETE', f'notifications?job_id=eq.{job_id}')
-    # Fallback: удаляем уведомления, где job_id ещё в тексте/JSON (созданы до миграции)
-    postgrest_admin_request('DELETE', f'notifications?message=ilike.*{job_id}*')
-
-    postgrest_admin_request('DELETE', f'jobs?id=eq.{job_id}')
+    # X4: Атомарное каскадное удаление через RPC (транзакция PostgreSQL)
+    resp = postgrest_rpc('delete_job_cascade', {'p_job_id': job_id}, use_admin=True)
+    if not resp.ok:
+        logger.warning('delete_job_cascade failed job_id=%s: %s', job_id, resp.text)
+        flash('Не удалось удалить вакансию', 'danger')
+        return redirect(url_for('jobs.my_jobs'))
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True, 'message': 'Задание удалено'})
     flash('Задание удалено', 'success')
