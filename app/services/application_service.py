@@ -34,6 +34,10 @@ def withdraw_application_atomic(app_id: str, user_id: str) -> Dict[str, Any]:
                 'message': result.get('message', 'Отклик отозван'),
                 'new_status': 'withdrawn'
             }
+        # Обработка race condition: заявка уже отозвана
+        error_code = result.get('code', '')
+        if error_code == 'already_withdrawn':
+            return {'success': False, 'error': 'Заявка уже отозвана', 'code': 'already_withdrawn'}
         return {'success': False, 'error': result.get('error', 'Ошибка отзыва')}
 
     return {'success': False, 'error': 'Неожиданный ответ сервера'}
