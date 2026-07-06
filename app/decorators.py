@@ -52,6 +52,21 @@ def login_required(f: F) -> F:
                 if is_jti_blacklisted(jti):
                     session.clear()
                     return redirect(url_for('auth.login'))
+            
+            # B5: Проверка существования пользователя в profiles (кэш 60 сек)
+            user_id = decoded.get('user_id') or decoded.get('sub')
+            if user_id:
+                cache_key = f'user_exists:{user_id}'
+                from app.utils.redis_cache import get_cached, set_cached
+                user_exists = get_cached(cache_key)
+                if user_exists is None:
+                    from app.utils import postgrest_request as _pgreq
+                    resp = _pgreq('GET', f'profiles?id=eq.{user_id}&select=id')
+                    user_exists = resp.ok and bool(resp.json())
+                    set_cached(cache_key, user_exists, ttl=60)
+                if not user_exists:
+                    session.clear()
+                    return redirect(url_for('auth.login'))
         except (jwt.DecodeError, jwt.ExpiredSignatureError, jwt.InvalidTokenError):
             # Токен невалидный — очищаем сессию и перенаправляем на login
             session.clear()

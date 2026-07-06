@@ -62,3 +62,47 @@ def redis_cache_delete(key: str):
             client.delete(key)
     except Exception:
         pass
+
+
+def get_cached(key: str):
+    """Получает значение из кэша (универсальная функция).
+
+    Args:
+        key: ключ кэша.
+
+    Returns:
+        Значение или None, если ключ не найден или Redis недоступен.
+    """
+    try:
+        client = get_redis_client()
+        if client is None:
+            return None
+        value = client.get(key)
+        if value is not None:
+            # Пытаемся декодировать как JSON, иначе возвращаем как строку
+            try:
+                import json
+                return json.loads(value)
+            except (json.JSONDecodeError, TypeError):
+                return value.decode('utf-8') if isinstance(value, bytes) else value
+    except Exception:
+        pass
+    return None
+
+
+def set_cached(key: str, value, ttl: int = 60):
+    """Сохраняет значение в кэш с TTL (универсальная функция).
+
+    Args:
+        key: ключ кэша.
+        value: значение для сохранения (будет сериализовано в JSON).
+        ttl: время жизни в секундах (по умолчанию 60).
+    """
+    try:
+        client = get_redis_client()
+        if client is not None:
+            import json
+            serialized = json.dumps(value)
+            client.setex(key, ttl, serialized)
+    except Exception:
+        pass
