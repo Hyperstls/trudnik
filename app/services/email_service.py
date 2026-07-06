@@ -12,7 +12,7 @@ import smtplib
 import threading
 import time as _time_module
 import traceback
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Any, Optional
@@ -105,7 +105,7 @@ class EmailService:
             if current == 1:
                 # Вычисляем секунды до полуночи для EXPIRE
                 now = datetime.now(timezone.utc)
-                tomorrow = now.replace(hour=0, minute=0, second=0, microsecond=0) + _time_module.timedelta(days=1)
+                tomorrow = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
                 ttl_seconds = int((tomorrow - now).total_seconds()) + 1
                 self._redis.expire(key, ttl_seconds)
             return current <= self._daily_limit
