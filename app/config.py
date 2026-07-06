@@ -80,10 +80,12 @@ class Config:
     YANDEX_MAPS_API_KEY = os.environ.get('YANDEX_MAPS_API_KEY', '')
     WORKER_SITE_URL = os.environ.get('WORKER_SITE_URL', 'https://trudnik-hyperstls.amvera.io/')
 
-    # Cookie Security
+    # Cookie Security (B9: Secure cookie flags)
     SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SECURE = os.environ.get('DEPLOYMENT_ENV', '') == 'production'
-    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_SECURE = True  # Только HTTPS
+    SESSION_COOKIE_SAMESITE = 'Strict'  # Защита от CSRF
+    SESSION_COOKIE_NAME = 'trudnik_session'
+    PERMANENT_SESSION_LIFETIME = 86400  # 24 часа (в секундах)
 
     # ═══════════════════════════════════════════════════════════
     # Инфраструктура реального времени (уведомления v2)
