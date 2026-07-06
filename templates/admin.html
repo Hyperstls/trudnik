@@ -263,7 +263,7 @@
                 </div>
                 <div class="flex gap-2 shrink-0">
                     {% if user.verification_doc_url %}
-                    <a href="{{ user.verification_doc_url }}" target="_blank" rel="noopener"
+                    <a href="{{ user.verification_doc_url }}" target="_blank" rel="noopener noreferrer"
                        class="action-icon-btn chat-btn px-3 py-1.5" title="Просмотреть документ">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                         <span class="text-xs ml-1.5 font-medium">Документ</span>
@@ -311,7 +311,7 @@
                     </div>
                     <p class="text-xs text-neutral-500">{{ user.get('city', '') }}{% if user.get('city') and user.get('email') %} · {% endif %}{{ user.get('email', '') }}</p>
                     {% if user.verification_doc_url %}
-                    <a href="{{ user.verification_doc_url }}" target="_blank" rel="noopener"
+                    <a href="{{ user.verification_doc_url }}" target="_blank" rel="noopener noreferrer"
                        class="inline-flex items-center gap-1 text-primary-500 text-xs hover:underline mt-1">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                         Документ
