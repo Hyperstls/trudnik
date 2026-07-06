@@ -224,12 +224,15 @@ app.add_middleware(
 async def websocket_endpoint(websocket: WebSocket) -> None:
     # B6: Проверка Origin header для защиты от CSRF
     origin = websocket.headers.get("origin", "")
-    allowed_origins = [APP_URL] + CORS_ORIGINS if CORS_ORIGINS != ["*"] else [APP_URL]
-    
-    if origin and origin not in allowed_origins:
-        logger.warning(f"WebSocket connection rejected: invalid origin {origin}")
-        await websocket.close(code=4003)
-        return
+
+    # При CORS_ORIGINS=["*"] (dev mode) — разрешаем все origins.
+    # В продакшене CORS_ORIGINS должен содержать конкретные домены.
+    if CORS_ORIGINS != ["*"]:
+        allowed_origins = {APP_URL} | set(CORS_ORIGINS)
+        if origin and origin not in allowed_origins:
+            logger.warning(f"WebSocket connection rejected: invalid origin {origin}")
+            await websocket.close(code=4003)
+            return
     
     await websocket.accept()
 

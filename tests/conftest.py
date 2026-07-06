@@ -151,9 +151,25 @@ def mock_postgrest_client(monkeypatch):
         return PostgrestResponse(ok=True, status_code=200, data=data, text=str(data))
 
     # Мокаем основные функции запросов к PostgREST
+    def _smart_postgrest_request(method=None, url=None, **kwargs):
+        """Умный мок: возвращает профиль для B5/role_required проверок."""
+        # B5: проверка существования пользователя и role_required
+        if isinstance(url, str) and 'profiles?id=eq.' in url and 'select=id' in url:
+            return PostgrestResponse(ok=True, status_code=200,
+                                     data=[{'id': 'mock'}], text='[{"id":"mock"}]')
+        # role_required запрашивает роль
+        if isinstance(url, str) and 'profiles?id=eq.' in url and 'select=role' in url:
+            return PostgrestResponse(ok=True, status_code=200,
+                                     data=[{'role': 'employer'}], text='[{"role":"employer"}]')
+        # B10: проверка password_changed_at
+        if isinstance(url, str) and 'profiles?id=eq.' in url and 'password_changed_at' in url:
+            return PostgrestResponse(ok=True, status_code=200,
+                                     data=[{'password_changed_at': None}], text='[{"password_changed_at":null}]')
+        return PostgrestResponse(ok=True, status_code=200, data=[], text='[]')
+
     monkeypatch.setattr(
         'app.utils.postgrest_request',
-        lambda *a, **kw: PostgrestResponse(ok=True, status_code=200, data=[], text='[]')
+        _smart_postgrest_request
     )
     monkeypatch.setattr(
         'app.utils.postgrest_admin_request',
@@ -164,19 +180,11 @@ def mock_postgrest_client(monkeypatch):
         lambda *a, **kw: PostgrestResponse(ok=True, status_code=200, data={'success': True}, text='{"success": true}')
     )
 
-    # Также мокаем алиасы в app.utils (postgrest_request, postgrest_admin_request, postgrest_rpc)
-    monkeypatch.setattr(
-        'app.utils.postgrest_request',
-        mock_ok_response
-    )
-    monkeypatch.setattr(
-        'app.utils.postgrest_admin_request',
-        mock_ok_response
-    )
-    monkeypatch.setattr(
-        'app.utils.postgrest_rpc',
-        lambda *a, **kw: PostgrestResponse(ok=True, status_code=200, data={'success': True}, text='{"success": true}')
-    )
+    # Также патчим ИСТОЧНИК — postgrest_client.postgrest_request
+    # Это нужно потому что decorators.py делает: from app.utils import postgrest_request as _pgreq
+    # что захватывает ссылку из app.utils.__init__, которая указывает на postgrest_client.postgrest_request
+    import app.utils.postgrest_client as _pgc
+    monkeypatch.setattr(_pgc, 'postgrest_request', _smart_postgrest_request)
 
     # Мокаем Celery-задачи, чтобы избежать попыток подключения к Redis
     try:

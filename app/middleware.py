@@ -1,9 +1,16 @@
 """Middleware Flask: CSRF, CSP, Security Headers, Request ID, Cache-Control."""
 
+import hmac
+import json
+import logging
 import secrets
 import uuid as _uuid
 
-from flask import g, session, request, abort
+from flask import g, session, request, abort, Response, current_app
+
+from app.utils import redis_client as _redis_module
+
+logger = logging.getLogger(__name__)
 
 
 def generate_csp_nonce():
@@ -22,8 +29,6 @@ def csrf_check():
     Пропускаем: GET/HEAD/OPTIONS, тестовые запросы, auth-роуты.
     Приоритет: 1) X-CSRF-Token заголовок (fetch/AJAX), 2) csrf_token в форме/JSON.
     """
-    from flask import current_app
-
     if request.method in ('GET', 'HEAD', 'OPTIONS'):
         return
     # В режиме тестирования CSRF отключён
@@ -31,7 +36,6 @@ def csrf_check():
         return
     # Emergency API endpoints protected by X-Admin-Token instead of CSRF
     if request.path in ('/api/reset-users', '/api/fix-permissions', '/api/reset-circuit-breaker'):
-        import hmac
         expected = current_app.config.get('ADMIN_API_TOKEN', '')
         # X12: fail-closed — если токен не настроен, блокируем доступ
         if not expected:
@@ -115,15 +119,6 @@ def check_idempotency():
     Проверяет X-Client-Request-Id для POST/PUT/PATCH/DELETE запросов.
     При повторном запросе с тем же ID — возвращает кэшированный ответ.
     """
-    import json
-    import logging
-    import uuid
-    
-    from flask import Response
-    from app.utils.redis_client import get_redis_client
-    
-    logger = logging.getLogger(__name__)
-    
     if request.method not in ('POST', 'PUT', 'PATCH', 'DELETE'):
         return None
     
@@ -133,7 +128,7 @@ def check_idempotency():
     
     # Валидируем формат UUID
     try:
-        uuid.UUID(client_request_id)
+        _uuid.UUID(client_request_id)
     except ValueError:
         return None  # Игнорируем невалидные ID
     
@@ -144,7 +139,7 @@ def check_idempotency():
     cache_key = f'idempotency:{user_id}:{client_request_id}'
     
     try:
-        r = get_redis_client()
+        r = _redis_module.get_redis_client()
         if r is None:
             return None
         
@@ -170,13 +165,6 @@ def cache_idempotency_response(response):
     """
     After-request hook: кэширует ответ для идемпотентности.
     """
-    import json
-    import logging
-    
-    from app.utils.redis_client import get_redis_client
-    
-    logger = logging.getLogger(__name__)
-    
     if request.method not in ('POST', 'PUT', 'PATCH', 'DELETE'):
         return response
     
@@ -188,14 +176,17 @@ def cache_idempotency_response(response):
     if not user_id:
         return response
     
-    # Кэшируем только успешные ответы (2xx)
+    # Кэшируем только успешные JSON-ответы (2xx + application/json)
+    # HTML-ответы не кэшируем — они могут содержать CSRF-токены
     if not (200 <= response.status_code < 300):
+        return response
+    if response.content_type and not response.content_type.startswith('application/json'):
         return response
     
     cache_key = f'idempotency:{user_id}:{client_request_id}'
     
     try:
-        r = get_redis_client()
+        r = _redis_module.get_redis_client()
         if r is None:
             return response
         

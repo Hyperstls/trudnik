@@ -12,11 +12,31 @@ from flask import session
 @pytest.fixture
 def employer_session(app_client):
     """Сессия авторизованного работодателя."""
-    with app_client.session_transaction() as sess:
-        sess['user_id'] = '11111111-1111-1111-1111-111111111111'
-        sess['role'] = 'employer'
-        sess['_csrf_token'] = 'test-csrf-token'
-    return app_client
+    import jwt as _jwt
+    from app.config import Config
+    import time
+
+    # Создаём валидный JWT токен для login_required
+    payload = {
+        'user_id': '11111111-1111-1111-1111-111111111111',
+        'sub': '11111111-1111-1111-1111-111111111111',
+        'role': 'authenticated',
+        'aud': 'authenticated',
+        'app_role': 'employer',
+        'exp': int(time.time()) + 3600,
+        'jti': 'test-jti-a1'
+    }
+    token = _jwt.encode(payload, Config.PGRST_JWT_SECRET, algorithm='HS256')
+
+    # Патчим is_jti_blacklisted чтобы токен не считался отозванным
+    with patch('app.utils.auth.is_jti_blacklisted', return_value=False):
+        with app_client.session_transaction() as sess:
+            sess['user_id'] = '11111111-1111-1111-1111-111111111111'
+            sess['role'] = 'employer'
+            sess['_csrf_token'] = 'test-csrf-token'
+            sess['access_token'] = token
+            sess['jti'] = 'test-jti-a1'
+        yield app_client
 
 
 class TestBulkCancelUsesAtomicRPC:

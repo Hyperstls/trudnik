@@ -67,11 +67,7 @@ def delete_user(user_id):
         flash('Ошибка при удалении пользователя', 'danger')
         return redirect(url_for('admin_dashboard.admin_panel', tab='users'))
 
-    # Обновляем password_changed_at для инвалидации всех JWT пользователя
-    from datetime import datetime, timezone
-    postgrest_admin_request('PATCH', f'profiles?id=eq.{user_id}',
-        json={'password_changed_at': datetime.now(timezone.utc).isoformat()})
-
+    # Профиль удалён — B5-проверка существования в login_required надёжно блокирует JWT
     log_admin_action('delete_user', table_name='profiles', record_id=user_id)
     flash('Пользователь удалён', 'success')
     return redirect(url_for('admin_dashboard.admin_panel', tab='users'))

@@ -3,7 +3,7 @@
 import logging
 import secrets
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 import bcrypt
@@ -83,8 +83,8 @@ def generate_jwt(user_id, role, exp_seconds=300, password_changed_at=None):
         'aud': 'authenticated',  # требуется PostgREST (PGRST_JWT_AUD)
         'app_role': role,  # 'worker', 'employer', 'admin' — для RLS
         'user_id': str(user_id),
-        'iat': datetime.utcnow(),
-        'exp': datetime.utcnow() + timedelta(seconds=exp_seconds),
+        'iat': datetime.now(timezone.utc),
+        'exp': datetime.now(timezone.utc) + timedelta(seconds=exp_seconds),
         'jti': jti,
     }
     
@@ -173,9 +173,27 @@ def refresh_access_token() -> bool:
 
 
 def login_user_session(user_id: str, role: str, email: str) -> None:
-    """Сохранить данные пользователя в сессии после успешного логина."""
+    """Сохранить данные пользователя в сессии после успешного логина.
+
+    Автоматически получает password_changed_at из профиля для B10-защиты.
+    """
     session.permanent = True
-    token = generate_jwt(user_id, role)
+
+    # B10: Получаем password_changed_at из профиля для защиты токена
+    pwd_changed_at = None
+    try:
+        from app.utils import postgrest_admin_request
+        resp = postgrest_admin_request(
+            'GET', f'profiles?id=eq.{user_id}&select=password_changed_at')
+        if resp.ok and resp.json():
+            profile_data = resp.json()
+            if isinstance(profile_data, list) and profile_data:
+                pwd_changed_at = profile_data[0].get('password_changed_at')
+    except Exception as e:
+        logger.warning('Failed to get password_changed_at for user %s: %s',
+                       user_id, e, exc_info=True)
+
+    token = generate_jwt(user_id, role, password_changed_at=pwd_changed_at)
     session['access_token'] = token
     session['refresh_token'] = 'jwt'
     session['user_id'] = user_id

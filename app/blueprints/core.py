@@ -283,7 +283,24 @@ def client_error_report():
     - userAgent: User-Agent браузера
     
     Логирует ошибку с уровнем WARNING для мониторинга.
+    
+    Rate limited: 20 отчётов в минуту на IP (защита от log-flooding).
     """
+    # Rate limiting: 20 отчётов в минуту на IP
+    client_ip = request.remote_addr or 'unknown'
+    rate_key = f'client_error_ratelimit:{client_ip}'
+    try:
+        from app.utils.redis_client import get_redis_client
+        redis_client = get_redis_client()
+        if redis_client:
+            current = redis_client.incr(rate_key)
+            if current == 1:
+                redis_client.expire(rate_key, 60)
+            if current > 20:
+                return jsonify({'status': 'rate_limited'}), 429
+    except Exception as e:
+        current_app.logger.warning('client-error rate limit check failed: %s', e, exc_info=True)
+    
     try:
         data = request.get_json(silent=True) or {}
         

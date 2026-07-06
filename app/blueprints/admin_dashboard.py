@@ -3,7 +3,7 @@
 Выделен из app/blueprints/admin.py (задача 4-5).
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 import subprocess
 
@@ -19,7 +19,7 @@ admin_dashboard_bp = Blueprint('admin_dashboard', __name__, url_prefix='/admin')
 @admin_dashboard_bp.route('/api/health')
 def health_check():
     """Health check endpoint для мониторинга."""
-    return jsonify({'status': 'ok', 'timestamp': datetime.utcnow().isoformat()})
+    return jsonify({'status': 'ok', 'timestamp': datetime.now(timezone.utc).isoformat()})
 
 
 @admin_dashboard_bp.route('')

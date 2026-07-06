@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import os
 import subprocess
@@ -33,7 +33,7 @@ def log_admin_action(action, table_name=None, record_id=None, old_data=None, new
 @admin_bp.route('/api/health')
 def health_check():
     """Health check endpoint для мониторинга."""
-    return jsonify({'status': 'ok', 'timestamp': datetime.utcnow().isoformat()})
+    return jsonify({'status': 'ok', 'timestamp': datetime.now(timezone.utc).isoformat()})
 
 
 @admin_bp.route('/admin')
