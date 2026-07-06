@@ -1,4 +1,5 @@
 import html as _html
+import logging
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
@@ -6,6 +7,8 @@ from app.decorators import login_required, rate_limit, role_required, validate_u
 from app.utils import postgrest_request
 from app.utils.redis_client import get_redis_client
 from app.services.notification_service import create as create_notification, enqueue_notification
+
+logger = logging.getLogger(__name__)
 
 try:
     from app.services.redis_publisher import redis_publisher
@@ -140,6 +143,10 @@ def send_message():
         'sender_id': sender_id,
         'content': sanitized_content
     }, headers=headers)
+
+    if not msg_resp.ok:
+        logger.warning('chat.send_message failed: %s', msg_resp.text)
+        return jsonify({'status': 'error', 'message': 'Не удалось отправить сообщение'}), 503
 
     message_id = None
     try:
