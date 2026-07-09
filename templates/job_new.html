@@ -27,6 +27,7 @@
     </div>
 
     <form method="post" id="job-form" class="space-y-5" {% if is_edit %}action="/jobs/{{ job.id }}/edit"{% endif %}>
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <!-- ===== Шаг 1: Информация ===== -->
         <div id="step-1" class="space-y-4">
             <div class="floating-label-group">

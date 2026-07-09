@@ -74,6 +74,7 @@
     {# Массовые действия                            #}
     {# ============================================ #}
     <form method="POST" action="/my-jobs/action" id="bulk-form">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <div class="mb-4 flex flex-wrap items-center gap-2">
             <button type="button" id="select-all-btn"
                     class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-600 hover:bg-neutral-100 transition-colors border border-neutral-200">
