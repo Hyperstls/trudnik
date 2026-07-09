@@ -316,6 +316,7 @@ def register():
 
 
 @auth_bp.route('/logout', methods=['POST'])
+@rate_limit(fail_open=True)
 def logout():
     log.info('Logout: user_id=%s, role=%s', session.get('user_id'), session.get('role'))
     

@@ -230,11 +230,11 @@ def delete_account():
 @login_required
 @rate_limit
 def change_password():
-    old_password = request.form.get('old_password', '')
+    current_password = request.form.get('current_password', '')
     new_password = request.form.get('new_password')
     confirm_password = request.form.get('confirm_password')
 
-    if not old_password:
+    if not current_password:
         flash('Укажите текущий пароль', 'danger')
         return redirect(url_for('profile.profile'))
     if not new_password:
@@ -252,7 +252,7 @@ def change_password():
     try:
         resp = postgrest_request('POST', 'rpc/change_password', json={
             'p_user_id': user_id,
-            'p_old_password': old_password,
+            'p_old_password': current_password,
             'p_new_password': new_password
         })
         if resp.ok:

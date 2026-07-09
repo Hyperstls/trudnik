@@ -56,6 +56,7 @@
         <div class="flex gap-2 mt-4">
             {% if profile_user.get('photo_url') %}
             <form action="/profile/delete-photo" method="post" class="js-confirm-form" data-confirm="Удалить фото?">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                 <button type="submit" class="action-icon-btn reject-btn" title="Удалить фото" aria-label="Удалить фото">
                     {{ trash(16) }}
                     <span class="text-xs ml-1.5 font-medium hidden sm:inline">Удалить</span>
@@ -75,6 +76,7 @@
     {# Форма редактирования профиля                 #}
     {# ============================================ #}
     <form method="post" action="/profile/update" enctype="multipart/form-data" class="space-y-4">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <input type="file" id="photo-input" name="photo" accept="image/*" class="js-auto-submit hidden">
 
         <div class="floating-label-group">
@@ -184,8 +186,9 @@
     <div class="mt-8 p-5 bg-white rounded-2xl shadow-sm border border-neutral-100">
         <h3 class="text-lg font-semibold text-neutral-900 mb-4">Сменить пароль</h3>
         <form id="change-password-form" action="/profile/change-password" method="post" class="space-y-3">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
             <div class="floating-label-group">
-                <input type="password" name="current_password" id="current-password" required aria-required="true" minlength="6"
+                <input type="password" name="current_password" id="current-password" required aria-required="true" minlength="8"
                        class="floating-input" placeholder=" " autocomplete="current-password">
                 <label class="floating-label">Текущий пароль</label>
             </div>
@@ -211,9 +214,12 @@
     {# Действия с аккаунтом                         #}
     {# ============================================ #}
     <div class="mt-6 flex flex-col items-center gap-3">
-        <a href="/logout" class="text-danger hover:text-danger/80 font-medium text-sm transition-colors duration-200">
-            Выйти из аккаунта
-        </a>
+        <form action="{{ url_for('auth.logout') }}" method="post" class="inline">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="text-danger hover:text-danger/80 font-medium text-sm transition-colors duration-200">
+                Выйти из аккаунта
+            </button>
+        </form>
         <button type="button" id="js-delete-account-btn"
                 class="text-xs text-neutral-400 hover:text-danger transition-colors duration-200 underline">
             Удалить аккаунт
@@ -228,6 +234,7 @@
         <p class="text-sm text-neutral-600 mb-4">Это действие необратимо. Все ваши данные будут удалены безвозвратно.</p>
         <p class="text-sm text-neutral-500 mb-4">Введите <strong class="text-danger">УДАЛИТЬ</strong> для подтверждения:</p>
         <form action="/profile/delete-account" method="post" id="js-delete-account-form">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
             <input type="text" id="js-delete-account-input"
                    class="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-danger/30 focus:border-danger transition mb-4"
                    placeholder="УДАЛИТЬ"
