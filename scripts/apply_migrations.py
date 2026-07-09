@@ -252,9 +252,13 @@ def collect_migrations(
     list of Path
         Файлы, которые ещё не были применены, в алфавитном порядке.
     """
+    # Применяем только пронумерованные миграции NNN[_a-z]_*.sql (напр. 067_.., 077b_..).
+    # Ад-hoc файлы (manual_fix_all.sql, run_all_safe.sql, apply_manual_pgadmin.sql) игнорируются.
+    import re
+    mig_re = re.compile(r'^\d{3}[a-z]?_.*\.sql$', re.IGNORECASE)
     all_files = sorted(
         f for f in migrations_dir.iterdir()
-        if f.is_file() and f.suffix.lower() == ".sql"
+        if f.is_file() and f.suffix.lower() == ".sql" and mig_re.match(f.name)
     )
     return [f for f in all_files if f.name not in applied]
 
