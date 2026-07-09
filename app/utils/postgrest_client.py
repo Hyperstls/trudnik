@@ -351,7 +351,7 @@ def get_user_headers(user_id: Optional[str] = None) -> Dict[str, str]:
     if user_id is None:
         user_id = session.get('user_id', '')
     # Берём реальную роль из сессии, fallback — 'authenticated'
-    role = session.get('user', {}).get('role') or session.get('role', 'authenticated')
+    role = session.get('role', 'authenticated')
     token = generate_jwt(str(user_id) if user_id else '', role)
     headers = {
         'Authorization': f'Bearer {token}',

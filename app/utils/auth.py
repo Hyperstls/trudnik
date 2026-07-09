@@ -161,7 +161,7 @@ def refresh_access_token() -> bool:
                 logger.warning('Failed to decode old token: %s', e, exc_info=True)
 
         # Используем реальную роль из сессии, fallback — 'authenticated'
-        role = session.get('role') or session.get('user', {}).get('role', 'authenticated')
+        role = session.get('role', 'authenticated')
         token = generate_jwt(user_id, role)
         session['access_token'] = token
         session.modified = True

@@ -37,7 +37,7 @@ def log_admin_action(
         # Ленивый импорт Flask-зависимостей (функция может вызываться вне request-контекста)
         if user_id is None:
             from flask import session
-            user_id = session.get('user', {}).get('id')
+            user_id = session.get('user_id')
         if ip_address is None:
             from flask import request
             ip_address = request.remote_addr

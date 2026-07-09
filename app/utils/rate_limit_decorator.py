@@ -5,8 +5,11 @@
 """
 
 from functools import wraps
+import logging
 
 from flask import current_app, flash, jsonify, redirect, request, session, url_for
+
+logger = logging.getLogger(__name__)
 
 _RATE_WINDOW = 60  # секунд
 _RATE_MAX_REQUESTS = 10  # запросов в окне
