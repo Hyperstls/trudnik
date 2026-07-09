@@ -77,7 +77,7 @@ class Config:
         )
         logger.info(_msg)
 
-    YANDEX_MAPS_API_KEY = os.environ.get('YANDEX_MAPS_API_KEY', '')
+    YANDEX_MAPS_API_KEY = os.environ.get('YANDEX_GEOCODER_KEY', '')
     WORKER_SITE_URL = os.environ.get('WORKER_SITE_URL', 'https://trudnik-hyperstls.amvera.io/')
 
     # Cookie Security (B9: Secure cookie flags)
@@ -99,7 +99,7 @@ class Config:
     # ═══════════════════════════════════════════════════════════
     SMTP_HOST = os.environ.get('SMTP_HOST', 'localhost')
     SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
-    SMTP_USER = os.environ.get('SMTP_USER', '')
+    SMTP_USER = os.environ.get('SMTP_USERNAME', '')
     SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
     SMTP_USE_TLS = os.environ.get('SMTP_USE_TLS', 'True').lower() in ('true', '1', 'yes')
     SMTP_USE_SSL = os.environ.get('SMTP_USE_SSL', 'False').lower() in ('true', '1', 'yes')
@@ -160,5 +160,5 @@ class Config:
     if os.environ.get('DEPLOYMENT_ENV') in ('production', 'staging'):
         if os.environ.get('POSTGREST_MOCK_MODE', '').lower() in ('1', 'true', 'yes'):
             raise RuntimeError('FATAL: POSTGREST_MOCK_MODE is set in production! Refusing to start.')
-        if os.environ.get('TEST_PASSWORD'):
-            raise RuntimeError('FATAL: TEST_PASSWORD is set in production! Refusing to start.')
+        if os.environ.get('TEST_USER_PASSWORD'):
+            raise RuntimeError('FATAL: TEST_USER_PASSWORD is set in production! Refusing to start.')

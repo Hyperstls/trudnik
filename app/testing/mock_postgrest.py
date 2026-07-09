@@ -102,16 +102,16 @@ def _mock_post(url: str, *args: Any, **kwargs: Any) -> Any:
             password = body.get('password', '')
             for p in _test_db.get('profiles', []):
                 if p.get('email') == email:
-                    if not os.environ.get('TEST_PASSWORD'):
+                    if not os.environ.get('TEST_USER_PASSWORD'):
                         global _test_password_warned
                         if not _test_password_warned:
                             _test_password_warned = True
                             logger.warning(
-                                "TEST_PASSWORD not set in environment. "
+                                "TEST_USER_PASSWORD not set in environment. "
                                 "Mock auth will reject ALL login attempts. "
-                                "Set TEST_PASSWORD env var to enable test logins."
+                                "Set TEST_USER_PASSWORD env var to enable test logins."
                             )
-                    if password and password == os.environ.get('TEST_PASSWORD', 'test'):
+                    if password and password == os.environ.get('TEST_USER_PASSWORD', 'test'):
                         token = f'mock-access-{p["id"][:8]}'
                         refresh = f'mock-refresh-{p["id"][:8]}'
                         _test_auth_tokens[token] = p
@@ -601,7 +601,7 @@ def _test_mock_rpc(function_name: str, params: dict) -> PostgrestResponse:
         print(f"MOCK RPC login_user: email={email}, password={'***' if password else 'EMPTY'}, profiles_in_db={len(_test_db.get('profiles', []))}", flush=True)
         for p in _test_db.get('profiles', []):
             if p.get('email') == email:
-                test_password = _os.environ.get('TEST_PASSWORD', 'test')
+                test_password = _os.environ.get('TEST_USER_PASSWORD', 'test')
                 if password and password == test_password:
                     data = [{'user_id': p['id'], 'role': p.get('role', 'worker')}]
                     print(f"MOCK DEBUG: returning data={data}, ok=True", flush=True)
@@ -743,7 +743,7 @@ def _reset_test_db():
 def _seed_test_db():
     """Наполняет тестовую БД начальными данными."""
     _reset_test_db()
-    TEST_PASSWORD = os.environ.get('TEST_PASSWORD', 'test')
+    TEST_PASSWORD = os.environ.get('TEST_USER_PASSWORD', 'test')
     # Три тестовых профиля: admin, employer, worker
     admin_id = '00000000-0000-0000-0000-000000000001'
     employer_id = '00000000-0000-0000-0000-000000000002'

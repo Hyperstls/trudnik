@@ -10,11 +10,11 @@ logger = logging.getLogger(__name__)
 def verify_captcha(token: str) -> bool:
     """Проверить CAPTCHA токен через Cloudflare Turnstile API.
     
-    Fail-closed: если TURNSTILE_SECRET не задан или API недоступен — возвращает False.
+    Fail-closed: если TURNSTILE_SECRET_KEY не задан или API недоступен — возвращает False.
     """
-    secret = os.environ.get('TURNSTILE_SECRET', '')
+    secret = os.environ.get('TURNSTILE_SECRET_KEY', '')
     if not secret:
-        logger.warning('captcha: TURNSTILE_SECRET not configured, rejecting')
+        logger.warning('captcha: TURNSTILE_SECRET_KEY not configured, rejecting')
         return False
     if not token:
         return False
