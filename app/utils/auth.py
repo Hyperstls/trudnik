@@ -110,10 +110,7 @@ def generate_jwt(user_id, role, exp_seconds=300, password_changed_at=None):
             'PGRST_JWT_SECRET is not configured. '
             'JWT tokens must be signed with the same secret as PostgREST.'
         )
-    current_app.logger.info(
-        'JWT: signing with secret prefix=%s... (%d bytes)',
-        secret[:8], len(secret.encode('utf-8'))
-    )
+    logger.debug('JWT signed for user_id=%s, exp=%d sec', user_id, exp_seconds)
     token = _jwt_lib.encode(payload, secret, algorithm='HS256')
 
     # Сохраняем jti в Redis с TTL = expiration (для проверки при refresh)

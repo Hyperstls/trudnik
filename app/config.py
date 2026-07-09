@@ -33,8 +33,7 @@ class Config:
         POSTGREST_URL = 'http://localhost:3000'
         logger.warning('POSTGREST_URL не задан, установлен fallback: http://localhost:3000')
     PGRST_JWT_SECRET = os.environ.get('PGRST_JWT_SECRET', '').strip()
-    logger.debug('PGRST_JWT_SECRET loaded: length=%d, first_chars=%s',
-                 len(PGRST_JWT_SECRET), PGRST_JWT_SECRET[:16] + '...' if len(PGRST_JWT_SECRET) > 16 else PGRST_JWT_SECRET)
+    logger.debug('PGRST_JWT_SECRET loaded: length=%d', len(PGRST_JWT_SECRET))
     if not PGRST_JWT_SECRET:
         logger.error(
             "PGRST_JWT_SECRET не задан! Будет использован SECRET_KEY как fallback "
