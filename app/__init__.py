@@ -68,30 +68,6 @@ def create_app():
         from app.utils import format_datetime
         return format_datetime(value)
 
-    # API-роуты accept/reject/reopen
-    from app.blueprints.applications import api_handle_application
-    from app.decorators import login_required, rate_limit, validate_uuid
-
-    @app.route('/api/applications/<app_id>/accept', methods=['POST'])
-    @login_required
-    @rate_limit
-    @validate_uuid('app_id')
-    def api_accept_application(app_id):
-        return api_handle_application(app_id, 'accept')
-
-    @app.route('/api/applications/<app_id>/reject', methods=['POST'])
-    @login_required
-    @rate_limit
-    @validate_uuid('app_id')
-    def api_reject_application(app_id):
-        return api_handle_application(app_id, 'reject')
-
-    @app.route('/api/applications/<app_id>/reopen', methods=['POST'])
-    @login_required
-    @validate_uuid('app_id')
-    def api_reopen_application(app_id):
-        return api_handle_application(app_id, 'reopen')
-
     # Redis для rate limiting
     from app.utils.redis_client import get_redis_client
     redis_client = get_redis_client()

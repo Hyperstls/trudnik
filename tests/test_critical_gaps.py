@@ -1206,27 +1206,16 @@ def test_jwt_verify_signature_enforced():
 
 
 def test_no_test_endpoints_in_production():
-    """[BOMB] P0: /api/applications/test -> 404 или 403 в production."""
+    """[BOMB] P0: /api/applications/test -> 404 (эндпоинт удалён в T3)."""
     s = requests.Session()
-    # Тестовый эндпоинт не должен быть доступен публично без авторизации
+    # Тестовый эндпоинт удалён из кодовой базы (T3).
+    # Ожидаем 404 — эндпоинт больше не существует.
     resp = s.get(f"{BASE_URL}/api/applications/test")
-    # В production тестовые эндпоинты должны быть отключены или требовать авторизацию
-    # Допустимые ответы: 404 (не существует), 403 (доступ запрещён), 302 (редирект на login)
-    # Фактически: эндпоинт /api/applications/test существует и возвращает 200 (HTML)
-    # Это архитектурный долг: тестовый эндпоинт доступен в production
-    if resp.status_code == 200:
-        log("WARN", (
-            f"[BOMB] P0-2: /api/applications/test ДОСТУПЕН (статус 200) в production! "
-            f"Это архитектурный долг — тестовый эндпоинт должен быть скрыт."
-        ))
-        # Не фейлим тест, но фиксируем проблему
-        assert True  # тест не падает, проблема задокументирована
-    else:
-        assert resp.status_code in (404, 403, 302), (
-            f"[BOMB] P0: /api/applications/test не должен быть публично доступен! "
-            f"Получен статус {resp.status_code}, тело: {resp.text[:200]}"
-        )
-        log("INFO", f"[BOMB] P0-2: /api/applications/test -> {resp.status_code} (защищён)")
+    assert resp.status_code == 404, (
+        f"[BOMB] P0: /api/applications/test должен возвращать 404 (эндпоинт удалён). "
+        f"Получен статус {resp.status_code}, тело: {resp.text[:200]}"
+    )
+    log("INFO", f"[BOMB] P0-2: /api/applications/test -> 404 (эндпоинт удалён, T3)")
 
 
 def test_no_none_literal_in_html():

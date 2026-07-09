@@ -315,13 +315,28 @@ def my_applications():
                            total_pages=total_pages)
 
 
-@applications_bp.route('/api/applications/test', methods=['GET', 'POST'])
+@applications_bp.route('/api/applications/<app_id>/accept', methods=['POST'])
 @login_required
-def api_test():
-    return jsonify({'success': True, 'message': 'applications blueprint is alive'})
-# Маршруты accept/reject/reopen вынесены в app/__init__.py (на объект app)
-# из-за проблем с blueprint-роутингом на production (Render).
-# Функция api_handle_application импортируется оттуда.
+@rate_limit
+@validate_uuid('app_id')
+def api_accept_application(app_id):
+    return api_handle_application(app_id, 'accept')
+
+
+@applications_bp.route('/api/applications/<app_id>/reject', methods=['POST'])
+@login_required
+@rate_limit
+@validate_uuid('app_id')
+def api_reject_application(app_id):
+    return api_handle_application(app_id, 'reject')
+
+
+@applications_bp.route('/api/applications/<app_id>/reopen', methods=['POST'])
+@login_required
+@validate_uuid('app_id')
+def api_reopen_application(app_id):
+    return api_handle_application(app_id, 'reopen')
+
 
 def api_handle_application(app_id, action):
     """AJAX-эндпоинт: принять / отклонить / повторно принять отклик"""
