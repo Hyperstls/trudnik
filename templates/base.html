@@ -34,7 +34,6 @@
             wsUrl: '{{ trudnik_ws_config.wsUrl }}',
             wsPort: '{{ trudnik_ws_config.wsPort }}',
             pushEnabled: {{ 'true' if trudnik_ws_config.pushEnabled else 'false' }},
-            jwtToken: '{{ trudnik_ws_config.jwtToken }}',
             userId: '{{ session.get("user_id", "") }}'
         };
     </script>

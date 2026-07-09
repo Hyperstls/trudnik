@@ -10,9 +10,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Инициализация WebSocket (только для аутентифицированных пользователей)
-    const token = window.TRUDNIK_CONFIG?.jwtToken;
-    if (token && window.NotificationsWS) {
-        window.NotificationsWS.connect(token);
+    // JWT-токен для WS НЕ встраивается в HTML (XSS) — запрашиваем через /api/ws/token.
+    if (window.TRUDNIK_CONFIG?.userId && window.NotificationsWS) {
+        // Обработчики регистрируются ДО connect(), чтобы не потерать первые события.
 
         // Обработчик новых уведомлений
         window.NotificationsWS.on('notification', function(data) {
@@ -70,6 +70,20 @@ document.addEventListener('DOMContentLoaded', function() {
         window.NotificationsWS.on('disconnected', function() {
             console.debug('WebSocket отключён');
         });
+
+        // Токен запрашивается по защищённому эндпоинту (GET — CSRF не нужен)
+        (async function() {
+            try {
+                const resp = await fetch('/api/ws/token');
+                if (!resp.ok) { console.warn('WS token endpoint returned', resp.status); return; }
+                const data = await resp.json();
+                if (data.token) {
+                    window.NotificationsWS.connect(data.token);
+                }
+            } catch (e) {
+                console.error('WS token fetch failed:', e);
+            }
+        })();
     }
 
     // Передаём CSRF-токен в Service Worker (нужен для pushsubscriptionchange)

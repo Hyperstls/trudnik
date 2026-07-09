@@ -46,35 +46,18 @@ def _get_cached_or_fetch(key: str, fetch_fn) -> int:
 
 
 def inject_ws_config() -> dict:
-    """Добавляет WebSocket-конфигурацию и JWT-токен во все шаблоны."""
-    import uuid as _uuid
-    import jwt as pyjwt
-    from datetime import datetime, timedelta, timezone
+    """Добавляет WebSocket-конфигурацию во все шаблоны.
+
+    JWT-токен для WS НЕ встраивается в HTML (XSS-риск: любой скрипт мог его
+    прочитать). Клиент получает токен по запросу через защищённый эндпоинт
+    /api/ws/token (см. app.blueprints.notifications.get_ws_token).
+    """
     from app.config import Config
-    
     config = {
         'wsUrl': Config.WEBSOCKET_PUBLIC_URL or os.environ.get('WEBSOCKET_URL', ''),
         'wsPort': os.environ.get('WEBSOCKET_PORT', '8001'),
         'pushEnabled': bool(os.environ.get('VAPID_PUBLIC_KEY', '')),
-        'jwtToken': ''
     }
-    
-    user_id = session.get('user_id')
-    if user_id:
-        try:
-            token = pyjwt.encode(
-                {
-                    'user_id': str(user_id),
-                    'exp': datetime.now(timezone.utc) + timedelta(hours=1),
-                    'jti': str(_uuid.uuid4()),
-                },
-                Config.WEBSOCKET_JWT_SECRET or Config.SECRET_KEY,
-                algorithm='HS256'
-            )
-            config['jwtToken'] = token
-        except Exception as e:
-            logger.warning('Failed to generate WebSocket JWT for user=%s: %s', user_id, e, exc_info=True)
-    
     return {'trudnik_ws_config': config}
 
 

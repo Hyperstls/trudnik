@@ -14,6 +14,31 @@ from app.utils import my_query, postgrest_request, postgrest_admin_request
 notifications_bp = Blueprint('notifications', __name__)
 
 
+@notifications_bp.route('/api/ws/token')
+@login_required
+def get_ws_token():
+    """Выдать короткоживущий JWT для подключения к WebSocket-серверу.
+
+    Токен НЕ встраивается в HTML каждой страницы (XSS-риск), а запрашивается
+    клиентом по защищённому эндпоинту. TTL — 5 минут (минимум для установки
+    WS-соединения), jti уникален для каждого запроса.
+    """
+    import uuid as _uuid
+    from datetime import datetime, timedelta, timezone
+    import jwt as pyjwt
+    from app.config import Config
+    token = pyjwt.encode(
+        {
+            'user_id': str(session['user_id']),
+            'exp': datetime.now(timezone.utc) + timedelta(minutes=5),
+            'jti': str(_uuid.uuid4()),
+        },
+        Config.WEBSOCKET_JWT_SECRET or Config.SECRET_KEY,
+        algorithm='HS256',
+    )
+    return jsonify({'token': token, 'wsUrl': Config.WEBSOCKET_PUBLIC_URL})
+
+
 @notifications_bp.route('/notifications')
 @login_required
 def notifications():
