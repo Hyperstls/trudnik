@@ -16,7 +16,7 @@ from app.services.admin_service import get_dashboard_stats
 admin_dashboard_bp = Blueprint('admin_dashboard', __name__, url_prefix='/admin')
 
 
-@admin_dashboard_bp.route('/api/health')
+@admin_dashboard_bp.route('/health')
 def health_check():
     """Health check endpoint для мониторинга."""
     return jsonify({'status': 'ok', 'timestamp': datetime.now(timezone.utc).isoformat()})

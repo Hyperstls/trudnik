@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 admin_diagnostics_bp = Blueprint('admin_diagnostics', __name__, url_prefix='/admin')
 
 
-@admin_diagnostics_bp.route('/api/admin/job-stats')
+@admin_diagnostics_bp.route('/job-stats')
 @login_required
 @admin_required
 def job_stats():
@@ -64,7 +64,7 @@ def job_stats():
         return jsonify({"total_jobs": 0, "open_jobs": 0, "completed_jobs": 0, "cancelled_jobs": 0, "error": True})
 
 
-@admin_diagnostics_bp.route('/api/migrations-status', methods=['GET'])
+@admin_diagnostics_bp.route('/migrations-status', methods=['GET'])
 def migrations_status():
     """Return the list of applied migrations from _migrations tracking table."""
     token = request.headers.get('X-Admin-Token', '')
@@ -90,7 +90,7 @@ def migrations_status():
         })
 
 
-@admin_diagnostics_bp.route('/api/reset-circuit-breaker', methods=['POST'])
+@admin_diagnostics_bp.route('/reset-circuit-breaker', methods=['POST'])
 def reset_circuit_breaker():
     """
     Сбросить Circuit Breaker PostgREST-клиента в состояние CLOSED.

@@ -35,7 +35,7 @@ def csrf_check():
     if current_app.config.get('TESTING'):
         return
     # Emergency API endpoints protected by X-Admin-Token instead of CSRF
-    if request.path in ('/api/reset-users', '/api/fix-permissions', '/api/reset-circuit-breaker'):
+    if request.path in ('/admin/reset-circuit-breaker',):
         expected = current_app.config.get('ADMIN_API_TOKEN', '')
         # X12: fail-closed — если токен не настроен, блокируем доступ
         if not expected:

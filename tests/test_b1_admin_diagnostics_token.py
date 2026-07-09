@@ -36,7 +36,7 @@ def test_empty_token_rejected(client, app):
     
     # Пытаемся получить доступ с пустым токеном
     response = client.get(
-        '/admin/api/migrations-status',
+        '/admin/migrations-status',
         headers={'X-Admin-Token': ''}
     )
     
@@ -50,7 +50,7 @@ def test_empty_token_rejected(client, app):
 def test_wrong_token_rejected(client):
     """Тест 2: Неправильный токен должен быть отклонён."""
     response = client.get(
-        '/admin/api/migrations-status',
+        '/admin/migrations-status',
         headers={'X-Admin-Token': 'wrong-token'}
     )
     
@@ -73,7 +73,7 @@ def test_correct_token_accepted(client, app, mocker):
     )
     
     response = client.get(
-        '/admin/api/migrations-status',
+        '/admin/migrations-status',
         headers={'X-Admin-Token': 'test-secret-token'}
     )
     
@@ -88,7 +88,7 @@ def test_reset_circuit_breaker_empty_token_rejected(client, app):
     app.config['ADMIN_API_TOKEN'] = ''
     
     response = client.post(
-        '/admin/api/reset-circuit-breaker',
+        '/admin/reset-circuit-breaker',
         headers={'X-Admin-Token': ''}
     )
     
@@ -101,7 +101,7 @@ def test_reset_circuit_breaker_empty_token_rejected(client, app):
 def test_reset_circuit_breaker_wrong_token_rejected(client):
     """Тест 5: reset-circuit-breaker с неправильным токеном должен быть отклонён."""
     response = client.post(
-        '/admin/api/reset-circuit-breaker',
+        '/admin/reset-circuit-breaker',
         headers={'X-Admin-Token': 'wrong-token'}
     )
     
