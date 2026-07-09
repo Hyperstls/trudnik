@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // Если пользователь на странице чата — добавляем сообщение
-            const chatMessages = document.getElementById('chat-messages');
+            const chatMessages = document.getElementById('messages');
             if (chatMessages && data.data) {
                 const msg = data.data;
                 const isMine = msg.sender_id === (window.TRUDNIK_CONFIG?.userId || '');

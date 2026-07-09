@@ -273,7 +273,7 @@ self.addEventListener('pushsubscriptionchange', (event) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': getCSRFToken()
+          'X-CSRF-Token': getCSRFToken()
         },
         body: JSON.stringify(newSubscription.toJSON())
       });

@@ -20,7 +20,7 @@
     </div>
 
     {% if items %}
-    <div class="space-y-3">
+    <div class="space-y-3" id="notifications-list">
         {% for notification in items %}
         {% set type_label = {
             'application_received': 'Новый отклик',
