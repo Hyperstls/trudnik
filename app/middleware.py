@@ -70,6 +70,19 @@ def csrf_check():
 def add_security_headers(response):
     """Добавить HTTP Security Headers для защиты от XSS, clickjacking, MIME sniffing."""
     nonce = getattr(g, 'csp_nonce', '')
+    # WebSocket connect-src: только настроенный публичный хост + localhost для dev.
+    # Раньше разрешался любой wss-хост (wildcard) — ослабляло CSP.
+    ws_src = "ws://localhost:*"
+    try:
+        from urllib.parse import urlparse
+        from app.config import Config
+        ws_public = (getattr(Config, 'WEBSOCKET_PUBLIC_URL', '') or '').strip()
+        if ws_public:
+            p = urlparse(ws_public)
+            if p.scheme in ('wss', 'ws') and p.hostname:
+                ws_src += f" {p.scheme}://{p.hostname}" + (f":{p.port}" if p.port else "")
+    except Exception as e:
+        logger.warning('CSP: не удалось разобрать WEBSOCKET_PUBLIC_URL: %s', e)
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['Content-Security-Policy'] = (
@@ -78,7 +91,7 @@ def add_security_headers(response):
         f"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
         f"font-src 'self' https://fonts.gstatic.com; "
         f"img-src 'self' data: https:; "
-        f"connect-src 'self' https://*.yandex.ru https://core-renderer-tiles.maps.yandex.net https://*.maps.yandex.net https://yastatic.net https://geocode-maps.yandex.ru https://fonts.googleapis.com https://fonts.gstatic.com ws://localhost:* wss://*; "
+        f"connect-src 'self' https://*.yandex.ru https://core-renderer-tiles.maps.yandex.net https://*.maps.yandex.net https://yastatic.net https://geocode-maps.yandex.ru https://fonts.googleapis.com https://fonts.gstatic.com {ws_src}; "
         f"worker-src 'self' blob:; "
         f"frame-src 'self'"
     )
