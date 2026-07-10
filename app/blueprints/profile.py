@@ -9,7 +9,7 @@ from app.services.storage_service import upload_photo
 from app.utils import is_circuit_open, postgrest_admin_request, postgrest_request, postgrest_rpc, upload_to_storage
 from app.utils.helpers import assert_postgrest_ok
 from app.utils.redis_client import get_redis_client
-from app.utils.validators import validate_password
+from app.utils.validators import validate_password, validate_inn_checksum
 
 profile_bp = Blueprint('profile', __name__)
 
@@ -103,6 +103,9 @@ def update_profile():
     if inn:
         if not inn.isdigit() or len(inn) != 12:
             flash('ИНН должен содержать ровно 12 цифр', 'danger')
+            return redirect(url_for('profile.profile'))
+        if not validate_inn_checksum(inn):
+            flash('Некорректный ИНН (ошибка контрольной суммы)', 'danger')
             return redirect(url_for('profile.profile'))
         data['inn'] = inn
     is_self_employed = request.form.get('is_self_employed')
