@@ -92,7 +92,7 @@ def login():
         lockout_key = f"login_lockout:{email}"
         attempts_key = f"login_attempts:{email}"
         if is_login_locked_out(lockout_key):
-            flash('Аккаунт временно заблокирован. Попробуйте через 15 минут.', 'error')
+            flash('Аккаунт временно заблокирован. Попробуйте через 15 минут.', 'danger')
             return render_template('login.html')
  
         try:
@@ -112,7 +112,7 @@ def login():
                     return redirect(url_for('jobs.index'))
             # Неудачная попытка — инкрементировать счётчик
             increment_login_attempts(lockout_key, attempts_key, email)
-            flash('Неверный email или пароль', 'error')
+            flash('Неверный email или пароль', 'danger')
         except RuntimeError as sql_err:
             # Прямой SQL не сработал — пробуем PostgREST fallback
             log.warning("login: direct SQL unavailable for %s, trying PostgREST fallback: %s",
@@ -130,15 +130,15 @@ def login():
                     else:
                         return redirect(url_for('jobs.index'))
                 increment_login_attempts(lockout_key, attempts_key, email)
-                flash('Неверный email или пароль', 'error')
+                flash('Неверный email или пароль', 'danger')
             except Exception as pgrst_err:
                 current_app.logger.error(
                     f"Login error for {email}: direct SQL and PostgREST both failed: {pgrst_err}"
                 )
-                flash('Ошибка сервера. Попробуйте позже.', 'error')
+                flash('Ошибка сервера. Попробуйте позже.', 'danger')
         except Exception as e:
             current_app.logger.error(f"Login error: {e}")
-            flash('Ошибка сервера. Попробуйте позже.', 'error')
+            flash('Ошибка сервера. Попробуйте позже.', 'danger')
     return render_template('login.html')
 
 

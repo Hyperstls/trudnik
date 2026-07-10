@@ -188,7 +188,7 @@ def admin_required(f):
                     if isinstance(data, list) and data:
                         db_role = data[0].get('role', '')
                         if db_role != 'admin':
-                            flash('Доступ запрещён. Требуются права администратора.', 'error')
+                            flash('Доступ запрещён. Требуются права администратора.', 'danger')
                             return redirect(url_for('jobs.index'))
                         return f(*args, **kwargs)
                 # X8: DB-запрос не удался или данные невалидные — fail-closed
@@ -202,7 +202,7 @@ def admin_required(f):
                 flash('Сервис недоступен', 'danger')
                 return redirect(url_for('jobs.index'))
         # Если user_id не найден в сессии — блокируем
-        flash('Доступ запрещён. Требуются права администратора.', 'error')
+        flash('Доступ запрещён. Требуются права администратора.', 'danger')
         return redirect(url_for('jobs.index'))
     return decorated_function
 
@@ -216,7 +216,7 @@ def employer_required(f):
             return redirect(url_for('auth.login'))
         profile = get_user_profile()
         if not profile or profile.get('role') != 'employer':
-            flash('Доступ запрещён. Требуются права работодателя.', 'error')
+            flash('Доступ запрещён. Требуются права работодателя.', 'danger')
             return redirect(url_for('jobs.index'))
         return f(*args, **kwargs)
     return decorated_function
@@ -231,7 +231,7 @@ def worker_required(f):
             return redirect(url_for('auth.login'))
         profile = get_user_profile()
         if not profile or profile.get('role') != 'worker':
-            flash('Доступ запрещён. Требуются права работника.', 'error')
+            flash('Доступ запрещён. Требуются права работника.', 'danger')
             return redirect(url_for('jobs.index'))
         return f(*args, **kwargs)
     return decorated_function
@@ -253,7 +253,7 @@ def handle_errors(redirect_endpoint='jobs.index'):
                 return f(*args, **kwargs)
             except Exception as e:
                 current_app.logger.error(f"Error in {f.__name__}: {e}", exc_info=True)
-                flash(f'Произошла ошибка: {str(e)}', 'error')
+                flash(f'Произошла ошибка: {str(e)}', 'danger')
                 return redirect(url_for(redirect_endpoint))
         return decorated_function
     return decorator

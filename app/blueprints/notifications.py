@@ -149,7 +149,7 @@ def api_get_preferences():
 
 @notifications_bp.route('/api/notifications/preferences', methods=['POST'])
 @login_required
-def api_save_preference():
+def api_update_preferences():
     """Сохранить одну настройку уведомления.
     Body: {type: str, enabled: bool}
     Поддерживаются как типы уведомлений, так и каналы (email_enabled, push_enabled, in_app_enabled).
