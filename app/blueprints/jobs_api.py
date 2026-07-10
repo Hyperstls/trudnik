@@ -10,8 +10,6 @@ from flask import Blueprint, jsonify, request, session, current_app, url_for
 
 from app.decorators import login_required, role_required, validate_uuid
 from app.services.job_service import (
-    search_jobs,
-    search_workers,
     check_job_owner,
     is_job_filled,
 )
@@ -38,7 +36,7 @@ def api_skills():
     resp = postgrest_request(
         'GET', 'skills?select=*&order=sort_order.asc,name.asc'
     )
-    return {'skills': resp.json() if resp.ok else []}
+    return {'success': True, 'skills': resp.json() if resp.ok else []}
 
 
 @jobs_api_bp.route('/api/religions')
@@ -48,56 +46,7 @@ def api_religions():
     resp = postgrest_request(
         'GET', 'religions?select=*&order=sort_order.asc,name.asc'
     )
-    return {'religions': resp.json() if resp.ok else []}
-
-
-# ═══════════════════════════════════════════════════════════════
-# API поиска (полнотекстовый + фильтры + пагинация)
-# ═══════════════════════════════════════════════════════════════
-
-@jobs_api_bp.route('/api/search/jobs')
-def api_search_jobs():
-    """Поиск заданий с полнотекстовым поиском, фильтрами и пагинацией."""
-    import traceback
-    try:
-        filters = {
-            'q': request.args.get('q', ''),
-            'status': request.args.get('status', 'open'),
-            'lat': request.args.get('lat', type=float),
-            'lng': request.args.get('lng', type=float),
-            'radius': request.args.get('radius', 20, type=float),
-            'min_pay': request.args.get('min_pay', type=int),
-            'max_pay': request.args.get('max_pay', type=int),
-            'skills': request.args.get('skills', ''),
-            'date_from': request.args.get('date_from', ''),
-            'date_to': request.args.get('date_to', ''),
-            'available_slots': request.args.get('available_slots', 'false').lower() == 'true',
-            'page': request.args.get('page', 1, type=int),
-            'per_page': request.args.get('per_page', 20, type=int),
-            'sort': request.args.get('sort', ''),
-        }
-        result = search_jobs(filters)
-        return result
-    except Exception as e:
-        current_app.logger.error('api_search_jobs ERROR: %s', e, exc_info=True)
-        return jsonify({'error': 'Internal search error'}), 500
-
-
-@jobs_api_bp.route('/api/search/workers')
-def api_search_workers():
-    """Поиск трудников с полнотекстовым поиском, фильтрами и пагинацией."""
-    filters = {
-        'q': request.args.get('q', ''),
-        'skills': request.args.get('skills', ''),
-        'rating_min': request.args.get('rating_min', type=float),
-        'lat': request.args.get('lat', type=float),
-        'lng': request.args.get('lng', type=float),
-        'radius': request.args.get('radius', 20, type=float),
-        'page': request.args.get('page', 1, type=int),
-        'per_page': request.args.get('per_page', 20, type=int),
-        'sort': request.args.get('sort', ''),
-    }
-    return search_workers(filters)
+    return {'success': True, 'religions': resp.json() if resp.ok else []}
 
 
 # ═══════════════════════════════════════════════════════════════
