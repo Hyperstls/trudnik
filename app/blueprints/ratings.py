@@ -214,44 +214,37 @@ def get_completed_jobs_for_rating(target_user_id):
     target_user_id = sanitize_postgrest(target_user_id)
     rater_user_id = sanitize_postgrest(rater_user_id)
 
-    # RPC ищет завершённые задания между двумя пользователями (порядок не важен)
-    resp = postgrest_admin_request('GET',
-        f'rpc/get_completed_jobs_between'
-        f'?p_user_a={rater_user_id}&p_user_b={target_user_id}')
+    # Соответствующего RPC в БД нет — ищем завершённые задания между двумя
+    # пользователями прямыми запросами (раньше был вызов RPC + фолбэк).
+    jobs = []
+    # Задания, где target_user — работодатель, а rater — принятый работник
+    apps_resp = postgrest_admin_request('GET',
+        f'applications?worker_id=eq.{rater_user_id}&status=eq.accepted'
+        f'&select=job_id,jobs!job_id(id,organization_name,status,employer_id)')
+    if apps_resp.ok and apps_resp.json():
+        for app in apps_resp.json():
+            job = app.get('jobs') or {}
+            if job.get('status') == 'completed' and job.get('employer_id') == target_user_id:
+                jobs.append({'id': job['id'], 'title': job.get('organization_name', '')})
 
-    if not resp.ok:
-        # Если RPC нет — фолбэк через прямые запросы
-        jobs = []
-        # Задания, где target_user — работодатель, а rater — принятый работник
-        apps_resp = postgrest_admin_request('GET',
-            f'applications?worker_id=eq.{rater_user_id}&status=eq.accepted'
-            f'&select=job_id,jobs!job_id(id,organization_name,status,employer_id)')
-        if apps_resp.ok and apps_resp.json():
-            for app in apps_resp.json():
-                job = app.get('jobs') or {}
-                if job.get('status') == 'completed' and job.get('employer_id') == target_user_id:
-                    jobs.append({'id': job['id'], 'title': job.get('organization_name', '')})
+    # Задания, где rater — работодатель, а target — принятый работник
+    jobs_resp = postgrest_admin_request('GET',
+        f'jobs?employer_id=eq.{rater_user_id}&status=eq.completed&select=id,organization_name')
+    if jobs_resp.ok and jobs_resp.json():
+        employer_jobs = jobs_resp.json()
+        if employer_jobs:
+            # Batch-запрос: проверить все задания одним вызовом
+            job_ids = [job['id'] for job in employer_jobs]
+            ids_filter = ','.join(job_ids)
+            batch_check = postgrest_admin_request('GET',
+                f'applications?job_id=in.({ids_filter})&worker_id=eq.{target_user_id}&status=eq.accepted&select=job_id')
+            accepted_job_ids = {a['job_id'] for a in batch_check.json()} if batch_check.ok and batch_check.json() else set()
+            for job in employer_jobs:
+                if job['id'] in accepted_job_ids:
+                    if not any(j['id'] == job['id'] for j in jobs):
+                        jobs.append({'id': job['id'], 'title': job.get('organization_name', '')})
 
-        # Задания, где rater — работодатель, а target — принятый работник
-        jobs_resp = postgrest_admin_request('GET',
-            f'jobs?employer_id=eq.{rater_user_id}&status=eq.completed&select=id,organization_name')
-        if jobs_resp.ok and jobs_resp.json():
-            employer_jobs = jobs_resp.json()
-            if employer_jobs:
-                # Batch-запрос: проверить все задания одним вызовом
-                job_ids = [job['id'] for job in employer_jobs]
-                ids_filter = ','.join(job_ids)
-                batch_check = postgrest_admin_request('GET',
-                    f'applications?job_id=in.({ids_filter})&worker_id=eq.{target_user_id}&status=eq.accepted&select=job_id')
-                accepted_job_ids = {a['job_id'] for a in batch_check.json()} if batch_check.ok and batch_check.json() else set()
-                for job in employer_jobs:
-                    if job['id'] in accepted_job_ids:
-                        if not any(j['id'] == job['id'] for j in jobs):
-                            jobs.append({'id': job['id'], 'title': job.get('organization_name', '')})
-
-        return jsonify({'success': True, 'jobs': jobs})
-
-    return jsonify({'success': True, 'jobs': resp.json() if resp.json() else []})
+    return jsonify({'success': True, 'jobs': jobs})
 
 
 # ============================================================
