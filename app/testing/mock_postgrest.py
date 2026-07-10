@@ -722,10 +722,6 @@ def _test_mock_rpc(function_name: str, params: dict) -> PostgrestResponse:
     if function_name in ('get_job_stats', 'get_user_stats', 'get_dashboard_stats'):
         return _get_postgrest_response_class()(ok=True, status_code=200, data={'total': 0, 'open': 0, 'completed': 0, 'cancelled': 0}, text=json.dumps({'total': 0, 'open': 0, 'completed': 0, 'cancelled': 0}))
 
-    # get_completed_jobs_between — проверка совместных завершённых заданий
-    if function_name == 'get_completed_jobs_between':
-        return _get_postgrest_response_class()(ok=True, status_code=200, data=[], text=json.dumps([]))
-
     # nearby_jobs — геопоиск заданий в радиусе (возвращает список jobs)
     if function_name == 'nearby_jobs':
         return _get_postgrest_response_class()(ok=True, status_code=200, data=[], text=json.dumps([]))
