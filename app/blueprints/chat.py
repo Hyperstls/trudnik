@@ -97,6 +97,20 @@ def chat(application_id):
         flash('Нет доступа к этому чату', 'danger')
         return redirect(url_for('chat.chats_list'))
 
+    # Заголовок чата: имя собеседника + название задания (для шапки страницы)
+    chat_title = 'Чат'
+    chat_subtitle = ''
+    other_user_id = employer_id if user_id == app_data.get('worker_id') else app_data.get('worker_id')
+    if other_user_id:
+        other_resp = postgrest_request('GET', f'profiles?id=eq.{other_user_id}&select=full_name')
+        if other_resp.ok and other_resp.json():
+            chat_title = other_resp.json()[0].get('full_name') or 'Чат'
+    job_id = app_data.get('job_id')
+    if job_id:
+        job_resp = postgrest_request('GET', f'jobs?id=eq.{job_id}&select=organization_name')
+        if job_resp.ok and job_resp.json():
+            chat_subtitle = job_resp.json()[0].get('organization_name') or ''
+
     try:
         resp = postgrest_request('GET',
             f'messages?application_id=eq.{application_id}'
@@ -107,7 +121,8 @@ def chat(application_id):
         current_app.logger.error('[CHAT] Error loading messages for app %s: %s', application_id, str(e))
         messages = []
     return render_template('chat.html', application_id=application_id,
-                           messages=messages, user_id=session['user_id'])
+                           messages=messages, user_id=session['user_id'],
+                           chat_title=chat_title, chat_subtitle=chat_subtitle)
 
 
 @chat_bp.route('/chat/new/<worker_id>', methods=['GET'])
