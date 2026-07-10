@@ -257,15 +257,141 @@
 
 ---
 
-## Pending (Phase B/C)
-- **T22** — убрать логирование префикса JWT-секрета (auth.py:113-116, config.py:36-37).
-- **T23** — WS-токен через `/api/ws/token` (убрать jwtToken из HTML).
-- **T24** — безопасное включение авто-миграций.
-- **T18/T55** — `<noscript>` banner вместо fullscreen-overlay.
-- **TESTS** — high-value subset (password_reset, logout, change_password, log_redaction, ws_token).
+## [T22] Stop leaking JWT secret prefix into logs
+**Дата:** 2026-07-10  **Итерация:** 1  **Статус:** COMPLETED  **Коммит:** 198364b
+
+### Изменённые файлы
+- `app/utils/auth.py:113` — `current_app.logger.info('...secret prefix=%s...', secret[:8], ...)`
+  → `logger.debug('JWT signed for user_id=%s, exp=%d sec', user_id, exp_seconds)`.
+- `app/config.py:36` — `PGRST_JWT_SECRET[:16]` → логирование только `length`.
+
+### Тесты
+- `tests/test_log_redaction.py` — 1 passed (generate_jwt не логирует префикс).
+- `rg "secret\[:8\]|PGRST_JWT_SECRET\[:16\]" app/` — 0.
+
+<rollback_plan>
+- Backup-tag: `backup/pre-iteration-1`
+- Команда отката: `git revert 198364b`
+</rollback_plan>
+
+---
+
+## [T23] Fetch WS token via /api/ws/token instead of embedding in HTML
+**Дата:** 2026-07-10  **Итерация:** 1  **Статус:** COMPLETED  **Коммит:** 2222eea
+
+### Изменённые файлы
+- `app/context_processors.py:48-78` — `inject_ws_config` больше не генерирует JWT;
+  убран `jwtToken` из конфига (XSS-риск устранён).
+- `templates/base.html:33-39` — убрана строка `jwtToken` из `window.TRUDNIK_CONFIG`.
+- `static/js/notifications-init.js:12-87` — обработчики `.on()` регистрируются
+  до connect; токен запрашивается через `fetch('/api/ws/token')` (GET, без CSRF).
+- `app/blueprints/notifications.py:17-40` — новый эндпоинт `/api/ws/token`
+  (`@login_required`, 5-минутный WS-JWT, подписан `WEBSOCKET_JWT_SECRET`).
+
+### Тесты
+- `tests/test_ws_token.py` — 2 passed (unauth→302, auth→JSON с валидным WS-JWT).
+- `rg "jwtToken" templates/` — 0. Маршрут `/api/ws/token` зарегистрирован.
+
+<rollback_plan>
+- Backup-tag: `backup/pre-iteration-1`
+- Команда отката: `git revert 2222eea`
+</rollback_plan>
+
+### EXTRA
+- `is_jti_blacklisted` в тестах monkeypatch→False: module-mock redis возвращает
+  truthy `MagicMock` для `.exists()`, что ложно «блокировало» бы токен.
+
+---
+
+## [T24] Enable DB migrations on deploy (safely)
+**Дата:** 2026-07-10  **Итерация:** 1  **Статус:** COMPLETED  **Коммит:** a02a476
+
+### Изменённые файлы
+- `scripts/apply_migrations.py:255-262` — фильтр `^\d{3}[a-z]?_.*\.sql$`: применяются
+  только пронумерованные миграции (включая `077b_grant_service_role.sql`); ад-hoc
+  файлы (`manual_fix_all.sql`, `run_all_safe.sql`, `apply_manual_pgadmin.sql`) игнорируются.
+- `scripts/entrypoint.sh:9-11` — раскомментировано применение миграций с
+  `MIGRATIONS_ENABLED=true` (apply_migrations имеет early-exit gate без флага).
+
+<escalation level="1">
+### ESCALATION: T24 — контракт underestimated
+**Что в контракте:** «Раскомментировать строки 9-11 в entrypoint.sh».
+**Что фактически:** (1) apply_migrations.py:275 требует `MIGRATIONS_ENABLED=true`
+иначе early-exit; (2) фильтр `*.sql` подхватил бы 3 ад-hoc файла (неидемпотентные).
+**Решение:** добавлен NNN-фильтр + inline `MIGRATIONS_ENABLED=true`. Fail-fast (set -e)
+оставлен осознанно (лучше краш, чем работа на устаревшей схеме). Ад-hoc SQL-файлы
+остались в `migrations/` (tracked), не удалялись.
+**STATUS:** COMPLETED
+</escalation>
+
+### Тесты
+- Фильтр верифицирован: 37 файлов picked (067-122 + 077b), 3 ад-hoc skipped.
+
+<rollback_plan>
+- Backup-tag: `backup/pre-iteration-1`
+- Команда отката: `git revert a02a476`
+</rollback_plan>
+
+---
+
+## [T18,T55] noscript banner
+**Дата:** 2026-07-10  **Итерация:** 1  **Статус:** COMPLETED  **Коммит:** a20cc77
+
+### Изменённые файлы
+- `templates/base.html:48-52` — `<noscript>` fullscreen-overlay (`fixed inset-0`)
+  → неблокирующий banner (`bg-warning`).
+
+<rollback_plan>
+- Backup-tag: `backup/pre-iteration-1`
+- Команда отката: `git revert a20cc77`
+</rollback_plan>
+
+---
+
+## [TESTS] High-value subset
+**Дата:** 2026-07-10  **Итерация:** 1  **Статус:** COMPLETED  **Коммит:** 239ef72
+
+### Созданные файлы
+- `tests/test_log_redaction.py` (T22), `tests/test_password_reset.py` (T13),
+  `tests/test_logout.py` (T19), `tests/test_change_password.py` (T20),
+  `tests/test_ws_token.py` (T23).
+- `tests/conftest.py:107` — `TEST_PASSWORD`→`TEST_USER_PASSWORD` (консистентность T14).
+
+### Тесты
+- 5 новых файлов — 10 passed.
+- CSRF в TESTING отключён (`middleware.csrf_check`), поэтому CSRF-проверки — через
+  наличие `_csrf_token` в шаблонах и поведение, а не отказ 400.
+
+---
+
+## Итог итерации 1
+
+### Статический чек-лист (все ✓)
+- `rg "app.blueprints.admin " --type py` — 0
+- `rg "logger = logging.getLogger" app/utils/rate_limit_decorator.py` — 1
+- `rg "secret\[:8\]|PGRST_JWT_SECRET\[:16\]" app/` — 0
+- `rg "jwtToken" templates/` — 0
+- `rg "shift_id|shiftId" static/js/applications.js` — 0
+- `rg "X-CSRFToken" static/` — 0
+- `rg "session.get\('user'" app/` — 0
+- `ls templates/password_reset*.html` — 2 файла
+- `rg "_csrf_token" templates/` — 33 (≥29)
+- Маршруты: `/admin/health`, `/admin/job-stats`, `/admin/migrations-status`,
+  `/admin/reset-circuit-breaker`, `/api/applications/<app_id>/accept`, `/api/ws/token` ✓
+
+### Тесты (локально, `py -3` = Python 3.14.2)
+- Целевые unit-тесты: **71 passed, 13 skipped** + 36 pre-existing failures
+  (только `test_all_functions.py`, B5-staleness — НЕ регрессия; файл не
+  коллективился на base).
+- Smoke-тесты (`test_critical_gaps`, `test_rate_limit`) требуют работающего
+  сервера на `127.0.0.1:5000` — исключены из локального прогона.
 
 ### Замечание о среде тестирования
-- Локально доступен `py -3` = Python 3.14.2 (project targets 3.12; `python`/`python.exe` —
-  сломанный Store stub). Полная коллекция тестов падает на 3.14 (pytest capture I/O bug);
-  работают целевые файлы. Smoke-тесты (test_critical_gaps, test_rate_limit и др.) ходят на
-  `127.0.0.1:5000` — требуют работающего сервера, исключаются из локального CI-эквивалента.
+- Локально `py -3` = Python 3.14.2 (project targets 3.12; `python`/`python.exe` —
+  сломанный Store stub). Полная коллекция тестов падает на 3.14 (pytest capture I/O
+  bug); работают целевые файлы. Полный прогон — в Docker/CI (Python 3.12).
+
+### Backup-теги
+- `backup/pre-iteration-1` (создан ранее)
+- `backup/post-iteration-1` (после завершения)
+- `backup/temp-action-T1-20260709` (stale, удалён)

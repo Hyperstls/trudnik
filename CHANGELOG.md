@@ -37,8 +37,13 @@
 - Неиспользуемый `SENTRY_DSN` из `.env.example` (T14).
 
 ### Pending (Phase B/C)
-- T22: убрать логирование префикса JWT-секрета.
-- T23: WS-токен через `/api/ws/token` (убрать `jwtToken` из HTML-источника).
-- T24: безопасное включение авто-миграций при деплое.
-- T18/T55: `<noscript>` banner вместо fullscreen-overlay.
-- Тесты: password_reset, logout, change_password, log_redaction, ws_token.
+- T22: убрать логирование префикса JWT-секрета. — **DONE** (198364b)
+- T23: WS-токен через `/api/ws/token` (убрать `jwtToken` из HTML-источника). — **DONE** (2222eea)
+- T24: безопасное включение авто-миграций при деплое. — **DONE** (a02a476)
+- T18/T55: `<noscript>` banner вместо fullscreen-overlay. — **DONE** (a20cc77)
+- Тесты: password_reset, logout, change_password, log_redaction, ws_token. — **DONE** (239ef72)
+
+### Security (Phase B)
+- JWT secret prefix больше не логируется (`auth.py`, `config.py`) (T22).
+- WS JWT не встраивается в HTML — выдаётся через `GET /api/ws/token` (T23).
+- Миграции применяются при деплое (фильтр NNN, `MIGRATIONS_ENABLED=true`) (T24).
