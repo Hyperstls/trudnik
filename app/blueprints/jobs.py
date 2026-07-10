@@ -284,7 +284,6 @@ def workers():
             'payment_to': request.args.get('payment_to', ''),
             'rating_min': request.args.get('rating_min', ''),
             'skills': request.args.get('skills', ''),
-            'religion': request.args.get('religion', ''),
         }
         sort = request.args.get('sort', 'rating')
         lat = request.args.get('lat', type=float) or session.get('lat')
@@ -321,8 +320,6 @@ def workers():
                             query += f'&id=in.({wids_filter})'
                         else:
                             query += '&id=eq.00000000-0000-0000-0000-000000000000'  # нет совпадений — пустой результат
-        if filters['religion']:
-            query += f'&religion=eq.{sanitize_postgrest(filters["religion"])}'
 
         # Определяем order в зависимости от sort
         order = 'rating.desc'
