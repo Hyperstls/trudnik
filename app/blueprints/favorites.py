@@ -1,6 +1,6 @@
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
-from app.decorators import login_required, validate_uuid
+from app.decorators import login_required, role_required, validate_uuid
 from app.utils import postgrest_request
 from app.utils.security import safe_redirect
 
@@ -47,6 +47,7 @@ def favorites():
 
 @favorites_bp.route('/favorite/<target_id>', methods=['POST'])
 @login_required
+@role_required('employer')
 @validate_uuid('target_id')
 def add_favorite(target_id):
     resp = postgrest_request('POST', 'favorites', json={'user_id': session['user_id'], 'target_id': target_id, 'favorite_type': 'worker'})
@@ -62,6 +63,7 @@ def add_favorite(target_id):
 
 @favorites_bp.route('/unfavorite/<target_id>', methods=['POST'])
 @login_required
+@role_required('employer')
 @validate_uuid('target_id')
 def remove_favorite(target_id):
     postgrest_request('DELETE', f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{target_id}&favorite_type=eq.worker')
@@ -74,6 +76,7 @@ def remove_favorite(target_id):
 
 @favorites_bp.route('/api/favorites/add', methods=['POST'])
 @login_required
+@role_required('employer')
 def add_favorite_api():
     data = request.get_json()
     worker_id = data.get('worker_id')
@@ -97,6 +100,7 @@ def add_favorite_api():
 
 @favorites_bp.route('/api/favorites/remove', methods=['POST'])
 @login_required
+@role_required('employer')
 def remove_favorite_api():
     data = request.get_json()
     worker_id = data.get('worker_id')
@@ -113,6 +117,7 @@ def remove_favorite_api():
 
 @favorites_bp.route('/api/favorites/check', methods=['POST'])
 @login_required
+@role_required('employer')
 def check_favorite_api():
     data = request.get_json()
     worker_id = data.get('worker_id')
@@ -130,6 +135,7 @@ def check_favorite_api():
 
 @favorites_bp.route('/api/favorites/remove-selected', methods=['POST'])
 @login_required
+@role_required('employer')
 def remove_favorites_selected():
     data = request.get_json()
     worker_ids = data.get('worker_ids', [])
