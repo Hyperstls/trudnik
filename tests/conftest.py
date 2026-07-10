@@ -104,7 +104,7 @@ def relogin_if_expired(session: requests.Session, email: str, password: str) -> 
 # Включаем in-memory mock режим (проверяется в app/testing/mock_postgrest.py)
 os.environ['POSTGREST_MOCK_MODE'] = '1'
 # Пароль для тестового входа (используется mock-авторизацией)
-os.environ['TEST_PASSWORD'] = 'test'
+os.environ['TEST_USER_PASSWORD'] = 'test'
 
 
 
