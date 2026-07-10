@@ -477,10 +477,14 @@ def api_batch_applications():
             # (он сам делает все проверки: авторизацию, места, атомарный PATCH)
             result = api_handle_application(app_id, action)
             # api_handle_application может вернуть Response или tuple (Response, status)
-            if isinstance(result, tuple):
-                data = result[0].get_json()
-            else:
-                data = result.get_json()
+            resp_obj = result[0] if isinstance(result, tuple) else result
+            try:
+                data = resp_obj.get_json()
+            except Exception:
+                data = None
+            if not data or not isinstance(data, dict):
+                results['errors'].append({'id': app_id, 'error': 'Неожиданный ответ сервера'})
+                continue
             if data.get('success'):
                 results['success'].append({
                     'id': app_id,
