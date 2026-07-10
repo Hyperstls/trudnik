@@ -3,7 +3,6 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 from app.decorators import login_required, validate_uuid
 from app.utils import postgrest_request
 from app.utils.security import safe_redirect
-from app.utils.security import safe_redirect
 
 favorites_bp = Blueprint('favorites', __name__)
 

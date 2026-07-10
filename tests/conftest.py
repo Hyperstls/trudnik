@@ -236,7 +236,6 @@ def app_client(mock_postgrest_client):
     from app import create_app
     app = create_app()
     app.config['TESTING'] = True
-    app.config['WTF_CSRF_ENABLED'] = False
     app.config['SERVER_NAME'] = 'localhost'
     # Отключаем перехват исключений в тестах для читаемых traceback'ов
     app.config['PROPAGATE_EXCEPTIONS'] = True
@@ -249,7 +248,6 @@ def app_context(mock_postgrest_client):
     from app import create_app
     app = create_app()
     app.config['TESTING'] = True
-    app.config['WTF_CSRF_ENABLED'] = False
     with app.app_context():
         yield app
 

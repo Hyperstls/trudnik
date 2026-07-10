@@ -382,7 +382,6 @@ class BaseBlueprintTest(unittest.TestCase):
     def setUp(self):
         self.app = create_app()
         self.app.config['TESTING'] = True
-        self.app.config['WTF_CSRF_ENABLED'] = False
         self.client = self.app.test_client()
         # Патчим render_template — шаблоны не нужны для тестов роутов.
         # Важно: blueprint'ы импортируют render_template на уровне модуля,
