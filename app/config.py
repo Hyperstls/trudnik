@@ -81,7 +81,7 @@ class Config:
 
     # Cookie Security (B9: Secure cookie flags)
     SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SECURE = True  # Только HTTPS
+    SESSION_COOKIE_SECURE = os.environ.get('DEPLOYMENT_ENV', 'development') in ('production', 'staging')
     SESSION_COOKIE_SAMESITE = 'Strict'  # Защита от CSRF
     SESSION_COOKIE_NAME = 'trudnik_session'
     PERMANENT_SESSION_LIFETIME = 86400  # 24 часа (в секундах)
@@ -118,7 +118,6 @@ class Config:
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads'))
     RATE_LIMIT_MAX = 10
     RATE_LIMIT_WINDOW = 60
-    PERMANENT_SESSION_LIFETIME = 1800  # 30 минут — сессия переживает задержки PostgREST (Amvera) — Supabase не используется (устарело)
     CACHE_MAX_SIZE = 256
     PAGINATION_DEFAULT_PER_PAGE = 20
 
