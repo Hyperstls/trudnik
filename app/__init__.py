@@ -83,6 +83,3 @@ def create_app():
         _seed_test_db()
 
     return app
-
-
-app = create_app()
