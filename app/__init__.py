@@ -64,7 +64,12 @@ def create_app():
         app.register_blueprint(bp)
 
     @app.template_filter('format_date')
-    def format_date_filter(value):
+    def _format_date(value):
+        from app.utils import format_date
+        return format_date(value)
+
+    @app.template_filter('format_datetime')
+    def _format_datetime(value):
         from app.utils import format_datetime
         return format_datetime(value)
 
