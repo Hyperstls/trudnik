@@ -8,8 +8,8 @@ stack:
     websocket: "FastAPI 0.137.1 (ASGI, отдельный процесс)"
     asgi_entry: "asgi.py (RouterMiddleware: HTTP→Flask, WS→FastAPI)"
   db:
-    primary: "PostgreSQL 15 + PostGIS"
-    api: "PostgREST v12.2.3 (HTTP REST, НЕ ORM)"
+    primary: "PostgreSQL 17.6 + PostGIS"
+    api: "PostgREST v14.10 (HTTP REST, НЕ ORM)"
     access: "requests.Session (app/utils/postgrest_client.py)"
     response_class: "PostgrestResponse (НЕ Pydantic)"
   async_tasks:
