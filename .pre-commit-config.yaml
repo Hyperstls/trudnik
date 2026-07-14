@@ -4,3 +4,5 @@ repos:
     hooks:
       - id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
+        # Defense in depth: never scan MCP/IDE local configs or their templates.
+        exclude: 'mcp\.json(\.example)?$'

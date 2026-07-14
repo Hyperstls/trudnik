@@ -66,6 +66,11 @@ scripts/env_trudnik_app.env
 .env
 .env.*
 !.env.example
+
+# Local IDE / MCP server config — contains secrets + machine-specific paths. NEVER commit.
+.kilocode/mcp.json
+.kilo/mcp.json
+mcp.json
 .idea/
 .vscode/
 *.keystore

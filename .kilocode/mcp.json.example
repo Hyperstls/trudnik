@@ -1,0 +1,78 @@
+{
+  "mcpServers": {
+    "postgrest": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-postgrest@0.1.1",
+        "--apiUrl",
+        "http://localhost:3000",
+        "--apiKey",
+        "__LOCAL_PGRST_JWT_SECRET_FROM_DOTENV__",
+        "--schema",
+        "public"
+      ],
+      "disabled": false,
+      "alwaysAllow": ["postgrestRequest", "sqlToRest"]
+    },
+    "redis": {
+      "command": "uvx",
+      "args": ["mcp-server-redis"],
+      "env": {
+        "REDIS_HOST": "localhost",
+        "REDIS_PORT": "6379",
+        "REDIS_DB": "0"
+      },
+      "disabled": false,
+      "alwaysAllow": ["set_value", "get_value", "list_keys", "delete_key"]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "__ABSOLUTE_PROJECT_PATH__"
+      ],
+      "alwaysAllow": [
+        "get_file_info",
+        "read_text_file",
+        "search_files",
+        "list_directory",
+        "write_file",
+        "read_file",
+        "edit_file",
+        "directory_tree",
+        "list_allowed_directories"
+      ]
+    },
+    "git": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-git",
+        "--repository",
+        "__ABSOLUTE_PROJECT_PATH__"
+      ],
+      "alwaysAllow": ["git_log", "git_status", "git_diff", "git_show"]
+    },
+    "zai-vision": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@z_ai/mcp-server"],
+      "env": {
+        "Z_AI_API_KEY": "__YOUR_Z_AI_API_KEY__",
+        "Z_AI_MODE": "GLM"
+      },
+      "disabled": true,
+      "alwaysAllow": []
+    },
+    "zai-search": {
+      "type": "streamable-http",
+      "url": "https://api.z.ai/api/mcp/web_search_prime/mcp",
+      "headers": {
+        "Authorization": "Bearer __YOUR_Z_AI_API_KEY__"
+      },
+      "disabled": true,
+      "alwaysAllow": []
+    }
+  }
+}
