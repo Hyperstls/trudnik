@@ -47,7 +47,7 @@ def csrf_check():
     # Проверяем заголовок X-CSRF-Token (для fetch/AJAX-запросов)
     header_token = request.headers.get('X-CSRF-Token')
     if header_token:
-        if header_token != session.get('_csrf_token'):
+        if not hmac.compare_digest(header_token or '', session.get('_csrf_token') or ''):
             abort(400, description='CSRF-токен недействителен')
         return
     # Для обычных форм (устойчиво к не-form Content-Type, например text/plain)
@@ -63,7 +63,7 @@ def csrf_check():
             token = json_data.get('csrf_token') or json_data.get('_csrf_token')
         except Exception as e:
             current_app.logger.warning('Failed to get CSRF token from JSON: %s', e, exc_info=True)
-    if not token or token != session.get('_csrf_token'):
+    if not token or not hmac.compare_digest(token, session.get('_csrf_token') or ''):
         abort(400, description='CSRF-токен отсутствует или недействителен')
 
 

@@ -52,9 +52,13 @@ def favorites():
 def add_favorite(target_id):
     resp = postgrest_request('POST', 'favorites', json={'user_id': session['user_id'], 'target_id': target_id, 'favorite_type': 'worker'})
     if not resp.ok:
-        # C5: Обработка дубликата (race condition при параллельных запросах)
-        error_text = resp.text if hasattr(resp, 'text') else ''
-        if 'duplicate' in error_text.lower() or resp.status_code == 409:
+        # B12: PostgREST returns 400 + code=23505 for unique violation (not 409)
+        err_data = {}
+        try:
+            err_data = resp.json() or {}
+        except Exception:
+            pass
+        if err_data.get('code') == '23505':
             flash('Трудник уже в избранном', 'info')
         else:
             flash('Не удалось добавить в избранное', 'danger')
@@ -89,9 +93,13 @@ def add_favorite_api():
         if resp.ok:
             return jsonify({'success': True, 'message': 'Трудник добавлен в избранное'})
         else:
-            # Проверяем на дубликат
-            error_text = resp.text if hasattr(resp, 'text') else ''
-            if 'duplicate' in error_text.lower() or resp.status_code == 409:
+            # B12: PostgREST returns 400 + code=23505 for unique violation
+            err_data = {}
+            try:
+                err_data = resp.json() or {}
+            except Exception:
+                pass
+            if err_data.get('code') == '23505':
                 return jsonify({'success': True, 'message': 'Трудник уже в избранном'})
             return jsonify({'success': False, 'error': f'Ошибка сервера: {resp.status_code}'})
     except Exception as e:
@@ -112,7 +120,8 @@ def remove_favorite_api():
         postgrest_request('DELETE', f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{worker_id}&favorite_type=eq.worker')
         return jsonify({'success': True, 'message': 'Трудник удалён из избранного'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        current_app.logger.exception("remove_favorite_api error for worker_id=%s", worker_id)
+        return jsonify({'success': False, 'error': 'Внутренняя ошибка сервера'})
 
 
 @favorites_bp.route('/api/favorites/check', methods=['POST'])
@@ -130,7 +139,8 @@ def check_favorite_api():
         is_favorited = resp.ok and len(resp.json()) > 0
         return jsonify({'success': True, 'is_favorited': is_favorited})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        current_app.logger.exception("check_favorite_api error for worker_id=%s", worker_id)
+        return jsonify({'success': False, 'error': 'Внутренняя ошибка сервера'})
 
 
 @favorites_bp.route('/api/favorites/remove-selected', methods=['POST'])
@@ -154,4 +164,5 @@ def remove_favorites_selected():
         else:
             return jsonify({'success': False, 'error': f'Ошибка сервера: {resp.status_code}'}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.exception("remove_favorites_selected error for worker_ids=%s", worker_ids)
+        return jsonify({'success': False, 'error': 'Внутренняя ошибка сервера'}), 500

@@ -141,10 +141,11 @@
         var html = '';
         for (var i = 0; i < skills.length; i++) {
             var s = skills[i];
+            var safeName = window.escapeHtml ? window.escapeHtml(s.name) : s.name;
             var checked = selectedSkills.indexOf(s.name) !== -1;
-            html += '<label class="flex items-center gap-2 px-2 py-1.5 hover:bg-neutral-50 rounded cursor-pointer text-sm skill-filter-item" data-skill="' + s.name.replace(/"/g, '"') + '">' +
-                '<input type="checkbox" value="' + s.name.replace(/"/g, '"') + '" class="skill-filter-cb rounded border-neutral-300 text-primary-500 focus:ring-primary-500" ' + (checked ? 'checked' : '') + '>' +
-                '<span class="text-neutral-700">' + s.name + '</span>' +
+            html += '<label class="flex items-center gap-2 px-2 py-1.5 hover:bg-neutral-50 rounded cursor-pointer text-sm skill-filter-item" data-skill="' + safeName + '">' +
+                '<input type="checkbox" value="' + safeName + '" class="skill-filter-cb rounded border-neutral-300 text-primary-500 focus:ring-primary-500" ' + (checked ? 'checked' : '') + '>' +
+                '<span class="text-neutral-700">' + safeName + '</span>' +
                 '</label>';
         }
         listDiv.innerHTML = html || '<span class="text-sm text-neutral-400">Нет доступных навыков</span>';

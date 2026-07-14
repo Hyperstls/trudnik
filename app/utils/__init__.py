@@ -7,32 +7,58 @@
 # 1. Сначала настраиваем mock-зависимости (до импорта postgrest-подмодуля)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-try:
-    from app.testing.mock_postgrest import (
-        _test_db,
-        _uuid_counter,
-        _gen_uuid,
-        _test_auth_tokens,
-        _MockRequestsResponse,
-        _should_intercept,
-        _mock_post,
-        _mock_delete,
-        _install_auth_mock,
-        _uninstall_auth_mock,
-        _is_mock_enabled,
-        _test_mock_request,
-        _test_mock_rpc,
-        _reset_test_db,
-        _seed_test_db,
-    )
+# P0: Production guard — mock imports only in test/dev mode
+import os as _os
+_allow_mock_import = (
+    _os.environ.get('POSTGREST_MOCK_MODE', '').lower() == 'true'
+    or _os.environ.get('TESTING', '').lower() == 'true'
+    or _os.environ.get('FLASK_ENV', '') == 'development'
+)
 
-    # Устанавливаем перехватчик, если mock включён
-    if _is_mock_enabled():
-        _install_auth_mock()
-    _mock_available = True
-except Exception as e:
-    import logging
-    logging.getLogger(__name__).warning('Failed to initialize test mock: %s', e, exc_info=True)
+if _allow_mock_import:
+    try:
+        from app.testing.mock_postgrest import (
+            _test_db,
+            _uuid_counter,
+            _gen_uuid,
+            _test_auth_tokens,
+            _MockRequestsResponse,
+            _should_intercept,
+            _mock_post,
+            _mock_delete,
+            _install_auth_mock,
+            _uninstall_auth_mock,
+            _is_mock_enabled,
+            _test_mock_request,
+            _test_mock_rpc,
+            _reset_test_db,
+            _seed_test_db,
+        )
+
+        # Устанавливаем перехватчик, если mock включён
+        if _is_mock_enabled():
+            _install_auth_mock()
+        _mock_available = True
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning('Failed to initialize test mock: %s', e, exc_info=True)
+        _test_db = {}
+        _uuid_counter = 0
+        _gen_uuid = lambda: ''
+        _test_auth_tokens = {}
+        _MockRequestsResponse = None
+        _should_intercept = lambda *a, **kw: False
+        _mock_post = lambda *a, **kw: None
+        _mock_delete = lambda *a, **kw: None
+        _install_auth_mock = lambda: None
+        _uninstall_auth_mock = lambda: None
+        _is_mock_enabled = lambda: False
+        _test_mock_request = lambda *a, **kw: None
+        _test_mock_rpc = lambda *a, **kw: None
+        _reset_test_db = lambda: None
+        _seed_test_db = lambda *a, **kw: None
+        _mock_available = False
+else:
     _test_db = {}
     _uuid_counter = 0
     _gen_uuid = lambda: ''

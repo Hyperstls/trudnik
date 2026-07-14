@@ -70,8 +70,9 @@ window.showToast = function(message, type) {
         '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>';
 
     toast.innerHTML = (iconMap[type] || iconMap.info) +
-        '<span class="flex-1">' + message + '</span>' +
+        '<span class="flex-1"></span>' +
         closeBtn;
+    toast.querySelector('span.flex-1').textContent = message;
 
     container.appendChild(toast);
 
@@ -126,13 +127,13 @@ window.trapFocus = function(element) {
 // ========================================
 window.showConfirm = function(message, onConfirm, options) {
     options = options || {};
-    var backdrop = document.getElementById('confirm-modal-backdrop');
+    var modal = document.getElementById('confirm-modal');
     var msgEl = document.getElementById('confirm-modal-message');
     var titleEl = document.getElementById('confirm-modal-title');
     var okBtn = document.getElementById('confirm-modal-ok');
     var cancelBtn = document.getElementById('confirm-modal-cancel');
 
-    if (!backdrop || !msgEl) {
+    if (!modal || !msgEl) {
         if (confirm(message)) onConfirm();
         return;
     }
@@ -145,8 +146,7 @@ window.showConfirm = function(message, onConfirm, options) {
     var previousActiveElement = document.activeElement;
 
     function close() {
-        backdrop.style.display = 'none';
-        backdrop.classList.add('hidden');
+        modal.close();
         document.body.style.overflow = '';
         if (previousActiveElement && previousActiveElement.focus) {
             previousActiveElement.focus();
@@ -155,43 +155,27 @@ window.showConfirm = function(message, onConfirm, options) {
 
     okBtn.onclick = function() { close(); if (onConfirm) onConfirm(); };
     cancelBtn.onclick = close;
-    backdrop.onclick = function(e) { if (e.target === backdrop) close(); };
 
-    backdrop.style.display = 'flex';
-    backdrop.classList.remove('hidden');
+    // Close on backdrop click (native <dialog> behavior)
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) close();
+    });
+
+    modal.showModal();
     document.body.style.overflow = 'hidden';
-
-    var focusableElements = backdrop.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-    var firstFocusable = focusableElements[0];
-    var lastFocusable = focusableElements[focusableElements.length - 1];
 
     if (okBtn) okBtn.focus();
 
-    function trapFocus(e) {
-        if (e.key !== 'Tab') return;
-        if (e.shiftKey) {
-            if (document.activeElement === firstFocusable) {
-                e.preventDefault();
-                lastFocusable.focus();
-            }
-        } else {
-            if (document.activeElement === lastFocusable) {
-                e.preventDefault();
-                firstFocusable.focus();
-            }
-        }
-    }
+    window.trapFocus(modal);
 
     function handleEscape(e) {
         if (e.key === 'Escape') {
             close();
-            backdrop.removeEventListener('keydown', handleEscape);
-            backdrop.removeEventListener('keydown', trapFocus);
+            modal.removeEventListener('keydown', handleEscape);
         }
     }
 
-    backdrop.addEventListener('keydown', trapFocus);
-    backdrop.addEventListener('keydown', handleEscape);
+    modal.addEventListener('keydown', handleEscape);
 };
 
 // ========================================

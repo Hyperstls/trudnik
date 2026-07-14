@@ -21,14 +21,8 @@ applications_bp = Blueprint('applications', __name__)
 def apply_job(job_id):
     user_id = session['user_id']
 
-    # Быстрая предварительная проверка дубликата (некритичная, только для UX)
-    check = postgrest_request('GET', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
-    if check.ok and check.json():
-        flash('Вы уже откликались на это задание', 'info')
-        return redirect(url_for('jobs.index'))
-
     # Атомарная RPC: все проверки + вставка отклика в одной транзакции PostgreSQL
-    # Устраняет TOCTOU race condition между проверкой мест и созданием отклика
+    # RPC сам обрабатывает дубликаты (code=duplicate) — pre-check удалён (B24)
     rpc_result = postgrest_rpc('apply_job_atomic', {
         'p_job_id': job_id,
         'p_worker_id': user_id,

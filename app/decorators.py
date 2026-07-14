@@ -55,6 +55,8 @@ def login_required(f: F) -> F:
                     return redirect(url_for('auth.login'))
             
             # B10: Проверка password_changed_at (инвалидация токенов при смене пароля)
+            # Используем postgrest_admin_request (service_role) для надёжности —
+            # пользовательский JWT может быть невалидным или PostgREST может быть недоступен.
             token_pwd_changed = decoded.get('pwd_changed_at')
             if token_pwd_changed:
                 user_id = decoded.get('user_id') or decoded.get('sub')
@@ -63,12 +65,18 @@ def login_required(f: F) -> F:
                     from app.utils.redis_cache import get_cached, set_cached
                     profile_pwd_changed = get_cached(cache_key)
                     if profile_pwd_changed is None:
-                        from app.utils import postgrest_request as _pgreq
-                        resp = _pgreq('GET', f'profiles?id=eq.{user_id}&select=password_changed_at')
+                        from app.utils import postgrest_admin_request as _pgadm, postgrest_request as _pgreq
+                        # Пробуем через service_role (надёжнее — обходит RLS)
+                        resp = _pgadm('GET', f'profiles?id=eq.{user_id}&select=password_changed_at')
+                        if not (resp.ok and resp.json()):
+                            # Fallback: пользовательский запрос
+                            resp = _pgreq('GET', f'profiles?id=eq.{user_id}&select=password_changed_at')
                         if resp.ok and resp.json():
-                            profile_data = resp.json()[0] if isinstance(resp.json(), list) else resp.json()
-                            profile_pwd_changed = profile_data.get('password_changed_at')
-                            set_cached(cache_key, profile_pwd_changed, ttl=60)
+                            data = resp.json()
+                            profile_data = data[0] if isinstance(data, list) and data else data
+                            profile_pwd_changed = profile_data.get('password_changed_at') if isinstance(profile_data, dict) else None
+                            if profile_pwd_changed is not None:
+                                set_cached(cache_key, profile_pwd_changed, ttl=60)
                     
                     # Сравниваем: если в профиле пароль изменён ПОСЛЕ выпуска токена, токен недействителен
                     if profile_pwd_changed:
@@ -96,16 +104,30 @@ def login_required(f: F) -> F:
                                 return redirect(url_for('auth.login'))
             
             # B5: Проверка существования пользователя в profiles (кэш 60 сек)
+            # Используем postgrest_admin_request (service_role) вместо пользовательского JWT,
+            # чтобы проверка работала даже при недоступности/сбоях PostgREST у пользователя.
+            # Кэшируем ТОЛЬКО положительный результат — отрицательный не кэшируется,
+            # чтобы временный сбой PostgREST не блокировал пользователя на 60 секунд.
             user_id = decoded.get('user_id') or decoded.get('sub')
             if user_id:
                 cache_key = f'user_exists:{user_id}'
                 from app.utils.redis_cache import get_cached, set_cached
                 user_exists = get_cached(cache_key)
                 if user_exists is None:
-                    from app.utils import postgrest_request as _pgreq
+                    from app.utils import postgrest_admin_request as _pgadm, postgrest_request as _pgreq
+                    # Пробуем пользовательский запрос (через RLS — быстрее)
                     resp = _pgreq('GET', f'profiles?id=eq.{user_id}&select=id')
-                    user_exists = resp.ok and bool(resp.json())
-                    set_cached(cache_key, user_exists, ttl=60)
+                    if resp.ok and resp.json():
+                        user_exists = True
+                    else:
+                        # Fallback: запрос через service_role (обходит RLS)
+                        resp2 = _pgadm('GET', f'profiles?id=eq.{user_id}&select=id')
+                        user_exists = resp2.ok and bool(resp2.json())
+                    # Кэшируем ТОЛЬКО True (положительный результат).
+                    # False не кэшируем — временный сбой PostgREST не должен
+                    # блокировать пользователя на 60 секунд.
+                    if user_exists:
+                        set_cached(cache_key, True, ttl=60)
                 if not user_exists:
                     session.clear()
                     return redirect(url_for('auth.login'))
@@ -135,8 +157,17 @@ def role_required(role: str) -> Callable[[F], F]:
         def decorated(*args: Any, **kwargs: Any) -> Any:
             if 'access_token' not in session:
                 return redirect(url_for('auth.login'))
-            from app.utils import postgrest_request as _pgreq, is_circuit_open as _is_open
+            from app.utils import (
+                postgrest_admin_request as _pgadm,
+                postgrest_request as _pgreq,
+                is_circuit_open as _is_open,
+            )
+            # Пробуем пользовательский запрос (через RLS)
             resp = _pgreq('GET', f'profiles?id=eq.{session["user_id"]}&select=role')
+
+            # Fallback: если пользовательский запрос не удался — пробуем через service_role
+            if not resp.ok:
+                resp = _pgadm('GET', f'profiles?id=eq.{session["user_id"]}&select=role')
 
             # Проверка на Circuit Breaker OPEN
             if _is_open(resp):

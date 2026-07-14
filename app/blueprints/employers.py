@@ -202,8 +202,13 @@ def add_employer_favorite_api():
         if resp.ok:
             return jsonify({'success': True, 'message': 'Работодатель добавлен в избранное'})
         else:
-            error_text = resp.text if hasattr(resp, 'text') else ''
-            if 'duplicate' in error_text.lower() or resp.status_code == 409:
+            # B12: PostgREST returns 400 + code=23505 for unique violation
+            err_data = {}
+            try:
+                err_data = resp.json() or {}
+            except Exception:
+                pass
+            if err_data.get('code') == '23505':
                 return jsonify({'success': True, 'message': 'Работодатель уже в избранном'})
             return jsonify({'success': False, 'error': f'Ошибка сервера: {resp.status_code}'})
     except Exception as e:
@@ -230,8 +235,8 @@ def remove_employer_favorite_api():
             )
             return jsonify({'success': False, 'error': f'Ошибка сервера: {resp.status_code}'})
     except Exception as e:
-        current_app.logger.error(f"remove_employer_favorite_api exception: {e}")
-        return jsonify({'success': False, 'error': str(e)})
+        current_app.logger.exception("remove_employer_favorite_api exception: %s", e)
+        return jsonify({'success': False, 'error': 'Внутренняя ошибка сервера'})
 
 
 @employers_bp.route('/api/employers/favorites/check', methods=['POST'])
@@ -249,4 +254,5 @@ def check_employer_favorite_api():
         is_favorited = resp.ok and len(resp.json() or []) > 0
         return jsonify({'success': True, 'is_favorited': is_favorited})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        current_app.logger.exception("check_employer_favorite_api error for employer_id=%s", employer_id)
+        return jsonify({'success': False, 'error': 'Внутренняя ошибка сервера'})

@@ -59,9 +59,15 @@ def rate_limit(f=None, fail_open: bool = True):
                     flash('Сервис временно недоступен. Попробуйте позже.', 'danger')
                     return redirect(url_for('auth.login'))
 
-            current = redis_client.incr(key)
-            if current == 1:
-                redis_client.expire(key, _RATE_WINDOW)
+            # B19: Atomic INCR+EXPIRE через Lua-скрипт (исключает orphaned key без TTL)
+            lua_script = """
+            local count = redis.call('INCR', KEYS[1])
+            if count == 1 then
+                redis.call('EXPIRE', KEYS[1], tonumber(ARGV[1]))
+            end
+            return count
+            """
+            current = redis_client.eval(lua_script, 1, key, _RATE_WINDOW)
 
             if current > _RATE_MAX_REQUESTS:
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \

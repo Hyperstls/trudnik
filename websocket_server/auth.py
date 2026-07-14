@@ -40,13 +40,16 @@ def verify_token(token: str) -> dict | None:
         jti = payload.get('jti')
         if jti:
             r = _get_redis()
-            if r is not None:
-                try:
-                    if r.exists(f'jti_blacklist:{jti}'):
-                        logger.warning('Rejected blacklisted jti: %s', jti)
-                        return None
-                except Exception:
-                    pass
+            if r is None:
+                logger.error("Redis unavailable, jti check failed — token rejected")
+                return None
+            try:
+                if r.exists(f'jti_blacklist:{jti}'):
+                    logger.warning('Rejected blacklisted jti: %s', jti)
+                    return None
+            except Exception:
+                logger.error("Redis error during jti blacklist check — token rejected")
+                return None
         return payload
     except ExpiredSignatureError:
         logger.warning("JWT-токен просрочен")

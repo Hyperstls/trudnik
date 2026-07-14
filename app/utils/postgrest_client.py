@@ -414,6 +414,8 @@ def _assert_service_key() -> None:
             "Вызывающий: %s. Запрос будет выполнен с пустым JWT-токеном.",
             caller
         )
+        if os.environ.get('DEPLOYMENT_ENV', '') in ('production', 'staging'):
+            raise RuntimeError("PGRST_JWT_SECRET is not configured")
 
 
 # ═══════════════════════════════════════════════════════════════

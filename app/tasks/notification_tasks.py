@@ -27,14 +27,11 @@ def drain_notification_outbox(self):
 
         for item in items:
             attempts = (item.get('attempts') or 0) + 1
-            postgrest_admin_request('PATCH',
-                f'notification_outbox?id=eq.{item["id"]}',
-                json={'attempts': attempts})
 
-            if attempts >= 3:
+            if attempts > 3:
                 postgrest_admin_request('PATCH',
                     f'notification_outbox?id=eq.{item["id"]}',
-                    json={'status': 'failed', 'processed_at': now_iso})
+                    json={'status': 'failed', 'processed_at': now_iso, 'attempts': attempts})
                 failed += 1
                 continue
 
@@ -55,7 +52,7 @@ def drain_notification_outbox(self):
                 
                 postgrest_admin_request('PATCH',
                     f'notification_outbox?id=eq.{item["id"]}',
-                    json={'status': status, 'processed_at': now_iso})
+                    json={'status': status, 'processed_at': now_iso, 'attempts': attempts})
                 
                 if status == 'sent':
                     processed += 1

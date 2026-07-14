@@ -430,7 +430,9 @@ class EmailService:
         Returns:
             Строка с HMAC-токеном в hex-формате.
         """
-        secret: str = os.environ.get("SECRET_KEY", "fallback-secret-key")
+        secret: str = os.environ.get("SECRET_KEY", "")
+        if not secret:
+            raise RuntimeError("SECRET_KEY is not configured for email unsubscribe token")
         message: str = f"unsubscribe:{user_id}"
         token: str = hmac.new(
             secret.encode("utf-8"),

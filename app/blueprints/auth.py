@@ -80,9 +80,13 @@ def login():
         try:
             redis_client = get_redis_client()
             if redis_client:
-                ip_attempts = redis_client.incr(ip_key)
-                if ip_attempts == 1:
-                    redis_client.expire(ip_key, 3600)  # 1 час
+                # B19: Atomic INCR+EXPIRE через Lua-скрипт
+                ip_attempts = redis_client.eval(
+                    "local c = redis.call('INCR', KEYS[1]) "
+                    "if c == 1 then redis.call('EXPIRE', KEYS[1], tonumber(ARGV[1])) end "
+                    "return c",
+                    1, ip_key, 3600
+                )
                 if ip_attempts > 20:
                     flash('Слишком много попыток с вашего IP. Подождите час.', 'danger')
                     return render_template('login.html')
@@ -388,17 +392,24 @@ def _make_serializer() -> URLSafeTimedSerializer:
     )
 
 
-def _generate_reset_token(email: str) -> str:
-    """Сгенерировать токен для сброса пароля (срок действия 1 час)."""
+def _generate_reset_token(email: str, password_changed_at: str = '') -> str:
+    """Сгенерировать токен для сброса пароля (срок действия 1 час).
+
+    Включает password_changed_at для инвалидации при смене пароля (B11).
+    """
     s = _make_serializer()
-    return s.dumps(email)
+    return s.dumps({'email': email, 'pwd_changed_at': password_changed_at})
 
 
-def _verify_reset_token(token: str, max_age: int = _PASSWORD_RESET_MAX_AGE) -> str | None:
-    """Проверить токен сброса пароля. Возвращает email или None."""
+def _verify_reset_token(token: str, max_age: int = _PASSWORD_RESET_MAX_AGE) -> dict | None:
+    """Проверить токен сброса пароля. Возвращает dict с email и pwd_changed_at или None."""
     s = _make_serializer()
     try:
-        return s.loads(token, max_age=max_age)
+        result = s.loads(token, max_age=max_age)
+        # Обратная совместимость: старые токены могли содержать просто email-строку
+        if isinstance(result, str):
+            return {'email': result, 'pwd_changed_at': ''}
+        return result
     except (SignatureExpired, BadSignature):
         return None
 
@@ -450,14 +461,17 @@ def password_reset_request():
             return render_template('password_reset_request.html')
 
         # Проверить, существует ли пользователь с таким email
-        check_resp = postgrest_admin_request('GET', f'profiles?email=eq.{email}&select=id')
+        check_resp = postgrest_admin_request('GET', f'profiles?email=eq.{email}&select=id,password_changed_at')
         if not check_resp.ok or not check_resp.json():
             # Не раскрываем, существует ли email (безопасность)
             flash('Если аккаунт с таким email существует, ссылка для сброса пароля отправлена.', 'success')
             return redirect(url_for('auth.login'))
 
-        # Генерируем токен и ссылку
-        token = _generate_reset_token(email)
+        user_data = check_resp.json()[0]
+        pwd_changed_at = (user_data.get('password_changed_at') or '') if isinstance(user_data, dict) else ''
+
+        # Генерируем токен и ссылку (с password_changed_at для B11)
+        token = _generate_reset_token(email, pwd_changed_at)
         reset_url = url_for('auth.password_reset_confirm', token=token, _external=True)
 
         # Устанавливаем rate-limit
@@ -491,10 +505,22 @@ def password_reset_request():
 @auth_bp.route('/password-reset/confirm/<token>', methods=['GET', 'POST'])
 def password_reset_confirm(token):
     """Форма нового пароля после перехода по ссылке из email."""
-    email = _verify_reset_token(token)
-    if not email:
+    token_data = _verify_reset_token(token)
+    if not token_data:
         flash('Ссылка для сброса пароля недействительна или истекла. Запросите новую.', 'danger')
         return redirect(url_for('auth.password_reset_request'))
+
+    email = token_data.get('email', '')
+    token_pwd_changed_at = token_data.get('pwd_changed_at', '')
+
+    # B11: Проверяем, что пароль не был изменён после выдачи токена
+    user_resp = postgrest_admin_request('GET', 
+        f'profiles?email=eq.{email}&select=id,password_changed_at')
+    if user_resp.ok and user_resp.json():
+        current_pwd = (user_resp.json()[0].get('password_changed_at') or '') if user_resp.json() else ''
+        if current_pwd and token_pwd_changed_at and current_pwd != token_pwd_changed_at:
+            flash('Пароль был изменён после отправки ссылки. Запросите новую.', 'danger')
+            return redirect(url_for('auth.password_reset_request'))
 
     if request.method == 'POST':
         new_password = request.form.get('password', '')

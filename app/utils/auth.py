@@ -259,18 +259,27 @@ def get_user_role() -> Optional[str]:
 def get_user_profile() -> Optional[Dict[str, Any]]:
     """Получить профиль текущего пользователя из PostgREST (Amvera). Supabase не используется (устарело).
 
+    Использует postgrest_request (user JWT) как основной путь,
+    с fallback на postgrest_admin_request (service_role) при отказе.
+
     Returns:
         Словарь профиля или None.
     """
     if 'access_token' not in session:
         return None
 
-    from app.utils.postgrest_client import postgrest_request
+    from app.utils.postgrest_client import postgrest_request, postgrest_admin_request
 
     resp = postgrest_request(
         'GET',
         f'profiles?id=eq.{session["user_id"]}&select=id,role,created_at,updated_at,is_self_employed,email_public,rating,full_name,photo_url,age,bio,city,experience,desired_payment,verification_status,total_reviews,skills,religion,religion_id,portfolio_link'
     )
+    # Fallback: если пользовательский запрос не удался — пробуем через service_role
+    if not resp.ok:
+        resp = postgrest_admin_request(
+            'GET',
+            f'profiles?id=eq.{session["user_id"]}&select=id,role'
+        )
     if resp.ok and resp.json():
         data = resp.json()
         if isinstance(data, list) and data:

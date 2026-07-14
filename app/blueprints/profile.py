@@ -207,15 +207,14 @@ def delete_photo():
 def delete_account():
     user_id = session['user_id']
 
-    # Rate-limit: 1 запрос в час
+    # Rate-limit: 1 запрос в час (B29: atomic SET NX EX вместо exists+setex)
     key = f'delete_account:{user_id}'
     try:
         redis_client = get_redis_client()
         if redis_client:
-            if redis_client.exists(key):
+            if not redis_client.set(key, '1', nx=True, ex=3600):
                 flash('Попробуйте позже (не чаще раза в час)', 'warning')
                 return redirect(url_for('profile.profile'))
-            redis_client.setex(key, 3600, '1')
     except Exception as e:
         current_app.logger.warning('delete_account rate-limit check failed: %s', e, exc_info=True)
 

@@ -85,6 +85,17 @@ def bulk_delete_users():
     if len(user_ids) > 20:
         return jsonify({'deleted': 0, 'failed': len(user_ids), 'errors': ['Max 20 users per request']}), 400
 
+    # P0: Check that we are not trying to delete other admins
+    user_ids_str = ','.join(user_ids)
+    profiles_resp = postgrest_admin_request('GET', f'profiles?id=in.({user_ids_str})&select=id,role')
+    if profiles_resp.ok and profiles_resp.json():
+        for p in profiles_resp.json():
+            if p.get('role') == 'admin' and str(p['id']) != str(session.get('user_id', '')):
+                return jsonify({
+                    'deleted': 0, 'failed': len(user_ids),
+                    'errors': ['Cannot delete another admin (user_id=%s)' % p['id']]
+                }), 403
+
     deleted = 0
     failed = 0
     errors = []

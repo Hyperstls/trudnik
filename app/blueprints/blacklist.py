@@ -53,9 +53,13 @@ def block_user(user_id):
         if _is_ajax():
             return jsonify({'success': True})
         return safe_redirect('jobs.index')
-    # C6: Обработка дубликата (race condition при параллельных запросах)
-    error_text = resp.text if hasattr(resp, 'text') else ''
-    if 'duplicate' in error_text.lower() or resp.status_code == 409:
+    # B12: PostgREST returns 400 + code=23505 for unique violation (not 409)
+    err_data = {}
+    try:
+        err_data = resp.json() or {}
+    except Exception:
+        pass
+    if err_data.get('code') == '23505':
         if _is_ajax():
             return jsonify({'success': True, 'message': 'Уже в чёрном списке'})
         flash('Пользователь уже в чёрном списке', 'info')

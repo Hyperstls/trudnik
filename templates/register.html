@@ -380,10 +380,18 @@ async function loadDictionaries() {
         // Заполняем селект вероисповеданий
         const religionSelect = document.getElementById('religion');
         if (religionSelect && religionsData.religions) {
-            religionSelect.innerHTML = '<option value="">Не указано</option>' +
-                religionsData.religions.map(r =>
-                    `<option value="${r.name}" data-id="${r.id}">${r.name}</option>`
-                ).join('');
+            religionSelect.innerHTML = '';
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = 'Не указано';
+            religionSelect.appendChild(defaultOpt);
+            religionsData.religions.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.name;
+                opt.dataset.id = r.id;
+                opt.textContent = r.name;
+                religionSelect.appendChild(opt);
+            });
             religionSelect.addEventListener('change', function() {
                 const opt = this.selectedOptions[0];
                 document.getElementById('religion_id').value = opt?.dataset?.id || '';
@@ -467,13 +475,23 @@ document.addEventListener('DOMContentLoaded', loadDictionaries);
                 skillsList.innerHTML = '<span class="text-neutral-400">Нет доступных навыков</span>';
                 return;
             }
-            window.__skillsData = skills;
-            skillsList.innerHTML = skills.map(function(s) {
-                return '<label class="skill-filter-item flex items-center gap-2 px-2 py-1.5 hover:bg-neutral-50 rounded cursor-pointer text-sm" data-skill="' + s.name + '">' +
-                    '<input type="checkbox" value="' + s.name + '" data-id="' + s.id + '" class="skill-checkbox rounded border-neutral-300 text-primary-500 focus:ring-primary-500">' +
-                    '<span class="text-neutral-700">' + s.name + '</span>' +
-                    '</label>';
-            }).join('');
+            skillsList.innerHTML = '';
+            skills.forEach(function(s) {
+                var label = document.createElement('label');
+                label.className = 'skill-filter-item flex items-center gap-2 px-2 py-1.5 hover:bg-neutral-50 rounded cursor-pointer text-sm';
+                label.setAttribute('data-skill', s.name);
+                var cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = s.name;
+                cb.setAttribute('data-id', s.id);
+                cb.className = 'skill-checkbox rounded border-neutral-300 text-primary-500 focus:ring-primary-500';
+                var span = document.createElement('span');
+                span.className = 'text-neutral-700';
+                span.textContent = s.name;
+                label.appendChild(cb);
+                label.appendChild(span);
+                skillsList.appendChild(label);
+            });
 
             skillsList.querySelectorAll('.skill-checkbox').forEach(function(cb) {
                 cb.addEventListener('change', function() {
