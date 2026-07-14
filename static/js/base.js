@@ -440,6 +440,16 @@ if ('serviceWorker' in navigator) {
 })();
 
 // ========================================
+// XSS Protection Utility
+// ========================================
+window.escapeHtml = function(str) {
+    if (!str) return '';
+    var d = document.createElement('div');
+    d.appendChild(document.createTextNode(str));
+    return d.innerHTML;
+};
+
+// ========================================
 // Loading Overlay
 // ========================================
 document.addEventListener('submit', function(e) {
