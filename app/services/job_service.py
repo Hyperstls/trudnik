@@ -45,7 +45,7 @@ def get_job_by_id(job_id: str) -> Optional[dict]:
     """
     resp = postgrest_admin_request(
         'GET',
-        f'jobs?id=eq.{job_id}&select=*,photos:job_photos(*)'
+        f'jobs?id=eq.{job_id}&select=*'
     )
     if resp.ok and resp.json():
         return resp.json()[0]
@@ -91,7 +91,7 @@ def build_job_query(filters: Dict[str, Any]) -> str:
     Returns:
         Строка запроса вида 'select=...&status=eq.open&...'
     """
-    select = filters.get('select', '*,photos:job_photos(*)')
+    select = filters.get('select', '*')
     query_parts = [f'select={select}']
 
     status = filters.get('status')
@@ -544,7 +544,7 @@ def get_employer_jobs(employer_id: str, status: str = "",
     Returns:
         dict с ключами jobs, total, page, per_page, pages.
     """
-    query = f'jobs?employer_id=eq.{employer_id}&select=*,photos:job_photos(*)'
+    query = f'jobs?employer_id=eq.{employer_id}&select=*'
     if status:
         query += f'&status=eq.{sanitize_postgrest(status)}'
     query += '&order=created_at.desc'
@@ -659,7 +659,7 @@ def get_job_for_edit(job_id: str, employer_id: str) -> Optional[dict]:
     """
     resp = postgrest_admin_request(
         'GET',
-        f'jobs?id=eq.{job_id}&select=*,photos:job_photos(*)'
+        f'jobs?id=eq.{job_id}&select=*'
     )
     if resp.ok and resp.json():
         job = resp.json()[0]

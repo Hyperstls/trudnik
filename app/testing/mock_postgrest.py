@@ -511,7 +511,7 @@ def _test_mock_request(method: str, endpoint: str, **kwargs: Any) -> PostgrestRe
             embed_counts: dict[str, list] = {}
             for sf in select_fields:
                 if ':' in sf and '(' in sf:
-                    # PostgREST embedded resource: photos:job_photos(*) or applications:applications(count)
+                    # PostgREST embedded resource: applications:applications(count)
                     alias, rest = sf.split(':', 1)
                     if '(count)' in rest:
                         embed_counts[alias] = [{'count': 0}]

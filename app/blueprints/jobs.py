@@ -131,7 +131,7 @@ def index():
     now = datetime.now(timezone.utc).isoformat()
 
     # Запрос только оплаченных открытых заданий (без detailed_description — тяжёлое поле)
-    query = 'status=in.(open,completed)&select=id,employer_id,organization_name,org_description,object_description,work_type,date_time,payment_amount,address,city,lat,lng,status,created_at,preferred_religion,max_workers,current_workers,expires_at,tariff,promoted_until,photos:job_photos(*)'
+    query = 'status=in.(open,completed)&select=id,employer_id,organization_name,org_description,object_description,work_type,date_time,payment_amount,address,city,lat,lng,status,created_at,preferred_religion,max_workers,current_workers,expires_at'
     # Фильтр по сроку действия: не истёкшие задания (expires_at > now или без срока)
     query += f'&or=(expires_at.is.null,expires_at=gt.{sanitize_postgrest(now)})'
 
@@ -601,7 +601,7 @@ def my_jobs():
     status_filter = request.args.get('status', 'all')
 
     # Единый запрос с or-фильтром вместо двух раздельных запросов
-    base_query = f'jobs?employer_id=eq.{user_id}&select=*,photos:job_photos(*),applications:applications(count),current_workers,max_workers'
+    base_query = f'jobs?employer_id=eq.{user_id}&select=*,applications:applications(count),current_workers,max_workers'
     if status_filter == 'open':
         base_query += '&status=eq.open'
     elif status_filter not in ('all', 'open'):

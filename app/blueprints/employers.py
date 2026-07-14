@@ -124,7 +124,7 @@ def employer_detail(employer_id):
 
     if not is_blocked:
         jobs_resp = postgrest_request('GET',
-            f'jobs?employer_id=eq.{employer_id}&status=eq.open&select=*,photos:job_photos(*)&order=created_at.desc')
+            f'jobs?employer_id=eq.{employer_id}&status=eq.open&select=*&order=created_at.desc')
         open_jobs = jobs_resp.json() if jobs_resp.ok and jobs_resp.json() else []
 
     # Проверка избранного и откликов
