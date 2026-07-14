@@ -381,7 +381,12 @@ if ('serviceWorker' in navigator) {
 // CSRF Token Setup
 // ========================================
 (function() {
-    var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+    /** Глобальный доступ к CSRF-токену из мета-тега. */
+    window.getCSRFToken = function() {
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute('content') : '';
+    };
+    var csrfToken = window.getCSRFToken();
     if (!csrfToken) return;
 
     document.addEventListener('DOMContentLoaded', function() {

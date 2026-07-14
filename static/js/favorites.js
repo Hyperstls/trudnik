@@ -1,13 +1,4 @@
 /**
- * Возвращает CSRF-токен из мета-тега.
- * @returns {string}
- */
-function getCSRFToken() {
-    var meta = document.querySelector('meta[name="csrf-token"]');
-    return meta ? meta.getAttribute('content') : '';
-}
-
-/**
  * Единая функция переключения избранного.
  * Вызывается из любого шаблона с одинаковой сигнатурой.
  *

@@ -48,7 +48,7 @@ def check_password(password: str, stored_hash: str) -> bool:
 def hash_password(password: str) -> str:
     """Сгенерировать Blowfish-хеш пароля, совместимый с PostgreSQL crypt().
 
-    Использует bcrypt с 6 раундами (как gen_salt('bf') по умолчанию в PostgreSQL).
+    Использует bcrypt с 12 раундами (как gen_salt('bf', 12) в PostgreSQL).
     Генерирует хеш с префиксом $2b$ (Python bcrypt), который проверяется
     PostgreSQL функцией crypt() без проблем — pgcrypto понимает оба префикса.
 
