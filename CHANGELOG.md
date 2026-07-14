@@ -74,3 +74,23 @@
 - `WTF_CSRF_ENABLED = False` из тестовой конфигурации (T34).
 - Дублирующий импорт `safe_redirect` в `favorites.py` (T33).
 - Module-level `app = create_app()` в `app/__init__.py` (T25).
+
+## [Итерация 3] — 2026-07-14 — Средний приоритет (T43, T47, T48, T51, T52, T56, T64, T67, T68)
+
+### Added
+- `window.getCSRFToken()` в `base.js` (глобальный доступ к CSRF-токену) (T52).
+- Jinja-фильтр `format_datetime` отдельно от `format_date` (T48).
+
+### Fixed
+- Email PII в логах auth.py: удалён из `log.warning`, замаскирован через `_redact_sensitive` (T64).
+- Docstring `hash_password`: «6 раундов» → «12 раундов» (T43).
+
+### Changed
+- `text-neutral-400` → `text-neutral-500` в `admin.html` (контрастность) (T56).
+- `js-job-act-btn` → `js-job-action` в `my_jobs.html` (унификация) (T51).
+
+### Removed
+- `static/css/tailwind.css` (исходный, не используется) (T47).
+- `photos:job_photos(*)` из 7 SELECT-запросов (T67).
+- `tariff, promoted_until` из SELECT-запроса `jobs.py:134` (T68).
+- Локальная `getCSRFToken()` из `favorites.js` (T52).

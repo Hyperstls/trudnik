@@ -482,3 +482,47 @@ None или non-dict → `errors.append` и `continue`.
 - `test_x10_captcha.py` — 2 passed (captcha не удалён)
 - Удалённые файлы: 4 (startup, payment_gateway, subscription_service, feature_flags)
 - Backup-теги: `backup/pre-iteration-2`, `backup/post-T27-1`
+
+---
+
+# Итерация 3: Средний приоритет (T43, T47, T48, T51, T52, T56, T64, T67, T68 = 9 задач)
+
+**Backup-тег:** `backup/pre-iteration-3`  **Ветка:** `fix/trudnik-consistency`
+
+## [T43] Fix bcrypt rounds docstring (в составе [T43,T52])
+**Дата:** 2026-07-14  **Итерация:** 3  **Статус:** COMPLETED  **Коммит:** 5e93218
+**Изменённые файлы:** `app/utils/auth.py:51` — docstring «6 раундов» → «12 раундов».
+
+## [T52] Dedup getCSRFToken into base.js (в составе [T43,T52])
+**Дата:** 2026-07-14  **Итерация:** 3  **Статус:** COMPLETED  **Коммит:** 5e93218
+**Изменённые файлы:** `static/js/base.js:384` — `window.getCSRFToken()`; `static/js/favorites.js:1-8` — локальная удалена.
+
+## [T47] Remove dead tailwind.css
+**Дата:** 2026-07-14  **Итерация:** 3  **Статус:** COMPLETED  **Коммит:** e53066b
+**Изменённые файлы:** `static/css/tailwind.css` — удалён (используется только `tailwind.min.css`).
+
+## [T67,T68] Remove unused SELECT fields
+**Дата:** 2026-07-14  **Итерация:** 3  **Статус:** COMPLETED  **Коммит:** 5e496de
+**Изменённые файлы:** `app/blueprints/jobs.py`, `app/blueprints/employers.py`, `app/services/job_service.py`, `app/testing/mock_postgrest.py` — удалены `photos:job_photos(*)` (7 мест), `tariff,promoted_until` (1 место).
+
+## [T48] Create separate Jinja filters for format_date/format_datetime
+**Дата:** 2026-07-14  **Итерация:** 3  **Статус:** COMPLETED  **Коммит:** 6b9d427
+**Изменённые файлы:** `app/__init__.py:66-74` — format_date-фильтр вызывал format_datetime; созданы два отдельных.
+
+## [T56] Improve text contrast in admin (neutral-400→500)
+**Дата:** 2026-07-14  **Итерация:** 3  **Статус:** COMPLETED  **Коммит:** 63624a8
+**Изменённые файлы:** `templates/admin.html` — 10 мест `text-neutral-400` → `text-neutral-500`.
+
+## [T51] Unify job-action CSS class (в составе [T51,T64])
+**Дата:** 2026-07-14  **Итерация:** 3  **Статус:** COMPLETED  **Коммит:** 985c125
+**Изменённые файлы:** `templates/my_jobs.html` — 6 мест `js-job-act-btn` → `js-job-action`.
+
+## [T64] Mask email PII in auth logs (в составе [T51,T64])
+**Дата:** 2026-07-14  **Итерация:** 3  **Статус:** COMPLETED  **Коммит:** 985c125
+**Изменённые файлы:** `app/blueprints/auth.py:118-136` — email убран из log.warning; замаскирован через `_redact_sensitive`.
+
+## Итог итерации 3
+- Коммитов: 6
+- Тесты: 73 passed, 13 skipped, 36 pre-existing (без изменений)
+- Удалённые файлы: 1 (tailwind.css)
+- Критерии: `photos:job_photos`=0, `tariff,promoted_until`=0, `js-job-act-btn`=0, `6 раунд`=0, `getCSRFToken` в favorites.js=0
