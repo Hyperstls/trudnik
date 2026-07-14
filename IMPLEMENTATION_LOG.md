@@ -526,3 +526,41 @@ None или non-dict → `errors.append` и `continue`.
 - Тесты: 73 passed, 13 skipped, 36 pre-existing (без изменений)
 - Удалённые файлы: 1 (tailwind.css)
 - Критерии: `photos:job_photos`=0, `tariff,promoted_until`=0, `js-job-act-btn`=0, `6 раунд`=0, `getCSRFToken` в favorites.js=0
+
+---
+
+# Итерация 4: Финальный прогон (T57, T62, T63, T70)
+
+**Backup-тег:** `backup/pre-iteration-4`  **Ветка:** `fix/trudnik-consistency`
+
+## [T57,T62,T70] Show-password toggle; contact validation; 2 uvicorn workers
+**Дата:** 2026-07-14  **Итерация:** 4  **Статус:** COMPLETED  **Коммит:** 31f123b
+
+### Изменённые файлы
+- `static/js/base.js:465-500` — JS-тоггл «Показать/Скрыть» на всех `input[type=password]`
+  (MutationObserver + обработчики, самовставляется).
+- `app/blueprints/auth.py:263-276` — валидация контакта при регистрации (email/телефон/username).
+- `app/blueprints/profile.py:115-127` — валидация контакта при обновлении профиля.
+- `supervisord.conf:9` — `--workers 1` → `--workers 2`.
+
+### Тесты
+- 73 passed, без регрессий. Работа валидации проверена за пределами набора тестов (regex OK).
+
+## [T63] Add escapeHtml utility to base.js
+**Дата:** 2026-07-14  **Итерация:** 4  **Статус:** COMPLETED  **Коммит:** e24c4b3
+
+### Изменённые файлы
+- `static/js/base.js:444-450` — `window.escapeHtml(str)` (DOM-based, безопасное экранирование).
+
+### EXTRA
+- Аудит всех `innerHTML` в `static/js/` показал, что все они УЖЕ безопасны:
+  - `applications.js`: `buildActionButtonsHTML` — жёстко заданный HTML (кнопки, SVG)
+  - `notifications-init.js`: данные API вставляются через `textContent`
+  - `base.js`: toast-контент — SVG + `textContent`
+  - `favorites.js`: SVG-иконки
+  escapeHtml добавлен для защиты будущего кода.
+
+## Итог итерации 4
+- Коммитов: 2
+- Тесты: 73 passed, 13 skipped, 36 pre-existing (без изменений)
+- Добавлено: show-password toggle, contact validation, escapeHtml, 2 uvicorn workers

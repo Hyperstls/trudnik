@@ -94,3 +94,13 @@
 - `photos:job_photos(*)` из 7 SELECT-запросов (T67).
 - `tariff, promoted_until` из SELECT-запроса `jobs.py:134` (T68).
 - Локальная `getCSRFToken()` из `favorites.js` (T52).
+
+## [Итерация 4] — 2026-07-14 — Финальный прогон (T57, T62, T63, T70)
+
+### Added
+- JS-тоггл «Показать/Скрыть» на всех полях пароля (T57).
+- `window.escapeHtml()` для безопасного экранирования (T63).
+- Валидация контакта при регистрации и обновлении профиля (T62).
+
+### Changed
+- uvicorn workers: 1 → 2 (supervisord.conf) (T70).
