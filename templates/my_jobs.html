@@ -171,7 +171,7 @@
                             {% endif %}
 
                             {# Дублировать: все статусы кроме open (матрица) #}
-                            <button type="button" class="js-job-act-btn action-icon-btn chat-btn"
+                            <button type="button" class="js-job-action action-icon-btn chat-btn"
                                     data-action="duplicateJob" data-job-id="{{ job.id }}" title="Дублировать" aria-label="Дублировать задание">
                                 {{ duplicate(16) }}
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Дублировать</span>
@@ -179,7 +179,7 @@
 
                             {# Завершить: только open #}
                             {% if job.status == 'open' %}
-                            <button type="button" class="js-job-act-btn action-icon-btn reject-btn"
+                            <button type="button" class="js-job-action action-icon-btn reject-btn"
                                     data-action="forceCompleteJob" data-job-id="{{ job.id }}" title="Завершить задание" aria-label="Завершить задание">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Завершить</span>
@@ -188,7 +188,7 @@
 
                             {# Отозвать: только open #}
                             {% if job.status == 'open' %}
-                            <button type="button" class="js-job-act-btn action-icon-btn contact-btn"
+                            <button type="button" class="js-job-action action-icon-btn contact-btn"
                                     data-action="cancelJob" data-job-id="{{ job.id }}" title="Отозвать" aria-label="Отозвать задание">
                                 {{ x_close(16) }}
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Отозвать</span>
@@ -197,7 +197,7 @@
 
                             {# Вернуть: только cancelled #}
                             {% if job.status == 'cancelled' %}
-                            <button type="button" class="js-job-act-btn action-icon-btn accept-btn"
+                            <button type="button" class="js-job-action action-icon-btn accept-btn"
                                     data-action="restoreJob" data-job-id="{{ job.id }}" title="Вернуть" aria-label="Вернуть задание">
                                 {{ restore(16) }}
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Вернуть</span>
@@ -205,7 +205,7 @@
                             {% endif %}
 
                             {# Удалить: все статусы #}
-                            <button type="button" class="js-job-act-btn action-icon-btn reject-btn"
+                            <button type="button" class="js-job-action action-icon-btn reject-btn"
                                     data-action="deleteJob" data-job-id="{{ job.id }}" title="Удалить" aria-label="Удалить задание">
                                 {{ trash_detailed(16) }}
                                 <span class="text-xs ml-1 font-medium hidden sm:inline">Удалить</span>
@@ -430,7 +430,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ── Делегирование для кнопок действий ──
     document.addEventListener('click', function(e) {
-        var btn = e.target.closest('.js-job-act-btn');
+        var btn = e.target.closest('.js-job-action');
         if (btn && btn.dataset.action && btn.dataset.jobId) {
             var action = window[btn.dataset.action];
             if (typeof action === 'function') {

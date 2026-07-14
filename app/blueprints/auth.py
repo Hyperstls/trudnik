@@ -115,8 +115,8 @@ def login():
             flash('Неверный email или пароль', 'danger')
         except RuntimeError as sql_err:
             # Прямой SQL не сработал — пробуем PostgREST fallback
-            log.warning("login: direct SQL unavailable for %s, trying PostgREST fallback: %s",
-                        email, sql_err)
+            log.warning("login: direct SQL unavailable, trying PostgREST fallback: %s",
+                        sql_err)
             try:
                 user = login_postgrest(email, password)
                 if user:
@@ -132,8 +132,10 @@ def login():
                 increment_login_attempts(lockout_key, attempts_key, email)
                 flash('Неверный email или пароль', 'danger')
             except Exception as pgrst_err:
+                from app.utils.helpers import _redact_sensitive
                 current_app.logger.error(
-                    f"Login error for {email}: direct SQL and PostgREST both failed: {pgrst_err}"
+                    "Login error for %s: direct SQL and PostgREST both failed: %s",
+                    _redact_sensitive(email), pgrst_err
                 )
                 flash('Ошибка сервера. Попробуйте позже.', 'danger')
         except Exception as e:
