@@ -261,7 +261,20 @@ def register():
                         update_data['desired_payment'] = 0
                     update_data['experience'] = request.form.get('experience', '')
                     contact = request.form.get('contact', '').strip()
-                    update_data['contact'] = contact if len(contact) >= 3 else None
+                    if contact:
+                        if len(contact) < 3:
+                            flash('Контакт должен содержать минимум 3 символа', 'danger')
+                            return redirect(url_for('auth.register'))
+                        # Базовая проверка формата: email, телефон или username
+                        if not any([
+                            bool(__import__('re').match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', contact)),
+                            bool(__import__('re').match(r'^\+?\d[\d\-\s\(\)]{4,}$', contact)),
+                            bool(__import__('re').match(r'^@?\w{3,}$', contact)),
+                            len(contact) >= 5,
+                        ]):
+                            flash('Введите корректный контакт: email, телефон или никнейм', 'danger')
+                            return redirect(url_for('auth.register'))
+                    update_data['contact'] = contact
 
                 patch_resp = postgrest_admin_request('PATCH', f'profiles?id=eq.{user_id}', json=update_data)
                 if not patch_resp.ok:

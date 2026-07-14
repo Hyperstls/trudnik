@@ -462,3 +462,50 @@ window.addEventListener('pageshow', function() {
     var overlay = document.getElementById('loading-overlay');
     if (overlay) overlay.style.display = 'none';
 });
+
+// ========================================
+// Password Show/Hide Toggle
+// ========================================
+(function() {
+    function addToggle(pwInput) {
+        if (pwInput._toggleReady) return;
+        pwInput._toggleReady = true;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'absolute right-2 top-1/2 -translate-y-1/2 text-xs text-neutral-400 hover:text-neutral-600 bg-white/80 rounded px-1.5 py-0.5 select-none';
+        btn.textContent = 'Показать';
+        btn.setAttribute('tabindex', '-1');
+        btn.setAttribute('aria-label', 'Показать пароль');
+        var wrap = document.createElement('span');
+        wrap.className = 'relative block';
+        pwInput.parentNode.insertBefore(wrap, pwInput);
+        wrap.appendChild(pwInput);
+        wrap.appendChild(btn);
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var hide = pwInput.type === 'password';
+            pwInput.type = hide ? 'text' : 'password';
+            btn.textContent = hide ? 'Скрыть' : 'Показать';
+            btn.setAttribute('aria-label', hide ? 'Скрыть пароль' : 'Показать пароль');
+        });
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('input[type="password"]').forEach(addToggle);
+    });
+    // MutationObserver: динамически добавленные поля
+    if (window.MutationObserver) {
+        var obs = new MutationObserver(function(mutations) {
+            mutations.forEach(function(m) {
+                m.addedNodes.forEach(function(node) {
+                    if (node.nodeType === 1) {
+                        if (node.type === 'password') addToggle(node);
+                        if (node.querySelectorAll) node.querySelectorAll('input[type="password"]').forEach(addToggle);
+                    }
+                });
+            });
+        });
+        document.addEventListener('DOMContentLoaded', function() {
+            obs.observe(document.body, { childList: true, subtree: true });
+        });
+    }
+})();

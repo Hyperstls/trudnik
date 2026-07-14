@@ -113,6 +113,19 @@ def update_profile():
         data['is_self_employed'] = is_self_employed == 'on'
 
     contact = request.form.get('contact', '').strip()
+    if contact:
+        import re
+        if len(contact) < 3:
+            flash('Контакт должен содержать минимум 3 символа', 'danger')
+            return redirect(url_for('profile.profile'))
+        if not any([
+            bool(re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', contact)),
+            bool(re.match(r'^\+?\d[\d\-\s\(\)]{4,}$', contact)),
+            bool(re.match(r'^@?\w{3,}$', contact)),
+            len(contact) >= 5,
+        ]):
+            flash('Введите корректный контакт: email, телефон или никнейм', 'danger')
+            return redirect(url_for('profile.profile'))
     data['contact'] = contact if len(contact) >= 3 else None
 
     photo = request.files.get('photo')
