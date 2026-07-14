@@ -62,12 +62,12 @@
         <div class="bg-white rounded-xl border border-neutral-100 p-4 shadow-sm">
             <p class="text-2xl font-bold text-neutral-900">{{ stats.get('total_users', 0) }}</p>
             <p class="text-xs text-neutral-500 mt-1">Пользователей</p>
-            <p class="text-xs text-neutral-400">{{ stats.get('workers', 0) }} работников / {{ stats.get('employers', 0) }} храмов</p>
+            <p class="text-xs text-neutral-500">{{ stats.get('workers', 0) }} работников / {{ stats.get('employers', 0) }} храмов</p>
         </div>
         <div class="bg-white rounded-xl border border-neutral-100 p-4 shadow-sm">
             <p class="text-2xl font-bold text-neutral-900">{{ stats.get('total_jobs', 0) }}</p>
             <p class="text-xs text-neutral-500 mt-1">Заданий</p>
-            <p class="text-xs text-neutral-400">{{ stats.get('open_jobs', 0) }} открыто</p>
+            <p class="text-xs text-neutral-500">{{ stats.get('open_jobs', 0) }} открыто</p>
         </div>
         <div class="bg-white rounded-xl border border-neutral-100 p-4 shadow-sm">
             <p class="text-2xl font-bold text-neutral-900">{{ stats.get('pending_verifications', 0) }}</p>
@@ -161,7 +161,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="6" class="px-4 py-8 text-center text-neutral-400">Пользователи не найдены</td></tr>
+                <tr><td colspan="6" class="px-4 py-8 text-center text-neutral-500">Пользователи не найдены</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -244,7 +244,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="6" class="px-4 py-8 text-center text-neutral-400">Задания не найдены</td></tr>
+                <tr><td colspan="6" class="px-4 py-8 text-center text-neutral-500">Задания не найдены</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -276,7 +276,7 @@
                         <span class="text-xs ml-1.5 font-medium">Документ</span>
                     </a>
                     {% else %}
-                    <span class="text-xs text-neutral-400 italic px-3 py-1.5">Нет документа</span>
+                    <span class="text-xs text-neutral-500 italic px-3 py-1.5">Нет документа</span>
                     {% endif %}
                 </div>
             </div>
@@ -300,7 +300,7 @@
         {% endfor %}
     </div>
     {% else %}
-    <p class="text-sm text-neutral-400 mb-4">Нет заявок на верификацию</p>
+    <p class="text-sm text-neutral-500 mb-4">Нет заявок на верификацию</p>
     {% endif %}
 
     {% if verified %}
@@ -383,7 +383,7 @@
             <span>Выбрать все навыки</span>
         </label>
         <div id="skills-list" class="space-y-2">
-            <p class="text-sm text-neutral-400">Загрузка...</p>
+            <p class="text-sm text-neutral-500">Загрузка...</p>
         </div>
     </div>
     {% endif %}
@@ -410,7 +410,7 @@
             <span>Выбрать все вероисповедания</span>
         </label>
         <div id="religions-list" class="space-y-2">
-            <p class="text-sm text-neutral-400">Загрузка...</p>
+            <p class="text-sm text-neutral-500">Загрузка...</p>
         </div>
     </div>
     {% endif %}
@@ -420,7 +420,7 @@
     {% if tab == 'stats' %}
     <h3 class="text-lg font-semibold text-neutral-800 mb-3">Статистика публикаций</h3>
     <div id="stats-container" class="space-y-3">
-        <p class="text-sm text-neutral-400">Загрузка...</p>
+        <p class="text-sm text-neutral-500">Загрузка...</p>
     </div>
     {% endif %}
 </div>
@@ -503,7 +503,7 @@ async function loadSkills() {
             skillsData = data.skills;
             renderSkills();
         } else {
-            list.innerHTML = '<p class="text-sm text-neutral-400">Нет навыков</p>';
+            list.innerHTML = '<p class="text-sm text-neutral-500">Нет навыков</p>';
         }
     } catch (e) { document.getElementById('skills-list').innerHTML = '<p class="text-sm text-danger">Ошибка загрузки</p>'; }
     var selectAll = document.querySelector('.js-select-all-skills');
@@ -519,7 +519,7 @@ function renderSkills() {
              id="skill-${s.id}" draggable="true" data-skill-index="${i}">
             <input type="checkbox" class="js-skill-checkbox rounded border-neutral-300 shrink-0" data-skill-id="${s.id}" aria-label="Выбрать навык ${s.name}">
             <span class="text-xs text-neutral-300 cursor-grab mr-1 select-none" title="Перетащите">⋮⋮</span>
-            <span class="text-xs text-neutral-400 w-6 text-center">${i + 1}</span>
+            <span class="text-xs text-neutral-500 w-6 text-center">${i + 1}</span>
             <input type="text" value="${s.name}" data-id="${s.id}"
                    aria-label="Название навыка"
                    class="flex-1 px-2 py-1 border border-neutral-200 rounded text-sm skill-edit">
@@ -658,7 +658,7 @@ async function loadReligions() {
             religionsData = data.religions;
             renderReligions();
         } else {
-            list.innerHTML = '<p class="text-sm text-neutral-400">Нет вероисповеданий</p>';
+            list.innerHTML = '<p class="text-sm text-neutral-500">Нет вероисповеданий</p>';
         }
     } catch (e) { document.getElementById('religions-list').innerHTML = '<p class="text-sm text-danger">Ошибка загрузки</p>'; }
     var selectAll = document.querySelector('.js-select-all-religions');
@@ -674,7 +674,7 @@ function renderReligions() {
              id="religion-${r.id}" draggable="true" data-religion-index="${i}">
             <input type="checkbox" class="js-religion-checkbox rounded border-neutral-300 shrink-0" data-religion-id="${r.id}" aria-label="Выбрать вероисповедание ${r.name}">
             <span class="text-xs text-neutral-300 cursor-grab mr-1 select-none" title="Перетащите">⋮⋮</span>
-            <span class="text-xs text-neutral-400 w-6 text-center">${i + 1}</span>
+            <span class="text-xs text-neutral-500 w-6 text-center">${i + 1}</span>
             <input type="text" value="${r.name}" data-id="${r.id}"
                    aria-label="Название вероисповедания"
                    class="flex-1 px-2 py-1 border border-neutral-200 rounded text-sm religion-edit">
@@ -809,11 +809,11 @@ async function loadStats() {
         if (data.success) {
             container.innerHTML = `
                 <div class="bg-white rounded-xl border border-neutral-100 p-4 shadow-sm">
-                    <p class="text-sm text-neutral-400">Статистика загружена</p>
+                    <p class="text-sm text-neutral-500">Статистика загружена</p>
                 </div>
             `;
         } else {
-            container.innerHTML = '<p class="text-sm text-neutral-400">Ошибка загрузки статистики</p>';
+            container.innerHTML = '<p class="text-sm text-neutral-500">Ошибка загрузки статистики</p>';
         }
     } catch (e) {
         document.getElementById('stats-container').innerHTML = '<p class="text-sm text-danger">Ошибка соединения</p>';
