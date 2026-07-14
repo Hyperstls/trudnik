@@ -395,3 +395,90 @@
 - `backup/pre-iteration-1` (создан ранее)
 - `backup/post-iteration-1` (после завершения)
 - `backup/temp-action-T1-20260709` (stale, удалён)
+
+---
+
+# Итерация 2: Архитектура и высокий приоритет (T25–T45, избранное)
+
+**Backup-тег:** `backup/pre-iteration-2`  **Ветка:** `fix/trudnik-consistency`
+
+T35 (db_pool PGHOST), T55 (noscript), T66 (logout rate_limit) — подтверждено
+как выполненные в итерации 1. T27: captcha.py НЕ удалён (используется тестом
+test_x10_captcha.py, является рабочим модулем безопасности Turnstile).
+
+## [T25] Remove module-level app = create_app() in __init__.py
+**Дата:** 2026-07-10  **Итерация:** 2  **Статус:** COMPLETED  **Коммит:** c768586
+**Изменённые файлы:** `app/__init__.py:88` — `app = create_app()` удалён.
+
+## [T41,T42] Conditional SESSION_COOKIE_SECURE; dedup session lifetime
+**Дата:** 2026-07-10  **Итерация:** 2  **Статус:** COMPLETED  **Коммит:** 8fbc2d9
+**Изменённые файлы:** `app/config.py:84` — `SESSION_COOKIE_SECURE` conditional (DEPLOYMENT_ENV);
+`app/config.py:121` — удалён дублирующий `PERMANENT_SESSION_LIFETIME = 1800` (оставлен 86400).
+
+## [T33,T34] Test hygiene: dedup favorites import, drop WTF_CSRF_ENABLED
+**Дата:** 2026-07-10  **Итерация:** 2  **Статус:** COMPLETED  **Коммит:** 2b32d91
+**Изменённые файлы:** `app/blueprints/favorites.py:6` — удалён дублирующий импорт;
+`tests/conftest.py:239,252` + `tests/test_all_functions.py:385` — `WTF_CSRF_ENABLED` удалён (Flask-WTF не установлен, no-op).
+
+## [T40] Guard worker-favorite routes with @role_required('employer')
+**Дата:** 2026-07-10  **Итерация:** 2  **Статус:** COMPLETED  **Коммит:** 8327e77
+**Изменённые файлы:** `app/blueprints/favorites.py` — 6 маршрутов с `favorite_type='worker'`
+получили `@role_required('employer')`. `/favorites` (список) — без декоратора (роле-agnostic).
+
+## [T65] Tighten CSP wss wildcard to configured WS host
+**Дата:** 2026-07-10  **Итерация:** 2  **Статус:** COMPLETED  **Коммит:** d98c4ce
+**Изменённые файлы:** `app/middleware.py:70-84` — `wss://*` заменён на `ws_src` = `ws://localhost:*`
++ хост из `Config.WEBSOCKET_PUBLIC_URL` (парсится через urlparse).
+
+## [T30] Remove nonexistent get_completed_jobs_between RPC call
+**Дата:** 2026-07-10  **Итерация:** 2  **Статус:** COMPLETED  **Коммиты:** 50cfd93, 8cbb154
+**Изменённые файлы:** `app/blueprints/ratings.py:217-254` — RPC-вызов удалён, фолбэк dedented;
+`app/testing/mock_postgrest.py:725-727` — мёртвый mock-обработчик удалён.
+
+## [T45,T61] Rename notification endpoint; unify flash category
+**Дата:** 2026-07-10  **Итерация:** 2  **Статус:** COMPLETED  **Коммит:** 19a5761
+**Изменённые файлы:** `app/blueprints/notifications.py` — `api_save_preference` → `api_update_preferences`;
+`app/blueprints/auth.py` (5) + `app/decorators.py` (5) — `flash(..., 'error')` → `'danger'`.
+
+## [T26,T29] Remove dead search endpoints; unify skills contract
+**Дата:** 2026-07-10  **Итерация:** 2  **Статус:** COMPLETED  **Коммит:** b06d51c
+**Изменённые файлы:** `app/blueprints/jobs_api.py` — удалены `/api/search/jobs` и `/api/search/workers`
++ неиспользуемые импорты; `/api/skills` и `/api/religions` возвращают `{'success': true, ...}`.
+
+## [T46] Remove broken religion=eq workers filter (dropped column)
+**Дата:** 2026-07-10  **Итерация:** 2  **Статус:** COMPLETED  **Коммит:** d6feec6
+**Изменённые файлы:** `app/blueprints/jobs.py` — удалены `religion` в filters-словаре workers()
+и `&religion=eq.` фильтр. `preferred_religion` (index, FK) остаётся.
+
+## [T28] Pass chat_title/chat_subtitle to chat template
+**Дата:** 2026-07-10  **Итерация:** 2  **Статус:** COMPLETED  **Коммит:** 4d2bb98
+**Изменённые файлы:** `app/blueprints/chat.py:99-122` — вычисление `chat_title` (full_name собеседника)
+и `chat_subtitle` (organization_name задания); переданы в `render_template`.
+
+## [T32] Harden batch application handler against unexpected responses
+**Дата:** 2026-07-10  **Итерация:** 2  **Статус:** COMPLETED  **Коммит:** ac95fbf
+**Изменённые файлы:** `app/blueprints/applications.py:478-484` — `data = resp_obj.get_json()` в try/except;
+None или non-dict → `errors.append` и `continue`.
+
+## [T49] Validate INN checksum in profile update
+**Дата:** 2026-07-10  **Итерация:** 2  **Статус:** COMPLETED  **Коммит:** d257510
+**Изменённые файлы:** `app/blueprints/profile.py:12,102-107` — добавлена `validate_inn_checksum`
+после проверки формата.
+
+## [T27] Remove 4 confirmed-dead modules (NOT captcha)
+**Дата:** 2026-07-10  **Итерация:** 2  **Статус:** COMPLETED  **Коммит:** dbd14aa
+**Изменённые файлы:** удалены `app/utils/startup.py`, `app/services/payment_gateway.py`,
+`app/services/subscription_service.py`, `app/services/feature_flags.py`.
+
+### EXTRA
+- `captcha.py` НЕ удалён: `tests/test_x10_captcha.py` активно проверяет fail-closed.
+  Удаление рабочего модуля безопасности — вредно для приложения.
+- `job_service.search_jobs/search_workers` оставлены (сервисный слой); удалены только
+  мёртвые эндпоинты в jobs_api.py (никем не вызывались).
+
+## Итог итерации 2
+- Коммитов: 13
+- Тесты: 73 passed, 13 skipped, 36 pre-existing failures (test_all_functions B5 — без изменений)
+- `test_x10_captcha.py` — 2 passed (captcha не удалён)
+- Удалённые файлы: 4 (startup, payment_gateway, subscription_service, feature_flags)
+- Backup-теги: `backup/pre-iteration-2`, `backup/post-T27-1`

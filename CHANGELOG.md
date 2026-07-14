@@ -47,3 +47,30 @@
 - JWT secret prefix больше не логируется (`auth.py`, `config.py`) (T22).
 - WS JWT не встраивается в HTML — выдаётся через `GET /api/ws/token` (T23).
 - Миграции применяются при деплое (фильтр NNN, `MIGRATIONS_ENABLED=true`) (T24).
+
+## [Итерация 2] — 2026-07-10 — Архитектура и высокий приоритет (T25–T46, T49, T61, T65)
+
+### Added
+- `@role_required('employer')` на 6 маршрутах favorites (T40).
+- `chat_title`/`chat_subtitle` из бэкенда в шаблон чата (T28).
+- `success: true` в JSON-ответах `/api/skills` и `/api/religions` (T29).
+- `validate_inn_checksum` в `profile.py` update_profile (T49).
+
+### Changed
+- `SESSION_COOKIE_SECURE` conditional по `DEPLOYMENT_ENV` (T41).
+- `PERMANENT_SESSION_LIFETIME` — единое определение 86400 (T42).
+- CSP `connect-src`: `wss://*` → конкретный хост из `WEBSOCKET_PUBLIC_URL` (T65).
+- Flash-категория `'error'` → `'danger'` в auth.py и decorators.py (T61).
+- `api_save_preference` → `api_update_preferences` (T45).
+
+### Fixed
+- Batch-обработчик applications: robust извлечение JSON (AttributeError→500) (T32).
+- Фильтр `religion=eq` в workers() удалён (столбец `profiles.religion` дропнут) (T46).
+- Удалён вызов несуществующего RPC `get_completed_jobs_between` (T30).
+
+### Removed
+- 4 мёртвых модуля: `startup.py`, `payment_gateway.py`, `subscription_service.py`, `feature_flags.py` (T27).
+- 2 мёртвых эндпоинта: `/api/search/jobs`, `/api/search/workers` (T26).
+- `WTF_CSRF_ENABLED = False` из тестовой конфигурации (T34).
+- Дублирующий импорт `safe_redirect` в `favorites.py` (T33).
+- Module-level `app = create_app()` в `app/__init__.py` (T25).
