@@ -5,7 +5,9 @@
 -- поэтому используем DELETE WHERE job_id = p_job_id.
 -- Также удаляем orphaned-уведомления через ILIKE (оставлено как страховка).
 -- ============================================================================
-CREATE OR REPLACE FUNCTION public.delete_job_cascade(p_job_id uuid)
+DROP FUNCTION IF EXISTS public.delete_job_cascade(uuid) CASCADE;
+
+CREATE FUNCTION public.delete_job_cascade(p_job_id uuid)
 RETURNS json
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $$
