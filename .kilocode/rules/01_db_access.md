@@ -1,5 +1,14 @@
-@rule codeНИКОГДА не используй SQLAlchemy, ORM или raw SQL (psycopg2) для бизнес-логики. Всё работает через HTTP-клиент к PostgREST. В RPC-функциях PostgREST ВСЕГДА используй:
+@rule code review architect
+НИКОГДА не используй SQLAlchemy, ORM-паттерны или raw SQL для бизнес-логики. 
 
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
-current_setting('request.jwt.claim.app_role', true) (НЕ role)
-FOR UPDATE для предотвращения race conditions.
+99% операций с БД должны реализовываться ИСКЛЮЧИТЕЛЬНО через HTTP-клиент (requests.Session) к PostgREST API. 
+Для парсинга JSON-ответов от PostgREST используй существующий класс PostgrestResponse (app/utils/postgrest_client.py). 
+НЕ используй Pydantic для парсинга ответов PostgREST — проект использует обычные dict/list.
+
+Исключения (где psycopg2 разрешён):
+1. app/services/auth_service.py (_login_direct_sql — fallback логин)
+2. scripts/emergency_reset_users.py (CLI-only)
+3. scripts/emergency_fix_permissions.py (CLI-only)
+4. scripts/check_schema.py (диагностика)
+5. scripts/apply_migrations.py (применение SQL-миграций)
+```
