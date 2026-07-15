@@ -31,7 +31,7 @@ def blacklist():
     if err:
         return err
     resp = postgrest_request('GET',
-        f'blacklists?user_id=eq.{session["user_id"]}&select=blocked:profiles!blacklists_blocked_user_id_fkey(id,full_name,photo_url,skills,city)')
+        f'blacklists?user_id=eq.{session["user_id"]}&select=blocked:profiles!fk_blacklists_blocked_user_id(id,full_name,photo_url,city)')
     items = resp.json() if resp.ok else []
     # Разворачиваем вложенные объекты blocked → плоский список
     workers = []

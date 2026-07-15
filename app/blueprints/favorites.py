@@ -16,7 +16,7 @@ def favorites():
     if session.get('role') == 'employer':
         # Избранные трудники
         resp = postgrest_request('GET',
-            f'favorites?user_id=eq.{session["user_id"]}&favorite_type=eq.worker&select=target:profiles!favorites_target_id_fkey(id,full_name,photo_url,rating,city,skills,experience,desired_payment)')
+            f'favorites?user_id=eq.{session["user_id"]}&favorite_type=eq.worker&select=target:profiles!fk_favorites_target_id(id,full_name,photo_url,rating,city,experience,desired_payment)')
         items = [item['target'] for item in resp.json()] if resp.ok else []
 
         # Определяем, какие трудники уже приглашены работодателем
@@ -32,7 +32,7 @@ def favorites():
     elif session.get('role') == 'worker':
         # Избранные работодатели
         resp = postgrest_request('GET',
-            f'favorites?user_id=eq.{session["user_id"]}&favorite_type=eq.employer&select=target:profiles!favorites_target_id_fkey(id,full_name,photo_url,verification_status,city)')
+            f'favorites?user_id=eq.{session["user_id"]}&favorite_type=eq.employer&select=target:profiles!fk_favorites_target_id(id,full_name,photo_url,verification_status,city)')
         items = [item['target'] for item in resp.json()] if resp.ok else []
 
     favorite_jobs = []
