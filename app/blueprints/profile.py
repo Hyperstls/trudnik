@@ -65,7 +65,17 @@ def profile():
     except Exception:
         current_app.logger.exception('Error loading profile for user %s', user_id)
         profile_user = None
-    return render_template('profile.html', profile_user=profile_user)
+
+    # Текущие навыки пользователя (из user_skills) — для предвыбора в форме
+    current_skill_ids: list[str] = []
+    if profile_user:
+        try:
+            sk_resp = postgrest_request('GET', f'user_skills?user_id=eq.{user_id}&select=skill_id')
+            if sk_resp.ok and sk_resp.json():
+                current_skill_ids = [s.get('skill_id') for s in sk_resp.json() if s.get('skill_id')]
+        except Exception:
+            pass
+    return render_template('profile.html', profile_user=profile_user, current_skill_ids=current_skill_ids)
 
 
 @profile_bp.route('/profile/update', methods=['POST'])
@@ -87,7 +97,14 @@ def update_profile():
         'portfolio_link': request.form.get('portfolio_link', ''),
     }
     skills_str = request.form.get('skills', '')
-    skill_ids = request.form.getlist('skill_ids')  # новый формат — список ID навыков
+    # skill_ids может прийти как несколько полей (getlist) либо как одно поле
+    # со списком ID через запятую (страница профиля) — поддерживаем оба варианта.
+    skill_ids: list[str] = []
+    for _v in request.form.getlist('skill_ids'):
+        for _part in str(_v).split(','):
+            _part = _part.strip()
+            if _part:
+                skill_ids.append(_part)
 
     if request.form.get('experience') is not None:
         data['experience'] = request.form.get('experience')
@@ -127,6 +144,19 @@ def update_profile():
             flash('Введите корректный контакт: email, телефон или никнейм', 'danger')
             return redirect(url_for('profile.profile'))
     data['contact'] = contact if len(contact) >= 3 else None
+
+    # Вероисповедание (справочник religions)
+    religion_id = request.form.get('religion_id', '').strip()
+    if religion_id:
+        try:
+            uuid.UUID(religion_id)
+            data['religion_id'] = religion_id
+        except (ValueError, AttributeError):
+            flash('Некорректное вероисповедание', 'danger')
+            return redirect(url_for('profile.profile'))
+    else:
+        # Пустое значение — сбросить вероисповедание
+        data['religion_id'] = None
 
     photo = request.files.get('photo')
     if photo and photo.filename:
