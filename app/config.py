@@ -76,7 +76,7 @@ class Config:
         )
         logger.info(_msg)
 
-    YANDEX_MAPS_API_KEY = os.environ.get('YANDEX_GEOCODER_KEY', '')
+    YANDEX_MAPS_API_KEY = os.environ.get('YANDEX_MAPS_API_KEY') or os.environ.get('YANDEX_GEOCODER_KEY', '')
     WORKER_SITE_URL = os.environ.get('WORKER_SITE_URL', 'https://trudnik-hyperstls.amvera.io/')
 
     # Cookie Security (B9: Secure cookie flags)
