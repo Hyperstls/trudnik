@@ -138,7 +138,13 @@ class Config:
     WEBSOCKET_JWT_SECRET = os.environ.get('WEBSOCKET_JWT_SECRET', '')
     if os.environ.get('DEPLOYMENT_ENV') in ('production', 'staging') and not WEBSOCKET_JWT_SECRET:
         raise RuntimeError('WEBSOCKET_JWT_SECRET is required in production')
-    WEBSOCKET_PUBLIC_URL = os.environ.get('WEBSOCKET_PUBLIC_URL', '')
+    # Публичный WS-URL для клиентов. Если WEBSOCKET_PUBLIC_URL не задан,
+    # используем WEBSOCKET_URL (имя переменной, которое задано в проде).
+    # Применяется в /api/ws/token (wsUrl), CSP connect-src и TRUDNIK_CONFIG.
+    WEBSOCKET_PUBLIC_URL = (
+        os.environ.get('WEBSOCKET_PUBLIC_URL', '')
+        or os.environ.get('WEBSOCKET_URL', '')
+    )
 
     _direct = os.environ.get('DATABASE_URL')
     if _direct:
