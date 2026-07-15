@@ -15,7 +15,6 @@ from app.services.job_service import (
 )
 from app.services.notification_service import create as notify
 from app.utils import (
-    cache_for,
     postgrest_request,
     postgrest_admin_request,
     postgrest_rpc,
@@ -29,24 +28,53 @@ jobs_api_bp = Blueprint('jobs_api', __name__)
 # Публичные справочники (навыки, вероисповедания)
 # ═══════════════════════════════════════════════════════════════
 
+def _dictionary_list(table: str, label: str) -> dict:
+    """Универсальный загрузчик публичных справочников (skills/religions).
+
+    Использует service_role (postgrest_admin_request), т.к. справочники нужны
+    ДО входа (регистрация) и роль anon/authenticated может не иметь GRANT SELECT
+    на этих таблицах. Кэшируем только непустой успешный результат, чтобы
+    случайный сбой PostgREST не «застолбил» пустой список на 5 минут.
+    """
+    import json
+
+    from app.utils.redis_client import get_redis_client
+
+    cache_key = f'dict:{table}'
+    try:
+        client = get_redis_client()
+        if client:
+            cached = client.get(cache_key)
+            if cached:
+                raw = cached.decode('utf-8') if isinstance(cached, bytes) else cached
+                return {'success': True, label: json.loads(raw)}
+    except Exception:
+        pass
+
+    resp = postgrest_admin_request(
+        'GET', f'{table}?select=*&order=sort_order.asc,name.asc'
+    )
+    items = resp.json() if (resp.ok and resp.json()) else []
+    if items:
+        try:
+            client = get_redis_client()
+            if client:
+                client.setex(cache_key, 300, json.dumps(items, ensure_ascii=False))
+        except Exception:
+            pass
+    return {'success': True, label: items}
+
+
 @jobs_api_bp.route('/api/skills')
-@cache_for(seconds=300)
 def api_skills():
     """Получить список навыков (JSON)."""
-    resp = postgrest_request(
-        'GET', 'skills?select=*&order=sort_order.asc,name.asc'
-    )
-    return {'success': True, 'skills': resp.json() if resp.ok else []}
+    return _dictionary_list('skills', 'skills')
 
 
 @jobs_api_bp.route('/api/religions')
-@cache_for(seconds=300)
 def api_religions():
     """Получить список вероисповеданий (JSON)."""
-    resp = postgrest_request(
-        'GET', 'religions?select=*&order=sort_order.asc,name.asc'
-    )
-    return {'success': True, 'religions': resp.json() if resp.ok else []}
+    return _dictionary_list('religions', 'religions')
 
 
 # ═══════════════════════════════════════════════════════════════

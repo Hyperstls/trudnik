@@ -115,22 +115,34 @@ def login_required(f: F) -> F:
                 user_exists = get_cached(cache_key)
                 if user_exists is None:
                     from app.utils import postgrest_admin_request as _pgadm, postgrest_request as _pgreq
+                    from app.utils.postgrest_client import is_circuit_open as _is_cb_open
                     # Пробуем пользовательский запрос (через RLS — быстрее)
                     resp = _pgreq('GET', f'profiles?id=eq.{user_id}&select=id')
+                    db_reachable = resp.ok
                     if resp.ok and resp.json():
                         user_exists = True
                     else:
                         # Fallback: запрос через service_role (обходит RLS)
                         resp2 = _pgadm('GET', f'profiles?id=eq.{user_id}&select=id')
+                        db_reachable = db_reachable or (resp2.ok and not _is_cb_open(resp2))
                         user_exists = resp2.ok and bool(resp2.json())
                     # Кэшируем ТОЛЬКО True (положительный результат).
                     # False не кэшируем — временный сбой PostgREST не должен
                     # блокировать пользователя на 60 секунд.
                     if user_exists:
                         set_cached(cache_key, True, ttl=60)
+                # Решение по сессии:
+                # - Если БД подтвердила, что пользователя НЕТ (200 + пусто) — закрываем доступ.
+                # - Если PostgREST недоступен (CB open / network error / role error) —
+                #   НЕ выкидываем пользователя (fail-open): он аутентифицирован валидным JWT,
+                #   логин прошёл через прямой SQL. Временный сбой API не должен разлогинивать.
                 if not user_exists:
-                    session.clear()
-                    return redirect(url_for('auth.login'))
+                    if db_reachable:
+                        # БД доступна и подтвердила отсутствие пользователя (удалён)
+                        session.clear()
+                        return redirect(url_for('auth.login'))
+                    # БД недоступна — пропускаем проверку, не трогая сессию
+                    pass
         except (jwt.DecodeError, jwt.ExpiredSignatureError, jwt.InvalidTokenError):
             # Токен невалидный — очищаем сессию и перенаправляем на login
             session.clear()

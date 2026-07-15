@@ -1,5 +1,5 @@
-const CACHE_VERSION = 'trudnik-v4';
-const CACHE_NAME = 'trudnik-v4';
+const CACHE_VERSION = 'trudnik-v5';
+const CACHE_NAME = 'trudnik-v5';
 const PRECACHE_URLS = [
   '/',
   '/offline',
@@ -52,6 +52,17 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
+
+  // --- Guard: never intercept non-GET requests except explicit XHR mutations
+  // to /api/ or /admin/ (handled by Strategy 2 below).
+  // Full-page form POSTs (login, register, logout, job actions, etc.) are
+  // mode='navigate' with method POST. The Cache API cannot store POST requests,
+  // so intercepting them throws "Failed to execute 'put' on 'Cache'" and breaks
+  // auth flows. Let the browser handle them natively.
+  if (request.method !== 'GET' &&
+      !(url.pathname.startsWith('/api/') || url.pathname.startsWith('/admin/'))) {
+    return;
+  }
 
   // --- Strategy 1: Navigation (HTML pages) — Network-first, fallback to offline page ---
   // POST-навигации (login/register) не перехватываем — пусть браузер обрабатывает сам

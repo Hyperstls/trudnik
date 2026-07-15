@@ -98,3 +98,49 @@ def test_login_required_clears_session_if_user_not_exists(client, app, mocker):
     # Проверяем что произошел редирект на login
     assert response.status_code == 302
     assert '/login' in response.location
+
+
+def test_login_required_failopen_when_postgrest_unavailable(client, app, mocker):
+    """B5: login_required НЕ должен разлогинивать при недоступности PostgREST.
+
+    Если PostgREST недоступен (Circuit Breaker OPEN / сетевая ошибка / ошибка роли),
+    мы не можем подтвердить существование пользователя, но и не должны выкидывать
+    легитимного пользователя с валидным JWT (логин прошёл через прямой SQL).
+    Поведение: fail-open — сессию не трогаем, запрос выполняется.
+    """
+    mocker.patch('app.utils.redis_cache.get_cached', return_value=None)
+    mocker.patch('app.utils.redis_cache.set_cached')
+    # jti не в чёрном списке
+    mocker.patch('app.utils.auth.is_jti_blacklisted', return_value=False)
+
+    # Оба запроса к PostgREST (user-JWT и service_role) «упали» — сервис недоступен
+    err_resp = mocker.Mock()
+    err_resp.ok = False
+    err_resp.status_code = 503
+    err_resp.json.return_value = []
+    mocker.patch('app.utils.postgrest_request', return_value=err_resp)
+    mocker.patch('app.utils.postgrest_admin_request', return_value=err_resp)
+    mocker.patch('app.utils.postgrest_client.is_circuit_open', return_value=True)
+
+    from app.decorators import login_required
+
+    @app.route('/test-b5-failopen')
+    @login_required
+    def test_route_failopen():
+        return 'OK'
+
+    # Валидный JWT (без pwd_changed_at, чтобы соответствующая проверка пропускалась)
+    from app.utils.auth import generate_jwt
+    with app.app_context():
+        token = generate_jwt('test-user-id', 'worker')
+
+    with client.session_transaction() as sess:
+        sess['user_id'] = 'test-user-id'
+        sess['role'] = 'worker'
+        sess['access_token'] = token
+
+    response = client.get('/test-b5-failopen')
+
+    # Пользователь НЕ выкинут — fail-open: маршрут отдал 200 OK
+    assert response.status_code == 200
+    assert response.data == b'OK'
