@@ -135,6 +135,11 @@ celery_app.conf.beat_schedule = {
         'schedule': 10.0,
         'options': {'expires': 8},
     },
+    'ensure-postgrest-grants': {
+        'task': 'app.tasks.maintenance_tasks.ensure_postgrest_role_grants',
+        'schedule': 120.0,  # Каждые 2 минуты — self-heal грантов ролей PostgREST
+        'options': {'expires': 110},
+    },
     'expire-old-jobs': {
         'task': 'app.tasks.maintenance_tasks.expire_old_jobs',
         'schedule': 3600.0,  # Каждый час

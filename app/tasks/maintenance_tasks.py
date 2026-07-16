@@ -6,6 +6,7 @@
 """
 
 import logging
+import os
 import re as _re
 from datetime import datetime, timezone
 from typing import Any
@@ -228,3 +229,61 @@ def expire_old_jobs() -> dict[str, Any]:
         'expired_count': expired_count,
         'errors': errors,
     }
+
+
+@celery_app.task
+def ensure_postgrest_role_grants() -> dict[str, Any]:
+    """Self-heal: восстанавливает гранты ролей PostgREST, если Amvera
+    перезапустил/фейловернул БД и trudnikapp потерял членство в
+    anon/authenticated/service_role.
+
+    Без этих грантов PostgREST не может SET ROLE и возвращает 403 для всех
+    запросов (ломая всё приложение). PostgREST сам не умеет GRANT и сам
+    падает при слетевших грантахах, поэтому проверяем/чиним через прямое
+    psycopg2-подключение. Идемпотентно.
+
+    Returns:
+        {'status': 'ok'|'healed'|'skipped'|'error', ...}
+    """
+    import psycopg2
+
+    from app.config import Config
+
+    db_url = (
+        os.environ.get('DATABASE_URL')
+        or os.environ.get('PGDATABASE_URL')
+        or getattr(Config, 'DATABASE_URL', '')
+    )
+    if not db_url:
+        logger.warning('ensure_postgrest_role_grants: DATABASE_URL не задан — пропуск')
+        return {'status': 'skipped', 'reason': 'no DATABASE_URL'}
+
+    conn = None
+    try:
+        conn = psycopg2.connect(db_url, connect_timeout=10)
+        conn.autocommit = True
+        cur = conn.cursor()
+        cur.execute("SELECT pg_has_role('trudnikapp','authenticated','member')")
+        grants_ok = bool(cur.fetchone()[0])
+        if grants_ok:
+            logger.debug('ensure_postgrest_role_grants: гранты на месте')
+            return {'status': 'ok', 'grants_present': True}
+
+        logger.warning('ensure_postgrest_role_grants: trudnikapp потерял членство в ролях — пере-применяем гранты')
+        for stmt in (
+            'GRANT anon, authenticated, service_role TO trudnikapp',
+            'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated, anon',
+            'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated, anon',
+        ):
+            cur.execute(stmt)
+        logger.warning('ensure_postgrest_role_grants: гранты PostgREST восстановлены')
+        return {'status': 'healed', 'grants_present': False}
+    except Exception as e:
+        logger.warning('ensure_postgrest_role_grants: ошибка — %s', e, exc_info=True)
+        return {'status': 'error', 'error': str(e)}
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
