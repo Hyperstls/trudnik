@@ -245,6 +245,8 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
     Returns:
         {'status': 'ok'|'healed'|'skipped'|'error', ...}
     """
+    import pathlib
+
     import psycopg2
 
     from app.config import Config
@@ -258,29 +260,76 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
         logger.warning('ensure_postgrest_role_grants: DATABASE_URL не задан — пропуск')
         return {'status': 'skipped', 'reason': 'no DATABASE_URL'}
 
+    # Миграции лежат в <project>/migrations (в контейнере — /app/migrations)
+    mig_dir = pathlib.Path(__file__).resolve().parents[2] / 'migrations'
+
+    def _apply_migration(filename: str) -> None:
+        """Применяет SQL-файл миграции целиком (psycopg2 simple-query)."""
+        cur.execute((mig_dir / filename).read_text(encoding='utf-8'))
+
+    healed: list[str] = []
     conn = None
     try:
         conn = psycopg2.connect(db_url, connect_timeout=10)
         conn.autocommit = True
         cur = conn.cursor()
-        cur.execute("SELECT pg_has_role('trudnikapp','authenticated','member')")
-        grants_ok = bool(cur.fetchone()[0])
-        if grants_ok:
-            logger.debug('ensure_postgrest_role_grants: гранты на месте')
-            return {'status': 'ok', 'grants_present': True}
 
-        logger.warning('ensure_postgrest_role_grants: trudnikapp потерял членство в ролях — пере-применяем гранты')
-        for stmt in (
-            'GRANT anon, authenticated, service_role TO trudnikapp',
-            'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated, anon',
-            'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated, anon',
-        ):
-            cur.execute(stmt)
-        logger.warning('ensure_postgrest_role_grants: гранты PostgREST восстановлены')
-        return {'status': 'healed', 'grants_present': False}
+        # 1) Гранты ролей PostgREST (миграция 123) — без них PostgREST 403 на всём.
+        cur.execute("SELECT pg_has_role('trudnikapp','authenticated','member')")
+        if not bool(cur.fetchone()[0]):
+            logger.warning('self-heal: trudnikapp потерял членство в ролях — миграция 123')
+            _apply_migration('123_fix_postgrest_role_grants.sql')
+            healed.append('grants')
+
+        # 2) Политика чтения profiles может быть удалена — гарантируем наличие,
+        #    иначе профиль/выход/списки пустые (RLS deny-all).
+        cur.execute(
+            "SELECT count(*) FROM pg_policy WHERE polrelid='profiles'::regclass AND polcmd='r'"
+        )
+        if int(cur.fetchone()[0]) == 0:
+            cur.execute(
+                "CREATE POLICY \"Users can read own full profile\" ON public.profiles "
+                "FOR SELECT USING ("
+                "(current_setting('request.jwt.claims', true)::json->>'user_id')::uuid = id "
+                "OR role IN ('worker', 'employer'))"
+            )
+            healed.append('profiles_read_policy')
+
+        # 3) RLS-политики в старом сломанном виде request.jwt.claim.<name>
+        #    (PostgREST выставляет только request.jwt.claims JSON) — миграция 125.
+        cur.execute(
+            "SELECT count(*) FROM pg_policy p "
+            "JOIN pg_class c ON c.oid = p.polrelid "
+            "JOIN pg_namespace n ON n.oid = c.relnamespace "
+            "WHERE n.nspname = 'public' AND ("
+            "pg_get_expr(p.polqual, p.polrelid) ~ 'request\\.jwt\\.claim\\.' "
+            "OR pg_get_expr(p.polwithcheck, p.polrelid) ~ 'request\\.jwt\\.claim\\.')"
+        )
+        if int(cur.fetchone()[0]) > 0:
+            logger.warning('self-heal: RLS-политики в сломанном виде — миграция 125')
+            _apply_migration('125_rls_use_jwt_claims_json.sql')
+            healed.append('rls_policies')
+
+        # 4) Триггер profiles_search_update ссылается на удалённую колонку skills — миграция 126.
+        cur.execute(
+            "SELECT count(*) FROM pg_proc p "
+            "JOIN pg_namespace n ON n.oid = p.pronamespace "
+            "WHERE p.proname = 'profiles_search_update' AND n.nspname = 'public' "
+            "AND pg_get_functiondef(p.oid) LIKE '%NEW.skills%'"
+        )
+        if int(cur.fetchone()[0]) > 0:
+            logger.warning('self-heal: profiles_search_update битый (NEW.skills) — миграция 126')
+            _apply_migration('126_fix_profiles_search_trigger.sql')
+            healed.append('search_trigger')
+
+        if healed:
+            logger.warning('self-heal: восстановлено — %s', ', '.join(healed))
+            return {'status': 'healed', 'restored': healed}
+        logger.debug('self-heal: БД в норме')
+        return {'status': 'ok'}
     except Exception as e:
         logger.warning('ensure_postgrest_role_grants: ошибка — %s', e, exc_info=True)
-        return {'status': 'error', 'error': str(e)}
+        return {'status': 'error', 'error': str(e), 'restored': healed}
     finally:
         if conn is not None:
             try:
