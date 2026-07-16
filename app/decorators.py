@@ -33,9 +33,12 @@ def login_required(f: F) -> F:
             return redirect(url_for('auth.login'))
 
         # Proactive check: не истёк ли токен?
+        # verify_exp=False: проверяем exp ВРУЧНУЮ ниже, чтобы успеть сделать
+        # refresh (иначе jwt.decode выбросит ExpiredSignatureError и пользователь
+        # разлогинится каждые 5 минут вместо тихого обновления токена).
         try:
-            decoded = jwt.decode(token, Config.PGRST_JWT_SECRET, algorithms=['HS256'], 
-                                options={'verify_aud': False})
+            decoded = jwt.decode(token, Config.PGRST_JWT_SECRET, algorithms=['HS256'],
+                                options={'verify_aud': False, 'verify_exp': False})
             exp = decoded.get('exp', 0)
             if time.time() > exp:
                 # Токен истёк — пробуем обновить

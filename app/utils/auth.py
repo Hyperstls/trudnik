@@ -66,6 +66,12 @@ def hash_password(password: str) -> str:
     ).decode('utf-8')
 
 
+# Срок жизни сессионного access-токена = сроку сессионной куки (24 ч),
+# чтобы токен не истекал внутри активной сессии. Per-request токены
+# PostgREST (get_user_headers) используют короткий TTL по умолчанию (300 с).
+ACCESS_TOKEN_TTL_SECONDS = 24 * 3600
+
+
 def generate_jwt(user_id, role, exp_seconds=300, password_changed_at=None):
     """Каноническая генерация JWT-токена.
     
@@ -159,7 +165,7 @@ def refresh_access_token() -> bool:
 
         # Используем реальную роль из сессии, fallback — 'authenticated'
         role = session.get('role', 'authenticated')
-        token = generate_jwt(user_id, role)
+        token = generate_jwt(user_id, role, exp_seconds=ACCESS_TOKEN_TTL_SECONDS)
         session['access_token'] = token
         session.modified = True
         return True
@@ -190,7 +196,7 @@ def login_user_session(user_id: str, role: str, email: str) -> None:
         logger.warning('Failed to get password_changed_at for user %s: %s',
                        user_id, e, exc_info=True)
 
-    token = generate_jwt(user_id, role, password_changed_at=pwd_changed_at)
+    token = generate_jwt(user_id, role, exp_seconds=ACCESS_TOKEN_TTL_SECONDS, password_changed_at=pwd_changed_at)
     session['access_token'] = token
     session['refresh_token'] = 'jwt'
     session['user_id'] = user_id
