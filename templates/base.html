@@ -231,8 +231,7 @@
     <!-- Bottom Navigation (mobile)        -->
     <!-- ================================ -->
     {% set _auth_endpoints = ('auth.login', 'auth.register') %}
-    {% set _profile_endpoints = ('profile.profile', 'profile.public_profile', 'profile.verify_employer') %}
-    {% if session.get('user_id') and request.endpoint not in _profile_endpoints %}
+    {% if session.get('user_id') %}
     <nav class="bottom-nav fixed bottom-0 left-0 right-0 border-t border-neutral-200 flex justify-around items-center pt-2 pb-1 z-50" role="navigation" aria-label="Основная навигация">
         {% if session.get('role') == 'employer' %}
         <!-- Работодатель -->
@@ -284,15 +283,6 @@
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
             </svg>
             <span>Чаты</span>
-        </a>
-        <a href="/profile"
-           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and request.endpoint in ('profile.profile', 'profile.public_profile') }}"
-           aria-label="Профиль">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-            <span>Профиль</span>
         </a>
         {% else %}
         <!-- Трудник -->
