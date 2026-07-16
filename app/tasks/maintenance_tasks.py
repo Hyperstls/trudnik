@@ -251,13 +251,19 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
 
     from app.config import Config
 
+    # Суперпользовательское подключение (нужно для GRANT/CREATE ROLE ролей).
+    # Без него гранты восстановить нельзя — только проверить и предупредить.
+    admin_url = (
+        os.environ.get('DATABASE_ADMIN_URL')
+        or os.environ.get('ADMIN_DATABASE_URL')
+    )
     db_url = (
         os.environ.get('DATABASE_URL')
         or os.environ.get('PGDATABASE_URL')
         or getattr(Config, 'DATABASE_URL', '')
     )
-    if not db_url:
-        logger.warning('ensure_postgrest_role_grants: DATABASE_URL не задан — пропуск')
+    if not (admin_url or db_url):
+        logger.warning('ensure_postgrest_role_grants: DATABASE_URL/DATABASE_ADMIN_URL не заданы — пропуск')
         return {'status': 'skipped', 'reason': 'no DATABASE_URL'}
 
     # Миграции лежат в <project>/migrations (в контейнере — /app/migrations)
@@ -270,16 +276,26 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
     healed: list[str] = []
     conn = None
     try:
-        conn = psycopg2.connect(db_url, connect_timeout=10)
+        # Prefer superuser (DATABASE_ADMIN_URL): GRANT/CREATE ROLE требуют его.
+        conn = psycopg2.connect(admin_url or db_url, connect_timeout=10)
         conn.autocommit = True
         cur = conn.cursor()
 
         # 1) Гранты ролей PostgREST (миграция 123) — без них PostgREST 403 на всём.
+        #    CREATE ROLE/GRANT требуют суперпользователя, поэтому чиним только при наличии admin_url.
         cur.execute("SELECT pg_has_role('trudnikapp','authenticated','member')")
         if not bool(cur.fetchone()[0]):
-            logger.warning('self-heal: trudnikapp потерял членство в ролях — миграция 123')
-            _apply_migration('123_fix_postgrest_role_grants.sql')
-            healed.append('grants')
+            if admin_url:
+                logger.warning('self-heal: trudnikapp потерял членство в ролях — миграция 123 (superuser)')
+                _apply_migration('123_fix_postgrest_role_grants.sql')
+                healed.append('grants')
+            else:
+                logger.warning(
+                    'self-heal: гранты ролей потеряны, но DATABASE_ADMIN_URL не задан — '
+                    'требуется ручной GRANT суперпользователем (pgAdmin): '
+                    "GRANT anon, authenticated, service_role TO trudnikapp;. "
+                    'Без этого PostgREST отдаёт 403.'
+                )
 
         # 2) Политика чтения profiles может быть удалена — гарантируем наличие,
         #    иначе профиль/выход/списки пустые (RLS deny-all).
