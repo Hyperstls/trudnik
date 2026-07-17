@@ -37,7 +37,7 @@
 4. **Автообновление** — при 401 или истечении срока, [`refresh_access_token()`](../app/utils/postgrest_client.py) обновляет токен
 
 **Регистрация** (`POST /register`):
-- RPC `register_user(p_email, p_password, p_full_name, p_role)` создаёт запись в `profiles` с хешированным паролем (pgcrypto)
+- RPC `register_user(p_email, p_password, p_full_name, p_role)` создаёт запись в `profiles` с хешированным паролем (**bcrypt 12 раундов**, формат `$2b$`, совместим с pgcrypto `crypt()` — [`app/utils/auth.py`](../app/utils/auth.py))
 - Профиль пользователя заполняется через PATCH `profiles` (service_role или токен пользователя)
 - Навыки сохраняются через `user_skills` (с валидацией UUID)
 
@@ -122,7 +122,7 @@ Nonce внедряется в шаблоны как `{{ csp_nonce }}` и исп�
 
 | Директива | Внешние источники | Назначение |
 |-----------|-------------------|------------|
-| `script-src` | `cdn.jsdelivr.net` | Tailwind CSS, внешние библиотеки |
+| `script-src` | `cdn.jsdelivr.net` | Внешние JS-библиотеки (Tailwind CSS — precompiled локально, `tailwind.min.css`, с CDN **не** грузится) |
 | `script-src` | `api-maps.yandex.ru`, `yastatic.net` | Яндекс.Карты |
 | `style-src` | `cdn.jsdelivr.net`, `fonts.googleapis.com` | Стили, шрифты |
 | `font-src` | `fonts.gstatic.com` | Google Fonts |
@@ -147,7 +147,7 @@ Nonce внедряется в шаблоны как `{{ csp_nonce }}` и исп�
 
 ### In-memory, per-IP
 
-Декоратор [`@rate_limit`](../app/utils.py:575) ограничивает частоту POST-запросов:
+Декоратор [`@rate_limit`](../app/utils/rate_limit_decorator.py) ограничивает частоту POST-запросов:
 
 | Параметр | Значение | Источник |
 |----------|----------|----------|
@@ -164,6 +164,7 @@ Nonce внедряется в шаблоны как `{{ csp_nonce }}` и исп�
 
 **Где применяется:**
 - `POST /login`, `POST /register` — [`auth.py`](../app/blueprints/auth.py:14)
+- Сброс пароля / верификация email / OTP — sensitive-эндпоинты; обязательно проверять наличие `@rate_limit`
 - `POST /apply/<job_id>` — [`applications.py`](../app/blueprints/applications.py:13)
 - `POST /api/send_message` — [`chat.py`](../app/blueprints/chat.py:88)
 - `POST /api/applications/<id>/accept`, `/reject` — [`app/__init__.py`](../app/__init__.py:273)
@@ -174,7 +175,7 @@ Nonce внедряется в шаблоны как `{{ csp_nonce }}` и исп�
 
 ### `sanitize_postgrest()`
 
-Все пользовательские параметры, подставляемые в PostgREST-URL, проходят очистку через [`sanitize_postgrest()`](../app/utils.py:619):
+Все пользовательские параметры, подставляемые в PostgREST-URL, проходят очистку через [`sanitize_postgrest()`](../app/utils/security.py):
 
 **Этапы очистки:**
 1. **URL-декодирование** — `%20` → пробел, `%27` → `'` и т.д.
@@ -216,15 +217,15 @@ content = _html.escape(content)
 | Состояние | Поведение |
 |-----------|-----------|
 | **CLOSED** | Нормальная работа, запросы проходят |
-| **OPEN** | Цепь разомкнута, запросы не выполняются. Возвращается `SupabaseResponse(ok=False, status_code=503, text='Circuit breaker open')` |
+| **OPEN** | Цепь разомкнута, запросы не выполняются. Возвращается `PostgRESTResponse(ok=False, status_code=503, text='Circuit breaker open')` |
 | **HALF_OPEN** | Пробный запрос для проверки восстановления |
 
 ### Параметры
 
 | Параметр | Значение |
 |----------|----------|
-| Порог ошибок (`failure_threshold`) | **5** последовательных ошибок |
-| Таймаут восстановления (`recovery_timeout`) | **30 секунд** |
+| Порог ошибок (`failure_threshold`) | **10** последовательных ошибок |
+| Таймаут восстановления (`recovery_timeout`) | **60 секунд** |
 
 ### Потоковая безопасность
 
@@ -234,7 +235,9 @@ content = _html.escape(content)
 
 - Исключение при выполнении HTTP-запроса (`requests.RequestException`)
 - Ответ с `ok=False` (не 2xx статус)
-- `SupabaseResponse` с `ok=False`
+- `PostgRESTResponse` с `ok=False`
+
+**НЕ считается ошибкой:** HTTP **403** (Forbidden) — это проблема прав/RLS, а не доступности сервиса, и **не размыкает** цепь (см. `_cb_postgrest.call`).
 
 ---
 
@@ -269,7 +272,7 @@ content = _html.escape(content)
 
 ### RLS (Row Level Security)
 
-На уровне базы данных PostgreSQL (Amvera) все таблицы защищены RLS-политиками. Пользовательские запросы идут с `Authorization: Bearer <access_token>`, и PostgreSQL автоматически ограничивает доступ на основе JWT-claims (`user_id`, `role`).
+На уровне базы данных PostgreSQL (Amvera) все таблицы защищены RLS-политиками. Пользовательские запросы идут с `Authorization: Bearer <access_token>` (`role='authenticated'`), и PostgreSQL автоматически ограничивает доступ на основе JWT-claims: `user_id` и `app_role` (`current_setting('request.jwt.claim.app_role', true)` → worker/employer/admin).
 
 <!-- УСТАРЕЛО: Ранее использовался Supabase auth.uid() -->
 
@@ -321,7 +324,7 @@ content = _html.escape(content)
 | **XSS** | CSP с nonce, `html.escape()` в чате, санитизация PostgREST | Шаблоны, API, чат |
 | **Injection** | `sanitize_postgrest()`, whitelist-проверка | Все параметры PostgREST |
 | **Rate Limiting** | In-memory, per-IP, 10 запросов/60 сек | Критические POST-эндпоинты |
-| **Устойчивость** | Circuit Breaker (2 экземпляра), 5 ошибок → 30 сек | Все вызовы PostgREST (Amvera) |
+| **Устойчивость** | Circuit Breaker (2 экземпляра), 10 ошибок → 60 сек | Все вызовы PostgREST (Amvera) |
 | **Clickjacking** | `X-Frame-Options: DENY` | Все страницы |
 | **MIME sniffing** | `X-Content-Type-Options: nosniff` | Все ответы |
 | **Браузерные API** | `Permissions-Policy: camera=(), microphone=(), geolocation=self` | Все страницы |

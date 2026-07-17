@@ -1,19 +1,19 @@
-# Трудник – контекст проекта (актуально на 04.06.2026)
+# Трудник – контекст проекта (актуально на 17.07.2026)
 
 ## Краткое описание
 Веб-приложение для быстрого поиска временной подработки в религиозных организациях (храмы, церкви, мечети и т.д.).
 Работодатели (настоятели, администраторы) публикуют задания, а зарегистрированные трудники находят разовую работу.
 
 ## Технологический стек
-- **Backend**: Python 3.12 + Flask (Application Factory + Blueprints)
-- **База данных**: PostgreSQL на Amvera – PostgREST REST API + нативная JWT-аутентификация + локальное хранилище. Supabase не используется (устарело)
-- **Фронтенд**: HTML5 + Tailwind CSS (CDN) + Jinja2
+- **Backend**: Python 3.12 + Flask 3.1.3 (Application Factory + Blueprints)
+- **База данных**: PostgreSQL 17.6 + PostGIS (прод Amvera) / PostgreSQL 15 + PostGIS 3.4 (локально) — доступ ТОЛЬКО через PostgREST REST API (v14.10 прод / v12.2.3 локально) + нативная JWT-аутентификация + локальное хранилище. Supabase не используется (устарело)
+- **Фронтенд**: HTML5 + Tailwind CSS (precompiled `tailwind.min.css`) + Jinja2 3.1.6 + Vanilla JS (без React/TypeScript) + PWA
 - **Карты**: Яндекс.Карты (JavaScript API)
 - **Хостинг**: Docker-контейнер на Amvera / любая Docker-совместимая платформа
 - **Деплой**: Docker + GitHub, конфигурация в `Dockerfile`, `docker-compose.yml`, `amvera.yml`
 - **Версионирование**: Git (информация о коммите отображается при клике на иконку 🤝 в шапке)
 - **AI‑помощник**: веб-чат DeepSeek (открывается в браузере по адресу `http://localhost:11434`) – используется для генерации/правок кода и анализа ошибок
-- **Архитектура**: Flask Application Factory (`create_app()`) + 13 Blueprints
+- **Архитектура**: Flask Application Factory (`create_app()`) + ~19 Blueprints (включая 6 `admin_*`)
 
 ## Структура проекта (после рефакторинга)
 
@@ -32,7 +32,13 @@ app/
 ├── decorators.py             # Декораторы: login_required, role_required, validate_uuid
 ├── blueprints/
 │   ├── __init__.py
-│   ├── admin.py              # /admin — панель администратора
+│   ├── admin_dashboard.py     # /admin — дашборд (часть расщеплённого admin.py)
+│   ├── admin_users.py         # /admin — управление пользователями
+│   ├── admin_jobs.py          # /admin — управление заданиями
+│   ├── admin_verification.py  # /admin — верификация работодателей
+│   ├── admin_dictionaries.py  # /admin — справочники
+│   ├── admin_diagnostics.py   # /admin — диагностика
+│   ├── core.py                # /health, /ready, служебные маршруты
 │   ├── applications.py       # /apply, /my-applications, /api/applications/batch
 │   ├── auth.py               # /login, /register, /logout
 │   ├── blacklist.py          # /blacklist, /unblock
@@ -97,7 +103,7 @@ app/
 - `icons/` – иконки PWA
 
 ### Миграции (`migrations/`)
-Всего 64 миграции от `001_setup_rls.sql` до `064_update_accept_application.sql`. Применяются через `run_all_safe.sql`.
+Всего 126+ миграций (от `001_setup_rls.sql`). НЕ применяются автоматически при деплое; вручную: `MIGRATIONS_ENABLED=true python scripts/apply_migrations.py`. Учёт применённых — таблица `schema_migrations`.
 
 ## База данных (основные таблицы) — PostgreSQL на Amvera, Supabase не используется
 - **`profiles`** – пользователи (роль, навыки, вероисповедание, рейтинг, `photo_url`, `portfolio_link`)
@@ -130,12 +136,12 @@ app/
 - Миграции: RLS, max_workers, notifications, is_read
 
 ### ✅ Выполненный рефакторинг
-- Монолитная `app.py` разбита на 13 модульных Blueprint'ов
+- Монолитная `app.py` разбита на ~19 модульных Blueprint'ов (включая 6 `admin_*`)
 - Реализована фабрика приложения `create_app()` в `app/__init__.py`
 - Утилиты вынесены в `app/utils/`, декораторы в `app/decorators.py`
 - Сервисный слой выделен в `app/services/`
 - Фоновые задачи вынесены в `app/tasks/` (Celery)
-- Миграции упорядочены с префиксами `001_`—`063_`
+- Миграции упорядочены с префиксами `001_`… (126+ файлов)
 - Удалены дублирующиеся маршруты и скрипты
 - Все маршруты успешно зарегистрированы через Blueprints
 
@@ -192,7 +198,7 @@ app/
     - Кнопка «⭐ В избранное» в карточке трудника (на странице «Трудники»)
     - После выполнения задания – быстрая кнопка «Добавить в избранное» в отзыве
 
-### 🚀 Этап 5 – Монетизация и финальные штрихи
+### 🚀 Этап 5 – Монетизация и финальные штрихи _(⚠ монетизация ОТКЛЮЧЕНА: `MONETIZATION_ENABLED=false`)_
 15. **Количество людей в задании**
     - Поле «Требуется человек» (`max_workers`) при создании задания
     - При принятии отклика счётчик автоматически уменьшается
@@ -200,7 +206,7 @@ app/
 16. **Внутренние уведомления**
     - Колокольчик с количеством непрочитанных уведомлений
     - События: новый отклик, новое сообщение, приглашение, оценка
-17. **Монетизация**
+17. **Монетизация** _(ОТКЛЮЧЕНА, `MONETIZATION_ENABLED=false` — все функции бесплатны; ниже исходный план)_
     - Продумать механизм комиссии (например, 10% от суммы смены)
     - Добавить поле `commission_paid` в смену и логику списания
     - Пока без реальных платежей – только фиксация в интерфейсе
@@ -211,7 +217,7 @@ app/
 Проект использует контейнеризацию через Docker. Основные конфигурации в `Dockerfile`, `docker-compose.yml`, `amvera.yml`.
 
 ### Важные замечания
-- Приложение запускается через Uvicorn: `uvicorn asgi:application --host 0.0.0.0 --port 80`
+- Приложение запускается через Uvicorn: `uvicorn asgi:application --host 0.0.0.0 --port 8000 --workers 2` (единый процесс HTTP + WebSocket; Amvera мапит servicePort 80 → containerPort 8000)
 - Health check доступен по `/health`
 - Новые Blueprint'ы автоматически регистрируются в `app/__init__.py`
 - Все изменения в `app/blueprints/` не требуют дополнительных действий при деплое

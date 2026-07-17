@@ -10,4 +10,5 @@
 4. После DROP COLUMN сначала обнови код (перестань использовать колонку), потом деплой, потом миграция.
 5. Миграции, изменяющие схему (DROP, DELETE), применять ТОЛЬКО после деплоя обновлённого кода.
 6. Для RLS-политик используй current_setting('request.jwt.claim.app_role', true), НЕ 'request.jwt.claim.role'.
+7. Миграции НЕ запускаются автоматически при деплое (entrypoint.sh отключён). Применяй вручную после деплоя: `MIGRATIONS_ENABLED=true python scripts/apply_migrations.py`. Учёт применённых — таблица schema_migrations.
 ```
