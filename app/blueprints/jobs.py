@@ -130,12 +130,9 @@ def index():
     per_page = 20
     offset = (page - 1) * per_page
 
-    now = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
-
-    # Запрос только оплаченных открытых заданий (без detailed_description — тяжёлое поле)
+    # Все открытые/завершённые задания без исключения по сроку (истёкшие переводит
+    # в не-open cron expire_old_jobs). detailed_description опущен — тяжёлое поле.
     query = 'status=in.(open,completed)&select=id,employer_id,organization_name,org_description,object_description,work_type,date_time,payment_amount,address,city,lat,lng,status,created_at,preferred_religion,max_workers,current_workers,expires_at'
-    # Фильтр по сроку действия: не истёкшие задания (expires_at > now или без срока)
-    query += f'&or=(expires_at.is.null,expires_at=gt.{now})'
 
     # C38: Если монетизация включена — показываем только оплаченные задания
     if current_app.config.get('MONETIZATION_ENABLED', False):
@@ -208,8 +205,9 @@ def index():
             query += f'&or=({",".join(or_parts)})'
 
     # Определяем порядок сортировки на стороне БД
-    # C40: Boost для продвигаемых заданий — promoted_until.desc.nullslast в начале
-    base_order = 'promoted_until.desc.nullslast,'
+    # Boost продвигаемых заданий отключён (monetization off; колонка promoted_until
+    # может отсутствовать в проде — убираем, чтобы order не падал с 400).
+    base_order = ''
     if sort in ('payment_asc', 'price_asc'):
         order_clause = f'{base_order}payment_amount.asc'
     elif sort in ('payment_desc', 'price_desc'):
