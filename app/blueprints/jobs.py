@@ -118,9 +118,11 @@ def index():
     city = request.args.get('city', '')
     payment_min = parse_float(request.args.get('payment_min', ''), 'payment_min', min_val=0)
     payment_max = parse_float(request.args.get('payment_max', ''), 'payment_max', min_val=0)
-    lat = request.args.get('lat', type=float) or session.get('lat')
-    lng = request.args.get('lng', type=float) or session.get('lng')
-    radius = request.args.get('radius', 20, type=float)
+    # Гео-поиск — opt-in: только явные параметры. По умолчанию — ВСЕ открытые задания,
+    # без какой-либо автоматической фильтрации по расстоянию.
+    lat = request.args.get('lat', type=float)
+    lng = request.args.get('lng', type=float)
+    radius = request.args.get('radius', type=float)  # км; None = без ограничения (любое расстояние)
     sort = request.args.get('sort', 'newest')
     skills_filter = request.args.get('skills', '')
     religion = request.args.get('religion', '')
@@ -139,11 +141,14 @@ def index():
     if current_app.config.get('MONETIZATION_ENABLED', False):
         query += '&is_paid=eq.true'
 
-    # ── Гео-фильтрация через RPC nearby_jobs (серверная, PostGIS) ──
+    # ── Гео-поиск (opt-in) через RPC nearby_jobs ──
+    # Включается ТОЛЬКО когда пользователь явно указал локацию и радиус.
+    # Если в радиусе ничего нет или RPC недоступен — показываем ВСЕ задания (без бланка страницы),
+    # т.к. труднику всегда должны быть доступны все открытые задания.
     geo_job_distances = {}  # {job_id: distance_km}
     use_rpc_geo = False
 
-    if lat is not None and lng is not None and radius:
+    if lat is not None and lng is not None and radius is not None:
         try:
             rpc_resp = postgrest_rpc('nearby_jobs', {
                 'p_lat': lat,
@@ -152,31 +157,23 @@ def index():
             }, use_admin=True)
             if rpc_resp.ok and rpc_resp.json() is not None:
                 rpc_jobs = rpc_resp.json()
-                if not rpc_jobs:
-                    # RPC вернул пустой список — заданий в радиусе нет
-                    selected_skills_list = [s.strip() for s in skills_filter.split(',') if s.strip()] if skills_filter else []
-                    return render_template('index.html', jobs=[], applied_job_ids=[],
-                                           lat=lat, lng=lng, radius=radius, sort=sort,
-                                           selected_skills=selected_skills_list,
-                                           page=page, has_next=False)
-                # Извлекаем ID и расстояния из ответа RPC
-                for job in rpc_jobs:
-                    job_id = job.get('id')
-                    if job_id:
-                        if job.get('lat') is not None and job.get('lng') is not None:
-                            geo_job_distances[job_id] = calculate_distance(lat, lng, job['lat'], job['lng'])
-                        else:
-                            geo_job_distances[job_id] = float('inf')
-                use_rpc_geo = True
+                if isinstance(rpc_jobs, list) and rpc_jobs:
+                    for job in rpc_jobs:
+                        if not isinstance(job, dict):
+                            continue
+                        job_id = job.get('id')
+                        if job_id:
+                            if job.get('lat') is not None and job.get('lng') is not None:
+                                geo_job_distances[job_id] = calculate_distance(lat, lng, job['lat'], job['lng'])
+                            else:
+                                geo_job_distances[job_id] = float('inf')
+                    use_rpc_geo = True
             else:
                 current_app.logger.warning(
-                    'nearby_jobs RPC unavailable (status=%s), falling back to client-side geo-filter',
-                    rpc_resp.status_code
-                )
+                    'nearby_jobs RPC unavailable (status=%s), showing all jobs',
+                    rpc_resp.status_code)
         except Exception as e:
-            current_app.logger.warning(
-                'nearby_jobs RPC failed, falling back to client-side geo-filter: %s', str(e)
-            )
+            current_app.logger.warning('nearby_jobs RPC failed, showing all jobs: %s', str(e))
 
     # Если RPC сработал — ограничиваем выборку только заданиями в радиусе
     if use_rpc_geo and geo_job_distances:
@@ -225,12 +222,11 @@ def index():
     resp = postgrest_request('GET', f'jobs?{query}&order={order_clause}&limit={per_page + 1}&offset={offset}')
     jobs = resp.json() if resp.ok else []
 
-    # Гео-фильтрация в Python (fallback, если RPC не сработал)
+    # Гео: фильтрация — только через RPC (use_rpc_geo). В fallback лишь считаем расстояние
+    # для сортировки, но НЕ отсекаем задания по радиусу — трудник видит все открытые задания.
     if not use_rpc_geo and lat is not None and lng is not None:
         for job in jobs:
             job['distance'] = calculate_distance(lat, lng, job['lat'], job['lng'])
-        if radius:
-            jobs = [j for j in jobs if j.get('distance', float('inf')) <= radius]
     elif use_rpc_geo and geo_job_distances:
         # Проставляем расстояния из словаря, полученного от RPC
         for job in jobs:

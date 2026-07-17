@@ -20,6 +20,24 @@
         </div>
     </div>
 
+    <!-- Гео-поиск (опциональный): радиус без верхнего предела -->
+    <div class="flex items-center gap-2 mb-4 flex-wrap">
+        <button type="button" id="geo-nearby-btn" class="px-3 py-2 rounded-full text-sm font-medium bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50 transition-colors">
+            📍 Рядом со мной
+        </button>
+        <select id="geo-radius" class="px-3 py-2 rounded-full text-sm bg-white border border-neutral-200 text-neutral-700" aria-label="Радиус поиска">
+            <option value="" {% if not radius %}selected{% endif %}>Любое расстояние</option>
+            <option value="5" {% if radius == 5 %}selected{% endif %}>до 5 км</option>
+            <option value="10" {% if radius == 10 %}selected{% endif %}>до 10 км</option>
+            <option value="25" {% if radius == 25 %}selected{% endif %}>до 25 км</option>
+            <option value="50" {% if radius == 50 %}selected{% endif %}>до 50 км</option>
+            <option value="100" {% if radius == 100 %}selected{% endif %}>до 100 км</option>
+            <option value="500" {% if radius == 500 %}selected{% endif %}>до 500 км</option>
+            <option value="2000" {% if radius == 2000 %}selected{% endif %}>2000+ км</option>
+        </select>
+        {% if lat and lng %}<a href="{{ request.path }}" class="text-xs text-neutral-500 hover:text-neutral-700 underline underline-offset-2">сбросить гео</a>{% endif %}
+    </div>
+
     {% if session.get('role') == 'worker' %}
     <!-- Filter buttons -->
     <div class="flex gap-2 mb-4">
@@ -257,5 +275,26 @@ document.addEventListener('click', function(e) {
         return;
     }
 });
+
+// ==========================================
+// Гео-поиск "Рядом со мной" (опциональный, радиус без верхнего предела)
+// ==========================================
+(function() {
+    var btn = document.getElementById('geo-nearby-btn');
+    if (!btn) return;
+    btn.addEventListener('click', function() {
+        if (!navigator.geolocation) { window.showToast && window.showToast('Геолокация недоступна', 'warning'); return; }
+        var original = btn.textContent;
+        btn.disabled = true; btn.textContent = 'Определяем…';
+        navigator.geolocation.getCurrentPosition(function(pos) {
+            var r = document.getElementById('geo-radius').value;
+            var url = '/?lat=' + pos.coords.latitude + '&lng=' + pos.coords.longitude + (r ? '&radius=' + encodeURIComponent(r) : '') + '&sort=distance';
+            window.location.href = url;
+        }, function() {
+            btn.disabled = false; btn.textContent = original;
+            window.showToast && window.showToast('Не удалось определить местоположение', 'warning');
+        }, { timeout: 10000, maximumAge: 60000 });
+    });
+})();
 </script>
 {% endblock %}
