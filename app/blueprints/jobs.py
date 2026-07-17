@@ -146,9 +146,9 @@ def index():
     if lat is not None and lng is not None and radius:
         try:
             rpc_resp = postgrest_rpc('nearby_jobs', {
-                'lat': lat,
-                'lng': lng,
-                'radius_km': radius,
+                'p_lat': lat,
+                'p_lng': lng,
+                'p_radius_meters': radius * 1000,
             }, use_admin=True)
             if rpc_resp.ok and rpc_resp.json() is not None:
                 rpc_jobs = rpc_resp.json()

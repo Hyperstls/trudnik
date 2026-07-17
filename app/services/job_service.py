@@ -209,9 +209,9 @@ def search_jobs(filters: Dict[str, Any]) -> Dict[str, Any]:
     if lat is not None and lng is not None:
         try:
             rpc_resp = postgrest_rpc('nearby_jobs', {
-                'lat': lat,
-                'lng': lng,
-                'radius_km': radius,
+                'p_lat': lat,
+                'p_lng': lng,
+                'p_radius_meters': radius * 1000,
             })
             if rpc_resp.ok and rpc_resp.json():
                 jobs_list = rpc_resp.json()
