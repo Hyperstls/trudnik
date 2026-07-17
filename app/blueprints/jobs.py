@@ -130,12 +130,12 @@ def index():
     per_page = 20
     offset = (page - 1) * per_page
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
 
     # Запрос только оплаченных открытых заданий (без detailed_description — тяжёлое поле)
     query = 'status=in.(open,completed)&select=id,employer_id,organization_name,org_description,object_description,work_type,date_time,payment_amount,address,city,lat,lng,status,created_at,preferred_religion,max_workers,current_workers,expires_at'
     # Фильтр по сроку действия: не истёкшие задания (expires_at > now или без срока)
-    query += f'&or=(expires_at.is.null,expires_at=gt.{sanitize_postgrest(now)})'
+    query += f'&or=(expires_at.is.null,expires_at=gt.{now})'
 
     # C38: Если монетизация включена — показываем только оплаченные задания
     if current_app.config.get('MONETIZATION_ENABLED', False):
