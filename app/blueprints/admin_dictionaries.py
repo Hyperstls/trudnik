@@ -32,10 +32,10 @@ def get_skills():
 @admin_required
 def add_skill():
     try:
-        name = request.form.get('name', '').strip()
+        data = request.get_json(silent=True) or {}
+        name = (request.form.get('name', '') or data.get('name', '') or '').strip()
         if not name:
-            flash('Название навыка не может быть пустым', 'danger')
-            return redirect(url_for('admin_dashboard.admin_panel', tab='skills'))
+            return jsonify({'success': False, 'error': 'Название навыка не может быть пустым'})
         max_order = 0
         existing = postgrest_admin_request('GET', 'skills?select=sort_order&order=sort_order.desc&limit=1')
         if not existing.ok:
@@ -43,25 +43,14 @@ def add_skill():
         if existing.ok and existing.json():
             item = existing.json()[0] if existing.json() else {}
             max_order = item.get('sort_order', 0)
-        current_app.logger.debug('add_skill: before POST')
         resp = postgrest_admin_request('POST', 'skills', json={'name': name, 'sort_order': max_order + 1})
-
-        current_app.logger.debug('add_skill: POST skills status=%s, ok=%s, text="%s"',
-                                 resp.status_code, resp.ok, resp.text[:200])
-
         if resp.ok:
-            flash(f'Навык «{name}» добавлен', 'success')
-        else:
-            current_app.logger.error(
-                'add_skill: PostgREST error (status %s): %s',
-                resp.status_code, resp.text
-            )
-            flash(safe_error_message(resp, 'Ошибка при добавлении навыка'), 'danger')
+            return jsonify({'success': True})
+        current_app.logger.error('add_skill: PostgREST error (status %s): %s', resp.status_code, resp.text)
+        return jsonify({'success': False, 'error': safe_error_message(resp, 'Ошибка при добавлении навыка')})
     except Exception as e:
-        current_app.logger.debug('add_skill EXCEPTION: %s', e)
         current_app.logger.exception('add_skill: unexpected error')
-        flash(f'Ошибка: {str(e)}', 'danger')
-    return redirect(url_for('admin_dashboard.admin_panel', tab='skills'))
+        return jsonify({'success': False, 'error': str(e)})
 
 
 @admin_dictionaries_bp.route('/skills/reorder', methods=['POST'])
@@ -182,53 +171,30 @@ def get_religions():
 @admin_required
 def add_religion():
     try:
-        name = request.form.get('name', '').strip()
+        data = request.get_json(silent=True) or {}
+        name = (request.form.get('name', '') or data.get('name', '') or '').strip()
         if not name:
-            flash('Название вероисповедания не может быть пустым', 'danger')
-            return redirect(url_for('admin_dashboard.admin_panel', tab='religions'))
+            return jsonify({'success': False, 'error': 'Название вероисповедания не может быть пустым'})
         max_order = 0
         existing = postgrest_admin_request('GET', 'religions?select=sort_order&order=sort_order.desc&limit=1')
         if not existing.ok:
             if is_circuit_open(existing):
-                flash('Сервис временно недоступен. Попробуйте позже.', 'danger')
-                current_app.logger.warning('add_religion: circuit breaker open, skipping GET fallback')
-                return redirect(url_for('admin_dashboard.admin_panel', tab='religions'))
-            current_app.logger.warning(
-                'add_religion: GET max_order failed (status %s), using default 0',
-                existing.status_code
-            )
+                return jsonify({'success': False, 'error': 'Сервис временно недоступен. Попробуйте позже.'})
+            current_app.logger.warning('add_religion: GET max_order failed (status %s), using default 0', existing.status_code)
         elif existing.json():
             item = existing.json()[0] if existing.json() else {}
             max_order = item.get('sort_order', 0)
 
-        current_app.logger.debug('add_religion: before POST')
         resp = postgrest_admin_request('POST', 'religions', json={'name': name, 'sort_order': max_order + 1})
-
-        current_app.logger.debug('add_religion: POST religions status=%s, ok=%s, text="%s"',
-                                 resp.status_code, resp.ok, resp.text[:200])
-
         if resp.ok:
-            flash(f'Вероисповедание «{name}» добавлено', 'success')
-        elif is_circuit_open(resp):
-            flash('Сервис временно недоступен. Попробуйте позже.', 'danger')
-            current_app.logger.warning('add_religion: circuit breaker open, POST not executed')
-        elif resp.status_code == 0:
-            flash('Сервер PostgREST не отвечает. Попробуйте позже.', 'danger')
-            current_app.logger.error(
-                'add_religion: PostgREST timeout/network error (status 0): %s',
-                resp.text
-            )
-        else:
-            current_app.logger.error(
-                'add_religion: PostgREST error (status %s): %s',
-                resp.status_code, resp.text
-            )
-            flash(safe_error_message(resp, 'Ошибка при добавлении вероисповедания'), 'danger')
+            return jsonify({'success': True})
+        if is_circuit_open(resp):
+            return jsonify({'success': False, 'error': 'Сервис временно недоступен. Попробуйте позже.'})
+        current_app.logger.error('add_religion: PostgREST error (status %s): %s', resp.status_code, resp.text)
+        return jsonify({'success': False, 'error': safe_error_message(resp, 'Ошибка при добавлении вероисповедания')})
     except Exception as e:
-        current_app.logger.debug('add_religion EXCEPTION: %s', e)
         current_app.logger.exception('add_religion: unexpected error')
-        flash(f'Ошибка: {str(e)}', 'danger')
-    return redirect(url_for('admin_dashboard.admin_panel', tab='religions'))
+        return jsonify({'success': False, 'error': str(e)})
 
 
 @admin_dictionaries_bp.route('/religions/reorder', methods=['POST'])
