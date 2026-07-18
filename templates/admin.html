@@ -469,7 +469,7 @@ function setupBulkDelete(config) {
                 bulkBtn.textContent = 'Удаление...';
                 var payload = {};
                 payload[config.payloadKey] = ids;
-                fetch(config.endpoint, {
+                apiFetch(config.endpoint, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
@@ -543,7 +543,7 @@ async function moveSkill(index, direction, targetIndex) {
     const items = skillsData.map((s, i) => ({id: s.id, sort_order: i + 1}));
     renderSkills();
     try {
-        await fetch('/admin/skills/reorder', {
+        await apiFetch('/admin/skills/reorder', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({items})
@@ -556,34 +556,36 @@ async function addSkill() {
     const name = input.value.trim();
     if (!name) return;
     try {
-        const resp = await fetch('/admin/skills', {
+        const resp = await apiFetch('/admin/skills', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({name})
         });
-        if ((await resp.json()).success) { input.value = ''; loadSkills(); }
-    } catch (e) {}
+        const data = await resp.json();
+        if (data.success) { input.value = ''; loadSkills(); }
+        else if (window.showToast) { window.showToast('Ошибка: ' + (data.error || resp.status), 'error'); }
+    } catch (e) { if (window.showToast) window.showToast('Ошибка сети при добавлении навыка', 'error'); }
 }
 
 async function saveSkill(id) {
     const input = document.querySelector(`#skill-${id} .skill-edit`);
     if (!input) return;
     try {
-        await fetch(`/admin/skills/${id}`, {
+        await apiFetch(`/admin/skills/${id}`, {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({name: input.value.trim()})
         });
         if (window.showToast) window.showToast('Сохранено', 'success');
-    } catch (e) {}
+    } catch (e) { if (window.showToast) window.showToast('Ошибка при сохранении', 'error'); }
 }
 
 async function removeSkill(id) {
     window.showConfirm('Удалить навык?', async function() {
         try {
-            await fetch(`/admin/skills/${id}`, { method: 'DELETE' });
+            await apiFetch(`/admin/skills/${id}`, { method: 'DELETE' });
             loadSkills();
-        } catch (e) {}
+        } catch (e) { if (window.showToast) window.showToast('Ошибка при удалении', 'error'); }
     });
 }
 loadSkills();
@@ -697,7 +699,7 @@ async function moveReligion(index, direction, targetIndex) {
     const items = religionsData.map((r, i) => ({id: r.id, sort_order: i + 1}));
     renderReligions();
     try {
-        await fetch('/admin/religions/reorder', {
+        await apiFetch('/admin/religions/reorder', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({items})
@@ -710,34 +712,36 @@ async function addReligion() {
     const name = input.value.trim();
     if (!name) return;
     try {
-        const resp = await fetch('/admin/religions', {
+        const resp = await apiFetch('/admin/religions', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({name})
         });
-        if ((await resp.json()).success) { input.value = ''; loadReligions(); }
-    } catch (e) {}
+        const data = await resp.json();
+        if (data.success) { input.value = ''; loadReligions(); }
+        else if (window.showToast) { window.showToast('Ошибка: ' + (data.error || resp.status), 'error'); }
+    } catch (e) { if (window.showToast) window.showToast('Ошибка сети при добавлении', 'error'); }
 }
 
 async function saveReligion(id) {
     const input = document.querySelector(`#religion-${id} .religion-edit`);
     if (!input) return;
     try {
-        await fetch(`/admin/religions/${id}`, {
+        await apiFetch(`/admin/religions/${id}`, {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({name: input.value.trim()})
         });
         if (window.showToast) window.showToast('Сохранено', 'success');
-    } catch (e) {}
+    } catch (e) { if (window.showToast) window.showToast('Ошибка при сохранении', 'error'); }
 }
 
 async function removeReligion(id) {
     window.showConfirm('Удалить вероисповедание?', async function() {
         try {
-            await fetch(`/admin/religions/${id}`, { method: 'DELETE' });
+            await apiFetch(`/admin/religions/${id}`, { method: 'DELETE' });
             loadReligions();
-        } catch (e) {}
+        } catch (e) { if (window.showToast) window.showToast('Ошибка при удалении', 'error'); }
     });
 }
 loadReligions();
@@ -870,10 +874,10 @@ loadStats();
             window.showConfirm(confirmMsg, function() {
                 bulkBtnUsers.disabled = true;
                 bulkBtnUsers.textContent = 'Удаление...';
-                fetch('/admin/bulk-delete-users', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({user_ids: ids})
+                apiFetch('/admin/bulk-delete-users', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({user_ids: ids})
                 })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
@@ -948,10 +952,10 @@ loadStats();
             window.showConfirm(confirmMsg, function() {
                 bulkBtnJobs.disabled = true;
                 bulkBtnJobs.textContent = 'Удаление...';
-                fetch('/admin/bulk-delete-jobs', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({job_ids: ids})
+                apiFetch('/admin/bulk-delete-jobs', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({job_ids: ids})
                 })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
