@@ -338,18 +338,36 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
             _apply_migration('126_fix_profiles_search_trigger.sql')
             healed.append('search_trigger')
 
-        # 5) Auth RPC (register_user/login_user/change_password) используют pgcrypto
-        #    (gen_salt/crypt в public), но созданы с SET search_path = '' ->
-        #    регистрация падает "function gen_salt does not exist" — миграция 130.
+        # 5) Auth/cascade RPC (register_user, login_user, change_password,
+        #    delete_user_cascade, delete_job_cascade) используют pgcrypto и/или
+        #    ссылаются на таблицы без schema-квалификации, но созданы с
+        #    SET search_path = '' -> регистрация и удаление падают — миграция 130.
         cur.execute(
-            "SELECT coalesce(array_to_string(proconfig, ','), '') "
-            "FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace "
-            "WHERE p.proname = 'register_user' AND n.nspname = 'public'"
+            "SELECT count(*) FROM pg_proc p "
+            "JOIN pg_namespace n ON n.oid = p.pronamespace "
+            "WHERE p.proname IN ('register_user', 'delete_user_cascade', 'delete_job_cascade') "
+            "AND n.nspname = 'public' "
+            "AND coalesce(array_to_string(proconfig, ','), '') NOT LIKE '%pg_catalog%'"
         )
-        if 'pg_catalog' not in (cur.fetchone()[0] or ''):
-            logger.warning('self-heal: register_user без pg_catalog в search_path — миграция 130')
+        if int(cur.fetchone()[0]) > 0:
+            logger.warning('self-heal: auth/cascade RPC без pg_catalog в search_path — миграция 130')
             _apply_migration('130_fix_auth_rpc_pgcrypto_search_path.sql')
             healed.append('auth_rpc_search_path')
+
+        # 6) delete_user_cascade ссылается на несуществующие колонки (rater_id/payer_id/
+        #    receiver_id/favorites.employer_id) -> удаление пользователя падает — миграция 131.
+        cur.execute(
+            "SELECT count(*) FROM pg_proc p "
+            "JOIN pg_namespace n ON n.oid = p.pronamespace "
+            "WHERE p.proname = 'delete_user_cascade' AND n.nspname = 'public' "
+            "AND (pg_get_functiondef(p.oid) LIKE '%payer_id%' "
+            "  OR pg_get_functiondef(p.oid) LIKE '%receiver_id%' "
+            "  OR pg_get_functiondef(p.oid) LIKE '%rater_id %')"
+        )
+        if int(cur.fetchone()[0]) > 0:
+            logger.warning('self-heal: delete_user_cascade с битыми колонками — миграция 131')
+            _apply_migration('131_fix_delete_user_cascade_favorites.sql')
+            healed.append('delete_user_cascade')
 
         if healed:
             logger.warning('self-heal: восстановлено — %s', ', '.join(healed))

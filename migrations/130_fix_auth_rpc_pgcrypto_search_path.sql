@@ -19,3 +19,11 @@
 ALTER FUNCTION public.register_user(text, text, text, text) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.login_user(text, text) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.change_password(uuid, text, text) SET search_path = pg_catalog, public;
+
+-- Same class of bug: delete_user_cascade / delete_job_cascade were created with
+-- SET search_path = '' but reference tables UNQUALIFIED (applications, notifications,
+-- favorites, ...). With an empty search_path PostgreSQL can't resolve them, so admin
+-- user/job deletion fails ("relation does not exist"). delete_user_cascade also calls
+-- delete_job_cascade() unqualified (employer branch).
+ALTER FUNCTION public.delete_user_cascade(uuid) SET search_path = pg_catalog, public;
+ALTER FUNCTION public.delete_job_cascade(uuid) SET search_path = pg_catalog, public;
