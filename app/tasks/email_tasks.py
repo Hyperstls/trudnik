@@ -92,6 +92,7 @@ def send_email_notification(
     notification_text: str,
     notification_type: str,
     notification_url: str = "",
+    _request_id: str | None = None,
 ) -> dict[str, Any]:
     """Отправляет email-уведомление пользователю.
 
