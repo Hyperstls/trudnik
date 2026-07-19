@@ -253,6 +253,12 @@ def register():
                     'portfolio_link': portfolio_link,
                     'consented_at': datetime.now(timezone.utc).isoformat(),
                 }
+                religion_id = request.form.get('religion_id', '').strip()
+                if religion_id:
+                    try:
+                        update_data['religion_id'] = str(_uuid.UUID(religion_id))
+                    except (ValueError, AttributeError):
+                        pass
                 if role == 'worker':
                     if inn:
                         update_data['inn'] = inn
@@ -302,17 +308,22 @@ def register():
                 verification_token = _generate_email_verification_token(email)
                 verification_url = url_for('auth.verify_email', token=verification_token, _external=True)
 
-                # Асинхронная отправка через Celery
-                from app.tasks.email_tasks import send_email_notification
-                send_email_notification.delay(
-                    user_id=str(user_id),
-                    notification_id=0,
-                    user_email=email,
-                    user_name=full_name,
-                    notification_text=f'Для подтверждения email перейдите по ссылке:\n\n{verification_url}\n\nСсылка действительна 24 часа.',
-                    notification_type='email_verification',
-                    notification_url=verification_url
-                )
+                # Асинхронная отправка через Celery.
+                # Сбой постановки письма в очередь НЕ должен ломать регистрацию —
+                # пользователь уже создан и сможет войти; письмо можно отправить позже.
+                try:
+                    from app.tasks.email_tasks import send_email_notification
+                    send_email_notification.delay(
+                        user_id=str(user_id),
+                        notification_id=0,
+                        user_email=email,
+                        user_name=full_name,
+                        notification_text=f'Для подтверждения email перейдите по ссылке:\n\n{verification_url}\n\nСсылка действительна 24 часа.',
+                        notification_type='email_verification',
+                        notification_url=verification_url
+                    )
+                except Exception as email_err:
+                    log.warning('Не удалось поставить в очередь письмо подтверждения для %s: %s', email, email_err, exc_info=True)
 
                 flash('Регистрация успешна. Проверьте почту для подтверждения email.', 'info')
                 return redirect(url_for('auth.login'))
