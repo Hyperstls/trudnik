@@ -338,6 +338,19 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
             _apply_migration('126_fix_profiles_search_trigger.sql')
             healed.append('search_trigger')
 
+        # 5) Auth RPC (register_user/login_user/change_password) используют pgcrypto
+        #    (gen_salt/crypt в public), но созданы с SET search_path = '' ->
+        #    регистрация падает "function gen_salt does not exist" — миграция 130.
+        cur.execute(
+            "SELECT coalesce(array_to_string(proconfig, ','), '') "
+            "FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace "
+            "WHERE p.proname = 'register_user' AND n.nspname = 'public'"
+        )
+        if 'pg_catalog' not in (cur.fetchone()[0] or ''):
+            logger.warning('self-heal: register_user без pg_catalog в search_path — миграция 130')
+            _apply_migration('130_fix_auth_rpc_pgcrypto_search_path.sql')
+            healed.append('auth_rpc_search_path')
+
         if healed:
             logger.warning('self-heal: восстановлено — %s', ', '.join(healed))
             return {'status': 'healed', 'restored': healed}
