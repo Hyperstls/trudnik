@@ -98,7 +98,7 @@ class Config:
     # ═══════════════════════════════════════════════════════════
     SMTP_HOST = os.environ.get('SMTP_HOST', 'localhost')
     SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
-    SMTP_USER = os.environ.get('SMTP_USERNAME', '')
+    SMTP_USER = os.environ.get('SMTP_USER') or os.environ.get('SMTP_USERNAME', '')
     SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
     SMTP_USE_TLS = os.environ.get('SMTP_USE_TLS', 'True').lower() in ('true', '1', 'yes')
     SMTP_USE_SSL = os.environ.get('SMTP_USE_SSL', 'False').lower() in ('true', '1', 'yes')
