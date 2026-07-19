@@ -46,7 +46,7 @@ class EmailService:
         # SMTP-настройки (значения по умолчанию из os.environ, можно переопределить через параметры)
         self._smtp_host: str = smtp_host if smtp_host is not None else os.environ.get("SMTP_HOST", "localhost")
         self._smtp_port: int = smtp_port if smtp_port is not None else int(os.environ.get("SMTP_PORT", "587"))
-        self._smtp_user: str = smtp_user if smtp_user is not None else os.environ.get("SMTP_USERNAME", "")
+        self._smtp_user: str = smtp_user if smtp_user is not None else (os.environ.get("SMTP_USER") or os.environ.get("SMTP_USERNAME", ""))
         self._smtp_password: str = smtp_password if smtp_password is not None else os.environ.get("SMTP_PASSWORD", "")
         self._smtp_use_tls: bool = smtp_use_tls if smtp_use_tls is not None else os.environ.get("SMTP_USE_TLS", "True").lower() in ("true", "1", "yes")
         self._smtp_use_ssl: bool = smtp_use_ssl if smtp_use_ssl is not None else os.environ.get("SMTP_USE_SSL", "False").lower() in ("true", "1", "yes")
