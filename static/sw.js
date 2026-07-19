@@ -1,5 +1,5 @@
-const CACHE_VERSION = 'trudnik-v5';
-const CACHE_NAME = 'trudnik-v5';
+const CACHE_VERSION = 'trudnik-v6';
+const CACHE_NAME = 'trudnik-v6';
 const PRECACHE_URLS = [
   '/',
   '/offline',
@@ -73,7 +73,7 @@ self.addEventListener('fetch', event => {
     // Service Worker не должен кэшировать этот ответ, иначе браузер показывает
     // "Navigation error — server is reachable but request failed" из-за конфликта
     // между SW fetch и Set-Cookie очисткой сессии.
-    if (url.pathname.startsWith('/admin') || url.pathname.startsWith('/logout')) {
+    if (url.pathname.startsWith('/admin') || url.pathname.startsWith('/logout') || url.pathname.startsWith('/verify-email') || url.pathname.startsWith('/password-reset')) {
       return;
     }
     event.respondWith(
