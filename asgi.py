@@ -7,7 +7,7 @@ from app import create_app
 from websocket_server.main import app as ws_app
 
 flask_app = create_app()
-flask_asgi = WSGIMiddleware(flask_app, workers=50)
+flask_asgi = WSGIMiddleware(flask_app, workers=15)
 
 
 class RouterMiddleware:

@@ -245,6 +245,7 @@ def send_email_notification(
 def send_batch_email_notifications(
     self: Task,
     recipients: list[dict[str, Any]],
+    _request_id: str | None = None,
 ) -> dict[str, Any]:
     """Диспатчит email-уведомления списку получателей параллельно через celery.group.
 

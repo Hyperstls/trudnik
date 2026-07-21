@@ -120,16 +120,15 @@ def health_check():
 
 @core_bp.route('/ready')
 def ready_check():
-    """Readiness check: возвращает 503 если PostgREST недоступен."""
+    """Readiness check: возвращает 503 если PostgREST или Redis недоступен."""
     from app.config import Config
     import requests as req_lib
+    from app.utils.redis_client import get_redis_client
 
     url = f"{Config.POSTGREST_URL}/profiles?select=id&limit=1"
     try:
         resp = req_lib.get(url, timeout=5)
-        if resp.ok:
-            return jsonify({'status': 'ready'}), 200
-        else:
+        if not resp.ok:
             return jsonify({
                 'status': 'not ready',
                 'reason': f'PostgREST returned {resp.status_code}'
@@ -137,8 +136,24 @@ def ready_check():
     except req_lib.RequestException as e:
         return jsonify({
             'status': 'not ready',
-            'reason': str(e)
+            'reason': f'PostgREST: {e}'
         }), 503
+
+    # Redis check — без Redis не работают уведомления, self-heal, WS
+    try:
+        rc = get_redis_client()
+        if rc is None or not rc.ping():
+            return jsonify({
+                'status': 'not ready',
+                'reason': 'Redis unavailable'
+            }), 503
+    except Exception as e:
+        return jsonify({
+            'status': 'not ready',
+            'reason': f'Redis: {e}'
+        }), 503
+
+    return jsonify({'status': 'ready'}), 200
 
 
 @core_bp.route('/health/circuit-breaker')

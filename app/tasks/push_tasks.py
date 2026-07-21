@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=30)
-def send_push_notification(self, user_id: str, notification_data: dict) -> dict:
+def send_push_notification(self, user_id: str, notification_data: dict, _request_id: str | None = None) -> dict:
     """Отправляет push-уведомление пользователю через Web Push API.
 
     Args:

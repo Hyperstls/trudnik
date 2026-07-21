@@ -281,6 +281,12 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
         conn.autocommit = True
         cur = conn.cursor()
 
+        # Advisory lock — предотвращает гонку двух одновременных self-heal циклов
+        cur.execute("SELECT pg_try_advisory_lock(42123)")
+        if not bool(cur.fetchone()[0]):
+            logger.debug('self-heal: другой цикл уже выполняется (advisory lock занят) — пропуск')
+            return {'status': 'skipped', 'reason': 'advisory_lock_busy'}
+
         # 1) Гранты ролей PostgREST (миграция 123) — без них PostgREST 403 на всём.
         #    CREATE ROLE/GRANT требуют суперпользователя, поэтому чиним только при наличии admin_url.
         cur.execute("SELECT pg_has_role('trudnikapp','authenticated','member')")

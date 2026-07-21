@@ -84,7 +84,7 @@ class Config:
     SESSION_COOKIE_SECURE = os.environ.get('DEPLOYMENT_ENV', 'development') in ('production', 'staging')
     SESSION_COOKIE_SAMESITE = 'Strict'  # Защита от CSRF
     SESSION_COOKIE_NAME = 'trudnik_session'
-    PERMANENT_SESSION_LIFETIME = 86400  # 24 часа (в секундах)
+    PERMANENT_SESSION_LIFETIME = 3600  # 1 час (было 24ч — снижено для security)
 
     # ═══════════════════════════════════════════════════════════
     # Инфраструктура реального времени (уведомления v2)
