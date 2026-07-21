@@ -1,4 +1,3 @@
-import os
 import uuid as _uuid
 import logging
 import re
@@ -8,11 +7,19 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 
 from app.config import Config
 from app.decorators import rate_limit
-from app.utils import postgrest_admin_request, postgrest_public_rpc, postgrest_request, postgrest_rpc
-from app.utils.auth import generate_jwt
+from app.utils import postgrest_admin_request, postgrest_request, postgrest_rpc
+from app.utils.auth import generate_jwt, login_user_session
 from app.utils.redis_client import get_redis_client
 from app.utils.security import has_sql_injection
 from app.utils.validators import validate_password, validate_inn_checksum
+from app.services.auth_service import (
+    login_direct_sql,
+    login_postgrest,
+    get_db_url,
+    is_login_locked_out,
+    increment_login_attempts,
+    clear_login_attempts,
+)
 
 auth_bp = Blueprint('auth', __name__)
 log = logging.getLogger(__name__)
@@ -54,226 +61,91 @@ def _generate_jwt(user_id: str, role: str) -> str:
     return generate_jwt(user_id, role)
 
 
-def _login_user_session(user_id: str, role: str, email: str) -> None:
-    """Сохранить данные пользователя в сессии после успешного логина."""
-    session.permanent = True
-    session['access_token'] = _generate_jwt(user_id, role)
-    session['refresh_token'] = 'jwt'  # для совместимости с refresh_access_token
-    session['user_id'] = user_id
-    session['role'] = role
-    session['email'] = email
-    session.modified = True
-
 # Максимальные длины полей
 _MAX_NAME_LENGTH = 150
 _MAX_CITY_LENGTH = 100
 _MAX_EMAIL_LENGTH = 254  # RFC 5321
 
-
-def _get_db_url():
-    """Получить URL для прямого подключения к PostgreSQL (как в admin.py reset_users).
-
-    Приоритет:
-    1. DATABASE_URL из переменных окружения
-    2. PGDATABASE_URL
-    3. Config.DATABASE_URL (собранный из PGUSER/PGPASSWORD/PGHOST/PGPORT/PGDATABASE)
-    4. Отдельные переменные PGUSER/PGPASSWORD/PGHOST/PGPORT/PGDATABASE
-    """
-    db_url = os.environ.get('DATABASE_URL') or os.environ.get('PGDATABASE_URL', '')
-    if db_url:
-        log.debug("login: using DATABASE_URL from env: %s",
-                  db_url[:db_url.index('@') + 1] + '***' if '@' in db_url else db_url)
-        return db_url
-    # Fallback на Config.DATABASE_URL (собирается из отдельных PG-переменных)
-    config_url = Config.DATABASE_URL
-    if config_url:
-        log.debug("login: using Config.DATABASE_URL: %s",
-                  config_url[:config_url.index('@') + 1] + '***' if '@' in config_url else config_url)
-        return config_url
-    # Последняя попытка — собрать из отдельных переменных
-    pg_user = os.environ.get('PGUSER', '')
-    pg_password = os.environ.get('PGPASSWORD', '')
-    pg_host = os.environ.get('PGHOST', '')
-    pg_port = os.environ.get('PGPORT', '5432')
-    pg_database = os.environ.get('PGDATABASE', '')
-    if all([pg_user, pg_password, pg_host, pg_database]):
-        return f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_database}"
-    log.warning("login: no DATABASE_URL configured (env DATABASE_URL, PGDATABASE_URL, "
-                "or PGUSER/PGPASSWORD/PGHOST/PGDATABASE)")
-    return ''
-
-def _login_direct_sql(email: str, password: str) -> dict | None:
-    """Проверить email/password через прямое SQL-подключение (в обход PostgREST RPC).
-
-    Использует pgcrypto crypt() для проверки хеша пароля.
-    Возвращает dict с {user_id, email, role, full_name} или None при ошибке/неверном пароле.
-
-    При ошибке подключения выбрасывает исключение с понятным описанием,
-    чтобы вызывающий код мог попробовать fallback (PostgREST).
-    """
-    db_url = _get_db_url()
-    if not db_url:
-        raise RuntimeError(
-            "DATABASE_URL не задан. Установите переменную окружения DATABASE_URL "
-            "или PGUSER/PGPASSWORD/PGHOST/PGPORT/PGDATABASE."
-        )
-    try:
-        import psycopg2
-        conn = psycopg2.connect(db_url, connect_timeout=10)
-        conn.autocommit = True
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT id, email, role, full_name
-            FROM profiles
-            WHERE email = %s AND password_hash = crypt(%s, password_hash)
-        """, (email, password))
-        row = cur.fetchone()
-        cur.close()
-        conn.close()
-        if row:
-            return {'user_id': str(row[0]), 'email': row[1], 'role': row[2], 'full_name': row[3]}
-        log.info("login: invalid credentials for %s (direct SQL)", email)
-        return None
-    except ImportError:
-        log.error("login: psycopg2 not installed — cannot use direct SQL")
-        raise RuntimeError(
-            "psycopg2 не установлен. Установите: pip install psycopg2-binary"
-        )
-    except Exception as e:
-        log.error("login: direct SQL connection failed for %s: %s", email, e)
-        raise RuntimeError(
-            f"Не удалось подключиться к БД напрямую: {e}. "
-            f"Проверьте DATABASE_URL (порт, хост, пароль). "
-            f"PostgreSQL должен быть доступен."
-        )
-
-
-def _login_postgrest(email: str, password: str) -> dict | None:
-    """Fallback: проверить email/password через PostgREST RPC login_user.
-
-    Используется если прямой SQL недоступен (например, нет psycopg2 или БД не на локалхосте).
-    Возвращает dict с {user_id, email, role, full_name} или None при ошибке/неверном пароле.
-    """
-    try:
-        from app.utils import postgrest_admin_request
-        resp = postgrest_admin_request('POST', 'rpc/login_user', data={
-            'p_email': email,
-            'p_password': password
-        })
-        if resp and resp.ok:
-            data = resp.json()
-            if isinstance(data, list) and len(data) > 0:
-                user = data[0]
-                return {
-                    'user_id': str(user.get('id', user.get('user_id', ''))),
-                    'email': user.get('email', email),
-                    'role': user.get('role', 'worker'),
-                    'full_name': user.get('full_name', '')
-                }
-            elif isinstance(data, dict):
-                return {
-                    'user_id': str(data.get('id', data.get('user_id', ''))),
-                    'email': data.get('email', email),
-                    'role': data.get('role', 'worker'),
-                    'full_name': data.get('full_name', '')
-                }
-        log.info("login: invalid credentials for %s (PostgREST fallback)", email)
-        return None
-    except Exception as e:
-        log.error("login: PostgREST fallback also failed for %s: %s", email, e)
-        return None
-
 @auth_bp.route('/login', methods=['GET', 'POST'])
 @rate_limit(fail_open=False)
 def login():
     if request.method == 'POST':
-        email = request.form.get('email')
+        email = request.form.get('email', '').strip().lower()
         password = request.form.get('password')
 
         # C22: Per-account lockout — проверка блокировки ПЕРЕД проверкой пароля
+        # Per-IP rate limit
+        ip = request.remote_addr or 'unknown'
+        ip_key = f"login_ip:{ip}"
+        try:
+            redis_client = get_redis_client()
+            if redis_client:
+                # B19: Atomic INCR+EXPIRE через Lua-скрипт
+                ip_attempts = redis_client.eval(
+                    "local c = redis.call('INCR', KEYS[1]) "
+                    "if c == 1 then redis.call('EXPIRE', KEYS[1], tonumber(ARGV[1])) end "
+                    "return c",
+                    1, ip_key, 3600
+                )
+                if ip_attempts > 20:
+                    flash('Слишком много попыток с вашего IP. Подождите час.', 'danger')
+                    return render_template('login.html')
+        except Exception as e:
+            log.warning('login IP rate-limit check failed: %s', e, exc_info=True)
+
         lockout_key = f"login_lockout:{email}"
         attempts_key = f"login_attempts:{email}"
-        if _is_login_locked_out(lockout_key):
-            flash('Аккаунт временно заблокирован. Попробуйте через 15 минут.', 'error')
+        if is_login_locked_out(lockout_key):
+            flash('Аккаунт временно заблокирован. Попробуйте через 15 минут.', 'danger')
             return render_template('login.html')
-
+ 
         try:
             # Прямой SQL-запрос к БД через psycopg2 (работает и на проде, и на локале,
             # в отличие от PostgREST RPC, который недоступен на Amvera)
-            user = _login_direct_sql(email, password)
+            user = login_direct_sql(email, password)
             if user:
+                if not user.get('email_verified', True):
+                    flash('Подтвердите email перед входом. Проверьте почту.', 'warning')
+                    return render_template('login.html')
                 # C22: Сброс счётчика попыток при успешном входе
-                _clear_login_attempts(lockout_key, attempts_key)
-                _login_user_session(user['user_id'], user['role'], email)
+                clear_login_attempts(lockout_key, attempts_key, email)
+                login_user_session(user['user_id'], user['role'], email)
                 if user.get('role') == 'employer':
                     return redirect(url_for('jobs.my_jobs'))
                 else:
                     return redirect(url_for('jobs.index'))
             # Неудачная попытка — инкрементировать счётчик
-            _increment_login_attempts(lockout_key, attempts_key, email)
-            flash('Неверный email или пароль', 'error')
+            increment_login_attempts(lockout_key, attempts_key, email)
+            flash('Неверный email или пароль', 'danger')
         except RuntimeError as sql_err:
             # Прямой SQL не сработал — пробуем PostgREST fallback
-            log.warning("login: direct SQL unavailable for %s, trying PostgREST fallback: %s",
-                        email, sql_err)
+            log.warning("login: direct SQL unavailable, trying PostgREST fallback: %s",
+                        sql_err)
             try:
-                user = _login_postgrest(email, password)
+                user = login_postgrest(email, password)
                 if user:
-                    _clear_login_attempts(lockout_key, attempts_key)
-                    _login_user_session(user['user_id'], user['role'], email)
+                    if not user.get('email_verified', True):
+                        flash('Подтвердите email перед входом. Проверьте почту.', 'warning')
+                        return render_template('login.html')
+                    clear_login_attempts(lockout_key, attempts_key, email)
+                    login_user_session(user['user_id'], user['role'], email)
                     if user.get('role') == 'employer':
                         return redirect(url_for('jobs.my_jobs'))
                     else:
                         return redirect(url_for('jobs.index'))
-                _increment_login_attempts(lockout_key, attempts_key, email)
-                flash('Неверный email или пароль', 'error')
+                increment_login_attempts(lockout_key, attempts_key, email)
+                flash('Неверный email или пароль', 'danger')
             except Exception as pgrst_err:
+                from app.utils.helpers import _redact_sensitive
                 current_app.logger.error(
-                    f"Login error for {email}: direct SQL and PostgREST both failed: {pgrst_err}"
+                    "Login error for %s: direct SQL and PostgREST both failed: %s",
+                    _redact_sensitive(email), pgrst_err
                 )
-                flash('Ошибка сервера. Попробуйте позже.', 'error')
+                flash('Ошибка сервера. Попробуйте позже.', 'danger')
         except Exception as e:
             current_app.logger.error(f"Login error: {e}")
-            flash('Ошибка сервера. Попробуйте позже.', 'error')
+            flash('Ошибка сервера. Попробуйте позже.', 'danger')
     return render_template('login.html')
-
-
-def _is_login_locked_out(lockout_key: str) -> bool:
-    """Проверить, заблокирован ли аккаунт по ключу блокировки."""
-    try:
-        client = get_redis_client()
-        if client is None:
-            return False
-        return client.exists(lockout_key) > 0
-    except Exception:
-        return False
-
-
-def _increment_login_attempts(lockout_key: str, attempts_key: str, email: str) -> None:
-    """Инкрементировать счётчик неудачных попыток входа. При 5 попытках — блокировка на 15 минут."""
-    try:
-        client = get_redis_client()
-        if client is None:
-            return
-        attempts = client.incr(attempts_key)
-        if attempts == 1:
-            client.expire(attempts_key, 900)  # TTL для счётчика — 15 минут
-        if attempts >= 5:
-            client.setex(lockout_key, 900, '1')
-            log.warning('Account locked out: %s (5 failed attempts)', email)
-    except Exception as e:
-        log.warning('Failed to increment login attempts for %s: %s', email, e)
-
-
-def _clear_login_attempts(lockout_key: str, attempts_key: str) -> None:
-    """Сбросить счётчик попыток и блокировку после успешного входа."""
-    try:
-        client = get_redis_client()
-        if client is None:
-            return
-        client.delete(attempts_key, lockout_key)
-    except Exception:
-        pass
 
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
@@ -281,7 +153,7 @@ def _clear_login_attempts(lockout_key: str, attempts_key: str) -> None:
 def register():
     if request.method == 'POST':
         full_name = request.form.get('full_name', '').strip()
-        email = request.form.get('email', '').strip()
+        email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
         role = request.form.get('role', '')
         city = request.form.get('city', '').strip()
@@ -351,7 +223,6 @@ def register():
                 flash(err, 'danger')
             return render_template('register.html', field_errors=field_errors)
 
-        religion = request.form.get('religion', 'не указано')
         religion_id = request.form.get('religion_id', '')  # новый формат — ID из справочника
         skill_ids = request.form.getlist('skill_ids')  # новый формат — список ID навыков
         portfolio_link = request.form.get('portfolio_link', '')
@@ -376,12 +247,18 @@ def register():
                     user_id = user_id[0] if isinstance(user_id[0], str) else user_id[0].get('register_user')
 
                 # Обновить профиль дополнительными данными
+                from datetime import datetime, timezone
                 update_data = {
                     'city': city,
-                    'religion': religion,
                     'portfolio_link': portfolio_link,
-                    'skills': [s.strip() for s in skills_str.split(',') if s.strip()] if skills_str else []
+                    'consented_at': datetime.now(timezone.utc).isoformat(),
                 }
+                religion_id = request.form.get('religion_id', '').strip()
+                if religion_id:
+                    try:
+                        update_data['religion_id'] = str(_uuid.UUID(religion_id))
+                    except (ValueError, AttributeError):
+                        pass
                 if role == 'worker':
                     if inn:
                         update_data['inn'] = inn
@@ -394,7 +271,20 @@ def register():
                         update_data['desired_payment'] = 0
                     update_data['experience'] = request.form.get('experience', '')
                     contact = request.form.get('contact', '').strip()
-                    update_data['contact'] = contact if len(contact) >= 3 else None
+                    if contact:
+                        if len(contact) < 3:
+                            flash('Контакт должен содержать минимум 3 символа', 'danger')
+                            return redirect(url_for('auth.register'))
+                        # Базовая проверка формата: email, телефон или username
+                        if not any([
+                            bool(__import__('re').match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', contact)),
+                            bool(__import__('re').match(r'^\+?\d[\d\-\s\(\)]{4,}$', contact)),
+                            bool(__import__('re').match(r'^@?\w{3,}$', contact)),
+                            len(contact) >= 5,
+                        ]):
+                            flash('Введите корректный контакт: email, телефон или никнейм', 'danger')
+                            return redirect(url_for('auth.register'))
+                    update_data['contact'] = contact
 
                 patch_resp = postgrest_admin_request('PATCH', f'profiles?id=eq.{user_id}', json=update_data)
                 if not patch_resp.ok:
@@ -414,13 +304,29 @@ def register():
                             'user_id': user_id, 'skill_id': sid
                         })
 
-                # Автоматический логин после регистрации
-                _login_user_session(str(user_id), role, email)
+                # Email verification — отправка токена вместо авто-логина
+                verification_token = _generate_email_verification_token(email)
+                verification_url = url_for('auth.verify_email', token=verification_token, _external=True)
 
-                if role == 'employer':
-                    return redirect(url_for('jobs.my_jobs'))
-                else:
-                    return redirect(url_for('jobs.index'))
+                # Асинхронная отправка через Celery.
+                # Сбой постановки письма в очередь НЕ должен ломать регистрацию —
+                # пользователь уже создан и сможет войти; письмо можно отправить позже.
+                try:
+                    from app.tasks.email_tasks import send_email_notification
+                    send_email_notification.delay(
+                        user_id=str(user_id),
+                        notification_id=0,
+                        user_email=email,
+                        user_name=full_name,
+                        notification_text=f'Для подтверждения email перейдите по ссылке:\n\n{verification_url}\n\nСсылка действительна 24 часа.',
+                        notification_type='email_verification',
+                        notification_url=verification_url
+                    )
+                except Exception as email_err:
+                    log.warning('Не удалось поставить в очередь письмо подтверждения для %s: %s', email, email_err, exc_info=True)
+
+                flash('Регистрация успешна. Проверьте почту для подтверждения email.', 'info')
+                return redirect(url_for('auth.login'))
             else:
                 error_msg = 'Ошибка регистрации'
                 err_data = {}
@@ -428,8 +334,8 @@ def register():
                     err_data = resp.json()
                     if isinstance(err_data, dict):
                         error_msg = err_data.get('message') or err_data.get('msg') or error_msg
-                except Exception:
-                    pass
+                except Exception as e:
+                    log.warning('Failed to parse error response: %s', e, exc_info=True)
                 if isinstance(err_data, dict) and 'email_exists' in err_data.get('message', '').lower():
                     error_msg = 'Пользователь с таким email уже зарегистрирован'
                 flash(error_msg, 'danger')
@@ -440,8 +346,16 @@ def register():
 
 
 @auth_bp.route('/logout', methods=['POST'])
+@rate_limit(fail_open=True)
 def logout():
     log.info('Logout: user_id=%s, role=%s', session.get('user_id'), session.get('role'))
+    
+    # Инвалидируем текущий jti перед очисткой сессии
+    jti = session.get('jti')
+    if jti:
+        from app.utils.auth import blacklist_jti
+        blacklist_jti(jti)
+    
     if current_app.config.get('TESTING'):
         session.clear()
         flash('Вы вышли из системы', 'success')
@@ -462,6 +376,24 @@ def logout():
 _PASSWORD_RESET_SALT = 'password-reset'
 _PASSWORD_RESET_MAX_AGE = 3600  # 1 час
 
+_EMAIL_VERIFICATION_SALT = 'email-verify'
+_EMAIL_VERIFICATION_MAX_AGE = 86400  # 24 часа
+
+
+def _generate_email_verification_token(email: str) -> str:
+    """Сгенерировать токен для подтверждения email (отдельный salt)."""
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt=_EMAIL_VERIFICATION_SALT)
+    return s.dumps(email)
+
+
+def _verify_email_verification_token(token: str) -> str | None:
+    """Проверить токен подтверждения email. Возвращает email или None."""
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt=_EMAIL_VERIFICATION_SALT)
+    try:
+        return s.loads(token, max_age=_EMAIL_VERIFICATION_MAX_AGE)
+    except (SignatureExpired, BadSignature):
+        return None
+
 
 def _make_serializer() -> URLSafeTimedSerializer:
     """Создать сериализатор для токенов сброса пароля."""
@@ -471,17 +403,24 @@ def _make_serializer() -> URLSafeTimedSerializer:
     )
 
 
-def _generate_reset_token(email: str) -> str:
-    """Сгенерировать токен для сброса пароля (срок действия 1 час)."""
+def _generate_reset_token(email: str, password_changed_at: str = '') -> str:
+    """Сгенерировать токен для сброса пароля (срок действия 1 час).
+
+    Включает password_changed_at для инвалидации при смене пароля (B11).
+    """
     s = _make_serializer()
-    return s.dumps(email)
+    return s.dumps({'email': email, 'pwd_changed_at': password_changed_at})
 
 
-def _verify_reset_token(token: str, max_age: int = _PASSWORD_RESET_MAX_AGE) -> str | None:
-    """Проверить токен сброса пароля. Возвращает email или None."""
+def _verify_reset_token(token: str, max_age: int = _PASSWORD_RESET_MAX_AGE) -> dict | None:
+    """Проверить токен сброса пароля. Возвращает dict с email и pwd_changed_at или None."""
     s = _make_serializer()
     try:
-        return s.loads(token, max_age=max_age)
+        result = s.loads(token, max_age=max_age)
+        # Обратная совместимость: старые токены могли содержать просто email-строку
+        if isinstance(result, str):
+            return {'email': result, 'pwd_changed_at': ''}
+        return result
     except (SignatureExpired, BadSignature):
         return None
 
@@ -513,15 +452,15 @@ def _set_reset_rate_limit(email: str) -> None:
         client = get_redis_client()
         if client is not None:
             client.setex(key, _RESET_COOLDOWN, '1')
-    except Exception:
-        pass
+    except Exception as e:
+        log.warning('Failed to set reset rate limit: %s', e, exc_info=True)
 
 
 @auth_bp.route('/password-reset/request', methods=['GET', 'POST'])
 def password_reset_request():
     """Форма запроса сброса пароля: отправка ссылки с токеном на email."""
     if request.method == 'POST':
-        email = request.form.get('email', '').strip()
+        email = request.form.get('email', '').strip().lower()
 
         if not email or not _EMAIL_RE.match(email):
             flash('Укажите корректный email', 'danger')
@@ -533,14 +472,17 @@ def password_reset_request():
             return render_template('password_reset_request.html')
 
         # Проверить, существует ли пользователь с таким email
-        check_resp = postgrest_admin_request('GET', f'profiles?email=eq.{email}&select=id')
+        check_resp = postgrest_admin_request('GET', f'profiles?email=eq.{email}&select=id,password_changed_at')
         if not check_resp.ok or not check_resp.json():
             # Не раскрываем, существует ли email (безопасность)
             flash('Если аккаунт с таким email существует, ссылка для сброса пароля отправлена.', 'success')
             return redirect(url_for('auth.login'))
 
-        # Генерируем токен и ссылку
-        token = _generate_reset_token(email)
+        user_data = check_resp.json()[0]
+        pwd_changed_at = (user_data.get('password_changed_at') or '') if isinstance(user_data, dict) else ''
+
+        # Генерируем токен и ссылку (с password_changed_at для B11)
+        token = _generate_reset_token(email, pwd_changed_at)
         reset_url = url_for('auth.password_reset_confirm', token=token, _external=True)
 
         # Устанавливаем rate-limit
@@ -574,10 +516,22 @@ def password_reset_request():
 @auth_bp.route('/password-reset/confirm/<token>', methods=['GET', 'POST'])
 def password_reset_confirm(token):
     """Форма нового пароля после перехода по ссылке из email."""
-    email = _verify_reset_token(token)
-    if not email:
+    token_data = _verify_reset_token(token)
+    if not token_data:
         flash('Ссылка для сброса пароля недействительна или истекла. Запросите новую.', 'danger')
         return redirect(url_for('auth.password_reset_request'))
+
+    email = token_data.get('email', '')
+    token_pwd_changed_at = token_data.get('pwd_changed_at', '')
+
+    # B11: Проверяем, что пароль не был изменён после выдачи токена
+    user_resp = postgrest_admin_request('GET', 
+        f'profiles?email=eq.{email}&select=id,password_changed_at')
+    if user_resp.ok and user_resp.json():
+        current_pwd = (user_resp.json()[0].get('password_changed_at') or '') if user_resp.json() else ''
+        if current_pwd and token_pwd_changed_at and current_pwd != token_pwd_changed_at:
+            flash('Пароль был изменён после отправки ссылки. Запросите новую.', 'danger')
+            return redirect(url_for('auth.password_reset_request'))
 
     if request.method == 'POST':
         new_password = request.form.get('password', '')
@@ -607,6 +561,20 @@ def password_reset_confirm(token):
                     success = result.get('success', False)
 
                 if success:
+                    # Получаем user_id по email для обновления password_changed_at
+                    user_resp = postgrest_admin_request('GET', 
+                        f'profiles?email=eq.{email}&select=id')
+                    if user_resp.ok and user_resp.json():
+                        user_data = user_resp.json()
+                        if isinstance(user_data, list) and user_data:
+                            user_id = user_data[0].get('id')
+                            if user_id:
+                                # Обновляем password_changed_at
+                                from datetime import datetime, timezone
+                                postgrest_admin_request('PATCH', 
+                                    f'profiles?id=eq.{user_id}',
+                                    json={'password_changed_at': datetime.now(timezone.utc).isoformat()})
+                    
                     flash('Пароль успешно изменён. Теперь вы можете войти.', 'success')
                     return redirect(url_for('auth.login'))
                 else:
@@ -618,3 +586,19 @@ def password_reset_confirm(token):
             flash('Ошибка соединения с сервером', 'danger')
 
     return render_template('password_reset_confirm.html', token=token)
+
+
+@auth_bp.route('/verify-email/<token>')
+def verify_email(token):
+    """Подтверждение email по токену из письма."""
+    email = _verify_email_verification_token(token)
+    if not email:
+        flash('Ссылка недействительна или истекла', 'danger')
+        return redirect(url_for('auth.register'))
+    resp = postgrest_admin_request('PATCH',
+        f'profiles?email=eq.{email}', json={'email_verified': True})
+    if resp.ok:
+        flash('Email подтверждён. Теперь вы можете войти.', 'success')
+        return redirect(url_for('auth.login'))
+    flash('Ошибка подтверждения email', 'danger')
+    return redirect(url_for('auth.register'))

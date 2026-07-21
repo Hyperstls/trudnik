@@ -175,11 +175,21 @@
 
 {% macro avatar(photo_url, alt='', size_class='w-14 h-14', extra_class='') -%}
 {% if photo_url %}
-<img src="{{ photo_url }}" alt="{{ alt }}" class="js-avatar-img {{ size_class }} rounded-full object-cover {{ extra_class }}">
+<img src="{{ photo_url }}" alt="{{ alt }}" loading="lazy" decoding="async" class="js-avatar-img {{ size_class }} rounded-full object-cover {{ extra_class }}">
 <div class="avatar-smiley {{ size_class }} rounded-full {{ extra_class }} bg-primary-50 flex items-center justify-center text-primary-400" style="display:none">{{ smiley(24) }}</div>
 {% else %}
 <div class="{{ size_class }} rounded-full {{ extra_class }} bg-primary-50 flex items-center justify-center text-primary-400">{{ smiley(24) }}</div>
 {% endif %}
+{%- endmacro %}
+
+{% macro avatar_img(url, alt, size=64, extra_class='') -%}
+<img src="{{ url or '/static/default-avatar.png' }}"
+     alt="{{ alt }}"
+     loading="lazy"
+     decoding="async"
+     width="{{ size }}" height="{{ size }}"
+     class="rounded-full object-cover {{ extra_class }}"
+     onerror="this.src='/static/default-avatar.png'">
 {%- endmacro %}
 
 {% macro award(size=18) -%}

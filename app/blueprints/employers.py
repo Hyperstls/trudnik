@@ -1,7 +1,8 @@
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 
-from app.decorators import login_required
+from app.decorators import login_required, validate_uuid
 from app.utils import postgrest_request, sanitize_postgrest
+from app.utils.security import safe_redirect
 
 employers_bp = Blueprint('employers', __name__)
 
@@ -93,6 +94,7 @@ def employers_list():
 
 @employers_bp.route('/employers/<employer_id>')
 @login_required
+@validate_uuid('employer_id')
 def employer_detail(employer_id):
     """Профиль работодателя + его открытые задания."""
     user_id = session.get('user_id')
@@ -122,7 +124,7 @@ def employer_detail(employer_id):
 
     if not is_blocked:
         jobs_resp = postgrest_request('GET',
-            f'jobs?employer_id=eq.{employer_id}&status=eq.open&select=*,photos:job_photos(*)&order=created_at.desc')
+            f'jobs?employer_id=eq.{employer_id}&status=eq.open&select=*&order=created_at.desc')
         open_jobs = jobs_resp.json() if jobs_resp.ok and jobs_resp.json() else []
 
     # Проверка избранного и откликов
@@ -149,6 +151,7 @@ def employer_detail(employer_id):
 
 @employers_bp.route('/employers/<employer_id>/favorite', methods=['POST'])
 @login_required
+@validate_uuid('employer_id')
 def toggle_favorite(employer_id):
     """Toggle избранного работодателя (form-based)."""
     user_id = session['user_id']
@@ -172,9 +175,9 @@ def toggle_favorite(employer_id):
     except Exception as e:
         current_app.logger.error(f"toggle_favorite error: {e}")
         flash('Произошла ошибка при обновлении избранного', 'danger')
-        return redirect(request.referrer or url_for('employers.employers_list'))
+        return safe_redirect('employers.employers_list')
 
-    return redirect(request.referrer or url_for('employers.employers_list'))
+    return safe_redirect('employers.employers_list')
 
 
 # ──────────────────────────────────────────────
@@ -199,8 +202,13 @@ def add_employer_favorite_api():
         if resp.ok:
             return jsonify({'success': True, 'message': 'Работодатель добавлен в избранное'})
         else:
-            error_text = resp.text if hasattr(resp, 'text') else ''
-            if 'duplicate' in error_text.lower() or resp.status_code == 409:
+            # B12: PostgREST returns 400 + code=23505 for unique violation
+            err_data = {}
+            try:
+                err_data = resp.json() or {}
+            except Exception:
+                pass
+            if err_data.get('code') == '23505':
                 return jsonify({'success': True, 'message': 'Работодатель уже в избранном'})
             return jsonify({'success': False, 'error': f'Ошибка сервера: {resp.status_code}'})
     except Exception as e:
@@ -227,8 +235,8 @@ def remove_employer_favorite_api():
             )
             return jsonify({'success': False, 'error': f'Ошибка сервера: {resp.status_code}'})
     except Exception as e:
-        current_app.logger.error(f"remove_employer_favorite_api exception: {e}")
-        return jsonify({'success': False, 'error': str(e)})
+        current_app.logger.exception("remove_employer_favorite_api exception: %s", e)
+        return jsonify({'success': False, 'error': 'Внутренняя ошибка сервера'})
 
 
 @employers_bp.route('/api/employers/favorites/check', methods=['POST'])
@@ -246,4 +254,5 @@ def check_employer_favorite_api():
         is_favorited = resp.ok and len(resp.json() or []) > 0
         return jsonify({'success': True, 'is_favorited': is_favorited})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        current_app.logger.exception("check_employer_favorite_api error for employer_id=%s", employer_id)
+        return jsonify({'success': False, 'error': 'Внутренняя ошибка сервера'})

@@ -1,7 +1,8 @@
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, session, url_for
 
-from app.decorators import login_required
+from app.decorators import login_required, validate_uuid
 from app.utils import postgrest_request
+from app.utils.security import safe_redirect
 
 blacklist_bp = Blueprint('blacklist', __name__)
 
@@ -30,7 +31,7 @@ def blacklist():
     if err:
         return err
     resp = postgrest_request('GET',
-        f'blacklists?user_id=eq.{session["user_id"]}&select=blocked:profiles!blacklists_blocked_user_id_fkey(id,full_name,photo_url,skills,city)')
+        f'blacklists?user_id=eq.{session["user_id"]}&select=blocked:profiles!fk_blacklists_blocked_user_id(id,full_name,photo_url,city)')
     items = resp.json() if resp.ok else []
     # Разворачиваем вложенные объекты blocked → плоский список
     workers = []
@@ -42,6 +43,7 @@ def blacklist():
 
 @blacklist_bp.route('/blacklist/<user_id>', methods=['POST'])
 @login_required
+@validate_uuid('user_id')
 def block_user(user_id):
     err = _reject_worker()
     if err:
@@ -50,15 +52,27 @@ def block_user(user_id):
     if resp.ok:
         if _is_ajax():
             return jsonify({'success': True})
-        return redirect(request.referrer or url_for('jobs.index'))
+        return safe_redirect('jobs.index')
+    # B12: PostgREST returns 400 + code=23505 for unique violation (not 409)
+    err_data = {}
+    try:
+        err_data = resp.json() or {}
+    except Exception:
+        pass
+    if err_data.get('code') == '23505':
+        if _is_ajax():
+            return jsonify({'success': True, 'message': 'Уже в чёрном списке'})
+        flash('Пользователь уже в чёрном списке', 'info')
+        return safe_redirect('jobs.index')
     if _is_ajax():
         return jsonify({'success': False, 'error': 'Ошибка блокировки'}), 400
     flash('Ошибка блокировки', 'danger')
-    return redirect(request.referrer or url_for('jobs.index'))
+    return safe_redirect('jobs.index')
 
 
 @blacklist_bp.route('/unblock/<user_id>', methods=['POST'])
 @login_required
+@validate_uuid('user_id')
 def unblock_user(user_id):
     err = _reject_worker()
     if err:

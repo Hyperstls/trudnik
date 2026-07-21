@@ -77,7 +77,7 @@
                 <div class="flex items-center gap-3 mb-3">
                     <div class="w-12 h-12 rounded-full bg-primary-50 flex items-center justify-center shrink-0 overflow-hidden" data-initial="{{ w.full_name[:1].upper() }}">
                         {% if w.photo_url %}
-                        <img src="{{ w.photo_url }}" alt="{{ w.full_name }}"
+                        <img src="{{ w.photo_url }}" alt="{{ w.full_name }}" loading="lazy" decoding="async"
                              class="w-full h-full object-cover"
                               class="js-worker-avatar-img">
                         {% else %}
@@ -94,11 +94,12 @@
                         </div>
                     </div>
                     {# Статус: оценён / не оценён #}
-                    <span class="text-xs font-medium px-2 py-1 rounded-full shrink-0
+                    <output class="text-xs font-medium px-2 py-1 rounded-full shrink-0
                         {% if existing %}bg-green-50 text-green-700{% else %}bg-amber-50 text-amber-700{% endif %}"
-                        id="status-badge-{{ w.worker_id }}">
+                        id="status-badge-{{ w.worker_id }}"
+                        aria-live="polite">
                         {% if existing %}✓ Оценён{% else %}Не оценён{% endif %}
-                    </span>
+                    </output>
                 </div>
 
                 {# --- Форма оценки --- #}

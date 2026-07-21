@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block title %}Приглашения — Трудник{% endblock %}
 {% block content %}
 <div class="px-4 pb-24 max-w-lg mx-auto">
     <div class="flex items-center justify-between mb-5">
@@ -32,7 +33,7 @@
                         </p>
                         {% endif %}
                         <p class="text-xs text-neutral-400 mt-1.5">
-                            {{ inv.created_at | format_date }}
+                            <time datetime="{{ inv.created_at }}">{{ inv.created_at | format_date }}</time>
                             {% if inv.status != 'pending' %}
                             · <span class="{% if inv.status == 'accepted' %}text-success{% else %}text-neutral-500{% endif %}">
                                 {% if inv.status == 'accepted' %}Принято{% elif inv.status == 'rejected' %}Отклонено{% else %}{{ inv.status }}{% endif %}
@@ -60,8 +61,8 @@
             {% if inv.status == 'pending' %}
             <button class="js-reject-one-btn flex items-center justify-center rounded-full bg-white border border-neutral-200 text-neutral-400 hover:text-danger hover:border-danger shadow-sm transition-all"
                 style="position:absolute; top:6px; right:-10px; width:28px; height:28px;"
-                data-invite-id="{{ inv.id }}" title="Отклонить приглашение">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                data-invite-id="{{ inv.id }}" title="Отклонить приглашение" aria-label="Отклонить приглашение">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
             {% endif %}
         </div>
@@ -80,7 +81,7 @@
 
 <script nonce="{{ csp_nonce }}">
 function respondInvite(invitationId, action) {
-    fetch('/api/invitations/' + invitationId + '/respond', {
+    apiFetch('/api/invitations/' + invitationId + '/respond', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({action: action})
@@ -104,7 +105,7 @@ function rejectInvite(invitationId) {
 
 function rejectAllInvites() {
     window.showConfirm('Отклонить все приглашения?', function() {
-        fetch('/api/invitations/reject-all', {
+        apiFetch('/api/invitations/reject-all', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'}
         })

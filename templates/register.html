@@ -18,17 +18,16 @@
 
         <!-- Progress Bar -->
         <div class="flex items-center gap-2 mb-6">
-            <div class="flex-1 h-2 rounded-full bg-neutral-200 overflow-hidden">
-                <div id="progress-bar" class="h-full rounded-full bg-primary-500 transition-all duration-500 ease-out" style="width: 50%"></div>
-            </div>
+            <progress id="progress-bar" value="50" max="100" class="flex-1 h-2" aria-label="Прогресс регистрации"></progress>
             <span id="step-label" class="text-xs font-medium text-neutral-500 shrink-0">Шаг 1 из 2</span>
         </div>
 
         <form method="post" id="register-form">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
             <!-- ===== Шаг 1: Аккаунт ===== -->
             <div id="step-1" class="space-y-4">
                 <div class="floating-label-group">
-                    <input type="text" name="full_name" id="full_name" placeholder=" " required maxlength="100">
+                    <input type="text" name="full_name" id="full_name" placeholder=" " required aria-required="true" maxlength="100" autocomplete="name">
                     <label for="full_name">Полное имя <span class="text-danger">*</span></label>
                     <div class="error-text">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -40,7 +39,7 @@
                 </div>
 
                 <div class="floating-label-group">
-                    <input type="email" name="email" id="email" placeholder=" " required autocomplete="email">
+                    <input type="email" name="email" id="email" placeholder=" " required aria-required="true" autocomplete="email">
                     <label for="email">Email <span class="text-danger">*</span></label>
                     <div class="error-text">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -52,23 +51,34 @@
                 </div>
 
                 <div class="floating-label-group">
-                    <input type="password" name="password" id="password" placeholder=" " required minlength="6">
+                    <input type="password" name="password" id="password" placeholder=" " required aria-required="true" minlength="8" autocomplete="new-password">
                     <label for="password">Пароль <span class="text-danger">*</span></label>
                     <div class="error-text">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>
                         </svg>
-                        <span>Минимум 6 символов</span>
+                        <span>Минимум 8 символов: A-Z, a-z, 0-9, спецсимвол</span>
                     </div>
                     {% if field_errors is defined and field_errors.password %}<span class="text-red-500 text-sm">{{ field_errors.password }}</span>{% endif %}
+                    <!-- Password strength indicator -->
+                    <div id="password-strength" class="mt-2 hidden">
+                        <div class="flex gap-1 mb-1">
+                            <div class="strength-segment flex-1 h-1.5 rounded-full bg-neutral-200 transition-colors duration-300" data-seg="1"></div>
+                            <div class="strength-segment flex-1 h-1.5 rounded-full bg-neutral-200 transition-colors duration-300" data-seg="2"></div>
+                            <div class="strength-segment flex-1 h-1.5 rounded-full bg-neutral-200 transition-colors duration-300" data-seg="3"></div>
+                            <div class="strength-segment flex-1 h-1.5 rounded-full bg-neutral-200 transition-colors duration-300" data-seg="4"></div>
+                            <div class="strength-segment flex-1 h-1.5 rounded-full bg-neutral-200 transition-colors duration-300" data-seg="5"></div>
+                        </div>
+                        <p id="strength-text" class="text-xs text-neutral-500"></p>
+                    </div>
                 </div>
 
                 <!-- Role selection cards -->
-                <div>
-                    <label class="block text-sm font-semibold text-neutral-700 mb-2">Роль <span class="text-danger">*</span></label>
+                <fieldset>
+                    <legend class="block text-sm font-semibold text-neutral-700 mb-2">Роль <span class="text-danger">*</span></legend>
                     <div class="grid grid-cols-2 gap-3">
                         <label class="role-card cursor-pointer border-2 border-neutral-200 rounded-xl p-4 text-center hover:border-primary-300 transition-all duration-200 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 has-[:checked]:shadow-sm" tabindex="0">
-                            <input type="radio" name="role" value="worker" class="sr-only" required>
+                            <input type="radio" name="role" value="worker" class="sr-only" required aria-required="true">
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-2 text-neutral-400 group-has-[:checked]:text-primary-500">
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                                 <circle cx="12" cy="7" r="4"></circle>
@@ -86,7 +96,7 @@
                         </label>
                     </div>
                     {% if field_errors is defined and field_errors.role %}<span class="text-red-500 text-sm">{{ field_errors.role }}</span>{% endif %}
-                </div>
+                </fieldset>
 
                 <button type="button" id="to-step-2" class="w-full bg-primary-500 hover:bg-primary-600 active:scale-[0.98] text-white font-bold py-3.5 rounded-xl shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                     Далее
@@ -112,7 +122,7 @@
                 </div>
 
                 <div class="floating-label-group">
-                    <input type="text" name="city" id="city" placeholder=" " maxlength="50">
+                    <input type="text" name="city" id="city" placeholder=" " maxlength="50" autocomplete="address-level2">
                     <label for="city">Город</label>
                     {% if field_errors is defined and field_errors.city %}<span class="text-red-500 text-sm">{{ field_errors.city }}</span>{% endif %}
                 </div>
@@ -134,6 +144,7 @@
                         <div class="skills-multiselect relative">
                             <div class="selected-skills flex flex-wrap gap-1 mb-2 min-h-[28px]" id="selected-skills"></div>
                             <input type="text" id="skill-search-reg" placeholder="Поиск навыка..."
+                                   aria-label="Поиск навыка"
                                    class="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm mb-1 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15">
                             <button type="button" id="skills-dropdown-btn"
                                     class="w-full flex items-center justify-between px-3 py-2.5 border border-neutral-200 rounded-lg bg-white text-sm text-neutral-500 hover:border-neutral-300 transition-colors focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15">
@@ -150,8 +161,8 @@
 
                     <div class="floating-label-group">
                         <input type="text" name="inn" id="inn" placeholder=" " pattern="\d{12}" inputmode="numeric" maxlength="12">
-                        <label for="inn">ИНН (12 цифр, опционально)</label>
-                        <p class="text-xs text-neutral-400 mt-1 px-1">ИНН (для самозанятых, опционально).</p>
+                        <label for="inn"><abbr title="Идентификационный номер налогоплательщика">ИНН</abbr> (12 цифр, опционально)</label>
+                        <p class="text-xs text-neutral-400 mt-1 px-1"><abbr title="Идентификационный номер налогоплательщика">ИНН</abbr> (для самозанятых, опционально).</p>
                         {% if field_errors is defined and field_errors.inn %}<span class="text-red-500 text-sm">{{ field_errors.inn }}</span>{% endif %}
                     </div>
 
@@ -170,6 +181,12 @@
                         <label for="desired_payment">Желаемая оплата за смену</label>
                     </div>
                 </div>
+
+                <!-- Согласие с условиями (152-ФЗ) -->
+                <label class="flex items-start gap-2 text-sm text-neutral-600 mt-3">
+                    <input type="checkbox" name="consent" required aria-required="true" class="mt-0.5 rounded border-neutral-300 text-primary-500 focus:ring-primary-500">
+                    <span>Я согласен с <a href="/terms" target="_blank" rel="noopener noreferrer" class="text-primary-500 hover:underline">условиями использования</a> и <a href="/privacy" target="_blank" rel="noopener noreferrer" class="text-primary-500 hover:underline">политикой конфиденциальности</a></span>
+                </label>
 
                 <div class="flex gap-3">
                     <button type="button" id="back-to-step-1" class="flex-1 bg-neutral-100 hover:bg-neutral-200 active:scale-[0.98] text-neutral-700 font-semibold py-3.5 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neutral-300">
@@ -244,6 +261,57 @@
     roleInputs.forEach(function(r) { r.addEventListener('change', validateStep1); });
 
     // ==========================================
+    // Password strength checker
+    // ==========================================
+    var strengthContainer = document.getElementById('password-strength');
+    var strengthText = document.getElementById('strength-text');
+    var segments = document.querySelectorAll('.strength-segment');
+
+    function updatePasswordStrength() {
+        var val = password.value;
+        if (!val) {
+            if (strengthContainer) strengthContainer.classList.add('hidden');
+            return;
+        }
+        if (strengthContainer) strengthContainer.classList.remove('hidden');
+
+        var score = 0;
+        var feedback = [];
+
+        if (val.length >= 8) score++;
+        else feedback.push('Минимум 8 символов');
+        if (val.length >= 12) score++;
+        if (/[A-Z]/.test(val) && /[a-z]/.test(val)) score++;
+        else feedback.push('Буквы разного регистра');
+        if (/[0-9]/.test(val)) score++;
+        else feedback.push('Добавьте цифры');
+        if (/[^A-Za-z0-9]/.test(val)) score++;
+        else feedback.push('Добавьте спецсимволы');
+
+        var colors = ['bg-danger', 'bg-orange-400', 'bg-yellow-400', 'bg-lime-400', 'bg-green-500'];
+        var labels = ['Очень слабый', 'Слабый', 'Средний', 'Хороший', 'Надёжный'];
+
+        segments.forEach(function(seg, i) {
+            seg.classList.remove('bg-danger', 'bg-orange-400', 'bg-yellow-400', 'bg-lime-400', 'bg-green-500', 'bg-neutral-200');
+            if (i < score) {
+                seg.classList.add(colors[score - 1]);
+            } else {
+                seg.classList.add('bg-neutral-200');
+            }
+        });
+
+        if (strengthText) {
+            if (score > 0) {
+                strengthText.textContent = labels[score - 1] + (feedback.length > 0 ? ' — ' + feedback.join(', ') : '');
+            } else {
+                strengthText.textContent = feedback.join(', ');
+            }
+        }
+    }
+
+    password.addEventListener('input', updatePasswordStrength);
+
+    // ==========================================
     // Переключение шагов
     // ==========================================
     toStep2Btn.addEventListener('click', function() {
@@ -312,10 +380,18 @@ async function loadDictionaries() {
         // Заполняем селект вероисповеданий
         const religionSelect = document.getElementById('religion');
         if (religionSelect && religionsData.religions) {
-            religionSelect.innerHTML = '<option value="">Не указано</option>' +
-                religionsData.religions.map(r =>
-                    `<option value="${r.name}" data-id="${r.id}">${r.name}</option>`
-                ).join('');
+            religionSelect.innerHTML = '';
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = 'Не указано';
+            religionSelect.appendChild(defaultOpt);
+            religionsData.religions.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.name;
+                opt.dataset.id = r.id;
+                opt.textContent = r.name;
+                religionSelect.appendChild(opt);
+            });
             religionSelect.addEventListener('change', function() {
                 const opt = this.selectedOptions[0];
                 document.getElementById('religion_id').value = opt?.dataset?.id || '';
@@ -399,13 +475,23 @@ document.addEventListener('DOMContentLoaded', loadDictionaries);
                 skillsList.innerHTML = '<span class="text-neutral-400">Нет доступных навыков</span>';
                 return;
             }
-            window.__skillsData = skills;
-            skillsList.innerHTML = skills.map(function(s) {
-                return '<label class="skill-filter-item flex items-center gap-2 px-2 py-1.5 hover:bg-neutral-50 rounded cursor-pointer text-sm" data-skill="' + s.name + '">' +
-                    '<input type="checkbox" value="' + s.name + '" data-id="' + s.id + '" class="skill-checkbox rounded border-neutral-300 text-primary-500 focus:ring-primary-500">' +
-                    '<span class="text-neutral-700">' + s.name + '</span>' +
-                    '</label>';
-            }).join('');
+            skillsList.innerHTML = '';
+            skills.forEach(function(s) {
+                var label = document.createElement('label');
+                label.className = 'skill-filter-item flex items-center gap-2 px-2 py-1.5 hover:bg-neutral-50 rounded cursor-pointer text-sm';
+                label.setAttribute('data-skill', s.name);
+                var cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = s.name;
+                cb.setAttribute('data-id', s.id);
+                cb.className = 'skill-checkbox rounded border-neutral-300 text-primary-500 focus:ring-primary-500';
+                var span = document.createElement('span');
+                span.className = 'text-neutral-700';
+                span.textContent = s.name;
+                label.appendChild(cb);
+                label.appendChild(span);
+                skillsList.appendChild(label);
+            });
 
             skillsList.querySelectorAll('.skill-checkbox').forEach(function(cb) {
                 cb.addEventListener('change', function() {

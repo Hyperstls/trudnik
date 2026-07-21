@@ -46,8 +46,8 @@ def _detect_mime(data: bytes) -> Optional[str]:
     try:
         import magic
         return magic.from_buffer(data[:2048], mime=True)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning('MIME detection via python-magic failed: %s', e, exc_info=True)
     return _check_mime_by_signature(data)
 
 
@@ -145,10 +145,10 @@ def upload_photo(file_data: bytes, bucket: str = 'avatars',
                        len(file_data), MAX_UPLOAD_SIZE)
         return None
 
-    # Проверка MIME-типа (python-magic или fallback по сигнатурам)
+    # X11: Проверка MIME-типа fail-closed (python-magic или fallback по сигнатурам)
     detected_mime = _detect_mime(file_data)
-    if detected_mime and detected_mime not in _ALLOWED_PHOTO_MIME_TYPES:
-        logger.warning('Photo upload rejected: invalid MIME type %s', detected_mime)
+    if detected_mime is None or detected_mime not in _ALLOWED_PHOTO_MIME_TYPES:
+        logger.warning('Photo upload rejected: invalid or undetectable MIME type %s', detected_mime)
         return None
 
     # Генерируем уникальное имя файла

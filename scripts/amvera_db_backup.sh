@@ -51,6 +51,15 @@ case "$ACTION" in
         echo "$CREATE_OUTPUT"
 
         echo ""
+        echo -e "${YELLOW}🧹 Ротация старых бэкапов (>30 дней)...${NC}"
+        if [ -d "/data/backups" ]; then
+            find /data/backups/ -name "trudnik_*.sql.gz" -mtime +30 -delete -print 2>/dev/null || true
+            echo -e "${GREEN}✅ Ротация завершена${NC}"
+        else
+            echo -e "${YELLOW}⚠️  /data/backups не существует — ротация пропущена${NC}"
+        fi
+
+        echo ""
         echo -e "${YELLOW}📋 Обновлённый список бэкапов:${NC}"
         "$AMVERA" psql backup list --slug "$DB_SLUG" 2>&1
         ;;

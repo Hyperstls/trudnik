@@ -52,7 +52,7 @@ if __name__ == '__main__':
         ("Страница входа", "/login"),
         ("Страница регистрации", "/register"),
         ("Список работодателей", "/employers"),
-        ("Health-check", "/api/health"),
+        ("Health-check", "/admin/health"),
     ]
 
     session = requests.Session()

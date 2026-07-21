@@ -2,7 +2,7 @@
 
 > Страницы, UI-компоненты, JavaScript-функциональность, навигация, адаптивность и accessibility.
 > **Актуализировано:** 2026-06-17 | **Ветка:** `main`
-> **Связанные документы:** [`ARCHITECTURE.md`](ARCHITECTURE.md), [`API_REFERENCE.md`](API_REFERENCE.md), [`TEST_CHECKLIST.md`](TEST_CHECKLIST.md)
+> **Связанные документы:** [`ARCHITECTURE.md`](ARCHITECTURE.md), [`API_REFERENCE.md`](API_REFERENCE.md)
 
 ---
 
@@ -559,4 +559,4 @@ TailwindCSS-брейкпоинты:
 ---
 
 > **Статус документа:** полное описание фронтенда, готов к использованию разработчиками и QA.
-> **Следующий шаг:** см. [`E2E_SCENARIOS.md`](E2E_SCENARIOS.md) для сквозных пользовательских сценариев, [`TEST_CHECKLIST.md`](TEST_CHECKLIST.md) для тестовых сценариев.
+> **Следующий шаг:** см. [`E2E_SCENARIOS.md`](E2E_SCENARIOS.md) для сквозных пользовательских сценариев; тесты — в [`../tests/`](../tests) и [`../tests_e2e/`](../tests_e2e).

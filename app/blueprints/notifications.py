@@ -4,7 +4,7 @@ import re as _re_inv
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
-from app.decorators import login_required
+from app.decorators import login_required, validate_uuid
 from app.services.notification_service import (
     NOTIFICATION_TYPES, DEFAULT_ENABLED_TYPES,
     get_notifications, get_unread_count, mark_all_read, mark_read
@@ -12,6 +12,31 @@ from app.services.notification_service import (
 from app.utils import my_query, postgrest_request, postgrest_admin_request
 
 notifications_bp = Blueprint('notifications', __name__)
+
+
+@notifications_bp.route('/api/ws/token')
+@login_required
+def get_ws_token():
+    """Выдать короткоживущий JWT для подключения к WebSocket-серверу.
+
+    Токен НЕ встраивается в HTML каждой страницы (XSS-риск), а запрашивается
+    клиентом по защищённому эндпоинту. TTL — 5 минут (минимум для установки
+    WS-соединения), jti уникален для каждого запроса.
+    """
+    import uuid as _uuid
+    from datetime import datetime, timedelta, timezone
+    import jwt as pyjwt
+    from app.config import Config
+    token = pyjwt.encode(
+        {
+            'user_id': str(session['user_id']),
+            'exp': datetime.now(timezone.utc) + timedelta(minutes=5),
+            'jti': str(_uuid.uuid4()),
+        },
+        Config.WEBSOCKET_JWT_SECRET or Config.SECRET_KEY,
+        algorithm='HS256',
+    )
+    return jsonify({'token': token, 'wsUrl': Config.WEBSOCKET_PUBLIC_URL})
 
 
 @notifications_bp.route('/notifications')
@@ -57,6 +82,7 @@ def api_read_all():
 
 @notifications_bp.route('/api/notifications/<notification_id>/delete', methods=['POST'])
 @login_required
+@validate_uuid('notification_id')
 def api_delete_notification(notification_id):
     """Удалить одно уведомление."""
     user_id = session['user_id']
@@ -80,6 +106,7 @@ def api_delete_all_notifications():
 
 @notifications_bp.route('/notification/<notification_id>/read', methods=['POST'])
 @login_required
+@validate_uuid('notification_id')
 def mark_read_route(notification_id):
     mark_read(notification_id, user_id=session['user_id'])
     return redirect(url_for('notifications.notifications'))
@@ -122,7 +149,7 @@ def api_get_preferences():
 
 @notifications_bp.route('/api/notifications/preferences', methods=['POST'])
 @login_required
-def api_save_preference():
+def api_update_preferences():
     """Сохранить одну настройку уведомления.
     Body: {type: str, enabled: bool}
     Поддерживаются как типы уведомлений, так и каналы (email_enabled, push_enabled, in_app_enabled).

@@ -261,7 +261,7 @@ RPC **`delete_user_cascade(user_id)`** — удаляет пользовател
 
 **Источники:**
 - [`app/services/notification_service.py`](../app/services/notification_service.py:1)
-- [`docs/notifications-v2.md`](docs/notifications-v2.md)
+- [`docs/notifications-v2.md`](../archive/legacy_docs/notifications-v2.md) (архив: устаревший план v2; фактическая реализация — outbox + `drain_notification_outbox`)
 
 ---
 
@@ -380,7 +380,7 @@ RPC **`delete_user_cascade(user_id)`** — удаляет пользовател
 
 ### Таблицы БД
 
-Активные таблицы (21):
+Активные таблицы (18):
 
 | Таблица | Назначение | Ключевые поля |
 |---------|------------|---------------|
@@ -430,7 +430,7 @@ RPC **`delete_user_cascade(user_id)`** — удаляет пользовател
 | `delete_user_cascade(user_id UUID)` | Каскадное удаление пользователя и всех связанных данных | Да |
 | `get_job_stats(start_date TEXT, end_date TEXT)` | Статистика публикаций за период (для админ-панели) | Нет (только чтение) |
 | `nearby_jobs(lat FLOAT, lng FLOAT, radius_km INTEGER)` | Геопоиск ближайших заданий в радиусе (PostGIS) | Нет (только чтение) |
-| `exec_sql(query TEXT)` | Выполнение произвольного SQL (только для admin, service_role) | Нет |
+| ~~`exec_sql(query TEXT)`~~ | **Удалён** (миграция `078_drop_exec_sql.sql`) — выполнение произвольного SQL больше не используется | — |
 
 **Источник:** [`app/utils/postgrest_client.py:466`](../app/utils/postgrest_client.py:466) — `postgrest_rpc()`, миграции 039, 048, 052, 056
 
@@ -513,8 +513,8 @@ stateDiagram-v2
 ```mermaid
 stateDiagram-v2
     [*] --> CLOSED: Нормальная работа
-    CLOSED --> OPEN: 5 последовательных ошибок
-    OPEN --> HALF_OPEN: Таймаут 30 сек истёк
+    CLOSED --> OPEN: 10 последовательных ошибок
+    OPEN --> HALF_OPEN: Таймаут 60 сек истёк
     HALF_OPEN --> CLOSED: Пробный запрос успешен
     HALF_OPEN --> OPEN: Пробный запрос неудачен
 ```

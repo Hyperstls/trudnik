@@ -11,7 +11,8 @@ Backend: Redis (REDIS_URL, db 1)
 import os
 from typing import Any
 
-from celery import Celery
+from celery import Celery, Task
+from flask import has_request_context, g
 
 # ═══════════════════════════════════════════════════════════════
 # Redis URL из переменной окружения
@@ -31,6 +32,29 @@ if "/" in REDIS_URL.rsplit(":", 2)[-1]:
 else:
     _backend_url: str = REDIS_URL + "/1"
 
+
+# ═══════════════════════════════════════════════════════════════
+# E6: Кастомный базовый класс для передачи request_id
+# ═══════════════════════════════════════════════════════════════
+
+class FlaskContextTask(Task):
+    """Базовый класс задач, автоматически передающий Flask контекст.
+    
+    При вызове apply_async() из Flask request context автоматически
+    добавляет request_id в kwargs задачи для трассировки.
+    """
+    
+    def apply_async(self, args=None, kwargs=None, **options):
+        """Переопределяем apply_async для инъекции request_id."""
+        if kwargs is None:
+            kwargs = {}
+        
+        # Если мы в Flask request context, добавляем request_id
+        if has_request_context() and hasattr(g, 'request_id'):
+            kwargs.setdefault('_request_id', g.request_id)
+        
+        return super().apply_async(args, kwargs, **options)
+
 # ═══════════════════════════════════════════════════════════════
 # Экземпляр Celery
 # ═══════════════════════════════════════════════════════════════
@@ -39,7 +63,16 @@ celery_app: Celery = Celery(
     "trudnik_tasks",
     broker=_broker_url,
     backend=_backend_url,
+    include=[
+        "app.tasks.notification_tasks",
+        "app.tasks.email_tasks",
+        "app.tasks.push_tasks",
+        "app.tasks.maintenance_tasks",
+    ],
 )
+
+# E6: Устанавливаем FlaskContextTask как базовый класс для всех задач
+celery_app.Task = FlaskContextTask
 
 # ═══════════════════════════════════════════════════════════════
 # Конфигурация
@@ -71,11 +104,8 @@ celery_app.conf.update(
 )
 
 # ═══════════════════════════════════════════════════════════════
-# Автоматическое обнаружение задач
+# Регистрация задач — модули явно указаны через include= в Celery()
 # ═══════════════════════════════════════════════════════════════
-
-# Позже сюда добавятся email_tasks и push_tasks
-celery_app.autodiscover_tasks(["app.tasks"], force=True)
 
 # Расписание Celery Beat для периодических задач
 celery_app.conf.beat_schedule = {
@@ -98,6 +128,23 @@ celery_app.conf.beat_schedule = {
         'schedule': 86400.0,  # Раз в сутки
         'options': {
             'expires': 43200,  # Задача истекает через 12 часов
+        },
+    },
+    'drain-notification-outbox': {
+        'task': 'app.tasks.notification_tasks.drain_notification_outbox',
+        'schedule': 10.0,
+        'options': {'expires': 8},
+    },
+    'ensure-postgrest-grants': {
+        'task': 'app.tasks.maintenance_tasks.ensure_postgrest_role_grants',
+        'schedule': 120.0,  # Каждые 2 минуты — self-heal грантов ролей PostgREST
+        'options': {'expires': 110},
+    },
+    'expire-old-jobs': {
+        'task': 'app.tasks.maintenance_tasks.expire_old_jobs',
+        'schedule': 3600.0,  # Каждый час
+        'options': {
+            'expires': 3000,  # Задача истекает через 50 минут
         },
     },
 }

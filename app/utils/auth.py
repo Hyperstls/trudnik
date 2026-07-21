@@ -3,7 +3,7 @@
 import logging
 import secrets
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 import bcrypt
@@ -48,7 +48,7 @@ def check_password(password: str, stored_hash: str) -> bool:
 def hash_password(password: str) -> str:
     """Сгенерировать Blowfish-хеш пароля, совместимый с PostgreSQL crypt().
 
-    Использует bcrypt с 6 раундами (как gen_salt('bf') по умолчанию в PostgreSQL).
+    Использует bcrypt с 12 раундами (как gen_salt('bf', 12) в PostgreSQL).
     Генерирует хеш с префиксом $2b$ (Python bcrypt), который проверяется
     PostgreSQL функцией crypt() без проблем — pgcrypto понимает оба префикса.
 
@@ -66,17 +66,40 @@ def hash_password(password: str) -> str:
     ).decode('utf-8')
 
 
-def generate_jwt(user_id, role, exp_seconds=300):
-    """Каноническая генерация JWT-токена."""
+# Срок жизни сессионного access-токена = сроку сессионной куки (24 ч),
+# чтобы токен не истекал внутри активной сессии. Per-request токены
+# PostgREST (get_user_headers) используют короткий TTL по умолчанию (300 с).
+ACCESS_TOKEN_TTL_SECONDS = 24 * 3600
+
+
+def generate_jwt(user_id, role, exp_seconds=300, password_changed_at=None):
+    """Каноническая генерация JWT-токена.
+    
+    Args:
+        user_id: ID пользователя
+        role: роль пользователя (worker, employer, admin)
+        exp_seconds: время жизни токена в секундах
+        password_changed_at: datetime когда пароль был изменен (для B10)
+    """
     import uuid as _uuid
     jti = str(_uuid.uuid4())
     payload = {
         'sub': str(user_id),
-        'role': role,
-        'iat': datetime.utcnow(),
-        'exp': datetime.utcnow() + timedelta(seconds=exp_seconds),
-        'jti': jti
+        'role': 'authenticated',  # PostgreSQL role — всегда 'authenticated'
+        'aud': 'authenticated',  # требуется PostgREST (PGRST_JWT_AUD)
+        'app_role': role,  # 'worker', 'employer', 'admin' — для RLS
+        'user_id': str(user_id),
+        'iat': datetime.now(timezone.utc),
+        'exp': datetime.now(timezone.utc) + timedelta(seconds=exp_seconds),
+        'jti': jti,
     }
+    
+    # B10: Добавляем password_changed_at в payload для инвалидации токенов при смене пароля
+    if password_changed_at is not None:
+        if isinstance(password_changed_at, datetime):
+            payload['pwd_changed_at'] = password_changed_at.isoformat()
+        else:
+            payload['pwd_changed_at'] = str(password_changed_at)
     # Приоритет: 1) модульная переменная PGRST_JWT_SECRET (Config.PGRST_JWT_SECRET),
     # 2) current_app.config (может быть пустой строкой), 3) os.environ (runtime fallback).
     # SECRET_KEY НЕ ИСПОЛЬЗУЕТСЯ — он не совпадает с секретом PostgREST.
@@ -93,10 +116,7 @@ def generate_jwt(user_id, role, exp_seconds=300):
             'PGRST_JWT_SECRET is not configured. '
             'JWT tokens must be signed with the same secret as PostgREST.'
         )
-    current_app.logger.info(
-        'JWT: signing with secret prefix=%s... (%d bytes)',
-        secret[:8], len(secret.encode('utf-8'))
-    )
+    logger.debug('JWT signed for user_id=%s, exp=%d sec', user_id, exp_seconds)
     token = _jwt_lib.encode(payload, secret, algorithm='HS256')
 
     # Сохраняем jti в Redis с TTL = expiration (для проверки при refresh)
@@ -105,8 +125,8 @@ def generate_jwt(user_id, role, exp_seconds=300):
         redis_client = get_redis_client()
         if redis_client:
             redis_client.setex(f'jti:{jti}', exp_seconds, user_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning('Failed to save jti to Redis: %s', e, exc_info=True)
 
     return token
 
@@ -140,18 +160,97 @@ def refresh_access_token() -> bool:
                         # jti в чёрном списке — токен отозван
                         session.clear()
                         return False
-            except Exception:
-                pass  # Невалидный старый токен — игнорируем, всё равно создаём новый
+            except Exception as e:
+                logger.warning('Failed to decode old token: %s', e, exc_info=True)
 
         # Используем реальную роль из сессии, fallback — 'authenticated'
-        role = session.get('role') or session.get('user', {}).get('role', 'authenticated')
-        token = generate_jwt(user_id, role)
+        role = session.get('role', 'authenticated')
+        token = generate_jwt(user_id, role, exp_seconds=ACCESS_TOKEN_TTL_SECONDS)
         session['access_token'] = token
         session.modified = True
         return True
-    except Exception:
+    except Exception as e:
+        logger.warning('refresh_access_token failed: %s', e, exc_info=True)
         session.clear()
         return False
+
+
+def login_user_session(user_id: str, role: str, email: str) -> None:
+    """Сохранить данные пользователя в сессии после успешного логина.
+
+    Автоматически получает password_changed_at из профиля для B10-защиты.
+    """
+    session.permanent = True
+
+    # B10: Получаем password_changed_at из профиля для защиты токена
+    pwd_changed_at = None
+    try:
+        from app.utils import postgrest_admin_request
+        resp = postgrest_admin_request(
+            'GET', f'profiles?id=eq.{user_id}&select=password_changed_at')
+        if resp.ok and resp.json():
+            profile_data = resp.json()
+            if isinstance(profile_data, list) and profile_data:
+                pwd_changed_at = profile_data[0].get('password_changed_at')
+    except Exception as e:
+        logger.warning('Failed to get password_changed_at for user %s: %s',
+                       user_id, e, exc_info=True)
+
+    token = generate_jwt(user_id, role, exp_seconds=ACCESS_TOKEN_TTL_SECONDS, password_changed_at=pwd_changed_at)
+    session['access_token'] = token
+    session['refresh_token'] = 'jwt'
+    session['user_id'] = user_id
+    session['role'] = role
+    session['email'] = email
+    
+    # Извлекаем jti из токена и сохраняем в сессию для последующей инвалидации
+    try:
+        payload = _jwt_lib.decode(token, PGRST_JWT_SECRET, algorithms=['HS256'], 
+                                  options={'verify_exp': False, 'verify_aud': False})
+        session['jti'] = payload.get('jti')
+    except Exception as e:
+        logger.warning('Failed to extract jti from token: %s', e, exc_info=True)
+    
+    session.modified = True
+
+
+def is_jti_blacklisted(jti: str) -> bool:
+    """Проверить, находится ли jti в чёрном списке (отозванный токен).
+
+    Args:
+        jti: JWT ID токена.
+
+    Returns:
+        True если jti в blacklist (токен отозван), иначе False.
+    """
+    if not jti:
+        return False
+    try:
+        from app.utils.redis_client import get_redis_client
+        redis_client = get_redis_client()
+        if redis_client:
+            return bool(redis_client.exists(f'jti_blacklist:{jti}'))
+    except Exception as e:
+        logger.warning('is_jti_blacklisted Redis error: %s', e, exc_info=True)
+    return False
+
+
+def blacklist_jti(jti: str, ttl: int = 86400) -> None:
+    """Добавить JTI в Redis blacklist.
+
+    Args:
+        jti: JWT ID токена.
+        ttl: время жизни в секундах (по умолчанию 24 часа).
+    """
+    if not jti:
+        return
+    try:
+        from app.utils.redis_client import get_redis_client
+        redis_client = get_redis_client()
+        if redis_client:
+            redis_client.setex(f'jti_blacklist:{jti}', ttl, '1')
+    except Exception as e:
+        logger.warning('blacklist_jti failed: %s', e, exc_info=True)
 
 
 def get_user_role() -> Optional[str]:
@@ -166,18 +265,27 @@ def get_user_role() -> Optional[str]:
 def get_user_profile() -> Optional[Dict[str, Any]]:
     """Получить профиль текущего пользователя из PostgREST (Amvera). Supabase не используется (устарело).
 
+    Использует postgrest_request (user JWT) как основной путь,
+    с fallback на postgrest_admin_request (service_role) при отказе.
+
     Returns:
         Словарь профиля или None.
     """
     if 'access_token' not in session:
         return None
 
-    from app.utils.postgrest_client import postgrest_request
+    from app.utils.postgrest_client import postgrest_request, postgrest_admin_request
 
     resp = postgrest_request(
         'GET',
         f'profiles?id=eq.{session["user_id"]}&select=id,role,created_at,updated_at,is_self_employed,email_public,rating,full_name,photo_url,age,bio,city,experience,desired_payment,verification_status,total_reviews,skills,religion,religion_id,portfolio_link'
     )
+    # Fallback: если пользовательский запрос не удался — пробуем через service_role
+    if not resp.ok:
+        resp = postgrest_admin_request(
+            'GET',
+            f'profiles?id=eq.{session["user_id"]}&select=id,role'
+        )
     if resp.ok and resp.json():
         data = resp.json()
         if isinstance(data, list) and data:

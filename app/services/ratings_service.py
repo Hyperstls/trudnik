@@ -1,4 +1,8 @@
-"""Сервис рейтингов: update_rating, get_user_rating."""
+"""Сервис рейтингов: get_user_rating.
+
+A5: Функция update_rating упрощена - триггер recompute_profile_rating()
+автоматически пересчитывает рейтинг при INSERT/UPDATE/DELETE в таблице ratings.
+"""
 
 import logging
 from typing import Any, Dict, List, Optional
@@ -8,31 +12,20 @@ logger = logging.getLogger(__name__)
 
 def update_rating(user_id: str, _new_rating: float) -> None:
     """Обновить средний рейтинг пользователя.
+    
+    A5: DEPRECATED - триггер recompute_profile_rating() теперь автоматически
+    пересчитывает рейтинг при изменении таблицы ratings.
+    
+    Эта функция оставлена для обратной совместимости, но больше не выполняет
+    read-modify-write операцию (которая была подвержена race condition).
 
     Args:
         user_id: UUID пользователя.
         _new_rating: зарезервирован (новый рейтинг, один отзыв).
-
-    Использует admin_request для обхода RLS (вызывается от лица rat'ера, не владельца профиля).
     """
-    from app.utils.postgrest_client import postgrest_admin_request
-
-    ratings_resp = postgrest_admin_request(
-        'GET',
-        f'ratings?rated_user_id=eq.{user_id}&select=rating'
-    )
-    if not ratings_resp.ok or not ratings_resp.json():
-        return
-
-    ratings_list = ratings_resp.json()
-    total = sum(r['rating'] for r in ratings_list)
-    avg = round(total / len(ratings_list), 1)
-
-    postgrest_admin_request(
-        'PATCH',
-        f'profiles?id=eq.{user_id}',
-        json={'rating': avg}
-    )
+    # Триггер trg_recompute_rating автоматически обновляет profiles.rating
+    # при INSERT/UPDATE/DELETE в ratings. Ничего делать не нужно.
+    logger.debug('update_rating called for user %s (trigger handles recomputation)', user_id)
 
 
 def get_user_rating(user_id: str) -> Optional[Dict[str, Any]]:

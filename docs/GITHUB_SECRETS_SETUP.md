@@ -18,9 +18,9 @@
 
 | # | Имя секрета | Назначение | Workflow | Обязательность | Пример значения |
 |---|-------------|------------|----------|----------------|-----------------|
-| 1 | `SUPABASE_URL` | URL Supabase-проекта (база данных PostgreSQL + API) | `test.yml` (test, locust-test) | ✅ Обязательный | `https://abc123.supabase.co` |
-| 2 | `SUPABASE_ANON_KEY` | Анонимный (публичный) API-ключ Supabase для запросов от клиента | `test.yml` (test, locust-test) | ✅ Обязательный | `eyJhbGciOiJIUzI1NiIs...` (длинный JWT-токен) |
-| 3 | `SUPABASE_SERVICE_ROLE_KEY` | Сервисный (приватный) API-ключ Supabase с полными правами (только сервер) | `test.yml` (test, locust-test) | ✅ Обязательный | `eyJhbGciOiJIUzI1NiIs...` (длинный JWT-токен) |
+| 1 | `POSTGREST_URL` | URL PostgREST API (REST-доступ к PostgreSQL) | `test.yml` (test, locust-test) | ✅ Обязательный | `http://localhost:3000` |
+| 2 | `PGRST_JWT_SECRET` | Секрет для подписи JWT-токенов к PostgREST (role=authenticated/service_role) | `test.yml` (test, locust-test) | ✅ Обязательный | `длинная-случайная-строка (≥32 байт)` |
+| 3 | `E2E_BASE_URL` | Базовый URL приложения для E2E/Playwright-тестов и healthcheck | `test.yml` (e2e-test) | ✅ Обязательный | `https://trudnik-hyperstls.amvera.io` |
 | 4 | `SECRET_KEY` | Секретный ключ Flask для подписи сессий и CSRF-токенов | `test.yml` (test, locust-test) | ✅ Обязательный | `супер-длинная-случайная-строка-64-символа` |
 | 5 | `DATABASE_URL` | Строка подключения к PostgreSQL для Celery-воркера (используется в Docker Compose) | `test.yml` (test, locust-test) | ✅ Обязательный | `postgresql://user:pass@host:5432/dbname` |
 | 6 | `EMPLOYER_EMAIL` | Email тестового аккаунта работодателя для E2E-тестов (вход в систему) | `test.yml` (test, locust-test) | ✅ Обязательный | `employer@trudnik.ru` |
@@ -36,20 +36,20 @@
 
 ## Подробное описание каждого секрета
 
-### 1. `SUPABASE_URL`
-**Источник:** Supabase Dashboard → Project Settings → API → Project URL
+### 1. `POSTGREST_URL`
+**Источник:** адрес инстанса PostgREST (локально `http://localhost:3000`, в проде — внутренний URL Amvera)
 
-URL вашего Supabase-проекта. Используется Flask-приложением для подключения к базе данных PostgreSQL через REST API Supabase.
+URL PostgREST API — единственный REST-доступ к PostgreSQL. Flask-приложение обращается ко всем данным через HTTP-клиент к PostgREST (см. `app/utils/postgrest_client.py`).
 
-### 2. `SUPABASE_ANON_KEY`
-**Источник:** Supabase Dashboard → Project Settings → API → Project API Keys → `anon public`
+### 2. `PGRST_JWT_SECRET`
+**Источник:** задаётся в Amvera/`.env` один раз (≥ 32 байт)
 
-Анонимный ключ используется для клиентских запросов. В тестовом окружении передаётся в Flask-приложение и используется для аутентификации запросов к Supabase API с ограниченными правами (Row Level Security).
+Секрет для подписи JWT, который PostgREST проверяет при каждом запросе. Роль `authenticated` (app_role=worker/employer/admin) ходит через RLS, `service_role` — обходит RLS. **Никогда не передавайте секрет на клиентскую сторону.**
 
-### 3. `SUPABASE_SERVICE_ROLE_KEY`
-**Источник:** Supabase Dashboard → Project Settings → API → Project API Keys → `service_role`
+### 3. `E2E_BASE_URL`
+**Источник:** внешний URL развёрнутого приложения
 
-Сервисный ключ с полными правами доступа (обходит RLS). Используется ТОЛЬКО на серверной стороне для административных операций. **Никогда не передавайте этот ключ на клиентскую сторону.**
+Базовый URL для E2E-тестов (Playwright) и внешнего healthcheck в `test.yml`. Например, `https://trudnik-hyperstls.amvera.io/health` должно отвечать HTTP 200.
 
 ### 4. `SECRET_KEY`
 **Источник:** генерируется один раз (`python -c "import secrets; print(secrets.token_hex(32))"`)
@@ -57,17 +57,17 @@ URL вашего Supabase-проекта. Используется Flask-при�
 Ключ Flask для криптографической подписи сессий, cookies и CSRF-токенов. Должен быть случайной строкой длиной не менее 64 символов. Используйте один и тот же ключ в локальной разработке (`.env`) и в CI/CD.
 
 ### 5. `DATABASE_URL`
-**Источник:** Supabase Dashboard → Project Settings → Database → Connection string
+**Источник:** параметры подключения PostgreSQL (Amvera: кластер `trudnik-db`)
 
-Строка подключения к PostgreSQL в формате `postgresql://user:password@host:port/database`. Используется Celery-воркером и Celery Beat для прямого подключения к базе данных (в обход Supabase REST API).
+Строка подключения к PostgreSQL в формате `postgresql://user:password@host:port/database`. Используется только в редких fallback-операциях (например, `_login_direct_sql`) и `scripts/apply_migrations.py`; вся бизнес-логика идёт через PostgREST.
 
 ### 6-7. `EMPLOYER_EMAIL` / `EMPLOYER_PASSWORD`
-**Источник:** Создайте тестового пользователя в Supabase Auth с ролью `employer`
+**Источник:** Создайте тестового пользователя в приложении с ролью `employer`
 
 Учётные данные для входа тестового работодателя. Используются в E2E-тестах Playwright для проверки сценариев создания вакансий, управления заявками и т.д.
 
 ### 8-9. `WORKER_EMAIL` / `WORKER_PASSWORD`
-**Источник:** Создайте тестового пользователя в Supabase Auth с ролью `worker`
+**Источник:** Создайте тестового пользователя в приложении с ролью `worker`
 
 Учётные данные для входа тестового работника (соискателя). Используются в E2E-тестах Playwright для проверки сценариев поиска работы, откликов, чата и т.д.
 
@@ -102,4 +102,4 @@ API-ключ для геокодирования адресов и отобра�
 - ⚠️ **Никогда** не добавляйте значения секретов в `.env.example` или в код
 - 🔒 Все секреты в GitHub шифруются алгоритмом AES-256 и расшифровываются только во время выполнения workflow
 - 📋 При локальной разработке используйте файл `.env` (не коммитьте его — он в `.gitignore`)
-- 🔄 При изменении секрета в Supabase (например, перевыпуск ключа) не забудьте обновить соответствующий GitHub Secret
+- 🔄 При изменении секрета (например, перевыпуск `PGRST_JWT_SECRET`) не забудьте обновить соответствующий GitHub Secret

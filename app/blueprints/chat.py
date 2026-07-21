@@ -1,10 +1,52 @@
 import html as _html
+import logging
+import uuid
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required, rate_limit, role_required, validate_uuid
 from app.utils import postgrest_request
+from app.utils.redis_client import get_redis_client
 from app.services.notification_service import create as create_notification, enqueue_notification
+
+logger = logging.getLogger(__name__)
+
+# A3: Lua-скрипт для атомарного rate limiting
+# INCR + EXPIRE в одной атомарной операции предотвращает race condition
+_RATE_LIMIT_SCRIPT = """
+local key = KEYS[1]
+local limit = tonumber(ARGV[1])
+local ttl = tonumber(ARGV[2])
+local count = redis.call('INCR', key)
+if count == 1 then
+    redis.call('EXPIRE', key, ttl)
+end
+return count
+"""
+
+
+def _check_chat_rate_limit(redis_client, user_id: str, application_id: str,
+                           limit: int = 5, window: int = 60) -> bool:
+    """Проверить rate limit для чата через атомарный Lua-скрипт.
+    
+    Args:
+        redis_client: Redis клиент
+        user_id: ID отправителя
+        application_id: ID заявки (чата)
+        limit: максимальное количество сообщений в окне
+        window: размер окна в секундах
+        
+    Returns:
+        True если в пределах лимита, False если превышен
+    """
+    key = f'chat_rate:{user_id}:{application_id}'
+    try:
+        count = redis_client.eval(_RATE_LIMIT_SCRIPT, 1, key, limit, window)
+        return count <= limit
+    except Exception as e:
+        logger.warning('chat rate limit check failed: %s', e, exc_info=True)
+        # Fail-open: если Redis недоступен, разрешаем отправку
+        return True
 
 try:
     from app.services.redis_publisher import redis_publisher
@@ -55,6 +97,20 @@ def chat(application_id):
         flash('Нет доступа к этому чату', 'danger')
         return redirect(url_for('chat.chats_list'))
 
+    # Заголовок чата: имя собеседника + название задания (для шапки страницы)
+    chat_title = 'Чат'
+    chat_subtitle = ''
+    other_user_id = employer_id if user_id == app_data.get('worker_id') else app_data.get('worker_id')
+    if other_user_id:
+        other_resp = postgrest_request('GET', f'profiles?id=eq.{other_user_id}&select=full_name')
+        if other_resp.ok and other_resp.json():
+            chat_title = other_resp.json()[0].get('full_name') or 'Чат'
+    job_id = app_data.get('job_id')
+    if job_id:
+        job_resp = postgrest_request('GET', f'jobs?id=eq.{job_id}&select=organization_name')
+        if job_resp.ok and job_resp.json():
+            chat_subtitle = job_resp.json()[0].get('organization_name') or ''
+
     try:
         resp = postgrest_request('GET',
             f'messages?application_id=eq.{application_id}'
@@ -65,7 +121,8 @@ def chat(application_id):
         current_app.logger.error('[CHAT] Error loading messages for app %s: %s', application_id, str(e))
         messages = []
     return render_template('chat.html', application_id=application_id,
-                           messages=messages, user_id=session['user_id'])
+                           messages=messages, user_id=session['user_id'],
+                           chat_title=chat_title, chat_subtitle=chat_subtitle)
 
 
 @chat_bp.route('/chat/new/<worker_id>', methods=['GET'])
@@ -98,6 +155,20 @@ def send_message():
     sender_id = session['user_id']
     application_id = data['application_id']
     content = data['content']
+    
+    # C3: Извлекаем client_message_id для идемпотентности
+    client_msg_id = data.get('client_message_id')
+    if client_msg_id:
+        try:
+            uuid.UUID(client_msg_id)
+        except ValueError:
+            return jsonify({'error': 'invalid client_message_id'}), 400
+
+    # A3: Per-chat rate limit через атомарный Lua-скрипт
+    redis_client = get_redis_client()
+    if redis_client:
+        if not _check_chat_rate_limit(redis_client, sender_id, application_id, limit=5, window=60):
+            return jsonify({'error': 'Слишком много сообщений'}), 429
 
     # Серверная валидация длины сообщения
     if len(content) > 2000:
@@ -124,19 +195,36 @@ def send_message():
 
     # Сохраняем сообщение и получаем его ID из ответа
     headers = {'Prefer': 'return=representation'}
-    msg_resp = postgrest_request('POST', 'messages', json={
+    msg_data = {
         'application_id': application_id,
         'sender_id': sender_id,
         'content': sanitized_content
-    }, headers=headers)
+    }
+    if client_msg_id:
+        msg_data['client_message_id'] = client_msg_id
+    
+    msg_resp = postgrest_request('POST', 'messages', json=msg_data, headers=headers)
+
+    if not msg_resp.ok:
+        # C3: Обработка дубликата (unique constraint violation)
+        if 'unique' in (msg_resp.text or '').lower() and client_msg_id:
+            # Возвращаем существующее сообщение
+            existing = postgrest_request('GET',
+                f'messages?application_id=eq.{application_id}'
+                f'&client_message_id=eq.{client_msg_id}&select=id')
+            if existing.ok and existing.json():
+                return jsonify({'status': 'ok', 'message_id': existing.json()[0]['id']})
+        
+        logger.warning('chat.send_message failed: %s', msg_resp.text)
+        return jsonify({'status': 'error', 'message': 'Не удалось отправить сообщение'}), 503
 
     message_id = None
     try:
         msg_data = msg_resp.json()
         if isinstance(msg_data, list) and len(msg_data) > 0:
             message_id = msg_data[0].get('id')
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning('Failed to extract message_id from response: %s', e, exc_info=True)
 
     # Уведомить получателя (transactional outbox)
     recipient = app_data['worker_id'] if sender_id == employer_id else employer_id
@@ -169,6 +257,7 @@ def send_message():
 
 @chat_bp.route('/api/messages/<application_id>/poll')
 @login_required
+@validate_uuid('application_id')
 def poll_messages(application_id):
     """Polling-эндпоинт: вернуть сообщения новее указанного ID."""
     user_id = session['user_id']

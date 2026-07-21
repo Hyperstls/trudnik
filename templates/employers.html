@@ -30,7 +30,7 @@
                 {# Аватар и имя #}
                 <div class="flex items-start gap-3 mb-3">
                     {% if employer.photo_url %}
-                    <img src="{{ employer.photo_url }}" alt="{{ employer.full_name }}"
+                    <img src="{{ employer.photo_url }}" alt="{{ employer.full_name }}" loading="lazy" decoding="async"
                          class="js-avatar-img w-14 h-14 rounded-full object-cover border-2 border-neutral-200 shrink-0">
                     <div class="avatar-smiley w-14 h-14 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400" style="display:none">{{ smiley(32) }}</div>
                     {% else %}
@@ -90,6 +90,7 @@
             <div class="mt-auto pt-3 border-t border-neutral-100">
                 {% if session.get('role') == 'worker' %}
                 <form method="POST" action="/employers/{{ employer.id }}/favorite" class="inline">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="action-icon-btn {% if employer.id in favorited_employer_ids %}reject-btn{% else %}contact-btn{% endif %}">
                         <span class="flex items-center gap-1.5">
                             {{ heart(18) }}

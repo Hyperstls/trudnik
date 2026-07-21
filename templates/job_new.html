@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from '_icons.html' import info, map_pin, clock, eye, check, help_circle %}
+{% block title %}{% if is_edit %}Редактирование задания{% else %}Создать задание{% endif %} — Трудник{% endblock %}
 {% block content %}
 <div class="max-w-2xl mx-auto px-4 py-4 fade-in">
     <h1 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-6">{% if is_edit %}Редактирование задания{% else %}Создать задание{% endif %}</h1>
@@ -13,9 +14,7 @@
 
     <!-- Progress bar -->
     <div class="flex items-center gap-2 mb-6">
-        <div class="flex-1 h-2 rounded-full bg-neutral-200 overflow-hidden">
-            <div id="progress-bar" class="h-full rounded-full bg-primary-500 transition-all duration-500 ease-out" style="width: 25%"></div>
-        </div>
+        <progress id="progress-bar" value="25" max="100" class="flex-1 h-2" aria-label="Прогресс создания задания"></progress>
         <span id="step-label" class="text-xs font-medium text-neutral-500 shrink-0">Шаг 1 из 4</span>
     </div>
 
@@ -28,15 +27,16 @@
     </div>
 
     <form method="post" id="job-form" class="space-y-5" {% if is_edit %}action="/jobs/{{ job.id }}/edit"{% endif %}>
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <!-- ===== Шаг 1: Информация ===== -->
         <div id="step-1" class="space-y-4">
             <div class="floating-label-group">
-                <input type="text" name="title" id="title" placeholder=" " required value="{{ job.get('organization_name') or '' if job else '' }}">
+                <input type="text" name="title" id="title" placeholder=" " required aria-required="true" value="{{ job.get('organization_name') or '' if job else '' }}">
                 <label for="title">Название организации/задания <span class="text-danger">*</span></label>
             </div>
 
             <div class="floating-label-group">
-                <textarea name="description" id="job-description" rows="4" placeholder=" " required>{{ job.get('detailed_description') or '' if job else '' }}</textarea>
+                <textarea name="description" id="job-description" rows="4" placeholder=" " required aria-required="true">{{ job.get('detailed_description') or '' if job else '' }}</textarea>
                 <label for="job-description">Описание задания <span class="text-danger">*</span></label>
             </div>
             <div id="stop-words-warning" class="hidden bg-danger-light/50 border border-danger/20 text-danger-dark px-3 py-2 rounded-lg text-xs flex items-center gap-2">
@@ -49,7 +49,7 @@
                 <label for="work_type" class="block text-sm font-medium text-neutral-700 mb-1.5">
                     Вид работы <span class="text-red-500">*</span>
                 </label>
-                <select name="work_type" id="work_type" required
+                <select name="work_type" id="work_type" required aria-required="true"
                         class="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl 
                                focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all
                                text-neutral-900 appearance-none
@@ -88,7 +88,7 @@
         <!-- ===== Шаг 2: Локация ===== -->
         <div id="step-2" class="space-y-4" style="display:none;">
             <div class="floating-label-group">
-                <input type="text" name="city" id="city" placeholder=" " required value="{{ (job.get('city') or '') if job else '' }}">
+                <input type="text" name="city" id="city" placeholder=" " required aria-required="true" value="{{ (job.get('city') or '') if job else '' }}">
                 <label for="city">Город <span class="text-danger">*</span></label>
             </div>
 

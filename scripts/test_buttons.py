@@ -685,13 +685,13 @@ def test_admin_actions(session: requests.Session) -> None:
 
     # API health check — прямой GET, т.к. test_post_action не поддерживает GET
     try:
-        resp = session.get(f"{BASE_URL}/api/health", timeout=30)
+        resp = session.get(f"{BASE_URL}/admin/health", timeout=30)
         if resp.status_code == 200:
-            log("OK", f"GET /api/health → 200 (Health check админки)")
+            log("OK", f"GET /admin/health → 200 (Health check админки)")
         else:
-            log("FAIL", f"GET /api/health → {resp.status_code} (ожидался 200, Health check админки)")
+            log("FAIL", f"GET /admin/health → {resp.status_code} (ожидался 200, Health check админки)")
     except requests.RequestException as e:
-        log("FAIL", f"GET /api/health → ОШИБКА: {e} (Health check админки)")
+        log("FAIL", f"GET /admin/health → ОШИБКА: {e} (Health check админки)")
 
     # Поиск пользователей
     test_get_page(session, role, "/admin?tab=users&search=test", "Поиск пользователей", expected_status=200)

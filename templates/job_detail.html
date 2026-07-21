@@ -1,13 +1,15 @@
 {% extends "base.html" %}
 {% from '_icons.html' import star, chat, map_pin, clock, check, dollar, info, eye, login_icon %}
+{% from '_components.html' import breadcrumbs %}
 {% block title %}{{ job.organization_name }} — Трудник{% endblock %}
 {% block content %}
 <div class="max-w-2xl mx-auto px-4 py-4 fade-in">
     <!-- Breadcrumbs -->
-    <nav class="text-sm text-gray-500 mb-3">
-      <a href="/" class="hover:text-blue-600">Главная</a> →
-      <span class="text-gray-800">{{ job.organization_name }}</span>
-    </nav>
+    {{ breadcrumbs([
+        {'label': 'Главная', 'url': '/'},
+        {'label': 'Задания', 'url': url_for('jobs.index')},
+        {'label': job.organization_name}
+    ]) }}
     <!-- Title & org with badges -->
     <div class="flex items-start justify-between gap-3 mb-1">
         <h1 class="text-2xl font-bold text-neutral-800 flex-1 min-w-0">{{ job.organization_name }}</h1>
@@ -30,8 +32,8 @@
         <span>{{ map_pin(14) }} {{ job.city }}{% if job.address %}, {{ job.address }}{% endif %}</span>
         {% if job.date_time %}
         <span class="w-1 h-1 rounded-full bg-neutral-300 mx-1"></span>
-        <span id="job-datetime" data-datetime="{{ job.date_time }}">{{ clock(14) }} {{ job.date_time | format_date }}</span>
-        <span id="countdown-timer" class="ml-1.5 px-2 py-0.5 rounded-full text-xs font-semibold hidden"></span>
+        <span id="job-datetime" data-datetime="{{ job.date_time }}">{{ clock(14) }} <time datetime="{{ job.date_time }}">{{ job.date_time | format_date }}</time></span>
+        <output id="countdown-timer" aria-live="polite" class="ml-1.5 px-2 py-0.5 rounded-full text-xs font-semibold hidden"></output>
         {% endif %}
         {% if employer and (employer.verified or employer.verification_status == 'approved') %}
         <span class="w-1 h-1 rounded-full bg-neutral-300 mx-1"></span>
@@ -46,6 +48,7 @@
     {% if session.get('role') == 'worker' and employer %}
     <div class="mb-4">
         <form method="POST" action="/employers/{{ employer.id }}/favorite" style="display:inline;">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all
                 {% if is_employer_favorited %}bg-red-50 text-red-600 border border-red-200 hover:bg-red-100{% else %}bg-primary-50 text-primary-600 border border-primary-200 hover:bg-primary-100{% endif %}">
                 {% if is_employer_favorited %}❤️ В избранном{% else %}🤍 Добавить работодателя в избранное{% endif %}
@@ -163,6 +166,7 @@
                     <p class="text-danger font-medium text-center py-2">Мест нет ({{ job.current_workers }}/{{ job.max_workers }})</p>
                     {% else %}
                     <form action="/apply/{{ job.id }}" method="post">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="w-full bg-primary-500 hover:bg-primary-600 active:scale-[0.98] text-white font-bold py-3.5 rounded-xl shadow-md transition-all duration-200 flex items-center justify-center gap-2">
                             {{ dollar(18) }}
                             Откликнуться
@@ -185,6 +189,7 @@
                         <p class="text-sm text-red-700 mt-1">Ваш отклик был отклонён.</p>
                     </div>
                     <form action="/apply/{{ job.id }}" method="post">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="w-full bg-primary-500 hover:bg-primary-600 active:scale-[0.98] text-white font-bold py-3.5 rounded-xl shadow-md transition-all duration-200 flex items-center justify-center gap-2">
                             {{ dollar(18) }}
                             Откликнуться снова
@@ -355,7 +360,7 @@ ymaps.ready(function() {
 // ── Кнопки действий (матрица видимости) ─────────
 window.cancelJobDetail = function(jobId) {
     window.showConfirm('Отозвать задание? Все текущие отклики будут отклонены.', function() {
-        fetch('/cancel-job/' + jobId, {
+        apiFetch('/cancel-job/' + jobId, {
             method: 'POST',
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
@@ -374,7 +379,7 @@ window.cancelJobDetail = function(jobId) {
 
 window.forceCompleteJob = function(jobId) {
     window.showConfirm('Завершить задание? Все непринятые отклики будут отклонены.', function() {
-        fetch('/api/jobs/' + jobId + '/force-complete', {
+        apiFetch('/api/jobs/' + jobId + '/force-complete', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -396,7 +401,7 @@ window.forceCompleteJob = function(jobId) {
 
 window.restoreJobDetail = function(jobId) {
     window.showConfirm('Все предыдущие отклики будут сброшены. Продолжить?', function() {
-        fetch('/restore-job/' + jobId, {
+        apiFetch('/restore-job/' + jobId, {
             method: 'POST',
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
@@ -416,7 +421,7 @@ window.restoreJobDetail = function(jobId) {
 window.withdrawApplication = function(appId) {
     window.showConfirm('Отозвать отклик?', function() {
         var card = document.querySelector('.space-y-3') || document.querySelector('.max-w-2xl');
-        fetch('/api/applications/' + appId + '/withdraw', {
+        apiFetch('/api/applications/' + appId + '/withdraw', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -444,7 +449,7 @@ window.withdrawApplication = function(appId) {
 
 window.deleteJobAdmin = function(jobId) {
     window.showConfirm('Удалить задание безвозвратно? Это действие нельзя отменить.', function() {
-        fetch('/delete-job/' + jobId, {
+        apiFetch('/delete-job/' + jobId, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -519,7 +524,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 html += '<div class="flex gap-3 items-start pb-3 border-b border-neutral-100 last:border-0">';
                 html += '   <div class="flex-1 min-w-0">';
                 html += '       <div class="flex items-center gap-2">';
-                html += '           <span class="text-sm font-medium text-neutral-700">' + raterName + '</span>';
+                html += '           <span class="text-sm font-medium text-neutral-700">' + escapeHtml(raterName) + '</span>';
                 html += '           <span class="text-sm text-amber-500">' + stars + '</span>';
                 html += '       </div>';
                 if (r.comment) {
@@ -624,7 +629,7 @@ document.addEventListener('DOMContentLoaded', function() {
             submitBtn.disabled = true;
             submitBtn.textContent = 'Сохранение...';
 
-            fetch('/api/ratings', {
+            apiFetch('/api/ratings', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

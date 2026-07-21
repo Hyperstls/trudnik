@@ -1,8 +1,8 @@
 # Архитектура приложения «Трудник»
 
-> **Актуализировано:** 2026-06-27
-> **Ветка:** `main` (монетизация отключена, `is_paid=True` всегда)
-> **Версия документа:** 5.0 — миграция с Supabase на Amvera/PostgREST завершена, миграции 049–074, новые RPC, безопасность, тестовая инфраструктура
+> **Актуализировано:** 2026-07-17
+> **Ветка:** `main` (монетизация отключена, `MONETIZATION_ENABLED=false`)
+> **Версия документа:** 5.1 — актуализация стека по коду на 2026-07: Python 3.12, Flask 3.1.3, FastAPI 0.137.1 + a2wsgi, PostgreSQL 17.6/15 + PostGIS, PostgREST v14.10/v12.2.3, 126+ миграций, ~19 blueprints, 13 сервисов
 
 ---
 
@@ -24,7 +24,7 @@
 - **Работодатель (employer)** — публикует задания, управляет откликами, приглашает трудников
 - **Трудник (worker)** — ищет задания, откликается, получает оплату
 
-Архитектурный стиль: **монолитное Flask-приложение**, разбитое на 13 модульных Blueprint'ов, с внешней базой данных PostgreSQL (Amvera Managed) через PostgREST API, фоновыми задачами на Celery и real-time уведомлениями через WebSocket.
+Архитектурный стиль: **монолитное Flask-приложение**, разбитое на ~19 модульных Blueprint'ов, с внешней базой данных PostgreSQL 17.6 + PostGIS (Amvera) через PostgREST API, фоновыми задачами на Celery и real-time уведомлениями через WebSocket.
 
 **Ключевые особенности:**
 - Бесплатный режим (монетизация отключена в main)
@@ -39,17 +39,18 @@
 
 | Слой | Технологии |
 |------|-----------|
-| **Backend** | Python 3 + Flask (WSGI) |
-| **ASGI/WebSocket** | FastAPI + uvicorn (`asgi.py`) |
-| **Фоновые задачи** | Celery (worker + beat) |
-| **Брокер сообщений** | Redis 7 (Celery broker + Pub/Sub + кеш) |
-| **База данных** | Amvera Managed PostgreSQL + PostgREST + нативная аутентификация |
+| **Backend** | Python 3.12 + Flask 3.1.3 (WSGI) |
+| **ASGI/WebSocket** | FastAPI 0.137.1 + uvicorn + a2wsgi 1.10.0 (`asgi.py`, единый процесс HTTP+WS) |
+| **Фоновые задачи** | Celery 5.6.3 (worker + beat) |
+| **Брокер сообщений** | Redis 8 (прод) / Redis 7-alpine (локально) — Celery broker + Pub/Sub + кеш |
+| **База данных** | PostgreSQL 17.6 + PostGIS (прод Amvera) / PostgreSQL 15 + PostGIS 3.4 (локально) + PostgREST (v14.10 прод / v12.2.3 локально) + нативная JWT-аутентификация |
 | **RPC** | PostgreSQL функции (`accept_application`, `reject_application`, `apply_job_atomic`, `delete_job_cascade`, `delete_user_cascade`, `get_job_stats`, `nearby_jobs`, `force_complete_job`, `cancel_job_atomic`, `cancel_worker_atomic`, `rate_user_atomic`, `resolve_user_atomic`, `login_user`, `register_user`, `change_password`) |
-| **Фронтенд** | Jinja2 + TailwindCSS + Vanilla JS |
+| **Фронтенд** | Jinja2 3.1.6 + TailwindCSS (precompiled `tailwind.min.css`) + Vanilla JS (без React/TypeScript) + PWA |
 | **Карты** | Яндекс.Карты API |
 | **Реальное время** | WebSocket (FastAPI) + Redis Pub/Sub |
 | **Push-уведомления** | Web Push API (VAPID) + Email (SMTP) |
-| **Деплой** | Render.com (Docker) | | **Тестирование** | PyTest + Playwright + Selenium + In-memory Mock PostgREST |
+| **Деплой** | Amvera (Docker), `amvera.yaml` (containerPort 8000) |
+| **Тестирование** | pytest + Playwright + in-memory mock PostgREST (`app/testing/mock_postgrest.py`) |
 | **Безопасность** | CSP nonce + CSRF + Rate Limiting + Circuit Breaker + RLS + email-валидация (RFC 5322) + защита от SQL-инъекций + дифференцированные таймауты |
 
 ---
@@ -60,9 +61,9 @@
 trudnik/
 ├── app.py                          # Точка входа WSGI: from app import app
 ├── asgi.py                         # Unified ASGI: WebSocket → FastAPI, HTTP → Flask
-├── Dockerfile                      # Docker-образ (Python 3 + uvicorn)
-├── docker-compose.yml              # Сервисы: redis, websocket, celery_worker, celery_beat
-├── render.yaml                     # Деплой на Render.com (Docker)
+├── Dockerfile                      # Docker-образ (Python 3.12-slim + uvicorn)
+├── docker-compose.yml              # Сервисы: redis, db, postgrest, pgadmin(debug), celery_worker, celery_beat, web
+├── amvera.yaml                     # Деплой на Amvera (Docker, containerPort 8000)
 ├── requirements.txt                # Flask, FastAPI, Celery, Redis, pywebpush, etc.
 ├── requirements-dev.txt            # Зависимости для разработки
 ├── tailwind.config.js              # TailwindCSS конфигурация
@@ -70,21 +71,20 @@ trudnik/
 ├── pytest.ini                      # PyTest конфигурация
 ├── .env.example                    # Шаблон переменных окружения
 ├── README.md                       # Описание проекта
-├── TESTING_BLUEPRINT.md            # Индексный навигационный хаб документации
 │
 ├── app/
 │   ├── __init__.py                 # create_app() — фабрика приложения, security headers, CSRF, контекст-процессоры
 │   ├── config.py                   # Config — переменные окружения (SECRET_KEY, POSTGREST_*, REDIS_URL, SMTP_*, VAPID_*, WEBSOCKET_*)
 │   ├── decorators.py               # @login_required, @role_required
-│   ├── utils.py                    # postgrest_client, CircuitBreaker, rate_limit, sanitize, хелперы, in-memory mock PostgREST
+│   ├── utils/                     # ПАКЕТ app/utils/: postgrest_client.py, auth.py, geo.py, validators.py, redis_cache.py, rate_limit_decorator.py и др.
 │   │
-│   ├── blueprints/                 # 13 блюпринтов
+│   ├── blueprints/                 # ~19 блюпринтов (включая 6 admin_*)
 │   │   ├── __init__.py
 │   │   ├── auth.py                 # /login, /register, /logout
 │   │   ├── jobs.py                 # /, /workers, /job/new, /my-jobs, /jobs/<id>, etc.
 │   │   ├── jobs_api.py             # /api/search/jobs, /api/search/workers, /api/invite
 │   │   ├── applications.py         # /apply, /my-applications, accept/reject/withdraw
-│   │   ├── admin.py                # /admin, управление пользователями/заданиями/справочниками
+│   │   ├── admin_dashboard.py      # /admin — расщеплён на admin_dashboard / admin_users / admin_jobs / admin_verification / admin_dictionaries / admin_diagnostics (отдельного admin.py НЕТ)
 │   │   ├── profile.py              # /profile, /profile/update, /verify-employer, delete account
 │   │   ├── chat.py                 # /chats, /chat/<id>, /api/send_message, poll
 │   │   ├── employers.py            # /employers, /employers/<id>, избранное API
@@ -94,7 +94,7 @@ trudnik/
 │   │   ├── blacklist.py            # /blacklist, /blacklist/<id>, /unblock/<id>
 │   │   └── seo.py                  # /robots.txt, /sitemap.xml
 │   │
-│   ├── services/                   # 5 сервисов
+│   ├── services/                   # 13 сервисов: auth, application, job, notification, notification_dispatcher, email, push, ratings, invitation, admin, payment, storage, redis_publisher
 │   │   ├── __init__.py
 │   │   ├── job_service.py          # search_jobs, search_workers, check_job_visibility
 │   │   ├── notification_service.py # create, get_notifications, mark_read, preferences
@@ -104,7 +104,7 @@ trudnik/
 │   │
 │   ├── tasks/                      # Celery-задачи
 │   │   ├── __init__.py
-│   │   ├── celery_app.py           # Инициализация Celery (Redis брокер)
+│   │   ├── celery_app.py           # Инициализация Celery (Redis брокер, 6 beat-задач: drain_notification_outbox 10с, ensure_postgrest_role_grants 120с, expire_old_jobs, cleanup_*; time_limit=300/soft=240)
 │   │   ├── email_tasks.py          # Фоновые задачи отправки email
 │   │   └── push_tasks.py           # Фоновые задачи push-уведомлений
 │   │
@@ -146,7 +146,7 @@ trudnik/
 │
 ├── websocket_server/               # WebSocket-сервер (FastAPI + Redis Pub/Sub)
 │
-├── migrations/                     # SQL-миграции (001–074)
+├── migrations/                     # SQL-миграции (126+ файлов, 001–1NN)
 │   ├── 001_setup_rls.sql
 │   ├── ... (002–047 — см. историю коммитов)
 │   ├── 047_fix_security_linter_critical.sql
@@ -162,22 +162,23 @@ trudnik/
 │   ├── ALL_PENDING.sql
 │   └── run_all_safe.sql            # <!-- УСТАРЕЛО: supabase_check.sql / supabase_schema.json удалены -->
 │
-├── docs/                           # Документация
+├── docs/                           # Документация (актуальные документы)
 │   ├── ARCHITECTURE.md             # Этот документ
 │   ├── API_REFERENCE.md            # Все маршруты и API-эндпоинты
 │   ├── BUSINESS_LOGIC.md           # Бизнес-логика, модель данных, состояния
 │   ├── BUTTON_REGISTRY.md          # Реестр всех кнопок и UI-элементов
-│   ├── TESTING_BLUEPRINT.md        # Индексный навигационный хаб документации
 │   ├── SECURITY.md                 # Безопасность (аутентификация, CSRF, CSP, Rate Limiting, Circuit Breaker)
-│   ├── TEST_CHECKLIST.md           # Тестовые сценарии и чеклисты
 │   ├── FRONTEND.md                 # Фронтенд (страницы, JS, UI, адаптивность, доступность)
-│   ├── E2E_SCENARIOS.md            # End-to-end сценарии по ролям
-│   ├── MIGRATION_PLAN.md           # План миграции с Supabase на Amvera
-│   ├── notifications-v2.md         # Спецификация уведомлений v2
+│   ├── E2E_SCENARIOS.md            # End-to-End сценарии по ролям
 │   ├── PROJECT_CONTEXT.md          # Контекст проекта
+│   ├── AMVERA_CLI_AUTOMATION.md    # Автоматизация деплоя через Amvera CLI
+│   ├── GITHUB_SECRETS_SETUP.md     # Настройка секретов GitHub Actions
 │   └── screenshots/                # Скриншоты UI
+│   # Исторические/устаревшие документы → archive/legacy_docs/
+│   # (TESTING_BLUEPRINT, TEST_CHECKLIST, MIGRATION_PLAN, notifications-v2,
+│   #  REFACTORING_TASKS, TRACEABILITY_MATRIX, TEST_BUTTON_REGISTRY, UX_PERFORMANCE_AUDIT)
 │
-├── supabase/                       # <!-- УСТАРЕЛО: Локальная конфигурация Supabase CLI — проект мигрировал на Amvera/PostgREST -->
+├── supabase/                       # <!-- УСТАРЕЛО: Локальная конфигурация Supabase CLI — перенесена в trash/, проект на Amvera/PostgREST. Supabase НЕ используется -->
 │   ├── config.toml                 # <!-- УСТАРЕЛО -->
 │   └── snippets/                   # <!-- УСТАРЕЛО -->
 │
@@ -189,14 +190,14 @@ trudnik/
 │   ├── test_buttons_frontend.py    # Фронтенд-тесты кнопок
 │   └── ...                         # Прочие тесты
 │
-├── tests_e2e/                      # End-to-end тесты (Playwright/Selenium)
+├── tests_e2e/                      # End-to-end тесты (Playwright)
 │
 ├── scripts/                        # Утилиты и скрипты
 │   ├── _apply_all_direct.py        # Прямое применение всех миграций
 │   ├── _create_base_tables.py      # Создание базовых таблиц
 │   ├── _create_email_log.py        # Создание таблицы email_log
 │   ├── _create_missing_tables.py   # Создание отсутствующих таблиц
-│   ├── _init_exec_sql.py           # Инициализация exec_sql
+│   ├── _init_exec_sql.py           # <!-- УСТАРЕЛО: exec_sql удалён миграцией 078_drop_exec_sql.sql -->
 │   ├── preseed_test_data.py        # Предзаполнение тестовых данных
 │   └── ...                         # Прочие скрипты
 │
@@ -230,11 +231,11 @@ flowchart TB
         CSP[CSP + Security Headers]
         CSRF[CSRF Protection]
         ContextProc[Context Processors - 7 шт]
-        Blueprints[Blueprints - 13 модулей]
+        Blueprints[Blueprints - ~19 модулей]
         Decorators[@login_required, @role_required]
     end
 
-    subgraph Services[Services Layer - 5 сервисов]
+    subgraph Services[Services Layer - 13 сервисов]
         JobSvc[job_service.py]
         NotifSvc[notification_service.py]
         EmailSvc[email_service.py]
@@ -249,7 +250,7 @@ flowchart TB
     end
 
     subgraph Infrastructure[Инфраструктура]
-        Redis[(Redis 7)]
+        Redis[(Redis 8 прод / 7 локально)]
         PostgREST[(PostgREST (Amvera) - PostgreSQL)]
         SMTP[SMTP Server]
         PushAPI[Web Push API - VAPID]
@@ -348,7 +349,7 @@ Flask Blueprint → apply_async(task) → Redis (брокер) → Celery Worker
 - `send_push_notification` — отправка Web Push уведомления
 - `send_batch_push` — массовая отправка push-уведомлений
 
-**Celery Beat** — периодические задачи (очистка логов, проверка подписок).
+**Celery Beat** — 6 периодических задач: `drain_notification_outbox` (10с), `ensure_postgrest_role_grants` (120с), `expire_old_jobs` (1ч), `cleanup_orphaned_notifications` (1ч), `cleanup_old_email_logs` (24ч), `cleanup_expired_push_subscriptions` (1ч). Лимиты: `task_time_limit=300`, `task_soft_time_limit=240`.
 
 ### 5.6. Push-уведомления (Web Push API)
 
@@ -386,7 +387,7 @@ Celery Worker → pywebpush (VAPID) → Браузер (Service Worker) → По
 - **Защита от SQL-инъекций** — проверка ASCII-фрагментов пользовательского ввода в [`app/blueprints/auth.py:25`](../app/blueprints/auth.py:25)
 - **Дифференцированные таймауты** — GET-запросы 15s, мутации (POST/PUT/DELETE) 10s в [`postgrest_client.py`](../app/utils/postgrest_client.py)
 - **PERMANENT_SESSION_LIFETIME** = 1800 секунд (30 минут)
-- **JWT-аутентификация** — `postgrest_admin_request` использует `PGRST_JWT_SECRET` для service_role-запросов
+- **JWT-аутентификация** — ДВА разных секрета: `PGRST_JWT_SECRET` (PostgREST: `role=authenticated` с `app_role=worker/employer/admin`, либо `service_role` для обхода RLS; `postgrest_admin_request` использует его для service_role-запросов) и `WEBSOCKET_JWT_SECRET` (только `user_id` + `jti`)
 
 ---
 
@@ -420,17 +421,20 @@ Celery Worker → pywebpush (VAPID) → Браузер (Service Worker) → По
 | Сервис | Контейнер | Команда |
 |--------|----------|---------|
 | `redis` | `redis:7-alpine` | `redis-server --appendonly yes` |
-| `websocket` | Из Dockerfile | `uvicorn websocket_server.main:app --host 0.0.0.0 --port 8001` |
+| `db` | `postgis/postgis:15-3.4-alpine` | PostgreSQL 15 + PostGIS 3.4 (порт 5433→5432) |
+| `postgrest` | `postgrest/postgrest:v12.2.3` | PostgREST API (порт 3000) |
+| `web` | Из Dockerfile | `python app.py` (Flask dev-сервер, HTTP, порт 8000; WebSocket локально — отдельный `uvicorn asgi:application --port 8001`) |
 | `celery_worker` | Из Dockerfile | `celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4` |
 | `celery_beat` | Из Dockerfile | `celery -A app.tasks.celery_app beat --loglevel=info` |
 
-### 6.3. Деплой (Render.com)
+### 6.3. Деплой (Amvera)
 
-- **Платформа:** Render.com
-- **Тип:** Docker (Web Service)
-- **Конфигурация:** [`render.yaml`](render.yaml)
-- **ASGI-сервер:** uvicorn через [`asgi.py`](asgi.py) (единая точка входа для HTTP и WebSocket)
-- **Масштабирование:** определяется Render.com
+- **Платформа:** Amvera (Docker)
+- **Тип:** Docker (containerPort 8000, servicePort 80)
+- **Конфигурация:** [`amvera.yaml`](amvera.yaml) (docker toolchain, persistenceMount `/data`)
+- **ASGI-сервер:** один процесс `uvicorn asgi:application --workers 2` (порт 8000) обслуживает И HTTP (Flask через `a2wsgi.WSGIMiddleware`), И WebSocket (`/ws`, FastAPI). Управляется supervisord вместе с `celery_worker` (`--concurrency=4`) и `celery_beat`
+- **Slug:** `trudnik` (приложение), `trudnik-db` (БД)
+- **Масштабирование:** определяется Amvera
 
 ### 6.4. Мониторинг
 
@@ -440,4 +444,4 @@ Celery Worker → pywebpush (VAPID) → Браузер (Service Worker) → По
 
 ---
 
-> **Примечание:** Детальное описание бизнес-логики, API-маршрутов, безопасности и тестовых сценариев вынесено в соответствующие дочерние документы. См. [`TESTING_BLUEPRINT.md`](../TESTING_BLUEPRINT.md) — индексный навигационный хаб.
+> **Примечание:** Детальное описание бизнес-логики, API-маршрутов, безопасности и тестовых сценариев вынесено в соответствующие дочерние документы: [`API_REFERENCE.md`](API_REFERENCE.md), [`BUSINESS_LOGIC.md`](BUSINESS_LOGIC.md), [`SECURITY.md`](SECURITY.md), [`E2E_SCENARIOS.md`](E2E_SCENARIOS.md). (Индекс TESTING_BLUEPRINT.md перенесён в `archive/legacy_docs/` как устаревший.)

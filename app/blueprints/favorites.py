@@ -1,7 +1,8 @@
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
-from app.decorators import login_required
+from app.decorators import login_required, role_required, validate_uuid
 from app.utils import postgrest_request
+from app.utils.security import safe_redirect
 
 favorites_bp = Blueprint('favorites', __name__)
 
@@ -15,7 +16,7 @@ def favorites():
     if session.get('role') == 'employer':
         # Избранные трудники
         resp = postgrest_request('GET',
-            f'favorites?user_id=eq.{session["user_id"]}&favorite_type=eq.worker&select=target:profiles!favorites_target_id_fkey(id,full_name,photo_url,rating,city,skills,experience,desired_payment)')
+            f'favorites?user_id=eq.{session["user_id"]}&favorite_type=eq.worker&select=target:profiles!fk_favorites_target_id(id,full_name,photo_url,rating,city,experience,desired_payment)')
         items = [item['target'] for item in resp.json()] if resp.ok else []
 
         # Определяем, какие трудники уже приглашены работодателем
@@ -31,7 +32,7 @@ def favorites():
     elif session.get('role') == 'worker':
         # Избранные работодатели
         resp = postgrest_request('GET',
-            f'favorites?user_id=eq.{session["user_id"]}&favorite_type=eq.employer&select=target:profiles!favorites_target_id_fkey(id,full_name,photo_url,verification_status,city)')
+            f'favorites?user_id=eq.{session["user_id"]}&favorite_type=eq.employer&select=target:profiles!fk_favorites_target_id(id,full_name,photo_url,verification_status,city)')
         items = [item['target'] for item in resp.json()] if resp.ok else []
 
     favorite_jobs = []
@@ -46,15 +47,28 @@ def favorites():
 
 @favorites_bp.route('/favorite/<target_id>', methods=['POST'])
 @login_required
+@role_required('employer')
+@validate_uuid('target_id')
 def add_favorite(target_id):
     resp = postgrest_request('POST', 'favorites', json={'user_id': session['user_id'], 'target_id': target_id, 'favorite_type': 'worker'})
     if not resp.ok:
-        flash('Не удалось добавить в избранное', 'danger')
-    return redirect(request.referrer or url_for('jobs.index'))
+        # B12: PostgREST returns 400 + code=23505 for unique violation (not 409)
+        err_data = {}
+        try:
+            err_data = resp.json() or {}
+        except Exception:
+            pass
+        if err_data.get('code') == '23505':
+            flash('Трудник уже в избранном', 'info')
+        else:
+            flash('Не удалось добавить в избранное', 'danger')
+    return safe_redirect('jobs.index')
 
 
 @favorites_bp.route('/unfavorite/<target_id>', methods=['POST'])
 @login_required
+@role_required('employer')
+@validate_uuid('target_id')
 def remove_favorite(target_id):
     postgrest_request('DELETE', f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{target_id}&favorite_type=eq.worker')
     return redirect(url_for('favorites.favorites'))
@@ -66,6 +80,7 @@ def remove_favorite(target_id):
 
 @favorites_bp.route('/api/favorites/add', methods=['POST'])
 @login_required
+@role_required('employer')
 def add_favorite_api():
     data = request.get_json()
     worker_id = data.get('worker_id')
@@ -78,9 +93,13 @@ def add_favorite_api():
         if resp.ok:
             return jsonify({'success': True, 'message': 'Трудник добавлен в избранное'})
         else:
-            # Проверяем на дубликат
-            error_text = resp.text if hasattr(resp, 'text') else ''
-            if 'duplicate' in error_text.lower() or resp.status_code == 409:
+            # B12: PostgREST returns 400 + code=23505 for unique violation
+            err_data = {}
+            try:
+                err_data = resp.json() or {}
+            except Exception:
+                pass
+            if err_data.get('code') == '23505':
                 return jsonify({'success': True, 'message': 'Трудник уже в избранном'})
             return jsonify({'success': False, 'error': f'Ошибка сервера: {resp.status_code}'})
     except Exception as e:
@@ -89,6 +108,7 @@ def add_favorite_api():
 
 @favorites_bp.route('/api/favorites/remove', methods=['POST'])
 @login_required
+@role_required('employer')
 def remove_favorite_api():
     data = request.get_json()
     worker_id = data.get('worker_id')
@@ -100,11 +120,13 @@ def remove_favorite_api():
         postgrest_request('DELETE', f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{worker_id}&favorite_type=eq.worker')
         return jsonify({'success': True, 'message': 'Трудник удалён из избранного'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        current_app.logger.exception("remove_favorite_api error for worker_id=%s", worker_id)
+        return jsonify({'success': False, 'error': 'Внутренняя ошибка сервера'})
 
 
 @favorites_bp.route('/api/favorites/check', methods=['POST'])
 @login_required
+@role_required('employer')
 def check_favorite_api():
     data = request.get_json()
     worker_id = data.get('worker_id')
@@ -117,11 +139,13 @@ def check_favorite_api():
         is_favorited = resp.ok and len(resp.json()) > 0
         return jsonify({'success': True, 'is_favorited': is_favorited})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        current_app.logger.exception("check_favorite_api error for worker_id=%s", worker_id)
+        return jsonify({'success': False, 'error': 'Внутренняя ошибка сервера'})
 
 
 @favorites_bp.route('/api/favorites/remove-selected', methods=['POST'])
 @login_required
+@role_required('employer')
 def remove_favorites_selected():
     data = request.get_json()
     worker_ids = data.get('worker_ids', [])
@@ -140,4 +164,5 @@ def remove_favorites_selected():
         else:
             return jsonify({'success': False, 'error': f'Ошибка сервера: {resp.status_code}'}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.exception("remove_favorites_selected error for worker_ids=%s", worker_ids)
+        return jsonify({'success': False, 'error': 'Внутренняя ошибка сервера'}), 500

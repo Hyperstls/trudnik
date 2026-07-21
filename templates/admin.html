@@ -35,7 +35,7 @@
     </div>
 
     <!-- Вкладки -->
-    <nav class="flex gap-1 mb-6 border-b border-neutral-200 overflow-x-auto">
+    <nav class="flex gap-1 mb-6 border-b border-neutral-200 overflow-x-auto" aria-label="Административная навигация">
         {% set tabs = [
             ('dashboard', 'Дашборд'),
             ('users', 'Пользователи'),
@@ -47,7 +47,8 @@
         {% for tid, tlabel in tabs %}
         <a href="?tab={{ tid }}"
            class="px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors
-                  {% if tab == tid %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:text-neutral-700{% endif %}">
+                  {% if tab == tid %}border-primary-500 text-primary-600{% else %}border-transparent text-neutral-500 hover:text-neutral-700{% endif %}"
+           {% if tab == tid %}aria-current="page"{% endif %}>
             {{ tlabel }}
         </a>
         {% endfor %}
@@ -61,12 +62,12 @@
         <div class="bg-white rounded-xl border border-neutral-100 p-4 shadow-sm">
             <p class="text-2xl font-bold text-neutral-900">{{ stats.get('total_users', 0) }}</p>
             <p class="text-xs text-neutral-500 mt-1">Пользователей</p>
-            <p class="text-xs text-neutral-400">{{ stats.get('workers', 0) }} работников / {{ stats.get('employers', 0) }} храмов</p>
+            <p class="text-xs text-neutral-500">{{ stats.get('workers', 0) }} работников / {{ stats.get('employers', 0) }} храмов</p>
         </div>
         <div class="bg-white rounded-xl border border-neutral-100 p-4 shadow-sm">
             <p class="text-2xl font-bold text-neutral-900">{{ stats.get('total_jobs', 0) }}</p>
             <p class="text-xs text-neutral-500 mt-1">Заданий</p>
-            <p class="text-xs text-neutral-400">{{ stats.get('open_jobs', 0) }} открыто</p>
+            <p class="text-xs text-neutral-500">{{ stats.get('open_jobs', 0) }} открыто</p>
         </div>
         <div class="bg-white rounded-xl border border-neutral-100 p-4 shadow-sm">
             <p class="text-2xl font-bold text-neutral-900">{{ stats.get('pending_verifications', 0) }}</p>
@@ -92,6 +93,7 @@
         <form method="get" class="flex gap-2 flex-1">
             <input type="hidden" name="tab" value="users">
             <input type="text" name="search" value="{{ request.args.get('search', '') }}" placeholder="Поиск по имени..."
+                   aria-label="Поиск пользователей по имени"
                    class="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm">
             <select name="role" class="px-3 py-2 border border-neutral-200 rounded-lg text-sm">
                 <option value="">Все роли</option>
@@ -106,7 +108,7 @@
     </div>
     <div id="bulk-delete-users-bar" class="mb-3 hidden">
         <button type="button" class="js-bulk-delete-users-btn px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50" disabled>
-            Удалить выбранных (<span id="users-selected-count">0</span>)
+            Удалить выбранных (<output id="users-selected-count" aria-live="polite">0</output>)
         </button>
     </div>
     <div class="bg-white rounded-xl border border-neutral-100 shadow-sm overflow-x-auto">
@@ -127,7 +129,7 @@
                 {% for u in users %}
                 <tr class="border-t border-neutral-100 hover:bg-neutral-50" data-user-id="{{ u.id }}">
                     <td class="px-2 py-3 text-center">
-                        <input type="checkbox" class="js-user-checkbox rounded border-neutral-300" data-user-id="{{ u.id }}">
+                        <input type="checkbox" class="js-user-checkbox rounded border-neutral-300" data-user-id="{{ u.id }}" aria-label="Выбрать пользователя {{ u.get('full_name', '') }}">
                     </td>
                     <td class="px-4 py-3 font-medium text-neutral-900">{{ u.get('full_name', '—') }}</td>
                     <td class="px-4 py-3 text-neutral-600">{{ u.get('email', '—') }}</td>
@@ -143,6 +145,7 @@
                     <td class="px-4 py-3 text-right">
                         <div class="flex gap-1 justify-end">
                             <form method="post" action="/admin/users/{{ u.id }}/role" class="inline-flex gap-1">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                                 <select name="role" class="text-xs border border-neutral-200 rounded px-1.5 py-1">
                                     <option value="worker" {% if u.get('role') == 'worker' %}selected{% endif %}>Работник</option>
                                     <option value="employer" {% if u.get('role') == 'employer' %}selected{% endif %}>Храм</option>
@@ -151,13 +154,14 @@
                                 <button class="text-xs text-primary-600 hover:underline px-1">Сменить</button>
                             </form>
                             <form method="post" action="/admin/users/{{ u.id }}/delete" class="js-confirm-form" data-confirm="Удалить пользователя {{ u.get('full_name', '') }}?">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                                 <button class="text-xs text-danger hover:underline px-1">Удалить</button>
                             </form>
                         </div>
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="6" class="px-4 py-8 text-center text-neutral-400">Пользователи не найдены</td></tr>
+                <tr><td colspan="6" class="px-4 py-8 text-center text-neutral-500">Пользователи не найдены</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -172,6 +176,7 @@
         <form method="get" class="flex gap-2 flex-1">
             <input type="hidden" name="tab" value="jobs">
             <input type="text" name="search" value="{{ request.args.get('search', '') }}" placeholder="Поиск по названию..."
+                   aria-label="Поиск заданий по названию"
                    class="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm">
             <select name="status" class="px-3 py-2 border border-neutral-200 rounded-lg text-sm">
                 <option value="">Все статусы</option>
@@ -186,7 +191,7 @@
     </div>
     <div id="bulk-delete-jobs-bar" class="mb-3 hidden">
         <button type="button" class="js-bulk-delete-jobs-btn px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50" disabled>
-            Удалить выбранные (<span id="jobs-selected-count">0</span>)
+            Удалить выбранные (<output id="jobs-selected-count" aria-live="polite">0</output>)
         </button>
     </div>
     <div class="bg-white rounded-xl border border-neutral-100 shadow-sm overflow-x-auto">
@@ -207,7 +212,7 @@
                 {% for j in jobs %}
                 <tr class="border-t border-neutral-100 hover:bg-neutral-50" data-job-id="{{ j.id }}">
                     <td class="px-2 py-3 text-center">
-                        <input type="checkbox" class="js-job-checkbox rounded border-neutral-300" data-job-id="{{ j.id }}">
+                        <input type="checkbox" class="js-job-checkbox rounded border-neutral-300" data-job-id="{{ j.id }}" aria-label="Выбрать задание {{ j.get('title', '') }}">
                     </td>
                     <td class="px-4 py-3 font-medium text-neutral-900">{{ j.get('organization_name', '—')[:40] }}</td>
                     <td class="px-4 py-3 text-neutral-600">{{ j.get('employer_name', '—') }}</td>
@@ -223,6 +228,7 @@
                     <td class="px-4 py-3 text-right">
                         <div class="flex gap-1 justify-end">
                             <form method="post" action="/admin/jobs/{{ j.id }}/status" class="inline-flex gap-1">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                                 <select name="status" class="text-xs border border-neutral-200 rounded px-1.5 py-1">
                                     <option value="open" {% if j.get('status') == 'open' %}selected{% endif %}>open</option>
                                     <option value="completed" {% if j.get('status') == 'completed' %}selected{% endif %}>completed</option>
@@ -231,13 +237,14 @@
                                 <button class="text-xs text-primary-600 hover:underline px-1">Сменить</button>
                             </form>
                             <form method="post" action="/admin/jobs/{{ j.id }}/delete" class="js-confirm-form" data-confirm="Удалить задание {{ j.get('organization_name', '') }}?">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                                 <button class="text-xs text-danger hover:underline px-1">Удалить</button>
                             </form>
                         </div>
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="6" class="px-4 py-8 text-center text-neutral-400">Задания не найдены</td></tr>
+                <tr><td colspan="6" class="px-4 py-8 text-center text-neutral-500">Задания не найдены</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -263,24 +270,26 @@
                 </div>
                 <div class="flex gap-2 shrink-0">
                     {% if user.verification_doc_url %}
-                    <a href="{{ user.verification_doc_url }}" target="_blank" rel="noopener"
+                    <a href="{{ user.verification_doc_url }}" target="_blank" rel="noopener noreferrer"
                        class="action-icon-btn chat-btn px-3 py-1.5" title="Просмотреть документ">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                         <span class="text-xs ml-1.5 font-medium">Документ</span>
                     </a>
                     {% else %}
-                    <span class="text-xs text-neutral-400 italic px-3 py-1.5">Нет документа</span>
+                    <span class="text-xs text-neutral-500 italic px-3 py-1.5">Нет документа</span>
                     {% endif %}
                 </div>
             </div>
             <div class="flex gap-2 mt-3 pt-3 border-t border-neutral-100">
                 <form method="post" action="/admin/approve/{{ user.id }}">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                     <button class="action-icon-btn accept-btn px-3 py-1.5">
                         {{ check(14) }}
                         <span class="text-xs font-medium">Одобрить</span>
                     </button>
                 </form>
                 <form method="post" action="/admin/reject/{{ user.id }}">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                     <button class="action-icon-btn reject-btn px-3 py-1.5">
                         {{ close(14) }}
                         <span class="text-xs font-medium">Отклонить</span>
@@ -291,7 +300,7 @@
         {% endfor %}
     </div>
     {% else %}
-    <p class="text-sm text-neutral-400 mb-4">Нет заявок на верификацию</p>
+    <p class="text-sm text-neutral-500 mb-4">Нет заявок на верификацию</p>
     {% endif %}
 
     {% if verified %}
@@ -311,7 +320,7 @@
                     </div>
                     <p class="text-xs text-neutral-500">{{ user.get('city', '') }}{% if user.get('city') and user.get('email') %} · {% endif %}{{ user.get('email', '') }}</p>
                     {% if user.verification_doc_url %}
-                    <a href="{{ user.verification_doc_url }}" target="_blank" rel="noopener"
+                    <a href="{{ user.verification_doc_url }}" target="_blank" rel="noopener noreferrer"
                        class="inline-flex items-center gap-1 text-primary-500 text-xs hover:underline mt-1">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                         Документ
@@ -325,6 +334,7 @@
                         <span class="text-xs font-medium">Одобрено</span>
                     </button>
                     <form method="post" action="/admin/reject/{{ user.id }}">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                         <button class="action-icon-btn reject-btn px-3 py-1.5">
                             {{ close(14) }}
                             <span class="text-xs font-medium">Отклонить</span>
@@ -332,6 +342,7 @@
                     </form>
                     {% else %}
                     <form method="post" action="/admin/approve/{{ user.id }}">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                         <button class="action-icon-btn accept-btn px-3 py-1.5">
                             {{ check(14) }}
                             <span class="text-xs font-medium">Одобрить</span>
@@ -358,12 +369,13 @@
     <div class="bg-white rounded-2xl border border-neutral-100 p-5 shadow-sm">
         <div class="flex gap-2 mb-4">
             <input type="text" id="skill-name-input" placeholder="Новый навык..."
+                   aria-label="Название нового навыка"
                    class="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm">
             <button class="js-add-skill-btn px-4 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600">Добавить</button>
         </div>
         <div id="bulk-delete-skills-bar" class="mb-3 hidden">
             <button type="button" class="js-bulk-delete-skills-btn px-3 py-1.5 text-sm font-medium bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                Удалить выбранные навыки (<span id="skills-selected-count">0</span>)
+                Удалить выбранные навыки (<output id="skills-selected-count" aria-live="polite">0</output>)
             </button>
         </div>
         <label class="flex items-center gap-2 mb-2 text-sm text-neutral-500 cursor-pointer select-none">
@@ -371,7 +383,7 @@
             <span>Выбрать все навыки</span>
         </label>
         <div id="skills-list" class="space-y-2">
-            <p class="text-sm text-neutral-400">Загрузка...</p>
+            <p class="text-sm text-neutral-500">Загрузка...</p>
         </div>
     </div>
     {% endif %}
@@ -384,12 +396,13 @@
     <div class="bg-white rounded-2xl border border-neutral-100 p-5 shadow-sm">
         <div class="flex gap-2 mb-4">
             <input type="text" id="religion-name-input" placeholder="Новое вероисповедание..."
+                   aria-label="Название нового вероисповедания"
                    class="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm">
             <button class="js-add-religion-btn px-4 py-2 bg-primary-500 text-white rounded-lg text-sm font-medium hover:bg-primary-600">Добавить</button>
         </div>
         <div id="bulk-delete-religions-bar" class="mb-3 hidden">
             <button type="button" class="js-bulk-delete-religions-btn px-3 py-1.5 text-sm font-medium bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                Удалить выбранные вероисповедания (<span id="religions-selected-count">0</span>)
+                Удалить выбранные вероисповедания (<output id="religions-selected-count" aria-live="polite">0</output>)
             </button>
         </div>
         <label class="flex items-center gap-2 mb-2 text-sm text-neutral-500 cursor-pointer select-none">
@@ -397,7 +410,7 @@
             <span>Выбрать все вероисповедания</span>
         </label>
         <div id="religions-list" class="space-y-2">
-            <p class="text-sm text-neutral-400">Загрузка...</p>
+            <p class="text-sm text-neutral-500">Загрузка...</p>
         </div>
     </div>
     {% endif %}
@@ -407,7 +420,7 @@
     {% if tab == 'stats' %}
     <h3 class="text-lg font-semibold text-neutral-800 mb-3">Статистика публикаций</h3>
     <div id="stats-container" class="space-y-3">
-        <p class="text-sm text-neutral-400">Загрузка...</p>
+        <p class="text-sm text-neutral-500">Загрузка...</p>
     </div>
     {% endif %}
 </div>
@@ -456,7 +469,7 @@ function setupBulkDelete(config) {
                 bulkBtn.textContent = 'Удаление...';
                 var payload = {};
                 payload[config.payloadKey] = ids;
-                fetch(config.endpoint, {
+                apiFetch(config.endpoint, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(payload)
@@ -490,7 +503,7 @@ async function loadSkills() {
             skillsData = data.skills;
             renderSkills();
         } else {
-            list.innerHTML = '<p class="text-sm text-neutral-400">Нет навыков</p>';
+            list.innerHTML = '<p class="text-sm text-neutral-500">Нет навыков</p>';
         }
     } catch (e) { document.getElementById('skills-list').innerHTML = '<p class="text-sm text-danger">Ошибка загрузки</p>'; }
     var selectAll = document.querySelector('.js-select-all-skills');
@@ -504,10 +517,11 @@ function renderSkills() {
     list.innerHTML = skillsData.map((s, i) => `
         <div class="flex items-center gap-1.5 p-2 border border-neutral-100 rounded-lg bg-white cursor-move"
              id="skill-${s.id}" draggable="true" data-skill-index="${i}">
-            <input type="checkbox" class="js-skill-checkbox rounded border-neutral-300 shrink-0" data-skill-id="${s.id}">
+            <input type="checkbox" class="js-skill-checkbox rounded border-neutral-300 shrink-0" data-skill-id="${s.id}" aria-label="Выбрать навык ${s.name}">
             <span class="text-xs text-neutral-300 cursor-grab mr-1 select-none" title="Перетащите">⋮⋮</span>
-            <span class="text-xs text-neutral-400 w-6 text-center">${i + 1}</span>
+            <span class="text-xs text-neutral-500 w-6 text-center">${i + 1}</span>
             <input type="text" value="${s.name}" data-id="${s.id}"
+                   aria-label="Название навыка"
                    class="flex-1 px-2 py-1 border border-neutral-200 rounded text-sm skill-edit">
             <button class="js-save-skill-btn text-xs text-primary-600 hover:underline px-1" data-skill-id="${s.id}">Сохранить</button>
             <button class="js-remove-skill-btn text-xs text-danger hover:underline px-1" data-skill-id="${s.id}">Удалить</button>
@@ -529,7 +543,7 @@ async function moveSkill(index, direction, targetIndex) {
     const items = skillsData.map((s, i) => ({id: s.id, sort_order: i + 1}));
     renderSkills();
     try {
-        await fetch('/admin/skills/reorder', {
+        await apiFetch('/admin/skills/reorder', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({items})
@@ -542,34 +556,36 @@ async function addSkill() {
     const name = input.value.trim();
     if (!name) return;
     try {
-        const resp = await fetch('/admin/skills', {
+        const resp = await apiFetch('/admin/skills', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({name})
         });
-        if ((await resp.json()).success) { input.value = ''; loadSkills(); }
-    } catch (e) {}
+        const data = await resp.json();
+        if (data.success) { input.value = ''; loadSkills(); }
+        else if (window.showToast) { window.showToast('Ошибка: ' + (data.error || resp.status), 'error'); }
+    } catch (e) { if (window.showToast) window.showToast('Ошибка сети при добавлении навыка', 'error'); }
 }
 
 async function saveSkill(id) {
     const input = document.querySelector(`#skill-${id} .skill-edit`);
     if (!input) return;
     try {
-        await fetch(`/admin/skills/${id}`, {
+        await apiFetch(`/admin/skills/${id}`, {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({name: input.value.trim()})
         });
         if (window.showToast) window.showToast('Сохранено', 'success');
-    } catch (e) {}
+    } catch (e) { if (window.showToast) window.showToast('Ошибка при сохранении', 'error'); }
 }
 
 async function removeSkill(id) {
     window.showConfirm('Удалить навык?', async function() {
         try {
-            await fetch(`/admin/skills/${id}`, { method: 'DELETE' });
+            await apiFetch(`/admin/skills/${id}`, { method: 'DELETE' });
             loadSkills();
-        } catch (e) {}
+        } catch (e) { if (window.showToast) window.showToast('Ошибка при удалении', 'error'); }
     });
 }
 loadSkills();
@@ -644,7 +660,7 @@ async function loadReligions() {
             religionsData = data.religions;
             renderReligions();
         } else {
-            list.innerHTML = '<p class="text-sm text-neutral-400">Нет вероисповеданий</p>';
+            list.innerHTML = '<p class="text-sm text-neutral-500">Нет вероисповеданий</p>';
         }
     } catch (e) { document.getElementById('religions-list').innerHTML = '<p class="text-sm text-danger">Ошибка загрузки</p>'; }
     var selectAll = document.querySelector('.js-select-all-religions');
@@ -658,10 +674,11 @@ function renderReligions() {
     list.innerHTML = religionsData.map((r, i) => `
         <div class="flex items-center gap-1.5 p-2 border border-neutral-100 rounded-lg bg-white cursor-move"
              id="religion-${r.id}" draggable="true" data-religion-index="${i}">
-            <input type="checkbox" class="js-religion-checkbox rounded border-neutral-300 shrink-0" data-religion-id="${r.id}">
+            <input type="checkbox" class="js-religion-checkbox rounded border-neutral-300 shrink-0" data-religion-id="${r.id}" aria-label="Выбрать вероисповедание ${r.name}">
             <span class="text-xs text-neutral-300 cursor-grab mr-1 select-none" title="Перетащите">⋮⋮</span>
-            <span class="text-xs text-neutral-400 w-6 text-center">${i + 1}</span>
+            <span class="text-xs text-neutral-500 w-6 text-center">${i + 1}</span>
             <input type="text" value="${r.name}" data-id="${r.id}"
+                   aria-label="Название вероисповедания"
                    class="flex-1 px-2 py-1 border border-neutral-200 rounded text-sm religion-edit">
             <button class="js-save-religion-btn text-xs text-primary-600 hover:underline px-1" data-religion-id="${r.id}">Сохранить</button>
             <button class="js-remove-religion-btn text-xs text-danger hover:underline px-1" data-religion-id="${r.id}">Удалить</button>
@@ -682,7 +699,7 @@ async function moveReligion(index, direction, targetIndex) {
     const items = religionsData.map((r, i) => ({id: r.id, sort_order: i + 1}));
     renderReligions();
     try {
-        await fetch('/admin/religions/reorder', {
+        await apiFetch('/admin/religions/reorder', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({items})
@@ -695,34 +712,36 @@ async function addReligion() {
     const name = input.value.trim();
     if (!name) return;
     try {
-        const resp = await fetch('/admin/religions', {
+        const resp = await apiFetch('/admin/religions', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({name})
         });
-        if ((await resp.json()).success) { input.value = ''; loadReligions(); }
-    } catch (e) {}
+        const data = await resp.json();
+        if (data.success) { input.value = ''; loadReligions(); }
+        else if (window.showToast) { window.showToast('Ошибка: ' + (data.error || resp.status), 'error'); }
+    } catch (e) { if (window.showToast) window.showToast('Ошибка сети при добавлении', 'error'); }
 }
 
 async function saveReligion(id) {
     const input = document.querySelector(`#religion-${id} .religion-edit`);
     if (!input) return;
     try {
-        await fetch(`/admin/religions/${id}`, {
+        await apiFetch(`/admin/religions/${id}`, {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({name: input.value.trim()})
         });
         if (window.showToast) window.showToast('Сохранено', 'success');
-    } catch (e) {}
+    } catch (e) { if (window.showToast) window.showToast('Ошибка при сохранении', 'error'); }
 }
 
 async function removeReligion(id) {
     window.showConfirm('Удалить вероисповедание?', async function() {
         try {
-            await fetch(`/admin/religions/${id}`, { method: 'DELETE' });
+            await apiFetch(`/admin/religions/${id}`, { method: 'DELETE' });
             loadReligions();
-        } catch (e) {}
+        } catch (e) { if (window.showToast) window.showToast('Ошибка при удалении', 'error'); }
     });
 }
 loadReligions();
@@ -788,17 +807,17 @@ setupBulkDelete({
 {% if tab == 'stats' %}
 async function loadStats() {
     try {
-        const resp = await fetch('/api/admin/job-stats');
+        const resp = await fetch('/admin/job-stats');
         const data = await resp.json();
         const container = document.getElementById('stats-container');
         if (data.success) {
             container.innerHTML = `
                 <div class="bg-white rounded-xl border border-neutral-100 p-4 shadow-sm">
-                    <p class="text-sm text-neutral-400">Статистика загружена</p>
+                    <p class="text-sm text-neutral-500">Статистика загружена</p>
                 </div>
             `;
         } else {
-            container.innerHTML = '<p class="text-sm text-neutral-400">Ошибка загрузки статистики</p>';
+            container.innerHTML = '<p class="text-sm text-neutral-500">Ошибка загрузки статистики</p>';
         }
     } catch (e) {
         document.getElementById('stats-container').innerHTML = '<p class="text-sm text-danger">Ошибка соединения</p>';
@@ -855,10 +874,10 @@ loadStats();
             window.showConfirm(confirmMsg, function() {
                 bulkBtnUsers.disabled = true;
                 bulkBtnUsers.textContent = 'Удаление...';
-                fetch('/admin/bulk-delete-users', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({user_ids: ids})
+                apiFetch('/admin/bulk-delete-users', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({user_ids: ids})
                 })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
@@ -877,7 +896,7 @@ loadStats();
                 .catch(function(err) {
                     if (window.showToast) window.showToast('Ошибка соединения', 'danger');
                     bulkBtnUsers.disabled = false;
-                    bulkBtnUsers.innerHTML = 'Удалить выбранных (<span id="users-selected-count">' + ids.length + '</span>)';
+                    bulkBtnUsers.innerHTML = 'Удалить выбранных (<output id="users-selected-count" aria-live="polite">' + ids.length + '</output>)';
                     usersCountSpan = document.getElementById('users-selected-count');
                 });
             });
@@ -933,10 +952,10 @@ loadStats();
             window.showConfirm(confirmMsg, function() {
                 bulkBtnJobs.disabled = true;
                 bulkBtnJobs.textContent = 'Удаление...';
-                fetch('/admin/bulk-delete-jobs', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({job_ids: ids})
+                apiFetch('/admin/bulk-delete-jobs', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({job_ids: ids})
                 })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
@@ -955,7 +974,7 @@ loadStats();
                 .catch(function(err) {
                     if (window.showToast) window.showToast('Ошибка соединения', 'danger');
                     bulkBtnJobs.disabled = false;
-                    bulkBtnJobs.innerHTML = 'Удалить выбранные (<span id="jobs-selected-count">' + ids.length + '</span>)';
+                    bulkBtnJobs.innerHTML = 'Удалить выбранные (<output id="jobs-selected-count" aria-live="polite">' + ids.length + '</output>)';
                     jobsCountSpan = document.getElementById('jobs-selected-count');
                 });
             });

@@ -4,7 +4,7 @@
 {% block content %}
 <div class="flex flex-col h-[calc(100dvh-3.5rem)] max-w-lg mx-auto">
     <!-- Breadcrumbs -->
-    <nav class="text-sm text-gray-500 px-4 pt-3 mb-1">
+    <nav class="text-sm text-gray-500 px-4 pt-3 mb-1" aria-label="Хлебные крошки">
       <a href="/" class="hover:text-blue-600">Главная</a> →
       <a href="/chats" class="hover:text-blue-600">Чаты</a> →
       <span class="text-gray-800">{{ chat_title or 'Чат' }}</span>
@@ -36,7 +36,7 @@
                 {% endif %}">
                 {{ msg.content }}
                 <div class="text-[10px] mt-1 {% if is_mine %}text-white/60{% else %}text-neutral-400{% endif %} text-right">
-                    {{ msg.created_at[11:16] if msg.created_at else '' }}
+                    <time datetime="{{ msg.created_at }}">{{ msg.created_at[11:16] if msg.created_at else '' }}</time>
                 </div>
             </div>
         </div>
@@ -68,7 +68,7 @@
                 </div>
                 <button type="submit" class="w-11 h-11 rounded-xl bg-primary-500 text-white flex items-center justify-center
                     hover:bg-primary-600 active:scale-[0.95] transition-all duration-150 shadow-sm shrink-0"
-                    id="send-btn">
+                    id="send-btn" aria-label="Отправить сообщение">
                     {{ send(20) }}
                 </button>
             </form>
@@ -80,7 +80,12 @@
 const applicationId = "{{ application_id }}";
 const currentUserId = "{{ user_id }}";
 let lastMessageId = "{{ messages[-1].id if messages else '' }}";
-const POLL_INTERVAL = 3000;
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = String(text || '');
+    return div.innerHTML;
+}
 
 function addMessage(msg, isMine) {
     const messagesDiv = document.getElementById('messages');
@@ -94,10 +99,11 @@ function addMessage(msg, isMine) {
     bubble.innerHTML = `
         <div class="max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words
             ${isMine ? 'bg-primary-500 text-white rounded-br-md' : 'bg-neutral-100 text-neutral-800 rounded-bl-md'}">
-            ${msg.content.replace(/</g, '<')}
-            <div class="text-[10px] mt-1 ${isMine ? 'text-white/60' : 'text-neutral-400'} text-right">${time}</div>
+            <span class="msg-content"></span>
+            <div class="text-[10px] mt-1 ${isMine ? 'text-white/60' : 'text-neutral-400'} text-right">${escapeHtml(time)}</div>
         </div>
     `;
+    bubble.querySelector('.msg-content').textContent = msg.content || '';
     messagesDiv.appendChild(bubble);
 
     // Highlight new message
@@ -111,10 +117,15 @@ function addMessage(msg, isMine) {
     messagesDiv.scrollTo({ top: messagesDiv.scrollHeight, behavior: 'smooth' });
 }
 
+// Polling с exponential backoff и AbortController (рекурсивный setTimeout вместо setInterval)
+let chatPollTimer = null;
+let chatPollDelay = 3000;
+let chatAbortController = null;
+
 async function pollMessages() {
     try {
         const url = `/api/messages/${applicationId}/poll${lastMessageId ? '?since_id=' + lastMessageId : ''}`;
-        const resp = await fetch(url);
+        const resp = await apiFetch(url, { signal: chatAbortController ? chatAbortController.signal : undefined });
         if (!resp.ok) return;
         const data = await resp.json();
         for (const msg of data.messages) {
@@ -123,8 +134,47 @@ async function pollMessages() {
                 lastMessageId = msg.id;
             }
         }
-    } catch (e) { /* silent */ }
+        // Сброс задержки при успешном запросе
+        chatPollDelay = 3000;
+    } catch (e) {
+        if (e.name === 'AbortError') return;
+        // Exponential backoff: 3s → 6s → 12s → 24s → 30s
+        chatPollDelay = Math.min(30000, chatPollDelay * 2);
+    }
 }
+
+function scheduleNextPoll() {
+    chatAbortController = new AbortController();
+    chatPollTimer = setTimeout(async () => {
+        await pollMessages();
+        scheduleNextPoll();
+    }, chatPollDelay);
+}
+
+function startChatPolling() {
+    stopChatPolling();
+    chatPollDelay = 3000;
+    chatAbortController = new AbortController();
+    // Первый вызов сразу, затем рекурсивно
+    chatPollTimer = setTimeout(async () => {
+        await pollMessages();
+        scheduleNextPoll();
+    }, chatPollDelay);
+}
+
+function stopChatPolling() {
+    if (chatPollTimer) {
+        clearTimeout(chatPollTimer);
+        chatPollTimer = null;
+    }
+    if (chatAbortController) {
+        chatAbortController.abort();
+        chatAbortController = null;
+    }
+}
+
+// Останавливаем polling при уходе со страницы
+window.addEventListener('beforeunload', stopChatPolling);
 
 async function sendMessage(event) {
     event.preventDefault();
@@ -137,10 +187,21 @@ async function sendMessage(event) {
     btn.innerHTML = `<svg class="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`;
 
     try {
-        const resp = await fetch('/api/send_message', {
+        // Генерируем client_message_id для идемпотентности (защита от двойного клика)
+        const clientMessageId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+            ? crypto.randomUUID()
+            : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+            });
+        const resp = await apiFetch('/api/send_message', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ application_id: applicationId, content: content })
+            body: JSON.stringify({
+                application_id: applicationId,
+                content: content,
+                client_message_id: clientMessageId
+            })
         });
         if (!resp.ok) throw new Error('Ошибка отправки');
         input.value = '';
@@ -152,20 +213,6 @@ async function sendMessage(event) {
     } finally {
         btn.innerHTML = `{{ send(20)|safe }}`;
         btn.disabled = false;
-    }
-}
-
-let chatPollTimer = null;
-
-function startChatPolling() {
-    if (chatPollTimer) return; // Уже запущен
-    chatPollTimer = setInterval(pollMessages, POLL_INTERVAL);
-}
-
-function stopChatPolling() {
-    if (chatPollTimer) {
-        clearInterval(chatPollTimer);
-        chatPollTimer = null;
     }
 }
 

@@ -1,7 +1,11 @@
 """Форматирование: даты, валюта, текст (русская локализация)."""
 
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
+
+logger = logging.getLogger(__name__)
 
 # Русские названия месяцев (родительный падеж)
 _MONTHS_RU = [
@@ -9,8 +13,8 @@ _MONTHS_RU = [
     'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
 ]
 
-# Московский часовой пояс (UTC+3)
-_MSK_TZ = timezone(timedelta(hours=3))
+# Московский часовой пояс (Europe/Moscow)
+_MSK_TZ = ZoneInfo('Europe/Moscow')
 
 
 def format_datetime(iso_string: Optional[str]) -> str:
@@ -70,7 +74,8 @@ def format_datetime(iso_string: Optional[str]) -> str:
         else:
             return f"{dt_msk.day} {month_name} {dt_msk.year}"
 
-    except Exception:
+    except Exception as e:
+        logger.warning('format_datetime failed for input=%s: %s', iso_string, e, exc_info=True)
         return '—'
 
 

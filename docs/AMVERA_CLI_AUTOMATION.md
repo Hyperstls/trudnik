@@ -198,12 +198,12 @@ run:
 
 Приложение запускается через:
 ```
-uvicorn asgi:application --host 0.0.0.0 --port 8000 --workers 1
+uvicorn asgi:application --host 0.0.0.0 --port 8000 --workers 2
 ```
 
 Healthcheck:
 ```
-python -c "import urllib.request, sys; resp = urllib.request.urlopen('http://localhost:8000/health', timeout=3); sys.exit(0 if resp.status == 200 else 1)" || exit 1
+python -c "import urllib.request, sys; resp = urllib.request.urlopen('http://localhost:8000/ready', timeout=3); sys.exit(0 if resp.status == 200 else 1)" || exit 1
 ```
 
 Docker-образ пушится в: `cr.yandex/crp2gf3gm8rv83kfkvet/amvera-hyperstls-trudnik`
@@ -294,8 +294,10 @@ Error while extracting response for type [java.util.List<...EnvResponse>] and co
 
 ## 6. Скрипты автоматизации
 
+> **Канонические скрипты** живут в `scripts/amvera_*.sh` (`amvera_full_cycle.sh`, `amvera_deploy.sh`, `amvera_env_manager.sh`, `amvera_db_backup.sh`, `amvera_monitor.sh`) и используют env `AMVERA_CLI` (по умолчанию `amvera`). Ниже — справочные inline-варианты (могут отставать от `scripts/`; предпочтительнее `scripts/`).
+
 Все скрипты рассчитаны на запуск через Git bash (`C:\Program Files\Git\bin\bash.exe`).
-Путь к CLI: `C:/Users/s.prokopenko/AppData/Local/Amvera/amvera.exe`
+Путь к CLI: `C:/Users/s.prokopenko/AppData/Local/Amvera/amvera.exe` (или задайте env `AMVERA_CLI`).
 
 Для удобства рекомендуется создать алиас:
 
@@ -487,7 +489,7 @@ fi
 # Шаг 3: Push в Amvera
 echo ""
 echo "=== Шаг 3: Push в Amvera ==="
-git push amvera main 2>&1 || echo "ℹ️  Используем rebuild..."
+git push amvera main:master 2>&1 || echo "ℹ️  Используем rebuild..."
 
 # Шаг 4: Пересборка
 echo ""
@@ -537,13 +539,15 @@ echo "========================================="
 
 ## 7. CI/CD интеграция (GitHub Actions)
 
+> **Статус:** деплой в Amvera сейчас **ручной** через `scripts/amvera_*.sh`. Активные workflow — только `.github/workflows/test.yml` (тесты) и `build-apk.yml` (сборка APK). Раздел ниже описывает **предлагаемые** (не подключённые в репо) workflow деплоя.
+
 ### 7.1 Настройка Secrets в GitHub
 
 Для работы GitHub Actions с Amvera CLI необходимо добавить следующие секреты в репозиторий (Settings → Secrets and variables → Actions):
 
 | Secret | Описание |
 |--------|----------|
-| `AMVERA_USERNAME` | Имя пользователя Amvera (`hyperstls`) |
+| `AMVERA_USER` | Имя пользователя Amvera (`hyperstls`) |
 | `AMVERA_PASSWORD` | Пароль от аккаунта Amvera |
 
 ### 7.2 Проблема авторизации
@@ -577,8 +581,8 @@ jobs:
 
       - name: Push to Amvera
         run: |
-          git remote add amvera https://${{ secrets.AMVERA_USERNAME }}:${{ secrets.AMVERA_PASSWORD }}@git.amvera.ru/hyperstls/trudnik.git
-          git push amvera main
+          git remote add amvera https://${{ secrets.AMVERA_USER }}:${{ secrets.AMVERA_PASSWORD }}@git.amvera.ru/hyperstls/trudnik.git
+          git push amvera main:master
 ```
 
 ### 7.4 GitHub Actions workflow (CLI-based — если `login` заработает)
@@ -605,7 +609,7 @@ jobs:
 
       - name: Login to Amvera
         run: |
-          amvera login --username ${{ secrets.AMVERA_USERNAME }} --password ${{ secrets.AMVERA_PASSWORD }}
+          amvera login --username ${{ secrets.AMVERA_USER }} --password ${{ secrets.AMVERA_PASSWORD }}
 
       - name: Upload code
         run: |

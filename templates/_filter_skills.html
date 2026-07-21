@@ -17,8 +17,9 @@
             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
         </svg>
         <span>Фильтр</span>
-        <span id="{{ filter_id }}-badge"
-              class="hidden bg-primary-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">0</span>
+        <output id="{{ filter_id }}-badge"
+              aria-live="polite"
+              class="hidden bg-primary-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">0</output>
     </button>
 
     {# Панель фильтра #}
@@ -64,7 +65,8 @@
                     <input type="text"
                            id="{{ filter_id }}-search"
                            class="w-full pl-8 pr-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15"
-                           placeholder="Поиск навыков...">
+                           placeholder="Поиск навыков..."
+                           aria-label="Поиск навыков">
                     <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400"
                          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"></circle>
@@ -139,10 +141,11 @@
         var html = '';
         for (var i = 0; i < skills.length; i++) {
             var s = skills[i];
+            var safeName = window.escapeHtml ? window.escapeHtml(s.name) : s.name;
             var checked = selectedSkills.indexOf(s.name) !== -1;
-            html += '<label class="flex items-center gap-2 px-2 py-1.5 hover:bg-neutral-50 rounded cursor-pointer text-sm skill-filter-item" data-skill="' + s.name.replace(/"/g, '"') + '">' +
-                '<input type="checkbox" value="' + s.name.replace(/"/g, '"') + '" class="skill-filter-cb rounded border-neutral-300 text-primary-500 focus:ring-primary-500" ' + (checked ? 'checked' : '') + '>' +
-                '<span class="text-neutral-700">' + s.name + '</span>' +
+            html += '<label class="flex items-center gap-2 px-2 py-1.5 hover:bg-neutral-50 rounded cursor-pointer text-sm skill-filter-item" data-skill="' + safeName + '">' +
+                '<input type="checkbox" value="' + safeName + '" class="skill-filter-cb rounded border-neutral-300 text-primary-500 focus:ring-primary-500" ' + (checked ? 'checked' : '') + '>' +
+                '<span class="text-neutral-700">' + safeName + '</span>' +
                 '</label>';
         }
         listDiv.innerHTML = html || '<span class="text-sm text-neutral-400">Нет доступных навыков</span>';

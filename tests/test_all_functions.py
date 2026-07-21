@@ -366,20 +366,22 @@ class BaseBlueprintTest(unittest.TestCase):
         'app.blueprints.profile',
         'app.blueprints.jobs',
         'app.blueprints.applications',
-        'app.blueprints.shifts',
         'app.blueprints.chat',
         'app.blueprints.favorites',
         'app.blueprints.blacklist',
         'app.blueprints.notifications',
-        'app.blueprints.admin',
-        'app.blueprints.monetization',
+        'app.blueprints.admin_dashboard',
+        'app.blueprints.admin_users',
+        'app.blueprints.admin_jobs',
+        'app.blueprints.admin_dictionaries',
+        'app.blueprints.admin_verification',
+        'app.blueprints.admin_diagnostics',
         'app.decorators',
     ]
 
     def setUp(self):
         self.app = create_app()
         self.app.config['TESTING'] = True
-        self.app.config['WTF_CSRF_ENABLED'] = False
         self.client = self.app.test_client()
         # Патчим render_template — шаблоны не нужны для тестов роутов.
         # Важно: blueprint'ы импортируют render_template на уровне модуля,
@@ -387,23 +389,25 @@ class BaseBlueprintTest(unittest.TestCase):
         self.patchers = []
         self.mock_postgrest = MagicMock()
         for mod in self.BLUEPRINTS_USING_SUPABASE:
-            # Патчим postgrest_request (есть во всех модулях списка)
-            p = patch(f'{mod}.postgrest_request', self.mock_postgrest)
+            # Патчим postgrest_request там, где он импортирован на уровне модуля.
+            # create=True: admin-модули (admin_dashboard и др.) могут не импортировать
+            # postgrest_request напрямую — патч создаёт атрибут, ошибки не будет.
+            p = patch(f'{mod}.postgrest_request', self.mock_postgrest, create=True)
             p.start()
             self.patchers.append(p)
         # Патчим render_template, url_for, flash только в blueprint'ах (не в decorators)
         BLUEPRINTS_ONLY = [m for m in self.BLUEPRINTS_USING_SUPABASE if m != 'app.decorators']
         for mod in BLUEPRINTS_ONLY:
-            # Патчим render_template
-            p2 = patch(f'{mod}.render_template', return_value='')
+            # Патчим render_template (create=True — не все модули импортируют его)
+            p2 = patch(f'{mod}.render_template', return_value='', create=True)
             p2.start()
             self.patchers.append(p2)
-            # Патчим url_for (возвращаем '/')
-            p3 = patch(f'{mod}.url_for', return_value='/')
+            # Патчим url_for (возвращаем '/'); create=True для тех же причин
+            p3 = patch(f'{mod}.url_for', return_value='/', create=True)
             p3.start()
             self.patchers.append(p3)
             # Патчим flash
-            p4 = patch(f'{mod}.flash')
+            p4 = patch(f'{mod}.flash', create=True)
             p4.start()
             self.patchers.append(p4)
         # Патчим url_for и redirect в decorators отдельно
@@ -412,10 +416,10 @@ class BaseBlueprintTest(unittest.TestCase):
         p_d1.start()
         self.patchers.append(p_d1)
         # Патчим прямые requests.* вызовы в auth.py и profile.py (не через postgrest_request)
-        self.auth_requests_patcher = patch('app.blueprints.auth.requests', MagicMock())
+        self.auth_requests_patcher = patch('app.blueprints.auth.requests', MagicMock(), create=True)
         self.auth_requests_patcher.start()
         self.patchers.append(self.auth_requests_patcher)
-        self.profile_requests_patcher = patch('app.blueprints.profile.requests', MagicMock())
+        self.profile_requests_patcher = patch('app.blueprints.profile.requests', MagicMock(), create=True)
         self.profile_requests_patcher.start()
         self.patchers.append(self.profile_requests_patcher)
         # Создаём контекст приложения

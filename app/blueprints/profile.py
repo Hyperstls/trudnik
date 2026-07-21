@@ -8,12 +8,13 @@ from app.decorators import login_required, rate_limit, validate_uuid
 from app.services.storage_service import upload_photo
 from app.utils import is_circuit_open, postgrest_admin_request, postgrest_request, postgrest_rpc, upload_to_storage
 from app.utils.helpers import assert_postgrest_ok
-from app.utils.validators import validate_password
+from app.utils.redis_client import get_redis_client
+from app.utils.validators import validate_password, validate_inn_checksum
 
 profile_bp = Blueprint('profile', __name__)
 
 # Публичные поля профиля (C27, C28)
-PUBLIC_PROFILE_FIELDS = 'id,role,created_at,updated_at,is_self_employed,email_public,rating,full_name,photo_url,age,bio,city,experience,desired_payment,verification_status,total_reviews,skills,religion,religion_id,portfolio_link'
+PUBLIC_PROFILE_FIELDS = 'id,role,created_at,updated_at,is_self_employed,email_public,rating,full_name,photo_url,age,bio,city,experience,desired_payment,verification_status,total_reviews,religion_id,portfolio_link'
 
 # Допустимые расширения для загрузки фото
 ALLOWED_PHOTO_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
@@ -64,7 +65,17 @@ def profile():
     except Exception:
         current_app.logger.exception('Error loading profile for user %s', user_id)
         profile_user = None
-    return render_template('profile.html', profile_user=profile_user)
+
+    # Текущие навыки пользователя (из user_skills) — для предвыбора в форме
+    current_skill_ids: list[str] = []
+    if profile_user:
+        try:
+            sk_resp = postgrest_request('GET', f'user_skills?user_id=eq.{user_id}&select=skill_id')
+            if sk_resp.ok and sk_resp.json():
+                current_skill_ids = [s.get('skill_id') for s in sk_resp.json() if s.get('skill_id')]
+        except Exception:
+            pass
+    return render_template('profile.html', profile_user=profile_user, current_skill_ids=current_skill_ids)
 
 
 @profile_bp.route('/profile/update', methods=['POST'])
@@ -83,11 +94,17 @@ def update_profile():
         'phone': request.form.get('phone'),
         'bio': bio,
         'city': request.form.get('city'),
-        'religion': request.form.get('religion', 'не указано'),
         'portfolio_link': request.form.get('portfolio_link', ''),
     }
     skills_str = request.form.get('skills', '')
-    data['skills'] = [s.strip() for s in skills_str.split(',') if s.strip()] if skills_str else []
+    # skill_ids может прийти как несколько полей (getlist) либо как одно поле
+    # со списком ID через запятую (страница профиля) — поддерживаем оба варианта.
+    skill_ids: list[str] = []
+    for _v in request.form.getlist('skill_ids'):
+        for _part in str(_v).split(','):
+            _part = _part.strip()
+            if _part:
+                skill_ids.append(_part)
 
     if request.form.get('experience') is not None:
         data['experience'] = request.form.get('experience')
@@ -104,13 +121,42 @@ def update_profile():
         if not inn.isdigit() or len(inn) != 12:
             flash('ИНН должен содержать ровно 12 цифр', 'danger')
             return redirect(url_for('profile.profile'))
+        if not validate_inn_checksum(inn):
+            flash('Некорректный ИНН (ошибка контрольной суммы)', 'danger')
+            return redirect(url_for('profile.profile'))
         data['inn'] = inn
     is_self_employed = request.form.get('is_self_employed')
     if is_self_employed is not None:
         data['is_self_employed'] = is_self_employed == 'on'
 
     contact = request.form.get('contact', '').strip()
+    if contact:
+        import re
+        if len(contact) < 3:
+            flash('Контакт должен содержать минимум 3 символа', 'danger')
+            return redirect(url_for('profile.profile'))
+        if not any([
+            bool(re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', contact)),
+            bool(re.match(r'^\+?\d[\d\-\s\(\)]{4,}$', contact)),
+            bool(re.match(r'^@?\w{3,}$', contact)),
+            len(contact) >= 5,
+        ]):
+            flash('Введите корректный контакт: email, телефон или никнейм', 'danger')
+            return redirect(url_for('profile.profile'))
     data['contact'] = contact if len(contact) >= 3 else None
+
+    # Вероисповедание (справочник religions)
+    religion_id = request.form.get('religion_id', '').strip()
+    if religion_id:
+        try:
+            uuid.UUID(religion_id)
+            data['religion_id'] = religion_id
+        except (ValueError, AttributeError):
+            flash('Некорректное вероисповедание', 'danger')
+            return redirect(url_for('profile.profile'))
+    else:
+        # Пустое значение — сбросить вероисповедание
+        data['religion_id'] = None
 
     photo = request.files.get('photo')
     if photo and photo.filename:
@@ -132,6 +178,23 @@ def update_profile():
         update_resp = postgrest_request('PATCH', f'profiles?id=eq.{user_id}', json=data)
         if assert_postgrest_ok(update_resp, 'обновление профиля'):
             flash('Профиль обновлён', 'success')
+
+        # Синхронизация навыков через user_skills (вместо profiles.skills)
+        if skill_ids:
+            # Удаляем старые связи
+            postgrest_request('DELETE', f'user_skills?user_id=eq.{user_id}')
+            # Вставляем новые
+            for sid in skill_ids:
+                sid = sid.strip()
+                if not sid:
+                    continue
+                try:
+                    uuid.UUID(sid)
+                except (ValueError, AttributeError):
+                    continue
+                postgrest_request('POST', 'user_skills', json={
+                    'user_id': user_id, 'skill_id': sid
+                })
     except Exception:
         current_app.logger.exception('Error updating profile for user %s', user_id)
         flash('Не удалось обновить профиль', 'danger')
@@ -174,6 +237,17 @@ def delete_photo():
 def delete_account():
     user_id = session['user_id']
 
+    # Rate-limit: 1 запрос в час (B29: atomic SET NX EX вместо exists+setex)
+    key = f'delete_account:{user_id}'
+    try:
+        redis_client = get_redis_client()
+        if redis_client:
+            if not redis_client.set(key, '1', nx=True, ex=3600):
+                flash('Попробуйте позже (не чаще раза в час)', 'warning')
+                return redirect(url_for('profile.profile'))
+    except Exception as e:
+        current_app.logger.warning('delete_account rate-limit check failed: %s', e, exc_info=True)
+
     # Каскадное удаление через RPC (этап 4.4)
     try:
         rpc_result = postgrest_rpc('delete_user_cascade', {'p_user_id': user_id}, use_admin=True)
@@ -201,11 +275,11 @@ def delete_account():
 @login_required
 @rate_limit
 def change_password():
-    old_password = request.form.get('old_password', '')
+    current_password = request.form.get('current_password', '')
     new_password = request.form.get('new_password')
     confirm_password = request.form.get('confirm_password')
 
-    if not old_password:
+    if not current_password:
         flash('Укажите текущий пароль', 'danger')
         return redirect(url_for('profile.profile'))
     if not new_password:
@@ -223,7 +297,7 @@ def change_password():
     try:
         resp = postgrest_request('POST', 'rpc/change_password', json={
             'p_user_id': user_id,
-            'p_old_password': old_password,
+            'p_old_password': current_password,
             'p_new_password': new_password
         })
         if resp.ok:
@@ -233,11 +307,22 @@ def change_password():
             else:
                 success = False
             if success:
+                # Инвалидируем текущий jti перед выпуском нового токена
+                old_jti = session.get('jti')
+                if old_jti:
+                    from app.utils.auth import blacklist_jti
+                    blacklist_jti(old_jti)
+                
+                # Обновляем password_changed_at в профиле
+                from datetime import datetime, timezone
+                postgrest_request('PATCH', f'profiles?id=eq.{user_id}', 
+                    json={'password_changed_at': datetime.now(timezone.utc).isoformat()})
+                
                 # Инвалидация старой сессии и выпуск нового JWT
-                from app.blueprints.auth import _login_user_session
+                from app.utils.auth import login_user_session
                 email = session.get('email', '')
                 role = session.get('role', 'authenticated')
-                _login_user_session(user_id, role, email)
+                login_user_session(user_id, role, email)
                 flash('Пароль успешно изменён', 'success')
             else:
                 flash('Неверный текущий пароль', 'danger')

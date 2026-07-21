@@ -16,8 +16,12 @@ class JsonFormatter(logging.Formatter):
             'function': record.funcName,
             'line': record.lineno,
         }
-        if hasattr(record, 'request_id'):
-            log_obj['request_id'] = record.request_id
+        try:
+            from flask import g
+            if hasattr(g, 'request_id'):
+                log_obj['request_id'] = g.request_id
+        except (RuntimeError, ImportError):
+            pass
         if record.exc_info and record.exc_info[0]:
             log_obj['exception'] = self.formatException(record.exc_info)
         return json.dumps(log_obj, ensure_ascii=False)

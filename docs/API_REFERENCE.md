@@ -9,13 +9,13 @@
 
 | Параметр | Значение |
 |----------|----------|
-| **Базовый URL** | Определяется окружением (локально `http://localhost:5000`, на проде — домен) |
+| **Базовый URL** | Определяется окружением (локально `http://localhost:8000`, на проде — домен Amvera) |
 | **Формат ответов** | HTML (страницы) / JSON (API-эндпоинты). API возвращает `application/json` |
 | **Аутентификация** | JWT-токены нативной аутентификации (Amvera/PostgREST). Токен хранится в сессии Flask (`session['access_token']`), передаётся в заголовке `Authorization: Bearer <token>` при запросах к PostgREST REST API (Amvera). Supabase не используется |
 | **CSRF-защита** | Глобальная проверка для всех мутирующих запросов (кроме `/login`, `/register`). Токен в `X-CSRF-Token` (AJAX) или `_csrf_token` (форма/JSON) |
 | **Content-Security-Policy** | Строгая CSP с nonce-механизмом для inline-скриптов. `connect-src` разрешает `ws://localhost:* wss://*` для WebSocket |
 | **Rate Limiting** | 10 POST-запросов в минуту с одного IP (in-memory) |
-| **Circuit Breaker** | 5 последовательных ошибок → разрыв цепи на 30 секунд |
+| **Circuit Breaker** | 10 последовательных ошибок → разрыв цепи на 60 секунд (HTTP 403 НЕ размыкает цепь) |
 
 **Ключевые файлы:**
 - [`app/__init__.py`](../app/__init__.py:1) — регистрация блюпринтов, security headers, CSRF, контекст-процессоры
@@ -93,7 +93,7 @@
 
 ### API на app ([`app/__init__.py`](../app/__init__.py:273))
 
-Вынесены на объект `app` из-за проблем с blueprint-роутингом на production/Render.
+Вынесены на объект `app` (исторически — из-за проблем с blueprint-роутингом на production/Amvera).
 
 | Метод | URL | Доступ | Описание |
 |-------|-----|--------|----------|
@@ -103,7 +103,9 @@
 
 ---
 
-### admin ([`app/blueprints/admin.py`](../app/blueprints/admin.py:1))
+### admin_* (6 блюпринтов: admin_dashboard / admin_users / admin_jobs / admin_verification / admin_dictionaries / admin_diagnostics) ([`app/blueprints/admin_dashboard.py`](../app/blueprints/admin_dashboard.py:1))
+
+> Отдельного `admin.py` НЕТ — функции расщеплены по 6 blueprint'ам `admin_*`.
 
 | Метод | URL | Доступ | Описание |
 |-------|-----|--------|----------|
@@ -247,9 +249,9 @@
 | `app/blueprints/employers.py` | DELETE | `/api/employers/favorite` | Убрать из избранного |
 | `app/blueprints/jobs_api.py` | POST | `/api/invite` | Пригласить трудника |
 | `app/blueprints/ratings.py` | POST | `/api/ratings` | Создать/обновить оценку |
-| `app/blueprints/admin.py` | POST | `/admin/verify-employer/<id>` | Верификация работодателя |
-| `app/blueprints/admin.py` | POST | `/admin/delete-user/<id>` | Удаление пользователя |
-| `app/blueprints/admin.py` | GET | `/api/health` | Health check админ-панели |
+| `app/blueprints/admin_verification.py` | POST | `/admin/verify-employer/<id>` | Верификация работодателя |
+| `app/blueprints/admin_users.py` | POST | `/admin/delete-user/<id>` | Удаление пользователя |
+| `app/blueprints/admin_dashboard.py` | GET | `/api/health` | Health check админ-панели |
 | `app/blueprints/chat.py` | POST | `/api/delete-chats` | Удаление чатов |
 
 ---

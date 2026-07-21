@@ -1,262 +1,40 @@
-import subprocess
-import secrets
+"""Trudnik Flask Application Factory — create_app() < 100 строк."""
 import os
-import time
-from datetime import datetime, timedelta, timezone
-from flask import Flask, current_app, g, session, request, abort, redirect, url_for
-
+import time as _time_module
+from flask import Flask
 from app.config import Config
 
-import time as _time_module
 _app_start_time = _time_module.time()
-
-# ── Redis-кэш (TTL 30 сек) ──
-# Глобальный кэш между worker'ами через Redis.
-# При отсутствии Redis — graceful degradation (возврат None).
-from app.utils.redis_client import get_redis_client
-
-_REDIS_CACHE_TTL = 30  # секунд
-
-
-def _redis_cache_get(key: str):
-    """Получает значение из Redis-кэша.
-
-    Args:
-        key: ключ кэша.
-
-    Returns:
-        Значение (int) или None, если ключ не найден или Redis недоступен.
-    """
-    try:
-        client = get_redis_client()
-        if client is None:
-            return None
-        value = client.get(key)
-        if value is not None:
-            return int(value)
-    except Exception:
-        pass
-    return None
-
-
-def _redis_cache_set(key: str, value: int, ttl: int = _REDIS_CACHE_TTL):
-    """Сохраняет значение в Redis-кэш с TTL.
-
-    Args:
-        key: ключ кэша.
-        value: целочисленное значение.
-        ttl: время жизни в секундах (по умолчанию 30).
-    """
-    try:
-        client = get_redis_client()
-        if client is not None:
-            client.setex(key, ttl, value)
-    except Exception:
-        pass
-
-
-def _redis_cache_delete(key: str):
-    """Удаляет ключ из Redis-кэша.
-
-    Args:
-        key: ключ кэша.
-    """
-    try:
-        client = get_redis_client()
-        if client is not None:
-            client.delete(key)
-    except Exception:
-        pass
-
-
-def _wait_for_postgrest(app, max_wait: int = 30, interval: int = 2) -> bool:
-    """Ожидание готовности PostgREST при старте приложения.
-
-    Предотвращает открытие Circuit Breaker из-за race condition
-    при запуске docker-compose стека (Flask может стартовать раньше PostgREST).
-    """
-    import requests as _req
-    postgrest_url = os.environ.get('POSTGREST_URL', 'http://postgrest:3000').strip()
-    deadline = time.time() + max_wait
-    attempt = 0
-    while time.time() < deadline:
-        attempt += 1
-        try:
-            r = _req.get(f'{postgrest_url}/skills?select=id&limit=1', timeout=5)
-            if r.status_code in (200, 401):
-                # 200 = OK, 401 = RLS (ожидаемо без JWT) — PostgREST жив
-                app.logger.info(
-                    'PostgREST ready after %d attempt(s) (status=%d)',
-                    attempt, r.status_code
-                )
-                # Сбрасываем Circuit Breaker'ы после успешного коннекта
-                try:
-                    from app.utils.postgrest_client import _cb_postgrest, _cb_admin
-                    _cb_postgrest.reset()
-                    _cb_admin.reset()
-                except Exception:
-                    pass
-                return True
-            app.logger.warning(
-                'PostgREST attempt %d: unexpected status %d',
-                attempt, r.status_code
-            )
-        except Exception as e:
-            app.logger.warning(
-                'PostgREST attempt %d: %s', attempt, e
-            )
-        time.sleep(interval)
-    app.logger.error('PostgREST not available after %d attempts', attempt)
-    return False
 
 
 def create_app():
-    # Корень проекта — родительская директория пакета app/
+    """Создать и настроить Flask-приложение."""
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    app = Flask(__name__,
-                root_path=project_root,
-                template_folder='templates',
-                static_folder='static')
+    app = Flask(__name__, root_path=project_root,
+                template_folder='templates', static_folder='static')
     app.config.from_object(Config)
     app.secret_key = app.config['SECRET_KEY']
 
-    # ── ProxyFix: корректная обработка заголовков X-Forwarded-* за nginx ──
+    from app.utils.logging_config import setup_json_logging
+    setup_json_logging()
+
     from werkzeug.middleware.proxy_fix import ProxyFix
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
-    # ═══════════════════════════════════════════════════════════════
-    # Диагностика: проверка PGRST_JWT_SECRET при старте
-    # ═══════════════════════════════════════════════════════════════
+    # Диагностика PGRST_JWT_SECRET
     _jwt_secret = app.config.get('PGRST_JWT_SECRET', '') or os.environ.get('PGRST_JWT_SECRET', '')
     if _jwt_secret:
-        _jwt_bytes = len(_jwt_secret.encode('utf-8'))
-        app.logger.info(
-            'PGRST_JWT_SECRET: %d байт (%s)',
-            _jwt_bytes,
-            'OK' if _jwt_bytes >= 32 else 'СЛИШКОМ КОРОТКИЙ'
-        )
+        _jwt_len = len(_jwt_secret.encode('utf-8'))
+        app.logger.info('PGRST_JWT_SECRET: %d байт (%s)', _jwt_len,
+                        'OK' if _jwt_len >= 32 else 'СЛИШКОМ КОРОТКИЙ')
     else:
-        app.logger.warning(
-            'PGRST_JWT_SECRET не задан! Будет использован SECRET_KEY (%d байт) — '
-            'это небезопасно для production.',
-            len(app.config.get('SECRET_KEY', '').encode('utf-8'))
-        )
+        app.logger.warning('PGRST_JWT_SECRET не задан! Использую SECRET_KEY — небезопасно.')
 
-    # Дождаться готовности PostgREST перед приёмом запросов
-    # (предотвращает открытие Circuit Breaker из-за race condition при старте docker-compose)
-    _wait_for_postgrest(app)
+    from app.middleware import register_middleware; register_middleware(app)
+    from app.context_processors import register_context_processors; register_context_processors(app)
+    from app.error_handlers import register_error_handlers; register_error_handlers(app)
 
-    @app.context_processor
-    def inject_global_user():
-        return {'current_user_id': session.get('user_id')}
-
-    @app.context_processor
-    def inject_csrf_token():
-        """Внедрение CSRF-токена во все шаблоны как строки."""
-        if '_csrf_token' not in session:
-            session['_csrf_token'] = secrets.token_hex(32)
-        return {'csrf_token': session.get('_csrf_token', '')}
-
-    @app.context_processor
-    def inject_csp_nonce():
-        """Внедрение CSP nonce во все шаблоны для inline-скриптов."""
-        return {'csp_nonce': getattr(g, 'csp_nonce', '')}
-
-    @app.before_request
-    def generate_csp_nonce():
-        """Генерация случайного nonce для Content-Security-Policy."""
-        g.csp_nonce = secrets.token_hex(24)
-
-    @app.after_request
-    def add_security_headers(response):
-        """Добавить HTTP Security Headers для защиты от XSS, clickjacking, MIME sniffing."""
-        nonce = getattr(g, 'csp_nonce', '')
-        response.headers['X-Content-Type-Options'] = 'nosniff'
-        response.headers['X-Frame-Options'] = 'DENY'
-        response.headers['Content-Security-Policy'] = (
-            f"default-src 'self'; "
-            f"script-src 'self' 'nonce-{nonce}' 'strict-dynamic' https://cdn.jsdelivr.net https://api-maps.yandex.ru https://yastatic.net; "
-            f"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
-            f"font-src 'self' https://fonts.gstatic.com; "
-            f"img-src 'self' data: https:; "
-            f"connect-src 'self' https://*.yandex.ru https://core-renderer-tiles.maps.yandex.net https://*.maps.yandex.net https://yastatic.net https://geocode-maps.yandex.ru https://fonts.googleapis.com https://fonts.gstatic.com ws://localhost:* wss://*; "
-            f"worker-src 'self' blob:; "
-            f"frame-src 'self'"
-        )
-        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-        response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
-        response.headers['Cross-Origin-Resource-Policy'] = 'same-origin'
-        response.headers['X-Permitted-Cross-Domain-Policies'] = 'none'
-        response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=self'
-        # Cache-Control: статические ассеты кешируем на 24 часа, динамику — не кешируем
-        if request.path.startswith('/static/'):
-            response.headers['Cache-Control'] = 'public, max-age=86400'
-        else:
-            response.headers['Cache-Control'] = 'no-store'
-        return response
-
-    @app.before_request
-    def csrf_check():
-        """Глобальная CSRF-защита: проверка токена для всех мутирующих запросов.
-        Пропускаем: GET/HEAD/OPTIONS, тестовые запросы, auth-роуты (login/register).
-        Приоритет: 1) X-CSRF-Token заголовок (fetch/AJAX), 2) csrf_token в форме/JSON."""
-        if request.method in ('GET', 'HEAD', 'OPTIONS'):
-            return
-        # В режиме тестирования CSRF отключён
-        if app.config.get('TESTING'):
-            return
-        # Emergency API endpoints protected by X-Admin-Token instead of CSRF
-        if request.path in ('/api/reset-users', '/api/fix-permissions', '/api/reset-circuit-breaker'):
-            import hmac
-            admin_token = request.headers.get('X-Admin-Token', '')
-            expected = app.config.get('ADMIN_API_TOKEN', app.config['SECRET_KEY'])
-            if hmac.compare_digest(admin_token, expected):
-                return
-        # Проверяем заголовок X-CSRF-Token (для fetch/AJAX-запросов)
-        header_token = request.headers.get('X-CSRF-Token')
-        if header_token:
-            if header_token != session.get('_csrf_token'):
-                abort(400, description='CSRF-токен недействителен')
-            return
-        # Для обычных форм (устойчиво к не-form Content-Type, например text/plain)
-        # Все шаблоны используют name="csrf_token" (без подчёркивания)
-        token = None
-        try:
-            token = request.form.get('csrf_token') or request.form.get('_csrf_token')
-        except Exception:
-            pass
-        # Если не в форме — пробуем JSON (для API-запросов с application/json)
-        if not token and request.is_json:
-            try:
-                json_data = request.get_json(silent=True) or {}
-                token = json_data.get('csrf_token') or json_data.get('_csrf_token')
-            except Exception:
-                pass
-        if not token or token != session.get('_csrf_token'):
-            abort(400, description='CSRF-токен отсутствует или недействителен')
-
-    # Регистрация контекст-процессоров (вынесены в app/context_processors.py)
-    from app.context_processors import register_context_processors
-    register_context_processors(app)
-
-    @app.context_processor
-    def inject_sort_url():
-        """Хелпер для построения URL сортировки с сохранением остальных параметров."""
-        from urllib.parse import quote
-
-        def sort_url(sort_value):
-            args = dict(request.args)
-            # Заменяем sort и сбрасываем page
-            args['sort'] = sort_value
-            args.pop('page', None)
-            if not args:
-                return '?'
-            return '?' + '&'.join(f'{quote(str(k))}={quote(str(v))}' for k, v in args.items())
-
-        return {'sort_url': sort_url}
-
-    # Регистрация blueprints
+    # Blueprints
     from app.blueprints.auth import auth_bp
     from app.blueprints.profile import profile_bp
     from app.blueprints.jobs import jobs_bp
@@ -266,248 +44,47 @@ def create_app():
     from app.blueprints.favorites import favorites_bp
     from app.blueprints.blacklist import blacklist_bp
     from app.blueprints.notifications import notifications_bp
-    from app.blueprints.admin import admin_bp
+    from app.blueprints.admin_dashboard import admin_dashboard_bp
+    from app.blueprints.admin_users import admin_users_bp
+    from app.blueprints.admin_jobs import admin_jobs_bp
+    from app.blueprints.admin_dictionaries import admin_dictionaries_bp
+    from app.blueprints.admin_verification import admin_verification_bp
+    from app.blueprints.admin_diagnostics import admin_diagnostics_bp
     from app.blueprints.ratings import ratings_bp
     from app.blueprints.seo import seo_bp
     from app.blueprints.employers import employers_bp
+    from app.blueprints.core import core_bp
 
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(profile_bp)
-
-    app.register_blueprint(jobs_bp)
-    app.register_blueprint(jobs_api_bp)
-    app.register_blueprint(applications_bp)
-    app.register_blueprint(chat_bp)
-    app.register_blueprint(favorites_bp)
-    app.register_blueprint(blacklist_bp)
-    app.register_blueprint(notifications_bp)
-    app.register_blueprint(admin_bp)
-    app.register_blueprint(ratings_bp)
-    app.register_blueprint(seo_bp)
-    app.register_blueprint(employers_bp)
-
-    # ================================
-    # Редиректы для обратной совместимости
-    # ================================
-
-    @app.route('/jobs')
-    def jobs_redirect():
-        return redirect(url_for('jobs.index', tab='jobs'))
-
-    @app.route('/search')
-    def search_redirect():
-        return redirect(url_for('jobs.index', tab='search'))
-
-    # ================================
-    # Jinja2-фильтры
-    # ================================
+    _all_bps = [core_bp, auth_bp, profile_bp, jobs_bp, jobs_api_bp, applications_bp,
+                chat_bp, favorites_bp, blacklist_bp, notifications_bp,
+                admin_dashboard_bp, admin_users_bp, admin_jobs_bp,
+                admin_dictionaries_bp, admin_verification_bp, admin_diagnostics_bp,
+                ratings_bp, seo_bp, employers_bp]
+    for bp in _all_bps:
+        app.register_blueprint(bp)
 
     @app.template_filter('format_date')
-    def format_date_filter(value):
-        """Форматирует ISO-строку даты в человеко-читаемый вид на русском.
-        Пример: '2026-06-16T00:47' → '16 июня 2026, 00:47'.
-        Сегодняшние даты → 'Сегодня, 14:30', вчерашние → 'Вчера, 09:15'."""
+    def _format_date(value):
+        from app.utils import format_date
+        return format_date(value)
+
+    @app.template_filter('format_datetime')
+    def _format_datetime(value):
         from app.utils import format_datetime
         return format_datetime(value)
 
-    # ================================
-    # API-роуты accept/reject/reopen (вынесены на объект app
-    # из-за проблем с blueprint-роутингом на production/Render)
-    # ================================
-    from app.blueprints.applications import api_handle_application
-    from app.decorators import login_required, rate_limit, validate_uuid
-
-    @app.route('/api/applications/<app_id>/accept', methods=['POST'])
-    @login_required
-    @rate_limit
-    @validate_uuid('app_id')
-    def api_accept_application(app_id):
-        return api_handle_application(app_id, 'accept')
-
-    @app.route('/api/applications/<app_id>/reject', methods=['POST'])
-    @login_required
-    @rate_limit
-    @validate_uuid('app_id')
-    def api_reject_application(app_id):
-        return api_handle_application(app_id, 'reject')
-
-    @app.route('/api/applications/<app_id>/reopen', methods=['POST'])
-    @login_required
-    @validate_uuid('app_id')
-    def api_reopen_application(app_id):
-        return api_handle_application(app_id, 'reopen')
-
-    # ================================
-    # PWA / Google Play routes
-    # ================================
-
-    from flask import render_template, send_from_directory
-
-    @app.route('/sw.js')
-    def service_worker():
-        import os
-        if os.environ.get('TESTING', '').strip().lower() in ('true', '1', 'yes'):
-            return '', 404
-        return app.send_static_file('sw.js')
-
-    @app.route('/offline')
-    def offline():
-        """Offline fallback page for PWA service worker."""
-        return render_template('offline.html')
-
-    @app.route('/.well-known/assetlinks.json')
-    def assetlinks():
-        """Digital Asset Links for Trusted Web Activity (Google Play)."""
-        return send_from_directory('static/.well-known', 'assetlinks.json',
-                                   mimetype='application/json')
-
-    # ═══════════════════════════════════════════════════════════════
-    # Обслуживание загруженных файлов — Supabase Storage заменён на локальное хранилище Amvera (устарело)
-    # ═══════════════════════════════════════════════════════════════
-
-    @app.route('/uploads/<path:filename>')
-    def uploaded_file(filename):
-        """Отдаёт загруженные файлы из локального хранилища."""
-        upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
-        return send_from_directory(upload_folder, filename)
-
-    # ── Обработчики ошибок ──────────────────────────────
-
-    @app.before_request
-    def log_static_requests():
-        """Диагностический лог: отслеживание запросов к /static/ для поиска 500."""
-        if request.path.startswith('/static/'):
-            app.logger.info('Static request: %s | method=%s | user_agent=%s',
-                            request.path, request.method,
-                            request.headers.get('User-Agent', 'unknown')[:120])
-
-    @app.route('/static/')
-    def static_directory_redirect():
-        """Запрос /static/ без имени файла → 404 вместо 500.
-        Предотвращает внутреннюю ошибку Flask при попытке открыть директорию как файл."""
-        app.logger.warning('Static directory listing requested: %s', request.path)
-        abort(404)
-
-    @app.route('/favicon.ico')
-    def favicon():
-        return '', 204
-
-    @app.errorhandler(404)
-    def not_found(_e):
-        return render_template('error.html', error_code='404',
-                               error='Страница не найдена'), 404
-
-    @app.errorhandler(500)
-    def internal_error(_e):
-        app.logger.exception('Internal server error')
-        return render_template('error.html', error_code='500',
-                               error='Внутренняя ошибка сервера'), 500
-
-    @app.errorhandler(Exception)
-    def handle_postgrest_error(e):
-        """Глобальный обработчик ошибок внешних сервисов."""
-        import requests as req_lib
-        from werkzeug.exceptions import HTTPException
-        # Пропускаем HTTP-исключения (abort, 404, 400 и т.д.) — возвращаем как есть
-        if isinstance(e, HTTPException):
-            return e
-        if isinstance(e, req_lib.RequestException):
-            current_app.logger.error('External service error: %s', e)
-            return render_template('error.html',
-                error_code='503',
-                error='Внешний сервис (PostgREST) не отвечает. Пожалуйста, попробуйте позже.'), 503
-        # Для остальных ошибок — стандартный 500
-        current_app.logger.exception('Unhandled exception')
-        return render_template('error.html',
-            error_code='500',
-            error='Произошла непредвиденная ошибка. Мы уже работаем над её устранением.'), 500
-
-    # ================================
-    # Health Check Endpoint
-    # ================================
-
-    from flask import jsonify
-    from app.utils import postgrest_admin_request
-
-    @app.route('/health')
-    def health_check():
-        """Проверка работоспособности приложения."""
-        from app.utils.postgrest_client import get_circuit_breaker_state
-        cb_state = get_circuit_breaker_state()
-
-        # Проверяем БД через admin CB
-        try:
-            resp = postgrest_admin_request('GET', 'profiles?select=id&limit=1')
-            db_ok = resp.ok
-        except Exception as e:
-            current_app.logger.error('Health check DB error: %s', e)
-            db_ok = False
-
-        # Проверяем состояние CB
-        cb_postgrest_open = cb_state['postgrest']['state'] == 'OPEN'
-        cb_admin_open = cb_state['admin']['state'] == 'OPEN'
-
-        health_data = {
-            'status': 'ok' if (db_ok and not cb_postgrest_open and not cb_admin_open) else 'degraded',
-            'database': 'ok' if db_ok else 'error',
-            'circuit_breaker': cb_state,
-            'version': 'unknown',
-            'timestamp': _time_module.strftime('%Y-%m-%dT%H:%M:%SZ', _time_module.gmtime()),
-            'uptime_seconds': int(_time_module.time() - _app_start_time),
-        }
-
-        status_code = 200 if health_data['status'] == 'ok' else 503
-        return jsonify(health_data), status_code
-
-    @app.route('/health/circuit-breaker')
-    def circuit_breaker_health():
-        """Детальная информация о состоянии Circuit Breaker."""
-        from app.utils.postgrest_client import get_circuit_breaker_state
-        return jsonify(get_circuit_breaker_state())
-
-    @app.route('/health/postgrest')
-    def postgrest_health():
-        """Прямая проверка доступности PostgREST."""
-        import requests as req_lib
-        from app.config import Config
-
-        url = f"{Config.POSTGREST_URL}/profiles?select=id&limit=1"
-        start = time.time()
-        try:
-            resp = req_lib.get(url, timeout=5)
-            elapsed = round((time.time() - start) * 1000)
-            return jsonify({
-                'status': 'ok' if resp.ok else 'error',
-                'postgrest_url': Config.POSTGREST_URL,
-                'http_status': resp.status_code,
-                'response_time_ms': elapsed,
-                'response_preview': (resp.text or '')[:200],
-            }), 200 if resp.ok else 503
-        except req_lib.RequestException as e:
-            elapsed = round((time.time() - start) * 1000)
-            return jsonify({
-                'status': 'unreachable',
-                'postgrest_url': Config.POSTGREST_URL,
-                'error': str(e),
-                'response_time_ms': elapsed,
-            }), 503
-
-    # Инициализация Redis для rate limiting (между gunicorn worker'ами)
+    # Redis для rate limiting
     from app.utils.redis_client import get_redis_client
     redis_client = get_redis_client()
     if redis_client is not None:
-        redis_client.ping()
+        try:
+            redis_client.ping()
+        except Exception:
+            app.logger.warning('Redis ping failed')
     app.redis = redis_client
-    if redis_client is None:
-        app.logger.warning('Redis not available, rate limiting disabled')
 
-    # В тестовом режиме наполняем in-memory БД начальными данными
     if app.config.get('TESTING'):
         from app.utils import _seed_test_db
         _seed_test_db()
 
     return app
-
-
-# Экземпляр приложения для WSGI/ASGI (Render, Gunicorn и совместимость)
-app = create_app()

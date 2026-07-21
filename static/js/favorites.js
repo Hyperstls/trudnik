@@ -1,13 +1,4 @@
 /**
- * Возвращает CSRF-токен из мета-тега.
- * @returns {string}
- */
-function getCSRFToken() {
-    var meta = document.querySelector('meta[name="csrf-token"]');
-    return meta ? meta.getAttribute('content') : '';
-}
-
-/**
  * Единая функция переключения избранного.
  * Вызывается из любого шаблона с одинаковой сигнатурой.
  *
@@ -34,7 +25,7 @@ function toggleFavorite(workerId, btn, event) {
         // Удаляем из избранного
         updateButtonUI(btn, false);
         
-        fetch('/api/favorites/remove', {
+        apiFetch('/api/favorites/remove', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -61,7 +52,7 @@ function toggleFavorite(workerId, btn, event) {
         // Добавляем в избранное
         updateButtonUI(btn, true);
         
-        fetch('/api/favorites/add', {
+        apiFetch('/api/favorites/add', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

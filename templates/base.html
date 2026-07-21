@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 {% from '_icons.html' import login_icon, register_icon, star, heart, chat, trash, check, users_icon, map_pin, dollar, alert, camera, bell, home, briefcase, search, filter_icon, menu_icon, plus, clock, chevron_left, info, settings %}
+{% from '_components.html' import toast_container, confirm_modal, offline_bar, install_banner, loading_overlay %}
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -12,6 +13,7 @@
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
     <link rel="apple-touch-icon" sizes="512x512" href="{{ url_for('static', filename='icons/icon-512x512.png') }}">
     <meta name="theme-color" content="#d97706">
+    <meta name="color-scheme" content="light dark">
     <meta name="description" content="Платформа для поиска разовой подработки. Работодатели публикуют задания, исполнители откликаются и выполняют работу.">
     <meta name="csrf-token" content="{{ csrf_token }}">
     <meta name="mobile-web-app-capable" content="yes">
@@ -25,543 +27,29 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap" rel="stylesheet">
-    <style nonce="{{ csp_nonce }}">
-        :root {
-            --brand: #2563eb;
-            --brand-dark: #1d4ed8;
-            --danger: #dc2626;
-            --success: #16a34a;
-            --neutral-50: #f9fafb;
-            --neutral-900: #111827;
-        }
-        html {
-            scrollbar-gutter: stable;
-            overflow-x: hidden;
-        }
-        body {
-            font-family: 'Inter', system-ui, sans-serif;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-
-        /* ============================= */
-        /* Line clamp                     */
-        /* ============================= */
-        .line-clamp-2 {
-            overflow: hidden;
-            display: -webkit-box;
-            -webkit-box-orient: vertical;
-            -webkit-line-clamp: 2;
-        }
-        .line-clamp-1 {
-            overflow: hidden;
-            display: -webkit-box;
-            -webkit-box-orient: vertical;
-            -webkit-line-clamp: 1;
-        }
-
-        /* ============================= */
-        /* Transitions & micro-animations */
-        /* ============================= */
-        .nav-item, .card, .action-icon-btn {
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .action-icon-btn:active {
-            transform: scale(0.95);
-        }
-        .hover-lift:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-        }
-
-        /* ============================= */
-        /* Input focus styles             */
-        /* ============================= */
-        input:focus, textarea:focus, select:focus {
-            outline: none;
-            border-color: #d97706;
-            box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.15);
-        }
-
-        /* ============================= */
-        /* Bottom navigation              */
-        /* ============================= */
-        .bottom-nav {
-            position: fixed !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            background-color: rgba(255, 255, 255, 0.92);
-            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
-            padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.25rem);
-        }
-        .bottom-nav a.active {
-            color: #d97706;
-        }
-        .bottom-nav a.active svg {
-            stroke: #d97706;
-        }
-
-        /* ============================= */
-        /* Action icon buttons (apps)     */
-        /* ============================= */
-        .action-icon-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            min-width: 44px;
-            min-height: 44px;
-            padding: 8px 12px;
-            border-radius: 12px;
-            border: 1px solid transparent;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            background: white;
-            white-space: nowrap;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-        .action-icon-btn:hover {
-            transform: scale(1.05);
-        }
-        .action-icon-btn:active {
-            transform: scale(0.95);
-        }
-        .action-icon-btn:focus-visible {
-            outline: 2px solid #d97706;
-            outline-offset: 2px;
-        }
-
-        /* Accept button */
-        .accept-btn {
-            color: #10b981;
-            border-color: #bbf7d0;
-            background: #f0fdf4;
-        }
-        .accept-btn:hover {
-            background: #10b981;
-            color: white;
-            border-color: #10b981;
-        }
-
-        /* Reject button */
-        .reject-btn {
-            color: #ef4444;
-            border-color: #fecaca;
-            background: #fef2f2;
-        }
-        .reject-btn:hover {
-            background: #ef4444;
-            color: white;
-            border-color: #ef4444;
-        }
-
-        /* Reopen button */
-        .reopen-btn {
-            color: #3b82f6;
-            border-color: #bfdbfe;
-            background: #eff6ff;
-        }
-        .reopen-btn:hover {
-            background: #3b82f6;
-            color: white;
-            border-color: #3b82f6;
-        }
-
-        /* Chat button */
-        .chat-btn {
-            color: #3b82f6;
-            border-color: #bfdbfe;
-            background: #eff6ff;
-        }
-        .chat-btn:hover {
-            background: #3b82f6;
-            color: white;
-            border-color: #3b82f6;
-        }
-
-        /* Action button (purple) */
-        .act-btn {
-            color: #7c3aed;
-            border-color: #ddd6fe;
-            background: #f5f3ff;
-        }
-        .act-btn:hover {
-            background: #7c3aed;
-            color: white;
-            border-color: #7c3aed;
-        }
-
-        /* Accepted badge */
-        .accepted-badge {
-            color: #10b981;
-            border-color: #bbf7d0;
-            background: #f0fdf4;
-            cursor: default;
-        }
-        .accepted-badge:hover { transform: none; }
-
-        /* Rejected badge */
-        .rejected-badge {
-            color: #ef4444;
-            border-color: #fecaca;
-            background: #fef2f2;
-            cursor: default;
-        }
-        .rejected-badge:hover { transform: none; }
-
-        /* Contact button */
-        .contact-btn {
-            color: #d97706;
-            border-color: #fde68a;
-            background: #fffbeb;
-        }
-        .contact-btn:hover {
-            background: #d97706;
-            color: white;
-            border-color: #d97706;
-        }
-
-        /* ============================= */
-        /* Toast notifications            */
-        /* ============================= */
-        #toast-container {
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            left: 1rem;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            pointer-events: none;
-        }
-        @media (min-width: 768px) {
-            #toast-container {
-                left: auto;
-                right: 1rem;
-                width: 360px;
-            }
-        }
-        .toast {
-            pointer-events: auto;
-            opacity: 1;
-            transform: translateX(0);
-            transition: all 0.3s ease;
-            border-radius: 12px;
-            padding: 12px 16px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        @keyframes slideInMobile {
-            from { transform: translateY(-100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        .animate-slide-in {
-            animation: slideIn 0.3s ease forwards;
-        }
-        @media (max-width: 767px) {
-            .animate-slide-in {
-                animation: slideInMobile 0.3s ease forwards;
-            }
-        }
-
-        /* ============================= */
-        /* Status badge                   */
-        /* ============================= */
-        .status-badge {
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            white-space: nowrap;
-            user-select: none;
-        }
-        /* Статусы заданий */
-        .status-open {
-            background: #dbeafe;
-            color: #1d4ed8;
-            border: 1px solid #bfdbfe;
-        }
-        .status-in-progress {
-            background: #fef3c7;
-            color: #92400e;
-            border: 1px solid #fde68a;
-        }
-        .status-active {
-            background: #d1fae5;
-            color: #047857;
-            border: 1px solid #a7f3d0;
-        }
-        .status-completed {
-            background: #f3f4f6;
-            color: #6b7280;
-            border: 1px solid #e5e7eb;
-        }
-        .status-cancelled {
-            background: #fee2e2;
-            color: #dc2626;
-            border: 1px solid #fecaca;
-        }
-        /* Статусы откликов */
-        .status-pending {
-            background: #fef3c7;
-            color: #92400e;
-            border: 1px solid #fde68a;
-        }
-        .status-accepted {
-            background: #d1fae5;
-            color: #047857;
-            border: 1px solid #a7f3d0;
-        }
-        .status-rejected {
-            background: #fee2e2;
-            color: #dc2626;
-            border: 1px solid #fecaca;
-        }
-        .status-withdrawn {
-            background: #f3f4f6;
-            color: #9ca3af;
-            border: 1px solid #e5e7eb;
-        }
-        .app-card {
-            transition: box-shadow 0.2s ease, transform 0.2s ease;
-        }
-        .app-card:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            transform: translateY(-2px);
-        }
-
-        /* ============================= */
-        /* Mass actions bar               */
-        /* ============================= */
-        #mass-actions-bar {
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            background-color: rgba(255, 255, 255, 0.97);
-            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
-        }
-
-        /* ============================= */
-        /* Floating label forms           */
-        /* ============================= */
-        .floating-label-group {
-            position: relative;
-            margin-bottom: 1.25rem;
-        }
-        .floating-label-group input,
-        .floating-label-group textarea,
-        .floating-label-group select {
-            width: 100%;
-            padding: 1.25rem 1rem 0.5rem;
-            background: #fafafa;
-            border: 1px solid #e5e5e5;
-            border-radius: 12px;
-            font-size: 0.9375rem;
-            transition: all 0.2s ease;
-        }
-        .floating-label-group input:focus,
-        .floating-label-group textarea:focus,
-        .floating-label-group select:focus {
-            border-color: #d97706;
-            box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.15);
-            background: white;
-        }
-        .floating-label-group label {
-            position: absolute;
-            left: 1rem;
-            top: 0.75rem;
-            font-size: 0.9375rem;
-            color: #a3a3a3;
-            transition: all 0.2s ease;
-            pointer-events: none;
-        }
-        .floating-label-group input:focus ~ label,
-        .floating-label-group input:not(:placeholder-shown) ~ label,
-        .floating-label-group textarea:focus ~ label,
-        .floating-label-group textarea:not(:placeholder-shown) ~ label,
-        .floating-label-group select:focus ~ label,
-        .floating-label-group select[data-has-value] ~ label {
-            top: 0.35rem;
-            font-size: 0.7rem;
-            color: #d97706;
-        }
-        .floating-label-group .error-text {
-            display: none;
-            font-size: 0.75rem;
-            color: #ef4444;
-            margin-top: 0.25rem;
-            padding-left: 0.25rem;
-        }
-        .floating-label-group.error input,
-        .floating-label-group.error textarea,
-        .floating-label-group.error select {
-            border-color: #ef4444;
-        }
-        .floating-label-group.error .error-text {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .floating-label-group.success input,
-        .floating-label-group.success textarea,
-        .floating-label-group.success select {
-            border-color: #10b981;
-        }
-
-        /* ============================= */
-        /* Global select styling          */
-        /* ============================= */
-        select {
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23737373'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 12px center;
-            background-size: 20px;
-            padding-right: 40px;
-        }
-
-        /* ============================= */
-        /* Skeleton loader                */
-        /* ============================= */
-        @keyframes shimmer {
-            0% { background-position: -200px 0; }
-            100% { background-position: 200px 0; }
-        }
-        .skeleton {
-            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-            background-size: 400px 100%;
-            animation: shimmer 1.5s ease-in-out infinite;
-            border-radius: 8px;
-        }
-
-        /* ============================= */
-        /* Heart animation                */
-        /* ============================= */
-        @keyframes heartBeat {
-            0% { transform: scale(1); }
-            25% { transform: scale(1.3); }
-            50% { transform: scale(1); }
-            75% { transform: scale(1.2); }
-            100% { transform: scale(1); }
-        }
-        .heart-animate {
-            animation: heartBeat 0.4s ease-in-out;
-        }
-
-        /* ============================= */
-        /* Fade in page                   */
-        /* ============================= */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .fade-in {
-            animation: fadeIn 0.3s ease forwards;
-        }
-
-        /* ============================= */
-        /* Scale in modal                 */
-        /* ============================= */
-        @keyframes scaleIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        .animate-scale-in {
-            animation: scaleIn 0.2s ease forwards;
-        }
-
-        /* ============================= */
-        /* Slide up (bottom drawer)       */
-        /* ============================= */
-        @keyframes slideUp {
-            from { transform: translateY(100%); }
-            to { transform: translateY(0); }
-        }
-        .animate-slide-up {
-            animation: slideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
-        }
-
-        /* ============================= */
-        /* Filter drawer (right-side)      */
-        /* ============================= */
-        .filter-drawer {
-            position: fixed;
-            top: 0;
-            right: 0;
-            height: 100%;
-            width: 320px;
-            max-width: 85vw;
-            z-index: 50;
-            background: white;
-            box-shadow: -8px 0 32px rgba(0, 0, 0, 0.12);
-            transform: translateX(100%);
-            transition: transform 0.3s ease;
-            overflow-y: auto;
-        }
-        .filter-drawer.open {
-            transform: translateX(0);
-        }
-
-        /* ============================= */
-        /* Payment modal                  */
-        /* ============================= */
-        .modal-backdrop {
-            position: fixed;
-            inset: 0;
-            z-index: 70;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-        }
-        .modal-content {
-            background: white;
-            border-radius: 20px;
-            padding: 1.5rem;
-            max-width: 440px;
-            width: 100%;
-            animation: scaleIn 0.2s ease forwards;
-        }
-
-        /* ============================= */
-        /* Touch-friendly                 */
-        /* ============================= */
-        .touch-target {
-            min-width: 44px;
-            min-height: 44px;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
     {% if trudnik_ws_config %}
     <script nonce="{{ csp_nonce }}">
         window.TRUDNIK_CONFIG = {
             wsUrl: '{{ trudnik_ws_config.wsUrl }}',
             wsPort: '{{ trudnik_ws_config.wsPort }}',
             pushEnabled: {{ 'true' if trudnik_ws_config.pushEnabled else 'false' }},
-            jwtToken: '{{ trudnik_ws_config.jwtToken }}'
+            userId: '{{ session.get("user_id", "") }}'
         };
     </script>
     {% endif %}
 </head>
 <body class="bg-neutral-50 text-neutral-800">
+<!-- F3: Skip-to-content link для keyboard navigation -->
+<a href="#main-content" 
+   class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded focus:shadow-lg">
+    Перейти к основному содержимому
+</a>
+<noscript>
+    <div class="bg-warning text-neutral-800 px-4 py-3 text-center text-sm">
+        JavaScript отключён. Некоторые функции (уведомления, чат) будут недоступны.
+    </div>
+</noscript>
     <!-- ================================ -->
     <!-- Sticky Header                     -->
     <!-- ================================ -->
@@ -589,13 +77,15 @@
             <!-- Поиск (только ПК) -->
             {% if session.get('user_id') and request.endpoint != 'auth.login' and request.endpoint != 'auth.register' %}
             <div class="hidden md:flex flex-1 max-w-md mx-4">
-                <form action="/" method="get" class="relative w-full" id="desktop-search-form">
+                <search>
+                <form action="/" method="get" class="relative w-full" id="desktop-search-form" aria-label="Поиск заданий">
                     <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
-                    <input type="text" name="city" placeholder="Поиск по городу..." class="w-full pl-9 pr-4 py-2 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                    <input type="text" name="city" placeholder="Поиск по городу..." aria-label="Поиск по городу" class="w-full pl-9 pr-4 py-2 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
                 </form>
+                </search>
             </div>
             {% endif %}
 
@@ -616,7 +106,7 @@
                         <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
                     </svg>
                     {% if unread_notifications is defined and unread_notifications > 0 %}
-                    <span id="notifications-badge" class="absolute -top-0.5 -right-0.5 bg-danger text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border-2 border-white">{{ '99+' if unread_notifications > 99 else unread_notifications }}</span>
+                    <output id="notifications-badge" aria-live="polite" class="absolute -top-0.5 -right-0.5 bg-danger text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border-2 border-white">{{ '99+' if unread_notifications > 99 else unread_notifications }}</output>
                     {% endif %}
                 </a>
                 <!-- Приглашения (только для трудника) -->
@@ -629,7 +119,7 @@
                         <line x1="22" y1="11" x2="16" y2="11"></line>
                     </svg>
                     {% if pending_invitations is defined and pending_invitations > 0 %}
-                    <span id="chat-badge" class="absolute -top-0.5 -right-0.5 bg-danger text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border-2 border-white">{{ '99+' if pending_invitations > 99 else pending_invitations }}</span>
+                    <output id="chat-badge" aria-live="polite" class="absolute -top-0.5 -right-0.5 bg-danger text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border-2 border-white">{{ '99+' if pending_invitations > 99 else pending_invitations }}</output>
                     {% endif %}
                 </a>
                 {% endif %}
@@ -672,61 +162,17 @@
                     <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
             </button>
-            <input type="text" id="mobile-search-input" name="city" placeholder="Поиск заданий, трудников..." class="flex-1 px-4 py-2.5 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+            <input type="text" id="mobile-search-input" name="city" placeholder="Поиск заданий, трудников..." aria-label="Поиск заданий и трудников" class="flex-1 px-4 py-2.5 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
         </div>
     </div>
 
-    <!-- ================================ -->
-    <!-- Toast Container                   -->
-    <!-- ================================ -->
-    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+    {{ toast_container() }}
 
-    <!-- ================================ -->
-    <!-- Custom Confirm Modal              -->
-    <!-- ================================ -->
-    <div id="confirm-modal-backdrop" class="modal-backdrop hidden z-[100]" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
-        <div class="modal-content animate-scale-in">
-            <h3 id="confirm-modal-title" class="text-lg font-bold text-neutral-800 mb-2">Подтвердите действие</h3>
-            <p id="confirm-modal-message" class="text-neutral-600 text-sm mb-6"></p>
-            <div class="flex gap-3 justify-end">
-                <button id="confirm-modal-cancel" class="px-5 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-sm font-medium transition-colors">Отмена</button>
-                <button id="confirm-modal-ok" class="px-5 py-2.5 bg-danger hover:bg-red-700 text-white rounded-xl text-sm font-medium transition-colors">Подтвердить</button>
-            </div>
-        </div>
-    </div>
+    {{ confirm_modal() }}
 
-    <!-- ================================ -->
-    <!-- Offline Status Bar                -->
-    <!-- ================================ -->
-    <div id="offline-bar" class="fixed top-0 left-0 right-0 z-[101] bg-warning text-neutral-800 text-xs text-center py-1.5 font-medium hidden" style="padding-top: max(env(safe-area-inset-top, 0px), 0.25rem);">
-        ⚠ Нет соединения с интернетом
-    </div>
+    {{ offline_bar() }}
 
-    <!-- ================================ -->
-    <!-- PWA Install Banner                -->
-    <!-- ================================ -->
-    <div id="install-banner" class="fixed bottom-20 left-4 right-4 z-[90] bg-white rounded-2xl shadow-xl border border-neutral-200 px-5 py-4 hidden sm:left-auto sm:right-4 sm:w-80" style="display:none;">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shrink-0 shadow-sm">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
-                    <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
-                    <line x1="9" y1="9" x2="9.01" y2="9"/>
-                    <line x1="15" y1="9" x2="15.01" y2="9"/>
-                </svg>
-            </div>
-            <div class="flex-1">
-                <p class="text-sm font-semibold text-neutral-800">Установите приложение</p>
-                <p class="text-xs text-neutral-500">Быстрый доступ без браузера</p>
-            </div>
-            <button id="install-banner-close" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-neutral-100 text-neutral-400">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-        </div>
-        <button id="install-banner-btn" class="w-full mt-3 bg-primary-500 hover:bg-primary-600 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors active:scale-[0.98]">
-            Установить
-        </button>
-    </div>
+    {{ install_banner() }}
 
     <!-- ================================ -->
     <!-- Flash messages → toasts          -->
@@ -764,16 +210,28 @@
     <!-- ================================ -->
     <!-- Main Content                      -->
     <!-- ================================ -->
-    <main class="pt-14 pb-20 fade-in">
+    <main id="main-content" class="pt-14 pb-20 fade-in">
         {% block content %}{% endblock %}
     </main>
+
+    <!-- ================================ -->
+    <!-- Footer                            -->
+    <!-- ================================ -->
+    <footer class="bg-neutral-100 border-t border-neutral-200 py-6 px-4 text-center text-sm text-neutral-600">
+        <div class="max-w-6xl mx-auto">
+            <p class="mb-2">© 2024 Трудник. Все права защищены.</p>
+            <nav aria-label="Ссылки в подвале">
+                <a href="/terms" class="text-primary-600 hover:text-primary-700 mx-2">Условия использования</a>
+                <a href="/privacy" class="text-primary-600 hover:text-primary-700 mx-2">Политика конфиденциальности</a>
+            </nav>
+        </div>
+    </footer>
 
     <!-- ================================ -->
     <!-- Bottom Navigation (mobile)        -->
     <!-- ================================ -->
     {% set _auth_endpoints = ('auth.login', 'auth.register') %}
-    {% set _profile_endpoints = ('profile.profile', 'profile.profile_edit', 'profile.public_profile', 'profile.verify_employer') %}
-    {% if session.get('user_id') and request.endpoint not in _profile_endpoints %}
+    {% if session.get('user_id') %}
     <nav class="bottom-nav fixed bottom-0 left-0 right-0 border-t border-neutral-200 flex justify-around items-center pt-2 pb-1 z-50" role="navigation" aria-label="Основная навигация">
         {% if session.get('role') == 'employer' %}
         <!-- Работодатель -->
@@ -796,7 +254,7 @@
             </svg>
             <span>Отклики</span>
             {% if pending_app_count is defined and pending_app_count > 0 %}
-            <span class="absolute -top-0.5 -right-0.5 bg-danger text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border-2 border-white">{{ pending_app_count }}</span>
+            <output aria-live="polite" class="absolute -top-0.5 -right-0.5 bg-danger text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border-2 border-white">{{ pending_app_count }}</output>
             {% endif %}
         </a>
         <a href="/workers"
@@ -826,19 +284,10 @@
             </svg>
             <span>Чаты</span>
         </a>
-        <a href="/profile"
-           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and request.endpoint in ('profile.profile', 'profile.profile_edit', 'profile.public_profile') }}"
-           aria-label="Профиль">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-            <span>Профиль</span>
-        </a>
         {% else %}
         <!-- Трудник -->
         <a href="/"
-           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and request.endpoint in ('index', 'main.index') }}"
+           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and request.endpoint in ('jobs.index',) }}"
            aria-label="Задания">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
@@ -874,15 +323,6 @@
             </svg>
             <span>Избранное</span>
         </a>
-        <a href="/profile"
-           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and request.endpoint in ('profile.profile', 'profile.profile_edit', 'profile.public_profile') }}"
-           aria-label="Профиль">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-            <span>Профиль</span>
-        </a>
         {% endif %}
     </nav>
     {% elif not session.get('user_id') and request.endpoint not in _auth_endpoints %}
@@ -902,446 +342,12 @@
     <!-- ================================ -->
     <!-- Global JavaScript                 -->
     <!-- ================================ -->
-    <script nonce="{{ csp_nonce }}">
-        /**
-         * Handle search form submit (desktop)
-         */
-        function handleSearchSubmit(form) {
-            var input = form.querySelector('input');
-            var value = input ? input.value.trim() : '';
-            if (!value) return false;
-            // Already navigating via form action, let form submit naturally
-            return true;
-        }
-
-        /**
-         * Toggle mobile search bar
-         */
-        function toggleMobileSearch() {
-            var bar = document.getElementById('mobile-search-bar');
-            var input = document.getElementById('mobile-search-input');
-            if (bar && input) {
-                bar.classList.toggle('hidden');
-                if (!bar.classList.contains('hidden')) {
-                    input.focus();
-                }
-            }
-        }
-
-        /**
-         * Show a toast notification
-         * @param {string} message - text
-         * @param {string} type - 'success' | 'error' | 'warning' | 'info'
-         */
-        window.showToast = function(message, type) {
-            type = type || 'info';
-            var container = document.getElementById('toast-container');
-            if (!container) return;
-
-            var toast = document.createElement('div');
-            toast.className = 'toast animate-slide-in';
-
-            var bgColors = {
-                success: 'bg-success text-white',
-                error: 'bg-danger text-white',
-                warning: 'bg-warning text-neutral-800',
-                info: 'bg-info text-white'
-            };
-            toast.className += ' ' + (bgColors[type] || bgColors.info);
-
-            // Иконка
-            var iconMap = {
-                success: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
-                error: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
-                warning: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
-                info: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>'
-            };
-
-            var closeBtn = '<button class="toast-close-btn ml-auto shrink-0 hover:opacity-75" aria-label="Закрыть">' +
-                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
-                '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>';
-
-            toast.innerHTML = (iconMap[type] || iconMap.info) +
-                '<span class="flex-1">' + message + '</span>' +
-                closeBtn;
-
-            container.appendChild(toast);
-
-            // Attach close handler (CSP-safe, no inline onclick)
-            var closeBtn = toast.querySelector('.toast-close-btn');
-            if (closeBtn) {
-                closeBtn.addEventListener('click', function() { toast.remove(); });
-            }
-
-            // Autohide
-            setTimeout(function() {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translateX(100%)';
-                setTimeout(function() { toast.remove(); }, 300);
-            }, 3500);
-        };
-
-        // Process queued flash messages (from flash-toasts block above)
-        if (window._toastQueue && window._toastQueue.length) {
-            window._toastQueue.forEach(function(t) { window.showToast(t.message, t.category); });
-            window._toastQueue = [];
-        }
-
-        // ========================================
-        // Custom Confirm Modal (replaces confirm())
-        // ========================================
-        window.showConfirm = function(message, onConfirm, options) {
-            options = options || {};
-            var backdrop = document.getElementById('confirm-modal-backdrop');
-            var msgEl = document.getElementById('confirm-modal-message');
-            var titleEl = document.getElementById('confirm-modal-title');
-            var okBtn = document.getElementById('confirm-modal-ok');
-            var cancelBtn = document.getElementById('confirm-modal-cancel');
-
-            if (!backdrop || !msgEl) {
-                if (confirm(message)) onConfirm();
-                return;
-            }
-
-            titleEl.textContent = options.title || 'Подтвердите действие';
-            msgEl.textContent = message;
-            okBtn.textContent = options.okText || 'Подтвердить';
-            okBtn.className = (options.danger !== false ? 'bg-danger hover:bg-red-700' : 'bg-primary-500 hover:bg-primary-600') + ' text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors';
-
-            var previousActiveElement = document.activeElement;
-
-            function close() {
-                backdrop.style.display = 'none';
-                backdrop.classList.add('hidden');
-                document.body.style.overflow = '';
-                // Возврат фокуса
-                if (previousActiveElement && previousActiveElement.focus) {
-                    previousActiveElement.focus();
-                }
-            }
-
-            okBtn.onclick = function() { close(); if (onConfirm) onConfirm(); };
-            cancelBtn.onclick = close;
-            backdrop.onclick = function(e) { if (e.target === backdrop) close(); };
-
-            backdrop.style.display = 'flex';
-            backdrop.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-
-            // Focus trap: зацикливание табуляции внутри модала
-            var focusableElements = backdrop.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-            var firstFocusable = focusableElements[0];
-            var lastFocusable = focusableElements[focusableElements.length - 1];
-
-            // Фокус на кнопку OK
-            if (okBtn) okBtn.focus();
-
-            function trapFocus(e) {
-                if (e.key !== 'Tab') return;
-                if (e.shiftKey) {
-                    if (document.activeElement === firstFocusable) {
-                        e.preventDefault();
-                        lastFocusable.focus();
-                    }
-                } else {
-                    if (document.activeElement === lastFocusable) {
-                        e.preventDefault();
-                        firstFocusable.focus();
-                    }
-                }
-            }
-
-            function handleEscape(e) {
-                if (e.key === 'Escape') {
-                    close();
-                    backdrop.removeEventListener('keydown', handleEscape);
-                    backdrop.removeEventListener('keydown', trapFocus);
-                }
-            }
-
-            backdrop.addEventListener('keydown', trapFocus);
-            backdrop.addEventListener('keydown', handleEscape);
-        };
-
-        // ========================================
-        // PWA Install Prompt
-        // ========================================
-        (function() {
-            var deferredPrompt;
-            var banner = document.getElementById('install-banner');
-            var installBtn = document.getElementById('install-banner-btn');
-            var closeBtn = document.getElementById('install-banner-close');
-
-            window.addEventListener('beforeinstallprompt', function(e) {
-                e.preventDefault();
-                deferredPrompt = e;
-                if (banner) {
-                    banner.style.display = 'block';
-                    banner.classList.remove('hidden');
-                }
-            });
-
-            if (installBtn) {
-                installBtn.addEventListener('click', function() {
-                    if (deferredPrompt) {
-                        deferredPrompt.prompt();
-                        deferredPrompt.userChoice.then(function(result) {
-                            console.log('PWA install:', result.outcome);
-                            deferredPrompt = null;
-                            if (banner) { banner.style.display = 'none'; banner.classList.add('hidden'); }
-                        });
-                    } else if (banner) {
-                        banner.style.display = 'none';
-                        banner.classList.add('hidden');
-                    }
-                });
-            }
-
-            if (closeBtn && banner) {
-                closeBtn.addEventListener('click', function() {
-                    banner.style.display = 'none';
-                    banner.classList.add('hidden');
-                });
-            }
-
-            if (window.matchMedia('(display-mode: standalone)').matches) {
-                if (banner) { banner.style.display = 'none'; banner.classList.add('hidden'); }
-            }
-        })();
-
-        // ========================================
-        // Offline/Online Status Detection
-        // ========================================
-        (function() {
-            var offlineBar = document.getElementById('offline-bar');
-
-            function setOffline(offline) {
-                if (offlineBar) {
-                    if (offline) {
-                        offlineBar.classList.remove('hidden');
-                        offlineBar.style.display = 'block';
-                    } else {
-                        offlineBar.classList.add('hidden');
-                        offlineBar.style.display = 'none';
-                        if (!offline) window.showToast && window.showToast('Соединение восстановлено', 'success');
-                    }
-                }
-                var main = document.querySelector('main');
-                if (main) {
-                    main.style.paddingTop = offline ? '2.5rem' : '';
-                }
-            }
-
-            window.addEventListener('online', function() { setOffline(false); });
-            window.addEventListener('offline', function() { setOffline(true); });
-            if (!navigator.onLine) setOffline(true);
-        })();
-
-        // Floating-label for select elements
-        (function() {
-            function updateSelectLabel(select) {
-                var hasValue = select.value && select.value !== '';
-                if (hasValue) {
-                    select.setAttribute('data-has-value', '');
-                } else {
-                    select.removeAttribute('data-has-value');
-                }
-            }
-            // Init all existing selects on DOM ready
-            document.addEventListener('DOMContentLoaded', function() {
-                var selects = document.querySelectorAll('.floating-label-group select');
-                for (var i = 0; i < selects.length; i++) {
-                    updateSelectLabel(selects[i]);
-                    selects[i].addEventListener('change', function() { updateSelectLabel(this); });
-                }
-            });
-            // Also handle dynamically added selects via MutationObserver
-            if (window.MutationObserver) {
-                var observer = new MutationObserver(function(mutations) {
-                    mutations.forEach(function(mutation) {
-                        mutation.addedNodes.forEach(function(node) {
-                            if (node.nodeType === 1 && node.tagName === 'SELECT') {
-                                var group = node.closest('.floating-label-group');
-                                if (group) {
-                                    updateSelectLabel(node);
-                                    node.addEventListener('change', function() { updateSelectLabel(this); });
-                                }
-                            }
-                        });
-                    });
-                });
-                observer.observe(document.documentElement, { childList: true, subtree: true });
-            }
-        })();
-
-        // Desktop search form submit handler (replaces form submit attribute)
-        document.addEventListener('DOMContentLoaded', function() {
-            var form = document.getElementById('desktop-search-form');
-            if (form) {
-                form.addEventListener('submit', function(e) {
-                    if (!handleSearchSubmit(this)) e.preventDefault();
-                });
-            }
-        });
-
-        // Mobile search button handlers (replace click attributes)
-        document.addEventListener('DOMContentLoaded', function() {
-            var btn = document.getElementById('mobile-search-btn');
-            if (btn) btn.addEventListener('click', toggleMobileSearch);
-
-            var closeBtn = document.getElementById('mobile-search-close-btn');
-            if (closeBtn) closeBtn.addEventListener('click', toggleMobileSearch);
-
-            var input = document.getElementById('mobile-search-input');
-            if (input) {
-                input.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter') {
-                        var v = this.value.trim();
-                        if (v) window.location.href = '/?city=' + encodeURIComponent(v);
-                        toggleMobileSearch();
-                    }
-                });
-            }
-        });
-        // Global image error handler for avatar fallback to smiley
-        document.addEventListener('error', function(e) {
-            if (e.target.tagName === 'IMG' && e.target.classList.contains('js-avatar-img')) {
-                var p = e.target.parentElement;
-                var s = p ? p.querySelector('.avatar-smiley') : null;
-                if (s) { s.style.display = ''; }
-                e.target.style.display = 'none';
-            }
-        }, true);
-
-        // Global confirm-form handler (replaces form submit with confirm)
-        document.addEventListener('submit', function(e) {
-            var form = e.target.closest('.js-confirm-form');
-            if (form && !form.dataset.confirmHandled) {
-                e.preventDefault();
-                e.stopImmediatePropagation();
-                form.dataset.confirmHandled = '1';
-                var msg = form.getAttribute('data-confirm') || 'Подтвердите действие';
-                var self = form;
-                window.showConfirm(msg, function() {
-                    delete self.dataset.confirmHandled;
-                    self.submit();
-                });
-            }
-        });
-
-        // Global auto-submit handler for file inputs (replaces change-event form submit)
-        document.addEventListener('change', function(e) {
-            if (e.target.classList.contains('js-auto-submit') && e.target.form) {
-                e.target.form.submit();
-            }
-        });
-
-    </script>
+    <script src="{{ url_for('static', filename='js/base.js') }}" nonce="{{ csp_nonce }}"></script>
 
     {% block scripts %}{% endblock %}
-    <script nonce="{{ csp_nonce }}">
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('SW registered:', reg.scope))
-            .catch(err => console.error('SW registration failed:', err));
-        });
-      }
-    </script>
-    <!-- CSRF-токен: автоматически добавляется во все формы -->
-    <meta name="csrf-token" content="{{ csrf_token }}">
-    <script nonce="{{ csp_nonce }}">
-      try {
-        (function() {
-          var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-          if (!csrfToken) return;
-          document.addEventListener('DOMContentLoaded', function() {
-            try {
-              document.querySelectorAll('form').forEach(function(form) {
-                if (!form.querySelector('input[name="_csrf_token"]')) {
-                  var input = document.createElement('input');
-                  input.type = 'hidden';
-                  input.name = '_csrf_token';
-                  input.value = csrfToken;
-                  form.appendChild(input);
-                }
-              });
-            } catch(e) { console.warn('CSRF form inject error:', e); }
-          });
-          // Добавляем токен в fetch-заголовки
-          var origFetch = window.fetch;
-          window.fetch = function(url, options) {
-            try {
-              options = options || {};
-              options.headers = options.headers || {};
-              if (!(options.headers instanceof Headers)) {
-                options.headers = new Headers(options.headers);
-              }
-              if (!options.headers.has('X-CSRF-Token')) {
-                options.headers.set('X-CSRF-Token', csrfToken);
-              }
-            } catch(e) { console.warn('CSRF fetch patch error:', e); }
-            return origFetch.call(this, url, options);
-          };
-        })();
-      } catch(e) { console.warn('CSRF setup error:', e); }
 
-        // ========================================
-        // Double-click protection (idempotency)
-        // ========================================
-        (function() {
-            document.addEventListener('submit', function(e) {
-                var form = e.target;
-                var btn = form.querySelector('button[type="submit"]');
-                if (btn && !btn.disabled) {
-                    btn.disabled = true;
-                    btn.style.opacity = '0.6';
-                    btn.style.pointerEvents = 'none';
-                    setTimeout(function() {
-                        btn.disabled = false;
-                        btn.style.opacity = '';
-                        btn.style.pointerEvents = '';
-                    }, 3000);
-                }
-            });
-        })();
-    </script>
-
-<!-- Loading overlay -->
-<div id="loading-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:9999; justify-content:center; align-items:center;">
-  <div style="background:white; padding:24px 32px; border-radius:12px; text-align:center; box-shadow:0 8px 32px rgba(0,0,0,0.2);">
-    <svg style="animation:spin 0.8s linear infinite; width:32px; height:32px; margin:0 auto 12px; display:block;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M12 2a10 10 0 1 0 10 10" stroke="#3B82F6" stroke-linecap="round"/>
-    </svg>
-    <p style="color:#374151; font-size:14px; margin:0;">Пожалуйста, подождите...</p>
-  </div>
-</div>
-<style nonce="{{ csp_nonce }}">
-  @keyframes spin { to { transform: rotate(360deg); } }
-</style>
-<script nonce="{{ csp_nonce }}">
-  // Показывать loading overlay при отправке форм
-  document.addEventListener('submit', function(e) {
-    var form = e.target;
-    if (form.tagName === 'FORM' && !form.hasAttribute('data-no-loader')) {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    }
-  });
-  // Показывать loading при клике на ссылки с class="needs-loader"
-  document.addEventListener('click', function(e) {
-    var link = e.target.closest('a.needs-loader');
-    if (link) {
-      var overlay = document.getElementById('loading-overlay');
-      if (overlay) overlay.style.display = 'flex';
-    }
-  });
-  // Скрывать при навигации назад (браузерный bfcache)
-  window.addEventListener('pageshow', function() {
-    var overlay = document.getElementById('loading-overlay');
-    if (overlay) overlay.style.display = 'none';
-  });
-</script>
+{{ loading_overlay() }}    <script src="{{ url_for('static', filename='js/api.js') }}" nonce="{{ csp_nonce }}"></script>
+    <script src="{{ url_for('static', filename='js/form-guard.js') }}" nonce="{{ csp_nonce }}"></script>
     {% if trudnik_ws_config %}
     <script src="{{ url_for('static', filename='js/notifications-ws.js') }}" nonce="{{ csp_nonce }}"></script>
     <script src="{{ url_for('static', filename='js/notifications-init.js') }}" nonce="{{ csp_nonce }}"></script>
@@ -1349,5 +355,121 @@
     <script src="{{ url_for('static', filename='js/push-notifications.js') }}" nonce="{{ csp_nonce }}"></script>
     {% endif %}
     {% endif %}
+    
+    <!-- Frontend error reporting beacon -->
+    <script nonce="{{ csp_nonce }}">
+    (function() {
+        'use strict';
+        
+        // Перехват обычных JavaScript ошибок
+        window.onerror = function(message, source, lineno, colno, error) {
+            var errorData = {
+                message: String(message || 'Unknown error'),
+                source: String(source || 'unknown'),
+                lineno: lineno || 0,
+                colno: colno || 0,
+                stack: error && error.stack ? String(error.stack) : '',
+                url: window.location.href,
+                userAgent: navigator.userAgent
+            };
+            
+            // Отправляем через sendBeacon (не блокирует закрытие страницы)
+            var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            var csrfTok = csrfMeta ? csrfMeta.content : '';
+            var errorDataWithCsrf = Object.assign({}, errorData, { _csrf_token: csrfTok });
+            if (navigator.sendBeacon) {
+                navigator.sendBeacon('/api/client-error', new Blob([JSON.stringify(errorDataWithCsrf)], { type: 'application/json' }));
+            } else {
+                // Fallback на fetch с keepalive
+                fetch('/api/client-error', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(errorDataWithCsrf),
+                    keepalive: true
+                }).catch(function() {});
+            }
+        };
+        
+        // Перехват необработанных Promise rejections
+        window.onunhandledrejection = function(event) {
+            var reason = event.reason;
+            var errorData = {
+                message: 'Unhandled Promise rejection: ' + String(reason || 'Unknown'),
+                source: 'promise',
+                lineno: 0,
+                colno: 0,
+                stack: reason && reason.stack ? String(reason.stack) : '',
+                url: window.location.href,
+                userAgent: navigator.userAgent
+            };
+            
+            var csrfMeta2 = document.querySelector('meta[name="csrf-token"]');
+            var csrfTok2 = csrfMeta2 ? csrfMeta2.content : '';
+            var errorDataWithCsrf2 = Object.assign({}, errorData, { _csrf_token: csrfTok2 });
+            if (navigator.sendBeacon) {
+                navigator.sendBeacon('/api/client-error', new Blob([JSON.stringify(errorDataWithCsrf2)], { type: 'application/json' }));
+            } else {
+                fetch('/api/client-error', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(errorDataWithCsrf2),
+                    keepalive: true
+                }).catch(function() {});
+            }
+        };
+    })();
+    </script>
+    <!-- F4: Loading state для submit кнопок -->
+    <script nonce="{{ csp_nonce }}">
+    document.addEventListener('submit', function(e) {
+        const form = e.target;
+        const btn = form.querySelector('[type="submit"]');
+        if (btn && !btn.dataset.noLoading) {
+            btn.classList.add('btn-loading');
+            btn.disabled = true;
+            btn.dataset.originalText = btn.textContent;
+            // Восстанавливаем через 10 секунд (fallback)
+            setTimeout(function() {
+                btn.classList.remove('btn-loading');
+                btn.disabled = false;
+            }, 10000);
+        }
+    });
+    </script>
+
+    <!-- F5: Confirm dialog для деструктивных действий -->
+    <script nonce="{{ csp_nonce }}">
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('[data-confirm]');
+        if (!btn) return;
+        const message = btn.dataset.confirm || 'Вы уверены?';
+        if (!confirm(message)) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    });
+    </script>
+
+    <!-- F9: Keyboard shortcuts -->
+    <script nonce="{{ csp_nonce }}">
+    document.addEventListener('keydown', function(e) {
+        // Alt+H — на главную
+        if (e.altKey && e.key === 'h') {
+            window.location.href = '/';
+        }
+        // Alt+N — уведомления
+        if (e.altKey && e.key === 'n') {
+            window.location.href = '/notifications';
+        }
+        // Escape — закрыть модальное окно
+        if (e.key === 'Escape') {
+            const modal = document.querySelector('[data-modal]:not([hidden])');
+            if (modal) {
+                modal.setAttribute('hidden', '');
+                modal.dispatchEvent(new Event('close'));
+            }
+        }
+    });
+    </script>
 </body>
 </html>

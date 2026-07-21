@@ -1,6 +1,9 @@
+import logging
 from datetime import datetime, timezone, timedelta
 
 from flask import Blueprint, current_app, g, jsonify, flash, redirect, render_template, request, session, url_for, abort
+
+logger = logging.getLogger(__name__)
 
 from app.config import Config
 from app.decorators import login_required, rate_limit, role_required, validate_uuid
@@ -9,6 +12,9 @@ from app.utils import (
     sanitize_postgrest, postgrest_admin_request, postgrest_request, postgrest_rpc,
 )
 from app.utils.helpers import assert_postgrest_ok
+from app.utils.security import safe_redirect
+from app.utils.errors import safe_error_message
+from app.utils.validators import parse_float
 from app.services.notification_service import create as notify, enqueue_notification
 from app.services.job_service import (
     check_job_owner,
@@ -75,9 +81,8 @@ def inject_application_count():
     if session.get('role') == 'employer' and 'user_id' in session:
         user_id = session['user_id']
         cache_key = f'app_count:{user_id}'
-        # noqa: локальный импорт — циклическая зависимость (app → jobs → app)
-        from app import _redis_cache_get, _redis_cache_set
-        count = _redis_cache_get(cache_key)
+        from app.utils.redis_cache import redis_cache_get, redis_cache_set
+        count = redis_cache_get(cache_key)
         if count is not None:
             return {'pending_app_count': count}
         # Используем count=exact с limit=0 для точного подсчёта без загрузки данных
@@ -92,7 +97,7 @@ def inject_application_count():
                 count = 0
         else:
             count = 0
-        _redis_cache_set(cache_key, count, ttl=30)
+        redis_cache_set(cache_key, count, ttl=30)
     return {'pending_app_count': count}
 
 
@@ -111,11 +116,13 @@ def inject_user_role():
 @jobs_bp.route('/')
 def index():
     city = request.args.get('city', '')
-    payment_min = request.args.get('payment_min', '')
-    payment_max = request.args.get('payment_max', '')
-    lat = request.args.get('lat', type=float) or session.get('lat')
-    lng = request.args.get('lng', type=float) or session.get('lng')
-    radius = request.args.get('radius', 20, type=float)
+    payment_min = parse_float(request.args.get('payment_min', ''), 'payment_min', min_val=0)
+    payment_max = parse_float(request.args.get('payment_max', ''), 'payment_max', min_val=0)
+    # Гео-поиск — opt-in: только явные параметры. По умолчанию — ВСЕ открытые задания,
+    # без какой-либо автоматической фильтрации по расстоянию.
+    lat = request.args.get('lat', type=float)
+    lng = request.args.get('lng', type=float)
+    radius = request.args.get('radius', type=float)  # км; None = без ограничения (любое расстояние)
     sort = request.args.get('sort', 'newest')
     skills_filter = request.args.get('skills', '')
     religion = request.args.get('religion', '')
@@ -123,55 +130,47 @@ def index():
     per_page = 20
     offset = (page - 1) * per_page
 
-    now = datetime.now(timezone.utc).isoformat()
-
-    # Запрос только оплаченных открытых заданий (без detailed_description — тяжёлое поле)
-    query = 'status=in.(open,completed)&select=id,employer_id,organization_name,org_description,object_description,work_type,date_time,payment_amount,address,city,lat,lng,status,created_at,preferred_religion,max_workers,current_workers,expires_at,tariff,promoted_until,photos:job_photos(*)'
-    # Фильтр по сроку действия: не истёкшие задания (expires_at > now или без срока)
-    query += f'&or=(expires_at.is.null,expires_at=gt.{sanitize_postgrest(now)})'
+    # Все открытые/завершённые задания без исключения по сроку (истёкшие переводит
+    # в не-open cron expire_old_jobs). detailed_description опущен — тяжёлое поле.
+    query = 'status=in.(open,completed)&select=id,employer_id,organization_name,org_description,object_description,work_type,date_time,payment_amount,address,city,lat,lng,status,created_at,preferred_religion,max_workers,current_workers,expires_at'
 
     # C38: Если монетизация включена — показываем только оплаченные задания
     if current_app.config.get('MONETIZATION_ENABLED', False):
         query += '&is_paid=eq.true'
 
-    # ── Гео-фильтрация через RPC nearby_jobs (серверная, PostGIS) ──
+    # ── Гео-поиск (opt-in) через RPC nearby_jobs ──
+    # Включается ТОЛЬКО когда пользователь явно указал локацию и радиус.
+    # Если в радиусе ничего нет или RPC недоступен — показываем ВСЕ задания (без бланка страницы),
+    # т.к. труднику всегда должны быть доступны все открытые задания.
     geo_job_distances = {}  # {job_id: distance_km}
     use_rpc_geo = False
 
-    if lat is not None and lng is not None and radius:
+    if lat is not None and lng is not None and radius is not None:
         try:
             rpc_resp = postgrest_rpc('nearby_jobs', {
-                'lat': lat,
-                'lng': lng,
-                'radius_km': radius,
+                'p_lat': lat,
+                'p_lng': lng,
+                'p_radius_meters': radius * 1000,
             }, use_admin=True)
             if rpc_resp.ok and rpc_resp.json() is not None:
                 rpc_jobs = rpc_resp.json()
-                if not rpc_jobs:
-                    # RPC вернул пустой список — заданий в радиусе нет
-                    selected_skills_list = [s.strip() for s in skills_filter.split(',') if s.strip()] if skills_filter else []
-                    return render_template('index.html', jobs=[], applied_job_ids=[],
-                                           lat=lat, lng=lng, radius=radius, sort=sort,
-                                           selected_skills=selected_skills_list,
-                                           page=page, has_next=False)
-                # Извлекаем ID и расстояния из ответа RPC
-                for job in rpc_jobs:
-                    job_id = job.get('id')
-                    if job_id:
-                        if job.get('lat') is not None and job.get('lng') is not None:
-                            geo_job_distances[job_id] = calculate_distance(lat, lng, job['lat'], job['lng'])
-                        else:
-                            geo_job_distances[job_id] = float('inf')
-                use_rpc_geo = True
+                if isinstance(rpc_jobs, list) and rpc_jobs:
+                    for job in rpc_jobs:
+                        if not isinstance(job, dict):
+                            continue
+                        job_id = job.get('id')
+                        if job_id:
+                            if job.get('lat') is not None and job.get('lng') is not None:
+                                geo_job_distances[job_id] = calculate_distance(lat, lng, job['lat'], job['lng'])
+                            else:
+                                geo_job_distances[job_id] = float('inf')
+                    use_rpc_geo = True
             else:
                 current_app.logger.warning(
-                    'nearby_jobs RPC unavailable (status=%s), falling back to client-side geo-filter',
-                    rpc_resp.status_code
-                )
+                    'nearby_jobs RPC unavailable (status=%s), showing all jobs',
+                    rpc_resp.status_code)
         except Exception as e:
-            current_app.logger.warning(
-                'nearby_jobs RPC failed, falling back to client-side geo-filter: %s', str(e)
-            )
+            current_app.logger.warning('nearby_jobs RPC failed, showing all jobs: %s', str(e))
 
     # Если RPC сработал — ограничиваем выборку только заданиями в радиусе
     if use_rpc_geo and geo_job_distances:
@@ -206,8 +205,9 @@ def index():
             query += f'&or=({",".join(or_parts)})'
 
     # Определяем порядок сортировки на стороне БД
-    # C40: Boost для продвигаемых заданий — promoted_until.desc.nullslast в начале
-    base_order = 'promoted_until.desc.nullslast,'
+    # Boost продвигаемых заданий отключён (monetization off; колонка promoted_until
+    # может отсутствовать в проде — убираем, чтобы order не падал с 400).
+    base_order = ''
     if sort in ('payment_asc', 'price_asc'):
         order_clause = f'{base_order}payment_amount.asc'
     elif sort in ('payment_desc', 'price_desc'):
@@ -220,12 +220,11 @@ def index():
     resp = postgrest_request('GET', f'jobs?{query}&order={order_clause}&limit={per_page + 1}&offset={offset}')
     jobs = resp.json() if resp.ok else []
 
-    # Гео-фильтрация в Python (fallback, если RPC не сработал)
+    # Гео: фильтрация — только через RPC (use_rpc_geo). В fallback лишь считаем расстояние
+    # для сортировки, но НЕ отсекаем задания по радиусу — трудник видит все открытые задания.
     if not use_rpc_geo and lat is not None and lng is not None:
         for job in jobs:
             job['distance'] = calculate_distance(lat, lng, job['lat'], job['lng'])
-        if radius:
-            jobs = [j for j in jobs if j.get('distance', float('inf')) <= radius]
     elif use_rpc_geo and geo_job_distances:
         # Проставляем расстояния из словаря, полученного от RPC
         for job in jobs:
@@ -279,7 +278,6 @@ def workers():
             'payment_to': request.args.get('payment_to', ''),
             'rating_min': request.args.get('rating_min', ''),
             'skills': request.args.get('skills', ''),
-            'religion': request.args.get('religion', ''),
         }
         sort = request.args.get('sort', 'rating')
         lat = request.args.get('lat', type=float) or session.get('lat')
@@ -292,10 +290,30 @@ def workers():
         if filters['payment_to']: query += f'&desired_payment=lte.{sanitize_postgrest(filters["payment_to"])}'
         if filters['rating_min']: query += f'&rating=gte.{sanitize_postgrest(filters["rating_min"])}'
         if filters['skills']:
-            for skill in filters['skills'].split(','):
-                query += f'&skills=cs.{{{sanitize_postgrest(skill.strip())}}}'
-        if filters['religion']:
-            query += f'&religion=eq.{sanitize_postgrest(filters["religion"])}'
+            # Новый подход: фильтрация через таблицу user_skills (вместо profiles.skills text[])
+            skill_names = [s.strip() for s in filters['skills'].split(',') if s.strip()]
+            if skill_names:
+                # Шаг 1: найти skill_id по именам
+                skill_filters = []
+                for sn in skill_names:
+                    skill_filters.append(f'name.ilike.*{sanitize_postgrest(sn)}*')
+                skill_query = ','.join(skill_filters)  # PostgREST or() использует запятые
+                skill_resp = postgrest_request('GET', f'skills?or=({skill_query})&select=id')
+                matched_skill_ids = []
+                if skill_resp.ok and skill_resp.json():
+                    matched_skill_ids = [s['id'] for s in skill_resp.json() if s.get('id')]
+                # Шаг 2: найти user_id по skill_id через user_skills
+                if matched_skill_ids:
+                    ids_filter = ','.join(matched_skill_ids)
+                    us_resp = postgrest_request('GET',
+                        f'user_skills?skill_id=in.({ids_filter})&select=user_id')
+                    if us_resp.ok and us_resp.json():
+                        worker_ids = list(set(us['user_id'] for us in us_resp.json() if us.get('user_id')))
+                        if worker_ids:
+                            wids_filter = ','.join(worker_ids)
+                            query += f'&id=in.({wids_filter})'
+                        else:
+                            query += '&id=eq.00000000-0000-0000-0000-000000000000'  # нет совпадений — пустой результат
 
         # Определяем order в зависимости от sort
         order = 'rating.desc'
@@ -533,7 +551,7 @@ def job_new():
                 'object_description': '',
                 'work_type': request.form.get('work_type', ''),
                 'detailed_description': description,
-                'date_time': request.form.get('deadline') or datetime.now().isoformat(),
+                'date_time': request.form.get('deadline') or datetime.now(timezone.utc).isoformat(),
                 'payment_amount': payment_amount,
                 'address': request.form.get('address', ''),
                 'city': request.form.get('city', ''),
@@ -549,7 +567,7 @@ def job_new():
             resp = postgrest_request('POST', 'jobs', json=job_data)
 
             if not resp.ok:
-                current_app.logger.error(f'Failed to create job: {resp.text}')
+                current_app.logger.error('Failed to create job: status=%s body=%s', resp.status_code, resp.text[:500])
 
             if resp.ok:
                 created_job = resp.json()
@@ -558,7 +576,7 @@ def job_new():
                 flash('Задание успешно создано', 'success')
                 return redirect(url_for('jobs.my_jobs'))
             else:
-                flash(f'Ошибка создания задания: {resp.text}', 'danger')
+                flash(safe_error_message(resp, 'Ошибка при создании задания'), 'danger')
         except Exception as e:
             flash('Ошибка сервера', 'danger')
 
@@ -577,7 +595,7 @@ def my_jobs():
     status_filter = request.args.get('status', 'all')
 
     # Единый запрос с or-фильтром вместо двух раздельных запросов
-    base_query = f'jobs?employer_id=eq.{user_id}&select=*,photos:job_photos(*),applications:applications(count),current_workers,max_workers'
+    base_query = f'jobs?employer_id=eq.{user_id}&select=*,applications:applications(count),current_workers,max_workers'
     if status_filter == 'open':
         base_query += '&status=eq.open'
     elif status_filter not in ('all', 'open'):
@@ -603,6 +621,11 @@ def my_jobs():
 @login_required
 @role_required('employer')
 def my_jobs_action():
+    """Bulk-операции над заданиями (cancel/restore/delete/duplicate).
+    
+    A1: Все state-changing операции используют атомарные RPC для предотвращения
+    частичных обновлений и race conditions.
+    """
     user_id = session['user_id']
     action = request.form.get('action')
     job_ids = request.form.getlist('job_ids')
@@ -611,33 +634,101 @@ def my_jobs_action():
         flash('Не выбрано ни одного задания', 'danger')
         return redirect(url_for('jobs.my_jobs'))
 
+    success_count = 0
+    error_count = 0
+    
     for job_id in job_ids:
         if not check_job_owner(job_id, user_id):
+            error_count += 1
             continue
+            
         if action == 'restore':
-            restore_resp = postgrest_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'open'})
-            assert_postgrest_ok(restore_resp, 'восстановление задания')
+            # A1: Используем атомарный RPC вместо прямого PATCH
+            rpc_result = postgrest_rpc('restore_job_atomic', {
+                'p_job_id': job_id,
+                'p_user_id': user_id
+            })
+            if rpc_result.ok:
+                result_data = rpc_result.json()
+                if result_data.get('success'):
+                    success_count += 1
+                else:
+                    error_msg = result_data.get('error', 'неизвестная ошибка')
+                    logger.warning('restore_job_atomic failed for job %s: %s', job_id, error_msg)
+                    flash('Ошибка восстановления: %s' % error_msg, 'warning')
+                    error_count += 1
+            else:
+                logger.warning('restore_job_atomic HTTP error for job %s: status=%s', job_id, rpc_result.status_code)
+                flash('Ошибка восстановления задания', 'warning')
+                error_count += 1
+                
         elif action == 'cancel':
-            cancel_resp = postgrest_request('PATCH', f'jobs?id=eq.{job_id}', json={'status': 'cancelled'})
-            assert_postgrest_ok(cancel_resp, 'отмена задания')
+            # A1: Используем атомарный RPC вместо прямого PATCH
+            # RPC проверяет наличие accepted workers и возвращает 409 если есть
+            rpc_result = postgrest_rpc('cancel_job_atomic', {
+                'p_job_id': job_id,
+                'p_user_id': user_id
+            })
+            if rpc_result.ok:
+                result_data = rpc_result.json()
+                if result_data.get('success'):
+                    success_count += 1
+                else:
+                    error_code = result_data.get('code', '')
+                    error_msg = result_data.get('error', 'неизвестная ошибка')
+                    if error_code == 'has_accepted_workers':
+                        # 409 Conflict: нельзя отменить задание с принятыми работниками
+                        logger.warning('cancel_job_atomic conflict for job %s: %s', job_id, error_msg)
+                        flash('Невозможно отменить: есть принятые работники', 'danger')
+                    else:
+                        logger.warning('cancel_job_atomic failed for job %s: %s', job_id, error_msg)
+                        flash('Ошибка отмены: %s' % error_msg, 'warning')
+                    error_count += 1
+            else:
+                logger.warning('cancel_job_atomic HTTP error for job %s: status=%s', job_id, rpc_result.status_code)
+                flash('Ошибка отмены задания', 'warning')
+                error_count += 1
+                
         elif action == 'delete':
+            # delete_job_cascade уже использует RPC - оставляем как есть
             rpc_result = postgrest_rpc('delete_job_cascade', {'p_job_id': job_id}, use_admin=True)
             if rpc_result.ok:
                 result_data = rpc_result.json()
                 if result_data.get('success'):
-                    flash('Задание удалено', 'success')
+                    success_count += 1
                 else:
-                    flash(f"Ошибка удаления: {result_data.get('error', 'неизвестная ошибка')}", 'error')
+                    error_msg = result_data.get('error', 'неизвестная ошибка')
+                    logger.warning('delete_job_cascade failed for job %s: %s', job_id, error_msg)
+                    flash('Ошибка удаления: %s' % error_msg, 'warning')
+                    error_count += 1
             else:
-                flash(f"Ошибка удаления: {rpc_result.status_code}", 'error')
+                logger.warning('delete_job_cascade HTTP error for job %s: status=%s', job_id, rpc_result.status_code)
+                flash('Ошибка удаления задания', 'warning')
+                error_count += 1
+                
         elif action == 'duplicate':
+            # Дублирование не требует атомарного RPC - это просто копирование
             resp = postgrest_request('GET', f'jobs?id=eq.{job_id}&select=*')
             if resp.ok and resp.json():
                 new_job = copy_job(resp.json()[0])
                 dup_resp = postgrest_request('POST', 'jobs', json=new_job)
-                assert_postgrest_ok(dup_resp, 'дублирование задания')
+                if dup_resp.ok:
+                    success_count += 1
+                else:
+                    logger.warning('duplicate job failed for job %s: status=%s', job_id, dup_resp.status_code)
+                    flash('Ошибка дублирования задания', 'warning')
+                    error_count += 1
+            else:
+                error_count += 1
 
-    flash(f'Операция выполнена для {len(job_ids)} заданий', 'success')
+    # Итоговое сообщение
+    if success_count > 0 and error_count == 0:
+        flash('Операция выполнена для %d заданий' % success_count, 'success')
+    elif success_count > 0 and error_count > 0:
+        flash('Выполнено: %d, ошибок: %d' % (success_count, error_count), 'warning')
+    elif error_count > 0:
+        flash('Операция не выполнена: %d ошибок' % error_count, 'danger')
+        
     return redirect(url_for('jobs.my_jobs'))
 
 
@@ -669,7 +760,7 @@ def repost_job(job_id):
     return redirect(url_for('jobs.my_jobs'))
 
 
-@jobs_bp.route('/cancel-job/<job_id>', methods=['GET', 'POST'])
+@jobs_bp.route('/cancel-job/<job_id>', methods=['POST'])
 @login_required
 @role_required('employer')
 @validate_uuid('job_id')
@@ -689,8 +780,8 @@ def cancel_job(job_id):
     if not rpc_result.ok:
         if rpc_result.status_code == 404:
             if is_ajax:
-                return jsonify({'success': False, 'error': 'RPC cancel_job_atomic не найдена (миграция 061 не применена)'}), 500
-            flash('Не удалось отозвать задание (RPC недоступна)', 'danger')
+                return jsonify({'success': False, 'error': 'Сервис не настроен'}), 503
+            flash('Не удалось отозвать задание (сервис недоступен)', 'danger')
             return redirect(url_for('jobs.my_jobs'))
         if is_ajax:
             return jsonify({'success': False, 'error': 'Ошибка выполнения операции'}), 500
@@ -700,9 +791,9 @@ def cancel_job(job_id):
     result = rpc_result.json()
     if not result or not result.get('success'):
         error_msg = (result or {}).get('error', 'Не удалось отозвать задание')
-        status_code = 400
-        if (result or {}).get('code') == 'has_accepted_workers':
-            status_code = 400
+        error_code = (result or {}).get('code', '')
+        # C7: Обработка race condition — 409 для has_accepted_workers
+        status_code = 409 if error_code == 'has_accepted_workers' else 400
         if is_ajax:
             return jsonify({'success': False, 'error': error_msg}), status_code
         flash(error_msg, 'danger')
@@ -723,7 +814,7 @@ def cancel_job(job_id):
     return redirect(url_for('jobs.my_jobs'))
 
 
-@jobs_bp.route('/restore-job/<job_id>', methods=['GET', 'POST'])
+@jobs_bp.route('/restore-job/<job_id>', methods=['POST'])
 @login_required
 @role_required('employer')
 @validate_uuid('job_id')
@@ -742,8 +833,8 @@ def restore_job(job_id):
     if not rpc_result.ok:
         if rpc_result.status_code == 404:
             if is_ajax:
-                return jsonify({'success': False, 'error': 'RPC restore_job_atomic не найдена'}), 500
-            flash('Не удалось восстановить задание (RPC недоступна)', 'danger')
+                return jsonify({'success': False, 'error': 'Сервис не настроен'}), 503
+            flash('Не удалось восстановить задание (сервис недоступен)', 'danger')
             return redirect(url_for('jobs.my_jobs'))
         if is_ajax:
             return jsonify({'success': False, 'error': 'Ошибка выполнения операции'}), 500
@@ -761,10 +852,10 @@ def restore_job(job_id):
 
     new_status = result.get('new_status', 'open')
 
-    # Уведомить всех rejected-заявителей, что задание восстановлено (transactional outbox)
-    rejected_worker_ids = result.get('rejected_worker_ids', [])
-    if rejected_worker_ids:
-        for worker_id in rejected_worker_ids:
+    # Уведомить всех восстановленных заявителей, что задание восстановлено (transactional outbox)
+    restored_worker_ids = result.get('restored_worker_ids', [])
+    if restored_worker_ids:
+        for worker_id in restored_worker_ids:
             if worker_id:
                 enqueue_notification(worker_id, 'status_change', 'Задание восстановлено',
                        f'Задание #{job_id} снова открыто для откликов',
@@ -796,7 +887,7 @@ def api_force_complete_job(job_id):
 
     if not rpc_result.ok:
         if rpc_result.status_code == 404:
-            return jsonify({'success': False, 'error': 'RPC force_complete_job не найдена (миграция 061 не применена)'}), 500
+            return jsonify({'success': False, 'error': 'Сервис не настроен'}), 503
         return jsonify({'success': False, 'error': 'Ошибка выполнения операции'}), 500
 
     result = rpc_result.json()
@@ -821,7 +912,7 @@ def api_force_complete_job(job_id):
     })
 
 
-@jobs_bp.route('/delete-job/<job_id>', methods=['GET', 'POST'])
+@jobs_bp.route('/delete-job/<job_id>', methods=['POST'])
 @login_required
 @validate_uuid('job_id')
 def delete_job(job_id):
@@ -840,24 +931,12 @@ def delete_job(job_id):
         if not data.get('confirm'):
             return jsonify({'success': False, 'error': 'У задания есть принятые отклики. Подтвердите удаление.', 'needs_confirm': True}), 409
 
-    # Каскадное удаление связанных записей (через service_role для обхода RLS)
-    cascade_tables = [
-        ('applications', f'job_id=eq.{job_id}'),
-        ('job_skills', f'job_id=eq.{job_id}'),
-        ('job_photos', f'job_id=eq.{job_id}'),
-        ('job_favorites', f'job_id=eq.{job_id}'),
-        ('_archive_contact_payments', f'job_id=eq.{job_id}'),
-        ('job_payments', f'job_id=eq.{job_id}'),
-        ('invitations', f'job_id=eq.{job_id}'),
-    ]
-    for table, condition in cascade_tables:
-        postgrest_admin_request('DELETE', f'{table}?{condition}')
-    # Уведомления — удаляем по прямой колонке job_id (миграция 063)
-    postgrest_admin_request('DELETE', f'notifications?job_id=eq.{job_id}')
-    # Fallback: удаляем уведомления, где job_id ещё в тексте/JSON (созданы до миграции)
-    postgrest_admin_request('DELETE', f'notifications?message=ilike.*{job_id}*')
-
-    postgrest_admin_request('DELETE', f'jobs?id=eq.{job_id}')
+    # X4: Атомарное каскадное удаление через RPC (транзакция PostgreSQL)
+    resp = postgrest_rpc('delete_job_cascade', {'p_job_id': job_id}, use_admin=True)
+    if not resp.ok:
+        logger.warning('delete_job_cascade failed job_id=%s: %s', job_id, resp.text)
+        flash('Не удалось удалить вакансию', 'danger')
+        return redirect(url_for('jobs.my_jobs'))
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True, 'message': 'Задание удалено'})
     flash('Задание удалено', 'success')
@@ -872,7 +951,6 @@ def delete_job(job_id):
 @login_required
 def invitations_page():
     """HTML-страница приглашений (использует унифицированный сервис)."""
-    # noqa: локальный импорт — циклическая зависимость (jobs → invitation_service → jobs)
     from app.services.invitation_service import list_invitations as get_invitations
     invitations = get_invitations()
     return render_template('invitations.html', invitations=invitations)
@@ -885,7 +963,7 @@ def reject_all_invitations():
     user_id = session['user_id']
     postgrest_admin_request('PATCH',
         f'invitations?worker_id=eq.{user_id}&status=eq.pending',
-        json={'status': 'rejected', 'responded_at': 'now()'})
+        json={'status': 'rejected', 'responded_at': datetime.now(timezone.utc).isoformat()})
     return jsonify({'success': True})
 
 
@@ -975,6 +1053,7 @@ def edit_job(job_id):
             'max_workers': max_workers,
             'preferred_religion': request.form.get('preferred_religion', job.get('preferred_religion', '')),
             'date_time': request.form.get('deadline') or job.get('date_time', ''),
+            'expires_at': (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
         }
         resp = postgrest_request('PATCH', f'jobs?id=eq.{job_id}', json=data)
         if resp.ok:
@@ -1003,7 +1082,7 @@ def add_favorite_job(job_id):
     fav_resp = postgrest_request('POST', 'job_favorites', json={'user_id': session['user_id'], 'job_id': job_id})
     if assert_postgrest_ok(fav_resp, 'добавление задания в избранное'):
         flash('Задание добавлено в избранное', 'success')
-    return redirect(request.referrer or url_for('jobs.index'))
+    return safe_redirect('jobs.index')
 
 
 @jobs_bp.route('/unfavorite-job/<job_id>', methods=['POST'])
@@ -1013,7 +1092,7 @@ def remove_favorite_job(job_id):
     unfav_resp = postgrest_request('DELETE', f'job_favorites?user_id=eq.{session["user_id"]}&job_id=eq.{job_id}')
     if assert_postgrest_ok(unfav_resp, 'удаление задания из избранного'):
         flash('Задание удалено из избранного', 'success')
-    return redirect(request.referrer or url_for('favorites.favorites'))
+    return safe_redirect('favorites.favorites')
 
 
 # ──────────────────────────────────────────────

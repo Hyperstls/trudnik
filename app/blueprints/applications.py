@@ -1,5 +1,4 @@
 import logging
-import threading
 from datetime import datetime, timezone
 
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
@@ -15,37 +14,27 @@ logger = logging.getLogger(__name__)
 applications_bp = Blueprint('applications', __name__)
 
 
-@applications_bp.route('/apply/<job_id>', methods=['GET', 'POST'])
+@applications_bp.route('/apply/<job_id>', methods=['POST'])
 @login_required
 @validate_uuid('job_id')
 @rate_limit
 def apply_job(job_id):
     user_id = session['user_id']
 
-    # Быстрая предварительная проверка дубликата (некритичная, только для UX)
-    check = postgrest_request('GET', f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}')
-    if check.ok and check.json():
-        flash('Вы уже откликались на это задание', 'info')
-        return redirect(url_for('jobs.index'))
-
     # Атомарная RPC: все проверки + вставка отклика в одной транзакции PostgreSQL
-    # Устраняет TOCTOU race condition между проверкой мест и созданием отклика
-    # FALLBACK: если RPC apply_job_atomic не существует (миграция 048 не применена),
-    # используем неатомарную логику с проверками через REST API
+    # RPC сам обрабатывает дубликаты (code=duplicate) — pre-check удалён (B24)
     rpc_result = postgrest_rpc('apply_job_atomic', {
         'p_job_id': job_id,
         'p_worker_id': user_id,
     }, use_admin=True)
 
     if not rpc_result.ok:
-        # RPC-функция не найдена (404) — используем fallback
         if rpc_result.status_code == 404:
-            logger.warning(
-                "apply_job: RPC apply_job_atomic not found (migration 048 not applied), "
-                "falling back to non-atomic apply for job_id=%s user_id=%s",
+            logger.error(
+                "apply_job: RPC apply_job_atomic not found for job_id=%s user_id=%s",
                 job_id, user_id
             )
-            return _apply_job_fallback(job_id, user_id)
+            return jsonify({'success': False, 'error': 'Сервис не настроен'}), 503
         flash('Ошибка при отправке отклика', 'danger')
         return redirect(url_for('jobs.index'))
 
@@ -70,113 +59,12 @@ def apply_job(job_id):
     employer_id = result.get('employer_id')
     if employer_id:
         _link = url_for('jobs.job_detail', job_id=job_id, _external=True)
-        def _notify_employer():
-            success = enqueue_notification(employer_id, 'application_received', 'Новый отклик',
-                   f'На ваше задание поступил новый отклик',
-                   data={'job_id': job_id, 'link': _link})
-            if not success:
-                logger.error("apply_job: enqueue_notification() вернул False для employer_id=%s job_id=%s",
-                             employer_id, job_id)
-        threading.Thread(target=_notify_employer, daemon=True).start()
-
-    flash('Отклик отправлен', 'success')
-    return redirect(url_for('jobs.index'))
-
-
-def _apply_job_fallback(job_id: str, user_id: str):
-    """
-    Неатомарный fallback для apply_job, когда RPC apply_job_atomic недоступен.
-
-    Выполняет все проверки (существование задания, статус, blacklist,
-    дубликат, слоты) через REST API и создаёт отклик.
-
-    Используется только когда миграция 048 (apply_job_atomic) не применена.
-
-    ⚠️ ВАЖНО: Логика проверок должна быть синхронизирована с RPC-функцией
-    apply_job_atomic (миграция 048). При изменении правил валидации в RPC
-    необходимо обновить и этот fallback.
-    """
-    # 1. Получить информацию о задании
-    # ↑ Синхронизировать с apply_job_atomic (миграция 048)
-    job_resp = postgrest_request(
-        'GET',
-        f'jobs?id=eq.{job_id}&select=status,current_workers,max_workers,employer_id'
-    )
-    if not job_resp.ok or not job_resp.json():
-        flash('Задание не найдено', 'danger')
-        return redirect(url_for('jobs.index'))
-
-    job = job_resp.json()[0]
-
-    # 2. Проверить, что задание открыто для откликов
-    # ↑ Синхронизировать с apply_job_atomic (миграция 048)
-    if job.get('status') != 'open':
-        flash('На это задание нельзя откликаться', 'info')
-        return redirect(url_for('jobs.index'))
-
-    # 3. Проверить, что работник не откликается на собственное задание
-    # ↑ Синхронизировать с apply_job_atomic (миграция 048)
-    employer_id = job.get('employer_id')
-    if employer_id == user_id:
-        flash('Вы не можете откликаться на собственное задание', 'danger')
-        return redirect(url_for('jobs.index'))
-
-    # 4. Проверить blacklist (требует service_role для обхода RLS)
-    # ↑ Синхронизировать с apply_job_atomic (миграция 048)
-    if employer_id:
-        bl_resp = postgrest_admin_request(
-            'GET',
-            f'blacklists?user_id=eq.{employer_id}&blocked_user_id=eq.{user_id}&select=id'
-        )
-        if bl_resp.ok and bl_resp.json():
-            error_msg = 'Вы не можете откликнуться: работодатель добавил вас в чёрный список'
-            if request.method == 'POST':
-                return jsonify({'success': False, 'error': error_msg}), 403
-            flash(error_msg, 'danger')
-            return redirect(url_for('jobs.index'))
-
-    # 5. Проверить дубликат отклика
-    # ↑ Синхронизировать с apply_job_atomic (миграция 048)
-    dup_resp = postgrest_request(
-        'GET',
-        f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}&select=id'
-    )
-    if dup_resp.ok and dup_resp.json():
-        flash('Вы уже откликались на это задание', 'info')
-        return redirect(url_for('jobs.index'))
-
-    # 6. Проверить наличие свободных мест
-    # ↑ Синхронизировать с apply_job_atomic (миграция 048)
-    # ⚠️ TOCTOU: между этой проверкой и созданием отклика другой запрос может занять место.
-    # Атомарная RPC (apply_job_atomic) устраняет эту гонку — fallback используется только
-    # когда RPC недоступна (миграция 048 не применена).
-    current_workers = job.get('current_workers', 0)
-    max_workers = job.get('max_workers', 1)
-    if current_workers >= max_workers:
-        flash(f'Места в задании заполнены (максимум {max_workers})', 'info')
-        return redirect(url_for('jobs.index'))
-
-    # 7. Создать отклик
-    create_resp = postgrest_request('POST', 'applications', json={
-        'job_id': job_id,
-        'worker_id': user_id,
-        'status': 'pending',
-    })
-    if not create_resp.ok:
-        flash('Ошибка при отправке отклика', 'danger')
-        return redirect(url_for('jobs.index'))
-
-    # 8. Уведомить работодателя о новом отклике (transactional outbox)
-    if employer_id:
-        _link = url_for('jobs.job_detail', job_id=job_id, _external=True)
-        def _notify_employer():
-            success = enqueue_notification(employer_id, 'application_received', 'Новый отклик',
-                   f'На ваше задание поступил новый отклик',
-                   data={'job_id': job_id, 'link': _link})
-            if not success:
-                logger.error("_apply_job_fallback: enqueue_notification() вернул False для employer_id=%s job_id=%s",
-                             employer_id, job_id)
-        threading.Thread(target=_notify_employer, daemon=True).start()
+        success = enqueue_notification(employer_id, 'application_received', 'Новый отклик',
+               f'На ваше задание поступил новый отклик',
+               data={'job_id': job_id, 'link': _link})
+        if not success:
+            logger.error("apply_job: enqueue_notification() вернул False для employer_id=%s job_id=%s",
+                         employer_id, job_id)
 
     flash('Отклик отправлен', 'success')
     return redirect(url_for('jobs.index'))
@@ -234,21 +122,19 @@ def apply_selected():
                 employer_jobs[employer_id] = []
             employer_jobs[employer_id].append(job_id)
 
-    # Отправляем уведомления работодателям в фоновом потоке (transactional outbox)
+    # Отправляем уведомления работодателям (transactional outbox)
     if employer_jobs:
         _applications_link = url_for('applications.my_applications', _external=True)
-        def _notify_employers():
-            for emp_id, jids in employer_jobs.items():
-                job_list = ', '.join(f'#{jid}' for jid in jids)
-                success = enqueue_notification(
-                    emp_id, 'application_received', 'Новые отклики',
-                    f'На ваши задания ({job_list}) поступили новые отклики',
-                    data={'job_ids': jids, 'link': _applications_link}
-                )
-                if not success:
-                    logger.error("apply_selected: enqueue_notification() вернул False для employer_id=%s job_ids=%s",
-                                 emp_id, jids)
-        threading.Thread(target=_notify_employers, daemon=True).start()
+        for emp_id, jids in employer_jobs.items():
+            job_list = ', '.join(f'#{jid}' for jid in jids)
+            success = enqueue_notification(
+                emp_id, 'application_received', 'Новые отклики',
+                f'На ваши задания ({job_list}) поступили новые отклики',
+                data={'job_ids': jids, 'link': _applications_link}
+            )
+            if not success:
+                logger.error("apply_selected: enqueue_notification() вернул False для employer_id=%s job_ids=%s",
+                             emp_id, jids)
 
     if applied > 0:
         flash(f'Отклик отправлен на {applied} заданий', 'success')
@@ -270,7 +156,6 @@ def unapply_job(job_id):
     Находит отклик по job_id + worker_id, затем вызывает атомарный отзыв.
     Сохраняет обратную совместимость URL /unapply/<job_id>.
     """
-    # noqa: локальный импорт — циклическая зависимость (applications → application_service → applications)
     from app.services.application_service import withdraw_application_atomic
 
     user_id = session['user_id']
@@ -424,13 +309,28 @@ def my_applications():
                            total_pages=total_pages)
 
 
-@applications_bp.route('/api/applications/test', methods=['GET', 'POST'])
+@applications_bp.route('/api/applications/<app_id>/accept', methods=['POST'])
 @login_required
-def api_test():
-    return jsonify({'success': True, 'message': 'applications blueprint is alive'})
-# Маршруты accept/reject/reopen вынесены в app/__init__.py (на объект app)
-# из-за проблем с blueprint-роутингом на production (Render).
-# Функция api_handle_application импортируется оттуда.
+@rate_limit
+@validate_uuid('app_id')
+def api_accept_application(app_id):
+    return api_handle_application(app_id, 'accept')
+
+
+@applications_bp.route('/api/applications/<app_id>/reject', methods=['POST'])
+@login_required
+@rate_limit
+@validate_uuid('app_id')
+def api_reject_application(app_id):
+    return api_handle_application(app_id, 'reject')
+
+
+@applications_bp.route('/api/applications/<app_id>/reopen', methods=['POST'])
+@login_required
+@validate_uuid('app_id')
+def api_reopen_application(app_id):
+    return api_handle_application(app_id, 'reopen')
+
 
 def api_handle_application(app_id, action):
     """AJAX-эндпоинт: принять / отклонить / повторно принять отклик"""
@@ -452,23 +352,26 @@ def api_handle_application(app_id, action):
         return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
 
     if action == 'accept':
-        # Проверка: принимать можно только pending или rejected (повторное принятие)
-        if current_status not in ('pending', 'rejected'):
-            return jsonify({'success': False, 'error': f'Нельзя принять отклик в статусе «{current_status}»'}), 409
-
         # Атомарный accept через RPC (принимает заявки в статусах pending и rejected)
+        # RPC сам проверяет статус с FOR UPDATE — нет TOCTOU race condition
         rpc_result = postgrest_rpc('accept_application', {
             'p_job_id': job_id,
             'p_app_id': app_id,
         }, use_admin=True)
 
         if not rpc_result.ok:
+            current_app.logger.warning('[APPLICATIONS] accept RPC failed: app_id=%s status=%s text=%s', 
+                                       app_id, rpc_result.status_code, (rpc_result.text or '')[:200])
             return jsonify({'success': False, 'error': 'Ошибка выполнения операции'}), 500
 
         result_data = rpc_result.json()
         if not result_data or not result_data.get('success'):
+            error_code = (result_data or {}).get('code', '')
             error_msg = (result_data or {}).get('error', 'Не удалось принять отклик')
-            status_code = 409 if 'места' in error_msg else 400
+            # bad_status = заявка уже обработана (race condition)
+            if error_code == 'bad_status' or 'concurrent' in error_msg.lower():
+                return jsonify({'success': False, 'error': 'Заявка уже обработана'}), 409
+            status_code = 409 if 'места' in error_msg or error_code == 'no_slots' else 400
             return jsonify({'success': False, 'error': error_msg}), status_code
 
         # Уведомить работника (transactional outbox)
@@ -487,17 +390,24 @@ def api_handle_application(app_id, action):
 
     elif action == 'reject':
         # Атомарный reject через RPC (этап 4.4)
+        # RPC сам проверяет статус с FOR UPDATE — нет TOCTOU race condition
         rpc_result = postgrest_rpc('reject_application', {
             'p_job_id': job_id,
             'p_app_id': app_id,
         }, use_admin=True)
 
         if not rpc_result.ok:
+            current_app.logger.warning('[APPLICATIONS] reject RPC failed: app_id=%s status=%s text=%s', 
+                                       app_id, rpc_result.status_code, (rpc_result.text or '')[:200])
             return jsonify({'success': False, 'error': 'Ошибка выполнения операции'}), 500
 
         result_data = rpc_result.json()
         if not result_data or not result_data.get('success'):
+            error_code = (result_data or {}).get('code', '')
             error_msg = (result_data or {}).get('error', 'Не удалось отклонить отклик')
+            # already_rejected = заявка уже обработана (race condition)
+            if error_code == 'already_rejected' or 'concurrent' in error_msg.lower():
+                return jsonify({'success': False, 'error': 'Заявка уже обработана'}), 409
             return jsonify({'success': False, 'error': error_msg}), 400
 
         # Уведомить работника (transactional outbox)
@@ -515,9 +425,8 @@ def api_handle_application(app_id, action):
         })
 
     elif action == 'reopen':
-        if current_status != 'rejected':
-            return jsonify({'success': False, 'error': 'Можно повторно принять только отклонённый отклик'}), 409
-
+        # Повторное принятие отклонённого отклика — делегируем accept
+        # RPC сам проверит статус с FOR UPDATE
         return api_handle_application(app_id, 'accept')
 
     return jsonify({'success': False, 'error': 'Неизвестное действие'}), 400
@@ -562,10 +471,14 @@ def api_batch_applications():
             # (он сам делает все проверки: авторизацию, места, атомарный PATCH)
             result = api_handle_application(app_id, action)
             # api_handle_application может вернуть Response или tuple (Response, status)
-            if isinstance(result, tuple):
-                data = result[0].get_json()
-            else:
-                data = result.get_json()
+            resp_obj = result[0] if isinstance(result, tuple) else result
+            try:
+                data = resp_obj.get_json()
+            except Exception:
+                data = None
+            if not data or not isinstance(data, dict):
+                results['errors'].append({'id': app_id, 'error': 'Неожиданный ответ сервера'})
+                continue
             if data.get('success'):
                 results['success'].append({
                     'id': app_id,
@@ -639,62 +552,30 @@ def cancel_application(app_id):
                 pass
 
     # Атомарная отмена через RPC cancel_worker_atomic
-    rpc_success = False
-    try:
-        rpc_result = postgrest_rpc('cancel_worker_atomic', {
-            'p_application_id': app_id,
-            'p_user_id': session.get('user_id'),
-        }, use_admin=True)
-        if rpc_result.ok and rpc_result.json():
-            rpc_data = rpc_result.json()
-            if rpc_data and rpc_data.get('success'):
-                rpc_success = True
-                current_app.logger.info(
-                    'cancel_application: RPC cancel_worker_atomic OK for app_id=%s job_id=%s new_status=%s',
-                    app_id, job_id, rpc_data.get('new_status')
-                )
-            else:
-                current_app.logger.warning(
-                    'cancel_application: RPC cancel_worker_atomic returned success=false for app_id=%s: %s',
-                    app_id, (rpc_data or {}).get('error', 'неизвестная ошибка')
-                )
-    except Exception as e:
-        current_app.logger.error(
-            'cancel_application: RPC cancel_worker_atomic exception for app_id=%s: %s',
-            app_id, str(e)
-        )
+    rpc_result = postgrest_rpc('cancel_worker_atomic', {
+        'p_application_id': app_id,
+        'p_user_id': session.get('user_id'),
+    }, use_admin=True)
 
-    # Fallback: если RPC недоступна — используем ручную логику
-    if not rpc_success:
-        current_app.logger.warning(
-            'cancel_application: RPC cancel_worker_atomic failed for app_id=%s, falling back to manual logic',
-            app_id
-        )
-        # Уменьшить счетчик работников
-        job_resp = postgrest_request('GET', f'jobs?id=eq.{job_id}&select=current_workers,max_workers')
-        if job_resp.ok and job_resp.json():
-            job_data = job_resp.json()[0]
-            current_workers = max(0, job_data.get('current_workers', 1) - 1)
+    if not rpc_result.ok:
+        if rpc_result.status_code == 404:
+            logger.error(
+                'cancel_application: RPC cancel_worker_atomic not found for app_id=%s', app_id
+            )
+            return jsonify({'success': False, 'error': 'Сервис не настроен'}), 503
+        flash('Ошибка при отмене работника', 'danger')
+        return redirect(url_for('applications.my_applications'))
 
-            # Вернуть статус в open если все ушли
-            new_status = 'open' if current_workers == 0 else 'completed'
-            job_patch_resp = postgrest_request('PATCH', f'jobs?id=eq.{job_id}', json={
-                'status': new_status,
-                'current_workers': current_workers
-            })
-            assert_postgrest_ok(job_patch_resp, 'обновление статуса задания при отмене работника')
+    rpc_data = rpc_result.json()
+    if not rpc_data or not rpc_data.get('success'):
+        error_msg = (rpc_data or {}).get('error', 'Не удалось отменить работника')
+        flash(error_msg, 'danger')
+        return redirect(url_for('applications.my_applications'))
 
-        # Отклонить отклик
-        cancel_resp = postgrest_request('PATCH', f'applications?id=eq.{app_id}', json={'status': 'rejected'})
-        assert_postgrest_ok(cancel_resp, 'отклонение отклика при отмене работника')
-
-        # Отправить уведомления (только в fallback-пути, RPC создаёт уведомление сама)
-        success = enqueue_notification(worker_id, 'application_rejected', 'Отклик отменен',
-                          f'Ваш отклик на задание {job.get("organization_name", "#" + job_id)} был отменен',
-                          data={'job_id': job_id, 'link': url_for('applications.my_applications', _external=True)})
-        if not success:
-            logger.error("cancel_application: enqueue_notification() вернул False для worker_id=%s job_id=%s",
-                         worker_id, job_id)
+    current_app.logger.info(
+        'cancel_application: RPC cancel_worker_atomic OK for app_id=%s job_id=%s new_status=%s',
+        app_id, job_id, rpc_data.get('new_status')
+    )
 
     flash('Работник отменен', 'success')
     return redirect(url_for('applications.my_applications'))

@@ -29,33 +29,37 @@ class NotificationsWebSocket {
         if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.OPEN)) {
             return;
         }
-
         this.isConnecting = true;
+        this.reconnectAttempts = 0;
         const wsUrl = this._getWsUrl();
 
         try {
-            this.ws = new WebSocket(`${wsUrl}?token=${encodeURIComponent(token)}`);
+            this.ws = new WebSocket(wsUrl);  // БЕЗ токена в URL
         } catch (e) {
             console.error('Ошибка создания WebSocket:', e);
             this.isConnecting = false;
-            this._scheduleReconnect(token);
+            this._scheduleReconnect();
             return;
         }
 
         this.ws.onopen = () => {
-            console.log('WebSocket подключён');
-            this.isConnecting = false;
-            this.reconnectAttempts = 0;
-            this._stopPolling();
-            this._emit('connected', {});
+            // Отправляем токен первым сообщением
+            this.ws.send(JSON.stringify({ type: 'auth', token: token }));
         };
 
         this.ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                this._handleMessage(data);
+                if (data.type === 'connected') {
+                    this.isConnecting = false;
+                    this.reconnectAttempts = 0;
+                    this._stopPolling();
+                    this._emit('connected', {});
+                } else {
+                    this._handleMessage(data);
+                }
             } catch (e) {
-                console.warn('Не удалось разобрать WebSocket сообщение:', event.data);
+                console.warn('Не удалось разобрать WS сообщение:', event.data);
             }
         };
 
@@ -63,9 +67,8 @@ class NotificationsWebSocket {
             console.log(`WebSocket закрыт (код: ${event.code})`);
             this.isConnecting = false;
             this._emit('disconnected', { code: event.code });
-
             if (event.code !== 1000 && event.code !== 1001) {
-                this._scheduleReconnect(token);
+                this._scheduleReconnect();
                 this._startPolling();
             }
         };
@@ -229,7 +232,7 @@ class NotificationsWebSocket {
      */
     async _pollUnreadCount() {
         try {
-            const resp = await fetch('/api/notifications/unread-count');
+            const resp = await apiFetch('/api/notifications/unread-count');
             if (!resp.ok) return;
             const data = await resp.json();
             const count = data.unread_count || data.count || 0;
@@ -247,7 +250,19 @@ class NotificationsWebSocket {
         }
     }
 
-    _scheduleReconnect(token) {
+    async _fetchToken() {
+        try {
+            const resp = await apiFetch('/api/ws/token');
+            if (!resp.ok) return null;
+            const data = await resp.json();
+            return data.token;
+        } catch (e) {
+            console.warn('Не удалось получить свежий WS-токен:', e);
+            return null;
+        }
+    }
+
+    _scheduleReconnect() {
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
             console.warn('Достигнут лимит попыток переподключения WebSocket');
             return;
@@ -255,14 +270,19 @@ class NotificationsWebSocket {
 
         this.reconnectAttempts++;
         const delay = Math.min(
-            this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1),
+            Math.min(30000, 1000 * Math.pow(2, this.reconnectAttempts)),
             this.maxReconnectDelay
         );
 
         console.log(`Переподключение WebSocket через ${delay / 1000}с (попытка ${this.reconnectAttempts})`);
 
-        setTimeout(() => {
-            this.connect(token);
+        setTimeout(async () => {
+            const token = await this._fetchToken();
+            if (token) {
+                this.connect(token);
+            } else {
+                this._startPolling();
+            }
         }, delay);
     }
 }

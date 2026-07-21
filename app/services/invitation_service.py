@@ -28,10 +28,24 @@ def list_invitations(user_id: str = None, role: str = None) -> List[Dict[str, An
             f'invitations?worker_id=eq.{user_id}'
             f'&select=*,job:jobs(organization_name,payment_amount)'
             f'&order=created_at.desc')
-    else:
-        resp = postgrest_request('GET',
-            f'invitations?employer_id=eq.{user_id}'
-            f'&select=*,job:jobs(organization_name),worker:profiles!invitations_worker_id_fkey(full_name)'
-            f'&order=created_at.desc')
+        return resp.json() if resp.ok else []
 
-    return resp.json() if resp.ok else []
+    # Работодатель: у приглашений нет FK worker_id→profiles, поэтому имена
+    # трудников подтягиваем отдельным запросом и приводим к форме item['worker'],
+    # которую ожидает вызывающий код.
+    resp = postgrest_request('GET',
+        f'invitations?employer_id=eq.{user_id}'
+        f'&select=*,job:jobs(organization_name)'
+        f'&order=created_at.desc')
+    items = resp.json() if resp.ok else []
+    wids = {it.get('worker_id') for it in items if it.get('worker_id')}
+    names = {}
+    if wids:
+        ids_filter = ','.join(wids)
+        wresp = postgrest_request('GET',
+            f'profiles?id=in.({ids_filter})&select=id,full_name')
+        if wresp.ok and wresp.json():
+            names = {p['id']: p.get('full_name') for p in wresp.json()}
+    for it in items:
+        it['worker'] = {'full_name': names.get(it.get('worker_id'))}
+    return items

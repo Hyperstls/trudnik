@@ -1,8 +1,16 @@
 {% extends "base.html" %}
 {% from '_icons.html' import star, heart, map_pin, clock, dollar, phone, smiley, avatar, award, briefcase %}
+{% from '_components.html' import breadcrumbs %}
 {% block title %}{{ employer.full_name }} — Работодатель{% endblock %}
 {% block content %}
 <div class="px-4 pb-24 max-w-2xl mx-auto fade-in">
+
+    <!-- Breadcrumbs -->
+    {{ breadcrumbs([
+        {'label': 'Главная', 'url': '/'},
+        {'label': 'Работодатели', 'url': '/employers'},
+        {'label': employer.full_name}
+    ]) }}
 
     {# ============================================ #}
     {# Шапка профиля                                 #}
@@ -11,7 +19,7 @@
         <div class="flex items-start gap-4">
             {# Аватар #}
             {% if employer.photo_url %}
-            <img src="{{ employer.photo_url }}" alt="{{ employer.full_name }}"
+            <img src="{{ employer.photo_url }}" alt="{{ employer.full_name }}" loading="lazy" decoding="async"
                  class="js-avatar-img w-20 h-20 rounded-full object-cover border-2 border-neutral-200 shrink-0">
             <div class="avatar-smiley w-20 h-20 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400" style="display:none">{{ smiley(40) }}</div>
             {% else %}
@@ -53,7 +61,7 @@
                 {% if employer.created_at %}
                 <div class="flex items-center gap-1 text-xs text-neutral-400 mt-1">
                     {{ clock(14) }}
-                    На платформе с {{ employer.created_at | format_date }}
+                    На платформе с <time datetime="{{ employer.created_at }}">{{ employer.created_at | format_date }}</time>
                 </div>
                 {% endif %}
 
@@ -71,6 +79,7 @@
         <div class="mt-4 pt-4 border-t border-neutral-100 flex flex-wrap gap-2">
             {% if session.get('role') == 'worker' %}
             <form method="POST" action="/employers/{{ employer.id }}/favorite" class="inline">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                 <button type="submit" class="action-icon-btn {% if is_favorited %}reject-btn{% else %}contact-btn{% endif %}">
                     <span class="flex items-center gap-1.5">
                         {{ heart(18) }}
@@ -140,7 +149,7 @@
                                 <span class="w-1 h-1 rounded-full bg-neutral-300"></span>
                                 {% endif %}
                                 {% if job.date_time %}
-                                <span class="inline-flex items-center gap-0.5">{{ clock(12) }}{{ job.date_time | format_date }}</span>
+                                <span class="inline-flex items-center gap-0.5">{{ clock(12) }}<time datetime="{{ job.date_time }}">{{ job.date_time | format_date }}</time></span>
                                 {% endif %}
                             </p>
                             {% endif %}
@@ -170,6 +179,7 @@
                 {% if session.get('role') == 'worker' and job.status == 'open' and job.id not in already_applied_job_ids %}
                 <div class="mt-3 pt-3 border-t border-neutral-100">
                     <form method="POST" action="/apply/{{ job.id }}" class="inline">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="action-icon-btn accept-btn">
                             <span class="flex items-center gap-1.5">
                                 {{ dollar(16) }}
@@ -205,43 +215,41 @@
 {# Модальное окно оценки работодателя             #}
 {# ============================================ #}
 {% if session.get('role') == 'worker' %}
-<div id="rating-modal-backdrop" class="modal-backdrop hidden" style="display:none; z-index: 80;">
-    <div class="modal-content animate-scale-in" style="max-width: 420px;">
-        <h3 class="text-lg font-bold text-neutral-800 mb-1">Оценить работодателя</h3>
-        <p class="text-sm text-neutral-500 mb-4">{{ employer.full_name }}</p>
+<dialog id="rating-modal" class="modal-content animate-scale-in" style="max-width: 420px;" aria-labelledby="rating-modal-title">
+    <h3 id="rating-modal-title" class="text-lg font-bold text-neutral-800 mb-1">Оценить работодателя</h3>
+    <p class="text-sm text-neutral-500 mb-4">{{ employer.full_name }}</p>
 
-        {# Выбор задания #}
-        <div id="rating-job-select-container" class="mb-4 hidden">
-            <label class="block text-sm font-medium text-neutral-700 mb-2">Выберите завершённое задание:</label>
-            <select id="rating-job-select" class="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
-                <option value="">— Выберите задание —</option>
-            </select>
-        </div>
-
-        {# Звёзды #}
-        <div id="rating-stars" class="flex justify-center gap-2 mb-4">
-            {% for i in range(1, 6) %}
-            <button type="button" class="rating-star text-3xl text-neutral-300 hover:text-warning transition-colors cursor-pointer" data-value="{{ i }}">★</button>
-            {% endfor %}
-        </div>
-        <input type="hidden" id="rating-value" value="0">
-
-        {# Комментарий #}
-        <textarea id="rating-comment" rows="3" maxlength="500"
-                  class="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all resize-none mb-4"
-                  placeholder="Комментарий (необязательно)"></textarea>
-
-        <div id="rating-no-jobs-msg" class="text-sm text-neutral-500 text-center mb-4 hidden">
-            Нет завершённых заданий с этим работодателем. Оценка возможна только после совместной работы.
-        </div>
-
-        {# Кнопки #}
-        <div class="flex gap-3 justify-end">
-            <button id="rating-modal-cancel" class="px-5 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-sm font-medium transition-colors">Отмена</button>
-            <button id="rating-modal-submit" class="px-5 py-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-xl text-sm font-medium transition-colors">Отправить</button>
-        </div>
+    {# Выбор задания #}
+    <div id="rating-job-select-container" class="mb-4 hidden">
+        <label class="block text-sm font-medium text-neutral-700 mb-2">Выберите завершённое задание:</label>
+        <select id="rating-job-select" class="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+            <option value="">— Выберите задание —</option>
+        </select>
     </div>
-</div>
+
+    {# Звёзды #}
+    <div id="rating-stars" class="flex justify-center gap-2 mb-4">
+        {% for i in range(1, 6) %}
+        <button type="button" class="rating-star text-3xl text-neutral-300 hover:text-warning transition-colors cursor-pointer" data-value="{{ i }}">★</button>
+        {% endfor %}
+    </div>
+    <input type="hidden" id="rating-value" value="0">
+
+    {# Комментарий #}
+    <textarea id="rating-comment" rows="3" maxlength="500"
+              class="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all resize-none mb-4"
+              placeholder="Комментарий (необязательно)"></textarea>
+
+    <div id="rating-no-jobs-msg" class="text-sm text-neutral-500 text-center mb-4 hidden">
+        Нет завершённых заданий с этим работодателем. Оценка возможна только после совместной работы.
+    </div>
+
+    {# Кнопки #}
+    <div class="flex gap-3 justify-end">
+        <button id="rating-modal-cancel" class="px-5 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-sm font-medium transition-colors">Отмена</button>
+        <button id="rating-modal-submit" class="px-5 py-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-xl text-sm font-medium transition-colors">Отправить</button>
+    </div>
+</dialog>
 
 <script nonce="{{ csp_nonce }}">
 (function() {

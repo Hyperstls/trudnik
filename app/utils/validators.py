@@ -51,6 +51,42 @@ def validate_password(password: str) -> Optional[str]:
     return None
 
 
+def check_password_strength(password: str) -> dict:
+    """Проверить сложность пароля. Возвращает {score, max_score, feedback, is_strong}."""
+    score = 0
+    feedback = []
+
+    if len(password) >= 8:
+        score += 1
+    else:
+        feedback.append('Минимум 8 символов')
+
+    if len(password) >= 12:
+        score += 1
+
+    if any(c.isupper() for c in password) and any(c.islower() for c in password):
+        score += 1
+    else:
+        feedback.append('Используйте буквы разного регистра')
+
+    if any(c.isdigit() for c in password):
+        score += 1
+    else:
+        feedback.append('Добавьте цифры')
+
+    if any(not c.isalnum() for c in password):
+        score += 1
+    else:
+        feedback.append('Добавьте спецсимволы (!@#$%^&*)')
+
+    return {
+        'score': score,
+        'max_score': 5,
+        'feedback': feedback,
+        'is_strong': score >= 4
+    }
+
+
 def validate_inn_checksum(inn: str) -> bool:
     """Проверить контрольную сумму ИНН по алгоритму ФНС.
 
@@ -94,3 +130,28 @@ def validate_inn_checksum(inn: str) -> bool:
         return control_12 == int(inn[11])
 
     return False
+
+
+def parse_float(value, name=None, min_val=None, max_val=None):
+    """Безопасно парсит float из строки с валидацией границ.
+
+    Args:
+        value: строковое значение для парсинга.
+        name: имя параметра (для логирования).
+        min_val: минимально допустимое значение (опционально).
+        max_val: максимально допустимое значение (опционально).
+
+    Returns:
+        float или None, если значение невалидно.
+    """
+    if not value:
+        return None
+    try:
+        result = float(value)
+    except (ValueError, TypeError):
+        return None
+    if min_val is not None and result < min_val:
+        return None
+    if max_val is not None and result > max_val:
+        return None
+    return result

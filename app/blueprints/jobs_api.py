@@ -8,18 +8,16 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request, session, current_app, url_for
 
-from app.decorators import login_required, role_required
+from app.decorators import login_required, role_required, validate_uuid
 from app.services.job_service import (
-    search_jobs,
-    search_workers,
     check_job_owner,
     is_job_filled,
 )
 from app.services.notification_service import create as notify
 from app.utils import (
-    cache_for,
     postgrest_request,
     postgrest_admin_request,
+    postgrest_rpc,
     sanitize_postgrest,
 )
 
@@ -30,73 +28,53 @@ jobs_api_bp = Blueprint('jobs_api', __name__)
 # Публичные справочники (навыки, вероисповедания)
 # ═══════════════════════════════════════════════════════════════
 
+def _dictionary_list(table: str, label: str) -> dict:
+    """Универсальный загрузчик публичных справочников (skills/religions).
+
+    Использует service_role (postgrest_admin_request), т.к. справочники нужны
+    ДО входа (регистрация) и роль anon/authenticated может не иметь GRANT SELECT
+    на этих таблицах. Кэшируем только непустой успешный результат, чтобы
+    случайный сбой PostgREST не «застолбил» пустой список на 5 минут.
+    """
+    import json
+
+    from app.utils.redis_client import get_redis_client
+
+    cache_key = f'dict:{table}'
+    try:
+        client = get_redis_client()
+        if client:
+            cached = client.get(cache_key)
+            if cached:
+                raw = cached.decode('utf-8') if isinstance(cached, bytes) else cached
+                return {'success': True, label: json.loads(raw)}
+    except Exception:
+        pass
+
+    resp = postgrest_admin_request(
+        'GET', f'{table}?select=*&order=sort_order.asc,name.asc'
+    )
+    items = resp.json() if (resp.ok and resp.json()) else []
+    if items:
+        try:
+            client = get_redis_client()
+            if client:
+                client.setex(cache_key, 300, json.dumps(items, ensure_ascii=False))
+        except Exception:
+            pass
+    return {'success': True, label: items}
+
+
 @jobs_api_bp.route('/api/skills')
-@cache_for(seconds=300)
 def api_skills():
     """Получить список навыков (JSON)."""
-    resp = postgrest_request(
-        'GET', 'skills?select=*&order=sort_order.asc,name.asc'
-    )
-    return {'skills': resp.json() if resp.ok else []}
+    return _dictionary_list('skills', 'skills')
 
 
 @jobs_api_bp.route('/api/religions')
-@cache_for(seconds=300)
 def api_religions():
     """Получить список вероисповеданий (JSON)."""
-    resp = postgrest_request(
-        'GET', 'religions?select=*&order=sort_order.asc,name.asc'
-    )
-    return {'religions': resp.json() if resp.ok else []}
-
-
-# ═══════════════════════════════════════════════════════════════
-# API поиска (полнотекстовый + фильтры + пагинация)
-# ═══════════════════════════════════════════════════════════════
-
-@jobs_api_bp.route('/api/search/jobs')
-def api_search_jobs():
-    """Поиск заданий с полнотекстовым поиском, фильтрами и пагинацией."""
-    import traceback
-    try:
-        filters = {
-            'q': request.args.get('q', ''),
-            'status': request.args.get('status', 'open'),
-            'lat': request.args.get('lat', type=float),
-            'lng': request.args.get('lng', type=float),
-            'radius': request.args.get('radius', 20, type=float),
-            'min_pay': request.args.get('min_pay', type=int),
-            'max_pay': request.args.get('max_pay', type=int),
-            'skills': request.args.get('skills', ''),
-            'date_from': request.args.get('date_from', ''),
-            'date_to': request.args.get('date_to', ''),
-            'available_slots': request.args.get('available_slots', 'false').lower() == 'true',
-            'page': request.args.get('page', 1, type=int),
-            'per_page': request.args.get('per_page', 20, type=int),
-            'sort': request.args.get('sort', ''),
-        }
-        result = search_jobs(filters)
-        return result
-    except Exception:
-        current_app.logger.error('api_search_jobs ERROR: %s', traceback.format_exc())
-        return jsonify({'error': 'Internal search error'}), 500
-
-
-@jobs_api_bp.route('/api/search/workers')
-def api_search_workers():
-    """Поиск трудников с полнотекстовым поиском, фильтрами и пагинацией."""
-    filters = {
-        'q': request.args.get('q', ''),
-        'skills': request.args.get('skills', ''),
-        'rating_min': request.args.get('rating_min', type=float),
-        'lat': request.args.get('lat', type=float),
-        'lng': request.args.get('lng', type=float),
-        'radius': request.args.get('radius', 20, type=float),
-        'page': request.args.get('page', 1, type=int),
-        'per_page': request.args.get('per_page', 20, type=int),
-        'sort': request.args.get('sort', ''),
-    }
-    return search_workers(filters)
+    return _dictionary_list('religions', 'religions')
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -106,6 +84,7 @@ def api_search_workers():
 @jobs_api_bp.route('/api/invite/<job_id>/<worker_id>', methods=['POST'])
 @login_required
 @role_required('employer')
+@validate_uuid('job_id', 'worker_id')
 def invite_worker(job_id, worker_id):
     """Работодатель приглашает трудника на задание."""
     if not check_job_owner(job_id, session['user_id']):
@@ -164,6 +143,7 @@ def list_invitations():
 @jobs_api_bp.route('/api/invitations/<invitation_id>/respond', methods=['POST'])
 @login_required
 @role_required('worker')
+@validate_uuid('invitation_id')
 def respond_invitation(invitation_id):
     """Трудник принимает или отклоняет приглашение.
     При accept используется атомарная RPC accept_invitation_atomic:
@@ -189,7 +169,7 @@ def respond_invitation(invitation_id):
             return jsonify({'success': False, 'error': f'Приглашение уже {inv["status"]}'}), 409
 
         postgrest_request('PATCH', f'invitations?id=eq.{invitation_id}',
-                         json={'status': 'rejected', 'responded_at': 'now()'})
+                         json={'status': 'rejected', 'responded_at': datetime.now(timezone.utc).isoformat()})
         return jsonify({'success': True, 'new_status': 'rejected'})
 
     # action == 'accept': атомарная RPC

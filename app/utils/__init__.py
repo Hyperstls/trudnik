@@ -7,30 +7,58 @@
 # 1. Сначала настраиваем mock-зависимости (до импорта postgrest-подмодуля)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-try:
-    from app.testing.mock_postgrest import (
-        _test_db,
-        _uuid_counter,
-        _gen_uuid,
-        _test_auth_tokens,
-        _MockRequestsResponse,
-        _should_intercept,
-        _mock_post,
-        _mock_delete,
-        _install_auth_mock,
-        _uninstall_auth_mock,
-        _is_mock_enabled,
-        _test_mock_request,
-        _test_mock_rpc,
-        _reset_test_db,
-        _seed_test_db,
-    )
+# P0: Production guard — mock imports only in test/dev mode
+import os as _os
+_allow_mock_import = (
+    _os.environ.get('POSTGREST_MOCK_MODE', '').lower() == 'true'
+    or _os.environ.get('TESTING', '').lower() == 'true'
+    or _os.environ.get('FLASK_ENV', '') == 'development'
+)
 
-    # Устанавливаем перехватчик, если mock включён
-    if _is_mock_enabled():
-        _install_auth_mock()
-    _mock_available = True
-except Exception:
+if _allow_mock_import:
+    try:
+        from app.testing.mock_postgrest import (
+            _test_db,
+            _uuid_counter,
+            _gen_uuid,
+            _test_auth_tokens,
+            _MockRequestsResponse,
+            _should_intercept,
+            _mock_post,
+            _mock_delete,
+            _install_auth_mock,
+            _uninstall_auth_mock,
+            _is_mock_enabled,
+            _test_mock_request,
+            _test_mock_rpc,
+            _reset_test_db,
+            _seed_test_db,
+        )
+
+        # Устанавливаем перехватчик, если mock включён
+        if _is_mock_enabled():
+            _install_auth_mock()
+        _mock_available = True
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning('Failed to initialize test mock: %s', e, exc_info=True)
+        _test_db = {}
+        _uuid_counter = 0
+        _gen_uuid = lambda: ''
+        _test_auth_tokens = {}
+        _MockRequestsResponse = None
+        _should_intercept = lambda *a, **kw: False
+        _mock_post = lambda *a, **kw: None
+        _mock_delete = lambda *a, **kw: None
+        _install_auth_mock = lambda: None
+        _uninstall_auth_mock = lambda: None
+        _is_mock_enabled = lambda: False
+        _test_mock_request = lambda *a, **kw: None
+        _test_mock_rpc = lambda *a, **kw: None
+        _reset_test_db = lambda: None
+        _seed_test_db = lambda *a, **kw: None
+        _mock_available = False
+else:
     _test_db = {}
     _uuid_counter = 0
     _gen_uuid = lambda: ''
@@ -79,7 +107,7 @@ from app.utils import business as _business
 from app.utils import helpers as _helpers
 from app.utils import auth as _auth
 from app.utils import validators as _validators
-from app.utils import rate_limit as _rate_limit_mod
+from app.utils.rate_limit_decorator import rate_limit
 
 # Сервисы (логически относятся к app.services, но ре-экспортируются
 # через app.utils для обратной совместимости)
@@ -105,7 +133,6 @@ refresh_access_token = _pgrest.refresh_access_token
 postgrest_request = _pgrest.postgrest_request
 postgrest_admin_request = _pgrest.postgrest_admin_request
 postgrest_rpc = _pgrest.postgrest_rpc
-postgrest_public_rpc = _pgrest.postgrest_public_rpc
 generate_vapid_keys = PushService.generate_vapid_keys
 
 # --- Гео-вычисления ---
@@ -130,7 +157,6 @@ copy_job = _business.copy_job
 check_withdraw_window = _business.check_withdraw_window
 
 # --- Короткие хелперы ---
-rate_limit = _rate_limit_mod.rate_limit
 uid = _helpers.uid
 my_query = _helpers.my_query
 
@@ -165,7 +191,7 @@ __all__ = [
     'cache_for', 'is_circuit_open',
     'POSTGREST_URL', 'PGRST_JWT_SECRET',
     'get_service_role_headers', 'get_user_headers',
-    'postgrest_request', 'postgrest_admin_request', 'postgrest_rpc', 'postgrest_public_rpc',
+    'postgrest_request', 'postgrest_admin_request', 'postgrest_rpc',
     'generate_vapid_keys',
     # Auth
     'refresh_access_token', 'get_user_role', 'get_user_profile', 'generate_jwt',

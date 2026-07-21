@@ -44,7 +44,7 @@
         let successCount = 0, failCount = 0;
         for (const item of queue) {
             try {
-                const resp = await fetch(item.url, item.options);
+                const resp = await apiFetch(item.url, item.options);
                 if (resp.ok) {
                     successCount++;
                 } else {
@@ -200,7 +200,7 @@
         }
 
         try {
-            const resp = await fetch('/api/applications/batch', {
+            const resp = await apiFetch('/api/applications/batch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ app_ids: [appId], action: action })
@@ -211,7 +211,7 @@
                 const item = data.results.success[0];
                 showToast(data.message || 'Готово', 'success');
                 // Актуализируем UI с серверным статусом (на случай расхождений)
-                updateCardUI(card, appId, item.new_status, item.shift_id);
+                updateCardUI(card, appId, item.new_status, item.id || appId);
             } else if (data.results && data.results.errors && data.results.errors.length > 0) {
                 // Откат оптимистичного обновления
                 if (originalStatus && card) {
@@ -272,7 +272,7 @@
         $$('.mass-action-btn').forEach(b => b.disabled = true);
 
         try {
-            const resp = await fetch('/api/applications/batch', {
+            const resp = await apiFetch('/api/applications/batch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ app_ids: ids, action: action })
@@ -289,9 +289,8 @@
                         const newStatus = typeof item === 'string'
                             ? (action === 'reject' ? 'rejected' : 'accepted')
                             : item.new_status;
-                        const shiftId = item.shift_id || null;
                         const card = document.querySelector(`.app-card[data-app-id="${id}"]`);
-                        updateCardUI(card, id, newStatus, shiftId);
+                        updateCardUI(card, id, newStatus, id);
                     });
                 }
                 if (results && results.errors && results.errors.length > 0) {
@@ -327,7 +326,7 @@
     // ============================================
     // Обновление UI карточки после действия
     // ============================================
-    function updateCardUI(card, appId, newStatus, shiftId) {
+    function updateCardUI(card, appId, newStatus, chatAppId) {
         if (!card) return;
 
         // Обновить data-атрибут статуса на карточке
@@ -370,7 +369,7 @@
 
         // Обновить кнопки
         if (actionButtons) {
-            actionButtons.innerHTML = buildActionButtonsHTML(appId, newStatus, shiftId);
+            actionButtons.innerHTML = buildActionButtonsHTML(appId, newStatus, chatAppId);
             // Re-bind events for new buttons
             actionButtons.querySelectorAll('[data-action]').forEach(btn => {
                 btn.addEventListener('click', function (e) {
@@ -387,7 +386,7 @@
     // ============================================
     // HTML кнопок в зависимости от статуса
     // ============================================
-    function buildActionButtonsHTML(appId, status, shiftId) {
+    function buildActionButtonsHTML(appId, status, chatAppId) {
         if (status === 'pending') {
             return `
                 <button type="button" data-app-id="${appId}" data-action="accept"
@@ -405,7 +404,7 @@
                 </button>
             `;
         } else if (status === 'accepted') {
-            const chatHref = shiftId ? `/chat/${shiftId}` : '#';
+            const chatHref = chatAppId ? `/chat/${chatAppId}` : '#';
             return `
                 <span class="action-icon-btn accepted-badge" title="Принят">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -415,7 +414,7 @@
                     <span class="sr-only">Принят</span>
                 </span>
                 <a href="${chatHref}"
-                   class="action-icon-btn chat-btn ${shiftId ? '' : 'opacity-50 pointer-events-none'}"
+                   class="action-icon-btn chat-btn ${chatAppId ? '' : 'opacity-50 pointer-events-none'}"
                    title="Чат" aria-label="Чат">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>

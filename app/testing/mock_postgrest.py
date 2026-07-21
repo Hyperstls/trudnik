@@ -102,16 +102,16 @@ def _mock_post(url: str, *args: Any, **kwargs: Any) -> Any:
             password = body.get('password', '')
             for p in _test_db.get('profiles', []):
                 if p.get('email') == email:
-                    if not os.environ.get('TEST_PASSWORD'):
+                    if not os.environ.get('TEST_USER_PASSWORD'):
                         global _test_password_warned
                         if not _test_password_warned:
                             _test_password_warned = True
                             logger.warning(
-                                "TEST_PASSWORD not set in environment. "
+                                "TEST_USER_PASSWORD not set in environment. "
                                 "Mock auth will reject ALL login attempts. "
-                                "Set TEST_PASSWORD env var to enable test logins."
+                                "Set TEST_USER_PASSWORD env var to enable test logins."
                             )
-                    if password and password == os.environ.get('TEST_PASSWORD', 'test'):
+                    if password and password == os.environ.get('TEST_USER_PASSWORD', 'test'):
                         token = f'mock-access-{p["id"][:8]}'
                         refresh = f'mock-refresh-{p["id"][:8]}'
                         _test_auth_tokens[token] = p
@@ -178,14 +178,16 @@ def _install_auth_mock():
         from app.tasks.email_tasks import send_email_notification
         send_email_notification.delay = lambda *a, **kw: None
         send_email_notification.apply_async = lambda *a, **kw: None
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning('Failed to mock email tasks: %s', e, exc_info=True)
     try:
         from app.tasks.push_tasks import send_push_notification
         send_push_notification.delay = lambda *a, **kw: None
         send_push_notification.apply_async = lambda *a, **kw: None
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning('Failed to mock push tasks: %s', e, exc_info=True)
     # Mock Redis publisher чтобы избежать блокировок при отсутствии Redis.
     # ВАЖНО: методы должны возвращать осмысленные значения, чтобы unit-тесты
     # redis_publisher могли проверять реальную логику.
@@ -230,8 +232,8 @@ def _install_auth_mock():
         RedisPublisher.publish = _mock_publish
         # publish_notification и publish_chat_message используют publish, поэтому
         # оставляем оригинальные (если publish работает, они тоже)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning('Failed to mock Redis publisher: %s', e, exc_info=True)
 
 
 def _uninstall_auth_mock():
@@ -244,6 +246,10 @@ def _uninstall_auth_mock():
 
 
 def _is_mock_enabled() -> bool:
+    # НИКОГДА не активировать в production/staging
+    if os.environ.get('DEPLOYMENT_ENV', '') in ('production', 'staging'):
+        return False
+
     """Проверить, активен ли in-memory mock PostgREST.
 
     Приоритет проверок:
@@ -505,7 +511,7 @@ def _test_mock_request(method: str, endpoint: str, **kwargs: Any) -> PostgrestRe
             embed_counts: dict[str, list] = {}
             for sf in select_fields:
                 if ':' in sf and '(' in sf:
-                    # PostgREST embedded resource: photos:job_photos(*) or applications:applications(count)
+                    # PostgREST embedded resource: applications:applications(count)
                     alias, rest = sf.split(':', 1)
                     if '(count)' in rest:
                         embed_counts[alias] = [{'count': 0}]
@@ -595,7 +601,7 @@ def _test_mock_rpc(function_name: str, params: dict) -> PostgrestResponse:
         print(f"MOCK RPC login_user: email={email}, password={'***' if password else 'EMPTY'}, profiles_in_db={len(_test_db.get('profiles', []))}", flush=True)
         for p in _test_db.get('profiles', []):
             if p.get('email') == email:
-                test_password = _os.environ.get('TEST_PASSWORD', 'test')
+                test_password = _os.environ.get('TEST_USER_PASSWORD', 'test')
                 if password and password == test_password:
                     data = [{'user_id': p['id'], 'role': p.get('role', 'worker')}]
                     print(f"MOCK DEBUG: returning data={data}, ok=True", flush=True)
@@ -716,10 +722,6 @@ def _test_mock_rpc(function_name: str, params: dict) -> PostgrestResponse:
     if function_name in ('get_job_stats', 'get_user_stats', 'get_dashboard_stats'):
         return _get_postgrest_response_class()(ok=True, status_code=200, data={'total': 0, 'open': 0, 'completed': 0, 'cancelled': 0}, text=json.dumps({'total': 0, 'open': 0, 'completed': 0, 'cancelled': 0}))
 
-    # get_completed_jobs_between — проверка совместных завершённых заданий
-    if function_name == 'get_completed_jobs_between':
-        return _get_postgrest_response_class()(ok=True, status_code=200, data=[], text=json.dumps([]))
-
     # nearby_jobs — геопоиск заданий в радиусе (возвращает список jobs)
     if function_name == 'nearby_jobs':
         return _get_postgrest_response_class()(ok=True, status_code=200, data=[], text=json.dumps([]))
@@ -737,7 +739,7 @@ def _reset_test_db():
 def _seed_test_db():
     """Наполняет тестовую БД начальными данными."""
     _reset_test_db()
-    TEST_PASSWORD = os.environ.get('TEST_PASSWORD', 'test')
+    TEST_PASSWORD = os.environ.get('TEST_USER_PASSWORD', 'test')
     # Три тестовых профиля: admin, employer, worker
     admin_id = '00000000-0000-0000-0000-000000000001'
     employer_id = '00000000-0000-0000-0000-000000000002'

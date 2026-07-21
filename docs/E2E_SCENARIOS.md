@@ -2,7 +2,7 @@
 
 > Сквозные пользовательские сценарии по ролям: трудник, работодатель, администратор.
 > **Актуализировано:** 2026-06-17 | **Ветка:** `main`
-> **Связанные документы:** [`ARCHITECTURE.md`](ARCHITECTURE.md), [`API_REFERENCE.md`](API_REFERENCE.md), [`BUSINESS_LOGIC.md`](BUSINESS_LOGIC.md), [`TEST_CHECKLIST.md`](TEST_CHECKLIST.md), [`FRONTEND.md`](FRONTEND.md)
+> **Связанные документы:** [`ARCHITECTURE.md`](ARCHITECTURE.md), [`API_REFERENCE.md`](API_REFERENCE.md), [`BUSINESS_LOGIC.md`](BUSINESS_LOGIC.md), [`FRONTEND.md`](FRONTEND.md)
 
 ---
 
@@ -146,4 +146,4 @@
 ---
 
 > **Статус документа:** полный набор E2E-сценариев, покрывающий все роли и ключевые пользовательские пути.
-> **Связанные документы:** [`TEST_CHECKLIST.md`](TEST_CHECKLIST.md) для пошаговых тест-кейсов, [`FRONTEND.md`](FRONTEND.md) для UI-деталей страниц.
+> **Связанные документы:** пошаговые тест-кейсы см. в [`../tests/`](../tests) и [`../tests_e2e/`](../tests_e2e), [`FRONTEND.md`](FRONTEND.md) для UI-деталей страниц.

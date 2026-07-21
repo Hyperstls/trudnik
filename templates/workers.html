@@ -41,6 +41,7 @@
                     <button id="toggle-block-btn-{{ worker.id }}"
                             class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                             title="Заблокировать"
+                            aria-label="Заблокировать трудника"
                             data-action="toggle-block"
                             data-blocked="false">
                         🚫
@@ -50,7 +51,8 @@
                     <button class="favorite-btn contact-btn w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
                             data-worker-id="{{ worker.id }}"
                             data-favorited="false"
-                            title="Добавить в избранное">
+                            title="Добавить в избранное"
+                            aria-label="Добавить в избранное">
                         <span class="favorite-icon flex items-center justify-center">{{ star(16) }}</span>
                     </button>
                     {% endif %}
@@ -58,7 +60,7 @@
 
                 <div class="flex items-center gap-3">
                     {% if worker.photo_url %}
-                    <img src="{{ worker.photo_url }}" alt="{{ worker.full_name }}"
+                    <img src="{{ worker.photo_url }}" alt="{{ worker.full_name }}" loading="lazy" decoding="async"
                           class="js-avatar-img w-14 h-14 rounded-full object-cover border-2 border-neutral-200 shrink-0">
                     <div class="avatar-smiley w-14 h-14 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400" style="display:none">{{ smiley(32) }}</div>
                     {% else %}
@@ -149,31 +151,29 @@
 {# ============================================ #}
 {# Модальное окно оценки                          #}
 {# ============================================ #}
-<div id="rating-modal-backdrop" class="modal-backdrop hidden" style="display:none; z-index: 80;">
-    <div class="modal-content animate-scale-in" style="max-width: 420px;">
-        <h3 id="rating-modal-title" class="text-lg font-bold text-neutral-800 mb-1">Оценить трудника</h3>
-        <p id="rating-modal-worker-name" class="text-sm text-neutral-500 mb-4"></p>
+<dialog id="rating-modal" class="modal-content animate-scale-in" style="max-width: 420px;" aria-labelledby="rating-modal-title">
+    <h3 id="rating-modal-title" class="text-lg font-bold text-neutral-800 mb-1">Оценить трудника</h3>
+    <p id="rating-modal-worker-name" class="text-sm text-neutral-500 mb-4"></p>
 
-        {# Звёзды #}
-        <div id="rating-stars" class="flex justify-center gap-2 mb-4">
-            {% for i in range(1, 6) %}
-            <button type="button" class="rating-star text-3xl text-neutral-300 hover:text-warning transition-colors cursor-pointer" data-value="{{ i }}">★</button>
-            {% endfor %}
-        </div>
-        <input type="hidden" id="rating-value" value="0">
-
-        {# Комментарий #}
-        <textarea id="rating-comment" rows="3" maxlength="500"
-                  class="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all resize-none mb-4"
-                  placeholder="Комментарий (необязательно)"></textarea>
-
-        {# Кнопки #}
-        <div class="flex gap-3 justify-end">
-            <button id="rating-modal-cancel" class="px-5 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-sm font-medium transition-colors">Отмена</button>
-            <button id="rating-modal-submit" class="px-5 py-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-xl text-sm font-medium transition-colors">Отправить</button>
-        </div>
+    {# Звёзды #}
+    <div id="rating-stars" class="flex justify-center gap-2 mb-4">
+        {% for i in range(1, 6) %}
+        <button type="button" class="rating-star text-3xl text-neutral-300 hover:text-warning transition-colors cursor-pointer" data-value="{{ i }}">★</button>
+        {% endfor %}
     </div>
-</div>
+    <input type="hidden" id="rating-value" value="0">
+
+    {# Комментарий #}
+    <textarea id="rating-comment" rows="3" maxlength="500"
+              class="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all resize-none mb-4"
+              placeholder="Комментарий (необязательно)"></textarea>
+
+    {# Кнопки #}
+    <div class="flex gap-3 justify-end">
+        <button id="rating-modal-cancel" class="px-5 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-sm font-medium transition-colors">Отмена</button>
+        <button id="rating-modal-submit" class="px-5 py-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-xl text-sm font-medium transition-colors">Отправить</button>
+    </div>
+</dialog>
 {% endblock %}
 
 {% block scripts %}

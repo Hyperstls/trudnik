@@ -9,9 +9,10 @@ import hmac
 import logging
 import os
 import smtplib
+import threading
 import time as _time_module
 import traceback
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Any, Optional
@@ -19,16 +20,8 @@ from typing import Any, Optional
 from jinja2 import Environment, FileSystemLoader
 
 logger = logging.getLogger(__name__)
-
-# Безопасный импорт Redis (для Celery-контекста, где нет Flask current_app)
-try:
-    import redis as _redis_lib
-    _REDIS_AVAILABLE = True
-except ImportError:
-    _redis_lib = None  # type: ignore
-    _REDIS_AVAILABLE = False
-
-
+ 
+ 
 class EmailService:
     """SMTP-клиент для отправки email-уведомлений.
 
@@ -53,7 +46,7 @@ class EmailService:
         # SMTP-настройки (значения по умолчанию из os.environ, можно переопределить через параметры)
         self._smtp_host: str = smtp_host if smtp_host is not None else os.environ.get("SMTP_HOST", "localhost")
         self._smtp_port: int = smtp_port if smtp_port is not None else int(os.environ.get("SMTP_PORT", "587"))
-        self._smtp_user: str = smtp_user if smtp_user is not None else os.environ.get("SMTP_USER", "")
+        self._smtp_user: str = smtp_user if smtp_user is not None else (os.environ.get("SMTP_USER") or os.environ.get("SMTP_USERNAME", ""))
         self._smtp_password: str = smtp_password if smtp_password is not None else os.environ.get("SMTP_PASSWORD", "")
         self._smtp_use_tls: bool = smtp_use_tls if smtp_use_tls is not None else os.environ.get("SMTP_USE_TLS", "True").lower() in ("true", "1", "yes")
         self._smtp_use_ssl: bool = smtp_use_ssl if smtp_use_ssl is not None else os.environ.get("SMTP_USE_SSL", "False").lower() in ("true", "1", "yes")
@@ -65,12 +58,13 @@ class EmailService:
 
         # Redis-клиент для дневного лимита (общий для всех worker'ов)
         self._redis = None
-        if _REDIS_AVAILABLE:
-            try:
-                _redis_url = redis_url if redis_url is not None else os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-                self._redis = _redis_lib.from_url(_redis_url, decode_responses=True)
-            except Exception:
+        try:
+            from app.utils.redis_client import get_redis_client
+            self._redis = get_redis_client()
+            if self._redis is None:
                 logger.warning("Redis недоступен — дневной лимит email не будет соблюдаться между worker'ами")
+        except Exception as e:
+            logger.warning("Redis недоступен — дневной лимит email не будет соблюдаться между worker'ами: %s", e, exc_info=True)
 
         # SMTP connection pooling: ленивое соединение
         self._smtp_connection: Optional[smtplib.SMTP] = None
@@ -111,12 +105,12 @@ class EmailService:
             if current == 1:
                 # Вычисляем секунды до полуночи для EXPIRE
                 now = datetime.now(timezone.utc)
-                tomorrow = now.replace(hour=0, minute=0, second=0, microsecond=0) + _time_module.timedelta(days=1)
+                tomorrow = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
                 ttl_seconds = int((tomorrow - now).total_seconds()) + 1
                 self._redis.expire(key, ttl_seconds)
             return current <= self._daily_limit
-        except Exception:
-            logger.warning("Ошибка Redis при проверке дневного лимита — разрешаем отправку")
+        except Exception as e:
+            logger.warning("Ошибка Redis при проверке дневного лимита — разрешаем отправку: %s", e, exc_info=True)
             return True
 
     def _get_smtp_connection(self) -> smtplib.SMTP:
@@ -140,8 +134,8 @@ class EmailService:
                     # Соединение мертво — закроем и пересоздадим
                     try:
                         self._smtp_connection.close()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning('Failed to close SMTP connection: %s', e, exc_info=True)
                     self._smtp_connection = None
 
         # Создаём новое соединение
@@ -222,18 +216,17 @@ class EmailService:
             logger.info("Email отправлен: to=%s subject=%s", to_email, subject)
             return True
 
-        except Exception:
+        except Exception as e:
             # При ошибке сбрасываем соединение, чтобы переподключиться в следующий раз
             if self._smtp_connection is not None:
                 try:
                     self._smtp_connection.close()
-                except Exception:
-                    pass
+                except Exception as close_e:
+                    logger.warning('Failed to close SMTP connection: %s', close_e, exc_info=True)
                 self._smtp_connection = None
             logger.error(
-                "Ошибка отправки email для %s:\n%s",
-                to_email,
-                traceback.format_exc(),
+                "Ошибка отправки email для %s: %s",
+                to_email, e, exc_info=True
             )
             return False
 
@@ -366,14 +359,14 @@ class EmailService:
         if self._smtp_connection is not None:
             try:
                 self._smtp_connection.quit()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning('Failed to quit SMTP connection: %s', e, exc_info=True)
             self._smtp_connection = None
         if self._redis is not None:
             try:
                 self._redis.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning('Failed to close Redis connection: %s', e, exc_info=True)
             self._redis = None
 
     # ═══════════════════════════════════════════════════════════════
@@ -401,22 +394,20 @@ class EmailService:
         try:
             html_template = self._jinja_env.get_template(f"{template_name}.html")
             html_body = html_template.render(context)
-        except Exception:
+        except Exception as e:
             logger.error(
-                "Ошибка рендеринга HTML-шаблона '%s.html':\n%s",
-                template_name,
-                traceback.format_exc(),
+                "Ошибка рендеринга HTML-шаблона '%s.html': %s",
+                template_name, e, exc_info=True
             )
             html_body = f"<p>Уведомление от Trudnik</p><p>{context.get('notification_text', '')}</p>"
 
         try:
             text_template = self._jinja_env.get_template(f"{template_name}.txt")
             text_body = text_template.render(context)
-        except Exception:
+        except Exception as e:
             logger.error(
-                "Ошибка рендеринга текстового шаблона '%s.txt':\n%s",
-                template_name,
-                traceback.format_exc(),
+                "Ошибка рендеринга текстового шаблона '%s.txt': %s",
+                template_name, e, exc_info=True
             )
             text_body = (
                 f"Уведомление от Trudnik\n\n"
@@ -439,7 +430,9 @@ class EmailService:
         Returns:
             Строка с HMAC-токеном в hex-формате.
         """
-        secret: str = os.environ.get("SECRET_KEY", "fallback-secret-key")
+        secret: str = os.environ.get("SECRET_KEY", "")
+        if not secret:
+            raise RuntimeError("SECRET_KEY is not configured for email unsubscribe token")
         message: str = f"unsubscribe:{user_id}"
         token: str = hmac.new(
             secret.encode("utf-8"),
@@ -447,3 +440,51 @@ class EmailService:
             hashlib.sha256,
         ).hexdigest()
         return token
+
+
+# ═══════════════════════════════════════════════════════════════
+# Lazy singleton: один экземпляр EmailService на процесс
+# ═══════════════════════════════════════════════════════════════
+
+_email_service_instance: Optional[EmailService] = None
+_email_service_lock = threading.Lock()
+
+
+def get_email_service() -> EmailService:
+    """Вернуть глобальный экземпляр EmailService (lazy singleton).
+
+    SMTP-соединение переиспользуется между вызовами (connection pooling).
+    Потокобезопасно.
+    """
+    global _email_service_instance
+    if _email_service_instance is None:
+        with _email_service_lock:
+            if _email_service_instance is None:
+                _email_service_instance = EmailService()
+    return _email_service_instance
+
+
+def send_email(
+    to_email: str,
+    subject: str,
+    html_body: str,
+    text_body: str = "",
+    user_id: str = "",
+) -> bool:
+    """Отправить email через глобальный синглтон EmailService."""
+    return get_email_service().send_email(to_email, subject, html_body, text_body, user_id)
+
+
+def get_smtp_connection() -> smtplib.SMTP:
+    """Вернуть переиспользуемое SMTP-соединение из синглтона."""
+    return get_email_service()._get_smtp_connection()
+
+
+def render_template(template_name: str, context: dict[str, Any]) -> tuple[str, str]:
+    """Рендерить шаблон через глобальный синглтон EmailService."""
+    return get_email_service().render_template(template_name, context)
+
+
+def create_unsubscribe_token(user_id: str) -> str:
+    """Создать токен отписки (делегирует статическому методу)."""
+    return EmailService.create_unsubscribe_token(user_id)

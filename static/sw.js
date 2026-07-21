@@ -1,5 +1,5 @@
-const CACHE_VERSION = 'trudnik-v4';
-const CACHE_NAME = 'trudnik-v4';
+const CACHE_VERSION = 'trudnik-v6';
+const CACHE_NAME = 'trudnik-v6';
 const PRECACHE_URLS = [
   '/',
   '/offline',
@@ -53,6 +53,17 @@ self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // --- Guard: never intercept non-GET requests except explicit XHR mutations
+  // to /api/ or /admin/ (handled by Strategy 2 below).
+  // Full-page form POSTs (login, register, logout, job actions, etc.) are
+  // mode='navigate' with method POST. The Cache API cannot store POST requests,
+  // so intercepting them throws "Failed to execute 'put' on 'Cache'" and breaks
+  // auth flows. Let the browser handle them natively.
+  if (request.method !== 'GET' &&
+      !(url.pathname.startsWith('/api/') || url.pathname.startsWith('/admin/'))) {
+    return;
+  }
+
   // --- Strategy 1: Navigation (HTML pages) — Network-first, fallback to offline page ---
   // POST-навигации (login/register) не перехватываем — пусть браузер обрабатывает сам
   if (request.mode === 'navigate' && request.method === 'GET') {
@@ -62,7 +73,7 @@ self.addEventListener('fetch', event => {
     // Service Worker не должен кэшировать этот ответ, иначе браузер показывает
     // "Navigation error — server is reachable but request failed" из-за конфликта
     // между SW fetch и Set-Cookie очисткой сессии.
-    if (url.pathname.startsWith('/admin') || url.pathname.startsWith('/logout')) {
+    if (url.pathname.startsWith('/admin') || url.pathname.startsWith('/logout') || url.pathname.startsWith('/verify-email') || url.pathname.startsWith('/password-reset')) {
       return;
     }
     event.respondWith(
@@ -273,7 +284,7 @@ self.addEventListener('pushsubscriptionchange', (event) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': getCSRFToken()
+          'X-CSRF-Token': getCSRFToken()
         },
         body: JSON.stringify(newSubscription.toJSON())
       });
@@ -281,12 +292,41 @@ self.addEventListener('pushsubscriptionchange', (event) => {
   );
 });
 
-// Хранилище CSRF-токена в Service Worker (обновляется через postMessage из основного потока)
+// Хранилище CSRF-токена в Service Worker (обновляется через postMessage из основного потока + IndexedDB)
 let _csrfToken = '';
 
+// Читаем csrfToken из IndexedDB при активации
+self.addEventListener('activate', event => {
+    event.waitUntil(
+        new Promise((resolve) => {
+            const req = indexedDB.open('TrudnikState', 1);
+            req.onupgradeneeded = (e) => {
+                e.target.result.createObjectStore('state');
+            };
+            req.onsuccess = (e) => {
+                const tx = e.target.result.transaction('state', 'readonly');
+                const getReq = tx.objectStore('state').get('csrfToken');
+                getReq.onsuccess = () => {
+                    _csrfToken = getReq.result || '';
+                    resolve();
+                };
+                getReq.onerror = () => resolve();
+            };
+            req.onerror = () => resolve();
+        })
+    );
+});
+
+// Слушаем сообщения от страницы с обновлённым токеном (сохраняем в IndexedDB)
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SET_CSRF_TOKEN') {
+  if (event.data && (event.data.type === 'SET_CSRF_TOKEN' || event.data.type === 'UPDATE_CSRF_TOKEN')) {
     _csrfToken = event.data.token || '';
+    // Сохраняем в IndexedDB
+    const req = indexedDB.open('TrudnikState', 1);
+    req.onsuccess = (e) => {
+        const tx = e.target.result.transaction('state', 'readwrite');
+        tx.objectStore('state').put(_csrfToken, 'csrfToken');
+    };
   }
 });
 

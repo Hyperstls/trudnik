@@ -21,11 +21,11 @@ def get_pool():
         _pool = SimpleConnectionPool(
             minconn=1,
             maxconn=5,
-            host=os.environ.get('DB_HOST', 'localhost'),
-            port=os.environ.get('DB_PORT', '5432'),
-            dbname=os.environ.get('DB_NAME', 'trudnik'),
-            user=os.environ.get('DB_USER', 'postgres'),
-            password=os.environ.get('DB_PASSWORD', '')
+            host=os.environ.get('PGHOST', 'localhost'),
+            port=os.environ.get('PGPORT', '5432'),
+            dbname=os.environ.get('PGDATABASE', 'trudnik'),
+            user=os.environ.get('PGUSER', 'postgres'),
+            password=os.environ.get('PGPASSWORD', '')
         )
     return _pool
 

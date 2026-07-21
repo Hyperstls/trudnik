@@ -33,8 +33,7 @@ class Config:
         POSTGREST_URL = 'http://localhost:3000'
         logger.warning('POSTGREST_URL не задан, установлен fallback: http://localhost:3000')
     PGRST_JWT_SECRET = os.environ.get('PGRST_JWT_SECRET', '').strip()
-    logger.debug('PGRST_JWT_SECRET loaded: length=%d, first_chars=%s',
-                 len(PGRST_JWT_SECRET), PGRST_JWT_SECRET[:16] + '...' if len(PGRST_JWT_SECRET) > 16 else PGRST_JWT_SECRET)
+    logger.debug('PGRST_JWT_SECRET loaded: length=%d', len(PGRST_JWT_SECRET))
     if not PGRST_JWT_SECRET:
         logger.error(
             "PGRST_JWT_SECRET не задан! Будет использован SECRET_KEY как fallback "
@@ -77,13 +76,15 @@ class Config:
         )
         logger.info(_msg)
 
-    YANDEX_MAPS_API_KEY = os.environ.get('YANDEX_MAPS_API_KEY', '')
+    YANDEX_MAPS_API_KEY = os.environ.get('YANDEX_MAPS_API_KEY') or os.environ.get('YANDEX_GEOCODER_KEY', '')
     WORKER_SITE_URL = os.environ.get('WORKER_SITE_URL', 'https://trudnik-hyperstls.amvera.io/')
 
-    # Cookie Security
+    # Cookie Security (B9: Secure cookie flags)
     SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SECURE = os.environ.get('DEPLOYMENT_ENV', '') == 'production'
-    SESSION_COOKIE_SAMESITE = 'Lax'
+    SESSION_COOKIE_SECURE = os.environ.get('DEPLOYMENT_ENV', 'development') in ('production', 'staging')
+    SESSION_COOKIE_SAMESITE = 'Strict'  # Защита от CSRF
+    SESSION_COOKIE_NAME = 'trudnik_session'
+    PERMANENT_SESSION_LIFETIME = 3600  # 1 час (было 24ч — снижено для security)
 
     # ═══════════════════════════════════════════════════════════
     # Инфраструктура реального времени (уведомления v2)
@@ -97,7 +98,7 @@ class Config:
     # ═══════════════════════════════════════════════════════════
     SMTP_HOST = os.environ.get('SMTP_HOST', 'localhost')
     SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
-    SMTP_USER = os.environ.get('SMTP_USER', '')
+    SMTP_USER = os.environ.get('SMTP_USER') or os.environ.get('SMTP_USERNAME', '')
     SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
     SMTP_USE_TLS = os.environ.get('SMTP_USE_TLS', 'True').lower() in ('true', '1', 'yes')
     SMTP_USE_SSL = os.environ.get('SMTP_USE_SSL', 'False').lower() in ('true', '1', 'yes')
@@ -117,7 +118,6 @@ class Config:
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads'))
     RATE_LIMIT_MAX = 10
     RATE_LIMIT_WINDOW = 60
-    PERMANENT_SESSION_LIFETIME = 1800  # 30 минут — сессия переживает задержки PostgREST (Amvera) — Supabase не используется (устарело)
     CACHE_MAX_SIZE = 256
     PAGINATION_DEFAULT_PER_PAGE = 20
 
@@ -135,23 +135,34 @@ class Config:
     VAPID_CLAIMS_EMAIL = os.environ.get('VAPID_CLAIMS_EMAIL', 'notifications@trudnik.ru')
     VAPID_CLAIMS_SUBJECT = os.environ.get('VAPID_CLAIMS_SUBJECT', 'mailto:notifications@trudnik.ru')
 
-    @property
-    def DATABASE_URL(self):
-        """Формирует PostgreSQL DSN из отдельных переменных окружения."""
-        pg_user = os.environ.get('PGUSER')
-        pg_password = os.environ.get('PGPASSWORD')
-        pg_host = os.environ.get('PGHOST')
-        pg_port = os.environ.get('PGPORT', '5432')
-        pg_database = os.environ.get('PGDATABASE')
-        # Если есть DATABASE_URL — используем его напрямую
-        if direct_url := os.environ.get('DATABASE_URL'):
-            return direct_url
-        # Если нет ни одной переменной — не формируем URL (не используется)
-        if not any([pg_user, pg_password, pg_host, pg_database]):
-            return ''
-        # Если есть хотя бы одна — требуем все
-        missing = [v for v in ['PGUSER', 'PGPASSWORD', 'PGHOST', 'PGDATABASE'] 
-                   if not os.environ.get(v)]
-        if missing:
-            raise RuntimeError(f'Missing database env vars: {", ".join(missing)}')
-        return f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_database}"
+    WEBSOCKET_JWT_SECRET = os.environ.get('WEBSOCKET_JWT_SECRET', '')
+    if os.environ.get('DEPLOYMENT_ENV') in ('production', 'staging') and not WEBSOCKET_JWT_SECRET:
+        raise RuntimeError('WEBSOCKET_JWT_SECRET is required in production')
+    # Публичный WS-URL для клиентов. Если WEBSOCKET_PUBLIC_URL не задан,
+    # используем WEBSOCKET_URL (имя переменной, которое задано в проде).
+    # Применяется в /api/ws/token (wsUrl), CSP connect-src и TRUDNIK_CONFIG.
+    WEBSOCKET_PUBLIC_URL = (
+        os.environ.get('WEBSOCKET_PUBLIC_URL', '')
+        or os.environ.get('WEBSOCKET_URL', '')
+    )
+
+    _direct = os.environ.get('DATABASE_URL')
+    if _direct:
+        DATABASE_URL = _direct.strip()
+    else:
+        _pg_user = os.environ.get('PGUSER')
+        _pg_password = os.environ.get('PGPASSWORD')
+        _pg_host = os.environ.get('PGHOST')
+        _pg_port = os.environ.get('PGPORT', '5432')
+        _pg_database = os.environ.get('PGDATABASE')
+        if all([_pg_user, _pg_password, _pg_host, _pg_database]):
+            DATABASE_URL = f"postgresql://{_pg_user}:{_pg_password}@{_pg_host}:{_pg_port}/{_pg_database}"
+        else:
+            DATABASE_URL = ''
+
+    # Блокировка test-режима в production
+    if os.environ.get('DEPLOYMENT_ENV') in ('production', 'staging'):
+        if os.environ.get('POSTGREST_MOCK_MODE', '').lower() in ('1', 'true', 'yes'):
+            raise RuntimeError('FATAL: POSTGREST_MOCK_MODE is set in production! Refusing to start.')
+        if os.environ.get('TEST_USER_PASSWORD'):
+            raise RuntimeError('FATAL: TEST_USER_PASSWORD is set in production! Refusing to start.')

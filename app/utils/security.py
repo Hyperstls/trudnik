@@ -1,10 +1,13 @@
 """Безопасность: санитизация ввода, валидация, CSRF-защита."""
 
+import logging
 import re
 import urllib.parse
 import uuid as _uuid
 import secrets
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 # Whitelist: разрешённые символы для PostgREST-параметров
 _ALLOWED_CHARS = set(
@@ -43,8 +46,8 @@ def sanitize_postgrest(value: Any) -> Any:
     # 1. URL-декодирование
     try:
         value = urllib.parse.unquote(value)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning('URL decode failed: %s', e, exc_info=True)
 
     # 2. Удаляем HTML-теги (XSS-векторы: <script>, <style>, <iframe>, <svg>)
     value = _HTML_TAG_RE.sub('', value)
@@ -152,3 +155,21 @@ def generate_csrf_token() -> str:
         Случайная hex-строка (32 байта).
     """
     return secrets.token_hex(32)
+
+
+from urllib.parse import urlparse
+from flask import request, redirect, url_for
+
+
+def safe_redirect(default_endpoint: str, referrer: str = None):
+    """Редирект только на same-origin URL, иначе на default_endpoint."""
+    referrer = referrer or request.referrer
+    if referrer:
+        parsed = urlparse(referrer)
+        # Блокировать опасные schemes (javascript:, data:, file:)
+        if parsed.scheme and parsed.scheme not in ('http', 'https', ''):
+            return redirect(url_for(default_endpoint))
+        # Только same-origin
+        if not parsed.netloc or parsed.netloc == request.host:
+            return redirect(referrer)
+    return redirect(url_for(default_endpoint))

@@ -252,9 +252,13 @@ def collect_migrations(
     list of Path
         Файлы, которые ещё не были применены, в алфавитном порядке.
     """
+    # Применяем только пронумерованные миграции NNN[_a-z]_*.sql (напр. 067_.., 077b_..).
+    # Ад-hoc файлы (manual_fix_all.sql, run_all_safe.sql, apply_manual_pgadmin.sql) игнорируются.
+    import re
+    mig_re = re.compile(r'^\d{3}[a-z]?_.*\.sql$', re.IGNORECASE)
     all_files = sorted(
         f for f in migrations_dir.iterdir()
-        if f.is_file() and f.suffix.lower() == ".sql"
+        if f.is_file() and f.suffix.lower() == ".sql" and mig_re.match(f.name)
     )
     return [f for f in all_files if f.name not in applied]
 
@@ -267,6 +271,17 @@ def collect_migrations(
 def main() -> None:
     """Основная логика скрипта."""
     dry_run = "--dry-run" in sys.argv
+
+    # --- Ранний выход: миграции отключены по умолчанию ---
+    # Авто-мигратор отключён для всех автоматических запусков
+    # (Cron Job, Amvera CI). Для ручного запуска установите:
+    #   MIGRATIONS_ENABLED=true python scripts/apply_migrations.py
+    if os.environ.get("MIGRATIONS_ENABLED", "").lower() not in ("true", "1", "yes"):
+        logger.info(
+            "Миграции отключены (MIGRATIONS_ENABLED не установлена). "
+            "Для принудительного запуска: MIGRATIONS_ENABLED=true python scripts/apply_migrations.py"
+        )
+        return
 
     if dry_run:
         logger.info("=== DRY RUN: миграции НЕ будут применены ===")

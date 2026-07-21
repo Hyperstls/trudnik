@@ -26,7 +26,7 @@
     <div class="flex flex-col items-center mb-6">
         <div class="relative">
             {% if profile_user.get('photo_url') %}
-            <img src="{{ profile_user.get('photo_url') }}"
+            <img src="{{ profile_user.get('photo_url') }}" loading="lazy" decoding="async"
                  class="js-avatar-img w-24 h-24 rounded-full object-cover border-4 border-primary-500 shadow-lg"
                  alt="Ваше фото"
                  crossorigin="anonymous">
@@ -56,7 +56,8 @@
         <div class="flex gap-2 mt-4">
             {% if profile_user.get('photo_url') %}
             <form action="/profile/delete-photo" method="post" class="js-confirm-form" data-confirm="Удалить фото?">
-                <button type="submit" class="action-icon-btn reject-btn" title="Удалить фото">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="action-icon-btn reject-btn" title="Удалить фото" aria-label="Удалить фото">
                     {{ trash(16) }}
                     <span class="text-xs ml-1.5 font-medium hidden sm:inline">Удалить</span>
                 </button>
@@ -75,17 +76,18 @@
     {# Форма редактирования профиля                 #}
     {# ============================================ #}
     <form method="post" action="/profile/update" enctype="multipart/form-data" class="space-y-4">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <input type="file" id="photo-input" name="photo" accept="image/*" class="js-auto-submit hidden">
 
         <div class="floating-label-group">
             <input type="text" name="full_name" value="{{ profile_user.get('full_name') or '' }}"
-                   class="floating-input" placeholder=" " required>
+                   class="floating-input" placeholder=" " required aria-required="true" autocomplete="name">
             <label class="floating-label">Имя</label>
         </div>
 
         <div class="floating-label-group">
             <input type="text" name="phone" value="{{ profile_user.get('phone') or '' }}"
-                   class="floating-input" placeholder=" ">
+                   class="floating-input" placeholder=" " autocomplete="tel">
             <label class="floating-label">Телефон</label>
         </div>
 
@@ -96,7 +98,7 @@
 
         <div class="floating-label-group">
             <input type="text" name="city" value="{{ profile_user.get('city') or '' }}"
-                   class="floating-input" placeholder=" ">
+                   class="floating-input" placeholder=" " autocomplete="address-level2">
             <label class="floating-label">Город</label>
         </div>
 
@@ -104,7 +106,7 @@
             <label for="religion" class="block text-sm font-medium text-neutral-700 mb-1.5">
                 Вероисповедание
             </label>
-            <select id="religion" name="religion"
+            <select id="religion" name="religion_id"
                     class="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl
                            focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all
                            text-neutral-900 appearance-none
@@ -112,7 +114,6 @@
                            bg-[length:20px] bg-[right_12px_center] bg-no-repeat pr-10">
                 <option value="">Загрузка...</option>
             </select>
-            <input type="hidden" name="religion_id" id="religion_id" value="">
         </div>
 
         {% if profile_user.get('role') == 'worker' %}
@@ -121,6 +122,7 @@
             <div class="skills-multiselect relative">
                 <div class="selected-skills flex flex-wrap gap-1 mb-2 min-h-[28px]" id="selected-skills"></div>
                 <input type="text" id="skill-search" placeholder="Поиск навыка..."
+                       aria-label="Поиск навыка"
                        class="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm mb-1 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15">
                 <button type="button" id="skills-dropdown-btn"
                         class="w-full flex items-center justify-between px-3 py-2.5 border border-neutral-200 rounded-lg bg-white text-sm text-neutral-500 hover:border-neutral-300 transition-colors focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15">
@@ -130,7 +132,7 @@
                 <div id="skills-dropdown" class="absolute top-full left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg z-20 max-h-52 overflow-y-auto hidden">
                     <div id="skills-list" class="p-2 text-sm text-neutral-400">Загрузка...</div>
                 </div>
-                <input type="hidden" name="skills" id="skills-hidden" value="{{ profile_user.get('skills', [])|join(',') }}">
+                <input type="hidden" name="skill_ids" id="skills-hidden" value="{{ current_skill_ids|join(',') }}">
             </div>
         </div>
         {% endif %}
@@ -183,18 +185,19 @@
     <div class="mt-8 p-5 bg-white rounded-2xl shadow-sm border border-neutral-100">
         <h3 class="text-lg font-semibold text-neutral-900 mb-4">Сменить пароль</h3>
         <form id="change-password-form" action="/profile/change-password" method="post" class="space-y-3">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
             <div class="floating-label-group">
-                <input type="password" name="current_password" id="current-password" required minlength="6"
-                       class="floating-input" placeholder=" ">
+                <input type="password" name="current_password" id="current-password" required aria-required="true" minlength="8"
+                       class="floating-input" placeholder=" " autocomplete="current-password">
                 <label class="floating-label">Текущий пароль</label>
             </div>
             <div class="floating-label-group">
-                <input type="password" name="new_password" id="new-password" required minlength="6"
-                       class="floating-input" placeholder=" ">
+                <input type="password" name="new_password" id="new-password" required aria-required="true" minlength="6"
+                       class="floating-input" placeholder=" " autocomplete="new-password">
                 <label class="floating-label">Новый пароль</label>
             </div>
             <div class="floating-label-group">
-                <input type="password" name="confirm_password" id="confirm-password" required minlength="6"
+                <input type="password" name="confirm_password" id="confirm-password" required aria-required="true" minlength="6"
                        class="floating-input" placeholder=" ">
                 <label class="floating-label">Подтвердите новый пароль</label>
             </div>
@@ -210,16 +213,45 @@
     {# Действия с аккаунтом                         #}
     {# ============================================ #}
     <div class="mt-6 flex flex-col items-center gap-3">
-        <a href="/logout" class="text-danger hover:text-danger/80 font-medium text-sm transition-colors duration-200">
-            Выйти из аккаунта
-        </a>
-        <form action="/profile/delete-account" method="post"
-              class="js-confirm-form" data-confirm="Вы уверены? Аккаунт будет удалён безвозвратно!">
-            <button type="submit" class="text-xs text-neutral-400 hover:text-danger transition-colors duration-200 underline">
-                Удалить аккаунт
+        <form action="{{ url_for('auth.logout') }}" method="post" class="inline">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="text-danger hover:text-danger/80 font-medium text-sm transition-colors duration-200">
+                Выйти из аккаунта
             </button>
         </form>
+        <button type="button" id="js-delete-account-btn"
+                class="text-xs text-neutral-400 hover:text-danger transition-colors duration-200 underline">
+            Удалить аккаунт
+        </button>
     </div>
+
+    {# ============================================ #}
+    {# Модальное окно удаления аккаунта             #}
+    {# ============================================ #}
+    <dialog id="js-delete-account-modal" class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 animate-fade-in" aria-labelledby="delete-account-title">
+        <h3 id="delete-account-title" class="text-lg font-bold text-neutral-900 mb-2">Удаление аккаунта</h3>
+        <p class="text-sm text-neutral-600 mb-4">Это действие необратимо. Все ваши данные будут удалены безвозвратно.</p>
+        <p class="text-sm text-neutral-500 mb-4">Введите <strong class="text-danger">УДАЛИТЬ</strong> для подтверждения:</p>
+        <form action="/profile/delete-account" method="post" id="js-delete-account-form">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <input type="text" id="js-delete-account-input"
+                   class="w-full px-4 py-2.5 border border-neutral-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-danger/30 focus:border-danger transition mb-4"
+                   placeholder="УДАЛИТЬ"
+                   aria-label="Введите УДАЛИТЬ для подтверждения удаления аккаунта"
+                   autocomplete="off">
+            <div class="flex gap-3">
+                <button type="button" id="js-delete-account-cancel"
+                        class="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium bg-neutral-100 text-neutral-700 hover:bg-neutral-200 transition-colors">
+                    Отмена
+                </button>
+                <button type="submit" id="js-delete-account-submit"
+                        class="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium bg-danger text-white hover:bg-danger/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled>
+                    Удалить
+                </button>
+            </div>
+        </form>
+    </dialog>
 </div>
 {% endif %}
 
@@ -261,14 +293,14 @@ document.addEventListener('DOMContentLoaded', function() {
 (function() {
     var religionSelect = document.getElementById('religion');
     if (!religionSelect) return;
-    var currentReligion = '{{ profile_user.get("religion", "") }}';
+    var currentReligionId = '{{ profile_user.get("religion_id", "") or "" }}';
     fetch('/api/religions')
         .then(function(r) { return r.json(); })
         .then(function(data) {
             var religions = data.religions || [];
             religionSelect.innerHTML = '<option value="">Не указано</option>' +
                 religions.map(function(r) {
-                    return '<option value="' + r.name + '"' + (r.name === currentReligion ? ' selected' : '') + '>' + r.name + '</option>';
+                    return '<option value="' + r.id + '"' + (r.id === currentReligionId ? ' selected' : '') + '>' + r.name + '</option>';
                 }).join('');
         })
         .catch(function() {
@@ -315,18 +347,14 @@ document.addEventListener('DOMContentLoaded', function() {
     var arrow = document.getElementById('skills-arrow');
     var skillSearch = document.getElementById('skill-search');
 
-    // Текущие выбранные навыки (поддержка JSON-массива и comma-separated)
-    var rawSkills = skillsHidden.value;
-    var selectedSkills = [];
-    try {
-        selectedSkills = JSON.parse(rawSkills);
-    } catch(e) {
-        selectedSkills = rawSkills ? rawSkills.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
-    }
+    // selectedSkills хранит ID навыков; skillNameById — сопоставление id->название
+    var skillNameById = {};
+    var selectedSkills = (skillsHidden.value || '')
+        .split(',').map(function(s) { return s.trim(); }).filter(Boolean);
 
     function updateUI() {
-        // Обновляем hidden input (JSON-массив)
-        skillsHidden.value = JSON.stringify(selectedSkills);
+        // hidden input — список ID через запятую (бэкенд читает skill_ids)
+        skillsHidden.value = selectedSkills.join(',');
 
         // Обновляем чипсы
         if (selectedSkills.length === 0) {
@@ -339,14 +367,14 @@ document.addEventListener('DOMContentLoaded', function() {
             placeholder.classList.remove('text-neutral-500');
             placeholder.classList.add('text-neutral-700');
             selectedContainer.innerHTML = '';
-            selectedSkills.forEach(function(skill) {
+            selectedSkills.forEach(function(id) {
                 var span = document.createElement('span');
                 span.className = 'inline-flex items-center gap-1 bg-primary-50 text-primary-700 px-2.5 py-1 rounded-lg text-xs font-medium';
-                span.textContent = skill;
+                span.textContent = skillNameById[id] || id;
                 var btn = document.createElement('button');
                 btn.type = 'button';
                 btn.className = 'remove-skill ml-0.5 hover:text-danger transition-colors';
-                btn.setAttribute('data-skill', skill);
+                btn.setAttribute('data-skill', id);
                 btn.textContent = '\u00d7';
                 span.appendChild(btn);
                 selectedContainer.appendChild(span);
@@ -360,8 +388,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Функция фильтрации навыков по поиску
+    function openDropdown() {
+        dropdown.classList.remove('hidden');
+        if (arrow) arrow.style.transform = 'rotate(180deg)';
+    }
+    function closeDropdown() {
+        dropdown.classList.add('hidden');
+        if (arrow) arrow.style.transform = 'rotate(0deg)';
+    }
+
+    // Фильтрация навыков по поиску + открытие списка
     function filterSkills() {
+        openDropdown();
         var q = (skillSearch && skillSearch.value || '').toLowerCase();
         var items = skillsList.querySelectorAll('label.skill-filter-item');
         items.forEach(function(item) {
@@ -372,6 +410,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (skillSearch) {
         skillSearch.addEventListener('input', filterSkills);
+        skillSearch.addEventListener('focus', openDropdown);
     }
 
     // Загрузка списка навыков
@@ -383,9 +422,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 skillsList.innerHTML = '<span class="text-neutral-400">Нет доступных навыков</span>';
                 return;
             }
+            skills.forEach(function(s) { skillNameById[s.id] = s.name; });
             skillsList.innerHTML = skills.map(function(s) {
                 return '<label class="skill-filter-item flex items-center gap-2 px-2 py-1.5 hover:bg-neutral-50 rounded cursor-pointer text-sm" data-skill="' + s.name + '">' +
-                    '<input type="checkbox" value="' + s.name + '" class="skill-checkbox rounded border-neutral-300 text-primary-500 focus:ring-primary-500">' +
+                    '<input type="checkbox" value="' + s.id + '" class="skill-checkbox rounded border-neutral-300 text-primary-500 focus:ring-primary-500">' +
                     '<span class="text-neutral-700">' + s.name + '</span>' +
                     '</label>';
             }).join('');
@@ -414,15 +454,13 @@ document.addEventListener('DOMContentLoaded', function() {
     dropdownBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         var isOpen = !dropdown.classList.contains('hidden');
-        dropdown.classList.toggle('hidden');
-        arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+        if (isOpen) { closeDropdown(); } else { openDropdown(); }
     });
 
     // Закрытие по клику вне
     document.addEventListener('click', function(e) {
         if (!dropdownBtn.contains(e.target) && !dropdown.contains(e.target) && (!skillSearch || !skillSearch.contains(e.target))) {
-            dropdown.classList.add('hidden');
-            arrow.style.transform = 'rotate(0deg)';
+            closeDropdown();
         }
     });
 
@@ -437,4 +475,48 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
 </script>
 {% endif %}
+
+{# ============================================ #}
+{# JS: Модальное окно удаления аккаунта         #}
+{# ============================================ #}
+<script nonce="{{ csp_nonce }}">
+(function() {
+    var deleteBtn = document.getElementById('js-delete-account-btn');
+    var modal = document.getElementById('js-delete-account-modal');
+    var input = document.getElementById('js-delete-account-input');
+    var submitBtn = document.getElementById('js-delete-account-submit');
+    var cancelBtn = document.getElementById('js-delete-account-cancel');
+
+    if (!deleteBtn || !modal) return;
+
+    // Открыть модальное окно
+    deleteBtn.addEventListener('click', function() {
+        modal.classList.remove('hidden');
+        input.value = '';
+        submitBtn.disabled = true;
+        input.focus();
+    });
+
+    // Закрыть модальное окно
+    function closeModal() {
+        modal.classList.add('hidden');
+    }
+    cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeModal();
+    });
+
+    // Escape — закрыть
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+            closeModal();
+        }
+    });
+
+    // Активировать кнопку только когда введено «УДАЛИТЬ»
+    input.addEventListener('input', function() {
+        submitBtn.disabled = input.value !== 'УДАЛИТЬ';
+    });
+})();
+</script>
 {% endblock %}

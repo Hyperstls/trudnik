@@ -58,14 +58,14 @@ def main():
     except Exception as e:
         print(f"   ❌ ОШИБКА: {e}")
 
-    # /api/health — лёгкий health-check (без PostgREST)
+    # /admin/health — лёгкий health-check (без PostgREST)
     try:
-        r = session.get(urljoin(BASE_URL, "/api/health"), timeout=15)
-        print(f"   GET /api/health → HTTP {r.status_code}")
+        r = session.get(urljoin(BASE_URL, "/admin/health"), timeout=15)
+        print(f"   GET /admin/health → HTTP {r.status_code}")
         if r.ok:
             print(f"   Ответ: {json.dumps(r.json(), ensure_ascii=False)}")
     except Exception as e:
-        print(f"   ⚠ /api/health недоступен: {e}")
+        print(f"   ⚠ /admin/health недоступен: {e}")
 
     # ── 2. Залогиниться как admin ──────────────────────────
     print("\n── 2. Логин как admin ──")

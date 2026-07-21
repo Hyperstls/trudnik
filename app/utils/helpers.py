@@ -1,8 +1,38 @@
 """Короткие хелперы: сессия, построение запросов."""
 
+import re
 from typing import Optional
 
 from flask import current_app, flash, session
+
+
+def _redact_sensitive(text: str) -> str:
+    """Маскировать чувствительные данные (email, phone) в тексте для логирования.
+    
+    Args:
+        text: исходный текст, который может содержать PII.
+    
+    Returns:
+        Текст с замаскированными email и телефонами.
+    """
+    if not text:
+        return text
+    
+    # Маскируем email: user@example.com -> [REDACTED_EMAIL]
+    text = re.sub(
+        r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+        '[REDACTED_EMAIL]',
+        text
+    )
+    
+    # Маскируем телефоны (различные форматы): +7..., 8..., (XXX)...
+    text = re.sub(
+        r'(\+7|8)[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}',
+        '[REDACTED_PHONE]',
+        text
+    )
+    
+    return text
 
 
 def assert_postgrest_ok(resp, operation: str) -> bool:
@@ -22,9 +52,11 @@ def assert_postgrest_ok(resp, operation: str) -> bool:
         return True
     status = resp.status_code if resp else 'N/A'
     text = (resp.text or '')[:200] if resp else ''
+    # Маскируем чувствительные данные перед логированием
+    redacted_text = _redact_sensitive(text)
     current_app.logger.error(
         'PostgREST request failed: operation=%s status=%s body=%s',
-        operation, status, text,
+        operation, status, redacted_text,
     )
     flash(f'Ошибка сервера при выполнении операции: {operation}', 'danger')
     return False

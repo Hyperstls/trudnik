@@ -146,6 +146,8 @@ class PaymentService:
             True если подпись верна.
         """
         if not PaymentService.is_configured():
+            if os.environ.get('DEPLOYMENT_ENV', '') == 'production':
+                raise RuntimeError("YooKassa not configured for production")
             # В режиме разработки всегда возвращаем True для заглушек
             logger.debug('YooKassa not configured — webhook verification skipped')
             return True

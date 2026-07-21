@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block title %}Подтверждение работодателя — Трудник{% endblock %}
 {% block content %}
 <div class="min-h-[calc(100vh-3.5rem)] flex items-center justify-center px-4 py-8">
     <div class="w-full max-w-md bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 sm:p-8 fade-in">
@@ -13,6 +14,7 @@
         </div>
 
         <form method="post" enctype="multipart/form-data" id="verify-form">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
             <!-- Drag-and-drop zone -->
             <div class="mb-4">
                 <label id="drop-zone" class="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-neutral-300 rounded-2xl cursor-pointer hover:border-primary-400 hover:bg-primary-50/30 transition-all duration-200 bg-neutral-50" tabindex="0">
@@ -37,7 +39,7 @@
                         <span id="file-size" class="text-xs text-neutral-400"></span>
                         <button type="button" id="remove-file" class="text-xs text-danger hover:text-danger-dark underline transition-colors">Удалить</button>
                     </div>
-                    <input type="file" name="document" id="document-input" accept=".pdf,.jpg,.jpeg,.png" class="hidden" required>
+                    <input type="file" name="document" id="document-input" accept=".pdf,.jpg,.jpeg,.png" class="hidden" required aria-required="true">
                 </label>
             </div>
 

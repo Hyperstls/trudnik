@@ -318,22 +318,21 @@ class PushService:
         )
         return []
 
-    def delete_subscription(self, endpoint: str, user_id: str = "") -> bool:
+    def delete_subscription(self, endpoint: str, user_id: str) -> bool:
         """Удаляет push-подписку по endpoint с проверкой принадлежности пользователю.
 
         Args:
             endpoint: URL эндпоинта подписки.
-            user_id: UUID пользователя (опционально). Если передан — удаление
-                     только если подписка принадлежит этому пользователю.
+            user_id: UUID пользователя (обязательно). Удаление только если
+                     подписка принадлежит этому пользователю.
 
         Returns:
             True если успешно удалено, иначе False.
         """
-        if not endpoint:
+        if not endpoint or not user_id:
+            logger.error('delete_subscription: отсутствуют endpoint или user_id')
             return False
-        url = f'push_subscriptions?endpoint=eq.{_encode_uri_component(endpoint)}'
-        if user_id:
-            url += f'&user_id=eq.{user_id}'
+        url = f'push_subscriptions?endpoint=eq.{_encode_uri_component(endpoint)}&user_id=eq.{user_id}'
         resp = postgrest_admin_request('DELETE', url)
         return resp.ok
 

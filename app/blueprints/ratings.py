@@ -1,4 +1,6 @@
 """Blueprint для рейтингов и отзывов."""
+from datetime import datetime, timezone
+
 from flask import Blueprint, jsonify, request, session, current_app, render_template, redirect, flash, url_for
 
 from app.decorators import login_required, rate_limit, role_required, validate_uuid
@@ -143,11 +145,11 @@ def upsert_rating():
         'target_type': target_type,
         'rating': rating,
         'comment': comment,
-        'updated_at': 'now()',
+        'updated_at': datetime.now(timezone.utc).isoformat(),
     }
 
     # Пробуем найти существующую оценку
-    existing = postgrest_request(
+    existing = postgrest_admin_request(
         'GET',
         f'ratings?rater_user_id=eq.{rater_user_id}&job_id=eq.{job_id}&select=id'
     )
@@ -167,7 +169,7 @@ def upsert_rating():
         is_new = True
 
         # Если INSERT упал с конфликтом уникальности — обновляем
-        if not resp.ok and 'violates unique constraint' in (resp.text or '').lower():
+        if not resp.ok and resp.text and 'violates unique constraint' in resp.text.lower():
             existing2 = postgrest_admin_request(
                 'GET',
                 f'ratings?rater_user_id=eq.{rater_user_id}&job_id=eq.{job_id}&select=id'
@@ -204,6 +206,7 @@ def upsert_rating():
 
 @ratings_bp.route('/api/ratings/completed-jobs/<target_user_id>', methods=['GET'])
 @login_required
+@validate_uuid('target_user_id')
 def get_completed_jobs_for_rating(target_user_id):
     """Вернуть список завершённых заданий, в которых участвовали оба пользователя."""
     rater_user_id = session['user_id']
@@ -211,44 +214,37 @@ def get_completed_jobs_for_rating(target_user_id):
     target_user_id = sanitize_postgrest(target_user_id)
     rater_user_id = sanitize_postgrest(rater_user_id)
 
-    # RPC ищет завершённые задания между двумя пользователями (порядок не важен)
-    resp = postgrest_admin_request('GET',
-        f'rpc/get_completed_jobs_between'
-        f'?p_user_a={rater_user_id}&p_user_b={target_user_id}')
+    # Соответствующего RPC в БД нет — ищем завершённые задания между двумя
+    # пользователями прямыми запросами (раньше был вызов RPC + фолбэк).
+    jobs = []
+    # Задания, где target_user — работодатель, а rater — принятый работник
+    apps_resp = postgrest_admin_request('GET',
+        f'applications?worker_id=eq.{rater_user_id}&status=eq.accepted'
+        f'&select=job_id,jobs!job_id(id,organization_name,status,employer_id)')
+    if apps_resp.ok and apps_resp.json():
+        for app in apps_resp.json():
+            job = app.get('jobs') or {}
+            if job.get('status') == 'completed' and job.get('employer_id') == target_user_id:
+                jobs.append({'id': job['id'], 'title': job.get('organization_name', '')})
 
-    if not resp.ok:
-        # Если RPC нет — фолбэк через прямые запросы
-        jobs = []
-        # Задания, где target_user — работодатель, а rater — принятый работник
-        apps_resp = postgrest_admin_request('GET',
-            f'applications?worker_id=eq.{rater_user_id}&status=eq.accepted'
-            f'&select=job_id,jobs!job_id(id,organization_name,status,employer_id)')
-        if apps_resp.ok and apps_resp.json():
-            for app in apps_resp.json():
-                job = app.get('jobs') or {}
-                if job.get('status') == 'completed' and job.get('employer_id') == target_user_id:
-                    jobs.append({'id': job['id'], 'title': job.get('organization_name', '')})
+    # Задания, где rater — работодатель, а target — принятый работник
+    jobs_resp = postgrest_admin_request('GET',
+        f'jobs?employer_id=eq.{rater_user_id}&status=eq.completed&select=id,organization_name')
+    if jobs_resp.ok and jobs_resp.json():
+        employer_jobs = jobs_resp.json()
+        if employer_jobs:
+            # Batch-запрос: проверить все задания одним вызовом
+            job_ids = [job['id'] for job in employer_jobs]
+            ids_filter = ','.join(job_ids)
+            batch_check = postgrest_admin_request('GET',
+                f'applications?job_id=in.({ids_filter})&worker_id=eq.{target_user_id}&status=eq.accepted&select=job_id')
+            accepted_job_ids = {a['job_id'] for a in batch_check.json()} if batch_check.ok and batch_check.json() else set()
+            for job in employer_jobs:
+                if job['id'] in accepted_job_ids:
+                    if not any(j['id'] == job['id'] for j in jobs):
+                        jobs.append({'id': job['id'], 'title': job.get('organization_name', '')})
 
-        # Задания, где rater — работодатель, а target — принятый работник
-        jobs_resp = postgrest_admin_request('GET',
-            f'jobs?employer_id=eq.{rater_user_id}&status=eq.completed&select=id,organization_name')
-        if jobs_resp.ok and jobs_resp.json():
-            employer_jobs = jobs_resp.json()
-            if employer_jobs:
-                # Batch-запрос: проверить все задания одним вызовом
-                job_ids = [job['id'] for job in employer_jobs]
-                ids_filter = ','.join(job_ids)
-                batch_check = postgrest_admin_request('GET',
-                    f'applications?job_id=in.({ids_filter})&worker_id=eq.{target_user_id}&status=eq.accepted&select=job_id')
-                accepted_job_ids = {a['job_id'] for a in batch_check.json()} if batch_check.ok and batch_check.json() else set()
-                for job in employer_jobs:
-                    if job['id'] in accepted_job_ids:
-                        if not any(j['id'] == job['id'] for j in jobs):
-                            jobs.append({'id': job['id'], 'title': job.get('organization_name', '')})
-
-        return jsonify({'success': True, 'jobs': jobs})
-
-    return jsonify({'success': True, 'jobs': resp.json() if resp.json() else []})
+    return jsonify({'success': True, 'jobs': jobs})
 
 
 # ============================================================
@@ -258,15 +254,30 @@ def get_completed_jobs_for_rating(target_user_id):
 @ratings_bp.route('/api/ratings/user/<user_id>/details', methods=['GET'])
 @validate_uuid('user_id')
 def get_user_rating_details(user_id):
-    """Получить все детальные оценки пользователя с отзывами."""
+    """Получить все детальные оценки пользователя с отзывами.
+    
+    A7: Для анонимных пользователей PII рейтера (email, phone) удаляется.
+    """
+    # A7: Используем явный allowlist колонок (без wildcard)
     resp = postgrest_request(
         'GET',
-        f'ratings?rated_user_id=eq.{user_id}&select=*,rater:profiles!rater_user_id(full_name,photo_url)&order=created_at.desc&limit=100'
+        f'ratings?rated_user_id=eq.{user_id}&select=id,job_id,rating,comment,rating_type,target_type,created_at,rater:profiles!rater_user_id(full_name,photo_url)&order=created_at.desc&limit=100'
     )
     if not resp.ok:
         return jsonify({'success': False, 'error': 'Ошибка загрузки оценок'}), 500
 
     ratings = resp.json() or []
+
+    # A7: Если пользователь не авторизован — strip PII из rater данных
+    if not session.get('user_id'):
+        for rating in ratings:
+            rater = rating.get('rater')
+            if rater and isinstance(rater, dict):
+                # Оставляем только safe поля
+                rating['rater'] = {
+                    'full_name': rater.get('full_name', 'Пользователь'),
+                    'photo_url': rater.get('photo_url', '')
+                }
 
     # Вычисляем средний рейтинг
     avg_rating = 0

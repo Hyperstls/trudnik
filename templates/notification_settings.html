@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from '_icons.html' import bell, settings, chevron_left %}
+{% block title %}Настройки уведомлений — Трудник{% endblock %}
 {% block content %}
 <style nonce="{{ csp_nonce }}">
     /* Фикс: гарантируем content для ::after toggle-переключателей,
@@ -166,7 +167,7 @@ function savePreferences() {
 
     // Сохраняем каждое изменение последовательно
     let promises = changes.map(change =>
-        fetch('/api/notifications/preferences', {
+        apiFetch('/api/notifications/preferences', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

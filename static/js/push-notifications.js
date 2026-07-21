@@ -28,7 +28,7 @@ class PushNotificationsManager {
             await navigator.serviceWorker.ready;
 
             // Получаем VAPID public key с сервера
-            const response = await fetch('/push/vapid-public-key');
+            const response = await apiFetch('/push/vapid-public-key');
             const data = await response.json();
             this.vapidPublicKey = data.public_key;
 
@@ -66,7 +66,7 @@ class PushNotificationsManager {
             });
 
             // Отправляем подписку на сервер
-            const response = await fetch('/push/subscription', {
+            const response = await apiFetch('/push/subscription', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -97,7 +97,7 @@ class PushNotificationsManager {
             const subscription = await this.swRegistration.pushManager.getSubscription();
             if (subscription) {
                 // Отправляем запрос на удаление подписки на сервер
-                await fetch('/push/subscription', {
+                await apiFetch('/push/subscription', {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
