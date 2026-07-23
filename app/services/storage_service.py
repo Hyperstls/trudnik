@@ -51,6 +51,42 @@ def _detect_mime(data: bytes) -> Optional[str]:
     return _check_mime_by_signature(data)
 
 
+# Защита от decompression bomb: отказ при декодировании изображений крупнее ~20 Мп.
+_PIL_MAX_IMAGE_PIXELS = 20_000_000
+
+
+def _sanitize_image(file_data: bytes) -> Optional[bytes]:
+    """Перекодировать изображение в JPEG, удалить EXIF/метаданные, защитить от
+    decompression-bomb.
+
+    Возвращает очищенные байты или None, если данные — не валидное изображение
+    (полиглоты/битые файлы отбрасываются даже при корректных magic-bytes).
+
+    Зависимость: Pillow (PIL). При её отсутствии — fallback на исходные байты
+    (логируется предупреждение).
+    """
+    try:
+        from io import BytesIO
+        from PIL import Image
+    except ImportError:
+        logger.warning('Pillow недоступен — загрузка без sanitize (EXIF/bomb-защиты)')
+        return file_data
+    try:
+        Image.MAX_IMAGE_PIXELS = _PIL_MAX_IMAGE_PIXELS
+        img = Image.open(BytesIO(file_data))
+        img.load()  # форсируем декодирование → DecompressionBombError на гигантских
+        # strip EXIF/metadata: отбрасываем info, приводим к RGB
+        img.info.clear()
+        if img.mode not in ('RGB', 'L'):
+            img = img.convert('RGB')
+        out = BytesIO()
+        img.save(out, format='JPEG', quality=85, optimize=True)
+        return out.getvalue()
+    except Exception as e:
+        logger.warning('upload: изображение не декодировалось (отказ): %s', e)
+        return None
+
+
 def _validate_path(file_path: str) -> Optional[str]:
     """Проверить путь на path traversal и нуль-байты.
     
@@ -150,6 +186,13 @@ def upload_photo(file_data: bytes, bucket: str = 'avatars',
     if detected_mime is None or detected_mime not in _ALLOWED_PHOTO_MIME_TYPES:
         logger.warning('Photo upload rejected: invalid or undetectable MIME type %s', detected_mime)
         return None
+
+    # P2-b: перекодировать в JPEG, удалить EXIF/метаданные, защита от decompression-bomb.
+    sanitized = _sanitize_image(file_data)
+    if sanitized is None:
+        logger.warning('Photo upload rejected: not a valid image after sanitize')
+        return None
+    file_data = sanitized
 
     # Генерируем уникальное имя файла
     unique_id = uuid.uuid4().hex[:12]

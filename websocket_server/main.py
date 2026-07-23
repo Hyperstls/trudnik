@@ -14,6 +14,7 @@ import asyncio
 import json
 import logging
 import os
+import time
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -278,8 +279,20 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 
     try:
         await websocket.send_json({"type": "connected", "user_id": user_id})
+        # P2-c: inbound message-flood guard (push-only WS — clients rarely send).
+        # >120 входящих сообщений за 10с от одного соединения = аномалия → разрыв.
+        _msg_count = 0
+        _window_start = time.monotonic()
         while True:
             await websocket.receive_text()
+            _msg_count += 1
+            _elapsed = time.monotonic() - _window_start
+            if _elapsed >= 10:
+                _msg_count = 0
+                _window_start = time.monotonic()
+            elif _msg_count > 120:
+                logger.warning('WS user %s flooding inbound (%d/10s) — closing', user_id, _msg_count)
+                break
     except WebSocketDisconnect:
         pass
     except Exception as exc:
