@@ -197,6 +197,21 @@ def inject_csp_nonce() -> dict:
     return {'csp_nonce': getattr(g, 'csp_nonce', '')}
 
 
+def inject_captcha_config() -> dict:
+    """Публичная конфигурация капчи (Cloudflare Turnstile) для шаблонов.
+
+    captcha_enabled=True только если заданы ключи (прод); в dev виджет не рендерится.
+    """
+    try:
+        from app.utils.captcha import is_captcha_enabled, turnstile_site_key
+        return {
+            'captcha_enabled': is_captcha_enabled(),
+            'turnstile_site_key': turnstile_site_key(),
+        }
+    except Exception:
+        return {'captcha_enabled': False, 'turnstile_site_key': ''}
+
+
 def inject_sort_url() -> dict:
     """Хелпер для построения URL сортировки с сохранением остальных параметров."""
 
@@ -227,3 +242,4 @@ def register_context_processors(app):
     app.context_processor(inject_worker_site_url)
     app.context_processor(inject_employer_subscription)
     app.context_processor(inject_sort_url)
+    app.context_processor(inject_captcha_config)

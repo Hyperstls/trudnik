@@ -24,6 +24,12 @@
 
         <form method="post" id="register-form">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            {% if captcha_enabled %}
+            <!-- Honeypot (скрытое поле — заполняют только боты) -->
+            <div style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
+                <label>Не заполняйте это поле<input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+            </div>
+            {% endif %}
             <!-- ===== Шаг 1: Аккаунт ===== -->
             <div id="step-1" class="space-y-4">
                 <div class="floating-label-group">
@@ -188,6 +194,10 @@
                     <span>Я согласен с <a href="/terms" target="_blank" rel="noopener noreferrer" class="text-primary-500 hover:underline">условиями использования</a> и <a href="/privacy" target="_blank" rel="noopener noreferrer" class="text-primary-500 hover:underline">политикой конфиденциальности</a></span>
                 </label>
 
+                {% if captcha_enabled %}
+                <div class="cf-turnstile mb-4" data-sitekey="{{ turnstile_site_key }}"></div>
+                {% endif %}
+
                 <div class="flex gap-3">
                     <button type="button" id="back-to-step-1" class="flex-1 bg-neutral-100 hover:bg-neutral-200 active:scale-[0.98] text-neutral-700 font-semibold py-3.5 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neutral-300">
                         Назад
@@ -198,6 +208,9 @@
                 </div>
             </div>
         </form>
+        {% if captcha_enabled %}
+        <script nonce="{{ csp_nonce }}" src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+        {% endif %}
 
         <p class="mt-6 text-center text-sm text-neutral-500">
             Уже есть аккаунт?

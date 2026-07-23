@@ -303,6 +303,23 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
                     'Без этого PostgREST отдаёт 403.'
                 )
 
+        # 1b) profiles: сузить SELECT до публичных колонок (миграция 132).
+        #     123 даёт table-level SELECT на все таблицы; password_hash/email/inn/phone
+        #     НЕ должны читаться anon/authenticated (P0: был слив хешей паролей).
+        #     Ре-применяем КАЖДЫЙ цикл (идемпотентно), чтобы ограничение пережило
+        #     ре-применение 123 при потере грантов ролей. Порядок: шаг 1 (123) → шаг 1b (132).
+        try:
+            _apply_migration('132_restrict_profile_sensitive_columns.sql')
+        except Exception as e:
+            logger.warning('self-heal: failed to re-apply 132 (profile columns): %s', e)
+
+        # 1c) RLS на внутренних/админ-таблицах (миграция 133): audit_log,
+        #     employer_subscriptions, _migrations, schema_migrations — anon не читает.
+        try:
+            _apply_migration('133_enable_rls_internal_tables.sql')
+        except Exception as e:
+            logger.warning('self-heal: failed to re-apply 133 (internal RLS): %s', e)
+
         # 2) Политика чтения profiles может быть удалена — гарантируем наличие,
         #    иначе профиль/выход/списки пустые (RLS deny-all).
         cur.execute(

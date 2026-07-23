@@ -36,3 +36,31 @@ def render_captcha_widget() -> str:
     if not site_key:
         return ''
     return f'<div class="cf-turnstile" data-sitekey="{site_key}"></div>'
+
+
+def is_captcha_enabled() -> bool:
+    """Включена ли капча (Cloudflare Turnstile).
+
+    True только когда заданы ОБА ключа (site + secret) И мы не в тестовом режиме.
+    Дев-окружение без ключей → False (формы работают без капчи, fail-open).
+    Прод с ключами → True (капча обязательна, fail-closed при невалидном/пустом токене).
+    """
+    if os.environ.get('TESTING', '').lower() in ('1', 'true', 'yes'):
+        return False
+    return bool(os.environ.get('TURNSTILE_SITE_KEY') and os.environ.get('TURNSTILE_SECRET_KEY'))
+
+
+def turnstile_site_key() -> str:
+    """Публичный site key для рендера виджета (безопасно отдавать клиенту)."""
+    return os.environ.get('TURNSTILE_SITE_KEY', '')
+
+
+def verify_captcha_token(token: str) -> bool:
+    """Проверить токен Turnstile.
+
+    - Капча не включена (dev/no-keys): пропустить (вернуть True) — нет барьера.
+    - Включена: fail-closed (невалидный/пустой токен или недоступность CF → False).
+    """
+    if not is_captcha_enabled():
+        return True
+    return verify_captcha(token or '')

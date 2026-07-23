@@ -152,6 +152,11 @@ def login():
 @rate_limit(fail_open=False)
 def register():
     if request.method == 'POST':
+        # Honeypot: скрытое поле «website» (видно только ботам). Тихий отброс без подсказки.
+        if request.form.get('website', '').strip():
+            log.warning('register: honeypot field filled — likely bot, silently rejected')
+            return redirect(url_for('auth.register'))
+
         full_name = request.form.get('full_name', '').strip()
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
@@ -221,6 +226,12 @@ def register():
         if errors:
             for err in errors:
                 flash(err, 'danger')
+            return render_template('register.html', field_errors=field_errors)
+
+        # Captcha (Cloudflare Turnstile) — только в проде (когда включена); fail-closed.
+        from app.utils.captcha import verify_captcha_token
+        if not verify_captcha_token(request.form.get('cf-turnstile-response', '')):
+            flash('Подтвердите, что вы не робот (капча).', 'danger')
             return render_template('register.html', field_errors=field_errors)
 
         religion_id = request.form.get('religion_id', '')  # новый формат — ID из справочника
@@ -469,6 +480,12 @@ def password_reset_request():
         # Rate-limit: 1 запрос в 5 минут на email
         if _check_reset_rate_limit(email):
             flash('Ссылка для сброса пароля уже была отправлена. Попробуйте через 5 минут.', 'warning')
+            return render_template('password_reset_request.html')
+
+        # Captcha (Cloudflare Turnstile) — только в проде (когда включена); fail-closed.
+        from app.utils.captcha import verify_captcha_token
+        if not verify_captcha_token(request.form.get('cf-turnstile-response', '')):
+            flash('Подтвердите, что вы не робот (капча).', 'danger')
             return render_template('password_reset_request.html')
 
         # Проверить, существует ли пользователь с таким email

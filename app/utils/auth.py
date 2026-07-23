@@ -182,6 +182,18 @@ def login_user_session(user_id: str, role: str, email: str) -> None:
     """
     session.permanent = True
 
+    # P0-2: Rotate session ID on login (defense against session fixation).
+    # With Redis-backed server sessions (D5), this issues a fresh SID so a fixated
+    # cookie cannot inherit the victim's auth. No-op for default cookie sessions
+    # (mock/test), which lack ServerSideSessionInterface.regenerate.
+    try:
+        _si = current_app.session_interface
+        if hasattr(_si, 'regenerate'):
+            _si.regenerate(session)
+            session.permanent = True
+    except Exception as _e:
+        logger.warning('Session ID rotation failed (non-fatal): %s', _e)
+
     # B10: Получаем password_changed_at из профиля для защиты токена
     pwd_changed_at = None
     try:
