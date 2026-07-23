@@ -5,7 +5,9 @@ import json
 import logging
 import os
 import secrets
+import threading
 import time
+from contextlib import contextmanager
 from threading import Lock
 from typing import Any, Callable, Dict, Optional, TypeVar
 
@@ -385,8 +387,21 @@ _ADMIN_WARN_PREFIXES = frozenset({
 })
 
 
+# Thread-local flag for explicit admin-context marking (replaces inspect overhead)
+_admin_local = threading.local()
+
+
 def _get_caller_info() -> str:
-    """Получить информацию о вызывающем модуле для аудит-лога."""
+    """Получить информацию о вызывающем модуле для аудит-лога.
+
+    Приоритет: thread-local admin_context → inspect.currentframe() fallback.
+    В режиме admin_context (рекомендуемый путь) inspect не вызывается.
+    """
+    # Fast path: explicit admin_context marker
+    ctx = getattr(_admin_local, 'caller', None)
+    if ctx:
+        return ctx
+    # Slow fallback: inspect stack (legacy callers without admin_context)
     try:
         frame = inspect.currentframe()
         skip_count = 0
@@ -403,6 +418,29 @@ def _get_caller_info() -> str:
     except Exception as e:
         logger.warning('Failed to get caller info: %s', e, exc_info=True)
     return 'unknown'
+
+
+@contextmanager
+def admin_context(caller: str = ''):
+    """Context manager for explicit service_role access marking.
+
+    Usage:
+        with admin_context('jobs.create_job'):
+            resp = postgrest_admin_request('POST', 'jobs', json=...)
+
+    This replaces the inspect.currentframe() overhead on every admin request.
+    When active, _get_caller_info() returns the provided caller string
+    without walking the Python stack.
+    """
+    import threading as _t
+    if not hasattr(_admin_local, 'caller'):
+        _admin_local.caller = None
+    prev = _admin_local.caller
+    _admin_local.caller = caller or 'admin_context'
+    try:
+        yield
+    finally:
+        _admin_local.caller = prev
 
 
 def _assert_service_key() -> None:

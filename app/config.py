@@ -84,7 +84,16 @@ class Config:
     SESSION_COOKIE_SECURE = os.environ.get('DEPLOYMENT_ENV', 'development') in ('production', 'staging')
     SESSION_COOKIE_SAMESITE = 'Strict'  # Защита от CSRF
     SESSION_COOKIE_NAME = 'trudnik_session'
-    PERMANENT_SESSION_LIFETIME = 3600  # 1 час (было 24ч — снижено для security)
+    PERMANENT_SESSION_LIFETIME = 3600  # 1 час
+
+    # Server-side sessions in Redis (D5: replaces client-side SecureCookieSession)
+    # Сессии хранятся в Redis, кука содержит только session_id.
+    # Преимущества: отзыв сессий, нет утечки данных в куку, TTL на стороне сервера.
+    SESSION_TYPE = 'redis'
+    SESSION_PERMANENT = True
+    SESSION_USE_SIGNER = True  # Подпись session_id в куке (доп. защита от подделки)
+    SESSION_KEY_PREFIX = 'session:'  # Префикс ключей в Redis
+    SESSION_REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 
     # ═══════════════════════════════════════════════════════════
     # Инфраструктура реального времени (уведомления v2)

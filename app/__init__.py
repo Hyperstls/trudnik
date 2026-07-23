@@ -83,6 +83,25 @@ def create_app():
             app.logger.warning('Redis ping failed')
     app.redis = redis_client
 
+    # Server-side сессии в Redis (D5: Flask-Session заменяет client-side SecureCookieSession).
+    # В mock/test-режиме (POSTGREST_MOCK_MODE) оставляем дефолтные cookie-сессии Flask —
+    # unit-тесты не должны зависеть от Redis (модуль redis там замокан).
+    if os.environ.get('POSTGREST_MOCK_MODE', '').lower() not in ('1', 'true', 'yes'):
+        try:
+            import redis as _redis_lib
+            _sess_url = app.config.get('SESSION_REDIS_URL') or app.config.get('REDIS_URL')
+            # Без decode_responses: Flask-Session хранит pickled-бинарик; клиент должен
+            # возвращать bytes.
+            app.config['SESSION_REDIS'] = _redis_lib.from_url(_sess_url)
+            from flask_session import Session
+            Session(app)
+            app.logger.info('Server-side Redis sessions enabled (D5)')
+        except Exception as _sess_err:
+            app.logger.warning(
+                'Redis session backend init failed, fallback to cookie sessions: %s',
+                _sess_err,
+            )
+
     if app.config.get('TESTING'):
         from app.utils import _seed_test_db
         _seed_test_db()

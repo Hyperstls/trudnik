@@ -133,6 +133,7 @@ refresh_access_token = _pgrest.refresh_access_token
 postgrest_request = _pgrest.postgrest_request
 postgrest_admin_request = _pgrest.postgrest_admin_request
 postgrest_rpc = _pgrest.postgrest_rpc
+admin_context = _pgrest.admin_context
 generate_vapid_keys = PushService.generate_vapid_keys
 
 # --- Гео-вычисления ---
