@@ -1,5 +1,5 @@
 @rule global
-Проект «Трудник» — платформа подённой работы (worker ↔ employer).
+Проект «Трудник» — платформа разовой подработки (worker ↔ employer).
 
 КАНОНИЧЕСКИЕ ВЕРСИИ И СТЕК — в 00_stack_context.md (НЕ дублируй версии здесь).
 Здесь только сводка назначения, архитектуры и ключевых портов.
@@ -17,11 +17,12 @@
 - Доступ к данным: ТОЛЬКО через PostgREST (HTTP). См. 01_db_access.md и 07_postgrest_client_api.md.
 - Мутации — через RPC (PL/pgSQL, SECURITY DEFINER). RLS на всех таблицах; app_role из JWT claim.
 
-Масштаб (приблизительно — сверяй по migrations/ и app/)
-- ~25 таблиц; 126+ SQL-миграций; ~28 RPC-функций (из них ~23 бизнес-RPC, остальные — триггеры/утилиты).
+Масштаб (сверено с БД и migrations/ на 2026-07-23)
+- 29 таблиц (25 бизнес + 4 системных: _migrations, schema_migrations, spatial_ref_sys, _archive_contact_payments);
+  46 файлов SQL-миграций (последняя #131, с консолидациями); 24 SECURITY DEFINER RPC-функции (бизнес-RPC).
 
 Локальная разработка (docker-compose)
-- DB 5433→5432 (PostgreSQL 15 + PostGIS 3.4) | PostgREST 3000 (v12.2.3) | Redis 6379 (db0 broker, db1 backend) | Web 8000 (HTTP) | pgadmin 5050 (профиль debug).
+- DB 5433→5432 (PostgreSQL 15 + PostGIS 3.4) | PostgREST 3000 (v14, dev=prod parity) | Redis 6379 (db0 broker, db1 backend) | Web 8000 (HTTP) | pgadmin 5050 (профиль debug).
 - WebSocket локально: `uvicorn asgi:application --port 8001` (docker-compose `web` = Flask dev-server, WS не обслуживает).
 
 Деплой / тесты

@@ -564,3 +564,55 @@ None или non-dict → `errors.append` и `continue`.
 - Коммитов: 2
 - Тесты: 73 passed, 13 skipped, 36 pre-existing (без изменений)
 - Добавлено: show-password toggle, contact validation, escapeHtml, 2 uvicorn workers
+
+---
+
+## Итерация 5 — Архитектурный аудит: отложенные задачи (D1–D6)
+**Дата:** 2026-07-23  **Ветка:** staging  **Статус:** D1–D5 COMPLETED, D6 = оценка (DOCUMENTED)
+
+Контекст: по итогам комплексного архитектурного аудита (Principal Architect) сформирован
+план отложенных задач D1–D6. D1–D4 выполнены на `main`, D5 — на `staging`, D6 — оценка scope.
+
+### [D1] PostgREST v14 локально — COMPLETED
+- `docker-compose.yml:49` — образ `postgrest/postgrest:v12.2.3` → `:latest` (v14.15).
+- Проверено: старый формат GUC `request.jwt.claim.user_id` возвращает NULL на v14
+  (regression-catch), новый `request.jwt.claims::json->>'user_id'` работает (RLS 125).
+- Достигнут dev=prod parity по версии PostgREST.
+
+### [D2] RLS integration test — COMPLETED
+- `tests/test_rls_integration.py` — 6 тестов: own-profile read, cross-user isolation,
+  old-claim-format returns NULL, service_role bypass, skills/religions anon-visible. 6/6 passed.
+
+### [D3] @admin_context decorator — COMPLETED
+- `app/utils/postgrest_client.py` — `admin_context` (contextmanager, thread-local marker)
+  заменяет `inspect.currentframe()` при определении service_role-вызова. `inspect` — legacy-fallback.
+
+### [D4] Structured logging X-Request-ID — COMPLETED
+- `app/utils/logging_config.py` — X-Request-ID во ВСЕ строки лога (thread-local) +
+  Celery task_prerun/task_postrun для сквозной трассировки `_request_id`.
+
+### [D5] Полноценные Redis-сессии (Flask-Session) — COMPLETED
+- `app/config.py:89-96` — `SESSION_TYPE='redis'`, `SESSION_USE_SIGNER`, `SESSION_KEY_PREFIX='session:'`,
+  `SESSION_REDIS_URL`; `PERMANENT_SESSION_LIFETIME=3600` (24ч→1ч).
+- `app/__init__.py:86-103` — `Session(app)` init. В mock/test-режиме (`POSTGREST_MOCK_MODE`)
+  пропускается → cookie-сессии (pytest не зависит от Redis). Graceful fallback на cookie при
+  недоступности Redis.
+- Доказано: реальный round-trip через работающий Redis — `RedisSessionInterface`, cookie =
+  подписанный session_id (71 байт), значение персистит серверно и читается обратно.
+- `tests/test_d5_redis_sessions.py` — 2 регрессионных теста (mock-режим → SecureCookieInterface).
+- ⚠️ `SESSION_USE_SIGNER` deprecated во Flask-Session 0.8.0 (удаление в 1.0); на pinned 0.8.0 работает.
+  DeprecationWarning при старте безопасен (1× на worker).
+
+### [D6] Blueprint→service refactor — ОЦЕНКА SCOPE (не рефакторинг, HIGH risk)
+**Находка:** 190 прямых вызовов `postgrest_request/admin_request/rpc` из 18/19 blueprints в обход
+service-слоя (доступ к данным — CRUD/чтение).
+**Распределение (топ):** jobs=39, admin_dictionaries=21, ratings=18, chat=15, employers=15,
+applications=14, profile=12, favorites=10, auth=9, jobs_api=7, admin_users=6, admin_dashboard=5,
+admin_jobs=5, notifications=4, blacklist=3, admin_diagnostics=3, admin_verification=2, core=2 (healthcheck — допустимо).
+**Сервисы НЕ мертвы:** `notification_service`, `push_service`, `email_service`, `job_service`,
+`auth_service` используются (уведомления/email/push + часть доменной логики). Нарушение границ —
+именно в data-access-слое (чтение/запись сущностей напрямую из контроллеров).
+**Рекомендация:** НЕ выполнять за один проход (190 сайтов, HIGH risk). Поэтапно, blueprint-за-
+blueprint, начиная с самых «тяжёлых» по мутациям (jobs, applications, profile), с полным
+покрытием тестами каждого. Завести сервис-методы для data-access-операций и маршрутизировать
+контроллеры через них.

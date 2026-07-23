@@ -9,14 +9,14 @@ stack:
   backend:
     web: "Flask 3.1.3 (WSGI, Application Factory + Blueprints)"
     websocket: "FastAPI 0.137.1 (ASGI)"
-    asgi_entry: "asgi.py — RouterMiddleware: lifespan+websocket → FastAPI, http → Flask (через a2wsgi.WSGIMiddleware workers=50)"
+    asgi_entry: "asgi.py — RouterMiddleware: lifespan+websocket → FastAPI, http → Flask (через a2wsgi.WSGIMiddleware workers=15)"
     deployment: "ПРОД: ОДИН uvicorn-процесс `uvicorn asgi:application --workers 2` (port 8000) обслуживает И HTTP, И WebSocket (/ws). НЕ 'отдельный процесс WS'."
   db:
-    # Версии различаются локально и в проде — указывай явно где речь.
+    # PostgreSQL различается локально/проде; PostgREST — единая мажорная v14 (dev=prod parity, D1).
     primary_prod: "PostgreSQL 17.6 + PostGIS (Amvera)"
     primary_local: "PostgreSQL 15 + PostGIS 3.4 (docker-compose: postgis/postgis:15-3.4-alpine)"
     api_prod: "PostgREST v14.10 (Amvera)"
-    api_local: "PostgREST v12.2.3 (docker-compose: postgrest/postgrest:v12.2.3)"
+    api_local: "PostgREST v14 (docker-compose: postgrest/postgrest:latest, резолвится ~14.15) — D1 привёл к dev=prod parity"
     access: "requests.Session (app/utils/postgrest_client.py) — см. 07_postgrest_client_api.md"
     response_class: "PostgrestResponse (НЕ Pydantic, НЕ requests.Response)"
   async_tasks:
