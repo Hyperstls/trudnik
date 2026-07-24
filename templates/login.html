@@ -59,6 +59,10 @@
             <a href="{{ url_for('auth.password_reset_request') }}" class="text-neutral-500 hover:text-primary-500 transition-colors">
                 Забыли пароль?
             </a>
+            <span class="text-neutral-300">·</span>
+            <a href="{{ url_for('auth.resend_verification') }}" class="text-neutral-500 hover:text-primary-500 transition-colors">
+                Не пришло письмо подтверждения?
+            </a>
         </p>
 
         <p class="mt-6 text-center text-sm text-neutral-500">

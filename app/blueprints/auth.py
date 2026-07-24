@@ -619,3 +619,54 @@ def verify_email(token):
         return redirect(url_for('auth.login'))
     flash('Ошибка подтверждения email', 'danger')
     return redirect(url_for('auth.register'))
+
+
+@auth_bp.route('/verify-email/resend', methods=['GET', 'POST'])
+@rate_limit(fail_open=True)
+def resend_verification():
+    """Повторная отправка письма подтверждения email.
+
+    Актуальна, если первое письмо не дошло (фильтры/спам/сбой SMTP).
+    Rate-limit: 1 отправка в 2 минуты на email. Не раскрывает существование аккаунта.
+    """
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        if not email or not _EMAIL_RE.match(email):
+            flash('Укажите корректный email', 'danger')
+            return render_template('resend_verification.html')
+
+        # Rate-limit: не чаще раза в 2 минуты
+        rkey = f'verify_resend:{email}'
+        redis_client = get_redis_client()
+        if redis_client and redis_client.exists(rkey):
+            flash('Письмо уже было отправлено. Повторите через 2 минуты.', 'warning')
+            return redirect(url_for('auth.login'))
+
+        # Ищем пользователя; не подтверждённому — отправляем письмо повторно
+        resp = postgrest_admin_request(
+            'GET', f'profiles?email=eq.{email}&select=id,email_verified,full_name')
+        if resp.ok and resp.json():
+            u = resp.json()[0]
+            if not u.get('email_verified'):
+                verification_token = _generate_email_verification_token(email)
+                verification_url = url_for('auth.verify_email', token=verification_token, _external=True)
+                try:
+                    from app.tasks.email_tasks import send_email_notification
+                    send_email_notification.delay(
+                        user_id=str(u.get('id')),
+                        notification_id=0,
+                        user_email=email,
+                        user_name=u.get('full_name') or email,
+                        notification_text=f'Для подтверждения email перейдите по ссылке:\n\n{verification_url}\n\nСсылка действительна 24 часа.',
+                        notification_type='email_verification',
+                        notification_url=verification_url,
+                    )
+                except Exception as email_err:
+                    log.warning('resend verification queue failed for %s: %s', email, email_err)
+                if redis_client:
+                    redis_client.setex(rkey, 120, '1')
+
+        # Универсальное сообщение — не раскрываем, существует ли аккаунт
+        flash('Если аккаунт существует и email ещё не подтверждён — письмо отправлено. Проверьте почту (включая спам).', 'info')
+        return redirect(url_for('auth.login'))
+    return render_template('resend_verification.html')
