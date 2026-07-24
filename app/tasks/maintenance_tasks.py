@@ -312,6 +312,10 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
             _apply_migration('132_restrict_profile_sensitive_columns.sql')
         except Exception as e:
             logger.warning('self-heal: failed to re-apply 132 (profile columns): %s', e)
+            try:
+                conn.rollback()  # очистить aborted-состояние транзакции, не отравлять шаги дальше
+            except Exception:
+                pass
 
         # 1c) RLS на внутренних/админ-таблицах (миграция 133): audit_log,
         #     employer_subscriptions, _migrations, schema_migrations — anon не читает.
@@ -319,6 +323,10 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
             _apply_migration('133_enable_rls_internal_tables.sql')
         except Exception as e:
             logger.warning('self-heal: failed to re-apply 133 (internal RLS): %s', e)
+            try:
+                conn.rollback()
+            except Exception:
+                pass
 
         # 2) Политика чтения profiles может быть удалена — гарантируем наличие,
         #    иначе профиль/выход/списки пустые (RLS deny-all).
