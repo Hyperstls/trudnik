@@ -1,5 +1,5 @@
-const CACHE_VERSION = 'trudnik-v6';
-const CACHE_NAME = 'trudnik-v6';
+const CACHE_VERSION = 'trudnik-v7';
+const CACHE_NAME = 'trudnik-v7';
 const PRECACHE_URLS = [
   '/',
   '/offline',
@@ -52,6 +52,13 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
+
+  // Cross-origin запросы (напр. Cloudflare Turnstile, Яндекс.Карты) НЕ перехватываем:
+  // Service Worker, переиздавая их через fetch(), оценивает их по connect-src страницы
+  // (а не script-src), что ломает загрузку виджета капчи. Пусть браузер грузит их сам.
+  if (url.origin !== self.location.origin) {
+    return;
+  }
 
   // --- Guard: never intercept non-GET requests except explicit XHR mutations
   // to /api/ or /admin/ (handled by Strategy 2 below).

@@ -97,7 +97,7 @@ def add_security_headers(response):
         f"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
         f"font-src 'self' https://fonts.gstatic.com; "
         f"img-src 'self' data: https:; "
-        f"connect-src 'self' https://*.yandex.ru https://core-renderer-tiles.maps.yandex.net https://*.maps.yandex.net https://yastatic.net https://geocode-maps.yandex.ru https://fonts.googleapis.com https://fonts.gstatic.com {ws_src}; "
+        f"connect-src 'self' https://*.yandex.ru https://core-renderer-tiles.maps.yandex.net https://*.maps.yandex.net https://yastatic.net https://geocode-maps.yandex.ru https://fonts.googleapis.com https://fonts.gstatic.com{_cf} {ws_src}; "
         f"worker-src 'self' blob:; "
         f"frame-src 'self'{_cf}"
     )
