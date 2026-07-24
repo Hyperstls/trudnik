@@ -3,11 +3,16 @@
 {% block title %}Настройки уведомлений — Трудник{% endblock %}
 {% block content %}
 <style nonce="{{ csp_nonce }}">
-    /* Фикс: гарантируем content для ::after toggle-переключателей,
-       даже если Tailwind JIT не скомпилировал after:content-[''] */
-    .pref-checkbox + div::after {
-        content: '';
-    }
+    /* Самодостаточный toggle — НЕ зависит от Tailwind JIT
+       (классы, генерируемые в JS-HTML, не попадают в прекомпилированный tailwind.min.css,
+       поэтому peer-checked:after:* не работали и переключатели были «невидимыми»). */
+    .nt-toggle { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+    .nt-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .nt-slider { position: absolute; cursor: pointer; inset: 0; background: #d4d4d8; border-radius: 9999px; transition: background .2s; }
+    .nt-slider::before { content: ""; position: absolute; height: 18px; width: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+    .nt-toggle input:checked + .nt-slider { background: #6366f1; }
+    .nt-toggle input:checked + .nt-slider::before { transform: translateX(20px); }
+    .nt-toggle input:focus-visible + .nt-slider { box-shadow: 0 0 0 3px rgba(99,102,241,.35); }
 </style>
 <div class="px-4 pb-24 max-w-lg mx-auto">
     <div class="flex items-center gap-3 mb-5">
@@ -82,10 +87,10 @@ function loadPreferences() {
                         <p class="font-medium text-neutral-900 text-sm">${escapeHtml(label)}</p>
                         <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(key)}</p>
                     </div>
-                    <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-3">
-                        <input type="checkbox" class="sr-only peer pref-checkbox" data-type="${escapeHtml(key)}"
+                    <label class="nt-toggle">
+                        <input type="checkbox" class="pref-checkbox" data-type="${escapeHtml(key)}"
                                ${enabled ? 'checked' : ''}>
-                        <div class="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
+                        <span class="nt-slider"></span>
                     </label>
                 </div>`;
         }
@@ -101,10 +106,10 @@ function loadPreferences() {
                         <p class="font-medium text-neutral-900 text-sm">${escapeHtml(info.label)}</p>
                         <p class="text-xs text-neutral-400 mt-0.5">${escapeHtml(key)}</p>
                     </div>
-                    <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-3">
-                        <input type="checkbox" class="sr-only peer pref-checkbox" data-type="${escapeHtml(key)}"
+                    <label class="nt-toggle">
+                        <input type="checkbox" class="pref-checkbox" data-type="${escapeHtml(key)}"
                                ${info.enabled ? 'checked' : ''}>
-                        <div class="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
+                        <span class="nt-slider"></span>
                     </label>
                 </div>`;
         }

@@ -27,20 +27,13 @@ except ImportError:
     logger.warning("redis_publisher не загружен — WebSocket-уведомления отключены")
 
 NOTIFICATION_TYPES = {
-    'status_change':         'Изменение статуса',
-    'application_received':  'Новый отклик',
-    'application_accepted':  'Отклик принят',
-    'application_rejected':  'Отклик отклонён',
-    'worker_accepted':       'Работник принят',
-    'worker_rejected':       'Работник отклонён',
-    'worker_applied':        'Отклик работника',
-    'new_application':       'Новая заявка',
-    'force_complete':        'Завершение задания',
-    'withdraw':              'Отзыв отклика',
+    'status_change':         'Изменение статуса задания',
+    'application_received':  'Новый отклик на ваше задание',
+    'application_accepted':  'Ваш отклик принят',
+    'application_rejected':  'Ваш отклик отклонён',
+    'force_complete':        'Задание завершено',
     'job_cancelled':         'Задание отменено',
-    'invitation':            'Приглашение',
-    'new_message':           'Новое сообщение',
-    'cheque_reminder':       'Напоминание о чеке',
+    'new_message':           'Новое сообщение в чате',
 }
 
 DEFAULT_ENABLED_TYPES = {
@@ -48,16 +41,9 @@ DEFAULT_ENABLED_TYPES = {
     'application_received': True,
     'application_accepted': True,
     'application_rejected': True,
-    'worker_accepted': True,
-    'worker_rejected': True,
-    'worker_applied': True,
-    'new_application': True,
     'force_complete': True,
-    'withdraw': True,
     'job_cancelled': True,
-    'invitation': True,
     'new_message': True,
-    'cheque_reminder': True,
 }
 
 
@@ -108,44 +94,47 @@ def create(user_id, notification_type, title, message, data=None, email=None, us
     if data and isinstance(data, dict) and data.get('application_id'):
         base_payload['application_id'] = data['application_id']
 
-    # Используем admin_request для обхода RLS:
-    # уведомления создаются системой (не владельцем), user_id может не совпадать с auth.uid()
-    headers = {'Prefer': 'return=representation'}
-    resp = postgrest_admin_request('POST', 'notifications', json=base_payload, headers=headers)
-    if not resp.ok:
-        logger.error('Failed to create notification: user=%s type=%s status=%s body=%s',
-                     user_id, notification_type, resp.status_code, resp.text)
-        return False
-
-    # Получаем ID созданного уведомления из ответа
-    notification_id = None
-    try:
-        resp_data = resp.json()
-        if isinstance(resp_data, list) and len(resp_data) > 0:
-            notification_id = resp_data[0].get('id')
-    except Exception as e:
-        logger.warning('Failed to extract notification_id from response: %s', e, exc_info=True)
-
-    # full_message уже вычислен в base_payload['message'] (строка 79)
+    # full_message уже вычислен в base_payload['message']
     full_message = base_payload['message']
 
-    # Публикуем событие в Redis для мгновенной WebSocket-доставки
-    if redis_publisher is not None:
+    # Канал «в приложении» (in-app): запись в БД + мгновенная WebSocket-доставка.
+    # Уважаем переключатель in_app_enabled; каналы email/push от него независимы.
+    notification_id = None
+    if prefs.get('in_app_enabled', True):
+        # admin_request для обхода RLS: уведомления создаёт система, user_id может
+        # не совпадать с auth.uid()
+        headers = {'Prefer': 'return=representation'}
+        resp = postgrest_admin_request('POST', 'notifications', json=base_payload, headers=headers)
+        if not resp.ok:
+            logger.error('Failed to create notification: user=%s type=%s status=%s body=%s',
+                         user_id, notification_type, resp.status_code, resp.text)
+            return False
+
+        # Получаем ID созданного уведомления из ответа
         try:
-            redis_publisher.publish_notification(
-                user_id=user_id,
-                notification_type=notification_type,
-                data={
-                    'notification_id': notification_id,
-                    'type': notification_type,
-                    'text': full_message,
-                    'title': title,
-                    'data': data if data else {},
-                    'is_read': False
-                }
-            )
+            resp_data = resp.json()
+            if isinstance(resp_data, list) and len(resp_data) > 0:
+                notification_id = resp_data[0].get('id')
         except Exception as e:
-            logger.warning("Не удалось опубликовать уведомление в Redis: %s", e)
+            logger.warning('Failed to extract notification_id from response: %s', e, exc_info=True)
+
+        # Публикуем событие в Redis для мгновенной WebSocket-доставки
+        if redis_publisher is not None:
+            try:
+                redis_publisher.publish_notification(
+                    user_id=user_id,
+                    notification_type=notification_type,
+                    data={
+                        'notification_id': notification_id,
+                        'type': notification_type,
+                        'text': full_message,
+                        'title': title,
+                        'data': data if data else {},
+                        'is_read': False
+                    }
+                )
+            except Exception as e:
+                logger.warning("Не удалось опубликовать уведомление в Redis: %s", e)
 
     # Ставим задачи в очередь Celery для email и push
     # Используем notification_dispatcher для разрыва циклической зависимости
