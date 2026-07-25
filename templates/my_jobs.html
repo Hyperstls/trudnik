@@ -114,7 +114,7 @@
         {% if jobs %}
         <div class="space-y-3">
             {% for job in jobs %}
-            <div class="app-card animate-fade-in">
+            <div class="app-card animate-fade-in bg-white rounded-2xl border border-neutral-200 shadow-sm p-4">
                 <div class="flex items-start gap-3">
                     <input type="checkbox" name="job_ids" value="{{ job.id }}"
                            class="job-checkbox app-checkbox mt-1.5" aria-label="Выбрать задание {{ job.organization_name or job.title }}">
