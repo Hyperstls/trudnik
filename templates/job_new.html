@@ -275,6 +275,11 @@
 
     // Step 3 → 4
     document.getElementById('to-step-4').addEventListener('click', function() {
+        var dlErr = validateDeadline();
+        if (dlErr) {
+            window.showToast(dlErr, 'warning');
+            return;
+        }
         var hasStopWords = checkStopWords();
         if (hasStopWords) {
             step3StopWarning.classList.remove('hidden');
@@ -297,6 +302,33 @@
     document.getElementById('back-to-step-1').addEventListener('click', function() { goToStep(1); });
     document.getElementById('back-to-step-2').addEventListener('click', function() { goToStep(2); });
     document.getElementById('back-to-step-3').addEventListener('click', function() { goToStep(3); });
+
+    // ==========================================
+    // Deadline validation: не давать выбрать дату в прошлом (клиентски, сразу)
+    // ==========================================
+    function localNowForInput() {
+        var d = new Date();
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); // к локальному времени для <input>
+        return d.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
+    }
+    function validateDeadline() {
+        var dl = document.getElementById('deadline');
+        if (!dl || !dl.value) return ''; // deadline опционален
+        var chosen = new Date(dl.value);
+        if (isNaN(chosen.getTime())) return 'Некорректная дата и время';
+        if (chosen.getTime() < Date.now()) return 'Дата и время не могут быть в прошлом';
+        return '';
+    }
+    (function initDeadlineGuard() {
+        var dl = document.getElementById('deadline');
+        if (!dl) return;
+        dl.min = localNowForInput(); // нативный пикер не даст выбрать прошлое
+        dl.addEventListener('input', function() {
+            var err = validateDeadline();
+            var group = dl.closest('.floating-label-group');
+            if (group) { group.classList.toggle('error', !!err); }
+        });
+    })();
 
     // ==========================================
     // Yandex Map for Step 2
