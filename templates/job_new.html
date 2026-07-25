@@ -304,13 +304,10 @@
     document.getElementById('back-to-step-3').addEventListener('click', function() { goToStep(3); });
 
     // ==========================================
-    // Deadline validation: не давать выбрать дату в прошлом (клиентски, сразу)
+    // Deadline validation: блокировать отправку даты в прошлом (клиентски, сразу)
+    // min-атрибут НЕ ставим — он ломает нативный datetime-local пикер (часть времени)
+    // на ряде браузеров (iOS Safari, Android). Валидируем на «Далее» + live-фидбек.
     // ==========================================
-    function localNowForInput() {
-        var d = new Date();
-        d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); // к локальному времени для <input>
-        return d.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
-    }
     function validateDeadline() {
         var dl = document.getElementById('deadline');
         if (!dl || !dl.value) return ''; // deadline опционален
@@ -322,7 +319,6 @@
     (function initDeadlineGuard() {
         var dl = document.getElementById('deadline');
         if (!dl) return;
-        dl.min = localNowForInput(); // нативный пикер не даст выбрать прошлое
         dl.addEventListener('input', function() {
             var err = validateDeadline();
             var group = dl.closest('.floating-label-group');
