@@ -100,6 +100,9 @@
             <div>
                 <p class="text-sm font-semibold text-neutral-700 mb-2">Выберите местоположение на карте</p>
                 <div id="map" style="height: 250px;" class="rounded-xl overflow-hidden shadow-sm border border-neutral-200"></div>
+                <button type="button" id="geolocate-btn" class="mt-2 w-full flex items-center justify-center gap-2 bg-neutral-100 hover:bg-neutral-200 active:scale-[0.98] text-neutral-700 font-medium py-2.5 rounded-xl transition-all duration-200">
+                    <span>📍</span> Определить моё местоположение
+                </button>
             </div>
 
             <input type="hidden" name="latitude" id="lat">
@@ -331,14 +334,14 @@
     }
 
     // ==========================================
-    // Auto-geolocation: detect user location on page load
+    // Geolocation: auto-detect on load (silent) + manual button (with feedback)
     // ==========================================
-    (function initGeolocation() {
-        // Don't request geolocation if address is already filled (editing mode)
-        var addressField = document.getElementById('address');
-        if (addressField && addressField.value.trim()) return;
-
-        if (!navigator.geolocation) return;
+    function detectLocation(silent) {
+        if (!navigator.geolocation) {
+            if (!silent) (window.showToast && window.showToast('Геолокация не поддерживается браузером', 'warning'));
+            return;
+        }
+        if (!silent) (window.showToast && window.showToast('Определяю местоположение…', 'info'));
 
         navigator.geolocation.getCurrentPosition(
             function(position) {
@@ -347,51 +350,72 @@
                     lon: position.coords.longitude
                 };
 
-                // If map is already initialized, update it
+                // Обновляем карту и скрытые lat/lng
                 if (map && placemark) {
-                    map.setCenter([geoCoords.lat, geoCoords.lon]);
+                    map.setCenter([geoCoords.lat, geoCoords.lon], 14);
                     placemark.geometry.setCoordinates([geoCoords.lat, geoCoords.lon]);
-                    document.getElementById('lat').value = geoCoords.lat;
-                    document.getElementById('lng').value = geoCoords.lon;
                 }
+                var latEl = document.getElementById('lat');
+                var lngEl = document.getElementById('lng');
+                if (latEl) latEl.value = geoCoords.lat;
+                if (lngEl) lngEl.value = geoCoords.lon;
 
-                // Reverse geocode via Yandex.Maps
+                // Reverse geocode через Яндекс.Карты → address + city
                 if (typeof ymaps !== 'undefined') {
                     ymaps.ready(function() {
                         var addrField = document.getElementById('address');
-                        // Double-check address is still empty (user might have typed)
                         if (addrField && !addrField.value.trim()) {
                             ymaps.geocode([geoCoords.lat, geoCoords.lon], { results: 1 }).then(function(res) {
                                 var geoObject = res.geoObjects.get(0);
-                                if (!geoObject) return;
-                                var address = geoObject.getAddressLine();
-                                if (address) {
-                                    addrField.value = address;
+                                if (!geoObject) {
+                                    if (!silent) (window.showToast && window.showToast('Не удалось определить адрес по координатам', 'warning'));
+                                    return;
                                 }
-                                // Try to extract city from geocode result
+                                var address = geoObject.getAddressLine();
+                                if (address) addrField.value = address;
+
                                 var cityField = document.getElementById('city');
                                 if (cityField && !cityField.value.trim()) {
-                                    // Attempt to get locality from address components
-                                    var country = geoObject.getCountry ? geoObject.getCountry() : '';
-                                    var adminAreas = geoObject.getAdministrativeAreas ? geoObject.getAdministrativeAreas() : [];
                                     var localities = geoObject.getLocalities ? geoObject.getLocalities() : [];
+                                    var adminAreas = geoObject.getAdministrativeAreas ? geoObject.getAdministrativeAreas() : [];
                                     if (localities.length > 0) {
                                         cityField.value = localities[0];
                                     } else if (adminAreas.length > 0) {
                                         cityField.value = adminAreas[adminAreas.length - 1];
                                     }
                                 }
-                            }).catch(function() {});
+                                if (!silent) (window.showToast && window.showToast('Местоположение определено', 'success'));
+                            }).catch(function() {
+                                if (!silent) (window.showToast && window.showToast('Ошибка геокодирования адреса', 'warning'));
+                            });
+                        } else if (!silent) {
+                            window.showToast && window.showToast('Координаты обновлены (адрес уже заполнен)', 'success');
                         }
                     });
                 }
             },
             function(error) {
-                // Silently fail — geolocation is optional
-                console.log('Geolocation unavailable:', error.message);
+                console.log('Geolocation error:', error.message);
+                if (!silent) {
+                    var msg = (error.code === error.PERMISSION_DENIED)
+                        ? 'Доступ к геолокации запрещён — разрешите в настройках браузера'
+                        : 'Не удалось определить местоположение';
+                    window.showToast && window.showToast(msg, 'warning');
+                }
             },
-            { timeout: 10000, maximumAge: 300000 }
+            { timeout: 10000, maximumAge: 300000, enableHighAccuracy: false }
         );
+    }
+
+    // Кнопка ручного определения местоположения
+    var geoBtn = document.getElementById('geolocate-btn');
+    if (geoBtn) geoBtn.addEventListener('click', function() { detectLocation(false); });
+
+    // Автоопределение при загрузке (тихо), если адрес ещё не заполнен (режим редактирования)
+    (function autoDetect() {
+        var addressField = document.getElementById('address');
+        if (addressField && addressField.value.trim()) return;
+        detectLocation(true);
     })();
 
     // ==========================================
