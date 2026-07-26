@@ -3,7 +3,8 @@
 Выделен из app/blueprints/admin.py (задача 4-5).
 """
 
-from flask import Blueprint, current_app, flash, jsonify, redirect, request, session, url_for
+from flask import (Blueprint, current_app, flash, jsonify, redirect, render_template,
+                   request, session, url_for)
 
 from app.decorators import login_required, admin_required, validate_uuid
 from app.utils import postgrest_admin_request, postgrest_rpc
