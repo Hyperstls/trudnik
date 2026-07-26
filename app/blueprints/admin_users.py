@@ -115,3 +115,103 @@ def bulk_delete_users():
         deleted += 1
 
     return jsonify({'deleted': deleted, 'failed': failed, 'errors': errors})
+
+
+# ============================================================
+# Инструменты тестирования: создание тестового пользователя (pre-verified)
+# и подтверждение email вручную (для несуществующих доменов, напр. test.ru)
+# ============================================================
+@admin_users_bp.route('/test-user', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def test_user_tools():
+    """Создание тестового пользователя с подтверждённым email (без реальной почты)
+    либо ручное подтверждение email существующего пользователя."""
+    if request.method == 'POST':
+        action = request.form.get('action', '')
+        email = (request.form.get('email') or '').strip().lower()
+
+        if action == 'create':
+            password = request.form.get('password', '')
+            full_name = (request.form.get('full_name') or '').strip() or 'Тестовый пользователь'
+            role = request.form.get('role', 'worker')
+            if role not in ('worker', 'employer'):
+                role = 'worker'
+            if not email or len(password) < 8:
+                flash('Укажите email и пароль (мин. 8 символов)', 'danger')
+                return redirect(url_for('admin_users.test_user_tools'))
+            resp = postgrest_rpc('register_user', {
+                'p_email': email, 'p_password': password,
+                'p_full_name': full_name, 'p_role': role,
+            }, use_admin=True)
+            if resp.ok:
+                postgrest_admin_request('PATCH', f'profiles?email=eq.{email}',
+                                        json={'email_verified': True})
+                log_admin_action('create_test_user', target=email, details=f'role={role}')
+                flash(f'Тестовый пользователь {email} создан, email подтверждён. Можно войти.', 'success')
+            else:
+                err = ''
+                try:
+                    err = (resp.json() or {}).get('message', '') or resp.text
+                except Exception:
+                    err = resp.text
+                flash(f'Ошибка создания: {(err or "")[:200]}', 'danger')
+            return redirect(url_for('admin_users.test_user_tools'))
+
+        if action == 'verify':
+            if not email:
+                flash('Укажите email', 'danger')
+                return redirect(url_for('admin_users.test_user_tools'))
+            resp = postgrest_admin_request('PATCH', f'profiles?email=eq.{email}',
+                                           json={'email_verified': True})
+            if resp.ok:
+                log_admin_action('manual_verify_email', target=email)
+                flash(f'Email {email} подтверждён. Пользователь может войти.', 'success')
+            else:
+                flash('Не удалось подтвердить (пользователь не найден?)', 'danger')
+            return redirect(url_for('admin_users.test_user_tools'))
+
+        flash('Неизвестное действие', 'danger')
+        return redirect(url_for('admin_users.test_user_tools'))
+
+    return render_template('admin_test_user.html')
+
+
+# ============================================================
+# Редактор статичных страниц (Условия / Политика конфиденциальности)
+# ============================================================
+@admin_users_bp.route('/content/<slug>', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_site_content(slug):
+    """Редактирование текста /terms или /privacy (хранится в site_pages)."""
+    if slug not in ('terms', 'privacy'):
+        flash('Неизвестная страница', 'danger')
+        return redirect('/admin')
+    default_title = 'Условия использования' if slug == 'terms' else 'Политика конфиденциальности'
+
+    if request.method == 'POST':
+        title = (request.form.get('title') or '').strip() or default_title
+        content = request.form.get('content') or ''
+        from datetime import datetime, timezone
+        body = [{'slug': slug, 'title': title, 'content': content,
+                 'updated_at': datetime.now(timezone.utc).isoformat()}]
+        resp = postgrest_admin_request(
+            'POST', 'site_pages', json=body,
+            headers={'Prefer': 'resolution=merge-duplicates'})
+        if resp.ok:
+            log_admin_action('edit_site_page', target=slug)
+            flash('Страница сохранена', 'success')
+        else:
+            flash('Ошибка сохранения: ' + (resp.text or '')[:200], 'danger')
+        return redirect(url_for('admin_users.edit_site_content', slug=slug))
+
+    page = {'title': default_title, 'content': ''}
+    resp = postgrest_admin_request('GET', f'site_pages?slug=eq.{slug}&select=title,content&limit=1')
+    if resp.ok:
+        data = resp.json()
+        if data:
+            page = data[0]
+    return render_template('admin_edit_content.html', slug=slug,
+                           page_title=page.get('title') or default_title,
+                           content=page.get('content') or '')

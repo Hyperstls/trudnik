@@ -328,6 +328,17 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
             except Exception:
                 pass
 
+        # 1d) site_pages — редактируемые страницы (terms/privacy). CREATE TABLE IF NOT EXISTS,
+        #     идемпотентно. Нужен для /admin/content/<slug> и DB-backed /terms /privacy.
+        try:
+            _apply_migration('134_site_pages.sql')
+        except Exception as e:
+            logger.warning('self-heal: failed to apply 134 (site_pages): %s', e)
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+
         # 2) Политика чтения profiles может быть удалена — гарантируем наличие,
         #    иначе профиль/выход/списки пустые (RLS deny-all).
         cur.execute(

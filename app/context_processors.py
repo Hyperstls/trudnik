@@ -197,6 +197,12 @@ def inject_csp_nonce() -> dict:
     return {'csp_nonce': getattr(g, 'csp_nonce', '')}
 
 
+def inject_current_year() -> dict:
+    """Текущий год для футера (© ... Трудник) — чтобы не устаревал."""
+    from datetime import datetime
+    return {'current_year': datetime.now().year}
+
+
 def inject_captcha_config() -> dict:
     """Публичная конфигурация капчи (Cloudflare Turnstile) для шаблонов.
 
@@ -243,3 +249,4 @@ def register_context_processors(app):
     app.context_processor(inject_employer_subscription)
     app.context_processor(inject_sort_url)
     app.context_processor(inject_captcha_config)
+    app.context_processor(inject_current_year)

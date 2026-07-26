@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — Трудник{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-8 fade-in">
+    <h1 class="text-2xl font-bold text-neutral-800 mb-6">{{ title }}</h1>
+    <div class="bg-white rounded-2xl border border-neutral-200 p-6 space-y-3 text-sm text-neutral-600 leading-relaxed legal-content">
+        {{ content|safe }}
+    </div>
+</div>
+{% endblock %}

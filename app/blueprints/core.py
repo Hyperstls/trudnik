@@ -7,8 +7,25 @@ from flask import (Blueprint, current_app, abort, redirect, render_template,
                    send_from_directory, url_for, jsonify, session, request)
 
 from app.decorators import login_required
+from app.utils import postgrest_admin_request
 
 core_bp = Blueprint('core', __name__)
+
+
+def _render_site_page(slug: str, fallback_template: str, default_title: str):
+    """Рендерит редактируемую страницу из site_pages; если контента нет —
+    откатывается на статичный шаблон."""
+    try:
+        resp = postgrest_admin_request('GET', f'site_pages?slug=eq.{slug}&select=title,content&limit=1')
+        if resp.ok:
+            data = resp.json()
+            if data and (data[0].get('content') or '').strip():
+                return render_template('legal_page.html',
+                                       title=data[0].get('title') or default_title,
+                                       content=data[0]['content'])
+    except Exception:
+        pass
+    return render_template(fallback_template)
 
 _app_start_time = _time_module.time()
 
@@ -274,14 +291,14 @@ def static_directory_redirect():
 
 @core_bp.route('/terms')
 def terms():
-    """Страница «Условия использования»."""
-    return render_template('terms.html')
+    """Страница «Условия использования» (редактируется админом через site_pages)."""
+    return _render_site_page('terms', 'terms.html', 'Условия использования')
 
 
 @core_bp.route('/privacy')
 def privacy():
-    """Страница «Политика конфиденциальности»."""
-    return render_template('privacy.html')
+    """Страница «Политика конфиденциальности» (редактируется админом через site_pages)."""
+    return _render_site_page('privacy', 'privacy.html', 'Политика конфиденциальности')
 
 
 @core_bp.route('/api/client-error', methods=['POST'])
