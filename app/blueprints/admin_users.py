@@ -148,7 +148,7 @@ def test_user_tools():
             if resp.ok:
                 postgrest_admin_request('PATCH', f'profiles?email=eq.{email}',
                                         json={'email_verified': True})
-                log_admin_action('create_test_user', target=email, details=f'role={role}')
+                log_admin_action('create_test_user', table_name='profiles', record_id=email, new_data={'role': role})
                 flash(f'Тестовый пользователь {email} создан, email подтверждён. Можно войти.', 'success')
             else:
                 err = ''
@@ -166,7 +166,7 @@ def test_user_tools():
             resp = postgrest_admin_request('PATCH', f'profiles?email=eq.{email}',
                                            json={'email_verified': True})
             if resp.ok:
-                log_admin_action('manual_verify_email', target=email)
+                log_admin_action('manual_verify_email', table_name='profiles', record_id=email)
                 flash(f'Email {email} подтверждён. Пользователь может войти.', 'success')
             else:
                 flash('Не удалось подтвердить (пользователь не найден?)', 'danger')
@@ -201,7 +201,7 @@ def edit_site_content(slug):
             'POST', 'site_pages', json=body,
             headers={'Prefer': 'resolution=merge-duplicates'})
         if resp.ok:
-            log_admin_action('edit_site_page', target=slug)
+            log_admin_action('edit_site_page', table_name='site_pages', record_id=slug)
             flash('Страница сохранена', 'success')
         else:
             flash('Ошибка сохранения: ' + (resp.text or '')[:200], 'danger')
