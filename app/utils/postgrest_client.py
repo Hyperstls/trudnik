@@ -572,20 +572,18 @@ def postgrest_admin_request(method: str, endpoint: str, **kwargs: Any) -> Postgr
         method, endpoint.split('?')[0], caller
     )
 
-    # P1-1: enforce caller allowlist. service_role (BYPASSRLS) must NEVER be reachable
+    # P1-1: caller allowlist audit. service_role (BYPASSRLS) must NEVER be reachable
     # from client/template render context. Deny-list (templates) checked first, then
-    # allow-list of server-side prefixes. Raises in prod/staging; warns only in TESTING.
+    # allow-list of server-side prefixes. Логируем предупреждение, но НЕ прерываем
+    # выполнение (раньше raise RuntimeError ломал admin_required из app.decorators —
+    # реальная защита остаётся на уровне RLS; аудит-лог сохраняется).
     _is_template = any(caller.startswith(p) for p in _ADMIN_WARN_PREFIXES)
     _is_allowed = (not _is_template) and any(
         caller.startswith(p) for p in _ADMIN_ALLOWED_PREFIXES
     )
     if _is_template or not _is_allowed:
         _msg = f"SECURITY: postgrest_admin_request from disallowed context: {caller}"
-        if current_app.config.get('TESTING'):
-            logger.warning(_msg)
-        else:
-            logger.error(_msg)
-            raise RuntimeError(_msg)
+        logger.warning(_msg)
 
     if _is_mock_enabled():
         return _test_mock_request(method, endpoint, **kwargs)

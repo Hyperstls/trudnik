@@ -238,14 +238,19 @@ def admin_required(f):
                             return redirect(url_for('jobs.index'))
                         return f(*args, **kwargs)
                 # X8: DB-запрос не удался или данные невалидные — fail-closed
-                flash('Сервис недоступен', 'danger')
+                _body = ''
+                try:
+                    _body = (resp.text or '')[:200]
+                except Exception:
+                    pass
+                flash(f'Сервис недоступен [admin: ok={resp.ok} status={resp.status_code} cb={getattr(resp, "circuit_open", "?")} body={_body}]', 'danger')
                 return redirect(url_for('jobs.index'))
             except Exception as e:
                 # X8: fail-closed — при ошибке БД блокируем доступ
                 import logging
                 _logger = logging.getLogger(__name__)
                 _logger.warning('admin_required DB error: %s', e, exc_info=True)
-                flash('Сервис недоступен', 'danger')
+                flash(f'Сервис недоступен [admin exception: {repr(e)[:200]}]', 'danger')
                 return redirect(url_for('jobs.index'))
         # Если user_id не найден в сессии — блокируем
         flash('Доступ запрещён. Требуются права администратора.', 'danger')
