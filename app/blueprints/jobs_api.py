@@ -5,6 +5,7 @@
 """
 
 from datetime import datetime, timezone
+import logging
 
 from flask import Blueprint, jsonify, request, session, current_app, url_for
 
@@ -49,7 +50,7 @@ def _dictionary_list(table: str, label: str) -> dict:
                 raw = cached.decode('utf-8') if isinstance(cached, bytes) else cached
                 return {'success': True, label: json.loads(raw)}
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("cache decode ignored", exc_info=True)
 
     resp = postgrest_admin_request(
         'GET', f'{table}?select=*&order=sort_order.asc,name.asc'
@@ -61,7 +62,7 @@ def _dictionary_list(table: str, label: str) -> dict:
             if client:
                 client.setex(cache_key, 300, json.dumps(items, ensure_ascii=False))
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("cache setex ignored", exc_info=True)
     return {'success': True, label: items}
 
 

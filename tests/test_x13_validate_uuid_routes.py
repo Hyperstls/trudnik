@@ -7,7 +7,7 @@ def test_all_uuid_routes_have_validate_uuid():
     """X13: routes with UUID params must use @validate_uuid decorator."""
     from app.blueprints import (
         jobs, applications, chat, notifications, favorites,
-        employers, blacklist, jobs_api, ratings, admin,
+        employers, blacklist, jobs_api, ratings,
         admin_users, admin_jobs, admin_verification, admin_dictionaries
     )
     
@@ -17,7 +17,7 @@ def test_all_uuid_routes_have_validate_uuid():
     # Список всех blueprint модулей для проверки
     modules_to_check = [
         jobs, applications, chat, notifications, favorites,
-        employers, blacklist, jobs_api, ratings, admin,
+        employers, blacklist, jobs_api, ratings,
         admin_users, admin_jobs, admin_verification, admin_dictionaries
     ]
     

@@ -182,14 +182,14 @@ class TestPushService(unittest.TestCase):
         mock_response.ok = True
         mock_postgrest.return_value = mock_response
 
-        result = self.service.delete_subscription('https://example.com/push/endpoint')
+        result = self.service.delete_subscription('https://example.com/push/endpoint', 'test-user-uuid')
 
         self.assertTrue(result)
 
     @patch('app.services.push_service.postgrest_admin_request')
     def test_delete_subscription_empty_endpoint(self, mock_postgrest: MagicMock) -> None:
         """Удаление с пустым endpoint — возвращает False."""
-        result = self.service.delete_subscription('')
+        result = self.service.delete_subscription('', 'test-user-uuid')
 
         self.assertFalse(result)
         mock_postgrest.assert_not_called()

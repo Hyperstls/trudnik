@@ -14,12 +14,12 @@
             <div class="space-y-3">
                 <div>
                     <label class="block text-sm font-medium text-neutral-700 mb-1">Email</label>
-                    <input type="email" name="email" required placeholder="trud@test.ru"
+                    <input type="email" name="email" required aria-required="true" placeholder="trud@test.ru"
                            class="w-full px-4 py-2.5 rounded-xl border border-neutral-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-neutral-700 mb-1">Пароль (мин. 8 символов, A-Z, a-z, цифра, спецсимвол)</label>
-                    <input type="text" name="password" required placeholder="Step@1986"
+                    <input type="text" name="password" required aria-required="true" placeholder="Step@1986"
                            class="w-full px-4 py-2.5 rounded-xl border border-neutral-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none">
                 </div>
                 <div class="grid grid-cols-2 gap-3">
@@ -48,7 +48,7 @@
             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="action" value="verify">
             <div class="flex gap-2">
-                <input type="email" name="email" required placeholder="user@example.ru"
+                <input type="email" name="email" required aria-required="true" aria-label="Email" placeholder="user@example.ru"
                        class="flex-1 px-4 py-2.5 rounded-xl border border-neutral-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none">
                 <button type="submit" class="px-5 py-2.5 bg-neutral-800 hover:bg-neutral-900 text-white font-medium rounded-xl transition-all">Подтвердить</button>
             </div>

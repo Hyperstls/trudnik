@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
@@ -74,7 +75,7 @@ def profile():
             if sk_resp.ok and sk_resp.json():
                 current_skill_ids = [s.get('skill_id') for s in sk_resp.json() if s.get('skill_id')]
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("profile skills fetch ignored", exc_info=True)
     return render_template('profile.html', profile_user=profile_user, current_skill_ids=current_skill_ids)
 
 

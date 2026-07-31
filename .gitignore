@@ -85,3 +85,9 @@ Promts/
 
 
 trash/
+
+# Python venv (Фаза 1a)
+.venv/
+venv/
+# Kilo local config
+.kilo/

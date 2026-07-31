@@ -69,7 +69,11 @@ def test_login_required_checks_pwd_changed_at(client, app, mocker):
     mock_resp.ok = True
     mock_resp.json.return_value = [{'password_changed_at': '2024-01-02T00:00:00+00:00'}]
     
+    # login_required делает ЛОКАЛЬНЫЙ `from app.utils import postgrest_*` при каждом
+    # вызове, поэтому патчим app.utils.* (то, что он реально читает), оба варианта
+    # (admin и user), перекрывая autouse smart-mock из conftest.
     mocker.patch('app.utils.postgrest_request', return_value=mock_resp)
+    mocker.patch('app.utils.postgrest_admin_request', return_value=mock_resp)
     
     # Создаем тестовый маршрут с login_required
     from app.decorators import login_required

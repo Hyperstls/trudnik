@@ -15,6 +15,8 @@ def admin_session(app_client):
         sess['user_id'] = 'admin-admin-admin-admin-adminadminadmin'
         sess['role'] = 'admin'
         sess['_csrf_token'] = 'test-csrf-token'
+        from app.utils.auth import generate_jwt
+        sess['access_token'] = generate_jwt(sess['user_id'], sess['role'])
     return app_client
 
 

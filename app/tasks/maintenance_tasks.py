@@ -315,7 +315,7 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
             try:
                 conn.rollback()  # очистить aborted-состояние транзакции, не отравлять шаги дальше
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
 
         # 1c) RLS на внутренних/админ-таблицах (миграция 133): audit_log,
         #     employer_subscriptions, _migrations, schema_migrations — anon не читает.
@@ -326,7 +326,7 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
             try:
                 conn.rollback()
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
 
         # 1d) site_pages — редактируемые страницы (terms/privacy). CREATE TABLE IF NOT EXISTS,
         #     идемпотентно. Нужен для /admin/content/<slug> и DB-backed /terms /privacy.
@@ -337,7 +337,7 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
             try:
                 conn.rollback()
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
 
         # 2) Политика чтения profiles может быть удалена — гарантируем наличие,
         #    иначе профиль/выход/списки пустые (RLS deny-all).
@@ -424,4 +424,4 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
             try:
                 conn.close()
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)

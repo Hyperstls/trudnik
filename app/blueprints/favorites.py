@@ -1,3 +1,5 @@
+import logging
+
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required, role_required, validate_uuid
@@ -57,7 +59,7 @@ def add_favorite(target_id):
         try:
             err_data = resp.json() or {}
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("err_data parse ignored", exc_info=True)
         if err_data.get('code') == '23505':
             flash('Трудник уже в избранном', 'info')
         else:
@@ -98,7 +100,7 @@ def add_favorite_api():
             try:
                 err_data = resp.json() or {}
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("err_data parse ignored", exc_info=True)
             if err_data.get('code') == '23505':
                 return jsonify({'success': True, 'message': 'Трудник уже в избранном'})
             return jsonify({'success': False, 'error': f'Ошибка сервера: {resp.status_code}'})

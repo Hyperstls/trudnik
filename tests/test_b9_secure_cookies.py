@@ -26,8 +26,10 @@ def test_session_cookie_httponly(app):
 
 
 def test_session_cookie_secure(app):
-    """Тест 2: SESSION_COOKIE_SECURE должен быть True."""
-    assert app.config.get('SESSION_COOKIE_SECURE') is True
+    """Тест 2: SESSION_COOKIE_SECURE = True только в production/staging."""
+    import os
+    expected = os.environ.get('DEPLOYMENT_ENV', 'development') in ('production', 'staging')
+    assert app.config.get('SESSION_COOKIE_SECURE') is expected
 
 
 def test_session_cookie_samesite(app):

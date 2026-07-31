@@ -45,7 +45,7 @@ class TestRatingsPIIProtection:
         response = client.get(f'/api/ratings/user/{user_id}/details')
 
         assert response.status_code == 200
-        data = response.json()
+        data = response.get_json()
         assert data['success'] is True
         
         # Проверяем что PII удалены
@@ -64,6 +64,8 @@ class TestRatingsPIIProtection:
         with client.session_transaction() as sess:
             sess['user_id'] = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
             sess['role'] = 'worker'
+            from app.utils.auth import generate_jwt
+            sess['access_token'] = generate_jwt(sess['user_id'], sess['role'])
         
         # Mock PostgREST response
         mock_postgrest.return_value = MagicMock(
@@ -86,7 +88,7 @@ class TestRatingsPIIProtection:
         response = client.get(f'/api/ratings/user/{user_id}/details')
 
         assert response.status_code == 200
-        data = response.json()
+        data = response.get_json()
         assert data['success'] is True
         
         # Проверяем что данные rater присутствуют

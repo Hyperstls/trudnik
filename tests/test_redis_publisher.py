@@ -14,7 +14,9 @@ class TestRedisPublisher(unittest.TestCase):
         """Установка тестовых переменных окружения."""
         os.environ['REDIS_URL'] = 'redis://localhost:6379/0'
         self.publisher = RedisPublisher()
-        self.publisher._client = None
+        # Свежий изолированный mock на каждый тест (иначе общий кэшированный
+        # клиент накапливает вызовы publish между тестами).
+        self.publisher._client = MagicMock()
 
     def tearDown(self) -> None:
         """Закрываем соединение после каждого теста."""
@@ -39,6 +41,7 @@ class TestRedisPublisher(unittest.TestCase):
 
     def test_publish_redis_unavailable(self) -> None:
         """Redis недоступен — publish возвращает False, не падает."""
+        self.publisher._client = None  # принудительно нет клиента
         self.publisher._get_client = MagicMock(return_value=None)
 
         result = self.publisher.publish(

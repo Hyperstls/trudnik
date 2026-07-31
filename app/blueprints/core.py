@@ -1,5 +1,6 @@
 """Core blueprint: health checks, static files, PWA, redirects, Prometheus metrics."""
 
+import logging
 import os
 import time as _time_module
 
@@ -24,7 +25,7 @@ def _render_site_page(slug: str, fallback_template: str, default_title: str):
                                        title=data[0].get('title') or default_title,
                                        content=data[0]['content'])
     except Exception:
-        pass
+        logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
     return render_template(fallback_template)
 
 _app_start_time = _time_module.time()

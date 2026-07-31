@@ -3,7 +3,7 @@
 {% block content %}
 <div class="max-w-3xl mx-auto px-4 py-8">
     <h1 class="text-2xl font-bold text-neutral-800 mb-2">Редактирование: {{ page_title }}</h1>
-    <p class="text-sm text-neutral-500 mb-6">Текст отображается на странице {% if slug == 'terms' %}<a href="/terms" class="text-primary-500" target="_blank">/terms</a>{% else %}<a href="/privacy" class="text-primary-500" target="_blank">/privacy</a>{% endif %}. Поддерживается HTML. Пока поле пустое — показывается стандартный текст из шаблона.</p>
+    <p class="text-sm text-neutral-500 mb-6">Текст отображается на странице {% if slug == 'terms' %}<a href="/terms" class="text-primary-500" target="_blank" rel="noopener noreferrer">/terms</a>{% else %}<a href="/privacy" class="text-primary-500" target="_blank" rel="noopener noreferrer">/privacy</a>{% endif %}. Поддерживается HTML. Пока поле пустое — показывается стандартный текст из шаблона.</p>
 
     <form method="post" action="{{ url_for('admin_users.edit_site_content', slug=slug) }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
@@ -19,7 +19,7 @@
         </div>
         <div class="flex gap-3">
             <button type="submit" class="flex-1 bg-primary-500 hover:bg-primary-600 text-white font-bold py-3 rounded-xl shadow-md transition-all">Сохранить</button>
-            <a href="{% if slug == 'terms' %}/terms{% else %}/privacy{% endif %}" target="_blank"
+            <a href="{% if slug == 'terms' %}/terms{% else %}/privacy{% endif %}" target="_blank" rel="noopener noreferrer"
                class="px-5 py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-medium rounded-xl transition-all">Открыть страницу</a>
         </div>
     </form>

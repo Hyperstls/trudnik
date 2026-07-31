@@ -1,3 +1,5 @@
+import logging
+
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required, validate_uuid
@@ -207,7 +209,7 @@ def add_employer_favorite_api():
             try:
                 err_data = resp.json() or {}
             except Exception:
-                pass
+                logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
             if err_data.get('code') == '23505':
                 return jsonify({'success': True, 'message': 'Работодатель уже в избранном'})
             return jsonify({'success': False, 'error': f'Ошибка сервера: {resp.status_code}'})

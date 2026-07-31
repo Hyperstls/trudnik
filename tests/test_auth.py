@@ -46,8 +46,8 @@ def test_register_valid_password(app_client):
 
 
 def test_logout_redirects(app_client):
-    """Выход редиректит на страницу входа."""
-    response = app_client.get('/logout', follow_redirects=False)
+    """Выход редиректит на страницу входа (logout — POST-only)."""
+    response = app_client.post('/logout', follow_redirects=False)
     assert response.status_code in [302, 303]
 
 

@@ -20,11 +20,21 @@ POSTGREST_URL = os.environ.get('POSTGREST_URL', 'http://localhost:3000')
 # Секрет берётся из окружения (как app.config). НЕ хардкодить реальный PGRST_JWT_SECRET.
 JWT_SECRET = os.environ.get('PGRST_JWT_SECRET', '')
 
+def _postgrest_reachable() -> bool:
+    """True если PostgREST отвечает на POSTGREST_URL (health-проба)."""
+    try:
+        r = requests.get(f'{POSTGREST_URL.rstrip("/")}/', timeout=2)
+        return r.status_code < 500
+    except Exception:
+        return False
+
+
 # Интеграционный тест требует запущенного PostgREST и реального секрета в env.
 # Без них тесты пропускаются, а не падают.
 pytestmark = pytest.mark.skipif(
-    not JWT_SECRET,
-    reason='PGRST_JWT_SECRET не задан — RLS-интеграционный тест требует живой PostgREST',
+    not JWT_SECRET or not _postgrest_reachable(),
+    reason='PGRST_JWT_SECRET не задан ИЛИ PostgREST не отвечает — '
+           'RLS-интеграционный тест требует живой PostgREST',
 )
 
 

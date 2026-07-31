@@ -15,6 +15,8 @@ def worker_session(app_client):
         sess['user_id'] = '11111111-1111-1111-1111-111111111111'
         sess['role'] = 'worker'
         sess['_csrf_token'] = 'test-csrf-token'
+        from app.utils.auth import generate_jwt
+        sess['access_token'] = generate_jwt(sess['user_id'], sess['role'])
     return app_client
 
 
@@ -25,7 +27,9 @@ def employer_session(app_client):
         sess['user_id'] = '22222222-2222-2222-2222-222222222222'
         sess['role'] = 'employer'
         sess['_csrf_token'] = 'test-csrf-token'
-    return client
+        from app.utils.auth import generate_jwt
+        sess['access_token'] = generate_jwt(sess['user_id'], sess['role'])
+    return app_client
 
 
 class TestChatAfterWithdraw:
@@ -64,7 +68,7 @@ class TestChatAfterWithdraw:
 
         # Проверяем что запрос заблокирован с 403
         assert response.status_code == 403
-        assert 'Чат доступен только после принятия отклика' in response.json()['message']
+        assert 'Чат доступен только после принятия отклика' in response.get_json()['message']
 
     @patch('app.blueprints.chat.get_redis_client')
     @patch('app.blueprints.chat.postgrest_request')

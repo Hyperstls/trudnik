@@ -82,10 +82,11 @@ class TestFavoritesRaceCondition:
         self, mock_request, mock_blacklist, employer_session
     ):
         """C5: API add_favorite должен возвращать success для дубликатов."""
+        # B12: PostgREST v14 возвращает 400 + code=23505 для unique-violation (не 409)
         mock_request.return_value = MagicMock(
             ok=False,
-            status_code=409,
-            text='duplicate key value violates unique constraint'
+            status_code=400,
+            json=lambda: {'code': '23505', 'message': 'duplicate key value violates unique constraint'}
         )
 
         response = employer_session.post(

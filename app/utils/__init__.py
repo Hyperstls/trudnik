@@ -113,7 +113,9 @@ from app.utils.rate_limit_decorator import rate_limit
 # через app.utils для обратной совместимости)
 from app.services import storage_service as _storage_service
 from app.services import ratings_service as _ratings_service
-from app.services.push_service import PushService
+# ВНИМАНИЕ: PushService НЕ импортируется здесь на уровне модуля — это создавало
+# circular import (app.utils -> app.services.push_service -> app.utils).
+# generate_vapid_keys() импортирует PushService лениво (см. ниже).
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -134,7 +136,16 @@ postgrest_request = _pgrest.postgrest_request
 postgrest_admin_request = _pgrest.postgrest_admin_request
 postgrest_rpc = _pgrest.postgrest_rpc
 admin_context = _pgrest.admin_context
-generate_vapid_keys = PushService.generate_vapid_keys
+
+
+def generate_vapid_keys():
+    """Сгенерировать пару VAPID-ключей.
+
+    Lazy import PushService, чтобы не создавать circular import
+    (app.utils -> app.services.push_service -> app.utils) на уровне модуля.
+    """
+    from app.services.push_service import PushService
+    return PushService.generate_vapid_keys()
 
 # --- Гео-вычисления ---
 calculate_distance = _geo.calculate_distance

@@ -15,6 +15,8 @@ def employer_session(app_client):
         sess['user_id'] = '11111111-1111-1111-1111-111111111111'
         sess['role'] = 'employer'
         sess['_csrf_token'] = 'test-csrf-token'
+        from app.utils.auth import generate_jwt
+        sess['access_token'] = generate_jwt(sess['user_id'], sess['role'])
     return app_client
 
 

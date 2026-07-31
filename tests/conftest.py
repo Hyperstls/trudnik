@@ -7,7 +7,7 @@
 import os
 import re
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import requests
@@ -111,17 +111,63 @@ os.environ['TEST_USER_PASSWORD'] = 'test'
 # Мокаем redis — ВСЕГДА, даже если пакет установлен.
 # Без этого @patch('redis.from_url') не работает (redis — C-расширение,
 # которое unittest.mock не может пропатчить на уровне атрибутов).
+# Хранилище для stateful redis-мока: Flask-Session (SESSION_TYPE='redis')
+# сохраняет/читает сессии через get/set/setex/delete/exists. Без реального
+# хранилища session_transaction() не roundtrip'ится → тесты с auth-сессией
+# получают 302 (redirect to login) вместо ожидаемых 403/429/200.
+_mock_redis_store: dict = {}
+
+
+def _mock_set(name, val, *a, **k):
+    _mock_redis_store[name] = val
+    return True
+
+
+def _mock_setex(name, ttl, val, *a, **k):
+    _mock_redis_store[name] = val
+    return True
+
+
+def _mock_delete(*names):
+    return sum(1 for n in names if _mock_redis_store.pop(n, None) is not None)
+
+
+def _mock_exists(*names):
+    return sum(1 for n in names if n in _mock_redis_store)
+
+
 _mock_redis_client = MagicMock()
 _mock_redis_client.ping.return_value = True
 _mock_redis_client.publish.return_value = 1
 _mock_redis_client.close.return_value = None
+_mock_redis_client.get.side_effect = lambda name: _mock_redis_store.get(name)
+_mock_redis_client.set.side_effect = _mock_set
+_mock_redis_client.setex.side_effect = _mock_setex
+_mock_redis_client.delete.side_effect = _mock_delete
+_mock_redis_client.exists.side_effect = _mock_exists
 
 _mock_redis_module = MagicMock()
 _mock_redis_module.from_url.return_value = _mock_redis_client
 _mock_redis_module.Redis.return_value = _mock_redis_client
 _mock_redis_module.ConnectionError = Exception  # Чтобы except redis.ConnectionError не падал
 
+# Делаем redis-мок полноценным «пакетом» (атрибут __path__) и регистрируем
+# подмодуль redis.asyncio, чтобы `import redis.asyncio as aioredis`
+# (используется в websocket_server/main.py) корректно разрешался в тестах,
+# а не падал с "'redis' is not a package".
+_mock_async_redis_client = MagicMock()
+_mock_async_redis_client.ping = AsyncMock(return_value=True)
+_mock_async_redis_client.close = AsyncMock()
+_mock_async_redis_module = MagicMock()
+_mock_async_redis_module.from_url.return_value = _mock_async_redis_client
+_mock_async_redis_module.Redis.return_value = _mock_async_redis_client
+_mock_async_redis_module.ConnectionError = Exception
+
+_mock_redis_module.__path__ = []  # признак пакета для import machinery
+_mock_redis_module.asyncio = _mock_async_redis_module
+
 sys.modules['redis'] = _mock_redis_module
+sys.modules['redis.asyncio'] = _mock_async_redis_module
 
 # Мокаем python-magic на случай, если пакет не установлен
 _mock_magic = MagicMock()
@@ -135,10 +181,12 @@ sys.modules['magic'] = _mock_magic
 
 @pytest.fixture(autouse=True)
 def mock_postgrest_client(monkeypatch):
-    """Автоматически мокает Supabase/PostgREST клиент для всех тестов.
+    """Автоматически мокает PostgREST-клиент для всех тестов.
 
-    Подменяет функции в app.utils.supabase на заглушки, возвращающие
-    пустые/успешные ответы. Это предотвращает любые реальные HTTP-запросы.
+    Подменяет функции в app.utils.postgrest_client (postgrest_request,
+    postgrest_admin_request, postgrest_rpc) на заглушки, возвращающие
+    пустые/успешные ответы. Это предотвращает любые реальные HTTP-запросы
+    к PostgREST. (Модуль app.utils.supabase удалён при миграции на PostgREST.)
     """
     from app.utils import PostgrestResponse
 
@@ -157,10 +205,17 @@ def mock_postgrest_client(monkeypatch):
         if isinstance(url, str) and 'profiles?id=eq.' in url and 'select=id' in url:
             return PostgrestResponse(ok=True, status_code=200,
                                      data=[{'id': 'mock'}], text='[{"id":"mock"}]')
-        # role_required запрашивает роль
+        # role_required / admin_required запрашивают роль — возвращаем роль
+        # из текущей сессии (тесты выставляют session['role'] в фикстурах),
+        # чтобы admin/worker/employer-маршруты корректно проходили проверку роли.
         if isinstance(url, str) and 'profiles?id=eq.' in url and 'select=role' in url:
+            try:
+                from flask import session as _flask_session
+                _role = _flask_session.get('role', 'employer')
+            except Exception:
+                _role = 'employer'
             return PostgrestResponse(ok=True, status_code=200,
-                                     data=[{'role': 'employer'}], text='[{"role":"employer"}]')
+                                     data=[{'role': _role}], text=str([{'role': _role}]))
         # B10: проверка password_changed_at
         if isinstance(url, str) and 'profiles?id=eq.' in url and 'password_changed_at' in url:
             return PostgrestResponse(ok=True, status_code=200,
@@ -173,18 +228,20 @@ def mock_postgrest_client(monkeypatch):
     )
     monkeypatch.setattr(
         'app.utils.postgrest_admin_request',
-        lambda *a, **kw: PostgrestResponse(ok=True, status_code=200, data=[], text='[]')
+        _smart_postgrest_request
     )
     monkeypatch.setattr(
         'app.utils.postgrest_rpc',
         lambda *a, **kw: PostgrestResponse(ok=True, status_code=200, data={'success': True}, text='{"success": true}')
     )
 
-    # Также патчим ИСТОЧНИК — postgrest_client.postgrest_request
-    # Это нужно потому что decorators.py делает: from app.utils import postgrest_request as _pgreq
-    # что захватывает ссылку из app.utils.__init__, которая указывает на postgrest_client.postgrest_request
+    # Также патчим ИСТОЧНИК — postgrest_client.* (модуль), т.к. blueprints/decorators
+    # делают `from app.utils import postgrest_request` (и admin_request), что захватывает
+    # ссылку из app.utils.__init__, указывающую на postgrest_client.* . Без этого
+    # admin_required/role_required дёргают «настоящую» admin_request → реальная сеть.
     import app.utils.postgrest_client as _pgc
     monkeypatch.setattr(_pgc, 'postgrest_request', _smart_postgrest_request)
+    monkeypatch.setattr(_pgc, 'postgrest_admin_request', _smart_postgrest_request)
 
     # Мокаем Celery-задачи, чтобы избежать попыток подключения к Redis
     try:
@@ -239,6 +296,10 @@ def app_client(mock_postgrest_client):
     app.config['SERVER_NAME'] = 'localhost'
     # Отключаем перехват исключений в тестах для читаемых traceback'ов
     app.config['PROPAGATE_EXCEPTIONS'] = True
+    # В тестах — client-side cookie-сессии вместо Redis-backed (SESSION_TYPE='redis'):
+    # session_transaction() roundtrip'ится нативно, auth-сессии работают без живого Redis.
+    from flask.sessions import SecureCookieSessionInterface
+    app.session_interface = SecureCookieSessionInterface()
     return app.test_client()
 
 
@@ -364,3 +425,64 @@ def pytest_sessionfinish(session, exitstatus):
     import os
     os.environ.pop('POSTGREST_MOCK_MODE', None)
     os.environ.pop('TEST_PASSWORD', None)
+
+
+# ═══════════════════════════════════════════════════════════════
+# Auto-skip integration tests when the live app / browser is absent.
+# Integration-тесты (live HTTP к app:8000, Selenium, Playwright e2e) требуют
+# поднятый стек (app + PostgREST + Redis + DB) и/или браузер. Без него они
+# авто-skip'аются, чтобы `pytest tests` оставался зелёным для unit/mock-набора.
+# Запустить integration: поднять docker-compose ИЛИ AMVERA_RUN_INTEGRATION=1.
+# ═══════════════════════════════════════════════════════════════
+_INTEGRATION_MARKERS = (
+    'BASE_URL', 'TEST_BASE_URL',
+    'localhost:8000', 'localhost:5000', '127.0.0.1:8000', '127.0.0.1:5000',
+    'webdriver', 'from selenium', 'async_playwright', 'chromium',
+    'requests.get(f', 'requests.post(f', 'requests.request(f',
+)
+_int_file_cache: dict = {}
+
+
+def _is_integration_module(path: str) -> bool:
+    if path in _int_file_cache:
+        return _int_file_cache[path]
+    try:
+        with open(path, encoding='utf-8') as fh:
+            src = fh.read()
+    except OSError:
+        _int_file_cache[path] = False
+        return False
+    result = any(m in src for m in _INTEGRATION_MARKERS)
+    _int_file_cache[path] = result
+    return result
+
+
+def pytest_collection_modifyitems(config, items):
+    import os as _os
+    import socket as _socket
+    from urllib.parse import urlparse
+
+    if _os.environ.get('AMVERA_RUN_INTEGRATION', '').lower() in ('1', 'true', 'yes'):
+        return  # integration принудительно разрешён
+
+    base = _os.environ.get('TEST_BASE_URL', BASE_URL)
+    try:
+        u = urlparse(base)
+        host = u.hostname or 'localhost'
+        port = u.port or (443 if u.scheme == 'https' else 80)
+        with _socket.create_connection((host, port), timeout=1):
+            return  # app достижим — гоняем integration-тесты как обычно
+    except OSError:
+        pass
+
+    skipped = 0
+    for item in items:
+        mod_file = getattr(getattr(item, 'module', None), '__file__', None)
+        if mod_file and _is_integration_module(mod_file):
+            item.add_marker(pytest.mark.skip(
+                reason=f'integration: live app/browser not reachable at {base} '
+                       f'(start stack or set AMVERA_RUN_INTEGRATION=1)'))
+            skipped += 1
+    if skipped:
+        print(f'\n[conftest] auto-skipped {skipped} integration test(s): '
+              f'app not reachable at {base}')

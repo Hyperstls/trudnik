@@ -22,12 +22,16 @@ redis_mock.ping = AsyncMock(return_value=True)
 redis_mock.pubsub = MagicMock()
 redis_mock.close = AsyncMock()
 
-with patch('websocket_server.main.aioredis') as mock_aioredis, \
-     patch('websocket_server.main.redis_pubsub_listener', new=AsyncMock()):
+# Импортируем модуль (top-level код не запускает lifespan / не соединяется с Redis),
+# чтобы mock.patch мог разрешить атрибуты `aioredis` и `redis_pubsub_listener`.
+import websocket_server.main as _wsm  # noqa: E402
+
+with patch.object(_wsm, 'aioredis') as mock_aioredis, \
+     patch.object(_wsm, 'redis_pubsub_listener', new=AsyncMock()):
 
     mock_aioredis.from_url.return_value = redis_mock
 
-    from websocket_server.main import app
+    app = _wsm.app
 
 # ═══════════════════════════════════════════════════════════════
 

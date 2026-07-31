@@ -4,9 +4,9 @@ import inspect
 
 def test_admin_log_uses_session_user_id():
     """X5: log_admin_action must use session.get('user_id')."""
-    from app.blueprints import admin
+    from app.services import admin_service
     
-    source = inspect.getsource(admin.log_admin_action)
+    source = inspect.getsource(admin_service.log_admin_action)
     
     # Проверить, что НЕ используется старый паттерн
     assert "session.get('user', {}).get('id')" not in source, \

@@ -15,6 +15,8 @@ def user_session(app_client):
         sess['user_id'] = '11111111-1111-1111-1111-111111111111'
         sess['role'] = 'worker'
         sess['_csrf_token'] = 'test-csrf-token'
+        from app.utils.auth import generate_jwt
+        sess['access_token'] = generate_jwt(sess['user_id'], sess['role'])
     return app_client
 
 
@@ -77,7 +79,7 @@ class TestChatRateLimitAtomic:
 
         # Проверяем что запрос заблокирован
         assert response.status_code == 429
-        assert 'Слишком много сообщений' in response.json()['error']
+        assert 'Слишком много сообщений' in response.get_json()['error']
 
     @patch('app.blueprints.chat.get_redis_client')
     @patch('app.blueprints.chat.postgrest_request')
