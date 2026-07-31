@@ -25,6 +25,7 @@ def test_register_weak_password(app_client):
         'city': 'Москва',
         'role': 'worker',
         '_csrf_token': 'test',
+        'consent': 'on',
     }, follow_redirects=True)
     # Должен вернуть 200 со страницей регистрации (с ошибкой)
     assert response.status_code == 200
@@ -41,6 +42,7 @@ def test_register_valid_password(app_client):
         'city': 'Москва',
         'role': 'worker',
         '_csrf_token': 'test',
+        'consent': 'on',
     }, follow_redirects=True)
     assert response.status_code == 200
 

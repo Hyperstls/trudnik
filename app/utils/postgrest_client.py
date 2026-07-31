@@ -581,7 +581,15 @@ def postgrest_admin_request(method: str, endpoint: str, **kwargs: Any) -> Postgr
     _is_allowed = (not _is_template) and any(
         caller.startswith(p) for p in _ADMIN_ALLOWED_PREFIXES
     )
-    if _is_template or not _is_allowed:
+    if _is_template:
+        # Fail-closed: service_role (BYPASSRLS) из контекста рендера шаблона —
+        # критическое нарушение безопасности (клиент не должен достигать admin API).
+        _msg = f"SECURITY BLOCK: postgrest_admin_request from template context: {caller}"
+        logger.error(_msg)
+        raise RuntimeError(_msg)
+    if not _is_allowed:
+        # Не в allowlist (но и не шаблон) — defence-in-depth аудит. Реальная защита — RLS:
+        # service_role доступен только серверному коду; логируем и продолжаем.
         _msg = f"SECURITY: postgrest_admin_request from disallowed context: {caller}"
         logger.warning(_msg)
 

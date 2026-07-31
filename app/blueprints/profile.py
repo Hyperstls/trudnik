@@ -1,7 +1,7 @@
 import logging
 import uuid
 
-from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.utils import secure_filename
 
 from app.config import Config
@@ -15,7 +15,7 @@ from app.utils.validators import validate_password, validate_inn_checksum
 profile_bp = Blueprint('profile', __name__)
 
 # Публичные поля профиля (C27, C28)
-PUBLIC_PROFILE_FIELDS = 'id,role,created_at,updated_at,is_self_employed,email_public,rating,full_name,photo_url,age,bio,city,experience,desired_payment,verification_status,total_reviews,religion_id,portfolio_link'
+PUBLIC_PROFILE_FIELDS = 'id,role,created_at,updated_at,is_self_employed,email_public,rating,full_name,photo_url,age,bio,city,experience,desired_payment,verification_status,total_reviews,portfolio_link'
 
 # Допустимые расширения для загрузки фото
 ALLOWED_PHOTO_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
@@ -146,18 +146,8 @@ def update_profile():
             return redirect(url_for('profile.profile'))
     data['contact'] = contact if len(contact) >= 3 else None
 
-    # Вероисповедание (справочник religions)
-    religion_id = request.form.get('religion_id', '').strip()
-    if religion_id:
-        try:
-            uuid.UUID(religion_id)
-            data['religion_id'] = religion_id
-        except (ValueError, AttributeError):
-            flash('Некорректное вероисповедание', 'danger')
-            return redirect(url_for('profile.profile'))
-    else:
-        # Пустое значение — сбросить вероисповедание
-        data['religion_id'] = None
+    # Вероисповедание (religion_id) убрано из редактирования профиля:
+    # спецкатегория ПДн (152-ФЗ ст.10). Колонка в БД сохранена (deferred).
 
     photo = request.files.get('photo')
     if photo and photo.filename:
@@ -270,6 +260,50 @@ def delete_account():
     session.clear()
     flash('Ваш аккаунт полностью удалён.', 'success')
     return redirect(url_for('auth.login'))
+
+
+@profile_bp.route('/profile/export-data', methods=['GET'])
+@login_required
+def export_data():
+    """152-ФЗ ст.14/15: право субъекта на доступ/копию своих персональных данных.
+
+    Выгрузка ПДн пользователя (профиль и связанные записи) в виде JSON-файла.
+    Доступ — через пользовательский JWT (RLS гарантирует только свои данные).
+    """
+    import json as _json
+    from datetime import datetime, timezone
+
+    user_id = session['user_id']
+    data = {
+        'exported_at': datetime.now(timezone.utc).isoformat(),
+        'user_id': user_id,
+        'legal_basis': '152-ФЗ ст.14, ст.15 — право субъекта на доступ к ПДн',
+    }
+    # Свои данные по разделам (RLS ограничивает выборку владельцем).
+    sections = {
+        'profile': f'profiles?id=eq.{user_id}&select=*',
+        'skills': f'user_skills?user_id=eq.{user_id}&select=*',
+        'applications_as_worker': f'applications?worker_id=eq.{user_id}&select=*',
+        'applications_as_employer': f'applications?employer_id=eq.{user_id}&select=*',
+        'favorites': f'favorites?user_id=eq.{user_id}&select=*',
+        'blacklist': f'blacklist?user_id=eq.{user_id}&select=*',
+        'ratings_given': f'ratings?rater_id=eq.{user_id}&select=*',
+        'ratings_received': f'ratings?target_user_id=eq.{user_id}&select=*',
+    }
+    for key, endpoint in sections.items():
+        try:
+            resp = postgrest_request('GET', endpoint)
+            data[key] = resp.json() if resp.ok else []
+        except Exception:
+            logging.getLogger(__name__).debug('export_data: section %s failed', key, exc_info=True)
+            data[key] = []
+
+    payload = _json.dumps(data, ensure_ascii=False, default=str, indent=2)
+    return Response(
+        payload,
+        mimetype='application/json',
+        headers={'Content-Disposition': f'attachment; filename="trudnik_personal_data_{str(user_id)[:8]}.json"'},
+    )
 
 
 @profile_bp.route('/profile/change-password', methods=['POST'])

@@ -69,7 +69,12 @@ def hash_password(password: str) -> str:
 # Срок жизни сессионного access-токена = сроку сессионной куки (24 ч),
 # чтобы токен не истекал внутри активной сессии. Per-request токены
 # PostgREST (get_user_headers) используют короткий TTL по умолчанию (300 с).
-ACCESS_TOKEN_TTL_SECONDS = 24 * 3600
+# TTL access_token выровнен с PERMANENT_SESSION_LIFETIME (1ч). Раньше был 24ч
+# (костыль из-за бага verify_exp); теперь verify_exp=False + ручная проверка exp
+# в login_required + refresh_access_token() корректно перевыпускают токен при
+# истечении, поэтому TTL можно сократить. Это уменьшает окно использования
+# утёкшего JWT с 24ч до 1ч (≈ TTL сессии).
+ACCESS_TOKEN_TTL_SECONDS = 3600  # 1 час — синхронно с PERMANENT_SESSION_LIFETIME
 
 
 def generate_jwt(user_id, role, exp_seconds=300, password_changed_at=None):
@@ -290,7 +295,7 @@ def get_user_profile() -> Optional[Dict[str, Any]]:
 
     resp = postgrest_request(
         'GET',
-        f'profiles?id=eq.{session["user_id"]}&select=id,role,created_at,updated_at,is_self_employed,email_public,rating,full_name,photo_url,age,bio,city,experience,desired_payment,verification_status,total_reviews,skills,religion,religion_id,portfolio_link'
+        f'profiles?id=eq.{session["user_id"]}&select=id,role,created_at,updated_at,is_self_employed,email_public,rating,full_name,photo_url,age,bio,city,experience,desired_payment,verification_status,total_reviews,skills,portfolio_link'
     )
     # Fallback: если пользовательский запрос не удался — пробуем через service_role
     if not resp.ok:

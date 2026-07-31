@@ -125,7 +125,6 @@ def index():
     radius = request.args.get('radius', type=float)  # км; None = без ограничения (любое расстояние)
     sort = request.args.get('sort', 'newest')
     skills_filter = request.args.get('skills', '')
-    religion = request.args.get('religion', '')
     page = request.args.get('page', 1, type=int)
     per_page = 20
     offset = (page - 1) * per_page
@@ -181,7 +180,7 @@ def index():
     if city: query += f'&city=ilike.*{sanitize_postgrest(city)}*'
     if payment_min: query += f'&payment_amount=gte.{sanitize_postgrest(payment_min)}'
     if payment_max: query += f'&payment_amount=lte.{sanitize_postgrest(payment_max)}'
-    if religion: query += f'&preferred_religion=eq.{sanitize_postgrest(religion)}'
+    # Фильтр по вероисповеданию (preferred_religion) убран: дискриминация при найме (ТК РФ ст.3).
 
     # Фильтрация blacklist ДО пагинации: исключаем задания от работодателей, заблокировавших текущего трудника
     blocked_employer_ids = set()
@@ -557,7 +556,7 @@ def job_new():
                 'city': request.form.get('city', ''),
                 'lat': lat,
                 'lng': lng,
-                'preferred_religion': request.form.get('preferred_religion', ''),
+                # preferred_religion убран: дискриминация при найме (ТК РФ ст.3).
                 'max_workers': max_workers,
                 'current_workers': 0,
                 'status': 'open',
@@ -1051,7 +1050,7 @@ def edit_job(job_id):
             'city': request.form.get('city', job.get('city', '')),
             'address': request.form.get('address', job.get('address', '')),
             'max_workers': max_workers,
-            'preferred_religion': request.form.get('preferred_religion', job.get('preferred_religion', '')),
+            # preferred_religion убран: дискриминация при найме (ТК РФ ст.3).
             'date_time': request.form.get('deadline') or job.get('date_time', ''),
             'expires_at': (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
         }

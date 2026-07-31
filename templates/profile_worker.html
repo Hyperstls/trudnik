@@ -118,16 +118,6 @@
             </h4>
             <p class="text-neutral-600 text-sm">{{ profile_user.get('city', 'Не указано') }}</p>
         </div>
-        <div class="border-t border-neutral-100"></div>
-
-        {# Вероисповедание #}
-        <div>
-            <h4 class="font-semibold text-neutral-900 mb-1.5 flex items-center gap-1.5">
-                Вероисповедание
-            </h4>
-            <p class="text-neutral-600 text-sm">{{ profile_user.get('religion', 'Не указано') }}</p>
-        </div>
-
         {% if profile_user.get('role') == 'worker' %}
         <div class="border-t border-neutral-100"></div>
 

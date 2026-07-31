@@ -71,11 +71,8 @@ def api_skills():
     """Получить список навыков (JSON)."""
     return _dictionary_list('skills', 'skills')
 
-
-@jobs_api_bp.route('/api/religions')
-def api_religions():
-    """Получить список вероисповеданий (JSON)."""
-    return _dictionary_list('religions', 'religions')
+# /api/religions убран: публичный доступ к справочнику спецкатегории ПДн
+# (152-ФЗ ст.10). Управление справочником — только в админке (/admin/religions).
 
 
 # ═══════════════════════════════════════════════════════════════

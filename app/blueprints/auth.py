@@ -234,12 +234,20 @@ def register():
             flash('Подтвердите, что вы не робот (капча).', 'danger')
             return render_template('register.html', field_errors=field_errors)
 
-        religion_id = request.form.get('religion_id', '')  # новый формат — ID из справочника
+        # 152-ФЗ ст.9: согласие на обработку ПДн должно быть свободным, конкретным,
+        # осознанным и недвусмысленным. Регистрация — только при установленном чекбоксе.
+        if request.form.get('consent') != 'on' and request.form.get('consent_given') != 'on':
+            flash('Необходимо согласиться с обработкой персональных данных.', 'danger')
+            return render_template('register.html', field_errors=field_errors)
+
         skill_ids = request.form.getlist('skill_ids')  # новый формат — список ID навыков
         portfolio_link = request.form.get('portfolio_link', '')
         skills_str = request.form.get('skills', '')
 
-        # ИНН и согласие самозанятого — опционально (уже провалидированы выше)
+        # ИНН и согласие самозанятого — опционально (уже провалидированы выше).
+        # NOTE (DEFERRED): автоматическая проверка статуса самозанятого через API ФНС
+        # (trust-tier T2) отложена — функционал сейчас не используется, потребуется
+        # позже. Сбор ИНН/is_self_employed сохранён (колонки в БД), но верификации нет.
         inn = request.form.get('inn', '')
         is_self_employed = request.form.get('is_self_employed') == 'on'
 
@@ -264,12 +272,9 @@ def register():
                     'portfolio_link': portfolio_link,
                     'consented_at': datetime.now(timezone.utc).isoformat(),
                 }
-                religion_id = request.form.get('religion_id', '').strip()
-                if religion_id:
-                    try:
-                        update_data['religion_id'] = str(_uuid.UUID(religion_id))
-                    except (ValueError, AttributeError):
-                        pass
+                # Вероисповедание (religion_id) НЕ собирается при регистрации:
+                # спецкатегория ПДн (152-ФЗ ст.10) + дискриминация при найме (ТК РФ ст.3).
+                # Поле в БД сохранено (deferred), но пользовательский сбор отключён.
                 if role == 'worker':
                     if inn:
                         update_data['inn'] = inn
