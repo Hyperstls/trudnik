@@ -153,7 +153,9 @@ class CircuitBreaker:
                     extra = f' (status={status_code})'
                 elif exception:
                     extra = ' (exception)'
-                current_app.logger.warning(
+                # module-логгер работает в любом контексте (Flask И Celery);
+                # current_app.logger падает вне app-context (RuntimeError в Celery).
+                logger.warning(
                     'Circuit Breaker OPEN after %d failures%s',
                     self.failure_count, extra
                 )
