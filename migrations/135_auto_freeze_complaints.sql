@@ -106,3 +106,43 @@ END;
 $$;
 REVOKE EXECUTE ON FUNCTION unsuspend_user(uuid) FROM PUBLIC;
 GRANT  EXECUTE ON FUNCTION unsuspend_user(uuid) TO service_role;
+
+-- ════════════ Админ-модерация жалоб (status + review_complaint) ════════════
+ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS status       text        NOT NULL DEFAULT 'new';
+ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS reviewed_by  uuid        REFERENCES profiles(id) ON DELETE SET NULL;
+ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS reviewed_at  timestamptz;
+CREATE INDEX IF NOT EXISTS idx_user_reports_status ON user_reports (status);
+
+-- review_complaint: block → заморозить reported + actioned; dismiss → dismissed.
+CREATE OR REPLACE FUNCTION review_complaint(p_report_id uuid, p_action text, p_admin_id uuid DEFAULT NULL)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public
+AS $$
+DECLARE
+    v_reported uuid;
+BEGIN
+    SELECT reported_id INTO v_reported FROM user_reports WHERE id = p_report_id;
+    IF v_reported IS NULL THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'not_found');
+    END IF;
+
+    IF p_action = 'block' THEN
+        UPDATE profiles
+           SET suspended = true, suspended_reason = 'admin: complaint review', suspended_at = now()
+         WHERE id = v_reported;
+        UPDATE user_reports
+           SET status = 'actioned', reviewed_by = p_admin_id, reviewed_at = now()
+         WHERE id = p_report_id;
+    ELSIF p_action = 'dismiss' THEN
+        UPDATE user_reports
+           SET status = 'dismissed', reviewed_by = p_admin_id, reviewed_at = now()
+         WHERE id = p_report_id;
+    ELSE
+        RETURN jsonb_build_object('ok', false, 'error', 'bad_action');
+    END IF;
+
+    RETURN jsonb_build_object('ok', true, 'reported_id', v_reported);
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION review_complaint(uuid, text, uuid) FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION review_complaint(uuid, text, uuid) TO service_role;

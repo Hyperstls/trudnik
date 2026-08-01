@@ -91,6 +91,66 @@ def unsuspend_user(user_id):
     return redirect(url_for('admin_dashboard.admin_panel', tab='users'))
 
 
+@admin_users_bp.route('/complaints')
+@login_required
+@admin_required
+def complaints_queue():
+    """Phase 3: очередь жалоб для ручной модерации администратором."""
+    status_filter = request.args.get('status', 'new')
+    q = ('user_reports?order=created_at.desc'
+         '&select=id,reason,created_at,status,reporter_id,reported_id&limit=100')
+    if status_filter != 'all':
+        q += f'&status=eq.{status_filter}'
+    resp = postgrest_admin_request('GET', q)
+    reports = resp.json() if resp.ok else []
+
+    ids = set()
+    for r in reports:
+        if r.get('reporter_id'):
+            ids.add(r['reporter_id'])
+        if r.get('reported_id'):
+            ids.add(r['reported_id'])
+    names = {}
+    if ids:
+        ids_str = ','.join(sorted(ids))
+        pr = postgrest_admin_request(
+            'GET', f'profiles?id=in.({ids_str})&select=id,full_name,role,rating'
+        )
+        for p in (pr.json() if pr.ok else []):
+            names[p['id']] = p
+
+    counts_resp = postgrest_admin_request('GET', 'user_reports?select=reported_id')
+    counts = {}
+    for r in (counts_resp.json() if counts_resp.ok else []):
+        counts[r['reported_id']] = counts.get(r['reported_id'], 0) + 1
+
+    return render_template('admin_complaints.html', reports=reports, names=names,
+                           counts=counts, status_filter=status_filter)
+
+
+@admin_users_bp.route('/complaints/<report_id>/review', methods=['POST'])
+@login_required
+@admin_required
+@validate_uuid('report_id')
+def review_complaint(report_id):
+    """Рассмотреть жалобу: block (заморозить) или dismiss (отклонить)."""
+    action = request.form.get('action', '')
+    if action not in ('block', 'dismiss'):
+        flash('Неизвестное действие', 'danger')
+        return redirect(url_for('admin_users.complaints_queue'))
+    admin_id = session.get('user_id')
+    rpc = postgrest_rpc('review_complaint',
+                        {'p_report_id': report_id, 'p_action': action, 'p_admin_id': admin_id},
+                        use_admin=True)
+    data = rpc.json() if rpc.ok else {}
+    if data.get('ok'):
+        log_admin_action(f'review_complaint_{action}', table_name='user_reports', record_id=report_id)
+        flash('Пользователь заблокирован по жалобе' if action == 'block' else 'Жалоба отклонена', 'success')
+    else:
+        flash('Не удалось обработать жалобу', 'danger')
+    return redirect(url_for('admin_users.complaints_queue'))
+
+
 @admin_users_bp.route('/bulk-delete-users', methods=['POST'])
 @login_required
 @admin_required

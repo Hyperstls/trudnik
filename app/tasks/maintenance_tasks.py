@@ -340,6 +340,20 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
             except Exception:
                 logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
 
+        # 1e) Phase 3: жалобы + авто-заморозка (миграция 135). Применяем, только если
+        #     таблицы ещё нет (идемпотентно, но не дёргаем каждый цикл без нужды).
+        cur.execute("SELECT to_regclass('public.user_reports')")
+        if cur.fetchone()[0] is None:
+            try:
+                _apply_migration('135_auto_freeze_complaints.sql')
+                logger.warning('self-heal: applied migration 135 (user_reports/complaints)')
+            except Exception as e:
+                logger.warning('self-heal: failed to apply 135 (complaints): %s', e)
+                try:
+                    conn.rollback()
+                except Exception:
+                    logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
+
         # 2) Политика чтения profiles может быть удалена — гарантируем наличие,
         #    иначе профиль/выход/списки пустые (RLS deny-all).
         cur.execute(
