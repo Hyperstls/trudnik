@@ -224,6 +224,19 @@ def expire_old_jobs() -> dict[str, Any]:
         logger.exception('Ошибка при expire_old_jobs: %s', e)
         errors += 1
 
+    # Дополнительно: просроченные по времени НАЧАЛА (date_time) задания БЕЗ откликов
+    # → 'expired' (не показываются трудникам: jobs.index = open,completed).
+    try:
+        unfilled_resp = postgrest_rpc('expire_unfilled_jobs', {}, use_admin=True)
+        unfilled_count = unfilled_resp.json() if unfilled_resp.ok else 0
+        if isinstance(unfilled_count, list) and unfilled_count:
+            unfilled_count = unfilled_count[0]
+        if unfilled_count:
+            logger.info('expire_old_jobs: unfilled-by-starttime expired=%s', unfilled_count)
+            expired_count += int(unfilled_count or 0)
+    except Exception as e:
+        logger.warning('expire_old_jobs: expire_unfilled_jobs failed — %s', e)
+
     logger.info('expire_old_jobs: переведено в expired=%d, ошибок=%d', expired_count, errors)
 
     return {
@@ -353,6 +366,28 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
                     conn.rollback()
                 except Exception:
                     logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
+
+        # 1f) Phase 3: авто-завершение просроченных заданий без откликов (миграция 136).
+        cur.execute("SELECT count(*) FROM pg_proc WHERE proname='expire_unfilled_jobs'")
+        if cur.fetchone()[0] == 0:
+            try:
+                _apply_migration('136_expire_unfilled_jobs.sql')
+                logger.warning('self-heal: applied migration 136 (expire_unfilled_jobs)')
+            except Exception as e:
+                logger.warning('self-heal: failed to apply 136: %s', e)
+                try:
+                    conn.rollback()
+                except Exception:
+                    logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
+
+        # 1g) PostgREST кэширует схему (функции/RLS). После применения миграций
+        #     новые RPC (135/136) невидимы (404 PGRST202), пока не перезагрузить кэш.
+        #     NOTIFY pgrst — дёшево, безопасно; гарантирует актуальность схемы.
+        try:
+            cur.execute("NOTIFY pgrst, 'reload schema'")
+            conn.commit()
+        except Exception as e:
+            logger.debug('self-heal: NOTIFY pgrst reload failed — %s', e)
 
         # 2) Политика чтения profiles может быть удалена — гарантируем наличие,
         #    иначе профиль/выход/списки пустые (RLS deny-all).
