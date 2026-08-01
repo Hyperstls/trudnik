@@ -147,4 +147,9 @@ celery_app.conf.beat_schedule = {
             'expires': 3000,  # Задача истекает через 50 минут
         },
     },
+    'auto-freeze-on-complaints': {
+        'task': 'app.tasks.maintenance_tasks.auto_freeze_on_complaints',
+        'schedule': 600.0,  # Каждые 10 минут — авто-заморозка по жалобам (Phase 3)
+        'options': {'expires': 540},
+    },
 }

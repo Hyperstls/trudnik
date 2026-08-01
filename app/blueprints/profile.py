@@ -418,3 +418,26 @@ def public_profile(user_id):
         flash('Пользователь не найден', 'danger')
         return redirect(url_for('jobs.index'))
     return render_template('profile_worker.html', profile_user=profile_user)
+
+
+@profile_bp.route('/profile/<user_id>/report', methods=['POST'])
+@login_required
+@validate_uuid('user_id')
+def report_user(user_id):
+    """Подать жалобу на пользователя (антифрод: основа авто-заморозки Phase 3)."""
+    reason = (request.form.get('reason') or '').strip()[:500]
+    resp = postgrest_rpc('file_report', {'p_reported': user_id, 'p_reason': reason})
+    data = resp.json() if resp.ok else {}
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json
+    if data.get('ok'):
+        created = data.get('created', True)
+        if is_ajax:
+            return jsonify({'success': True, 'created': created})
+        flash('Жалоба отправлена. Спасибо.' if created else 'Вы уже жаловались на этого пользователя.', 'success')
+    else:
+        err = data.get('error', '')
+        msg = 'Нельзя пожаловаться на себя.' if err == 'cannot_report_self' else 'Не удалось отправить жалобу.'
+        if is_ajax:
+            return jsonify({'success': False, 'error': msg}), 400
+        flash(msg, 'danger')
+    return redirect(url_for('profile.public_profile', user_id=user_id))

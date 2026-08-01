@@ -146,6 +146,24 @@ def login_required(f: F) -> F:
                         return redirect(url_for('auth.login'))
                     # БД недоступна — пропускаем проверку, не трогая сессию
                     pass
+
+                # Phase 3: проверка suspended (кэш 30с — блокировка срабатывает оперативно).
+                from app.utils import postgrest_admin_request as _pgadm_susp
+                from app.utils.postgrest_client import is_circuit_open as _is_cb_open_susp
+                _susp_key = f'user_suspended:{user_id}'
+                _suspended = get_cached(_susp_key)
+                if _suspended is None:
+                    try:
+                        _sresp = _pgadm_susp('GET', f'profiles?id=eq.{user_id}&select=suspended')
+                        _rows = _sresp.json() if (_sresp.ok and not _is_cb_open_susp(_sresp)) else None
+                        _suspended = bool(_rows and _rows[0].get('suspended'))
+                        set_cached(_susp_key, _suspended, ttl=30)
+                    except Exception:
+                        _suspended = False
+                if _suspended:
+                    session.clear()
+                    flash('Ваш аккаунт временно приостановлен. Если это ошибка — обратитесь в поддержку.', 'danger')
+                    return redirect(url_for('auth.login'))
         except (jwt.DecodeError, jwt.ExpiredSignatureError, jwt.InvalidTokenError):
             # Токен невалидный — очищаем сессию и перенаправляем на login
             session.clear()

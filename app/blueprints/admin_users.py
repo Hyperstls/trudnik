@@ -74,6 +74,23 @@ def delete_user(user_id):
     return redirect(url_for('admin_dashboard.admin_panel', tab='users'))
 
 
+@admin_users_bp.route('/users/<user_id>/unsuspend', methods=['POST'])
+@login_required
+@admin_required
+@validate_uuid('user_id')
+def unsuspend_user(user_id):
+    """Phase 3: ручная разморозка пользователя администратором."""
+    rpc = postgrest_rpc('unsuspend_user', {'p_user_id': user_id}, use_admin=True)
+    ok = rpc.ok and (rpc.json() if rpc.ok else {}).get('ok', True) is not False
+    if rpc.ok:
+        log_admin_action('unsuspend_user', table_name='profiles', record_id=user_id)
+        flash('Пользователь разморожен', 'success')
+    else:
+        current_app.logger.error('Admin unsuspend RPC failed for %s: %s', user_id, (rpc.text or '')[:200])
+        flash('Не удалось разморозить пользователя', 'danger')
+    return redirect(url_for('admin_dashboard.admin_panel', tab='users'))
+
+
 @admin_users_bp.route('/bulk-delete-users', methods=['POST'])
 @login_required
 @admin_required

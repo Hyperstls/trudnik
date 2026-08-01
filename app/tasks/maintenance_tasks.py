@@ -12,7 +12,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 from .celery_app import celery_app
-from app.utils import postgrest_admin_request
+from app.config import Config
+from app.utils import postgrest_admin_request, postgrest_rpc
 
 logger = logging.getLogger(__name__)
 
@@ -425,3 +426,55 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
                 conn.close()
             except Exception:
                 logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
+
+
+@celery_app.task(bind=True)
+def auto_freeze_on_complaints(self) -> dict[str, Any]:
+    """Phase 3 (Часть B): авто-заморозка пользователей с >= порога жалоб за окно.
+
+    Запрашивает кандидатов (users_exceeding_reports, service_role) и замораживает
+    каждого через suspend_user. Порог/окно — из Config (env). Уведомление — best-effort.
+    """
+    threshold = Config.REPORT_FREEZE_THRESHOLD
+    hours = Config.REPORT_FREEZE_WINDOW_HOURS
+    try:
+        resp = postgrest_rpc(
+            'users_exceeding_reports',
+            {'p_threshold': threshold, 'p_hours': hours},
+            use_admin=True,
+        )
+        candidates = resp.json() if resp.ok else []
+    except Exception as e:
+        logger.warning('auto_freeze: query failed — %s', e, exc_info=True)
+        return {'suspended': 0, 'error': 'query_failed'}
+
+    suspended = 0
+    for c in candidates or []:
+        uid = c.get('reported_id')
+        if not uid:
+            continue
+        try:
+            postgrest_rpc(
+                'suspend_user',
+                {'p_user_id': uid, 'p_reason': f'auto: {c.get("report_count")} complaints/{hours}h'},
+                use_admin=True,
+            )
+            logger.warning(
+                'AUTO-FREEZE: user %s suspended (%s complaints/%sh)', uid, c.get('report_count'), hours
+            )
+            # best-effort уведомление замороженного пользователя
+            try:
+                from app.services.notification_service import enqueue_notification
+                enqueue_notification(
+                    user_id=uid,
+                    ntype='account_suspended',
+                    title='Аккаунт временно приостановлен',
+                    body='Ваш аккаунт приостановлен по жалобам пользователей. Если это ошибка — подайте апелляцию в поддержке.',
+                )
+            except Exception:
+                logger.debug('auto_freeze: notify skipped', exc_info=True)
+            suspended += 1
+        except Exception as e:
+            logger.warning('auto_freeze: suspend_user %s failed — %s', uid, e, exc_info=True)
+
+    return {'suspended': suspended, 'threshold': threshold, 'window_hours': hours}

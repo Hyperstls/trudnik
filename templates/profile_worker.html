@@ -74,8 +74,31 @@
                 <span class="text-sm ml-2 font-medium">Заблокировать</span>
             </button>
             {% endif %}
+
+            {# Phase 3: жалоба (основа авто-заморозки) #}
+            <button type="button" class="action-icon-btn" title="Пожаловаться"
+                    onclick="document.getElementById('report-modal-{{ profile_user.id }}').showModal()">
+                ⚠️
+                <span class="text-sm ml-2 font-medium">Пожаловаться</span>
+            </button>
         </div>
     </div>
+
+    {# Модальное окно жалобы #}
+    <dialog id="report-modal-{{ profile_user.id }}" aria-labelledby="report-title-{{ profile_user.id }}" class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md mx-4">
+        <h3 id="report-title-{{ profile_user.id }}" class="text-lg font-bold text-neutral-900 mb-2">Жалоба на пользователя</h3>
+        <p class="text-sm text-neutral-600 mb-3">Опишите причину (мошенничество, спам, некорректное поведение). Множественные жалобы приводят к автоматической приостановке аккаунта.</p>
+        <form method="post" action="/profile/{{ profile_user.id }}/report">
+            <textarea name="reason" rows="3" maxlength="500" required aria-required="true"
+                      class="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-primary-500 text-neutral-900 mb-4"
+                      placeholder="Причина жалобы…"></textarea>
+            <div class="flex gap-3">
+                <button type="button" onclick="document.getElementById('report-modal-{{ profile_user.id }}').close()"
+                        class="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-semibold py-3 rounded-xl">Отмена</button>
+                <button type="submit" class="flex-1 bg-danger hover:opacity-90 text-white font-bold py-3 rounded-xl">Отправить</button>
+            </div>
+        </form>
+    </dialog>
 
     {# ============================================ #}
     {# Детальная информация                         #}

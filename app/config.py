@@ -127,6 +127,9 @@ class Config:
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads'))
     RATE_LIMIT_MAX = 10
     RATE_LIMIT_WINDOW = 60
+    # Phase 3 (Часть B): авто-заморозка по жалобам
+    REPORT_FREEZE_THRESHOLD = int(os.environ.get('REPORT_FREEZE_THRESHOLD', '3'))
+    REPORT_FREEZE_WINDOW_HOURS = int(os.environ.get('REPORT_FREEZE_WINDOW_HOURS', '24'))
     CACHE_MAX_SIZE = 256
     PAGINATION_DEFAULT_PER_PAGE = 20
 
