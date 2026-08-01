@@ -499,6 +499,26 @@ def refresh_access_token() -> bool:
 # HTTP-запросы к PostgREST
 # ═══════════════════════════════════════════════════════════════
 
+# profiles ограничена column-level SELECT (миграция 132): чувствительные колонки
+# (password_hash, email, inn, phone, verification_doc_url, …) не читаются клиентом.
+# Поэтому PATCH/POST с Prefer: return=representation падают (403 permission denied)
+# при попытке вернуть всю строку. Для profiles-мутаций без явного select добавляем
+# безопасный набор публичных колонок (и фикс 403, и защита от утечки чувствительных).
+_PROFILES_MUTATION_SELECT = (
+    'id,role,full_name,photo_url,city,rating,verification_status,'
+    'created_at,updated_at,email_verified,total_reviews,portfolio_link'
+)
+
+
+def _normalize_endpoint(method: str, endpoint: str) -> str:
+    """Для profiles PATCH/POST без select — добавить публичные поля."""
+    if method.upper() in ('PATCH', 'POST') and endpoint.split('?', 1)[0].startswith('profiles') \
+            and 'select=' not in endpoint:
+        sep = '&' if '?' in endpoint else '?'
+        return f'{endpoint}{sep}select={_PROFILES_MUTATION_SELECT}'
+    return endpoint
+
+
 def postgrest_request(method: str, endpoint: str, **kwargs: Any) -> PostgrestResponse:
     """Сделать HTTP-запрос к PostgREST API с пользовательским JWT-токеном.
 
@@ -516,6 +536,7 @@ def postgrest_request(method: str, endpoint: str, **kwargs: Any) -> PostgrestRes
     if _is_mock_enabled():
         return _test_mock_request(method, endpoint, **kwargs)
     extra_headers = kwargs.pop('headers', None)
+    endpoint = _normalize_endpoint(method, endpoint)
 
     def _make_request() -> PostgrestResponse:
         headers = get_user_headers()
@@ -598,6 +619,7 @@ def postgrest_admin_request(method: str, endpoint: str, **kwargs: Any) -> Postgr
     if _is_mock_enabled():
         return _test_mock_request(method, endpoint, **kwargs)
     extra_headers = kwargs.pop('headers', None)
+    endpoint = _normalize_endpoint(method, endpoint)
     headers = get_service_role_headers()
     # Для form-data (RPC вызовы) переопределяем Content-Type,
     # т.к. сессия _admin_session имеет Content-Type: application/json по умолчанию

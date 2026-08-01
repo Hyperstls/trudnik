@@ -323,7 +323,7 @@ def workers():
         elif sort in ('price_desc',):
             order = 'desired_payment.desc.nullslast'
 
-        resp = postgrest_request('GET', f'profiles?{query}&order={order}')
+        resp = postgrest_request('GET', f'profiles?{query}&select=id,role,created_at,rating,full_name,photo_url,age,bio,city,experience,desired_payment,verification_status,total_reviews,portfolio_link&order={order}')
         if not resp.ok:
             current_app.logger.error(
                 '[WORKERS] Failed to fetch profiles: status=%s text=%s',
