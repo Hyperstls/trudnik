@@ -38,7 +38,7 @@ def test_register_valid_password(app_client):
     response = app_client.post('/register', data={
         'full_name': 'Test User',
         'email': 'test@example.com',
-        'password': 'StrongP@ss1',
+        'password': 'Aa1!aaaa',
         'city': 'Москва',
         'role': 'worker',
         '_csrf_token': 'test',

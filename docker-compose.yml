@@ -9,9 +9,9 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass trudnik-local-dev
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "trudnik-local-dev", "--no-auth-warning", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -168,7 +168,7 @@ services:
     environment:
       - DEPLOYMENT_ENV=development
       - PORT=8000
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://:trudnik-local-dev@redis:6379/0
       - POSTGREST_URL=http://postgrest:3000
       - PGRST_JWT_SECRET=${PGRST_JWT_SECRET}
     volumes:

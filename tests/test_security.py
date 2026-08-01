@@ -7,7 +7,7 @@ from app.utils.security import sanitize_postgrest, validate_uuid
 
 def test_validate_password_strong():
     """Валидный пароль проходит проверку."""
-    result = validate_password('StrongP@ss1')
+    result = validate_password('Aa1!aaaa')
     assert result is None  # None означает валидный
 
 

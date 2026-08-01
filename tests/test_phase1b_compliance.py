@@ -25,7 +25,7 @@ def test_registration_blocked_without_consent(app_client):
     response = app_client.post('/register', data={
         'full_name': 'Test User',
         'email': 'nocosent@example.com',
-        'password': 'StrongP@ss1',
+        'password': 'Aa1!aaaa',
         'city': 'Москва',
         'role': 'worker',
         '_csrf_token': 'test',
@@ -40,7 +40,7 @@ def test_registration_passes_with_consent(app_client):
     response = app_client.post('/register', data={
         'full_name': 'Test User',
         'email': 'consent@example.com',
-        'password': 'StrongP@ss1',
+        'password': 'Aa1!aaaa',
         'city': 'Москва',
         'role': 'worker',
         '_csrf_token': 'test',
