@@ -130,6 +130,11 @@ class Config:
     # Phase 3 (Часть B): авто-заморозка по жалобам
     REPORT_FREEZE_THRESHOLD = int(os.environ.get('REPORT_FREEZE_THRESHOLD', '3'))
     REPORT_FREEZE_WINDOW_HOURS = int(os.environ.get('REPORT_FREEZE_WINDOW_HOURS', '24'))
+    # Phase 3 (Часть A): верификация через мессенджеры
+    MAX_BOT_TOKEN = os.environ.get('MAX_BOT_TOKEN', '')
+    TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
+    MAX_BOT_USERNAME = os.environ.get('MAX_BOT_USERNAME', 'se13803803_bot')
+    TELEGRAM_BOT_USERNAME = os.environ.get('TELEGRAM_BOT_USERNAME', 'Trudnik_bot')
     CACHE_MAX_SIZE = 256
     PAGINATION_DEFAULT_PER_PAGE = 20
 
