@@ -84,6 +84,8 @@ class Config:
     SESSION_COOKIE_SECURE = os.environ.get('DEPLOYMENT_ENV', 'development') in ('production', 'staging')
     SESSION_COOKIE_SAMESITE = 'Strict'  # Защита от CSRF
     SESSION_COOKIE_NAME = 'trudnik_session'
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 МБ — anti-DDoS (ограничение тела запроса)
+    GLOBAL_RATE_LIMIT_PER_MIN = int(os.environ.get('GLOBAL_RATE_LIMIT_PER_MIN', '120'))
     PERMANENT_SESSION_LIFETIME = 3600  # 1 час
 
     # Server-side sessions in Redis (D5: replaces client-side SecureCookieSession)

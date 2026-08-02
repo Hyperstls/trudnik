@@ -14,7 +14,7 @@ import uuid
 import requests
 from flask import Blueprint, jsonify, request, session
 
-from app.decorators import login_required
+from app.decorators import login_required, rate_limit
 from app.utils import postgrest_rpc
 from app.utils.redis_client import get_redis_client
 
@@ -45,6 +45,7 @@ def _tg_botname():
 # ── Генерация deep-link для пользователя ──────────────────────────
 @messenger_bp.route('/start/<platform>', methods=['GET'])
 @login_required
+@rate_limit(fail_open=True)
 def start_verification(platform):
     """Генерирует deep-link для подтверждения через мессенджер (AJAX)."""
     if platform not in ('max', 'telegram'):
@@ -70,6 +71,7 @@ def start_verification(platform):
 
 # ── Webhook: MAX ──────────────────────────────────────────────────
 @messenger_bp.route('/webhook/max', methods=['POST'])
+@rate_limit(fail_open=True)
 def max_webhook():
     """Принимает события от MAX бота (bot_started с payload = наш токен)."""
     data = request.get_json(silent=True) or {}
@@ -87,6 +89,7 @@ def max_webhook():
 
 # ── Webhook: Telegram ─────────────────────────────────────────────
 @messenger_bp.route('/webhook/telegram', methods=['POST'])
+@rate_limit(fail_open=True)
 def telegram_webhook():
     """Принимает обновления от Telegram бота (/start <token>)."""
     data = request.get_json(silent=True) or {}

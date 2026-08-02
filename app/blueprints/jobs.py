@@ -290,7 +290,7 @@ def workers():
         if filters['rating_min']: query += f'&rating=gte.{sanitize_postgrest(filters["rating_min"])}'
         if filters['skills']:
             # Новый подход: фильтрация через таблицу user_skills (вместо profiles.skills text[])
-            skill_names = [s.strip() for s in filters['skills'].split(',') if s.strip()]
+            skill_names = [s.strip() for s in filters['skills'].split(',') if s.strip()][:5]  # макс 5 (anti-DDoS: N+1 запросов)
             if skill_names:
                 # Шаг 1: найти skill_id по именам
                 skill_filters = []

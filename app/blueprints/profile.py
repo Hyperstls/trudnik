@@ -422,6 +422,7 @@ def public_profile(user_id):
 
 @profile_bp.route('/profile/<user_id>/report', methods=['POST'])
 @login_required
+@rate_limit(fail_open=True)
 @validate_uuid('user_id')
 def report_user(user_id):
     """Подать жалобу на пользователя (антифрод: основа авто-заморозки Phase 3)."""

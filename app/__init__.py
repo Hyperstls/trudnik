@@ -64,6 +64,34 @@ def create_app():
     for bp in _all_bps:
         app.register_blueprint(bp)
 
+    # ═══ Anti-DDoS: глобальный rate-limit по IP (все методы, все эндпоинты) ═══
+    @app.before_request
+    def _global_ip_rate_limit():
+        """Ограничение запросов по IP: GLOBAL_RATE_LIMIT_PER_MIN (120/мин по умолчанию).
+        Статика и health/ready исключены. Fail-open при недоступности Redis."""
+        from flask import jsonify, request
+        if app.config.get('TESTING'):
+            return  # в тестах — без глобального rate-limit (mock Redis)
+        if request.path.startswith('/static/') or request.path in ('/health', '/ready', '/favicon.ico'):
+            return
+        ip = (request.headers.get('X-Forwarded-For', '') or request.remote_addr or '').split(',')[0].strip()
+        if not ip or ip == 'unknown':
+            return
+        try:
+            from app.utils.redis_client import get_redis_client
+            r = get_redis_client()
+            if not r:
+                return
+            key = f'iprl:{ip}'
+            count = r.incr(key)
+            if count == 1:
+                r.expire(key, 60)
+            limit = app.config.get('GLOBAL_RATE_LIMIT_PER_MIN', 120)
+            if count > limit:
+                return jsonify({'error': 'Слишком много запросов. Попробуйте позже.'}), 429
+        except Exception:
+            logging.getLogger(__name__).debug('global rate-limit: Redis error (fail-open)', exc_info=True)
+
     @app.template_filter('format_date')
     def _format_date(value):
         from app.utils import format_date
