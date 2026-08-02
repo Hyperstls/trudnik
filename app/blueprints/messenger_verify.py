@@ -15,7 +15,8 @@ import requests
 from flask import Blueprint, jsonify, request, session
 
 from app.decorators import login_required
-from app.utils import get_redis_client, postgrest_rpc
+from app.utils import postgrest_rpc
+from app.utils.redis_client import get_redis_client
 
 logger = logging.getLogger(__name__)
 messenger_bp = Blueprint('messenger_verify', __name__, url_prefix='/messenger')
