@@ -1,9 +1,7 @@
 name: Build Android APK (TWA)
 
 on:
-  push:
-    branches: [main]
-  workflow_dispatch:
+  workflow_dispatch:  # только ручной запуск (нужны KEYSTORE_PASSWORD и другие секреты)
 
 jobs:
   build-apk:
