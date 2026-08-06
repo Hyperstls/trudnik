@@ -29,6 +29,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 3
+
     env:
       # ── Режим тестирования ─────────────────────────────────────────────
       TESTING: 'true'                         # Отключает CSRF-защиту в тестах
@@ -87,7 +98,7 @@ jobs:
       - name: Установка Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       # ────────────────────────────────────────────────────────────────────
       # 3. Кеширование pip-зависимостей (ускоряет повторные запуски)
@@ -223,7 +234,7 @@ jobs:
       - name: Установка Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Установка зависимостей
         run: pip install -r requirements-dev.txt
@@ -298,7 +309,7 @@ jobs:
       - name: Установка Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       # ── Кеширование pip ──────────────────────────────────────────────
       - name: Кеширование pip-зависимостей
@@ -385,7 +396,7 @@ jobs:
       - name: Установка Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Установка зависимостей
         run: pip install -r requirements-dev.txt
