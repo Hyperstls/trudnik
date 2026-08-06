@@ -10,16 +10,17 @@
 
 Архитектура (монолит)
 - Flask (WSGI) + FastAPI (WebSocket) в ОДНОМ uvicorn-процессе через asgi.py (RouterMiddleware + a2wsgi). См. 02_infrastructure.md.
-- Blueprints (app/blueprints/, ~19): auth, core, profile, jobs, jobs_api, applications, chat, notifications, favorites, blacklist, ratings, employers, seo + admin_{dashboard,users,jobs,verification,dictionaries,diagnostics}.
+- Blueprints (app/blueprints/, 20): auth, core, profile, jobs, jobs_api, applications, chat, notifications, favorites, blacklist, ratings, employers, seo, messenger_verify + admin_{dashboard,users,jobs,verification,dictionaries,diagnostics}.
 - Сервисы (app/services/, 13): auth, application, job, notification, notification_dispatcher, push, email, ratings, invitation, admin, payment, storage, redis_publisher.
 - Celery (app/tasks/): celery_app, notification_tasks, email_tasks, push_tasks, maintenance_tasks. Beat — 6 задач (см. 00).
 - WebSocket (websocket_server/): main.py, auth.py; JSON-RPC поверх /ws.
 - Доступ к данным: ТОЛЬКО через PostgREST (HTTP). См. 01_db_access.md и 07_postgrest_client_api.md.
 - Мутации — через RPC (PL/pgSQL, SECURITY DEFINER). RLS на всех таблицах; app_role из JWT claim.
 
-Масштаб (сверено с БД и migrations/ на 2026-07-23)
-- 29 таблиц (25 бизнес + 4 системных: _migrations, schema_migrations, spatial_ref_sys, _archive_contact_payments);
-  46 файлов SQL-миграций (последняя #131, с консолидациями); 24 SECURITY DEFINER RPC-функции (бизнес-RPC).
+Масштаб (сверено с БД и migrations/ на 2026-08-01)
+- ~31 таблица (25 бизнес + user_reports + site_pages + системные);
+  47+ файлов SQL-миграций (последняя #137, с консолидациями); ~30 SECURITY DEFINER RPC-функций.
+  Phase 3: жалобы + авто-заморозка (Part B), мессенджер-верификация MAX/Telegram (Part A), anti-DDoS (глобальный rate-limit + MAX_CONTENT_LENGTH).
 
 Локальная разработка (docker-compose)
 - DB 5433→5432 (PostgreSQL 15 + PostGIS 3.4) | PostgREST 3000 (v14, dev=prod parity) | Redis 6379 (db0 broker, db1 backend) | Web 8000 (HTTP) | pgadmin 5050 (профиль debug).

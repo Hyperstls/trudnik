@@ -23,10 +23,11 @@ stack:
     broker: "Celery 5.6.3"
     cache_pubsub: "Redis 8.0.0 (прод) / Redis 7-alpine (docker-compose)"
     redis_db: "broker+pubsub — db 0; celery result-backend — db 1 (celery_app.py формирует /1)"
-    beat_schedule:  # celery_app.py — 6 задач
+    beat_schedule:  # celery_app.py — 7 задач
       - "drain_notification_outbox (10с)"
-      - "ensure_postgrest_role_grants (120с, self-heal грантов ролей)"
-      - "expire_old_jobs (3600с)"
+      - "ensure_postgrest_role_grants (120с, self-heal: гранты 123 + RLS 132/133/134 + Phase 3 миграции 135/136/137 + NOTIFY pgrst 'reload schema')"
+      - "expire_old_jobs (3600с, + expire_unfilled_jobs RPC)"
+      - "auto_freeze_on_complaints (600с)"
       - "cleanup_orphaned_notifications (3600с)"
       - "cleanup_old_email_logs (86400с)"
       - "cleanup_expired_push_subscriptions (3600с)"
@@ -40,6 +41,10 @@ stack:
     jwt_postgrest: "PGRST_JWT_SECRET; role='authenticated' (app_role=worker/employer/admin) ИЛИ role='service_role' (обход RLS, postgrest_admin_request)"
     jwt_websocket: "WEBSOCKET_JWT_SECRET (user_id + jti only, без role/app_role)"
     csrf: "Session-based (_csrf_token) + X-CSRF-Token header"
+    sessions: "Redis-backed (SESSION_TYPE='redis', SESSION_USE_SIGNER=True, TTL=1ч). НЕ client-side cookies."
+    access_token_ttl: "ACCESS_TOKEN_TTL_SECONDS=3600 (1ч, синхрон с PERMANENT_SESSION_LIFETIME)"
+    messenger_verify: "Phase 3: deep-link верификация через MAX + Telegram (blueprint messenger_verify, webhooks /messenger/webhook/{max,telegram})"
+    global_rate_limit: "before_request: 120 req/min per IP (config GLOBAL_RATE_LIMIT_PER_MIN). MAX_CONTENT_LENGTH=16MB."
   deploy:
     platform: "Amvera (Docker) — см. 06_amvera_deploy.md"
     process_manager: "supervisord: uvicorn(asgi:application, --workers 2), celery_worker(--concurrency=4), celery_beat"

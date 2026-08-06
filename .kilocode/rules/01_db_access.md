@@ -11,4 +11,5 @@
 3. scripts/emergency_fix_permissions.py (CLI-only)
 4. scripts/check_schema.py (диагностика)
 5. scripts/apply_migrations.py (применение SQL-миграций)
+6. app/tasks/maintenance_tasks.py (self-heal: ensure_postgrest_role_grants — DDL/GRANT/ALTER FUNCTION через DATABASE_ADMIN_URL; применяет миграции 123-137 + NOTIFY pgrst 'reload schema')
 ```

@@ -9,7 +9,7 @@
 2. CLI и окружение:
    - Бинарник: env AMVERA_CLI (по умолчанию `amvera`). Все скрипты читают `$AMVERA`.
    - Авторизация: AMVERA_USER / AMVERA_PASSWORD (скрипты вызывают `amvera login`).
-   - Slug'и: приложение — `trudnik`; БД — `trudnik-db` (отдельный сервис Amvera, бэкапы — отдельно).
+   - Slug'и: приложение — `trudnik`; БД — `trudnik-db`; PostgREST — `trudnik-pr` (отдельный сервис, PGRST_JWT_SECRET живёт ЗДЕСЬ И в trudnik); Redis — `trudnik-redis`; pgAdmin — `trudnik-pgadmin` (профиль debug).
 
 3. Скрипты (scripts/):
    - amvera_full_cycle.sh [slug] [commit-msg] — ОСНОВНОЙ CI/CD: login → describe → git add/commit/push origin main → push amvera (main:master) → rebuild → wait → logs build → logs run → healthcheck.
@@ -28,8 +28,8 @@
 5. Git remote `amvera`: `git push amvera main:master` триггерит сборку (альтернатива `amvera rebuild`).
 
 6. Миграции БД: НЕ применяются автоматически при деплое (entrypoint.sh их не запускает).
-   Применять вручную ПОСЛЕ деплоя кода:
-     MIGRATIONS_ENABLED=true python scripts/apply_migrations.py
+   Self-heal `ensure_postgrest_role_grants` (beat, 120с) ре-применяет 123/132/133/134 + Phase 3 миграции 135/136/137 + NOTIFY pgrst 'reload schema'.
+   Для гарантии: `MIGRATIONS_ENABLED=true python scripts/apply_migrations.py` (суперпользователь).
    Для BREAKING-изменений схемы: сначала деплой кода (перестал использовать колонку/RPC) → потом миграция (см. 04_migrations.md).
 
 7. Healthcheck: снаружи https://<slug>-hyperstls.amvera.io/health (HTTP 200). Внутри контейнера — /ready (Dockerfile HEALTHCHECK); docker-compose — /health.

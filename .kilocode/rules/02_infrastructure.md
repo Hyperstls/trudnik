@@ -3,7 +3,7 @@
 
 1. Процессы и точка входа (asgi.py):
    - ПРОД (Amvera, supervisord): ОДИН uvicorn-процесс `uvicorn asgi:application --workers 2` на порту 8000 обслуживает И HTTP, И WebSocket.
-   - asgi.py = RouterMiddleware: scope `websocket`+`lifespan` → FastAPI (websocket_server/main.py); scope `http` → Flask (через a2wsgi.WSGIMiddleware, workers=50).
+   - asgi.py = RouterMiddleware: scope `websocket`+`lifespan` → FastAPI (websocket_server/main.py); scope `http` → Flask (через a2wsgi.WSGIMiddleware, workers=15).
    - a2wsgi ИСПОЛЬЗУЕТСЯ. Утверждение «WS — отдельный процесс, не через a2wsgi» НЕВЕРНО и ведёт к ложному диагностическому пути.
    - WS endpoint: /ws на ТОМ ЖЕ порту 8000. WEBSOCKET_PORT=8001 в .env нужен только для ЛОКАЛЬНОГО ручного запуска `uvicorn asgi:application --port 8001` (docker-compose `web` запускает `python app.py` = Flask WSGI dev-сервер БЕЗ WS).
    - 3 программы supervisord: uvicorn (stopwaitsecs=40, --timeout-graceful-shutdown 30), celery_worker (stopwaitsecs=310), celery_beat (stopwaitsecs=30).

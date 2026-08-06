@@ -3,6 +3,12 @@
 
 ПРИНЦИП: данные — через эти функции; НЕТ ORM и raw SQL для бизнес-логики (см. 01_db_access.md).
 
+⚠️ КРИТИЧЕСКИЕ ПАТТЕРНЫ (PostgREST v14 + миграция 132):
+  - profiles ограничена COLUMN-LEVEL SELECT (132): password_hash/email/inn/phone/verification_doc_url НЕ читаются клиентом.
+  - Чтения profiles БЕЗ select= → 401 (PostgREST пытается вернуть все колонки). ВСЕГДА указывай select=<публичные поля>.
+  - PATCH/POST на profiles: postgrest_client._normalize_endpoint() АВТОМАТИЧЕСКИ добавляет select=public. НЕ отключай.
+  - Новые RPC (из миграций) НЕВИДИМЫ PostgREST (404 PGRST202) до NOTIFY pgrst 'reload schema'. Self-heal делает это автоматически (шаг 1g).
+
 Класс ответа — PostgrestResponse (НЕ Pydantic, НЕ requests.Response):
   resp.ok: bool
   resp.status_code: int
