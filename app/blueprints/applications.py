@@ -263,13 +263,13 @@ def my_applications():
     if selected_skills:
         # Загружаем все заявки (с разумным верхним пределом 500)
         resp = postgrest_request('GET',
-            f'applications?job.employer_id=eq.{user_id}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,skills,desired_payment,email_public),job:jobs(organization_name,date_time,payment_amount,status,current_workers,max_workers)&limit=500',
+            f'applications?job.employer_id=eq.{user_id}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,desired_payment,email_public),job:jobs(organization_name,date_time,payment_amount,status,current_workers,max_workers)&limit=500',
             headers={'Prefer': 'count=exact'})
         all_applications = resp.json() if resp.ok else []
 
-        # Фильтрация по навыкам (AND — все выбранные навыки должны быть у трудника)
-        all_applications = [a for a in all_applications if a.get('worker') and a['worker'].get('skills') and
-                           all(any(sk.lower() in (ws.lower() if ws else '') for ws in a['worker']['skills']) for sk in selected_skills)]
+        # Фильтрация по навыкам отключена: profiles.skills убран (миграция на user_skills).
+        # TODO: реализовать фильтр через user_skills junction table.
+        # all_applications проходит без фильтра.
 
         total = len(all_applications)
         offset = (page - 1) * per_page
@@ -277,7 +277,7 @@ def my_applications():
     else:
         offset = (page - 1) * per_page
         resp = postgrest_request('GET',
-            f'applications?job.employer_id=eq.{user_id}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,skills,desired_payment,email_public),job:jobs(organization_name,date_time,payment_amount,status,current_workers,max_workers)&limit={per_page}&offset={offset}',
+            f'applications?job.employer_id=eq.{user_id}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,desired_payment,email_public),job:jobs(organization_name,date_time,payment_amount,status,current_workers,max_workers)&limit={per_page}&offset={offset}',
             headers={'Prefer': 'count=exact'})
         applications = resp.json() if resp.ok else []
         total = 0
