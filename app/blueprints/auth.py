@@ -110,6 +110,8 @@ def login():
                 # C22: Сброс счётчика попыток при успешном входе
                 clear_login_attempts(lockout_key, attempts_key, email)
                 login_user_session(user['user_id'], user['role'], email)
+                if user.get('verification_status') != 'approved':
+                    flash('🔒 Подтвердите профиль через мессенджер (Telegram или MAX) — откройте «Профиль».', 'info')
                 if user.get('role') == 'employer':
                     return redirect(url_for('jobs.my_jobs'))
                 else:

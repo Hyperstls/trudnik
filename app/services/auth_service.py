@@ -76,7 +76,8 @@ def login_direct_sql(email: str, password: str) -> dict | None:
             conn.autocommit = True
             cur = conn.cursor()
             cur.execute("""
-                SELECT id, email, role, full_name, COALESCE(email_verified, false)
+                SELECT id, email, role, full_name, COALESCE(email_verified, false),
+                       COALESCE(verification_status, 'none')
                 FROM profiles
                 WHERE email = %s AND password_hash = crypt(%s, password_hash)
             """, (email, password))
@@ -84,7 +85,8 @@ def login_direct_sql(email: str, password: str) -> dict | None:
             cur.close()
             if row:
                 return {'user_id': str(row[0]), 'email': row[1], 'role': row[2],
-                        'full_name': row[3], 'email_verified': row[4]}
+                        'full_name': row[3], 'email_verified': row[4],
+                        'verification_status': row[5] if len(row) > 5 else 'none'}
             logger.info("login: invalid credentials for %s (direct SQL)", email)
             return None
         finally:
