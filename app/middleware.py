@@ -44,6 +44,10 @@ def csrf_check():
         if not hmac.compare_digest(admin_token, expected):
             abort(403)
         return
+    # Messenger webhooks (Telegram, MAX) — внешние сервисы без CSRF-токена.
+    # Безопасность: одноразовый верификационный токен (Redis, UUID4, TTL 10 мин).
+    if request.path.startswith('/messenger/webhook/'):
+        return
     # Проверяем заголовок X-CSRF-Token (для fetch/AJAX-запросов)
     header_token = request.headers.get('X-CSRF-Token')
     if header_token:
