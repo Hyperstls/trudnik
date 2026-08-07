@@ -206,12 +206,12 @@
         <p class="text-sm font-semibold mb-1" style="color:#92400e">🔒 Подтвердите профиль</p>
         <p class="text-xs mb-3" style="color:#b45309">Подтверждённые пользователи вызывают больше доверия. Выберите мессенджер:</p>
         <div class="flex gap-2">
-            <button type="button" onclick="startMessengerVerify('telegram')"
+            <button type="button" id="btn-verify-tg"
                     class="flex-1 px-3 py-2.5 text-white text-sm font-semibold rounded-lg transition-opacity hover:opacity-90"
                     style="background:#0088cc">
                 ✈️ Telegram
             </button>
-            <button type="button" onclick="startMessengerVerify('max')"
+            <button type="button" id="btn-verify-max"
                     class="flex-1 px-3 py-2.5 text-white text-sm font-semibold rounded-lg transition-opacity hover:opacity-90"
                     style="background:#7c3aed">
                 💬 MAX
@@ -224,7 +224,7 @@
                    class="inline-block px-4 py-2 text-white text-sm font-semibold rounded-lg" style="background:#10b981">
                     Открыть мессенджер →
                 </a>
-                <button type="button" onclick="checkVerifyStatus()"
+                <button type="button" id="btn-verify-check"
                         class="inline-block px-4 py-2 text-sm font-semibold rounded-lg" style="background:#e5e7eb;color:#374151">
                     ✓ Я подтвердил — проверить
                 </button>
@@ -254,21 +254,17 @@
     </div>
 
     <script nonce="{{ csp_nonce }}">
-    function startMessengerVerify(platform) {
-        fetch('/messenger/start/' + platform, {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+    (function() {
+        function startVerify(platform) {
+            fetch('/messenger/start/' + platform, {
+                headers: {'X-Requested-With': 'XMLHttpRequest'},
+                credentials: 'same-origin'
+            })
             .then(function(r) {
-                if (!r.ok) {
-                    if (r.status === 401 || r.status === 302) {
-                        alert('Необходимо войти заново. Перенаправляем...');
-                        window.location.href = '/login';
-                        return;
-                    }
-                    throw new Error('HTTP ' + r.status);
-                }
+                if (!r.ok) throw new Error('HTTP ' + r.status);
                 return r.json();
             })
             .then(function(data) {
-                if (!data) return;
                 if (data.success && data.link) {
                     var box = document.getElementById('verify-link-box');
                     var link = document.getElementById('verify-link');
@@ -283,11 +279,18 @@
                     alert(data.error || 'Не удалось создать ссылку. Попробуйте позже.');
                 }
             })
-            .catch(function(err) { alert('Ошибка: ' + (err.message || 'соединение')); });
-    }
-    function checkVerifyStatus() {
-        window.location.reload();
-    }
+            .catch(function(err) {
+                alert('Ошибка: ' + (err.message || 'соединение. Возможно нужно войти заново.'));
+            });
+        }
+
+        var btnTg = document.getElementById('btn-verify-tg');
+        var btnMax = document.getElementById('btn-verify-max');
+        var btnCheck = document.getElementById('btn-verify-check');
+        if (btnTg) btnTg.addEventListener('click', function() { startVerify('telegram'); });
+        if (btnMax) btnMax.addEventListener('click', function() { startVerify('max'); });
+        if (btnCheck) btnCheck.addEventListener('click', function() { window.location.reload(); });
+    })();
     </script>
 
     {# ============================================ #}
