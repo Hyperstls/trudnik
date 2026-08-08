@@ -70,6 +70,44 @@ def start_verification(platform):
 
 
 # ── Webhook: MAX ──────────────────────────────────────────────────
+@messenger_bp.route('/diagnose', methods=['GET'])
+def diagnose():
+    """Диагностика outbound-доступности API мессенджеров с прода."""
+    import requests as _req
+    result = {'telegram': {'token_set': bool(_tg_token()), 'reachable': False, 'error': ''},
+              'max': {'token_set': bool(_max_token()), 'reachable': False, 'error': ''}}
+
+    # Telegram: GET /getMe
+    if _tg_token():
+        try:
+            r = _req.get(f'{_TG_API}{_tg_token()}/getMe', timeout=10)
+            result['telegram']['reachable'] = r.ok
+            result['telegram']['status'] = r.status_code
+            if r.ok:
+                d = r.json()
+                result['telegram']['bot'] = d.get('result', {}).get('username', '?')
+            else:
+                result['telegram']['error'] = r.text[:100]
+        except Exception as e:
+            result['telegram']['error'] = str(e)[:200]
+
+    # MAX: GET /me
+    if _max_token():
+        try:
+            r = _req.get(f'{_MAX_API}/me', headers={'Authorization': _max_token()}, timeout=10)
+            result['max']['reachable'] = r.ok
+            result['max']['status'] = r.status_code
+            if r.ok:
+                d = r.json()
+                result['max']['bot'] = d.get('username', '?')
+            else:
+                result['max']['error'] = r.text[:100]
+        except Exception as e:
+            result['max']['error'] = str(e)[:200]
+
+    return jsonify(result)
+
+
 @messenger_bp.route('/webhook/max', methods=['POST'])
 @rate_limit(fail_open=True)
 def max_webhook():
