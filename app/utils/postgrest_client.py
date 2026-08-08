@@ -560,10 +560,10 @@ def postgrest_request(method: str, endpoint: str, **kwargs: Any) -> PostgrestRes
                 resp = _cb_postgrest.call(_make_request)
         return resp
     except _requests.RequestException as e:
-        current_app.logger.error(f"PostgREST request error: {e}")
+        logging.getLogger(__name__).error(f"PostgREST request error: {e}")
         return PostgrestResponse(ok=False, status_code=0, text=str(e))
     except Exception as e:
-        current_app.logger.error(f"Unexpected error in postgrest_request: {e}")
+        logging.getLogger(__name__).error(f"Unexpected error in postgrest_request: {e}")
         return PostgrestResponse(ok=False, status_code=0, text=str(e))
 
 
@@ -642,10 +642,10 @@ def postgrest_admin_request(method: str, endpoint: str, **kwargs: Any) -> Postgr
     try:
         return _cb_admin.call(_make_request)
     except _requests.RequestException as e:
-        current_app.logger.error(f"PostgREST admin request error: {e}")
+        logging.getLogger(__name__).error(f"PostgREST admin request error: {e}")
         return PostgrestResponse(ok=False, status_code=0, text=str(e))
     except Exception as e:
-        current_app.logger.error(f"Unexpected error in postgrest_admin_request: {e}")
+        logging.getLogger(__name__).error(f"Unexpected error in postgrest_admin_request: {e}")
         return PostgrestResponse(ok=False, status_code=0, text=str(e))
 
 
@@ -690,10 +690,10 @@ def postgrest_rpc(function_name: str, params: dict, use_admin: bool = False) -> 
                 resp = cb.call(_make_request)
         return resp
     except _requests.RequestException as e:
-        current_app.logger.error(f"PostgREST RPC error ({function_name}): {e}")
+        logging.getLogger(__name__).error(f"PostgREST RPC error ({function_name}): {e}")
         return PostgrestResponse(ok=False, status_code=0, text=str(e))
     except Exception as e:
-        current_app.logger.error(f"Unexpected error in postgrest_rpc ({function_name}): {e}")
+        logging.getLogger(__name__).error(f"Unexpected error in postgrest_rpc ({function_name}): {e}")
         return PostgrestResponse(ok=False, status_code=0, text=str(e))
 
 
