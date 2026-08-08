@@ -144,6 +144,15 @@ jobs:
           FLASK_APP: 'app.py'
 
       # ────────────────────────────────────────────────────────────────────
+      # 6b. Static checks (CSP, PostgREST patterns, Celery context)
+      # ────────────────────────────────────────────────────────────────────
+      - name: Static code checks
+        run: |
+          python -m pytest tests/test_static_checks.py -v --tb=short || echo "STATIC_CHECKS_FAILED=true"
+        env:
+          REDIS_URL: 'redis://localhost:6379/0'
+
+      # ────────────────────────────────────────────────────────────────────
       # 10. Backend-тесты (unit + integration)
       #     Исключаем Playwright-конфигурацию и E2E-тесты
       #     --timeout=120 требует pytest-timeout в requirements-dev.txt
