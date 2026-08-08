@@ -404,6 +404,19 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
                 except Exception:
                     logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
 
+        # 1i) Bugfix: applications.updated_at missing → accept_application RPC fails.
+        cur.execute("SELECT count(*) FROM information_schema.columns WHERE table_name='applications' AND column_name='updated_at'")
+        if cur.fetchone()[0] == 0:
+            try:
+                _apply_migration('138_add_updated_at_to_applications.sql')
+                logger.warning('self-heal: applied migration 138 (applications.updated_at)')
+            except Exception as e:
+                logger.warning('self-heal: failed to apply 138: %s', e)
+                try:
+                    conn.rollback()
+                except Exception:
+                    logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
+
         # 2) Политика чтения profiles может быть удалена — гарантируем наличие,
         #    иначе профиль/выход/списки пустые (RLS deny-all).
         cur.execute(
