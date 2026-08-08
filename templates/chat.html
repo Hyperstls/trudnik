@@ -177,7 +177,7 @@ function stopChatPolling() {
 window.addEventListener('beforeunload', stopChatPolling);
 
 async function sendMessage(event) {
-    event.preventDefault();
+    if (event) event.preventDefault();
     const input = document.getElementById('message-input');
     const content = input.value.trim();
     if (!content) return;
@@ -187,13 +187,16 @@ async function sendMessage(event) {
     btn.innerHTML = `<svg class="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`;
 
     try {
-        // Генерируем client_message_id для идемпотентности (защита от двойного клика)
         const clientMessageId = (typeof crypto !== 'undefined' && crypto.randomUUID)
             ? crypto.randomUUID()
             : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
                 const r = Math.random() * 16 | 0;
                 return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
             });
+
+        const abortCtrl = new AbortController();
+        const timeoutId = setTimeout(() => abortCtrl.abort(), 15000);
+
         const resp = await apiFetch('/api/send_message', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -201,14 +204,22 @@ async function sendMessage(event) {
                 application_id: applicationId,
                 content: content,
                 client_message_id: clientMessageId
-            })
+            }),
+            signal: abortCtrl.signal
         });
-        if (!resp.ok) throw new Error('Ошибка отправки');
+        clearTimeout(timeoutId);
+
+        if (!resp.ok) {
+            const errData = resp.json().catch(() => ({}));
+            throw new Error((await errData).message || 'Ошибка отправки (' + resp.status + ')');
+        }
         input.value = '';
         await pollMessages();
     } catch (e) {
-        if (window.showToast) {
-            window.showToast('❌ Ошибка отправки сообщения', 'error');
+        if (e.name === 'AbortError') {
+            if (window.showToast) window.showToast('⏱ Превышено время ожидания. Попробуйте ещё раз.', 'error');
+        } else {
+            if (window.showToast) window.showToast('❌ ' + (e.message || 'Ошибка отправки сообщения'), 'error');
         }
     } finally {
         btn.innerHTML = `{{ send(20)|safe }}`;
@@ -221,11 +232,11 @@ function isWsConnected() {
     return ws && ws.ws && ws.ws.readyState === WebSocket.OPEN;
 }
 
-window.onload = () => {
+window.addEventListener('load', function() {
     var form = document.getElementById('chat-form');
     if (form) form.addEventListener('submit', sendMessage);
     const msgs = document.getElementById('messages');
-    msgs.scrollTop = msgs.scrollHeight;
+    if (msgs) msgs.scrollTop = msgs.scrollHeight;
 
     // Запускаем polling только если WebSocket не подключён
     if (!isWsConnected()) {
