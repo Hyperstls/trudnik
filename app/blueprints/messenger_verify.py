@@ -12,6 +12,9 @@ import os
 import uuid
 
 import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 from flask import Blueprint, jsonify, request, session
 
 from app.decorators import login_required, rate_limit
@@ -94,7 +97,7 @@ def diagnose():
     # MAX: GET /me
     if _max_token():
         try:
-            r = _req.get(f'{_MAX_API}/me', headers={'Authorization': _max_token()}, timeout=10)
+            r = _req.get(f'{_MAX_API}/me', headers={'Authorization': _max_token()}, timeout=10, verify=False)
             result['max']['reachable'] = r.ok
             result['max']['status'] = r.status_code
             if r.ok:
@@ -173,11 +176,13 @@ def _complete(token, provider, messenger_uid, chat_id, platform):
     logger.info('messenger_verify: user %s verified via %s', user_id, platform)
 
     if chat_id:
-        msg = '✅ Ваш профиль на «Трудник» подтверждён! Теперь вам доступны все функции платформы.'
+        msg = '✅ Ваш профиль на «Трудник» подтверждён! Теперь вам доступны все функции платформы. Вернитесь в приложение — кнопка «Я подтвердил — проверить».'
         if platform == 'max':
             _send_max(chat_id, msg)
+            logger.info('messenger_verify: MAX reply sent to chat %s', chat_id)
         else:
             _send_telegram(chat_id, msg)
+            logger.info('messenger_verify: Telegram reply sent to chat %s', chat_id)
 
 
 def _send_max(chat_id, text):
@@ -190,6 +195,7 @@ def _send_max(chat_id, text):
             json={'chat_id': chat_id, 'text': text},
             headers={'Authorization': token, 'Content-Type': 'application/json'},
             timeout=10,
+            verify=False,  # MAX API SSL cert not in Docker CA store
         )
     except Exception as e:
         logger.warning('messenger_verify: MAX send failed: %s', e)
@@ -234,6 +240,7 @@ def register_webhooks(base_url):
                 json={'url': url, 'update_types': ['bot_started', 'message_created']},
                 headers={'Authorization': mx, 'Content-Type': 'application/json'},
                 timeout=10,
+                verify=False,
             )
             logger.info('MAX webhook registered (%s): %s', url, resp.text[:100])
         except Exception as e:
