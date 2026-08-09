@@ -2,7 +2,7 @@ name: Health Monitor
 
 on:
   schedule:
-    - cron: '*/10 * * * *'  # каждые 10 минут
+    - cron: '*/10 * * * *'  # РєР°Р¶РґС‹Рµ 10 РјРёРЅСѓС‚
   workflow_dispatch:
 
 jobs:
@@ -26,7 +26,7 @@ jobs:
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -H "Content-Type: application/json" \
-            -d "{\"chat_id\":\"${{ secrets.TG_ALERT_CHAT_ID }}\",\"text\":\"🔴 Трудник: health=${{ steps.health.outputs.status }}\"}"
+            -d "{\"chat_id\":\"${{ secrets.TG_ALERT_CHAT_ID }}\",\"text\":\"рџ”ґ РўСЂСѓРґРЅРёРє: health=${{ steps.health.outputs.status }}\"}"
         continue-on-error: true
 
       - name: Fail if unhealthy
