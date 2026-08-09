@@ -2,7 +2,7 @@ name: Health Monitor
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # каждые 5 минут
+    - cron: '*/10 * * * *'  # каждые 10 минут
   workflow_dispatch:
 
 jobs:
@@ -17,23 +17,18 @@ jobs:
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 https://trudnik-hyperstls.amvera.io/health || echo "000")
           echo "status=$STATUS" >> $GITHUB_OUTPUT
           if [ "$STATUS" != "200" ]; then
-            BODY=$(curl -s --max-time 10 https://trudnik-hyperstls.amvera.io/health || echo "unreachable")
+            BODY=$(curl -s --max-time 10 https://trudnik-hyperstls.amvera.io/health 2>/dev/null || echo "unreachable")
             echo "body=$BODY" >> $GITHUB_OUTPUT
-            echo "UNHEALTHY=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Alert Telegram
-        if: steps.health.outputs.UNHEALTHY == 'true'
+      - name: Alert Telegram (optional)
+        if: ${{ steps.health.outputs.status != '200' && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TG_ALERT_CHAT_ID != '' }}
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -H "Content-Type: application/json" \
-            -d "{
-              \"chat_id\": \"${{ secrets.TG_ALERT_CHAT_ID }}\",
-              \"text\": \"🔴 Трудник: health check FAILED (HTTP ${{ steps.health.outputs.status }})\n\n${{ steps.health.outputs.body }}\",
-              \"parse_mode\": \"HTML\"
-            }"
+            -d "{\"chat_id\":\"${{ secrets.TG_ALERT_CHAT_ID }}\",\"text\":\"🔴 Трудник: health=${{ steps.health.outputs.status }}\"}"
         continue-on-error: true
 
       - name: Fail if unhealthy
-        if: steps.health.outputs.UNHEALTHY == 'true'
+        if: steps.health.outputs.status != '200'
         run: exit 1

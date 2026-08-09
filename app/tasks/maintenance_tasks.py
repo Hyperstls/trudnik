@@ -417,6 +417,19 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
                 except Exception:
                     logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
 
+        # 1j) Страховка: ratings.updated_at (backup мог быть старее bootstrap).
+        cur.execute("SELECT count(*) FROM information_schema.columns WHERE table_name='ratings' AND column_name='updated_at'")
+        if cur.fetchone()[0] == 0:
+            try:
+                _apply_migration('139_ensure_ratings_updated_at.sql')
+                logger.warning('self-heal: applied migration 139 (ratings.updated_at)')
+            except Exception as e:
+                logger.warning('self-heal: failed to apply 139: %s', e)
+                try:
+                    conn.rollback()
+                except Exception:
+                    logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
+
         # 2) Политика чтения profiles может быть удалена — гарантируем наличие,
         #    иначе профиль/выход/списки пустые (RLS deny-all).
         cur.execute(

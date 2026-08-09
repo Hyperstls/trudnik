@@ -1,10 +1,13 @@
 """Blueprint для рейтингов и отзывов."""
+import logging
 from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request, session, current_app, render_template, redirect, flash, url_for
 
 from app.decorators import login_required, rate_limit, role_required, validate_uuid
 from app.utils import sanitize_postgrest, postgrest_request, postgrest_admin_request, update_rating
+
+logger = logging.getLogger(__name__)
 
 ratings_bp = Blueprint('ratings', __name__)
 
@@ -184,7 +187,7 @@ def upsert_rating():
                 is_new = False
 
     if not resp.ok:
-        current_app.logger.error(
+        logger.error(
             '[RATING] Failed to upsert: rater=%s job=%s status=%s text=%s',
             rater_user_id, job_id, resp.status_code, (resp.text or '')[:200]
         )
@@ -321,7 +324,7 @@ def rate_workers_page(job_id):
         f'jobs?id=eq.{job_id}&employer_id=eq.{user_id}&select=id,organization_name,status,employer_id'
     )
     if not job_resp.ok:
-        current_app.logger.error(
+        logger.error(
             '[RATE_WORKERS] Failed to fetch job %s: status=%s text=%s',
             job_id, job_resp.status_code, (job_resp.text or '')[:200]
         )
