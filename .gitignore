@@ -73,6 +73,11 @@ scripts/env_trudnik_app.env
 mcp.json
 .idea/
 .vscode/
+.zcode/
+
+# IDE/agent scratch artifacts (auto-generated rules, prompts, plans — machine-specific)
+.kilocode/rules-code/
+.kilocode/system-prompt-code
 *.keystore
 *.jks
 *.apk
