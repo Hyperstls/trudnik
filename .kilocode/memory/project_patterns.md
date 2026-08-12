@@ -15,6 +15,13 @@
 - Admin (service_role) обходит RLS — select= не нужен.
 - Новые RPC невидимы (404 PGRST202) до `NOTIFY pgrst 'reload schema'`. Self-heal делает это автоматически.
 - Embedding с несуществующими колонками → 400 (profiles.skills удалён → использовать user_skills).
+- **pre_deploy_check (check_profiles_select)** понимает 4 паттерна:
+  1. select= прямо в строке вызова.
+  2. admin_request / PATCH / POST на текущей ИЛИ предыдущей строке (многострочные вызовы).
+  3. Переменная-запрос: `f'profiles?{query}'` где query собрана с select= (`query += '&select=...'`).
+  4. Вызов функции-билдера: `query = build_worker_query(...)` где функция содержит select= в теле.
+  - select=* ВАЛИДЕН для user-JWT (PostgREST вернёт только разрешённые GRANT'ом колонки).
+    401 вызывает лишь ПОЛНОЕ отсутствие select=.
 
 ## Celery + Flask
 - **ПРАВИЛО:** В `app/tasks/*.py` НИКОГДА не используй `current_app.logger` — используй `logging.getLogger(__name__)`.
