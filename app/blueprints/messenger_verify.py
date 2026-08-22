@@ -1,14 +1,17 @@
-"""Phase 3 (Часть A): верификация через мессенджеры MAX + Telegram.
+"""Верификация профиля через мессенджер MAX (Phase 3, Часть A).
+
+2026-08: Telegram-провайдер ОТКЛЮЧЁН (152-ФЗ ст. 12 — исключение трансграничной
+передачи ПДн в иностранный сервис; см. docs/rkn_notification_fill.md, вариант A).
+Остался только MAX (российский мессенджер) + email-верификация (079).
 
 Deep-link flow:
-  1. Trudnik user clicks «Подтвердить через MAX/Telegram».
-  2. /messenger/start/<platform> → генерирует одноразовый токен (Redis) + deep link.
+  1. Trudnik user clicks «Подтвердить через MAX».
+  2. /messenger/start/max → генерирует одноразовый токен (Redis) + deep link.
   3. User opens bot → bot /start <token>.
   4. Webhook получает событие → верифицирует токен → verify_via_messenger RPC.
   5. Bot отправляет подтверждение в чат.
 """
 import logging
-import os
 import uuid
 
 import requests
@@ -17,32 +20,26 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from flask import Blueprint, jsonify, request, session
 
-from app.decorators import login_required, rate_limit
+from app.config import Config
+from app.decorators import login_required, admin_required, rate_limit
 from app.utils import postgrest_rpc
 from app.utils.redis_client import get_redis_client
 
 logger = logging.getLogger(__name__)
 messenger_bp = Blueprint('messenger_verify', __name__, url_prefix='/messenger')
 
-_MAX_API = 'https://platform-api2.max.ru'
-_TG_API = 'https://api.telegram.org/bot'
-_VERIFY_TTL = 600  # 10 минут на подтверждение
+# Значения вынесены в Config (app/config.py), override через env:
+# MAX_API_URL / MESSENGER_VERIFY_TTL / MESSENGER_API_TIMEOUT
+_MAX_API = Config.MAX_API_URL
+_VERIFY_TTL = Config.MESSENGER_VERIFY_TTL
 
 
 def _max_token():
-    return os.environ.get('MAX_BOT_TOKEN', '')
-
-
-def _tg_token():
-    return os.environ.get('TELEGRAM_BOT_TOKEN', '')
+    return Config.MAX_BOT_TOKEN
 
 
 def _max_botname():
-    return os.environ.get('MAX_BOT_USERNAME', 'se13803803_bot')
-
-
-def _tg_botname():
-    return os.environ.get('TELEGRAM_BOT_USERNAME', 'Trudnik_bot')
+    return Config.MAX_BOT_USERNAME
 
 
 # ── Генерация deep-link для пользователя ──────────────────────────
@@ -50,8 +47,11 @@ def _tg_botname():
 @login_required
 @rate_limit(fail_open=True)
 def start_verification(platform):
-    """Генерирует deep-link для подтверждения через мессенджер (AJAX)."""
-    if platform not in ('max', 'telegram'):
+    """Генерирует deep-link для подтверждения через MAX (AJAX).
+
+    Telegram отключён (трансграничная передача, 152-ФЗ ст. 12) → 404.
+    """
+    if platform not in ('max',):
         return jsonify({'success': False, 'error': 'unknown_platform'}), 400
 
     user_id = session.get('user_id')
@@ -64,40 +64,28 @@ def start_verification(platform):
         return jsonify({'success': False, 'error': 'redis_unavailable'}), 503
     r.setex(f'msg_verify:{token}', _VERIFY_TTL, str(user_id))
 
-    if platform == 'max':
-        link = f'https://max.ru/{_max_botname()}?start={token}'
-    else:
-        link = f'https://t.me/{_tg_botname()}?start={token}'
+    link = f'https://max.ru/{_max_botname()}?start={token}'
 
-    return jsonify({'success': True, 'link': link, 'platform': platform})
+    return jsonify({'success': True, 'link': link, 'platform': 'max'})
 
 
 # ── Webhook: MAX ──────────────────────────────────────────────────
 @messenger_bp.route('/diagnose', methods=['GET'])
+@login_required
+@admin_required
 def diagnose():
-    """Диагностика outbound-доступности API мессенджеров с прода."""
-    import requests as _req
-    result = {'telegram': {'token_set': bool(_tg_token()), 'reachable': False, 'error': ''},
-              'max': {'token_set': bool(_max_token()), 'reachable': False, 'error': ''}}
+    """Диагностика outbound-доступности API MAX с прода (только админ).
 
-    # Telegram: GET /getMe
-    if _tg_token():
-        try:
-            r = _req.get(f'{_TG_API}{_tg_token()}/getMe', timeout=10)
-            result['telegram']['reachable'] = r.ok
-            result['telegram']['status'] = r.status_code
-            if r.ok:
-                d = r.json()
-                result['telegram']['bot'] = d.get('result', {}).get('username', '?')
-            else:
-                result['telegram']['error'] = r.text[:100]
-        except Exception as e:
-            result['telegram']['error'] = str(e)[:200]
+    Без admin_required эндпоинт был публичным и раскрывал статус bot-токенов +
+    совершал исходящие запросы от имени любого посетителя (исправлено 2026-08-16).
+    """
+    import requests as _req
+    result = {'max': {'token_set': bool(_max_token()), 'reachable': False, 'error': ''}}
 
     # MAX: GET /me
     if _max_token():
         try:
-            r = _req.get(f'{_MAX_API}/me', headers={'Authorization': _max_token()}, timeout=10, verify=False)
+            r = _req.get(f'{_MAX_API}/me', headers={'Authorization': _max_token()}, timeout=Config.MESSENGER_API_TIMEOUT, verify=False)
             result['max']['reachable'] = r.ok
             result['max']['status'] = r.status_code
             if r.ok:
@@ -123,32 +111,13 @@ def max_webhook():
         max_uid = str(data.get('user', {}).get('user_id', ''))
         chat_id = data.get('chat_id')
         if payload:
-            _complete(payload, 'max', max_uid, chat_id, 'max')
-
-    return jsonify({'ok': True})
-
-
-# ── Webhook: Telegram ─────────────────────────────────────────────
-@messenger_bp.route('/webhook/telegram', methods=['POST'])
-@rate_limit(fail_open=True)
-def telegram_webhook():
-    """Принимает обновления от Telegram бота (/start <token>)."""
-    data = request.get_json(silent=True) or {}
-    message = data.get('message') or data.get('edited_message') or {}
-    text = message.get('text', '')
-
-    if text.startswith('/start '):
-        payload = text.split(' ', 1)[1].strip()
-        tg_uid = str(message.get('from', {}).get('id', ''))
-        chat_id = message.get('chat', {}).get('id')
-        if payload:
-            _complete(payload, 'telegram', tg_uid, chat_id, 'telegram')
+            _complete(payload, max_uid, chat_id)
 
     return jsonify({'ok': True})
 
 
 # ── Внутренняя логика ─────────────────────────────────────────────
-def _complete(token, provider, messenger_uid, chat_id, platform):
+def _complete(token, messenger_uid, chat_id):
     """Верифицирует токен → помечает профиль → отправляет подтверждение в чат."""
     r = get_redis_client()
     if not r:
@@ -167,22 +136,18 @@ def _complete(token, provider, messenger_uid, chat_id, platform):
 
     rpc = postgrest_rpc(
         'verify_via_messenger',
-        {'p_user_id': user_id, 'p_provider': provider, 'p_messenger_uid': messenger_uid},
+        {'p_user_id': user_id, 'p_provider': 'max', 'p_messenger_uid': messenger_uid},
         use_admin=True,
     )
     if not rpc.ok:
         logger.error('messenger_verify: RPC failed for %s: %s', user_id, (rpc.text or '')[:200])
         return
-    logger.info('messenger_verify: user %s verified via %s', user_id, platform)
+    logger.info('messenger_verify: user %s verified via max', user_id)
 
     if chat_id:
         msg = '✅ Ваш профиль на «Трудник» подтверждён! Теперь вам доступны все функции платформы. Вернитесь в приложение — кнопка «Я подтвердил — проверить».'
-        if platform == 'max':
-            _send_max(chat_id, msg)
-            logger.info('messenger_verify: MAX reply sent to chat %s', chat_id)
-        else:
-            _send_telegram(chat_id, msg)
-            logger.info('messenger_verify: Telegram reply sent to chat %s', chat_id)
+        _send_max(chat_id, msg)
+        logger.info('messenger_verify: MAX reply sent to chat %s', chat_id)
 
 
 def _send_max(chat_id, text):
@@ -194,43 +159,16 @@ def _send_max(chat_id, text):
             f'{_MAX_API}/messages',
             json={'chat_id': chat_id, 'text': text},
             headers={'Authorization': token, 'Content-Type': 'application/json'},
-            timeout=10,
+            timeout=Config.MESSENGER_API_TIMEOUT,
             verify=False,  # MAX API SSL cert not in Docker CA store
         )
     except Exception as e:
         logger.warning('messenger_verify: MAX send failed: %s', e)
 
 
-def _send_telegram(chat_id, text):
-    token = _tg_token()
-    if not token:
-        return
-    try:
-        requests.post(
-            f'{_TG_API}{token}/sendMessage',
-            json={'chat_id': chat_id, 'text': text},
-            timeout=10,
-        )
-    except Exception as e:
-        logger.warning('messenger_verify: Telegram send failed: %s', e)
-
-
 # ── Регистрация вебхуков (вызывается один раз после деплоя) ───────
 def register_webhooks(base_url):
-    """Регистрирует вебхуки на MAX и Telegram. base_url = https://..."""
-    tg = _tg_token()
-    if tg:
-        url = f'{base_url}/messenger/webhook/telegram'
-        try:
-            resp = requests.post(
-                f'{_TG_API}{tg}/setWebhook',
-                json={'url': url, 'allowed_updates': ['message']},
-                timeout=10,
-            )
-            logger.info('Telegram webhook registered (%s): %s', url, resp.text[:100])
-        except Exception as e:
-            logger.warning('Telegram setWebhook failed: %s', e)
-
+    """Регистрирует вебхук на MAX. base_url = https://..."""
     mx = _max_token()
     if mx:
         url = f'{base_url}/messenger/webhook/max'
@@ -239,7 +177,7 @@ def register_webhooks(base_url):
                 f'{_MAX_API}/subscriptions',
                 json={'url': url, 'update_types': ['bot_started', 'message_created']},
                 headers={'Authorization': mx, 'Content-Type': 'application/json'},
-                timeout=10,
+                timeout=Config.MESSENGER_API_TIMEOUT,
                 verify=False,
             )
             logger.info('MAX webhook registered (%s): %s', url, resp.text[:100])

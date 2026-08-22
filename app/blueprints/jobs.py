@@ -1,7 +1,17 @@
 import logging
 from datetime import datetime, timezone, timedelta
 
-from flask import Blueprint, current_app, g, jsonify, flash, redirect, render_template, request, session, url_for, abort
+from flask import (
+    Blueprint,
+    current_app,
+    jsonify,
+    flash,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +25,7 @@ from app.utils.helpers import assert_postgrest_ok
 from app.utils.security import safe_redirect
 from app.utils.errors import safe_error_message
 from app.utils.validators import parse_float
-from app.services.notification_service import create as notify, enqueue_notification
+from app.services.notification_service import enqueue_notification
 from app.services.job_service import (
     check_job_owner,
     check_job_visibility,

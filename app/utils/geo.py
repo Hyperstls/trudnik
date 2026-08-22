@@ -1,7 +1,7 @@
 """Гео-вычисления: расстояние между точками, фильтрация по радиусу."""
 
 import math
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 
 def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:

@@ -3,7 +3,6 @@
 import re
 from typing import Optional
 
-from app.utils.security import has_sql_injection as _has_sql_injection
 
 # Устаревший локальный pattern (оставлен для обратной ссылки).
 # Используйте has_sql_injection() из app.utils.security.

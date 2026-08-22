@@ -3,7 +3,8 @@ import sys
 import requests
 from datetime import datetime
 
-BASE = "http://127.0.0.1:5000"
+import os
+BASE = os.environ.get('TEST_BASE_URL', 'http://localhost:8000')
 
 RESULTS = {"passed": 0, "failed": 0}
 

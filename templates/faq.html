@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Вопросы и ответы — Трудник{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-8 fade-in">
+    <h1 class="text-2xl font-bold text-neutral-800 mb-2">Вопросы и ответы</h1>
+    <p class="text-sm text-neutral-500 mb-6">Как работает платформа разовой подработки «Трудник»</p>
+
+    <!-- ═══ Регистрация и роли ═══ -->
+    <section aria-labelledby="faq-group-registration" class="mb-6">
+        <h2 id="faq-group-registration" class="text-lg font-semibold text-neutral-800 mb-3 flex items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary-500" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Регистрация и роли
+        </h2>
+        <div class="space-y-2">
+            <details class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+                <summary class="px-5 py-4 text-sm font-medium text-neutral-800 cursor-pointer select-none hover:bg-neutral-50 transition-colors">Как зарегистрироваться на платформе?</summary>
+                <div class="px-5 pb-4 text-sm text-neutral-600 leading-relaxed">
+                    Нажмите «Регистрация» на главном экране. Укажите имя, email и пароль, выберите роль — «Трудник» (ищу работу) или «Работодатель» (ищу сотрудников). После регистрации подтвердите email по ссылке из письма — без подтверждения часть функций недоступна.
+                </div>
+            </details>
+            <details class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+                <summary class="px-5 py-4 text-sm font-medium text-neutral-800 cursor-pointer select-none hover:bg-neutral-50 transition-colors">Чем отличается трудник от работодателя?</summary>
+                <div class="px-5 pb-4 text-sm text-neutral-600 leading-relaxed">
+                    <strong>Трудник</strong> ищет разовую подработку: просматривает задания, откликается, получает оплату напрямую от работодателя. <strong>Работодатель</strong> публикует задания, рассматривает отклики, принимает исполнителей и общается с ними в чате. Роль выбирается при регистрации и определяет доступные разделы.
+                </div>
+            </details>
+            <details class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+                <summary class="px-5 py-4 text-sm font-medium text-neutral-800 cursor-pointer select-none hover:bg-neutral-50 transition-colors">Какие данные нужны для профиля?</summary>
+                <div class="px-5 pb-4 text-sm text-neutral-600 leading-relaxed">
+                    Обязательно — имя и email. Дополнительно: город, навыки, опыт, желаемая оплата за смену, ссылка на портфолио. <abbr title="Идентификационный номер налогоплательщика">ИНН</abbr> указывается добровольно (для самозанятых). Мы не собираем специальные категории персональных данных (152-ФЗ ст.10); экспорт и удаление данных — в разделе «Профиль».
+                </div>
+            </details>
+        </div>
+    </section>
+
+    <!-- ═══ Создание заданий ═══ -->
+    <section aria-labelledby="faq-group-jobs" class="mb-6">
+        <h2 id="faq-group-jobs" class="text-lg font-semibold text-neutral-800 mb-3 flex items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary-500" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            Создание заданий
+        </h2>
+        <div class="space-y-2">
+            <details class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+                <summary class="px-5 py-4 text-sm font-medium text-neutral-800 cursor-pointer select-none hover:bg-neutral-50 transition-colors">Как создать задание?</summary>
+                <div class="px-5 pb-4 text-sm text-neutral-600 leading-relaxed">
+                    Раздел «Мои задания» → кнопка создания. Укажите описание объекта, вид работы, адрес и город (на карте), дату и время, оплату за смену и количество мест. Задание публикуется сразу и становится видимым трудникам вашего города.
+                </div>
+            </details>
+            <details class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+                <summary class="px-5 py-4 text-sm font-medium text-neutral-800 cursor-pointer select-none hover:bg-neutral-50 transition-colors">Сколько исполнителей можно взять на одно задание?</summary>
+                <div class="px-5 pb-4 text-sm text-neutral-600 leading-relaxed">
+                    Вы задаёте лимит при создании (например, 5 мест). Когда все места заняты, приём откликов закрывается автоматически, а непринятые отклики отклоняются. Набор можно завершить и досрочно кнопкой «Завершить задание».
+                </div>
+            </details>
+            <details class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+                <summary class="px-5 py-4 text-sm font-medium text-neutral-800 cursor-pointer select-none hover:bg-neutral-50 transition-colors">Можно ли отменить или отредактировать задание?</summary>
+                <div class="px-5 pb-4 text-sm text-neutral-600 leading-relaxed">
+                    Да. «Редактировать» доступно, пока на задание нет принятых откликов. «Отозвать задание» отменяет его — все текущие отклики отклоняются. Отменённое задание можно восстановить: прежние отклики при этом сбрасываются.
+                </div>
+            </details>
+        </div>
+    </section>
+
+    <!-- ═══ Отклики и чат ═══ -->
+    <section aria-labelledby="faq-group-applications" class="mb-6">
+        <h2 id="faq-group-applications" class="text-lg font-semibold text-neutral-800 mb-3 flex items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary-500" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Отклики и чат
+        </h2>
+        <div class="space-y-2">
+            <details class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+                <summary class="px-5 py-4 text-sm font-medium text-neutral-800 cursor-pointer select-none hover:bg-neutral-50 transition-colors">Как откликнуться на задание?</summary>
+                <div class="px-5 pb-4 text-sm text-neutral-600 leading-relaxed">
+                    Откройте задание из списка или поиска по городу и нажмите «Откликнуться». Работодатель увидит ваш отклик в разделе «Управление откликами» и примет или отклонит его. Повторный отклик на то же задание после отказа возможен, если набор ещё открыт.
+                </div>
+            </details>
+            <details class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+                <summary class="px-5 py-4 text-sm font-medium text-neutral-800 cursor-pointer select-none hover:bg-neutral-50 transition-colors">Когда открывается чат с работодателем?</summary>
+                <div class="px-5 pb-4 text-sm text-neutral-600 leading-relaxed">
+                    Чат становится доступен после того, как ваш отклик принят. Работодатель также может сам пригласить вас на задание — приглашения приходят в раздел «Приглашения», и вы можете принять или отклонить их.
+                </div>
+            </details>
+            <details class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+                <summary class="px-5 py-4 text-sm font-medium text-neutral-800 cursor-pointer select-none hover:bg-neutral-50 transition-colors">Можно ли отозвать свой отклик?</summary>
+                <div class="px-5 pb-4 text-sm text-neutral-600 leading-relaxed">
+                    Да, кнопкой «Отозвать отклик». Ограничение: если до начала задания осталось менее 12 часов, отзыв недоступен — это защищает работодателя от срыва смены в последний момент.
+                </div>
+            </details>
+        </div>
+    </section>
+
+    <!-- ═══ Безопасность и верификация ═══ -->
+    <section aria-labelledby="faq-group-security" class="mb-6">
+        <h2 id="faq-group-security" class="text-lg font-semibold text-neutral-800 mb-3 flex items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary-500" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Безопасность и верификация
+        </h2>
+        <div class="space-y-2">
+            <details class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+                <summary class="px-5 py-4 text-sm font-medium text-neutral-800 cursor-pointer select-none hover:bg-neutral-50 transition-colors">Зачем подтверждать профиль через MAX или Telegram?</summary>
+                <div class="px-5 pb-4 text-sm text-neutral-600 leading-relaxed">
+                    Верификация через мессенджер повышает доверие: подтверждённые профили получают значок «Проверенный». Нажмите «Подтвердить через MAX/Telegram» в профиле, перейдите по ссылке в чат с ботом и отправьте /start — подтверждение произойдёт автоматически в течение 10 минут.
+                </div>
+            </details>
+            <details class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+                <summary class="px-5 py-4 text-sm font-medium text-neutral-800 cursor-pointer select-none hover:bg-neutral-50 transition-colors">Как пожаловаться на пользователя?</summary>
+                <div class="px-5 pb-4 text-sm text-neutral-600 leading-relaxed">
+                    На странице профиля нарушителя нажмите «Пожаловаться» и опишите причину (мошенничество, спам, некорректное поведение). Жалобы рассматривает администратор; при множественных жалобах аккаунт автоматически приостанавливается до разбирательства.
+                </div>
+            </details>
+            <details class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+                <summary class="px-5 py-4 text-sm font-medium text-neutral-800 cursor-pointer select-none hover:bg-neutral-50 transition-colors">Что такое чёрный список работодателя?</summary>
+                <div class="px-5 pb-4 text-sm text-neutral-600 leading-relaxed">
+                    Заблокированный в вашем чёрном списке трудник больше не сможет откликаться на ваши задания. Блокировку можно снять в любой момент в разделе «Чёрный список».
+                </div>
+            </details>
+        </div>
+    </section>
+
+    <!-- ═══ Оплата ═══ -->
+    <section aria-labelledby="faq-group-payment" class="mb-6">
+        <h2 id="faq-group-payment" class="text-lg font-semibold text-neutral-800 mb-3 flex items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary-500" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Оплата
+        </h2>
+        <div class="space-y-2">
+            <details class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+                <summary class="px-5 py-4 text-sm font-medium text-neutral-800 cursor-pointer select-none hover:bg-neutral-50 transition-colors">Сколько стоит использование платформы?</summary>
+                <div class="px-5 pb-4 text-sm text-neutral-600 leading-relaxed">
+                    Все функции «Трудника» сейчас бесплатны: публикация заданий, отклики, чат, уведомления, поиск исполнителей. Монетизация платформы отключена.
+                </div>
+            </details>
+            <details class="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+                <summary class="px-5 py-4 text-sm font-medium text-neutral-800 cursor-pointer select-none hover:bg-neutral-50 transition-colors">Как происходит расчёт с исполнителем?</summary>
+                <div class="px-5 pb-4 text-sm text-neutral-600 leading-relaxed">
+                    Оплата за смену указывается в задании и производится напрямую между работодателем и трудником — платформа не выступает платёжным посредником и не удерживает комиссию. После завершения стороны оценивают друг друга.
+                </div>
+            </details>
+        </div>
+    </section>
+
+    <p class="text-sm text-neutral-400 text-center mt-8">Не нашли ответ? Напишите нам — контакты в разделе «Профиль» работодателя или через чат поддержки.</p>
+</div>
+{% endblock %}

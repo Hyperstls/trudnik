@@ -82,7 +82,7 @@ trudnik/
 │   │   ├── __init__.py
 │   │   ├── auth.py                 # /login, /register, /logout
 │   │   ├── jobs.py                 # /, /workers, /job/new, /my-jobs, /jobs/<id>, etc.
-│   │   ├── jobs_api.py             # /api/search/jobs, /api/search/workers, /api/invite
+│   │   ├── jobs_api.py             # /api/invite, /api/invitations, /api/skills (поиск — в HTML-каталоге `/`)
 │   │   ├── applications.py         # /apply, /my-applications, accept/reject/withdraw
 │   │   ├── admin_dashboard.py      # /admin — расщеплён на admin_dashboard / admin_users / admin_jobs / admin_verification / admin_dictionaries / admin_diagnostics (отдельного admin.py НЕТ)
 │   │   ├── profile.py              # /profile, /profile/update, /verify-employer, delete account

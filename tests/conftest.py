@@ -29,8 +29,18 @@ ADMIN_PASSWORD = os.environ.get('TRUDNIK_ADMIN_PASS', 'test')
 # Хелперы для интеграционных тестов (сессии, CSRF, логин)
 # ═══════════════════════════════════════════════════════════════
 
-def _extract_job_id_from_redirect(text_or_url: str) -> str | None:
-    """Извлекает job_id из URL редиректа или HTML."""
+def _extract_job_id_from_redirect(text_or_url, resp=None) -> str | None:
+    """Извлекает job_id из URL редиректа или HTML.
+
+    Совместимые формы: (str) | (session, response) — во второй берётся
+    response.url и response.text.
+    """
+    if resp is not None:
+        for source in (getattr(resp, 'url', ''), getattr(resp, 'text', '')):
+            match = re.search(r'/jobs/([a-f0-9\-]+)', source)
+            if match:
+                return match.group(1)
+        return None
     match = re.search(r'/jobs/([a-f0-9\-]+)', text_or_url)
     if match:
         return match.group(1)
@@ -38,13 +48,19 @@ def _extract_job_id_from_redirect(text_or_url: str) -> str | None:
 
 
 def extract_csrf_token(html: str) -> str | None:
-    """Извлекает CSRF-токен из HTML-страницы."""
-    match = re.search(r'name="csrf_token"[^>]*value="([^"]+)"', html)
-    if match:
-        return match.group(1)
-    match = re.search(r'csrf_token[^=]*=[^"]*"([^"]+)"', html)
-    if match:
-        return match.group(1)
+    """Извлекает CSRF-токен из HTML-страницы.
+
+    Порядок: скрытое поле формы `_csrf_token`/`csrf_token` (значение value=),
+    затем meta-тег csrf-token. Точные паттерны — НЕ «жадный» fallback
+    (старый fallback захватывал value атрибута type="hidden").
+    """
+    for pat in (r'name="_csrf_token"[^>]*value="([^"]+)"',
+                r'name="csrf_token"[^>]*value="([^"]+)"',
+                r'value="([^"]+)"[^>]*name="_csrf_token"',
+                r'<meta[^>]*name="csrf-token"[^>]*content="([^"]+)"'):
+        match = re.search(pat, html)
+        if match:
+            return match.group(1)
     return None
 
 
@@ -56,26 +72,148 @@ def get_csrf_from_page(session: requests.Session, url: str) -> str | None:
     return None
 
 
+def _get_live_csrf(session) -> str:
+    """Реальный CSRF-токен для live-сессии (кэшируется на объекте Session).
+
+    Middleware сверяет session['_csrf_token']; в mock-режиме (TESTING) CSRF
+    отключён и токен не используется, но live integration-тесты требуют
+    валидного значения.
+    """
+    cached = getattr(session, '_trudnik_csrf', None)
+    if cached:
+        return cached
+    try:
+        resp = session.get(f'{BASE_URL}/profile', timeout=30)
+        token = extract_csrf_token(resp.text)
+        if token:
+            try:
+                session._trudnik_csrf = token
+            except Exception:
+                pass
+            return token
+    except Exception:
+        pass
+    return 'test-csrf-token'
+
+
 def csrf_headers(token=None):
-    """Возвращает заголовки с CSRF-токеном для JSON-запросов."""
+    """Заголовки с CSRF для JSON-запросов.
+
+    Принимает токен (строка), requests.Session (live: токен достанется со
+    страницы) или None (mock-режим: заглушка). Имя заголовка — строго
+    `X-CSRF-Token` (middleware.py:csrf_check).
+    """
+    import requests as _rq
+    if isinstance(token, _rq.Session):
+        token = _get_live_csrf(token)
     if token is None:
         token = 'test-csrf-token'
-    return {'X-CSRFToken': str(token), 'Content-Type': 'application/json'}
+    return {'X-CSRF-Token': str(token), 'Content-Type': 'application/json'}
 
 
-def form_with_csrf(data_dict=None, **kwargs):
-    """Принимает и dict, и keyword arguments."""
-    if data_dict is None:
-        data_dict = {}
+def form_with_csrf(data_dict=None, csrf=None, **kwargs):
+    """Форма с CSRF-токеном. Совместимые формы вызова:
+
+    - form_with_csrf(session, **fields)        — live: реальный токен со страницы
+    - form_with_csrf(session, csrf, **fields)  — live: токен передан явно
+    - form_with_csrf(dict, csrf)               — dict + явный токен
+    - form_with_csrf(**fields) / form_with_csrf(dict, **fields) — mock: заглушка
+    """
+    import requests as _rq
+    if isinstance(data_dict, _rq.Session):
+        kwargs['_csrf_token'] = csrf or _get_live_csrf(data_dict)
+        return dict(kwargs)
+    data_dict = dict(data_dict or {})
     data_dict.update(kwargs)
-    # Добавляем CSRF токен
-    data_dict['_csrf_token'] = 'test-csrf-token'
+    data_dict['_csrf_token'] = csrf or 'test-csrf-token'
     return data_dict
+
+
+def _resp_read(f):
+    """Читает один RESP-ответ из файла сокета."""
+    line = f.readline()
+    if not line:
+        raise ConnectionError('redis closed connection')
+    kind, payload = line[:1], line[1:-2]
+    if kind == b'+':
+        return payload.decode()
+    if kind == b'-':
+        raise RuntimeError('redis error: ' + payload.decode(errors='replace'))
+    if kind == b':':
+        return int(payload)
+    if kind == b'$':
+        n = int(payload)
+        if n == -1:
+            return None
+        return f.read(n + 2)[:-2]
+    if kind == b'*':
+        n = int(payload)
+        if n == -1:
+            return None
+        return [_resp_read(f) for _ in range(n)]
+    raise RuntimeError(f'unknown RESP type: {kind!r}')
+
+
+def _resp_command(f, *args):
+    """Минимальный RESP-клиент: отправка команды + чтение ответа."""
+    cmd = b'*' + str(len(args)).encode() + b'\r\n'
+    for a in args:
+        b = a.encode() if isinstance(a, str) else a
+        cmd += b'$' + str(len(b)).encode() + b'\r\n' + b + b'\r\n'
+    f.write(cmd)
+    f.flush()
+    return _resp_read(f)
+
+
+def _clear_login_rate_limits():
+    """Сбрасывает Redis-ключи rate-limit/lockout перед тестовым логином.
+
+    Чистим: (1) ratelimit:/login:* декоратора; (2) C22 per-account
+    login_attempts/login_lockout; (3) per-IP login_ip:*. Тестовая
+    инфраструктура против локального docker-Redis — прод не затрагивается.
+
+    ВАЖНО: raw-socket RESP вместо `import redis` — conftest подменяет
+    sys.modules['redis'] моком (строка выше), реальный клиент из импорта
+    недоступен.
+    """
+    import os
+    import socket
+    from urllib.parse import urlparse
+    try:
+        url = os.environ.get(
+            'REDIS_URL', 'redis://:trudnik-local-dev@localhost:6379/0')
+        u = urlparse(url)
+        sock = socket.create_connection((u.hostname or 'localhost',
+                                         u.port or 6379), timeout=2)
+        f = sock.makefile('rbw')
+        try:
+            password = (u.password or '').strip(':')
+            if password:
+                _resp_command(f, 'AUTH', password)
+            db = u.path.lstrip('/') or '0'
+            if db != '0':
+                _resp_command(f, 'SELECT', db)
+            for pattern in (b'ratelimit:/login:*', b'ratelimit:/register:*',
+                            b'login_attempts:*', b'login_lockout:*',
+                            b'login_ip:*'):
+                keys = _resp_command(f, 'KEYS', pattern) or []
+                if keys:
+                    _resp_command(f, 'DEL', *keys)
+        finally:
+            sock.close()
+    except Exception:
+        pass  # Redis недоступен — лимиты и так не работают (fail-open)
 
 
 def login_as(session: requests.Session, email: str, password: str,
              role: str = 'worker') -> bool:
-    """Логинит пользователя и возвращает True при успехе."""
+    """Логинит пользователя и возвращает True при успехе.
+
+    Строгая проверка: 200 от followed-redirect — не гарантия авторизации
+    (форма логина с flash тоже отдаёт 200). Успех = целевая страница НЕ
+    содержит формы логина / flash «Неверный email или пароль».
+    """
+    _clear_login_rate_limits()
     resp = session.get(f'{BASE_URL}/login', timeout=30)
     csrf = extract_csrf_token(resp.text)
     if not csrf:
@@ -86,7 +224,12 @@ def login_as(session: requests.Session, email: str, password: str,
         timeout=30,
         allow_redirects=True,
     )
-    return resp.status_code == 200
+    if resp.status_code != 200:
+        return False
+    if 'name="password"' in resp.text and 'Неверный email или пароль' in resp.text:
+        return False
+    # авторизованный редирект ведёт на /, /my-jobs — не на /login
+    return not resp.url.rstrip('/').endswith('/login')
 
 
 def relogin_if_expired(session: requests.Session, email: str, password: str) -> None:
@@ -317,9 +460,15 @@ def app_context(mock_postgrest_client):
 # Фикстуры для интеграционных тестов (HTTP-запросы к реальному серверу)
 # Эти фикстуры создают requests.Session и логинят пользователей.
 # Требуют запущенного Flask-сервера на TEST_BASE_URL (по умолчанию localhost:8000).
+#
+# scope='module': сессия логинится ОДИН раз на модуль. Причинa — rate limit
+# /login = 10 POST/60с на IP (app/utils/rate_limit_decorator.py, hardcoded):
+# function-scope давал >100 логинов на модуль и suite ловил 429 уже на
+# 11-м тесте. Тесты не вызывают logout, состояние сессии переиспользуется
+# безопасно (каждый тест — независимая HTTP-операция от имени того же юзера).
 # ═══════════════════════════════════════════════════════════════
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def employer_session():
     """Создаёт авторизованную сессию работодателя (requests.Session)."""
     session = requests.Session()
@@ -329,7 +478,7 @@ def employer_session():
     return session
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def worker_session():
     """Создаёт авторизованную сессию трудника (requests.Session)."""
     session = requests.Session()
@@ -339,7 +488,7 @@ def worker_session():
     return session
 
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def admin_session():
     """Создаёт авторизованную сессию администратора (requests.Session)."""
     session = requests.Session()

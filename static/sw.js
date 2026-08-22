@@ -53,7 +53,7 @@ self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Cross-origin запросы (напр. Cloudflare Turnstile, Яндекс.Карты) НЕ перехватываем:
+  // Cross-origin запросы (напр. Yandex SmartCaptcha, Яндекс.Карты) НЕ перехватываем:
   // Service Worker, переиздавая их через fetch(), оценивает их по connect-src страницы
   // (а не script-src), что ломает загрузку виджета капчи. Пусть браузер грузит их сам.
   if (url.origin !== self.location.origin) {

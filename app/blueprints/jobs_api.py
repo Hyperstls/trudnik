@@ -7,7 +7,7 @@
 from datetime import datetime, timezone
 import logging
 
-from flask import Blueprint, jsonify, request, session, current_app, url_for
+from flask import Blueprint, jsonify, request, session, url_for
 
 from app.decorators import login_required, role_required, validate_uuid
 from app.services.job_service import (

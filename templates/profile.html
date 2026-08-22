@@ -97,8 +97,8 @@
         </div>
 
         <div class="floating-label-group">
-            <textarea name="bio" rows="3" class="floating-input resize-none" placeholder=" ">{{ profile_user.get('bio') or '' }}</textarea>
-            <label class="floating-label">О себе</label>
+            <textarea name="bio" id="bio" rows="3" class="floating-input resize-none" placeholder=" " aria-label="О себе">{{ profile_user.get('bio') or '' }}</textarea>
+            <label for="bio" class="floating-label">О себе</label>
         </div>
 
         <div class="floating-label-group">
@@ -204,13 +204,8 @@
     {# Верификация через мессенджер — prominently near top #}
     <div class="mt-4 p-4 rounded-xl border" style="background:#fffbeb;border-color:#fde68a">
         <p class="text-sm font-semibold mb-1" style="color:#92400e">🔒 Подтвердите профиль</p>
-        <p class="text-xs mb-3" style="color:#b45309">Подтверждённые пользователи вызывают больше доверия. Выберите мессенджер:</p>
+        <p class="text-xs mb-3" style="color:#b45309">Подтверждённые пользователи вызывают больше доверия. Подтвердите профиль через мессенджер MAX:</p>
         <div class="flex gap-2">
-            <button type="button" id="btn-verify-tg"
-                    class="flex-1 px-3 py-2.5 text-white text-sm font-semibold rounded-lg transition-opacity hover:opacity-90"
-                    style="background:#0088cc">
-                ✈️ Telegram
-            </button>
             <button type="button" id="btn-verify-max"
                     class="flex-1 px-3 py-2.5 text-white text-sm font-semibold rounded-lg transition-opacity hover:opacity-90"
                     style="background:#7c3aed">
@@ -270,7 +265,7 @@
                     var link = document.getElementById('verify-link');
                     if (box && link) {
                         link.href = data.link;
-                        link.textContent = 'Открыть ' + (platform === 'telegram' ? 'Telegram' : 'MAX') + ' →';
+                        link.textContent = 'Открыть MAX →';
                         box.style.display = 'block';
                         box.scrollIntoView({behavior: 'smooth', block: 'center'});
                     }
@@ -284,10 +279,8 @@
             });
         }
 
-        var btnTg = document.getElementById('btn-verify-tg');
         var btnMax = document.getElementById('btn-verify-max');
         var btnCheck = document.getElementById('btn-verify-check');
-        if (btnTg) btnTg.addEventListener('click', function() { startVerify('telegram'); });
         if (btnMax) btnMax.addEventListener('click', function() { startVerify('max'); });
         if (btnCheck) btnCheck.addEventListener('click', function() { window.location.reload(); });
     })();

@@ -173,6 +173,10 @@ services:
       - PGRST_JWT_SECRET=${PGRST_JWT_SECRET}
     volumes:
       - ./app:/app/app
+      # Шаблоны и статика в корне проекта — без монтирования контейнер
+      # использует версии, запечённые в образ (устаревшие)
+      - ./templates:/app/templates
+      - ./static:/app/static
       - uploads_data:/data/uploads
     depends_on:
       redis:

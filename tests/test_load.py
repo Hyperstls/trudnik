@@ -4,7 +4,8 @@ import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 
-BASE = "http://127.0.0.1:5000"
+import os
+BASE = os.environ.get('TEST_BASE_URL', 'http://localhost:8000')
 CONCURRENT_USERS = 20
 REQUESTS_PER_USER = 5
 

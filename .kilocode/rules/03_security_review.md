@@ -18,5 +18,5 @@
 15. CSP: инлайн-<script>/<style> требуют CSP nonce. Не вставляй инлайн-скрипты без nonce; динамические данные — через data-* атрибуты или отдельные JS-файлы.
 16. Uploads: проверяй размер (MAX_PHOTO_SIZE_MB=5 → MAX_UPLOAD_SIZE; MAX_CONTENT_LENGTH=16MB) и MIME/расширение; защищайся от path traversal в именах файлов (не доверяй user-supplied filename для пути).
 17. JWT app_role: app_role должен браться из сессии/БД (session['role'] в get_user_headers), НЕ из клиентского ввода. Проверяй, что role нельзя подменить с клиента.
-18. Внешние ключи: TURNSTILE_SECRET_KEY, YANDEX_GEOCODER_KEY, VAPID_PRIVATE_KEY, MAX_BOT_TOKEN, TELEGRAM_BOT_TOKEN — только из env; не хардкодить, не логировать, не возвращать клиенту.
+18. Внешние ключи: SMARTCAPTCHA_SERVER_KEY, YANDEX_GEOCODER_KEY, VAPID_PRIVATE_KEY, MAX_BOT_TOKEN — только из env; не хардкодить, не логировать, не возвращать клиенту (SMARTCAPTCHA_CLIENT_KEY, VAPID_PUBLIC_KEY — можно). Капча — Yandex SmartCaptcha (РФ); Turnstile/Telegram-верификация удалены 2026-08 (152-ФЗ ст. 12, трансграничная передача).
 ```

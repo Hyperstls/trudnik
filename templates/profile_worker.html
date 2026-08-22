@@ -94,7 +94,7 @@
         <form method="post" action="/profile/{{ profile_user.id }}/report">
             <textarea name="reason" rows="3" maxlength="500" required aria-required="true"
                       class="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-primary-500 text-neutral-900 mb-4"
-                      placeholder="Причина жалобы…"></textarea>
+                      placeholder="Причина жалобы…" aria-label="Причина жалобы"></textarea>
             <div class="flex gap-3">
                 <button type="button" id="btn-report-cancel"
                         class="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-semibold py-3 rounded-xl">Отмена</button>

@@ -198,9 +198,13 @@ def test_static_css_loads(page):
 
 
 def test_favicon_accessible(page):
-    """Favicon доступен."""
+    """Favicon: /favicon.ico — намеренный 204-no-content (core.py);
+    реальная иконка — /static/favicon.ico через <link> в base.html."""
     response = page.request.get(f"{BASE_URL}/favicon.ico")
-    assert response.status in [200, 304, 404]
+    assert response.status in [200, 204, 304, 404]
+    response2 = page.request.get(f"{BASE_URL}/static/favicon.ico")
+    assert response2.status in [200, 304], \
+        f"static/favicon.ico недоступен: {response2.status}"
 
 
 def test_robots_txt_accessible(page):

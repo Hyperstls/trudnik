@@ -55,12 +55,13 @@ def create_app():
     from app.blueprints.employers import employers_bp
     from app.blueprints.core import core_bp
     from app.blueprints.messenger_verify import messenger_bp
+    from app.blueprints.faq import faq_bp
 
     _all_bps = [core_bp, auth_bp, profile_bp, jobs_bp, jobs_api_bp, applications_bp,
                 chat_bp, favorites_bp, blacklist_bp, notifications_bp,
                 admin_dashboard_bp, admin_users_bp, admin_jobs_bp,
                 admin_dictionaries_bp, admin_verification_bp, admin_diagnostics_bp,
-                ratings_bp, seo_bp, employers_bp, messenger_bp]
+                ratings_bp, seo_bp, employers_bp, messenger_bp, faq_bp]
     for bp in _all_bps:
         app.register_blueprint(bp)
 

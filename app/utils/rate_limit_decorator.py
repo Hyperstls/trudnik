@@ -6,13 +6,17 @@
 
 from functools import wraps
 import logging
+import os
 
 from flask import current_app, flash, jsonify, redirect, request, session, url_for
 
 logger = logging.getLogger(__name__)
 
-_RATE_WINDOW = 60  # секунд
-_RATE_MAX_REQUESTS = 10  # запросов в окне
+# Конфигурируется через env (дефолты = прод-поведение 10 запросов / 60 сек).
+# Локальные integration-тесты поднимают лимит: module-scope сессия делает
+# десятки POST на один эндпоинт за прогон модуля.
+_RATE_WINDOW = int(os.environ.get('RATE_LIMIT_WINDOW', '60'))  # секунд
+_RATE_MAX_REQUESTS = int(os.environ.get('RATE_LIMIT_MAX_REQUESTS', '10'))  # запросов в окне
 
 
 def rate_limit(f=None, fail_open: bool = True):

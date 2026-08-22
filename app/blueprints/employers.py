@@ -2,6 +2,7 @@ import logging
 
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 
+from app.config import Config
 from app.decorators import login_required, validate_uuid
 from app.utils import postgrest_request, sanitize_postgrest
 from app.utils.security import safe_redirect
@@ -14,7 +15,7 @@ employers_bp = Blueprint('employers', __name__)
 def employers_list():
     """Список всех работодателей с пагинацией, поиском и фильтрацией."""
     page = max(1, request.args.get('page', 1, type=int))
-    per_page = 20
+    per_page = Config.PAGINATION_DEFAULT_PER_PAGE
     city = request.args.get('city', '')
     skills = request.args.get('skills', '')
     search = request.args.get('q', '')

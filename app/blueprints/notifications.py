@@ -2,7 +2,7 @@
 
 import re as _re_inv
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required, validate_uuid
 from app.services.notification_service import (

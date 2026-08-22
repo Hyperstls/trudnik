@@ -5,9 +5,8 @@ from flask import Blueprint, current_app, flash, jsonify, redirect, render_templ
 
 from app.config import Config
 from app.decorators import login_required, rate_limit, role_required, validate_uuid
-from app.utils import postgrest_request, postgrest_admin_request, postgrest_rpc
-from app.utils.helpers import assert_postgrest_ok
-from app.services.notification_service import create as notify, enqueue_notification
+from app.utils import postgrest_request, postgrest_rpc
+from app.services.notification_service import enqueue_notification
 
 logger = logging.getLogger(__name__)
 
@@ -253,7 +252,7 @@ def my_applications():
     user_id = session['user_id']
     skills_filter = request.args.get('skills', '')
     page = max(1, request.args.get('page', 1, type=int))
-    per_page = min(100, max(1, request.args.get('per_page', 20, type=int)))
+    per_page = min(100, max(1, request.args.get('per_page', Config.PAGINATION_DEFAULT_PER_PAGE, type=int)))
 
     selected_skills = [s.strip().lower() for s in skills_filter.split(',') if s.strip()] if skills_filter else []
 

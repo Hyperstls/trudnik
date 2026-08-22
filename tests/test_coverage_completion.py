@@ -616,7 +616,7 @@ class TestNotificationsGaps:
         """NOT-003: POST /api/notifications/mark-all-read → 200, все уведомления прочитаны."""
         sess = employer_session
         resp = sess.post(
-            f"{BASE_URL}/api/notifications/mark-all-read",
+            f"{BASE_URL}/api/notifications/read-all",
             headers=csrf_headers(sess),
             timeout=30,
         )
@@ -857,15 +857,21 @@ class TestSearchGaps:
 
     @pytest.mark.integration
     def test_skills_religions_api(self, employer_session):
-        """SRH-004: GET /api/skills и GET /api/religions — возвращают JSON массивы."""
+        """SRH-004: GET /api/skills — JSON со списком skills.
+
+        /api/religions НЕ существует (публичного API религий нет — см.
+        docs/API_ENDPOINTS.md); проверяем, что он честно отдаёт 404.
+        """
         sess = employer_session
-        for endpoint, key in [('/api/skills', 'skills'), ('/api/religions', 'religions')]:
-            r = sess.get(f"{BASE_URL}{endpoint}", timeout=30)
-            assert r.status_code == 200, f"SRH-004: {endpoint} returned {r.status_code}"
-            data = r.json()
-            assert key in data, f"SRH-004: missing '{key}' key in {endpoint}: {data}"
-            assert isinstance(data[key], list), \
-                f"SRH-004: {key} is not a list in {endpoint}"
+        r = sess.get(f"{BASE_URL}/api/skills", timeout=30)
+        assert r.status_code == 200, f"SRH-004: /api/skills returned {r.status_code}"
+        data = r.json()
+        assert 'skills' in data, f"SRH-004: missing 'skills' key: {data}"
+        assert isinstance(data['skills'], list), "SRH-004: skills is not a list"
+
+        r2 = sess.get(f"{BASE_URL}/api/religions", timeout=30)
+        assert r2.status_code == 404, \
+            f"SRH-004: /api/religions should not exist, got {r2.status_code}"
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -1102,33 +1108,36 @@ class TestJobsGaps:
 
     @pytest.mark.integration
     def test_filter_by_payment(self, employer_session):
-        """JOB-W-003: Фильтрация заданий по оплате (min_pay, max_pay)."""
+        """JOB-W-003: Фильтрация каталога по оплате (payment_min/payment_max).
+
+        /api/search/jobs НЕ существует (фантом из locustfile — см.
+        docs/API_ENDPOINTS.md); фильтрация реализована в HTML-каталоге `/`.
+        """
         sess = employer_session
         r = sess.get(
-            f"{BASE_URL}/api/search/jobs?min_pay=100&max_pay=10000",
+            f"{BASE_URL}/?payment_min=100&payment_max=10000",
             timeout=30,
         )
-        assert r.status_code == 200, f"JOB-W-003: search API failed: {r.status_code}"
-        data = r.json()
-        # Проверяем структуру ответа
-        assert 'jobs' in data or 'results' in data or 'data' in data or isinstance(data, list), \
-            f"JOB-W-003: unexpected response structure: {list(data.keys()) if isinstance(data, dict) else type(data)}"
+        assert r.status_code == 200, f"JOB-W-003: catalog failed: {r.status_code}"
+        # Некорректные границы не должны ронять каталог
+        r_bad = sess.get(f"{BASE_URL}/?payment_min=abc&payment_max=-1", timeout=30)
+        assert r_bad.status_code == 200, \
+            f"JOB-W-003: invalid bounds crashed catalog: {r_bad.status_code}"
 
     @pytest.mark.integration
     def test_expired_jobs_not_in_active_listings(self, employer_session):
-        """JOB-W-009: Истёкшие задания не показываются в активных списках."""
+        """JOB-W-009: Каталог активных заданий отдаёт 200, expired отфильтрованы.
+
+        Полная проверка отсутствия expired в выдаче требует датасета с
+        истёкшим заданием — см. MANUAL-кейс в docs/QA_TEST_CASES.md.
+        Здесь smoke: каталог `/` (активные по умолчанию) и мои-задания
+        со статусным фильтром не падают.
+        """
         sess = employer_session
-        # По умолчанию поиск фильтрует status=open
-        r = sess.get(f"{BASE_URL}/api/search/jobs?status=open&per_page=5", timeout=30)
-        assert r.status_code == 200, f"JOB-W-009: search failed: {r.status_code}"
-        data = r.json()
-        jobs = data.get('jobs', data.get('results', data if isinstance(data, list) else []))
-        if isinstance(jobs, list):
-            for job in jobs:
-                if isinstance(job, dict):
-                    # Все задания в выдаче должны быть open
-                    status = job.get('status', 'open')
-                    # expired задания не должны быть в этом списке
+        r1 = sess.get(f"{BASE_URL}/", timeout=30)
+        assert r1.status_code == 200, f"JOB-W-009: catalog failed: {r1.status_code}"
+        r2 = sess.get(f"{BASE_URL}/my-jobs?status=open", timeout=30)
+        assert r2.status_code == 200, f"JOB-W-009: my-jobs failed: {r2.status_code}"
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -1218,12 +1227,13 @@ class TestApplicationsGaps:
             f"APP-010: reopen returned 500: {resp.text[:200]}"
 
     @pytest.mark.integration
-    def test_batch_applications_limit(self, employer_session):
-        """APP-015: Batch-отклик > 50 элементов → обрабатывается или отклоняется."""
-        # MANUAL: Требуется генерация 51+ заданий.
-        # Тест проверяет, что apply-selected обрабатывает пустой список корректно.
-        sess = employer_session
-        # Отправляем пустой список
+    def test_batch_applications_limit(self, worker_session):
+        """APP-015: Batch-отклик с пустым списком → flash «Не выбрано» + redirect.
+
+        Эндпоинт role_required('worker') — нужен worker. Полный кейс >50
+        элементов — MANUAL (см. docs/QA_TEST_CASES.md).
+        """
+        sess = worker_session
         resp = sess.post(
             f"{BASE_URL}/apply-selected",
             data=form_with_csrf(sess),
@@ -1231,7 +1241,7 @@ class TestApplicationsGaps:
             allow_redirects=True,
         )
         assert resp.status_code == 200, f"APP-015: apply-selected with no jobs failed: {resp.status_code}"
-        assert 'Не выбрано' in resp.text or 'не выбрано' in resp.text.lower(), \
+        assert 'не выбрано' in resp.text.lower(), \
             f"APP-015: no empty selection warning: {resp.text[:200]}"
 
 
@@ -1311,29 +1321,29 @@ class TestBlacklistGaps:
 
     @pytest.mark.integration
     def test_block_self_rejected(self, employer_session):
-        """BLK-002: Попытка заблокировать самого себя → отклоняется."""
+        """BLK-002: Self-block через /blacklist/<user_id> → 400 «нельзя себя».
+
+        Исправлено 2026-08-21 (TC-069): server-side проверка в block_user
+        отклоняет блокировку самого себя (ранее проходила «успешно»).
+        """
         sess = employer_session
-        # Получаем свой user_id
         profile = sess.get(f"{BASE_URL}/profile", timeout=30)
         match = re.search(r'data-user-id="([^"]+)"', profile.text)
         user_id = match.group(1) if match else None
         if not user_id:
             pytest.skip("Не удалось определить user_id")
 
-        # Пытаемся заблокировать себя
         resp = sess.post(
-            f"{BASE_URL}/block/{user_id}",
+            f"{BASE_URL}/blacklist/{user_id}",
             data=form_with_csrf(sess),
             timeout=30,
             allow_redirects=True,
         )
-        assert resp.status_code == 200, f"BLK-002: unexpected status {resp.status_code}"
-        # Должно быть сообщение об ошибке
-        assert ('себя' in resp.text.lower()
-                or 'нельзя' in resp.text.lower()
-                or 'cannot block yourself' in resp.text.lower()
-                or resp.status_code != 200), \
-            f"BLK-002: self-block should be rejected: {resp.text[:300]}"
+        # Фикс: блокировка себя отклоняется flash'ем «Нельзя заблокировать
+        # самого себя» (HTML-поток) или JSON 400 (ajax)
+        assert resp.status_code == 200
+        assert 'нельзя заблокировать самого себя' in resp.text.lower(), \
+            f"BLK-002: self-block должен отклоняться: {resp.text[:300]}"
 
 
 # ═══════════════════════════════════════════════════════════════

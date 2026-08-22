@@ -127,18 +127,27 @@ class Config:
     MAX_BATCH_SIZE = 50
     MAX_PHOTO_SIZE_MB = int(os.environ.get('MAX_PHOTO_SIZE_MB', '5'))
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads'))
-    RATE_LIMIT_MAX = 10
-    RATE_LIMIT_WINDOW = 60
+    # Примечание: лимиты @rate_limit декоратора конфигурируются через env
+    # RATE_LIMIT_MAX_REQUESTS / RATE_LIMIT_WINDOW (app/utils/rate_limit_decorator.py)
     # Phase 3 (Часть B): авто-заморозка по жалобам
     REPORT_FREEZE_THRESHOLD = int(os.environ.get('REPORT_FREEZE_THRESHOLD', '3'))
     REPORT_FREEZE_WINDOW_HOURS = int(os.environ.get('REPORT_FREEZE_WINDOW_HOURS', '24'))
-    # Phase 3 (Часть A): верификация через мессенджеры
+    # Phase 3 (Часть A): верификация через мессенджер MAX.
+    # Telegram отключён (152-ФЗ ст. 12 — трансграничная передача, 2026-08).
     MAX_BOT_TOKEN = os.environ.get('MAX_BOT_TOKEN', '')
-    TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
     MAX_BOT_USERNAME = os.environ.get('MAX_BOT_USERNAME', 'se13803803_bot')
-    TELEGRAM_BOT_USERNAME = os.environ.get('TELEGRAM_BOT_USERNAME', 'Trudnik_bot')
     CACHE_MAX_SIZE = 256
     PAGINATION_DEFAULT_PER_PAGE = 20
+
+    # Phase 3 (Часть A): верификация через мессенджер — таймауты и endpoint'ы
+    MESSENGER_VERIFY_TTL = int(os.environ.get('MESSENGER_VERIFY_TTL', '600'))  # сек, TTL одноразового токена
+    MESSENGER_API_TIMEOUT = int(os.environ.get('MESSENGER_API_TIMEOUT', '10'))  # сек, HTTP-таймаут к API MAX
+    MAX_API_URL = os.environ.get('MAX_API_URL', 'https://platform-api2.max.ru')
+
+    # PostgREST-клиент: HTTP-таймауты (сек)
+    POSTGREST_TIMEOUT = int(os.environ.get('POSTGREST_TIMEOUT', '30'))
+    POSTGREST_RPC_TIMEOUT = int(os.environ.get('POSTGREST_RPC_TIMEOUT', '60'))
+    POSTGREST_HEALTH_TIMEOUT = int(os.environ.get('POSTGREST_HEALTH_TIMEOUT', '5'))
 
     # ═══════════════════════════════════════════════════════════
     # Circuit Breaker (этап 4.1)

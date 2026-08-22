@@ -1,4 +1,4 @@
-"""PostgREST-клиент (Amvera): HTTP-запросы, JWT-заголовки, Circuit Breaker, connection pooling. Supabase не используется."""
+﻿"""PostgREST-клиент (Amvera): HTTP-запросы, JWT-заголовки, Circuit Breaker, connection pooling. Supabase не используется."""
 
 import inspect
 import json
@@ -68,7 +68,7 @@ class CircuitBreaker:
             import requests as _req
             postgrest_url = POSTGREST_URL.strip()
             # /health.html возвращает 200 если PostgREST жив
-            r = _req.get(f'{postgrest_url}/health.html', timeout=5)
+            r = _req.get(f'{postgrest_url}/health.html', timeout=Config.POSTGREST_HEALTH_TIMEOUT)
             return r.status_code in (200, 204, 404)
         except Exception as e:
             logger.warning('PostgREST health check failed: %s', e, exc_info=True)
@@ -543,7 +543,7 @@ def postgrest_request(method: str, endpoint: str, **kwargs: Any) -> PostgrestRes
         if extra_headers:
             headers.update(extra_headers)
         url = f'{POSTGREST_URL.strip()}/{endpoint}'
-        _timeout = 30
+        _timeout = Config.POSTGREST_TIMEOUT
         resp = _session.request(method, url, headers=headers, timeout=_timeout, **kwargs)
         try:
             data = resp.json()
@@ -630,7 +630,7 @@ def postgrest_admin_request(method: str, endpoint: str, **kwargs: Any) -> Postgr
 
     def _make_request() -> PostgrestResponse:
         url = f'{POSTGREST_URL.strip()}/{endpoint}'
-        _timeout = 30
+        _timeout = Config.POSTGREST_TIMEOUT
         resp = _admin_session.request(method, url, headers=headers, timeout=_timeout, **kwargs)
         try:
             data = resp.json()
@@ -675,7 +675,7 @@ def postgrest_rpc(function_name: str, params: dict, use_admin: bool = False) -> 
         headers = get_user_headers()
 
     def _make_request() -> PostgrestResponse:
-        resp = _session.post(url, headers=headers, json=params, timeout=60)
+        resp = _session.post(url, headers=headers, json=params, timeout=Config.POSTGREST_RPC_TIMEOUT)
         try:
             data = resp.json()
         except Exception:

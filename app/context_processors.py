@@ -5,7 +5,7 @@ import os
 import time
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from urllib.parse import quote
 
 from flask import current_app, g, request, session
@@ -204,18 +204,18 @@ def inject_current_year() -> dict:
 
 
 def inject_captcha_config() -> dict:
-    """Публичная конфигурация капчи (Cloudflare Turnstile) для шаблонов.
+    """Публичная конфигурация капчи (Yandex SmartCaptcha) для шаблонов.
 
     captcha_enabled=True только если заданы ключи (прод); в dev виджет не рендерится.
     """
     try:
-        from app.utils.captcha import is_captcha_enabled, turnstile_site_key
+        from app.utils.captcha import is_captcha_enabled, captcha_client_key
         return {
             'captcha_enabled': is_captcha_enabled(),
-            'turnstile_site_key': turnstile_site_key(),
+            'captcha_client_key': captcha_client_key(),
         }
     except Exception:
-        return {'captcha_enabled': False, 'turnstile_site_key': ''}
+        return {'captcha_enabled': False, 'captcha_client_key': ''}
 
 
 def inject_sort_url() -> dict:

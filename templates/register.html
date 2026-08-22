@@ -5,7 +5,7 @@
     <div class="w-full max-w-lg bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 sm:p-8 fade-in">
         <div class="text-center mb-6">
             <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center mx-auto mb-3 shadow-sm">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                     <circle cx="8.5" cy="7" r="4"></circle>
                     <line x1="20" y1="8" x2="20" y2="14"></line>
@@ -181,7 +181,7 @@
                 </label>
 
                 {% if captcha_enabled %}
-                <div class="cf-turnstile mb-4" data-sitekey="{{ turnstile_site_key }}"></div>
+                <div class="smart-captcha mb-4" data-sitekey="{{ captcha_client_key }}"></div>
                 {% endif %}
 
                 <div class="flex gap-3">
@@ -195,7 +195,7 @@
             </div>
         </form>
         {% if captcha_enabled %}
-        <script nonce="{{ csp_nonce }}" src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+        <script nonce="{{ csp_nonce }}" src="https://smartcaptcha.yandexcloud.net/captcha.js" defer></script>
         {% endif %}
 
         <p class="mt-6 text-center text-sm text-neutral-500">

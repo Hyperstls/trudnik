@@ -18,7 +18,8 @@
 - ⚠️ НИКОГДА не выводи пароль в лог/коммит/ответ. CLI-команды — через переменные из `.env`.
 
 ## Безопасность
-- Секреты (JWT, SECRET_KEY, VAPID_*, SMTP, MAX_BOT_TOKEN, TELEGRAM_BOT_TOKEN) — только из env.
+- Секреты (JWT, SECRET_KEY, VAPID_*, SMTP, MAX_BOT_TOKEN, SMARTCAPTCHA_SERVER_KEY) — только из env.
+- Капча — Yandex SmartCaptcha (РФ). Turnstile (Cloudflare) и Telegram-верификация отключены 2026-08: 152-ФЗ ст. 12 — исключение трансграничной передачи ПДн (см. docs/rkn_notification_fill.md).
 - Мутирующие запросы — с CSRF (X-CSRF-Token / form csrf_token).
 - Доступ к данным — только через PostgREST/RPC (app/utils/postgrest_client.py).
 

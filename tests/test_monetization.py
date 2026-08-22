@@ -15,7 +15,8 @@ import requests
 from tests.conftest import EMPLOYER_EMAIL, EMPLOYER_PASSWORD, WORKER_EMAIL, WORKER_PASSWORD
 
 
-BASE_URL = "http://127.0.0.1:5000"
+import os
+BASE_URL = os.environ.get('TEST_BASE_URL', 'http://localhost:8000')
 
 
 # ──────────────────────────────────────────────

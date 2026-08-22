@@ -26,7 +26,7 @@
 ║   20. Accessibility / UX (3 теста)                                         ║
 ║                                                                            ║
 ║  Итого: 65 тестов                                                          ║
-║  Сервер ожидается на http://127.0.0.1:5000                                 ║
+║  Сервер ожидается на http://localhost:8000 (override: TEST_BASE_URL)                                 ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 """
 import os
@@ -42,7 +42,7 @@ from datetime import datetime
 import requests
 
 # ── Конфигурация ─────────────────────────────────────────────────
-BASE_URL = "http://127.0.0.1:5000"
+BASE_URL = os.environ.get('TEST_BASE_URL', 'http://localhost:8000')
 # Учётные данные тестовых пользователей (должны существовать в БД)
 EMPLOYER_EMAIL = os.environ.get("EMPLOYER_EMAIL", "org@test.ru")
 EMPLOYER_PASSWORD = os.environ.get("EMPLOYER_PASSWORD", "test123")

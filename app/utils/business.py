@@ -1,7 +1,7 @@
 """Бизнес-хелперы: операции с заданиями, рейтингами, проверки окон."""
 
-from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any
+from datetime import datetime, timezone
+from typing import Optional
 
 
 def copy_job(original_job: dict) -> dict:

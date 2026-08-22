@@ -1,13 +1,23 @@
 import logging
 import uuid
 
-from flask import Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template, request, session, url_for
-from werkzeug.utils import secure_filename
+from flask import (
+    Blueprint,
+    Response,
+    current_app,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 
 from app.config import Config
 from app.decorators import login_required, rate_limit, validate_uuid
 from app.services.storage_service import upload_photo
-from app.utils import is_circuit_open, postgrest_admin_request, postgrest_request, postgrest_rpc, upload_to_storage
+from app.utils import is_circuit_open, postgrest_request, postgrest_rpc, upload_to_storage
 from app.utils.helpers import assert_postgrest_ok
 from app.utils.redis_client import get_redis_client
 from app.utils.validators import validate_password, validate_inn_checksum

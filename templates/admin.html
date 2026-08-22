@@ -105,7 +105,7 @@
             <input type="text" name="search" value="{{ request.args.get('search', '') }}" placeholder="Поиск по имени..."
                    aria-label="Поиск пользователей по имени"
                    class="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm">
-            <select name="role" class="px-3 py-2 border border-neutral-200 rounded-lg text-sm">
+            <select name="role" aria-label="Фильтр по роли" class="px-3 py-2 border border-neutral-200 rounded-lg text-sm">
                 <option value="">Все роли</option>
                 <option value="worker" {% if request.args.get('role') == 'worker' %}selected{% endif %}>Работник</option>
                 <option value="employer" {% if request.args.get('role') == 'employer' %}selected{% endif %}>Храм</option>
@@ -156,7 +156,7 @@
                         <div class="flex gap-1 justify-end">
                             <form method="post" action="/admin/users/{{ u.id }}/role" class="inline-flex gap-1">
                                 <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                                <select name="role" class="text-xs border border-neutral-200 rounded px-1.5 py-1">
+                                <select name="role" aria-label="Роль пользователя {{ u.get('full_name', u.id) }}" class="text-xs border border-neutral-200 rounded px-1.5 py-1">
                                     <option value="worker" {% if u.get('role') == 'worker' %}selected{% endif %}>Работник</option>
                                     <option value="employer" {% if u.get('role') == 'employer' %}selected{% endif %}>Храм</option>
                                     <option value="admin" {% if u.get('role') == 'admin' %}selected{% endif %}>Админ</option>
@@ -188,7 +188,7 @@
             <input type="text" name="search" value="{{ request.args.get('search', '') }}" placeholder="Поиск по названию..."
                    aria-label="Поиск заданий по названию"
                    class="flex-1 px-3 py-2 border border-neutral-200 rounded-lg text-sm">
-            <select name="status" class="px-3 py-2 border border-neutral-200 rounded-lg text-sm">
+            <select name="status" aria-label="Фильтр по статусу" class="px-3 py-2 border border-neutral-200 rounded-lg text-sm">
                 <option value="">Все статусы</option>
                 <option value="open" {% if request.args.get('status') == 'open' %}selected{% endif %}>Открыто</option>
                 <option value="completed" {% if request.args.get('status') == 'completed' %}selected{% endif %}>Завершено</option>
@@ -239,7 +239,7 @@
                         <div class="flex gap-1 justify-end">
                             <form method="post" action="/admin/jobs/{{ j.id }}/status" class="inline-flex gap-1">
                                 <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                                <select name="status" class="text-xs border border-neutral-200 rounded px-1.5 py-1">
+                                <select name="status" aria-label="Статус задания {{ j.id }}" class="text-xs border border-neutral-200 rounded px-1.5 py-1">
                                     <option value="open" {% if j.get('status') == 'open' %}selected{% endif %}>open</option>
                                     <option value="completed" {% if j.get('status') == 'completed' %}selected{% endif %}>completed</option>
                                     <option value="cancelled" {% if j.get('status') == 'cancelled' %}selected{% endif %}>cancelled</option>

@@ -5,10 +5,9 @@ import time as _time
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 
-from app.config import Config
 from app.decorators import rate_limit
-from app.utils import postgrest_admin_request, postgrest_request, postgrest_rpc
-from app.utils.auth import generate_jwt, login_user_session
+from app.utils import postgrest_admin_request
+from app.utils.auth import login_user_session
 from app.utils.redis_client import get_redis_client
 from app.utils.security import has_sql_injection
 from app.utils.validators import validate_password, validate_inn_checksum
@@ -54,11 +53,6 @@ def _has_sql_injection(text: str) -> bool:
         if has_sql_injection(part, include_and_or=False, include_url_encoded=True):
             return True
     return False
-
-
-def _generate_jwt(user_id: str, role: str) -> str:
-    """Сгенерировать JWT-токен для PostgREST-аутентификации (делегирует в app.utils.auth)."""
-    return generate_jwt(user_id, role)
 
 
 # Максимальные длины полей
@@ -111,7 +105,7 @@ def login():
                 clear_login_attempts(lockout_key, attempts_key, email)
                 login_user_session(user['user_id'], user['role'], email)
                 if user.get('verification_status') != 'approved':
-                    flash('🔒 Подтвердите профиль через мессенджер (Telegram или MAX) — откройте «Профиль».', 'info')
+                    flash('🔒 Подтвердите профиль через мессенджер MAX — откройте «Профиль».', 'info')
                 if user.get('role') == 'employer':
                     return redirect(url_for('jobs.my_jobs'))
                 else:
@@ -230,9 +224,9 @@ def register():
                 flash(err, 'danger')
             return render_template('register.html', field_errors=field_errors)
 
-        # Captcha (Cloudflare Turnstile) — только в проде (когда включена); fail-closed.
+        # Captcha (Yandex SmartCaptcha) — только в проде (когда включена); fail-closed.
         from app.utils.captcha import verify_captcha_token
-        if not verify_captcha_token(request.form.get('cf-turnstile-response', '')):
+        if not verify_captcha_token(request.form.get('smart-token', ''), ip=request.remote_addr):
             flash('Подтвердите, что вы не робот (капча).', 'danger')
             return render_template('register.html', field_errors=field_errors)
 
@@ -489,9 +483,9 @@ def password_reset_request():
             flash('Ссылка для сброса пароля уже была отправлена. Попробуйте через 5 минут.', 'warning')
             return render_template('password_reset_request.html')
 
-        # Captcha (Cloudflare Turnstile) — только в проде (когда включена); fail-closed.
+        # Captcha (Yandex SmartCaptcha) — только в проде (когда включена); fail-closed.
         from app.utils.captcha import verify_captcha_token
-        if not verify_captcha_token(request.form.get('cf-turnstile-response', '')):
+        if not verify_captcha_token(request.form.get('smart-token', ''), ip=request.remote_addr):
             flash('Подтвердите, что вы не робот (капча).', 'danger')
             return render_template('password_reset_request.html')
 

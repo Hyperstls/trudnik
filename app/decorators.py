@@ -5,7 +5,7 @@ from functools import wraps
 from typing import Any, Callable, TypeVar
 
 import jwt
-from flask import abort, current_app, flash, redirect, session, url_for
+from flask import current_app, flash, redirect, session, url_for
 
 from app.config import Config
 from app.utils.rate_limit_decorator import rate_limit  # noqa: F401 — ре-экспорт для обратной совместимости

@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import subprocess
 
-from flask import Blueprint, current_app, jsonify, render_template, request, session
+from flask import Blueprint, current_app, jsonify, render_template, request
 
 from app.decorators import login_required, admin_required
 from app.utils import sanitize_postgrest, postgrest_admin_request

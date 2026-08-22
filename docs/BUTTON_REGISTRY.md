@@ -1,7 +1,7 @@
 # Реестр кнопок и элементов интерфейса приложения «Трудник»
 
-Дата обновления: 2026-08-11
-Источник: полный аудит [`templates/`](../templates/), [`app/blueprints/`](../app/blueprints/) — сверено с `146 @*_bp.route(...)` эндпоинтов
+Дата обновления: 2026-08-21
+Источник: полный аудит [`templates/`](../templates/), [`app/blueprints/`](../app/blueprints/) — сверено с `146 @*_bp.route(...)` живыми эндпоинтами (включая новый `/faq`, см. примечание 17)
 Тестовое покрытие: [`tests/test_buttons_backend.py`](../tests/test_buttons_backend.py) (3230 строк комплексных тестов Guest/Worker/Employer/Admin/Security), [`tests/test_buttons_frontend.py`](../tests/test_buttons_frontend.py) (1910 строк), [`tests/test_buttons_browser.py`](../tests/test_buttons_browser.py) (704 строки), [`tests_e2e/test_button_registry.py`](../tests_e2e/test_button_registry.py) (E2E/Playwright матрица видимости по ролям).
 
 > **Примечание:** документ поддерживает актуальный роутинг. Все мутирующие действия (POST) требуют CSRF-токена (`X-CSRF-Token` header / `csrf_token` field), см. [`app/middleware.py`](../app/middleware.py). AJAX-вызовы делаются через `apiFetch` (`static/js/api.js`), который авто-добавляет CSRF и `X-Client-Request-Id` (идемпотентность).
@@ -415,6 +415,7 @@ _Аналогично труднику, плюс:_
 | «📄 Условия использования» | `/admin/content/terms` | GET | Редактор статической страницы | Админ правит текст условий |
 | «🔒 Политика конфиденциальности» | `/admin/content/privacy` | GET | Редактор страницы политики | Админ актуализирует политику (152-ФЗ) |
 | «⚠️ Жалобы» | [`/admin/complaints`](../templates/admin_complaints.html) | GET | Список жалоб (RPC `file_report`) | Админ рассматривает жалобы пользователей |
+| «🔖 Текущая версия» | — (клипборд) | — | Копирует `GIT_VERSION` в буфер ([`static/js/admin-version.js`](../static/js/admin-version.js), тег `<span id="git-version">`) | Админ сообщает версию при баг-репорте |
 
 **Пользователи (tab=users):**
 
@@ -670,6 +671,7 @@ _Аналогично труднику, плюс:_
 | Экспорт ПДн | `/profile/export-data` | GET | Все |
 | Верификация | `/verify-employer` | GET/POST | employer |
 | Жалоба на пользователя | `/profile/<id>/report` | POST | Все (RPC `file_report`) |
+| Выход | `/logout` | POST | Все (blacklist jti) |
 
 ### Чёрный список (Blacklist)
 | Действие | Маршрут | Метод | Роль |
@@ -680,10 +682,9 @@ _Аналогично труднику, плюс:_
 ### Верификация мессенджеров (Messenger verify)
 | Действие | Маршрут | Метод | Роль |
 |----------|---------|-------|------|
-| Старт верификации (Telegram/MAX) | `/messenger/start/<platform>` | GET | Все (`@rate_limit fail_open`) |
-| Диагностика подключения | `/messenger/diagnose` | GET | Все (`@rate_limit fail_open`) |
+| Старт верификации (MAX) | `/messenger/start/<platform>` | GET | Все (`@rate_limit fail_open`; `platform='max'`, иначе 400 `unknown_platform`; Telegram отключён 2026-08 — 152-ФЗ ст. 12) |
+| Диагностика подключения | `/messenger/diagnose` | GET | **admin only** (`@admin_required`; ранее был публичным — исправлено 2026-08-16: раскрывал статус bot-токенов) |
 | Webhook MAX | `/messenger/webhook/max` | POST | внешний сервис (CSRF-exempt по одноразовому токену) |
-| Webhook Telegram | `/messenger/webhook/telegram` | POST | внешний сервис (CSRF-exempt по одноразовому токену) |
 
 ### Уведомления и Push (Notifications)
 | Действие | Маршрут | Метод | Роль |
@@ -696,6 +697,15 @@ _Аналогично труднику, плюс:_
 | VAPID публичный ключ | `/push/vapid-public-key` (алиас `/notifications/push/vapid-public-key`) | GET | Все |
 | Подписка/отписка/список | `/push/subscription` | POST/DELETE/GET | Все |
 | WS-токен | `/api/ws/token` | GET | Все |
+
+### Статические страницы (все роли, включая гостей)
+| Страница | Маршрут | Метод | Роль |
+|----------|---------|-------|------|
+| FAQ «Вопросы и ответы» | `/faq` | GET | Все (включая гостей; ссылок в UI пока нет — см. примечание 17) |
+| Тарифы | `/pricing` | GET | Все |
+| Условия использования | `/terms` | GET | Все |
+| Политика конфиденциальности | `/privacy` | GET | Все |
+| Оффлайн-заглушка (SW fallback) | `/offline` | GET | Все |
 
 ---
 
@@ -728,4 +738,19 @@ _Аналогично труднику, плюс:_
 12. **AJAX через `apiFetch`**: мутации на клиенте идут через [`static/js/api.js:apiFetch`](../static/js/api.js), который авто-добавляет CSRF и `X-Client-Request-Id` (UUID) — последний обеспечивает идемпотентность на уровне middleware (`app/middleware.py:check_idempotency`, Redis TTL 24ч, ответ с `X-Idempotency-Replayed: true`).
 
 13. **Тестовое покрытие актуализировано**: `test_buttons_backend.py` — 3230 строк, `test_buttons_frontend.py` — 1910 строк, `test_buttons_browser.py` — 704 строки, плюс E2E-матрица `tests_e2e/test_button_registry.py` (Playwright, видимость по ролям anonymous/worker/employer/admin).
+
+14. **Кнопка «🔖 Текущая версия»** (✅ ДОБАВЛЕНО): в дашборде админ-панели ([`admin.html:32`](../templates/admin.html:32)) — копирует `GIT_VERSION` в буфер обмена через [`static/js/admin-version.js`](../static/js/admin-version.js); не имеет серверного маршрута (чистый клиентский тег `<span id="git-version">`).
+
+15. **API-эндпоинты без UI-привязки** (существуют в blueprints, но в `templates/`/`static/js/` напрямую не вызываются — `grep` пуст): `GET /api/skills` ([`jobs_api.py`](../app/blueprints/jobs_api.py)), `POST /api/employers/favorites/{add,remove,check}` ([`employers.py`](../app/blueprints/employers.py)) — AJAX-аналоги `/employers/<id>/favorite`, `GET /api/invitations` (JSON-вариант `/invitations`). Оставлены как API для внешних клиентов/будущего SPA.
+
+16. **Admin-diagnostic эндпоинты** (без кнопок в UI, вызываются скриптами/мониторингом): `GET /admin/migrations-status`, `GET /admin/health`, `POST /admin/reset-circuit-breaker` (по `X-Admin-Token`, CSRF-exempt). Плюс общесистемные: `/health`, `/ready`, `/metrics`, `/health/circuit-breaker`, `/health/postgrest`, `/offline`, `/sw.js`, `/robots.txt`, `/sitemap.xml`, `/.well-known/assetlinks.json`, `/uploads/*`.
+
+### Актуализация 2026-08-21
+
+17. **`/faq` — новая страница FAQ** (✅ ДОБАВЛЕНО В РЕЕСТР): [`app/blueprints/faq.py`](../app/blueprints/faq.py) (`faq_bp`, зарегистрирован в [`app/__init__.py:58,64`](../app/__init__.py)) — `GET /faq`, статическая страница [`templates/faq.html`](../templates/faq.html) (аккордеон details/summary без JS, соответствует CSP strict-dynamic), доступна всем включая гостей. ⚠️ Ссылок на `/faq` в `templates/` нет (`grep` пуст) — страница доступна только по прямому URL; рекомендуется добавить ссылку в навигацию/футер.
+
+18. **Telegram-верификация ОТКЛЮЧЁНА** (⚠️ СВЕРЕНО С КОДОМ): провайдер Telegram удалён 2026-08 (152-ФЗ ст. 12 — исключение трансграничной передачи ПДн, см. [`AGENTS.md`](../AGENTS.md) и `docs/rkn_notification_fill.md`). Остался только MAX: `/messenger/start/<platform>` принимает `platform='max'`, иначе 400 `unknown_platform` ([`messenger_verify.py:52`](../app/blueprints/messenger_verify.py:52)); `POST /messenger/webhook/telegram` **удалён** (в файле только комментарии-пометки об отключении). Сводка «Верификация мессенджеров» обновлена соответственно.
+
+19. **`/messenger/diagnose` стал admin-only**: добавлен `@admin_required` (исправление 2026-08-16 — без него эндпоинт был публичным, раскрывал статус bot-токенов и совершал исходящие запросы от имени любого посетителя).
+
 

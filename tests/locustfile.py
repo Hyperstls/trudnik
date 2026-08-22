@@ -25,8 +25,8 @@ locust -f tests/locustfile.py --host=http://127.0.0.1:5000 --users=100 --spawn-r
 
 ================================================================================
 PRF-004: Нагрузочное тестирование поиска заданий
-  - Поиск заданий через GET /api/search/jobs?q=уборка&city=Москва
-  - Поиск трудников через GET /api/search/workers?skills=<random_skill_id>
+  - Поиск заданий: GET /?q=уборка&city=Москва (HTML-каталог; JSON /api/search/* не существует)
+  - Поиск трудников: GET /workers?skills=<random_skill_id>
   - Главная страница и страница работников
 
 PRF-005: Нагрузочное тестирование операций над заявками
@@ -242,21 +242,21 @@ class TrudnikUser(HttpUser):
                 except (json.JSONDecodeError, KeyError, TypeError):
                     pass
 
-        # Получаем список заданий для view_job_detail
-        params = "?status=open&per_page=50"
+        # Получаем список заданий для view_job_detail.
+        # /api/search/jobs НЕ существует (фантом) — реальные ID парсим из
+        # HTML-каталога `/` (паттерн интеграционных тестов).
         with self.client.get(
-            f"/api/search/jobs{params}",
-            name="GET /api/search/jobs (ref)",
+            "/",
+            name="GET / (jobs ref)",
             catch_response=True,
         ) as resp:
             if resp.status_code == 200:
                 try:
-                    data = resp.json()
-                    jobs = data.get("jobs", data.get("results", []))
-                    if jobs and not JOB_IDS:
+                    ids = re.findall(r'/jobs/([a-f0-9-]{36})', resp.text)
+                    if ids and not JOB_IDS:
                         JOB_IDS.clear()
-                        JOB_IDS.extend([j["id"] for j in jobs if j.get("id")])
-                except (json.JSONDecodeError, KeyError, TypeError):
+                        JOB_IDS.extend(dict.fromkeys(ids))
+                except Exception:
                     pass
 
         # Для работодателя: получить ID заявок для batch accept
@@ -293,30 +293,26 @@ class TrudnikUser(HttpUser):
 
     @task(3)
     def search_jobs(self):
-        """Поиск заданий (PRF-004)."""
+        """Поиск заданий (PRF-004): HTML-каталог с фильтрами
+        (JSON /api/search/jobs — фантом, реальный поиск в `/`)."""
         params = {
             "q": "уборка",
             "city": "Москва",
-            "status": "open",
-            "per_page": 20,
         }
         query = "&".join(f"{k}={v}" for k, v in params.items())
         with self.client.get(
-            f"/api/search/jobs?{query}",
-            name="GET /api/search/jobs (PRF-004)",
+            f"/?{query}",
+            name="GET / (search PRF-004)",
             catch_response=True,
         ) as resp:
             if resp.status_code == 200:
                 try:
-                    data = resp.json()
-                    jobs = data.get("jobs", data.get("results", []))
-                    for j in jobs:
-                        jid = j.get("id")
-                        if jid and jid not in JOB_IDS:
+                    for jid in re.findall(r'/jobs/([a-f0-9-]{36})', resp.text):
+                        if jid not in JOB_IDS:
                             JOB_IDS.append(jid)
-                except (json.JSONDecodeError, KeyError, TypeError):
+                except Exception:
                     pass
-            elif resp.status_code != 200:
+            else:
                 resp.failure(f"Поиск заданий: {resp.status_code}")
 
     @task(2)
@@ -347,7 +343,8 @@ class TrudnikUser(HttpUser):
 
     @task(2)
     def search_workers(self):
-        """Поиск трудников по навыку (PRF-004)."""
+        """Поиск трудников по навыку (PRF-004): реальная страница /workers
+        (JSON /api/search/workers — фантом)."""
         skills_param = ""
         if SKILL_IDS:
             skill_id = random.choice(SKILL_IDS)
@@ -356,8 +353,8 @@ class TrudnikUser(HttpUser):
             skills_param = "?q=уборка"
 
         with self.client.get(
-            f"/api/search/workers{skills_param}",
-            name="GET /api/search/workers (PRF-004)",
+            f"/workers{skills_param}",
+            name="GET /workers (PRF-004)",
             catch_response=True,
         ) as resp:
             if resp.status_code != 200:

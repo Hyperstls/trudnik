@@ -25,9 +25,8 @@ def test_register_page_loads(page):
 
 
 def test_static_files_served(page):
-    """H2: Статические файлы отдаются"""
-    response = page.goto(f"{BASE_URL}/static/css/tailwind.css")
-    # Может быть 200 или 404 если нет tailwind
+    """H2: Статические файлы отдаются (tailwind.min.css — фактическое имя)."""
+    response = page.goto(f"{BASE_URL}/static/css/tailwind.min.css")
     assert response.status in [200, 304]
 
 

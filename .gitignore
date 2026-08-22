@@ -96,3 +96,6 @@ trash/
 venv/
 # Kilo local config
 .kilo/
+
+# Playwright MCP artifacts (screenshots/snapshots)
+.playwright-mcp/

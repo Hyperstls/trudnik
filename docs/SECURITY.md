@@ -151,10 +151,13 @@ Nonce внедряется в шаблоны как `{{ csp_nonce }}` и исп�
 
 | Параметр | Значение | Источник |
 |----------|----------|----------|
-| Максимум запросов | **10** | [`Config.RATE_LIMIT_MAX`](../app/config.py:54) |
-| Окно | **60 секунд** | [`Config.RATE_LIMIT_WINDOW`](../app/config.py:55) |
+| Максимум запросов | **10** (дефолт) | env `RATE_LIMIT_MAX_REQUESTS` (app/utils/rate_limit_decorator.py) |
+| Окно | **60 секунд** (дефолт) | env `RATE_LIMIT_WINDOW` |
 | Ключ | IP-адрес (`request.remote_addr`) | |
-| Хранилище | In-memory `defaultdict(list)` | |
+| Хранилище | **Redis** (INCR + EXPIRE, Lua-скрипт — атомарно) | fail-open по умолчанию: Redis недоступен → пропуск; `fail_open=False` → отклонение (используется на login/register) |
+
+> 2026-08-21: лимиты конфигурируются через env (дефолты = прод-поведение 10/60с);
+> мёртвые ключи `Config.RATE_LIMIT_MAX/WINDOW` удалены из config.py.
 
 **Поведение при превышении:**
 - AJAX-запросы (`X-Requested-With: XMLHttpRequest` или `Accept: application/json`) → `429 Too Many Requests` с JSON `{"error": "Слишком много попыток. Подождите минуту."}`

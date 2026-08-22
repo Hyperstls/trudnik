@@ -9,7 +9,6 @@ Backend: Redis (REDIS_URL, db 1)
 """
 
 import os
-from typing import Any
 
 from celery import Celery, Task
 from flask import has_request_context, g

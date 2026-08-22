@@ -20,7 +20,7 @@ from playwright.sync_api import Browser, BrowserContext, Page, sync_playwright
 # Константы
 # ──────────────────────────────────────────────
 
-BASE_URL = os.environ.get('BASE_URL', 'http://127.0.0.1:5000')
+BASE_URL = os.environ.get('TEST_BASE_URL', os.environ.get('BASE_URL', 'http://localhost:8000'))
 EMPLOYER_EMAIL = os.environ.get('EMPLOYER_EMAIL', 'org@test.ru')
 EMPLOYER_PASSWORD = os.environ.get('EMPLOYER_PASSWORD', 'Step@1986')
 WORKER_EMAIL = os.environ.get('WORKER_EMAIL', 'trud@test.ru')

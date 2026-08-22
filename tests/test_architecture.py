@@ -15,7 +15,7 @@ import pytest
 import requests
 
 
-BASE_URL = "http://localhost:5000"
+BASE_URL = os.environ.get('TEST_BASE_URL', 'http://localhost:8000')
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 

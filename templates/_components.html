@@ -53,7 +53,7 @@
 <div id="loading-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:9999; justify-content:center; align-items:center;">
   <div style="background:white; padding:24px 32px; border-radius:12px; text-align:center; box-shadow:0 8px 32px rgba(0,0,0,0.2);">
     <svg style="animation:spin 0.8s linear infinite; width:32px; height:32px; margin:0 auto 12px; display:block;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M12 2a10 10 0 1 0 10 10" stroke="#3B82F6" stroke-linecap="round"/>
+      <path d="M12 2a10 10 0 1 0 10 10" stroke="#d97706" stroke-linecap="round"/>
     </svg>
     <p style="color:#374151; font-size:14px; margin:0;">Пожалуйста, подождите...</p>
   </div>
@@ -76,15 +76,16 @@
 
 {% macro status_badge(status, extra_class='') %}
 {# Статус-бейдж с SVG-иконкой #}
+{# Единый источник правды: цвета из app.css (.status-*), НЕ дублировать tailwind-классами #}
 <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold status-badge {{ extra_class }}
-    {% if status == 'open' %}bg-green-100 text-green-700
-    {% elif status == 'completed' %}bg-green-100 text-green-700
-    {% elif status == 'cancelled' %}bg-red-100 text-red-700
-    {% elif status == 'pending' %}bg-yellow-100 text-yellow-700
-    {% elif status == 'accepted' %}bg-blue-100 text-blue-700
-    {% elif status == 'rejected' %}bg-red-100 text-red-700
-    {% elif status == 'withdrawn' %}bg-neutral-100 text-neutral-600
-    {% else %}bg-neutral-100 text-neutral-600{% endif %}">
+    {% if status == 'open' %}status-open
+    {% elif status == 'completed' %}status-completed
+    {% elif status == 'cancelled' %}status-cancelled
+    {% elif status == 'pending' %}status-pending
+    {% elif status == 'accepted' %}status-accepted
+    {% elif status == 'rejected' %}status-rejected
+    {% elif status == 'withdrawn' %}status-withdrawn
+    {% else %}status-withdrawn{% endif %}">
     {% if status == 'open' %}
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="6"/></svg>
         Открыто
@@ -124,4 +125,94 @@
         {% endif %}
     {% endfor %}
 </nav>
+{% endmacro %}
+
+{% macro rating_stars(rating, size=16) %}
+{# Звёзды рейтинга с поддержкой дробных значений (4.5 → 4 полных + половина).
+   rating: число 0..5. Доступность: контейнер имеет aria-label, SVG скрыты. #}
+{% set rating = rating or 0 %}
+{% if rating > 0 %}
+{% set full = rating | int %}
+{% set frac = rating - full %}
+<span class="inline-flex items-center gap-0.5" role="img" aria-label="Рейтинг {{ '%g' | format(rating) }} из 5">
+    {% for i in range(5) %}
+        {% if i < full %}
+        <svg width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24" fill="currentColor" class="text-warning" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        {% elif i == full and frac >= 0.75 %}
+        <svg width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24" fill="currentColor" class="text-warning" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        {% elif i == full and frac >= 0.25 %}
+        <svg width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24" class="text-warning" aria-hidden="true">
+            <defs><clipPath id="half-star-{{ i }}-{{ ('%g' | format(rating)) | replace('.', '_') }}"><rect x="0" y="0" width="12" height="24"/></clipPath></defs>
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="currentColor" clip-path="url(#half-star-{{ i }}-{{ ('%g' | format(rating)) | replace('.', '_') }})"/>
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+        </svg>
+        {% else %}
+        <svg width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" class="text-neutral-300" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        {% endif %}
+    {% endfor %}
+</span>
+{% else %}
+<span class="inline-flex items-center gap-0.5" role="img" aria-label="Нет оценок">
+    {% for i in range(5) %}
+    <svg width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" class="text-neutral-300" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    {% endfor %}
+</span>
+{% endif %}
+{% endmacro %}
+
+{% macro badge(text, color='amber', size='sm') %}
+{# Универсальный бейдж. color: amber|green|red|blue|neutral|primary; size: sm|md #}
+{% set color_map = {
+    'amber': 'bg-amber-100 text-amber-800',
+    'green': 'bg-green-100 text-green-800',
+    'red': 'bg-red-100 text-red-800',
+    'blue': 'bg-blue-100 text-blue-800',
+    'neutral': 'bg-neutral-100 text-neutral-700',
+    'primary': 'bg-primary-50 text-primary-700',
+} %}
+{% set size_map = {
+    'sm': 'text-xs px-2 py-0.5',
+    'md': 'text-sm px-3 py-1',
+} %}
+<span class="inline-flex items-center rounded-full font-semibold {{ color_map.get(color, color_map['amber']) }} {{ size_map.get(size, size_map['sm']) }}">{{ text }}</span>
+{% endmacro %}
+
+{% macro pagination(page, total_pages, base_url) %}
+{# Пагинация. page/total_pages — 1-based; base_url — путь без ?page=.
+   Строит окно из 5 страниц + prev/next. Без JS — обычные ссылки. #}
+{% set page = page or 1 %}
+{% set total_pages = total_pages or 1 %}
+{% if total_pages > 1 %}
+{% set window_start = 1 if page <= 3 else (total_pages - 4 if page >= total_pages - 2 else page - 2) %}
+{% set window_start = [window_start, 1] | max %}
+{% set window_end = [window_start + 4, total_pages] | min %}
+{% set sep = '&' if '?' in base_url else '?' %}
+<nav aria-label="Пагинация" class="flex items-center justify-center gap-1 py-4">
+    {% if page > 1 %}
+    <a href="{{ base_url }}{{ sep }}page={{ page - 1 }}" rel="prev" class="px-3 py-1.5 rounded-lg text-sm text-neutral-600 hover:bg-neutral-100 transition-colors" aria-label="Предыдущая страница">←</a>
+    {% else %}
+    <span class="px-3 py-1.5 rounded-lg text-sm text-neutral-300" aria-hidden="true">←</span>
+    {% endif %}
+    {% if window_start > 1 %}
+    <a href="{{ base_url }}{{ sep }}page=1" class="px-3 py-1.5 rounded-lg text-sm text-neutral-600 hover:bg-neutral-100 transition-colors">1</a>
+    {% if window_start > 2 %}<span class="px-1 text-neutral-400" aria-hidden="true">…</span>{% endif %}
+    {% endif %}
+    {% for p in range(window_start, window_end + 1) %}
+        {% if p == page %}
+        <span aria-current="page" class="px-3 py-1.5 rounded-lg text-sm font-bold bg-primary-500 text-white">{{ p }}</span>
+        {% else %}
+        <a href="{{ base_url }}{{ sep }}page={{ p }}" class="px-3 py-1.5 rounded-lg text-sm text-neutral-600 hover:bg-neutral-100 transition-colors">{{ p }}</a>
+        {% endif %}
+    {% endfor %}
+    {% if window_end < total_pages %}
+    {% if window_end < total_pages - 1 %}<span class="px-1 text-neutral-400" aria-hidden="true">…</span>{% endif %}
+    <a href="{{ base_url }}{{ sep }}page={{ total_pages }}" class="px-3 py-1.5 rounded-lg text-sm text-neutral-600 hover:bg-neutral-100 transition-colors">{{ total_pages }}</a>
+    {% endif %}
+    {% if page < total_pages %}
+    <a href="{{ base_url }}{{ sep }}page={{ page + 1 }}" rel="next" class="px-3 py-1.5 rounded-lg text-sm text-neutral-600 hover:bg-neutral-100 transition-colors" aria-label="Следующая страница">→</a>
+    {% else %}
+    <span class="px-3 py-1.5 rounded-lg text-sm text-neutral-300" aria-hidden="true">→</span>
+    {% endif %}
+</nav>
+{% endif %}
 {% endmacro %}

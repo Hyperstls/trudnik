@@ -4,7 +4,7 @@ import sys
 import requests
 from datetime import datetime
 
-BASE = "http://127.0.0.1:5000"
+BASE = os.environ.get('TEST_BASE_URL', 'http://localhost:8000')
 LOG_FILE = os.path.join(os.path.dirname(__file__), "api_report.txt")
 
 PASSED = 0

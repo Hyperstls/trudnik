@@ -7,7 +7,7 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 from app.decorators import login_required, rate_limit, role_required, validate_uuid
 from app.utils import postgrest_request
 from app.utils.redis_client import get_redis_client
-from app.services.notification_service import create as create_notification, enqueue_notification
+from app.services.notification_service import enqueue_notification
 
 logger = logging.getLogger(__name__)
 

@@ -50,6 +50,13 @@ def block_user(user_id):
     err = _reject_worker()
     if err:
         return err
+    # Нельзя заблокировать самого себя (TC-069, QA_TEST_CASES.md):
+    # иначе работодатель теряет доступ к собственным заданиям в выдачах
+    if str(user_id) == str(session.get('user_id', '')):
+        if _is_ajax():
+            return jsonify({'success': False, 'error': 'Нельзя заблокировать самого себя'}), 400
+        flash('Нельзя заблокировать самого себя', 'danger')
+        return safe_redirect('jobs.index')
     resp = postgrest_request('POST', 'blacklists', json={'user_id': session['user_id'], 'blocked_user_id': user_id})
     if resp.ok:
         if _is_ajax():
