@@ -4,12 +4,6 @@
 {% block title %}Трудники{% endblock %}
 {% block content %}
 <div class="px-4 pb-24 max-w-6xl mx-auto">
-    <!-- Skeleton loader -->
-    <div id="skeleton-loader" class="animate-pulse space-y-3">
-      <div class="h-24 bg-gray-200 rounded"></div>
-      <div class="h-24 bg-gray-200 rounded"></div>
-      <div class="h-24 bg-gray-200 rounded"></div>
-    </div>
     <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold text-neutral-900">Трудники</h1>
         {% with filter_id='workers-filter', selected_skills=selected_skills|default([]) %}
@@ -464,7 +458,6 @@ async function toggleBlock(btn, workerId, evt) {
 
 {# CSP-safe event delegation (replaces all click attributes) #}
 <script nonce="{{ csp_nonce }}">
-document.getElementById('skeleton-loader').style.display = 'none';
 document.addEventListener('DOMContentLoaded', function() {
     var grid = document.querySelector('.grid');
     if (!grid) return;

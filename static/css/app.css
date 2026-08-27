@@ -359,7 +359,7 @@ input:focus, textarea:focus, select:focus {
     left: 1rem;
     top: 0.75rem;
     font-size: 0.9375rem;
-    color: #a3a3a3;
+    color: #737373;
     transition: all 0.2s ease;
     pointer-events: none;
 }

@@ -38,7 +38,7 @@
             <p class="text-sm font-semibold text-neutral-800">Установите приложение</p>
             <p class="text-xs text-neutral-500">Быстрый доступ без браузера</p>
         </div>
-        <button id="install-banner-close" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-neutral-100 text-neutral-400" aria-label="Закрыть баннер установки">
+        <button id="install-banner-close" class="w-11 h-11 flex items-center justify-center rounded-lg hover:bg-neutral-100 text-neutral-400 -m-2" aria-label="Закрыть баннер установки">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
     </div>
@@ -67,7 +67,7 @@
         {{ icon(32) }}
     </div>
     <p class="text-neutral-600 text-lg font-medium">{{ title }}</p>
-    {% if subtitle %}<p class="text-neutral-400 text-sm mt-1">{{ subtitle }}</p>{% endif %}
+    {% if subtitle %}<p class="text-neutral-500 text-sm mt-1">{{ subtitle }}</p>{% endif %}
     {% if action_text and action_url %}
     <a href="{{ action_url }}" class="mt-4 px-4 py-2 bg-primary-500 text-white rounded-xl text-sm font-medium hover:bg-primary-600 transition-colors">{{ action_text }}</a>
     {% endif %}
