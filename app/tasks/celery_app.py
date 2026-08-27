@@ -151,4 +151,9 @@ celery_app.conf.beat_schedule = {
         'schedule': 600.0,  # Каждые 10 минут — авто-заморозка по жалобам (Phase 3)
         'options': {'expires': 540},
     },
+    'ensure-max-webhook': {
+        'task': 'app.tasks.maintenance_tasks.ensure_max_webhook',
+        'schedule': 600.0,  # Каждые 10 минут — self-heal подписки MAX-бота
+        'options': {'expires': 540},
+    },
 }

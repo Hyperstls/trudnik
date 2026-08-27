@@ -246,6 +246,35 @@ def expire_old_jobs() -> dict[str, Any]:
 
 
 @celery_app.task
+def ensure_max_webhook() -> dict[str, Any]:
+    """Self-heal: гарантирует регистрацию webhook MAX-бота на наш прод-URL.
+
+    Проблема (2026-08-27): register_webhooks был «ops-точкой входа», которую
+    никто не вызывал; подписка, созданная вручную, отвалилась — бот перестал
+    реагировать на Start (webhook-и не доходили). Теперь каждые 10 минут
+    проверяем подписки MAX API и (пере)регистрируем при отсутствии.
+    Идемпотентно; без MAX_BOT_TOKEN — skip (dev).
+
+    Returns:
+        {'status': 'ok'|'healed'|'skipped'|'error', ...}
+    """
+    try:
+        from app.blueprints.messenger_verify import ensure_max_webhook as _ensure
+        result = _ensure()
+        if result['ok']:
+            status = 'ok' if result['action'] == 'already_registered' else 'healed'
+            if status == 'healed':
+                logger.info('ensure_max_webhook: подписка восстановлена: %s', result['url'])
+            return {'status': status, 'url': result['url']}
+        logger.warning('ensure_max_webhook: %s', result.get('error', 'unknown'))
+        return {'status': 'skipped' if 'not set' in result.get('error', '') else 'error',
+                'error': result.get('error', '')}
+    except Exception as e:
+        logger.error('ensure_max_webhook: %s', e, exc_info=True)
+        return {'status': 'error', 'error': str(e)[:200]}
+
+
+@celery_app.task
 def ensure_postgrest_role_grants() -> dict[str, Any]:
     """Self-heal: восстанавливает гранты ролей PostgREST, если Amvera
     перезапустил/фейловернул БД и trudnikapp потерял членство в

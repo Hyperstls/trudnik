@@ -152,11 +152,21 @@ class TestMaxWebhook:
         assert calls == []
 
     def test_ignores_other_update_types(self, app_client, monkeypatch):
-        """Чужие update_type (message_created и пр.) игнорируются."""
+        """message_created с обычным текстом (не /start, не токен) игнорируется."""
         _, calls = _rpc_spy(monkeypatch)
         resp = app_client.post('/messenger/webhook/max', json={
             'update_type': 'message_created',
-            'text': 'hello',
+            'message': {'text': 'привет бот', 'sender': {'user_id': 1}},
+            'chat_id': 2,
+        })
+        assert resp.status_code == 200
+        assert resp.get_json()['ok'] is True
+        assert calls == []
+
+    def test_unknown_update_type(self, app_client, monkeypatch):
+        _, calls = _rpc_spy(monkeypatch)
+        resp = app_client.post('/messenger/webhook/max', json={
+            'update_type': 'chat_title_changed',
         })
         assert resp.status_code == 200
         assert resp.get_json()['ok'] is True
@@ -196,6 +206,197 @@ class TestTelegramWebhookRemoved:
         })
         assert resp.status_code == 404
         assert calls == []
+
+
+# ── message_created: fallback повторных стартов (2026-08-27) ────────
+
+class _FakeResp:
+    def __init__(self, status_code=200):
+        self.status_code = status_code
+        self.text = '{"ok": true}'
+
+
+def _send_spy(monkeypatch):
+    """Шпион _send_max: возвращает (spy, sent) где sent = [(chat_id, text, button)]."""
+    sent = []
+
+    def spy(chat_id, text, button=None):
+        sent.append((chat_id, text, button))
+        return True
+
+    monkeypatch.setattr('app.blueprints.messenger_verify._send_max', spy)
+    return spy, sent
+
+
+class TestMessageCreatedFallback:
+    """MAX шлёт bot_started только при первом старте (или возобновлении после
+    остановки — dev.max.ru/docs-api/objects/Update). При повторном открытии
+    deep-link события нет — единственный канал сообщение юзера.
+    Текст в MAX Message лежит в body.text (MessageBody) — основной формат;
+    message.text — толерантный fallback.
+    '/start <token>' и голый токен → верификация (закрытие «бот молчит»)."""
+
+    def test_start_with_token_completes(self, app_client, monkeypatch):
+        """/start <токен> в body.text (реальный формат MAX) → верификация."""
+        _, calls = _rpc_spy(monkeypatch)
+        _, sent = _send_spy(monkeypatch)
+        token = _seed_verify_token()
+        from tests.conftest import _mock_redis_store
+
+        resp = app_client.post('/messenger/webhook/max', json={
+            'update_type': 'message_created',
+            'message': {'body': {'text': f'/start {token}'},
+                        'sender': {'user_id': 777}},
+            'chat_id': 888,
+        })
+        assert resp.status_code == 200
+        assert resp.get_json()['ok'] is True
+        assert len(calls) == 1
+        assert calls[0]['params']['p_user_id'] == TEST_USER_ID
+        assert calls[0]['params']['p_messenger_uid'] == '777'
+        # Обратная связь юзеру: ✅ + кнопка + токен удалён
+        assert sent and 'подтверждён' in sent[0][1].lower()
+        assert sent[0][0] == 888
+        assert f'msg_verify:{token}' not in _mock_redis_store
+
+    def test_legacy_message_text_format(self, app_client, monkeypatch):
+        """Толерантность: старый формат message.text тоже парсится."""
+        _, calls = _rpc_spy(monkeypatch)
+        _send_spy(monkeypatch)
+        token = _seed_verify_token()
+        resp = app_client.post('/messenger/webhook/max', json={
+            'update_type': 'message_created',
+            'message': {'text': f'/start {token}',
+                        'sender': {'user_id': 7}},
+            'chat_id': 8,
+        })
+        assert resp.status_code == 200
+        assert len(calls) == 1
+
+    def test_bare_token_completes(self, app_client, monkeypatch):
+        """Голый 32-hex токен в тексте → верификация."""
+        _, calls = _rpc_spy(monkeypatch)
+        _send_spy(monkeypatch)
+        token = _seed_verify_token()
+        resp = app_client.post('/messenger/webhook/max', json={
+            'update_type': 'message_created',
+            'message': {'body': {'text': token}, 'sender': {'user_id': 5}},
+            'chat_id': 6,
+        })
+        assert resp.status_code == 200
+        assert len(calls) == 1
+
+    def test_bare_start_instruction_with_button(self, app_client, monkeypatch):
+        """'/start'/'start' без токена → инструкция с кнопкой, НЕ верификация."""
+        _, calls = _rpc_spy(monkeypatch)
+        _, sent = _send_spy(monkeypatch)
+        for text in ('/start', 'start', 'Начать'):
+            resp = app_client.post('/messenger/webhook/max', json={
+                'update_type': 'message_created',
+                'message': {'body': {'text': text}, 'sender': {'user_id': 1}},
+                'chat_id': 42,
+            })
+            assert resp.status_code == 200
+        assert calls == []
+        assert len(sent) == 3
+        assert 'трудник' in sent[0][1].lower()
+        # Кнопка передана (3-й аргумент _send_max)
+        assert sent[0][0] == 42
+
+    def test_bot_started_without_payload_instruction(self, app_client, monkeypatch):
+        """bot_started без payload (открыли бота поиском) → инструкция."""
+        _, calls = _rpc_spy(monkeypatch)
+        _, sent = _send_spy(monkeypatch)
+        resp = app_client.post('/messenger/webhook/max', json={
+            'update_type': 'bot_started',
+            'user': {'user_id': 9},
+            'chat_id': 10,
+        })
+        assert resp.status_code == 200
+        assert calls == []
+        assert len(sent) == 1
+        assert 'подтвердить' in sent[0][1].lower()
+
+    def test_expired_token_user_feedback(self, app_client, monkeypatch):
+        """Истёкший токен в message_created → юзер получает ⌛-подсказку."""
+        _, calls = _rpc_spy(monkeypatch)
+        _, sent = _send_spy(monkeypatch)
+        resp = app_client.post('/messenger/webhook/max', json={
+            'update_type': 'message_created',
+            'message': {'body': {'text': '/start ' + 'a' * 32},
+                        'sender': {'user_id': 1}},
+            'chat_id': 33,
+        })
+        assert resp.status_code == 200
+        assert calls == []
+        assert sent and 'устарела' in sent[0][1].lower()
+
+    def test_message_without_text_ignored(self, app_client, monkeypatch):
+        _, calls = _rpc_spy(monkeypatch)
+        _send_spy(monkeypatch)
+        resp = app_client.post('/messenger/webhook/max', json={
+            'update_type': 'message_created',
+            'message': {},
+            'chat_id': 1,
+        })
+        assert resp.status_code == 200
+        assert resp.get_json()['ok'] is True
+        assert calls == []
+
+
+class TestSendMax:
+    def test_send_ok(self, monkeypatch):
+        from app.blueprints import messenger_verify as mv
+        monkeypatch.setattr(mv.requests, 'post', lambda *a, **kw: _FakeResp(200))
+        monkeypatch.setattr(mv.Config, 'MAX_BOT_TOKEN', 't')
+        assert mv._send_max(1, 'hi') is True
+
+    def test_send_http_error(self, monkeypatch):
+        from app.blueprints import messenger_verify as mv
+        monkeypatch.setattr(mv.requests, 'post', lambda *a, **kw: _FakeResp(403))
+        monkeypatch.setattr(mv.Config, 'MAX_BOT_TOKEN', 't')
+        assert mv._send_max(1, 'hi') is False
+
+    def test_send_no_token(self, monkeypatch):
+        from app.blueprints import messenger_verify as mv
+        monkeypatch.setattr(mv.Config, 'MAX_BOT_TOKEN', '')
+        assert mv._send_max(1, 'hi') is False
+
+
+class TestEnsureMaxWebhook:
+    def test_already_registered(self, monkeypatch):
+        """Подписка с нашим URL есть → ok/already_registered, POST не шлётся."""
+        from app.blueprints import messenger_verify as mv
+        monkeypatch.setattr(mv.Config, 'MAX_BOT_TOKEN', 't')
+        monkeypatch.setattr(mv, 'get_max_subscriptions',
+                            lambda: [{'url': mv._webhook_url(mv.Config.WORKER_SITE_URL),
+                                      'update_types': ['bot_started']}])
+        posted = []
+        monkeypatch.setattr(mv.requests, 'post',
+                            lambda *a, **kw: posted.append(1) or _FakeResp(200))
+        res = mv.ensure_max_webhook('https://trudnik-hyperstls.amvera.io')
+        assert res['ok'] is True
+        assert res['action'] == 'already_registered'
+        assert posted == []
+
+    def test_registers_when_missing(self, monkeypatch):
+        from app.blueprints import messenger_verify as mv
+        monkeypatch.setattr(mv.Config, 'MAX_BOT_TOKEN', 't')
+        monkeypatch.setattr(mv, 'get_max_subscriptions', lambda: [])
+        posted = []
+        monkeypatch.setattr(mv.requests, 'post',
+                            lambda *a, **kw: posted.append(1) or _FakeResp(200))
+        res = mv.ensure_max_webhook('https://trudnik-hyperstls.amvera.io')
+        assert res['ok'] is True
+        assert res['action'] == 'registered'
+        assert len(posted) == 1
+
+    def test_no_token_skipped(self, monkeypatch):
+        from app.blueprints import messenger_verify as mv
+        monkeypatch.setattr(mv.Config, 'MAX_BOT_TOKEN', '')
+        res = mv.ensure_max_webhook('https://x')
+        assert res['ok'] is False
+        assert 'not set' in res['error']
 
 
 # ── GET /messenger/diagnose ────────────────────────────────────────

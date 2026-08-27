@@ -12,6 +12,7 @@ Deep-link flow:
   5. Bot отправляет подтверждение в чат.
 """
 import logging
+import re
 import uuid
 
 import requests
@@ -78,6 +79,7 @@ def diagnose():
 
     Без admin_required эндпоинт был публичным и раскрывал статус bot-токенов +
     совершал исходящие запросы от имени любого посетителя (исправлено 2026-08-16).
+    2026-08-27: добавлен статус webhook-подписок (главный кандидат «бот молчит»).
     """
     import requests as _req
     result = {'max': {'token_set': bool(_max_token()), 'reachable': False, 'error': ''}}
@@ -96,38 +98,136 @@ def diagnose():
         except Exception as e:
             result['max']['error'] = str(e)[:200]
 
+    # Webhook-подписки: зарегистрирован ли наш URL
+    subs = get_max_subscriptions()
+    expected = _webhook_url(Config.WORKER_SITE_URL)
+    result['webhook'] = {
+        'expected_url': expected,
+        'subscriptions': [{'url': s.get('url'), 'update_types': s.get('update_types')}
+                          for s in subs if isinstance(s, dict)],
+        'registered': any(isinstance(s, dict) and
+                          (s.get('url') or '').rstrip('/') == expected.rstrip('/')
+                          for s in subs),
+    }
     return jsonify(result)
 
 
 @messenger_bp.route('/webhook/max', methods=['POST'])
 @rate_limit(fail_open=True)
 def max_webhook():
-    """Принимает события от MAX бота (bot_started с payload = наш токен)."""
+    """Принимает события от MAX бота.
+
+    Обрабатывает два типа апдейтов (идемпотентно, всегда 200):
+    - bot_started: с payload = наш deep-link токен → авто-верификация.
+      ⚠️ MAX шлёт bot_started ТОЛЬКО при первом старте чата с ботом —
+      при повторном открытии deep-link событие не приходит.
+    - message_created: fallback для повторных стартов и ручного ввода —
+      токен извлекается из текста ('/start <token>' или голый 32-hex токен);
+      '/start'/'start' без токена → инструкция с ссылкой на профиль.
+
+    Это закрывает симптомы «бот не реагирует на Start» и «/start — команда
+    не найдена» (последний отвечает сценарий MaxBot Studio; наш бот отвечает
+    сообщением через API параллельно).
+    """
     data = request.get_json(silent=True) or {}
     update_type = data.get('update_type', '')
+    chat_id = data.get('chat_id')
 
     if update_type == 'bot_started':
         payload = data.get('payload', '')
         max_uid = str(data.get('user', {}).get('user_id', ''))
-        chat_id = data.get('chat_id')
         if payload:
             _complete(payload, max_uid, chat_id)
+        else:
+            # Первый старт без deep-link (открыли бота поиском) — инструкция
+            logger.info('messenger_verify: bot_started without payload, chat=%s', chat_id)
+            if chat_id:
+                _send_max(chat_id, _INSTRUCTION_TEXT,
+                          button=_link_button('Открыть «Трудник»',
+                                              f'{Config.WORKER_SITE_URL.rstrip("/")}/profile'))
+
+    elif update_type == 'message_created':
+        message = data.get('message') or {}
+        # MAX Bot API: текст в body.text (объект MessageBody) — см.
+        # dev.max.ru/docs-api/objects/Message. Fallback на message.text
+        # оставлен толерантности к будущим форматам.
+        body = message.get('body') or {}
+        text = (body.get('text') or message.get('text') or '').strip()
+        sender = message.get('sender') or {}
+        max_uid = str(sender.get('user_id', ''))
+        if not text:
+            return jsonify({'ok': True})
+
+        token = _extract_token(text)
+        if token:
+            _complete(token, max_uid, chat_id)
+        elif text.lower() in ('/start', 'start', 'начать'):
+            logger.info('messenger_verify: bare /start from chat=%s — instruction', chat_id)
+            if chat_id:
+                _send_max(chat_id, _INSTRUCTION_TEXT,
+                          button=_link_button('Открыть «Трудник»',
+                                              f'{Config.WORKER_SITE_URL.rstrip("/")}/profile'))
 
     return jsonify({'ok': True})
 
 
+# Токен верификации — 32 hex-символа (uuid4().hex из start_verification)
+_TOKEN_RE = re.compile(r'\b([a-f0-9]{32})\b')
+
+_INSTRUCTION_TEXT = (
+    '👋 Это бот подтверждения профиля платформы «Трудник».\n\n'
+    'Чтобы подтвердить профиль:\n'
+    '1. Откройте приложение «Трудник» — trudnik-hyperstls.amvera.io\n'
+    '2. Профиль → «Подтвердить через MAX»\n'
+    '3. Перейдите по присланной ссылке — подтверждение произойдёт '
+    'автоматически, здесь появится сообщение ✅\n\n'
+    'Вводить команды вручную не нужно.'
+)
+
+
+def _extract_token(text: str) -> str | None:
+    """Извлекает токен верификации из текста сообщения.
+
+    Поддерживает '/start <token>', 'start <token>' и голый токен.
+    """
+    m = _TOKEN_RE.search(text)
+    return m.group(1) if m else None
+
+
 # ── Внутренняя логика ─────────────────────────────────────────────
+
+def _link_button(text: str, url: str) -> dict:
+    """Inline-кнопка-ссылка (MAX Bot API: attachments.inline_keyboard,
+    см. dev.max.ru — «Клавиатура для чат-бота», тип link)."""
+    return {
+        'type': 'inline_keyboard',
+        'payload': {'buttons': [[{'type': 'link', 'text': text, 'url': url}]]},
+    }
+
+
 def _complete(token, messenger_uid, chat_id):
     """Верифицирует токен → помечает профиль → отправляет подтверждение в чат."""
     r = get_redis_client()
     if not r:
         logger.error('messenger_verify: Redis unavailable')
+        if chat_id:
+            _send_max(chat_id,
+                      '⚠️ Сервис подтверждения временно недоступен. '
+                      'Попробуйте ещё раз через пару минут.')
         return
 
     key = f'msg_verify:{token}'
     user_id = r.get(key)
     if not user_id:
         logger.warning('messenger_verify: token not found/expired: %s', token[:8])
+        if chat_id:
+            _send_max(chat_id,
+                      '⌛ Ссылка устарела или уже использована.\n'
+                      'Откройте приложение «Трудник» → Профиль → '
+                      '«Подтвердить через MAX» и получите новую ссылку.',
+                      button=_link_button(
+                          'Получить новую ссылку',
+                          f'{Config.WORKER_SITE_URL.rstrip("/")}/profile'))
         return
     r.delete(key)  # one-time
 
@@ -141,45 +241,122 @@ def _complete(token, messenger_uid, chat_id):
     )
     if not rpc.ok:
         logger.error('messenger_verify: RPC failed for %s: %s', user_id, (rpc.text or '')[:200])
+        if chat_id:
+            _send_max(chat_id,
+                      '⚠️ Не удалось подтвердить профиль (ошибка сервера). '
+                      'Попробуйте позже или напишите в поддержку.')
         return
     logger.info('messenger_verify: user %s verified via max', user_id)
 
     if chat_id:
-        msg = '✅ Ваш профиль на «Трудник» подтверждён! Теперь вам доступны все функции платформы. Вернитесь в приложение — кнопка «Я подтвердил — проверить».'
-        _send_max(chat_id, msg)
-        logger.info('messenger_verify: MAX reply sent to chat %s', chat_id)
+        msg = (
+            '✅ Ваш профиль на «Трудник» подтверждён!\n'
+            'Теперь вам доступен значок «Проверенный» и все функции платформы.'
+        )
+        ok = _send_max(chat_id, msg,
+                       button=_link_button(
+                           'Вернуться в профиль',
+                           f'{Config.WORKER_SITE_URL.rstrip("/")}/profile'))
+        logger.info('messenger_verify: MAX reply to chat %s: %s',
+                    chat_id, 'sent' if ok else 'FAILED')
 
 
-def _send_max(chat_id, text):
+def _send_max(chat_id, text, button: dict | None = None) -> bool:
+    """Отправляет сообщение в чат MAX (опционально с inline-кнопкой).
+
+    Возвращает True при 2xx. Формат кнопки — attachments.inline_keyboard
+    (dev.max.ru/docs-api — «Клавиатура для чат-бота»).
+    """
     token = _max_token()
     if not token:
-        return
+        logger.warning('messenger_verify: MAX_BOT_TOKEN not set — reply skipped')
+        return False
+    payload = {'chat_id': chat_id, 'text': text}
+    if button:
+        payload['attachments'] = [button]
     try:
-        requests.post(
+        resp = requests.post(
             f'{_MAX_API}/messages',
-            json={'chat_id': chat_id, 'text': text},
+            json=payload,
             headers={'Authorization': token, 'Content-Type': 'application/json'},
             timeout=Config.MESSENGER_API_TIMEOUT,
             verify=False,  # MAX API SSL cert not in Docker CA store
         )
+        if resp.status_code >= 300:
+            logger.warning('messenger_verify: MAX send %s failed: %s %s',
+                           chat_id, resp.status_code, resp.text[:200])
+            return False
+        return True
     except Exception as e:
         logger.warning('messenger_verify: MAX send failed: %s', e)
+        return False
 
 
-# ── Регистрация вебхуков (вызывается один раз после деплоя) ───────
-def register_webhooks(base_url):
-    """Регистрирует вебхук на MAX. base_url = https://..."""
-    mx = _max_token()
-    if mx:
-        url = f'{base_url}/messenger/webhook/max'
-        try:
-            resp = requests.post(
-                f'{_MAX_API}/subscriptions',
-                json={'url': url, 'update_types': ['bot_started', 'message_created']},
-                headers={'Authorization': mx, 'Content-Type': 'application/json'},
-                timeout=Config.MESSENGER_API_TIMEOUT,
-                verify=False,
-            )
-            logger.info('MAX webhook registered (%s): %s', url, resp.text[:100])
-        except Exception as e:
-            logger.warning('MAX subscriptions failed: %s', e)
+# ── Регистрация вебхука (self-heal, идемпотентно) ──────────────────
+def _webhook_url(base_url: str) -> str:
+    return base_url.rstrip('/') + '/messenger/webhook/max'
+
+
+def get_max_subscriptions() -> list:
+    """Список активных подписок MAX API (для diagnose/self-heal)."""
+    token = _max_token()
+    if not token:
+        return []
+    try:
+        resp = requests.get(
+            f'{_MAX_API}/subscriptions',
+            headers={'Authorization': token},
+            timeout=Config.MESSENGER_API_TIMEOUT,
+            verify=False,
+        )
+        if resp.ok:
+            data = resp.json()
+            # MAX возвращает список или {'subscriptions': [...]} — терпимы к обоим
+            return data if isinstance(data, list) else data.get('subscriptions', [])
+    except Exception as e:
+        logger.warning('messenger_verify: GET subscriptions failed: %s', e)
+    return []
+
+
+def ensure_max_webhook(base_url: str | None = None) -> dict:
+    """Гарантирует, что webhook MAX зарегистрирован на наш URL.
+
+    Идемпотентно: если подписка с нашим URL уже есть — ничего не делает.
+    Вызывается self-heal-задачей (app/tasks/maintenance_tasks.py, каждые 10 мин)
+    и доступно для ручного вызова. Раньше было «вызывается один раз после
+    деплоя» — но никто не вызывал, и подписка отваливалась без восстановления.
+    """
+    if base_url is None:
+        base_url = Config.WORKER_SITE_URL
+    url = _webhook_url(base_url)
+    token = _max_token()
+    result = {'ok': False, 'url': url, 'action': '', 'error': ''}
+    if not token:
+        result['error'] = 'MAX_BOT_TOKEN not set'
+        return result
+
+    try:
+        subs = get_max_subscriptions()
+        for s in subs:
+            if isinstance(s, dict) and s.get('url', '').rstrip('/') == url.rstrip('/'):
+                result.update(ok=True, action='already_registered')
+                return result
+
+        resp = requests.post(
+            f'{_MAX_API}/subscriptions',
+            json={'url': url, 'update_types': ['bot_started', 'message_created']},
+            headers={'Authorization': token, 'Content-Type': 'application/json'},
+            timeout=Config.MESSENGER_API_TIMEOUT,
+            verify=False,
+        )
+        if resp.status_code < 300:
+            result.update(ok=True, action='registered')
+            logger.info('messenger_verify: MAX webhook registered: %s (%s)',
+                        url, resp.text[:100])
+        else:
+            result['error'] = f'HTTP {resp.status_code}: {resp.text[:150]}'
+            logger.warning('messenger_verify: MAX subscription failed: %s', result['error'])
+    except Exception as e:
+        result['error'] = str(e)[:200]
+        logger.warning('messenger_verify: ensure_max_webhook failed: %s', e)
+    return result
