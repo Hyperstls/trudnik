@@ -293,6 +293,11 @@ def _send_max(chat_id, text, button: dict | None = None) -> bool:
 
 
 # ── Регистрация вебхука (self-heal, идемпотентно) ──────────────────
+# Оба типа обязательны: bot_started — первый старт deep-link,
+# message_created — fallback повторных стартов (см. max_webhook).
+_NEEDED_UPDATE_TYPES = ('bot_started', 'message_created')
+
+
 def _webhook_url(base_url: str) -> str:
     return base_url.rstrip('/') + '/messenger/webhook/max'
 
@@ -311,20 +316,47 @@ def get_max_subscriptions() -> list:
         )
         if resp.ok:
             data = resp.json()
-            # MAX возвращает список или {'subscriptions': [...]} — терпимы к обоим
+            # GET /subscriptions возвращает {'subscriptions': [...]} —
+            # tolerant к plain-list на случай смены формата
             return data if isinstance(data, list) else data.get('subscriptions', [])
     except Exception as e:
         logger.warning('messenger_verify: GET subscriptions failed: %s', e)
     return []
 
 
-def ensure_max_webhook(base_url: str | None = None) -> dict:
-    """Гарантирует, что webhook MAX зарегистрирован на наш URL.
+def _find_subscription(subs: list, url: str) -> dict | None:
+    want = url.rstrip('/')
+    for s in subs:
+        if isinstance(s, dict) and (s.get('url') or '').rstrip('/') == want:
+            return s
+    return None
 
-    Идемпотентно: если подписка с нашим URL уже есть — ничего не делает.
-    Вызывается self-heal-задачей (app/tasks/maintenance_tasks.py, каждые 10 мин)
-    и доступно для ручного вызова. Раньше было «вызывается один раз после
-    деплоя» — но никто не вызывал, и подписка отваливалась без восстановления.
+
+def _register_subscription(url: str, token: str) -> tuple[bool, str]:
+    """POST /subscriptions. Возвращает (ok, error)."""
+    try:
+        resp = requests.post(
+            f'{_MAX_API}/subscriptions',
+            json={'url': url, 'update_types': list(_NEEDED_UPDATE_TYPES)},
+            headers={'Authorization': token, 'Content-Type': 'application/json'},
+            timeout=Config.MESSENGER_API_TIMEOUT,
+            verify=False,
+        )
+        if resp.status_code < 300:
+            return True, ''
+        return False, f'HTTP {resp.status_code}: {resp.text[:150]}'
+    except Exception as e:
+        return False, str(e)[:200]
+
+
+def ensure_max_webhook(base_url: str | None = None) -> dict:
+    """Гарантирует, что webhook MAX зарегистрирован на наш URL с нужными типами.
+
+    Идемпотентно; сверяет и URL, и update_types — старая подписка только с
+    bot_started (без message_created) равносильна «бот молчит» на повторных
+    стартах, поэтому при несовпадении типов подписка пересоздаётся
+    (DELETE /subscriptions?url= + POST — API не гарантирует апдейт in-place).
+    Вызывается self-heal-задачей (maintenance_tasks, каждые 10 мин).
     """
     if base_url is None:
         base_url = Config.WORKER_SITE_URL
@@ -336,26 +368,32 @@ def ensure_max_webhook(base_url: str | None = None) -> dict:
         return result
 
     try:
-        subs = get_max_subscriptions()
-        for s in subs:
-            if isinstance(s, dict) and s.get('url', '').rstrip('/') == url.rstrip('/'):
+        existing = _find_subscription(get_max_subscriptions(), url)
+        if existing is not None:
+            have = set(existing.get('update_types') or [])
+            if set(_NEEDED_UPDATE_TYPES) <= have:
                 result.update(ok=True, action='already_registered')
                 return result
+            # Типы не совпадают → пересоздаём (API не гарантирует in-place update)
+            try:
+                requests.delete(
+                    f'{_MAX_API}/subscriptions',
+                    params={'url': url},
+                    headers={'Authorization': token},
+                    timeout=Config.MESSENGER_API_TIMEOUT,
+                    verify=False,
+                )
+            except Exception as e:
+                logger.warning('messenger_verify: subscription delete failed: %s', e)
 
-        resp = requests.post(
-            f'{_MAX_API}/subscriptions',
-            json={'url': url, 'update_types': ['bot_started', 'message_created']},
-            headers={'Authorization': token, 'Content-Type': 'application/json'},
-            timeout=Config.MESSENGER_API_TIMEOUT,
-            verify=False,
-        )
-        if resp.status_code < 300:
-            result.update(ok=True, action='registered')
-            logger.info('messenger_verify: MAX webhook registered: %s (%s)',
-                        url, resp.text[:100])
+        ok, err = _register_subscription(url, token)
+        if ok:
+            result.update(ok=True,
+                          action='registered' if existing is None else 'updated')
+            logger.info('messenger_verify: MAX webhook %s: %s', result['action'], url)
         else:
-            result['error'] = f'HTTP {resp.status_code}: {resp.text[:150]}'
-            logger.warning('messenger_verify: MAX subscription failed: %s', result['error'])
+            result['error'] = err
+            logger.warning('messenger_verify: MAX subscription failed: %s', err)
     except Exception as e:
         result['error'] = str(e)[:200]
         logger.warning('messenger_verify: ensure_max_webhook failed: %s', e)

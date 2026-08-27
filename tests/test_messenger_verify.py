@@ -365,12 +365,12 @@ class TestSendMax:
 
 class TestEnsureMaxWebhook:
     def test_already_registered(self, monkeypatch):
-        """Подписка с нашим URL есть → ok/already_registered, POST не шлётся."""
+        """Подписка с нашим URL и ОБИМИ типами → ok, ничего не шлётся."""
         from app.blueprints import messenger_verify as mv
         monkeypatch.setattr(mv.Config, 'MAX_BOT_TOKEN', 't')
         monkeypatch.setattr(mv, 'get_max_subscriptions',
                             lambda: [{'url': mv._webhook_url(mv.Config.WORKER_SITE_URL),
-                                      'update_types': ['bot_started']}])
+                                      'update_types': ['bot_started', 'message_created']}])
         posted = []
         monkeypatch.setattr(mv.requests, 'post',
                             lambda *a, **kw: posted.append(1) or _FakeResp(200))
@@ -379,6 +379,38 @@ class TestEnsureMaxWebhook:
         assert res['action'] == 'already_registered'
         assert posted == []
 
+    def test_updates_when_types_missing(self, monkeypatch):
+        """Подписка есть, но без message_created (старая ручная) →
+        DELETE старой + POST новой с обоими типами → action='updated'.
+
+        Ключевой кейс «бот молчит»: подписка только с bot_started не
+        доставляет сообщения повторных стартов.
+        """
+        from app.blueprints import messenger_verify as mv
+        monkeypatch.setattr(mv.Config, 'MAX_BOT_TOKEN', 't')
+        monkeypatch.setattr(mv, 'get_max_subscriptions',
+                            lambda: [{'url': mv._webhook_url(mv.Config.WORKER_SITE_URL),
+                                      'update_types': ['bot_started']}])
+        calls = {'post': [], 'delete': []}
+
+        def fake_post(*a, **kw):
+            calls['post'].append(kw.get('json'))
+            return _FakeResp(200)
+
+        def fake_delete(*a, **kw):
+            calls['delete'].append(kw.get('params'))
+            return _FakeResp(200)
+
+        monkeypatch.setattr(mv.requests, 'post', fake_post)
+        monkeypatch.setattr(mv.requests, 'delete', fake_delete)
+        res = mv.ensure_max_webhook('https://trudnik-hyperstls.amvera.io')
+        assert res['ok'] is True
+        assert res['action'] == 'updated'
+        assert len(calls['delete']) == 1
+        assert len(calls['post']) == 1
+        posted = calls['post'][0]
+        assert set(posted['update_types']) == {'bot_started', 'message_created'}
+
     def test_registers_when_missing(self, monkeypatch):
         from app.blueprints import messenger_verify as mv
         monkeypatch.setattr(mv.Config, 'MAX_BOT_TOKEN', 't')
@@ -386,6 +418,8 @@ class TestEnsureMaxWebhook:
         posted = []
         monkeypatch.setattr(mv.requests, 'post',
                             lambda *a, **kw: posted.append(1) or _FakeResp(200))
+        monkeypatch.setattr(mv.requests, 'delete',
+                            lambda *a, **kw: _FakeResp(200))
         res = mv.ensure_max_webhook('https://trudnik-hyperstls.amvera.io')
         assert res['ok'] is True
         assert res['action'] == 'registered'

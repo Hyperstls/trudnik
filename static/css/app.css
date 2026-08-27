@@ -574,3 +574,27 @@ select {
 :root {
     color-scheme: light;
 }
+
+/* ============================= */
+/* Progress bar (мастера форм)    */
+/* ============================= */
+progress {
+    accent-color: #d97706;
+    border: none;
+    border-radius: 9999px;
+    background: #e5e5e5;
+    overflow: hidden;
+}
+progress::-webkit-progress-bar {
+    background: #e5e5e5;
+    border-radius: 9999px;
+}
+progress::-webkit-progress-value {
+    background: #d97706;
+    border-radius: 9999px;
+    transition: width 0.3s ease;
+}
+progress::-moz-progress-bar {
+    background: #d97706;
+    border-radius: 9999px;
+}
