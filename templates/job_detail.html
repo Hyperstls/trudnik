@@ -13,8 +13,36 @@
     <!-- Title & org with badges -->
     <div class="flex items-start justify-between gap-3 mb-1">
         <h1 class="text-2xl font-bold text-neutral-800 flex-1 min-w-0">{{ job.organization_name }}</h1>
-        <span class="bg-primary-500 text-white text-lg font-bold px-4 py-1.5 rounded-lg shadow-sm shrink-0">{{ job.payment_amount }} ₽</span>
+        <div class="flex items-center gap-1.5 shrink-0">
+            <button type="button" id="btn-share-job" class="w-9 h-9 rounded-full flex items-center justify-center text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 transition-colors" aria-label="Поделиться заданием" title="Поделиться">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            </button>
+            {% if session.get('user_id') %}
+            <button type="button" id="btn-report-job-open" class="w-9 h-9 rounded-full flex items-center justify-center text-neutral-500 hover:bg-neutral-100 hover:text-danger transition-colors" aria-label="Пожаловаться на работодателя" title="Пожаловаться">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </button>
+            {% endif %}
+            <span class="bg-primary-500 text-white text-lg font-bold px-4 py-1.5 rounded-lg shadow-sm">{{ job.payment_amount }} ₽</span>
+        </div>
     </div>
+
+    {% if session.get('user_id') %}
+    <dialog id="report-job-modal" aria-labelledby="report-job-title" class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md mx-4">
+        <h3 id="report-job-title" class="text-lg font-bold text-neutral-900 mb-2">Жалоба на работодателя</h3>
+        <p class="text-sm text-neutral-600 mb-3">Опишите причину (мошенничество, спам, некорректное поведение). Множественные жалобы приводят к автоматической приостановке аккаунта.</p>
+        <form method="post" action="/profile/{{ job.employer_id }}/report">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <textarea name="reason" rows="3" maxlength="500" required aria-required="true"
+                      class="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-primary-500 text-neutral-900 mb-4"
+                      placeholder="Причина жалобы…" aria-label="Причина жалобы"></textarea>
+            <div class="flex gap-3">
+                <button type="button" id="btn-report-job-cancel"
+                        class="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-semibold py-3 rounded-xl">Отмена</button>
+                <button type="submit" class="flex-1 bg-danger hover:opacity-90 text-white font-bold py-3 rounded-xl">Отправить</button>
+            </div>
+        </form>
+    </dialog>
+    {% endif %}
     {% if job.status %}
     <span class="status-badge mb-3
         {% if job.status == 'open' %}status-open
@@ -203,6 +231,12 @@
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                         Отозвать отклик
                     </button>
+                    {% if not can_withdraw %}
+                    <p class="text-xs text-neutral-600 mt-2 flex items-center gap-1.5" role="note">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-neutral-500" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        Отзыв недоступен: до начала задания осталось менее 12 часов
+                    </p>
+                    {% endif %}
                 {% endif %}
             {% elif job.status == 'completed' %}
                 {% if my_app_status == 'accepted' %}
@@ -216,6 +250,9 @@
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                         Отозвать отклик
                     </button>
+                    {% if not can_withdraw %}
+                    <p class="text-xs text-neutral-600 mt-2" role="note">Отзыв недоступен: до начала задания осталось менее 12 часов</p>
+                    {% endif %}
                 {% elif not already_applied %}
                     <div class="bg-neutral-100 border border-neutral-200 rounded-xl p-3 text-center">
                         <span class="status-badge status-completed mb-2">Набор окончен</span>
@@ -466,6 +503,33 @@ window.deleteJobAdmin = function(jobId) {
         .catch(function() { window.showToast('Ошибка соединения', 'error'); });
     }, {okText: 'Удалить', title: 'Удаление задания'});
 };
+
+// ── Шеринг и жалоба (A7: trust & safety + органический рост) ──
+document.addEventListener('DOMContentLoaded', function() {
+    var shareBtn = document.getElementById('btn-share-job');
+    if (shareBtn) {
+        shareBtn.addEventListener('click', function() {
+            var url = window.location.href;
+            var title = document.title;
+            if (navigator.share) {
+                navigator.share({ title: title, url: url }).catch(function() {});
+            } else if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(function() {
+                    if (window.showToast) { window.showToast('Ссылка скопирована', 'success'); }
+                }).catch(function() {});
+            }
+        });
+    }
+    var reportOpen = document.getElementById('btn-report-job-open');
+    var reportModal = document.getElementById('report-job-modal');
+    var reportCancel = document.getElementById('btn-report-job-cancel');
+    if (reportOpen && reportModal) {
+        reportOpen.addEventListener('click', function() { reportModal.showModal(); });
+    }
+    if (reportCancel && reportModal) {
+        reportCancel.addEventListener('click', function() { reportModal.close(); });
+    }
+});
 
 // ── Рейтинги ─────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {

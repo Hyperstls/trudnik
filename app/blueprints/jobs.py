@@ -240,19 +240,21 @@ def index():
             job['distance'] = geo_job_distances.get(job['id'], float('inf'))
 
     # Сортировка
+    employer_ratings = {}
+    if jobs:
+        employer_ids = list({j['employer_id'] for j in jobs if j.get('employer_id')})
+        if employer_ids:
+            ids_filter = ','.join(employer_ids)
+            rating_resp = postgrest_request('GET',
+                f'profiles?id=in.({ids_filter})&select=id,rating')
+            if rating_resp.ok and rating_resp.json():
+                employer_ratings = {p['id']: p.get('rating', 0) or 0
+                                    for p in rating_resp.json()}
     if sort == 'distance' and lat is not None:
         jobs.sort(key=lambda x: x.get('distance', float('inf')))
     elif sort == 'rating':
-        # Получаем рейтинги работодателей для сортировки
-        if jobs:
-            employer_ids = list({j['employer_id'] for j in jobs if j.get('employer_id')})
-            if employer_ids:
-                ids_filter = ','.join(employer_ids)
-                rating_resp = postgrest_request('GET',
-                    f'profiles?id=in.({ids_filter})&select=id,rating')
-                if rating_resp.ok and rating_resp.json():
-                    rating_map = {p['id']: p.get('rating', 0) or 0 for p in rating_resp.json()}
-                    jobs.sort(key=lambda x: rating_map.get(x.get('employer_id'), 0), reverse=True)
+        # Рейтинги работодателей уже получены выше (employer_ratings)
+        jobs.sort(key=lambda x: employer_ratings.get(x.get('employer_id'), 0), reverse=True)
     elif sort in ('payment_asc', 'price_asc'):
         jobs.sort(key=lambda x: x['payment_amount'])
     elif sort in ('payment_desc', 'price_desc'):
@@ -272,6 +274,7 @@ def index():
 
     selected_skills_list = [s.strip() for s in skills_filter.split(',') if s.strip()] if skills_filter else []
     return render_template('index.html', jobs=jobs, applied_job_ids=applied_job_ids,
+                           employer_ratings=employer_ratings,
                            lat=lat, lng=lng, radius=radius, sort=sort,
                            selected_skills=selected_skills_list,
                            page=page, has_next=has_next)

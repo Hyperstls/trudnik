@@ -1,4 +1,4 @@
-:root {
+﻿:root {
     --brand: #2563eb;
     --brand-dark: #1d4ed8;
     --danger: #dc2626;
@@ -53,6 +53,16 @@ input:focus, textarea:focus, select:focus {
     outline: none;
     border-color: #d97706;
     box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.15);
+}
+/* WCAG 2.1: forced-colors (Windows High Contrast) — box-shadow невидим,
+   возвращаем стандартный outline (B7) */
+@media (forced-colors: active) {
+    input:focus, textarea:focus, select:focus,
+    a:focus, button:focus, [tabindex]:focus {
+        outline: 2px solid CanvasText;
+        outline-offset: 2px;
+        box-shadow: none;
+    }
 }
 
 /* ============================= */
@@ -133,26 +143,26 @@ input:focus, textarea:focus, select:focus {
 
 /* Reopen button */
 .reopen-btn {
-    color: #3b82f6;
+    color: #d97706;
     border-color: #bfdbfe;
     background: #eff6ff;
 }
 .reopen-btn:hover {
-    background: #3b82f6;
+    background: #d97706;
     color: white;
-    border-color: #3b82f6;
+    border-color: #d97706;
 }
 
 /* Chat button */
 .chat-btn {
-    color: #3b82f6;
+    color: #d97706;
     border-color: #bfdbfe;
     background: #eff6ff;
 }
 .chat-btn:hover {
-    background: #3b82f6;
+    background: #d97706;
     color: white;
-    border-color: #3b82f6;
+    border-color: #d97706;
 }
 
 /* Action button (purple) */

@@ -85,9 +85,18 @@
                 {% endif %}
                     <a href="/jobs/{{ job.id }}" class="block">
                         <div class="flex items-start justify-between gap-2">
-                            <h3 class="font-semibold text-neutral-800 text-base leading-tight line-clamp-1 flex-1 min-w-0">{{ job.organization_name }}</h3>
+                            {# A4: суть работы в заголовке; организация — вторичной строкой #}
+                            <h3 class="font-semibold text-neutral-800 text-base leading-tight line-clamp-1 flex-1 min-w-0">{{ job.work_type or (job.object_description | truncate(60)) }}</h3>
                             <span class="bg-primary-500 text-white text-xs font-bold px-2.5 py-1 rounded-lg shadow-sm shrink-0">{{ job.payment_amount }} ₽</span>
                         </div>
+                        <p class="text-sm text-neutral-700 mt-1 flex items-center gap-1.5 truncate">
+                            <span class="font-medium truncate">{{ job.organization_name }}</span>
+                            {% if employer_ratings and employer_ratings.get(job.employer_id) %}
+                            <span class="inline-flex items-center gap-0.5 text-neutral-500 shrink-0">
+                                {{ star(11) }}{{ '%.1f' | format(employer_ratings[job.employer_id] or 0) }}
+                            </span>
+                            {% endif %}
+                        </p>
                         <p class="text-xs text-neutral-500 mt-1 flex items-center gap-1 flex-wrap">
                             {% if 'distance' in job and job.distance is not none %}
                             <span class="inline-flex items-center gap-0.5">{{ map_pin(12) }}{{ "%.1f"|format(job.distance) }} км</span>
@@ -144,16 +153,22 @@
             </div>
         </article>
         {% else %}
-        <!-- Empty state -->
+        <!-- Empty state (A5: с действием; A2: контраст) -->
         <div class="col-span-full flex flex-col items-center justify-center py-16 text-center fade-in">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-4">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-4" aria-hidden="true">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                 <polyline points="14 2 14 8 20 8"></polyline>
                 <line x1="16" y1="13" x2="8" y2="13"></line>
                 <line x1="16" y1="17" x2="8" y2="17"></line>
             </svg>
-            <p class="text-neutral-400 text-lg font-medium">Пока нет заданий</p>
-            <p class="text-neutral-300 text-sm mt-1">Попробуйте изменить фильтры или зайдите позже</p>
+            <p class="text-neutral-600 text-lg font-medium">Пока нет заданий</p>
+            <p class="text-neutral-500 text-sm mt-1">Попробуйте изменить фильтры или зайдите позже</p>
+            <div class="mt-5 flex flex-wrap gap-2 justify-center">
+                {% if session.get('role') == 'employer' %}
+                <a href="/jobs/new" class="px-5 py-2.5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-xl transition-colors">Создать задание</a>
+                {% endif %}
+                <a href="/" class="px-5 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-sm font-semibold rounded-xl transition-colors">Сбросить фильтры</a>
+            </div>
         </div>
         {% endfor %}
     </div>
