@@ -608,3 +608,21 @@ progress::-moz-progress-bar {
     background: #d97706;
     border-radius: 9999px;
 }
+
+/* =============================================
+   Дозагрузка md-утилит, отсутствующих в
+   прекомпилированном tailwind.min.css
+   (класса нет в min.css → hidden не переопределяется)
+   Подключён ПОСЛЕ tailwind — специфичность решает порядок.
+   ============================================= */
+@media (min-width: 768px) {
+    .md\:inline-flex {
+        display: inline-flex;
+    }
+    .md\:pb-2 {
+        padding-bottom: 0.5rem; /* ~2мм — компактный футер на десктопе */
+    }
+    .md\:pb-6 {
+        padding-bottom: 1.5rem;
+    }
+}
