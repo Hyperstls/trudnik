@@ -310,7 +310,8 @@ document.addEventListener('DOMContentLoaded', function() {
         input.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 var v = this.value.trim();
-                if (v) window.location.href = '/?city=' + encodeURIComponent(v);
+                // B3: поиск по смыслу (задание/описание/организация) и городу
+                if (v) window.location.href = '/?q=' + encodeURIComponent(v);
                 toggleMobileSearch();
             }
         });

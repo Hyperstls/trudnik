@@ -83,7 +83,7 @@
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
-                    <input type="text" name="city" placeholder="Поиск по городу..." aria-label="Поиск по городу" class="w-full pl-9 pr-4 py-2 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                    <input type="text" name="q" placeholder="Задание или город…" aria-label="Поиск заданий или города" class="w-full pl-9 pr-4 py-2 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
                 </form>
                 </search>
             </div>
@@ -92,8 +92,8 @@
             <!-- Десктопная навигация (B2: md+; mobile остаётся на bottom-nav) -->
             <nav class="hidden md:flex items-center gap-1" aria-label="Основная навигация">
                 {% set nav_items = ({
-                    'worker': [('/', 'Задания'), ('/employers', 'Работодатели'), ('/chats', 'Чаты'), ('/favorites', 'Избранное')],
-                    'employer': [('/my-jobs', 'Мои задания'), ('/my-applications', 'Отклики'), ('/workers', 'Трудники'), ('/chats', 'Чаты')]
+                    'worker': [('/', 'Задания'), ('/my-applications', 'Отклики'), ('/employers', 'Работодатели'), ('/chats', 'Чаты'), ('/favorites', 'Избранное')],
+                    'employer': [('/my-jobs', 'Мои задания'), ('/my-applications', 'Отклики'), ('/workers', 'Трудники'), ('/favorites', 'Избранное'), ('/chats', 'Чаты')]
                 }).get(session.get('role') or '', [('/', 'Задания')]) %}
                 {% for href, label in nav_items %}
                 <a href="{{ href }}" class="px-3 py-2 rounded-lg text-sm font-medium transition-colors
@@ -161,6 +161,10 @@
                         <circle cx="12" cy="7" r="4"></circle>
                     </svg>
                 </a>
+                {% else %}
+                {# Гость на десктопе: гостевой бар скрыт (md:hidden) — даём вход/регистрацию в шапке #}
+                <a href="/login" class="hidden md:inline-flex px-4 py-2 rounded-xl text-sm font-semibold text-neutral-700 hover:bg-neutral-100 transition-colors">Войти</a>
+                <a href="/register" class="hidden md:inline-flex px-4 py-2 rounded-xl text-sm font-semibold bg-primary-500 hover:bg-primary-600 text-white transition-colors">Регистрация</a>
                 {% endif %}
             </div>
         </div>
@@ -175,7 +179,7 @@
                     <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
             </button>
-            <input type="text" id="mobile-search-input" name="city" placeholder="Поиск заданий, трудников..." aria-label="Поиск заданий и трудников" class="flex-1 px-4 py-2.5 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+            <input type="text" id="mobile-search-input" name="q" placeholder="Задание или город…" aria-label="Поиск заданий или города" class="flex-1 px-4 py-2.5 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
         </div>
     </div>
 
@@ -230,9 +234,9 @@
     <!-- ================================ -->
     <!-- Footer                            -->
     <!-- ================================ -->
-    <footer class="bg-neutral-100 border-t border-neutral-200 py-6 px-4 pb-24 md:pb-6 text-center text-sm text-neutral-600">
-        <div class="max-w-6xl mx-auto">
-            <p class="mb-2">© {{ current_year }} Трудник. Все права защищены.</p>
+    <footer class="bg-neutral-100 border-t border-neutral-200 px-4 pt-2 pb-20 md:pb-2 text-center text-xs text-neutral-600">
+        <div class="max-w-6xl mx-auto leading-relaxed">
+            <p class="mb-1">© {{ current_year }} Трудник. Все права защищены.</p>
             <nav aria-label="Ссылки в подвале">
                 <a href="/terms" class="text-primary-600 hover:text-primary-700 mx-2">Условия использования</a>
                 <a href="/privacy" class="text-primary-600 hover:text-primary-700 mx-2">Политика конфиденциальности</a>
@@ -307,6 +311,15 @@
                 <polyline points="9 22 9 12 15 12 15 22"></polyline>
             </svg>
             <span>Задания</span>
+        </a>
+        <a href="/my-applications"
+           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'my_applications' in request.endpoint }}"
+           aria-label="Мои отклики">
+            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                <line x1="9" y1="9" x2="15" y2="9"></line>
+            </svg>
+            <span>Отклики</span>
         </a>
         <a href="/employers"
            class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'employers' in request.endpoint }}"

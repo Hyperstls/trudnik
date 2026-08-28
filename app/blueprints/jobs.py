@@ -126,6 +126,9 @@ def inject_user_role():
 @jobs_bp.route('/')
 def index():
     city = request.args.get('city', '')
+    # B3: поиск по смыслу — по виду работы, описанию и организации
+    # (совмещается с городом: q=грузчик&city=Москва)
+    search_q = (request.args.get('q', '') or '').strip()
     payment_min = parse_float(request.args.get('payment_min', ''), 'payment_min', min_val=0)
     payment_max = parse_float(request.args.get('payment_max', ''), 'payment_max', min_val=0)
     # Гео-поиск — opt-in: только явные параметры. По умолчанию — ВСЕ открытые задания,
@@ -188,6 +191,14 @@ def index():
 
     # Остальные фильтры
     if city: query += f'&city=ilike.*{sanitize_postgrest(city)}*'
+    # B3: полнотекстовый поиск — по смыслу (вид работы/описание/организация)
+    # И по городу (одно поле «Задание или город…» в шапке покрывает оба сценария)
+    if search_q:
+        q = sanitize_postgrest(search_q)
+        query += (f'&or=(work_type.ilike.*{q}*,'
+                  f'object_description.ilike.*{q}*,'
+                  f'organization_name.ilike.*{q}*,'
+                  f'city.ilike.*{q}*)')
     if payment_min: query += f'&payment_amount=gte.{sanitize_postgrest(payment_min)}'
     if payment_max: query += f'&payment_amount=lte.{sanitize_postgrest(payment_max)}'
     # Фильтр по вероисповеданию (preferred_religion) убран: дискриминация при найме (ТК РФ ст.3).

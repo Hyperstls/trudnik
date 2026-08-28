@@ -61,10 +61,10 @@
         <div class="max-w-lg mx-auto px-4 py-3">
             <form id="chat-form" class="flex gap-2 items-end" aria-label="Отправка сообщения">
                 <div class="flex-1 relative">
-                    <input id="message-input" type="text" class="w-full border border-neutral-200 rounded-xl px-4 py-2.5 pr-10 text-sm
+                    <textarea id="message-input" rows="1" class="w-full border border-neutral-200 rounded-xl px-4 py-2.5 text-sm
                         focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500
-                        placeholder:text-neutral-400 bg-neutral-50"
-                        placeholder="Сообщение..." aria-label="Сообщение" autocomplete="off">
+                        placeholder:text-neutral-400 bg-neutral-50 resize-none max-h-32 overflow-y-auto"
+                        placeholder="Сообщение…" aria-label="Сообщение" autocomplete="off"></textarea>
                 </div>
                 <button type="submit" class="w-11 h-11 rounded-xl bg-primary-500 text-white flex items-center justify-center
                     hover:bg-primary-600 active:scale-[0.95] transition-all duration-150 shadow-sm shrink-0"
@@ -214,6 +214,8 @@ async function sendMessage(event) {
             throw new Error((await errData).message || 'Ошибка отправки (' + resp.status + ')');
         }
         input.value = '';
+        // B5: сброс авто-высоты textarea после отправки
+        input.style.height = 'auto';
         await pollMessages();
     } catch (e) {
         if (e.name === 'AbortError') {
@@ -234,6 +236,22 @@ function isWsConnected() {
 
 window.addEventListener('load', function() {
     var form = document.getElementById('chat-form');
+    // B5: textarea авто-рост + Enter=отправка, Shift+Enter=перенос строки
+    var msgInput = document.getElementById('message-input');
+    if (msgInput) {
+        msgInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 128) + 'px';
+        });
+        msgInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (form) {
+                    form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit', {cancelable: true}));
+                }
+            }
+        });
+    }
     if (form) form.addEventListener('submit', sendMessage);
     const msgs = document.getElementById('messages');
     if (msgs) msgs.scrollTop = msgs.scrollHeight;
