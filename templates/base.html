@@ -27,7 +27,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+    <!-- ?v= — cache-busting: статика кэшируется 24ч (max-age=86400),
+         без версии пользователи не получают обновления CSS/JS до суток -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=20260828b">
     {% if trudnik_ws_config %}
     <script nonce="{{ csp_nonce }}">
         window.TRUDNIK_CONFIG = {
@@ -368,7 +370,7 @@
     <!-- ================================ -->
     <!-- Global JavaScript                 -->
     <!-- ================================ -->
-    <script src="{{ url_for('static', filename='js/base.js') }}" nonce="{{ csp_nonce }}"></script>
+    <script src="{{ url_for('static', filename='js/base.js') }}?v=20260828b" nonce="{{ csp_nonce }}"></script>
 
     {% block scripts %}{% endblock %}
 
