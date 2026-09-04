@@ -1,4 +1,4 @@
-"""API-эндпоинты для заданий (JSON-ответы).
+﻿"""API-эндпоинты для заданий (JSON-ответы).
 
 Вынесены из jobs.py в рамках рефакторинга Этапа 1.
 Содержит: поиск заданий/трудников, справочники, приглашения.
@@ -9,7 +9,7 @@ import logging
 
 from flask import Blueprint, jsonify, request, session, url_for
 
-from app.decorators import login_required, role_required, validate_uuid
+from app.decorators import login_required, validate_uuid
 from app.services.job_service import (
     check_job_owner,
     is_job_filled,
@@ -81,7 +81,6 @@ def api_skills():
 
 @jobs_api_bp.route('/api/invite/<job_id>/<worker_id>', methods=['POST'])
 @login_required
-@role_required('employer')
 @validate_uuid('job_id', 'worker_id')
 def invite_worker(job_id, worker_id):
     """Работодатель приглашает трудника на задание."""
@@ -140,7 +139,6 @@ def list_invitations():
 
 @jobs_api_bp.route('/api/invitations/<invitation_id>/respond', methods=['POST'])
 @login_required
-@role_required('worker')
 @validate_uuid('invitation_id')
 def respond_invitation(invitation_id):
     """Трудник принимает или отклоняет приглашение.

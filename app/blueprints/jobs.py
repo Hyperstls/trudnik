@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 from datetime import datetime, timezone, timedelta
 
 from flask import (
@@ -16,7 +16,7 @@ from flask import (
 logger = logging.getLogger(__name__)
 
 from app.config import Config
-from app.decorators import login_required, rate_limit, role_required, validate_uuid
+from app.decorators import login_required, rate_limit, validate_uuid
 from app.utils import (
     calculate_distance, check_withdraw_window, copy_job, is_circuit_open,
     sanitize_postgrest, postgrest_admin_request, postgrest_request, postgrest_rpc,
@@ -88,7 +88,7 @@ def check_stop_words(text):
 @jobs_bp.app_context_processor
 def inject_application_count():
     count = 0
-    if session.get('role') == 'employer' and 'user_id' in session:
+    if 'user_id' in session:
         user_id = session['user_id']
         cache_key = f'app_count:{user_id}'
         from app.utils.redis_cache import redis_cache_get, redis_cache_set
@@ -306,7 +306,9 @@ def workers():
         lat = request.args.get('lat', type=float) or session.get('lat')
         lng = request.args.get('lng', type=float) or session.get('lng')
 
-        query = 'role=eq.worker'
+        # Мультирольность: каталог трудников = все, кто разрешил показ
+        # (worker_visibility; раньше — только role='worker')
+        query = 'worker_visibility=eq.true'
         if filters['city']: query += f'&city=ilike.*{sanitize_postgrest(filters["city"])}*'
         if filters['experience']: query += f'&experience=ilike.*{sanitize_postgrest(filters["experience"])}*'
         if filters['payment_from']: query += f'&desired_payment=gte.{sanitize_postgrest(filters["payment_from"])}'
@@ -472,7 +474,6 @@ def pricing():
 
 @jobs_bp.route('/job/new', methods=['GET', 'POST'])
 @login_required
-@role_required('employer')
 @rate_limit
 def job_new():
     """Создание задания (единственный маршрут, заменяет /create-job)"""
@@ -612,7 +613,6 @@ def job_new():
 
 @jobs_bp.route('/my-jobs')
 @login_required
-@role_required('employer')
 def my_jobs():
     user_id = session['user_id']
     status_filter = request.args.get('status', 'all')
@@ -642,7 +642,6 @@ def my_jobs():
 
 @jobs_bp.route('/my-jobs/action', methods=['POST'])
 @login_required
-@role_required('employer')
 def my_jobs_action():
     """Bulk-операции над заданиями (cancel/restore/delete/duplicate).
     
@@ -761,7 +760,6 @@ def my_jobs_action():
 
 @jobs_bp.route('/repost-job/<job_id>', methods=['POST'])
 @login_required
-@role_required('employer')
 @validate_uuid('job_id')
 def repost_job(job_id):
     if not check_job_owner(job_id, session['user_id']):
@@ -785,7 +783,6 @@ def repost_job(job_id):
 
 @jobs_bp.route('/cancel-job/<job_id>', methods=['POST'])
 @login_required
-@role_required('employer')
 @validate_uuid('job_id')
 def cancel_job(job_id):
     if not check_job_owner(job_id, session['user_id']):
@@ -839,7 +836,6 @@ def cancel_job(job_id):
 
 @jobs_bp.route('/restore-job/<job_id>', methods=['POST'])
 @login_required
-@role_required('employer')
 @validate_uuid('job_id')
 def restore_job(job_id):
     if not check_job_owner(job_id, session['user_id']):
@@ -892,7 +888,6 @@ def restore_job(job_id):
 
 @jobs_bp.route('/api/jobs/<job_id>/force-complete', methods=['POST'])
 @login_required
-@role_required('employer')
 @validate_uuid('job_id')
 def api_force_complete_job(job_id):
     """Принудительное завершение задания работодателем.
@@ -992,7 +987,6 @@ def reject_all_invitations():
 
 @jobs_bp.route('/jobs/<job_id>/edit', methods=['GET', 'POST'])
 @login_required
-@role_required('employer')
 @validate_uuid('job_id')
 @rate_limit
 def edit_job(job_id):

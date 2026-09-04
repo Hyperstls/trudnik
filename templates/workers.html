@@ -31,7 +31,7 @@
                 {# Кнопки избранного, блокировки и оценки — верхний правый угол #}
                 <div class="absolute flex gap-1 z-10" style="top: 0.5rem; right: 0.5rem;">
                     {# Кнопка блокировки — только для работодателей (админ блокирует через админ-панель) #}
-                    {% if session.get('role') == 'employer' %}
+                    {% if session.get('user_id') %}
                     <button id="toggle-block-btn-{{ worker.id }}"
                             class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 transition-colors"
                             title="Заблокировать"
@@ -41,7 +41,7 @@
                         🚫
                     </button>
                     {% endif %}
-                    {% if session.get('role') == 'employer' %}
+                    {% if session.get('user_id') %}
                     <button class="favorite-btn contact-btn w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
                             data-worker-id="{{ worker.id }}"
                             data-favorited="false"
@@ -107,7 +107,7 @@
                             {{ chat(16) }}
                             <span class="text-[11px] ml-1.5 font-medium">Написать</span>
                         </button>
-                        {% if session.get('role') == 'employer' %}
+                        {% if session.get('user_id') %}
                         {% set is_invited = worker.id in invited_worker_ids %}
                         <button id="invite-btn-{{ worker.id }}"
                                 class="action-icon-btn min-w-[100px] {{ 'opacity-60' if is_invited else 'accept-btn' }}"
@@ -118,7 +118,7 @@
                         </button>
                         {% endif %}
                         {# Кнопка «Оценить» — для работодателя #}
-                        {% if session.get('role') == 'employer' %}
+                        {% if session.get('user_id') %}
                         <button data-action="rate" data-worker-id="{{ worker.id }}"
                                 data-worker-name="{{ worker.full_name }}"
                                 class="action-icon-btn contact-btn min-w-[100px]" title="Оценить трудника">
@@ -172,7 +172,7 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/favorites.js') }}" nonce="{{ csp_nonce }}"></script>
-{% if session.get('role') == 'employer' %}
+{% if session.get('user_id') %}
 <script nonce="{{ csp_nonce }}">
 async function inviteWorker(workerId, workerName, btn) {
     const jobId = prompt(`Пригласить ${workerName || 'трудника'} на задание.\nВведите ID задания:`);
@@ -208,7 +208,7 @@ async function inviteWorker(workerId, workerName, btn) {
 }
 </script>
 {% endif %}
-{% if session.get('role') in ('employer', 'admin') %}
+{% if session.get('user_id') %}
 <script nonce="{{ csp_nonce }}">
 async function toggleBlock(btn, workerId, evt) {
     if (evt) { evt.preventDefault(); evt.stopPropagation(); }
@@ -273,7 +273,7 @@ async function toggleBlock(btn, workerId, evt) {
 {# ============================================ #}
 {# Скрипт модального окна оценки                  #}
 {# ============================================ #}
-{% if session.get('role') == 'employer' %}
+{% if session.get('user_id') %}
 <script nonce="{{ csp_nonce }}">
 (function() {
     var currentWorkerId = null;

@@ -156,7 +156,16 @@ def register():
         full_name = request.form.get('full_name', '').strip()
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
-        role = request.form.get('role', '')
+        # Мультирольность (2026-08-28): intent ∈ {find_work, post_jobs, both}
+        # role остаётся «ориентацией» (лендинг), доступ определяется владением.
+        intent = request.form.get('intent', '')
+        if intent == 'post_jobs':
+            role = 'employer'
+            worker_visibility = False   # только заказчик: скрыт из каталога трудников
+        else:
+            # find_work и both (дефолт): может подрабатывать — виден в каталоге
+            role = 'worker'
+            worker_visibility = True
         city = request.form.get('city', '').strip()
 
         # Валидация обязательных полей
@@ -253,7 +262,8 @@ def register():
                 'p_email': email,
                 'p_password': password,
                 'p_full_name': full_name,
-                'p_role': role
+                'p_role': role,
+                'p_worker_visibility': worker_visibility,
             })
             if resp.ok:
                 # RPC возвращает uuid нового пользователя

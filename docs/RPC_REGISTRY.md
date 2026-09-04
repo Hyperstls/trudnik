@@ -13,7 +13,7 @@
 | Функция | Параметры | Возврат | Назначение | SECURITY DEFINER | Миграция | Вызывается в коде |
 |---------|-----------|---------|------------|------------------|----------|-------------------|
 | `login_user` | `p_email text, p_password text` | `TABLE(user_id uuid, role text, full_name text, email_verified boolean)` | Проверка пароля через pgcrypto, возврат пользователя | Да | 067, 075, 082, 130 | Да (auth_service.py fallback) |
-| `register_user` | `p_email text, p_password text, p_full_name text, p_role text DEFAULT 'worker'` | `uuid` | Регистрация пользователя, bcrypt 12 rounds | Да | 067, 075, 080 | Да (auth.py) |
+| `register_user` | `p_email text, p_password text, p_full_name text, p_role text DEFAULT 'worker', p_worker_visibility boolean DEFAULT true` | `uuid` | Регистрация, bcrypt 12 rounds; visibility-флаг — мультирольность (каталог /workers + приглашения) | Да | 067, 075, 080, 141 | Да (auth.py) |
 | `change_password` | `p_user_id uuid, p_old_password text, p_new_password text` | `boolean` | Смена пароля с проверкой старого | Да | 067, 075, 130 | Да (profile.py) |
 | `verify_via_messenger` | `p_user_id uuid, p_provider text, p_messenger_uid text DEFAULT NULL` | `boolean` | Подтверждение профиля через мессенджер (Phase 3A) | Да | 137 | Да (messenger_verify.py) |
 

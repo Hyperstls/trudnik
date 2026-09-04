@@ -4,6 +4,14 @@
 Платформа разовой подработки. Стек и архитектура — см. `.kilocode/rules/` (00–10 + project.md).
 ВАЖНО: эти rules загружаются автоматически — сверяйся с ними, не выдумывай версии/факты.
 
+## Мультирольность (2026-09-04)
+- Любой пользователь может СОЗДАВАТЬ задания и ОТКЛИКАТЬСЯ (RLS/RPC проверяют владение, не роль).
+- `profiles.worker_visibility` (bool, default true): false → скрыт из каталога `/workers` и не получает приглашений (только заказчик).
+- `profiles.role` — лишь «ориентация» (лендинг после логина), НЕ барьер доступа.
+- Доступ = владение/участие: `job.employer_id == user_id`, `my_app_status`, RPC-проверки.
+- НЕ возвращай `@role_required('worker'|'employer')` для бизнес-действий (admin_required — можно).
+- Регистрация: `intent` ∈ {both (дефолт), find_work, post_jobs}; `register_user` RPC принимает `p_worker_visibility`.
+
 ## Верификация кода
 - Линтеров/typecheck в репо НЕТ. Проверка — через `pytest` (см. 08_testing_and_verify.md).
 - **Перед коммитом:** `.venv\Scripts\python.exe scripts\pre_deploy_check.py` (0 проблем).

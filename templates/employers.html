@@ -88,7 +88,7 @@
             </a>
             {# Кнопка избранного #}
             <div class="mt-auto pt-3 border-t border-neutral-100">
-                {% if session.get('role') == 'worker' %}
+                {% if session.get('user_id') %}
                 <form method="POST" action="/employers/{{ employer.id }}/favorite" class="inline">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="action-icon-btn {% if employer.id in favorited_employer_ids %}reject-btn{% else %}contact-btn{% endif %}">

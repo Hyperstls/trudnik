@@ -1,5 +1,5 @@
-const CACHE_VERSION = 'trudnik-v11';
-const CACHE_NAME = 'trudnik-v11';
+﻿const CACHE_VERSION = 'trudnik-v12';
+const CACHE_NAME = 'trudnik-v12';
 const PRECACHE_URLS = [
   '/',
   '/offline',

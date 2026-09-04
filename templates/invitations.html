@@ -25,7 +25,7 @@
                         <a href="{{ url_for('jobs.job_detail', job_id=inv.job_id) }}" class="block font-semibold text-primary-600 hover:text-primary-700 hover:underline text-sm">
                             {{ inv.job.organization_name if inv.job else 'Задание #' + inv.job_id[:8] }}
                         </a>
-                        {% if session.get('role') == 'worker' %}
+                        {% if session.get('user_id') %}
                         <p class="text-sm text-neutral-600 mt-0.5">Вас пригласили на задание</p>
                         {% else %}
                         <p class="text-sm text-neutral-600 mt-0.5">
@@ -40,7 +40,7 @@
                             </span>
                             {% endif %}
                         </p>
-                        {% if inv.status == 'pending' and session.get('role') == 'worker' %}
+                        {% if inv.status == 'pending' %}
                         <div class="flex gap-2 mt-3">
                             <button class="js-respond-btn px-4 py-2 bg-success text-white text-sm font-medium rounded-lg hover:bg-green-600 transition-colors"
                                     data-invite-id="{{ inv.id }}" data-action="accept">

@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% from '_icons.html' import star, apply, x_close, check, clock, eye, menu_icon %}
 {% from '_sort_panel.html' import sort_panel with context %}
 {% block title %}Трудник — Поиск работы{% endblock %}
@@ -32,7 +32,7 @@
         {% if lat and lng %}<a href="{{ request.path }}" class="text-xs text-neutral-500 hover:text-neutral-700 underline underline-offset-2">сбросить гео</a>{% endif %}
     </div>
 
-    {% if session.get('role') == 'worker' %}
+    {% if session.get('user_id') %}
     <!-- Filter buttons -->
     <div class="flex gap-2 mb-4">
         <button class="js-filter-btn filter-btn active px-4 py-2 rounded-full text-sm font-medium transition-all bg-primary-500 text-white shadow-sm" data-filter="all">Все</button>
@@ -53,7 +53,7 @@
         {'value': 'distance', 'label': 'Ближе'},
     ], has_coords=has_coords) }}
 
-    {% if session.get('role') == 'worker' %}
+    {% if session.get('user_id') %}
     <!-- Mass actions bar (floating) -->
     <div id="mass-actions-bar" class="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-4 sm:w-auto bg-white rounded-2xl shadow-lg border border-neutral-200 px-4 py-3 flex items-center gap-2 z-30 hidden animate-slide-in" style="max-width: 100%; overflow-x: auto;">
         <output id="selected-count" aria-live="polite" class="text-sm font-semibold text-neutral-600 whitespace-nowrap">0 выбрано</output>
@@ -76,7 +76,7 @@
         {% for job in jobs %}
         <article class="card bg-white rounded-2xl shadow-sm border border-neutral-200 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group fade-in{% if job.id in applied_job_ids %} applied{% endif %}">
             <div class="p-4">
-                {% if session.get('role') == 'worker' %}
+                {% if session.get('user_id') and job.employer_id != session.get('user_id') %}
                 <div class="flex items-start gap-2">
                     <input type="checkbox" name="job_ids" value="{{ job.id }}" class="job-checkbox mt-1 rounded border-neutral-300 text-primary-500 focus:ring-primary-500 shrink-0" aria-label="Выбрать задание {{ job.organization_name or job.title }}">
                     <div class="flex-1 min-w-0">
@@ -108,7 +108,7 @@
                         </p>
                         <p class="mt-2 text-sm text-neutral-600 line-clamp-2 leading-relaxed">{{ job.object_description }}</p>
                     </a>
-                    {% if session.get('role') == 'worker' %}
+                    {% if session.get('user_id') and job.employer_id != session.get('user_id') %}
                     <div class="mt-3 flex flex-wrap gap-2 items-center">
                         {% if job.id not in applied_job_ids %}
                         <form action="/apply/{{ job.id }}" method="post" class="inline">
@@ -140,14 +140,14 @@
                         </form>
                     </div>
                     {% endif %}
-                    {% if session.get('role') == 'employer' and session.get('user_id') == job.employer_id %}
+                    {% if session.get('user_id') == job.employer_id %}
                     <div class="mt-3 flex gap-4">
                         <a href="/my-applications" class="text-sm text-primary-500 hover:text-primary-600 font-medium">Отклики</a>
                         <a href="/my-jobs" class="text-sm text-neutral-500 hover:text-neutral-700 font-medium">Мои задания</a>
                     </div>
                     {% endif %}
                 </div>
-                {% if session.get('role') == 'worker' %}
+                {% if session.get('user_id') and job.employer_id != session.get('user_id') %}
                 </div>
                 {% endif %}
             </div>
@@ -164,8 +164,8 @@
             <p class="text-neutral-600 text-lg font-medium">Пока нет заданий</p>
             <p class="text-neutral-500 text-sm mt-1">Попробуйте изменить фильтры или зайдите позже</p>
             <div class="mt-5 flex flex-wrap gap-2 justify-center">
-                {% if session.get('role') == 'employer' %}
-                <a href="/jobs/new" class="px-5 py-2.5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-xl transition-colors">Создать задание</a>
+                {% if session.get('user_id') %}
+                <a href="/job/new" class="px-5 py-2.5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-xl transition-colors">Создать задание</a>
                 {% endif %}
                 <a href="/" class="px-5 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-sm font-semibold rounded-xl transition-colors">Сбросить фильтры</a>
             </div>

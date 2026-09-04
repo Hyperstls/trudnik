@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% block title %}Регистрация — Трудник{% endblock %}
 {% block content %}
 <div class="min-h-[calc(100vh-3.5rem)] flex items-center justify-center px-4 py-8">
@@ -79,28 +79,43 @@
                     </div>
                 </div>
 
-                <!-- Role selection cards -->
+                <!-- Intent selection (мультирольность: роль = ориентация, не барьер) -->
                 <fieldset>
-                    <legend class="block text-sm font-semibold text-neutral-700 mb-2">Роль <span class="text-danger">*</span></legend>
-                    <div class="grid grid-cols-2 gap-3">
-                        <label class="role-card group cursor-pointer border-2 border-neutral-200 rounded-xl p-4 text-center hover:border-primary-300 transition-all duration-200 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 has-[:checked]:shadow-sm" tabindex="0">
-                            <input type="radio" name="role" value="worker" class="sr-only" required aria-required="true">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-2 text-neutral-400 group-has-[:checked]:text-primary-500">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="12" cy="7" r="4"></circle>
+                    <legend class="block text-sm font-semibold text-neutral-700 mb-2">Что вы хотите делать? <span class="text-danger">*</span></legend>
+                    <div class="space-y-2.5">
+                        <label class="role-card group cursor-pointer border-2 border-neutral-200 rounded-xl p-3.5 flex items-center gap-3 hover:border-primary-300 transition-all duration-200 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 has-[:checked]:shadow-sm" tabindex="0">
+                            <input type="radio" name="intent" value="both" class="sr-only" checked aria-required="true">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-neutral-400 group-has-[:checked]:text-primary-500" aria-hidden="true">
+                                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
                             </svg>
-                            <div class="text-sm font-semibold text-neutral-700">Трудник</div>
-                            <div class="text-xs text-neutral-400 mt-0.5">Ищу работу</div>
+                            <span class="flex-1 min-w-0">
+                                <span class="block text-sm font-semibold text-neutral-700">И то, и другое</span>
+                                <span class="block text-xs text-neutral-500 mt-0.5">Подрабатывать и размещать задания</span>
+                            </span>
+                            <span class="text-[10px] font-bold uppercase tracking-wide bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full shrink-0">Рекомендуем</span>
                         </label>
-                        <label class="role-card group cursor-pointer border-2 border-neutral-200 rounded-xl p-4 text-center hover:border-primary-300 transition-all duration-200 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 has-[:checked]:shadow-sm" tabindex="0">
-                            <input type="radio" name="role" value="employer" class="sr-only">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-2 text-neutral-400 group-has-[:checked]:text-primary-500">
+                        <label class="role-card group cursor-pointer border-2 border-neutral-200 rounded-xl p-3.5 flex items-center gap-3 hover:border-primary-300 transition-all duration-200 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 has-[:checked]:shadow-sm" tabindex="0">
+                            <input type="radio" name="intent" value="find_work" class="sr-only">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-neutral-400 group-has-[:checked]:text-primary-500" aria-hidden="true">
+                                <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <span class="flex-1 min-w-0">
+                                <span class="block text-sm font-semibold text-neutral-700">Искать подработку</span>
+                                <span class="block text-xs text-neutral-500 mt-0.5">Откликаться на задания</span>
+                            </span>
+                        </label>
+                        <label class="role-card group cursor-pointer border-2 border-neutral-200 rounded-xl p-3.5 flex items-center gap-3 hover:border-primary-300 transition-all duration-200 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 has-[:checked]:shadow-sm" tabindex="0">
+                            <input type="radio" name="intent" value="post_jobs" class="sr-only">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-neutral-400 group-has-[:checked]:text-primary-500" aria-hidden="true">
                                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                             </svg>
-                            <div class="text-sm font-semibold text-neutral-700">Работодатель</div>
-                            <div class="text-xs text-neutral-400 mt-0.5">Ищу сотрудников</div>
+                            <span class="flex-1 min-w-0">
+                                <span class="block text-sm font-semibold text-neutral-700">Только размещать задания</span>
+                                <span class="block text-xs text-neutral-500 mt-0.5">Нанимать трудников; меня не видно в каталоге исполнителей</span>
+                            </span>
                         </label>
                     </div>
+                    <p class="text-xs text-neutral-500 mt-2">Любой аккаунт может и подрабатывать, и размещать задания — это выбирается в любой момент в профиле.</p>
                     {% if field_errors is defined and field_errors.role %}<span class="text-red-500 text-sm">{{ field_errors.role }}</span>{% endif %}
                 </fieldset>
 
@@ -216,7 +231,7 @@
     var backBtn = document.getElementById('back-to-step-1');
     var progressBar = document.getElementById('progress-bar');
     var stepLabel = document.getElementById('step-label');
-    var roleInputs = document.querySelectorAll('input[name="role"]');
+    var roleInputs = document.querySelectorAll('input[name="intent"]');
     var workerFields = document.getElementById('worker-fields');
 
     var fullName = document.getElementById('full_name');
@@ -242,7 +257,7 @@
         var emailValid = email.value.includes('@') && email.value.includes('.');
         var passError = validatePasswordFull(password.value);
         var passValid = !passError;
-        var roleValid = document.querySelector('input[name="role"]:checked');
+        var roleValid = document.querySelector('input[name="intent"]:checked');
 
         // Toggle error classes
         toggleError(fullName, !nameValid && fullName.value.length > 0);
@@ -344,11 +359,12 @@
     });
 
     // ==========================================
-    // Показ worker-полей
+    // Показ worker-полей (навыки) — по интенту
     // ==========================================
     roleInputs.forEach(function(r) {
         r.addEventListener('change', function() {
-            workerFields.style.display = this.value === 'worker' ? 'block' : 'none';
+            // both/find_work → навыки уместны; post_jobs (только заказчик) → скрыть
+            workerFields.style.display = (this.value === 'post_jobs') ? 'none' : 'block';
             validateStep1();
         });
     });
@@ -357,7 +373,7 @@
     // Submit validation
     // ==========================================
     form.addEventListener('submit', function(e) {
-        if (!document.querySelector('input[name="role"]:checked')) {
+        if (!document.querySelector('input[name="intent"]:checked')) {
             e.preventDefault();
             window.showToast('Выберите роль', 'warning');
         }

@@ -1,6 +1,16 @@
 # QA Test Cases — Трудник (полный реестр)
 
-Дата: 2026-08-21. Основано: `docs/qa_test_cases_prompt.md` (генератор), факты сверены с `docs/API_ENDPOINTS.md` (146 маршрутов), `docs/RPC_REGISTRY.md` (30 RPC + 4 trigger), `docs/TEST_COVERAGE_MAP.md`, живым прогоном на локальном docker-стеке.
+Дата: 2026-09-04 (мультирольность). Основано: `docs/qa_test_cases_prompt.md` (генератор), факты сверены с `docs/API_ENDPOINTS.md`, `docs/RPC_REGISTRY.md`, `docs/TEST_COVERAGE_MAP.md`, живым прогоном на локальном docker-стеке.
+
+## Мультирольность (2026-09-04) — ключевые кейсы (реализовано и проверено live)
+
+- **MR-01**: любой пользователь создаёт задание (worker создал → 302 /my-jobs) — live ✓
+- **MR-02**: любой откликается (employer откликнулся на задание worker'а) — live ✓
+- **MR-03**: my-applications табы «На мои задания»/«Мои отклики» у обеих сторон — live ✓
+- **MR-04**: `worker_visibility=false` → скрыт из /workers и не приглашается — live ✓
+- **MR-05**: чат между участниками любой роли (owner принял → чат у обоих) — live ✓
+- **MR-06**: регистрация intent-карточки (both/find_work/post_jobs) — live ✓
+- Регресс: role_required удалены с бизнес-действий; бейджи приглашений/откликов — для всех ролей.
 
 ## Резюме покрытия
 

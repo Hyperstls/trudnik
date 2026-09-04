@@ -1,12 +1,78 @@
 {% extends "base.html" %}
-{% block title %}Мои отклики — Трудник{% endblock %}
-{% from '_icons.html' import star, chat_bubble, send, phone, mail, info, help_circle, eye, eye_off, check, x_close, smiley %}
+{% block title %}Отклики — Трудник{% endblock %}
+{% from '_icons.html' import star, chat_bubble, send, phone, mail, info, help_circle, eye, eye_off, check, x_close, smiley, briefcase, search %}
+{% from '_components.html' import status_badge, empty_state %}
 
 {% block content %}
 <div class="px-4 pb-28">
     {# ============================================ #}
-    {# Заголовок                                    #}
+    {# Заголовок + табы (мультирольность)            #}
     {# ============================================ #}
+    <div class="mb-5">
+        <h2 class="text-2xl font-bold text-neutral-900 mb-3">Отклики</h2>
+        <div class="flex gap-2 border-b border-neutral-200" role="tablist" aria-label="Типы откликов">
+            <a href="/my-applications?tab=received"
+               role="tab" aria-selected="{{ 'true' if tab == 'received' else 'false' }}"
+               class="px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors
+                      {% if tab == 'received' %}text-primary-600 border-b-2 border-primary-500 bg-primary-50/50{% else %}text-neutral-500 hover:text-neutral-800{% endif %}">
+                На мои задания
+            </a>
+            <a href="/my-applications?tab=sent"
+               role="tab" aria-selected="{{ 'true' if tab == 'sent' else 'false' }}"
+               class="px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors
+                      {% if tab == 'sent' %}text-primary-600 border-b-2 border-primary-500 bg-primary-50/50{% else %}text-neutral-500 hover:text-neutral-800{% endif %}">
+                Мои отклики
+            </a>
+        </div>
+    </div>
+
+{% if tab == 'sent' %}
+    {# ============================================ #}
+    {# ТАБ: Мои отклики (как трудника)               #}
+    {# ============================================ #}
+    {% if applications %}
+    <div class="space-y-3">
+        {% for app in applications %}
+        {% set job = app.get('job') or {} %}
+        <a href="/jobs/{{ job.get('id') or app.get('job_id') }}"
+           class="block bg-white rounded-2xl border border-neutral-200 p-4 hover:shadow-md transition-shadow">
+            <div class="flex items-start justify-between gap-3">
+                <div class="flex-1 min-w-0">
+                    <h3 class="font-semibold text-neutral-800 text-base leading-tight truncate">
+                        {{ job.get('work_type') or job.get('organization_name') or 'Задание' }}
+                    </h3>
+                    <p class="text-sm text-neutral-600 mt-0.5 truncate">{{ job.get('organization_name') }}</p>
+                    <p class="text-xs text-neutral-500 mt-1 flex items-center gap-2 flex-wrap">
+                        {% if job.get('city') %}<span>{{ job.get('city') }}</span>{% endif %}
+                        {% if job.get('date_time') %}<span>·</span><time datetime="{{ job.get('date_time') }}">{{ job.get('date_time') | format_date }}</time>{% endif %}
+                    </p>
+                </div>
+                <div class="shrink-0 text-right">
+                    <div class="font-bold text-neutral-900">{{ job.get('payment_amount', 0) | round(0) }} ₽</div>
+                    {{ status_badge(app.get('status', '')) }}
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% if total_pages > 1 %}
+    <nav class="flex items-center justify-center gap-2 mt-5" aria-label="Пагинация">
+        {% if page > 1 %}<a href="/my-applications?tab=sent&page={{ page - 1 }}" class="px-4 py-2 rounded-xl bg-neutral-100 text-sm font-semibold text-neutral-700 hover:bg-neutral-200">←</a>{% endif %}
+        <span class="text-sm text-neutral-600">Стр. {{ page }} из {{ total_pages }}</span>
+        {% if page < total_pages %}<a href="/my-applications?tab=sent&page={{ page + 1 }}" class="px-4 py-2 rounded-xl bg-neutral-100 text-sm font-semibold text-neutral-700 hover:bg-neutral-200">→</a>{% endif %}
+    </nav>
+    {% endif %}
+    {% else %}
+    {{ empty_state(
+        icon=search,
+        title='Вы ещё не откликались',
+        subtitle='Найдите подходящую подработку в каталоге',
+        action_url='/',
+        action_text='Смотреть задания'
+    ) }}
+    {% endif %}
+    {% else %}
+
     <div class="flex items-center justify-between mb-5">
         <h2 class="text-2xl font-bold text-neutral-900">Отклики на ваши задания</h2>
         {% with filter_id='apps-filter', selected_skills=selected_skills|default([]) %}
@@ -254,6 +320,7 @@
         </a>
     </div>
     {% endif %}
+    {% endif %}{# tab #}
 </div>
 
 {% endblock %}

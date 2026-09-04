@@ -1,10 +1,10 @@
-import html as _html
+﻿import html as _html
 import logging
 import uuid
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
-from app.decorators import login_required, rate_limit, role_required, validate_uuid
+from app.decorators import login_required, rate_limit, validate_uuid
 from app.utils import postgrest_request
 from app.utils.redis_client import get_redis_client
 from app.services.notification_service import enqueue_notification
@@ -59,21 +59,32 @@ chat_bp = Blueprint('chat', __name__)
 @chat_bp.route('/chats')
 @login_required
 def chats_list():
-    """Список чатов пользователя: все принятые заявки, где он участник."""
+    """Список чатов пользователя: все принятые заявки, где он участник.
+
+    Мультирольность (2026-09-04): участник = worker ИЛИ владелец задания,
+    независимо от role. Два запроса + merge по id (or-фильтр с embedded
+    колонкой job.employer_id ненадёжен в PostgREST v14).
+    """
     user_id = session['user_id']
-    role = session.get('role', '')
-    if role == 'employer':
-        # Заявки, где пользователь — работодатель задания
-        # employer_id берётся через join с jobs (нет колонки employer_id в applications)
-        resp = postgrest_request('GET',
-            f'applications?or=(worker_id.eq.{user_id},job.employer_id.eq.{user_id})'
-            f'&status=eq.accepted&select=id,job:jobs(organization_name,employer_id)')
-    else:
-        # Заявки, где пользователь — принятый работник
-        resp = postgrest_request('GET',
-            f'applications?worker_id=eq.{user_id}&status=eq.accepted'
-            f'&select=id,job:jobs(organization_name)')
-    return render_template('chats_list.html', chats=resp.json() if resp.ok else [])
+    select = ('id,created_at,'
+              'job:jobs(id,organization_name,work_type,employer_id)')
+    chats = {}
+
+    # Заявки, где пользователь — принятый работник
+    resp = postgrest_request('GET',
+        f'applications?worker_id=eq.{user_id}&status=eq.accepted&select={select}')
+    if resp.ok and resp.json():
+        for a in resp.json():
+            chats[a['id']] = a
+
+    # Заявки на задания, которыми пользователь владеет
+    resp = postgrest_request('GET',
+        f'applications?job.employer_id=eq.{user_id}&status=eq.accepted&select={select}')
+    if resp.ok and resp.json():
+        for a in resp.json():
+            chats.setdefault(a['id'], a)
+
+    return render_template('chats_list.html', chats=list(chats.values()))
 
 
 @chat_bp.route('/chat/<application_id>')
@@ -127,7 +138,6 @@ def chat(application_id):
 
 @chat_bp.route('/chat/new/<worker_id>', methods=['GET'])
 @login_required
-@role_required('employer')
 @validate_uuid('worker_id')
 def chat_new(worker_id):
     """Поиск существующего чата с работником (по accepted-заявке) или редирект на список чатов."""

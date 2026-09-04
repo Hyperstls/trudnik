@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% from '_icons.html' import star, heart, trash, map_pin, dollar, clock, smiley %}
 {% block title %}Избранное — Трудник{% endblock %}
 {% block content %}
@@ -8,10 +8,10 @@
     {% if items or favorite_jobs %}
     
     {# ── Секция: Избранные работодатели (для трудника) ── #}
-    {% if session.get('role') == 'worker' and items %}
+    {% if employer_items %}
     <h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-3">Работодатели</h3>
     <div class="space-y-3 mb-6">
-        {% for employer in items %}
+        {% for employer in employer_items %}
         <div class="app-card bg-white rounded-2xl shadow-sm border border-neutral-100 p-4 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
             <a href="/employers/{{ employer.id }}" class="flex items-start gap-3">
                 {% if employer.photo_url %}
@@ -51,7 +51,7 @@
     {% endif %}
     
     {# ── Секция: Избранные трудники (для работодателя) ── #}
-    {% if session.get('role') == 'employer' and items %}
+    {% if items %}
     <h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-3">Трудники</h3>
     
     {# Панель массовых действий #}
@@ -122,7 +122,7 @@
                 </a>
             </div>
             <div class="mt-3 pt-3 border-t border-neutral-100 flex gap-2">
-                {% if session.get('role') == 'employer' %}
+                {% if items %}
                 {% set is_invited = item.id in invited_worker_ids %}
                 <button id="invite-btn-{{ item.id }}" class="js-invite-btn action-icon-btn {{ 'opacity-60' if is_invited else 'accept-btn' }}"
                         data-worker-id="{{ item.id }}" data-worker-name="{{ item.full_name|default('') }}"
@@ -145,7 +145,7 @@
     {% endif %}
     
     {# ── Секция: Избранные задания (для трудника) ── #}
-    {% if session.get('role') == 'worker' and favorite_jobs %}
+    {% if favorite_jobs %}
     <h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-3">Задания</h3>
     <div class="space-y-3">
         {% for job in favorite_jobs %}
@@ -212,7 +212,7 @@
             {{ heart(36) }}
         </div>
         <h3 class="text-lg font-semibold text-neutral-700 mb-1">В избранном пока пусто</h3>
-        {% if session.get('role') == 'worker' %}
+        {% if favorite_jobs %}
         <p class="text-sm text-neutral-400 mb-6">Добавляйте работодателей и задания, чтобы быстро находить их здесь</p>
         <div class="flex flex-col sm:flex-row gap-2">
             <a href="/employers"
@@ -236,7 +236,7 @@
 </div>
 
 <script src="{{ url_for('static', filename='js/favorites.js') }}" nonce="{{ csp_nonce }}"></script>
-{% if session.get('role') == 'employer' %}
+{% if items %}
 <script nonce="{{ csp_nonce }}">
 async function inviteWorker(workerId, workerName, btn) {
     const jobId = prompt(`Пригласить ${workerName || 'трудника'} на задание.\nВведите ID задания:`);

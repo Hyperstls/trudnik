@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 {% from '_icons.html' import star, chat, map_pin, clock, check, dollar, info, eye, login_icon %}
 {% from '_components.html' import breadcrumbs %}
 {% block title %}{{ job.organization_name }} — Трудник{% endblock %}
@@ -73,7 +73,7 @@
     </p>
 
     {# Кнопка «Добавить работодателя в избранное» (для трудников) #}
-    {% if session.get('role') == 'worker' and employer %}
+    {% if session.get('user_id') and session.get('user_id') != job.employer_id and employer %}
     <div class="mb-4">
         <form method="POST" action="/employers/{{ employer.id }}/favorite" style="display:inline;">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
@@ -86,7 +86,7 @@
     {% endif %}
 
     {# ID задания с копированием #}
-    {% if session.get('role') == 'employer' and session.get('user_id') == job.employer_id %}
+    {% if session.get('user_id') == job.employer_id %}
     <div class="flex items-center gap-2 mb-4 px-4 py-2.5 bg-neutral-50 rounded-xl border border-neutral-200">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-400 shrink-0"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
         <span class="text-xs text-neutral-500 font-medium mr-1">ID задания:</span>
@@ -128,14 +128,14 @@
     </div>
     {% endif %}
 
-    <!-- Actions (Матрица видимости согласно New_logic2.md) -->
+    <!-- Actions (мультирольность: доступ = владение/участие, не role) -->
     {% if session.get('user_id') %}
     <div class="space-y-3">
-        {% set role = session.get('role') %}
         {% set is_owner = (session.get('user_id') == job.employer_id) %}
-        {% set is_worker = (role == 'worker') %}
-        {% set is_employer = (role == 'employer') and is_owner %}
-        {% set is_admin = (role == 'admin') %}
+        {% set is_admin = (session.get('role') == 'admin') %}
+        {# Управление заданием — владельцу (любой роли); отклик — всем остальным #}
+        {% set is_employer = is_owner %}
+        {% set is_worker = not is_owner %}
 
         {# ==================== РАБОТОДАТЕЛЬ ==================== #}
         {% if is_employer %}

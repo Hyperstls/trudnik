@@ -29,7 +29,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap" rel="stylesheet">
     <!-- ?v= — cache-busting: статика кэшируется 24ч (max-age=86400),
          без версии пользователи не получают обновления CSS/JS до суток -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=20260828b">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=20260904">
     {% if trudnik_ws_config %}
     <script nonce="{{ csp_nonce }}">
         window.TRUDNIK_CONFIG = {
@@ -91,29 +91,51 @@
             </div>
             {% endif %}
 
-            <!-- Десктопная навигация (B2: md+; mobile остаётся на bottom-nav) -->
+            <!-- Десктопная навигация (мультирольность: единая для всех) -->
+            {% if session.get('user_id') %}
             <nav class="hidden md:flex items-center gap-1" aria-label="Основная навигация">
-                {% set nav_items = ({
-                    'worker': [('/', 'Задания'), ('/my-applications', 'Отклики'), ('/employers', 'Работодатели'), ('/chats', 'Чаты'), ('/favorites', 'Избранное')],
-                    'employer': [('/my-jobs', 'Мои задания'), ('/my-applications', 'Отклики'), ('/workers', 'Трудники'), ('/favorites', 'Избранное'), ('/chats', 'Чаты')]
-                }).get(session.get('role') or '', [('/', 'Задания')]) %}
-                {% for href, label in nav_items %}
+                {% for href, label in [
+                    ('/', 'Задания'),
+                    ('/my-applications', 'Отклики'),
+                    ('/chats', 'Чаты'),
+                    ('/favorites', 'Избранное'),
+                    ('/workers', 'Трудники')
+                ] %}
                 <a href="{{ href }}" class="px-3 py-2 rounded-lg text-sm font-medium transition-colors
                     {% if request.path == href or (href != '/' and request.path.startswith(href)) %}text-primary-600 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}"
                     {% if request.path == href %}aria-current="page"{% endif %}>{{ label }}</a>
                 {% endfor %}
             </nav>
+            {% endif %}
 
             <!-- Правая часть -->
             <div class="flex items-center gap-2">
                 {% if session.get('user_id') %}
+                <!-- Создать задание (мультирольность: доступно всем) -->
+                <a href="/job/new" class="hidden sm:inline-flex items-center gap-1.5 px-3.5 h-9 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors shadow-sm"
+                   aria-label="Создать задание" title="Создать задание">
+                    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <span class="hidden lg:inline">Создать</span>
+                </a>
                 <!-- Поиск (мобильные) -->
+                <a href="/job/new" class="sm:hidden w-10 h-10 flex items-center justify-center rounded-xl bg-primary-500 hover:bg-primary-600 text-white transition-colors touch-target" aria-label="Создать задание">
+                    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </a>
                 <button id="mobile-search-btn" class="md:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors touch-target" aria-label="Поиск">
                     <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
                 </button>
+                <!-- Трудники: мобайл-иконка (на десктопе — пункт меню) -->
+                <a href="/workers" class="md:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors touch-target" aria-label="Трудники" title="Каталог трудников">
+                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                </a>
                 <!-- Уведомления -->
                 <a href="/notifications" class="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors touch-target" aria-label="Уведомления">
                     <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -252,8 +274,18 @@
     {% set _auth_endpoints = ('auth.login', 'auth.register') %}
     {% if session.get('user_id') %}
     <nav class="bottom-nav fixed bottom-0 left-0 right-0 border-t border-neutral-200 flex justify-around md:hidden items-center pt-2 pb-1 z-50" role="navigation" aria-label="Основная навигация">
-        {% if session.get('role') == 'employer' %}
-        <!-- Работодатель -->
+        {# Мультирольность (2026-09-03): единая навигация для всех —
+           задание может создать и на него откликнуться любой пользователь.
+           «Трудники» (/workers) — на десктопе в меню шапки, на мобиле — иконкой в шапке. #}
+        <a href="/"
+           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and request.endpoint in ('jobs.index',) }}"
+           aria-label="Задания">
+            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            <span>Задания</span>
+        </a>
         <a href="/my-jobs"
            class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'my_jobs' in request.endpoint }}"
            aria-label="Мои задания">
@@ -276,65 +308,6 @@
             <output aria-live="polite" class="absolute -top-0.5 -right-0.5 bg-danger text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border-2 border-white">{{ pending_app_count }}</output>
             {% endif %}
         </a>
-        <a href="/workers"
-           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'workers' in request.endpoint }}"
-           aria-label="Трудники">
-            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                <circle cx="9" cy="7" r="4"></circle>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-            </svg>
-            <span>Трудники</span>
-        </a>
-        <a href="/favorites"
-           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'favorites' in request.endpoint }}"
-           aria-label="Избранное">
-            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-            </svg>
-            <span>Избранное</span>
-        </a>
-        <a href="/chats"
-           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'chats' in request.endpoint }}"
-           aria-label="Чаты">
-            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-            <span>Чаты</span>
-        </a>
-        {% else %}
-        <!-- Трудник -->
-        <a href="/"
-           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and request.endpoint in ('jobs.index',) }}"
-           aria-label="Задания">
-            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                <polyline points="9 22 9 12 15 12 15 22"></polyline>
-            </svg>
-            <span>Задания</span>
-        </a>
-        <a href="/my-applications"
-           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'my_applications' in request.endpoint }}"
-           aria-label="Мои отклики">
-            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                <line x1="9" y1="9" x2="15" y2="9"></line>
-            </svg>
-            <span>Отклики</span>
-        </a>
-        <a href="/employers"
-           class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'employers' in request.endpoint }}"
-           aria-label="Работодатели">
-            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
-                <line x1="9" y1="6" x2="15" y2="6"></line>
-                <line x1="9" y1="10" x2="15" y2="10"></line>
-                <line x1="9" y1="14" x2="15" y2="14"></line>
-                <rect x="10" y="16" width="4" height="6"></rect>
-            </svg>
-            <span>Работодатели</span>
-        </a>
         <a href="/chats"
            class="nav-item flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px] {{ 'active text-primary-500' if request.endpoint and 'chats' in request.endpoint }}"
            aria-label="Чаты">
@@ -351,7 +324,6 @@
             </svg>
             <span>Избранное</span>
         </a>
-        {% endif %}
     </nav>
     {% elif not session.get('user_id') and request.endpoint not in _auth_endpoints %}
     <!-- Приглашение для незарегистрированных -->
@@ -370,7 +342,7 @@
     <!-- ================================ -->
     <!-- Global JavaScript                 -->
     <!-- ================================ -->
-    <script src="{{ url_for('static', filename='js/base.js') }}?v=20260828b" nonce="{{ csp_nonce }}"></script>
+    <script src="{{ url_for('static', filename='js/base.js') }}?v=20260904" nonce="{{ csp_nonce }}"></script>
 
     {% block scripts %}{% endblock %}
 

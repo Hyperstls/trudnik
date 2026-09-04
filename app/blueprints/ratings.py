@@ -1,10 +1,10 @@
-"""Blueprint для рейтингов и отзывов."""
+﻿"""Blueprint для рейтингов и отзывов."""
 import logging
 from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request, session, render_template, redirect, flash, url_for
 
-from app.decorators import login_required, rate_limit, role_required, validate_uuid
+from app.decorators import login_required, rate_limit, validate_uuid
 from app.utils import sanitize_postgrest, postgrest_request, postgrest_admin_request, update_rating
 
 logger = logging.getLogger(__name__)
@@ -309,7 +309,6 @@ def user_ratings_page(user_id):
 
 @ratings_bp.route('/jobs/<job_id>/rate-workers')
 @login_required
-@role_required('employer')
 @validate_uuid('job_id')
 def rate_workers_page(job_id):
     """

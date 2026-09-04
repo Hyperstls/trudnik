@@ -459,6 +459,35 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
                 except Exception:
                     logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
 
+        # 1k) Мультирольность (2026-08-28): profiles.worker_visibility + register_user(v5).
+        cur.execute("SELECT count(*) FROM information_schema.columns WHERE table_name='profiles' AND column_name='worker_visibility'")
+        if cur.fetchone()[0] == 0:
+            try:
+                _apply_migration('140_multirole_visibility.sql')
+                logger.warning('self-heal: applied migration 140 (profiles.worker_visibility)')
+            except Exception as e:
+                logger.warning('self-heal: failed to apply 140: %s', e)
+                try:
+                    conn.rollback()
+                except Exception:
+                    logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
+        # register_user с p_worker_visibility: проверяем по количеству аргументов ф-ции
+        cur.execute(
+            "SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON p.pronamespace=n.oid "
+            "WHERE n.nspname='public' AND p.proname='register_user' "
+            "AND pg_get_function_identity_arguments(p.oid) LIKE '%p_worker_visibility%'"
+        )
+        if cur.fetchone()[0] == 0:
+            try:
+                _apply_migration('141_register_user_visibility.sql')
+                logger.warning('self-heal: applied migration 141 (register_user + visibility)')
+            except Exception as e:
+                logger.warning('self-heal: failed to apply 141: %s', e)
+                try:
+                    conn.rollback()
+                except Exception:
+                    logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
+
         # 2) Политика чтения profiles может быть удалена — гарантируем наличие,
         #    иначе профиль/выход/списки пустые (RLS deny-all).
         cur.execute(

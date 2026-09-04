@@ -106,6 +106,8 @@ def update_profile():
         'bio': bio,
         'city': request.form.get('city'),
         'portfolio_link': request.form.get('portfolio_link', ''),
+        # Мультирольность: видимость в каталоге трудников (unchecked → false)
+        'worker_visibility': request.form.get('worker_visibility') == 'on',
     }
     skills_str = request.form.get('skills', '')
     # skill_ids может прийти как несколько полей (getlist) либо как одно поле

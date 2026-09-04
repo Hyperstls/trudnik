@@ -1,8 +1,8 @@
 # Справочник REST-эндпоинтов «Трудник»
 
-Дата: 2026-08-15. Источник: статический разбор `@*_bp.route` в `app/blueprints/*.py` (146 маршрутов, 20 blueprints). Назначения — из docstring view-функций.
+Дата: 2026-09-04 (мультирольность). Источник: статический разбор `@*_bp.route` в `app/blueprints/*.py` (146 маршрутов, 20 blueprints). Назначения — из docstring view-функций.
 
-**Легенда Role:** guest — без аутентификации; all — любой авторизованный (@login_required); worker/employer/admin — @role_required/@admin_required; admin (X-Admin-Token) — по заголовку вместо сессии.
+**ЛЕГЕНДА Role (мультирольность 2026-09-04):** guest — без аутентификации; **all — любой авторизованный** (роль НЕ барьер: создавать задания и откликаться может каждый); owner — только владелец ресурса (проверка `job.employer_id == user_id` / участник application в коде или RPC); admin — сессия администратора; admin (X-Admin-Token) — по заголовку вместо сессии. Бывшие role_required('worker'/'employer') удалены — доступ определяется владением/участием; `profiles.worker_visibility` управляет лишь каталогом `/workers` и приглашениями.
 
 **Легенда CSRF:** все POST/PUT/PATCH/DELETE проверяются CSRF-middleware (X-CSRF-Token header или _csrf_token в form/JSON), ИСКЛЮЧЕНИЯ: `/messenger/webhook/*` (внешние webhook'и, middleware.py), `/admin/reset-circuit-breaker` (X-Admin-Token), `/api/client-error` (sendBeacon, токен в теле JSON).
 

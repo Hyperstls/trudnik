@@ -112,12 +112,13 @@ def inject_pending_invitations() -> dict:
     from app.utils import postgrest_request
 
     user_id = session.get('user_id')
-    role = session.get('role')
     logger.debug(
-        '[INV_CTX] user_id=%s role=%s',
-        str(user_id)[:12] if user_id else 'None', role
+        '[INV_CTX] user_id=%s', str(user_id)[:12] if user_id else 'None'
     )
-    if user_id and role == 'worker':
+    # Мультирольность (2026-09-03): приглашения может получить любой
+    # пользователь с worker_visibility=true — не только role='worker'.
+    # Запрос идёт по worker_id текущего пользователя.
+    if user_id:
         def _fetch() -> int:
             resp = postgrest_request(
                 'GET',
@@ -137,7 +138,7 @@ def inject_pending_invitations() -> dict:
 
         count = _get_cached_or_fetch(f'inv_{user_id}', _fetch)
         return {'pending_invitations': count}
-    logger.debug('[INV_CTX] skip: no user_id or not worker')
+    logger.debug('[INV_CTX] skip: no user_id')
     return {'pending_invitations': 0}
 
 

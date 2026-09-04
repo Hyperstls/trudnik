@@ -89,12 +89,14 @@ class TestFavoritesApi:
                                json={'worker_ids': []})
         assert resp.get_json()['success'] is False
 
-    def test_worker_role_denied(self, app_client):
-        """role_required('employer'): worker → redirect (не JSON success)."""
+    def test_worker_role_allowed(self, app_client, monkeypatch):
+        """Мультирольность (2026-09-03): favorites API доступен любой роли.
+        Worker → 200 JSON, не redirect."""
         _login(app_client, role='worker')
-        resp = app_client.post('/api/favorites/check', json={'worker_id': WID},
-                               follow_redirects=False)
-        assert resp.status_code in (302, 303)
+        _patch_postgrest(monkeypatch, 'app.blueprints.favorites')
+        resp = app_client.post('/api/favorites/check', json={'worker_id': WID})
+        assert resp.status_code == 200
+        assert resp.get_json()['success'] is True
 
     def test_guest_redirected(self, app_client):
         resp = app_client.post('/api/favorites/add', json={'worker_id': WID},

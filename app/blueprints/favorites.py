@@ -1,8 +1,8 @@
-import logging
+﻿import logging
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
-from app.decorators import login_required, role_required, validate_uuid
+from app.decorators import login_required, validate_uuid
 from app.utils import postgrest_request
 from app.utils.security import safe_redirect
 
@@ -12,44 +12,54 @@ favorites_bp = Blueprint('favorites', __name__)
 @favorites_bp.route('/favorites')
 @login_required
 def favorites():
-    items = []
+    """Избранное (мультирольность, 2026-09-03): обе секции для всех —
+
+    - Избранные трудники (когда-то employer-only) — любой может собирать
+      исполнителей (например, для повторного найма).
+    - Избранные работодатели + задания (когда-то worker-only) — любой
+      может собирать «вдохновение»/работодателей для отклика.
+    Пустые секции шаблон скрывает сам.
+    """
+    user_id = session['user_id']
+    items = []            # избранные трудники
+    employer_items = []   # избранные работодатели
     invited_worker_ids = set()
 
-    if session.get('role') == 'employer':
-        # Избранные трудники
-        resp = postgrest_request('GET',
-            f'favorites?user_id=eq.{session["user_id"]}&favorite_type=eq.worker&select=target:profiles!fk_favorites_target_id(id,full_name,photo_url,rating,city,experience,desired_payment)')
-        items = [item['target'] for item in resp.json()] if resp.ok else []
-
-        # Определяем, какие трудники уже приглашены работодателем
+    # Избранные трудники
+    resp = postgrest_request('GET',
+        f'favorites?user_id=eq.{user_id}&favorite_type=eq.worker&select=target:profiles!fk_favorites_target_id(id,full_name,photo_url,rating,city,experience,desired_payment)')
+    if resp.ok:
+        items = [item['target'] for item in resp.json() if item.get('target')]
         if items:
             worker_ids = [item['id'] for item in items if item.get('id')]
             if worker_ids:
                 ids_filter = ','.join(worker_ids)
                 inv_resp = postgrest_request('GET',
-                    f'invitations?employer_id=eq.{session["user_id"]}&worker_id=in.({ids_filter})&status=in.(pending,accepted)&select=worker_id')
+                    f'invitations?employer_id=eq.{user_id}&worker_id=in.({ids_filter})&status=in.(pending,accepted)&select=worker_id')
                 if inv_resp.ok and inv_resp.json():
                     invited_worker_ids = {inv['worker_id'] for inv in inv_resp.json()}
 
-    elif session.get('role') == 'worker':
-        # Избранные работодатели
-        resp = postgrest_request('GET',
-            f'favorites?user_id=eq.{session["user_id"]}&favorite_type=eq.employer&select=target:profiles!fk_favorites_target_id(id,full_name,photo_url,verification_status,city)')
-        items = [item['target'] for item in resp.json()] if resp.ok else []
+    # Избранные работодатели
+    resp = postgrest_request('GET',
+        f'favorites?user_id=eq.{user_id}&favorite_type=eq.employer&select=target:profiles!fk_favorites_target_id(id,full_name,photo_url,verification_status,city)')
+    if resp.ok:
+        employer_items = [item['target'] for item in resp.json() if item.get('target')]
 
+    # Избранные задания
     favorite_jobs = []
-    if session.get('role') == 'worker':
-        job_resp = postgrest_request('GET',
-            f'job_favorites?user_id=eq.{session["user_id"]}&select=job:jobs(*)')
-        if job_resp.ok and job_resp.json():
-            favorite_jobs = [j['job'] for j in job_resp.json() if j.get('job')]
+    job_resp = postgrest_request('GET',
+        f'job_favorites?user_id=eq.{user_id}&select=job:jobs(*)')
+    if job_resp.ok and job_resp.json():
+        favorite_jobs = [j['job'] for j in job_resp.json() if j.get('job')]
 
-    return render_template('favorites.html', items=items, favorite_jobs=favorite_jobs, invited_worker_ids=invited_worker_ids)
+    return render_template('favorites.html', items=items,
+                           employer_items=employer_items,
+                           favorite_jobs=favorite_jobs,
+                           invited_worker_ids=invited_worker_ids)
 
 
 @favorites_bp.route('/favorite/<target_id>', methods=['POST'])
 @login_required
-@role_required('employer')
 @validate_uuid('target_id')
 def add_favorite(target_id):
     resp = postgrest_request('POST', 'favorites', json={'user_id': session['user_id'], 'target_id': target_id, 'favorite_type': 'worker'})
@@ -69,7 +79,6 @@ def add_favorite(target_id):
 
 @favorites_bp.route('/unfavorite/<target_id>', methods=['POST'])
 @login_required
-@role_required('employer')
 @validate_uuid('target_id')
 def remove_favorite(target_id):
     postgrest_request('DELETE', f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{target_id}&favorite_type=eq.worker')
@@ -82,7 +91,6 @@ def remove_favorite(target_id):
 
 @favorites_bp.route('/api/favorites/add', methods=['POST'])
 @login_required
-@role_required('employer')
 def add_favorite_api():
     data = request.get_json()
     worker_id = data.get('worker_id')
@@ -110,7 +118,6 @@ def add_favorite_api():
 
 @favorites_bp.route('/api/favorites/remove', methods=['POST'])
 @login_required
-@role_required('employer')
 def remove_favorite_api():
     data = request.get_json()
     worker_id = data.get('worker_id')
@@ -128,7 +135,6 @@ def remove_favorite_api():
 
 @favorites_bp.route('/api/favorites/check', methods=['POST'])
 @login_required
-@role_required('employer')
 def check_favorite_api():
     data = request.get_json()
     worker_id = data.get('worker_id')
@@ -147,7 +153,6 @@ def check_favorite_api():
 
 @favorites_bp.route('/api/favorites/remove-selected', methods=['POST'])
 @login_required
-@role_required('employer')
 def remove_favorites_selected():
     data = request.get_json()
     worker_ids = data.get('worker_ids', [])

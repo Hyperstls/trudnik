@@ -1,10 +1,10 @@
-import logging
+﻿import logging
 from datetime import datetime, timezone
 
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 
 from app.config import Config
-from app.decorators import login_required, rate_limit, role_required, validate_uuid
+from app.decorators import login_required, rate_limit, validate_uuid
 from app.utils import postgrest_request, postgrest_rpc
 from app.services.notification_service import enqueue_notification
 
@@ -71,7 +71,6 @@ def apply_job(job_id):
 
 @applications_bp.route('/apply-selected', methods=['POST'])
 @login_required
-@role_required('worker')
 def apply_selected():
     job_ids = request.form.getlist('job_ids')
     if not job_ids:
@@ -246,19 +245,50 @@ def api_withdraw_application(app_id):
 
 @applications_bp.route('/my-applications')
 @login_required
-@role_required('employer')
 def my_applications():
-    """Отображение откликов на задания работодателя (с пагинацией)."""
+    """Единая страница откликов с табами (мультирольность, 2026-09-03).
+
+    ?tab=received (дефолт при наличии своих заданий) — отклики НА мои задания.
+    ?tab=sent — мои отклики на чужие задания (раньше у worker такой страницы
+    не было вообще — только фильтр на каталоге).
+    """
     user_id = session['user_id']
     skills_filter = request.args.get('skills', '')
     page = max(1, request.args.get('page', 1, type=int))
     per_page = min(100, max(1, request.args.get('per_page', Config.PAGINATION_DEFAULT_PER_PAGE, type=int)))
 
+    # Умный дефолт таба: есть свои задания → «На мои», иначе → «Мои отклики»
+    tab = request.args.get('tab', '')
+    if tab not in ('received', 'sent'):
+        has_jobs_resp = postgrest_request(
+            'GET', f'jobs?employer_id=eq.{user_id}&select=id&limit=1')
+        tab = 'received' if (has_jobs_resp.ok and has_jobs_resp.json()) else 'sent'
+
     selected_skills = [s.strip().lower() for s in skills_filter.split(',') if s.strip()] if skills_filter else []
 
-    # C33: При фильтре по навыкам — загружаем все заявки без пагинации,
-    # фильтруем на стороне Python, затем пагинируем. Это гарантирует,
-    # что offset учитывает фильтр и пагинация работает корректно.
+    if tab == 'sent':
+        # Мои отклики (как трудника): статусы + ссылка на задание/чат
+        offset = (page - 1) * per_page
+        resp = postgrest_request('GET',
+            f'applications?worker_id=eq.{user_id}'
+            f'&select=id,status,created_at,job_id,'
+            f'job:jobs(id,organization_name,work_type,date_time,payment_amount,status,address,city,employer_id)'
+            f'&order=created_at.desc&limit={per_page}&offset={offset}',
+            headers={'Prefer': 'count=exact'})
+        applications = resp.json() if resp.ok else []
+        total = 0
+        if resp.ok:
+            content_range = resp.headers.get('Content-Range', '')
+            if '/' in content_range:
+                total = int(content_range.split('/')[-1])
+        total_pages = max(1, (total + per_page - 1) // per_page) if total else 1
+        return render_template('my_applications.html', tab='sent',
+                               applications=applications, jobs={},
+                               selected_skills=[], page=page,
+                               per_page=per_page, total=total,
+                               total_pages=total_pages)
+
+    # ── Таб «На мои задания» (исходная employer-логика) ──
     if selected_skills:
         # Загружаем все заявки (с разумным верхним пределом 500)
         resp = postgrest_request('GET',
@@ -302,7 +332,8 @@ def my_applications():
 
     total_pages = max(1, (total + per_page - 1) // per_page) if total else 1
 
-    return render_template('my_applications.html', applications=applications, jobs=jobs,
+    return render_template('my_applications.html', tab='received',
+                           applications=applications, jobs=jobs,
                            selected_skills=selected_skills,
                            page=page, per_page=per_page, total=total,
                            total_pages=total_pages)

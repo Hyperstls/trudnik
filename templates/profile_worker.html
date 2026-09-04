@@ -69,7 +69,7 @@
                 {{ star(18) }}
                 <span class="text-sm ml-2 font-medium">В избранное</span>
             </button>
-            {% if session.get('role') == 'employer' %}
+            {% if session.get('user_id') and session.get('user_id') != profile_user.id %}
             <button id="toggle-block-btn-{{ profile_user.id }}"
                     class="action-icon-btn reject-btn" title="Заблокировать"
                     data-action="toggle-block"
@@ -221,7 +221,7 @@
             {{ star(18) }}
             <span class="text-sm ml-2 font-medium">В избранное</span>
         </button>
-        {% if session.get('role') == 'employer' %}
+        {% if session.get('user_id') and session.get('user_id') != profile_user.id %}
         <button id="toggle-block-btn2-{{ profile_user.id }}"
                 class="action-icon-btn reject-btn" title="Заблокировать"
                 data-action="toggle-block"
@@ -237,7 +237,7 @@
 
 <script src="{{ url_for('static', filename='js/favorites.js') }}" nonce="{{ csp_nonce }}"></script>
 
-{% if session.get('role') == 'employer' %}
+{% if session.get('user_id') and session.get('user_id') != profile_user.id %}
 <script nonce="{{ csp_nonce }}">
 async function toggleBlockProfile(btn, workerId, evt) {
     if (evt) { evt.preventDefault(); evt.stopPropagation(); }
