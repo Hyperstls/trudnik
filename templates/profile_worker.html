@@ -249,9 +249,8 @@ async function toggleBlockProfile(btn, workerId, evt) {
         ? 'Разблокировать этого работника? Он снова сможет откликаться на ваши задания.'
         : 'Заблокировать этого работника? Он не сможет откликаться на ваши задания.';
 
-    if (!confirm(message)) return;
-
     const url = isBlocked ? '/unblock/' + workerId : '/blacklist/' + workerId;
+    const doRequest = async () => {
     if (span) span.textContent = '...';
     btn.disabled = true;
 
@@ -320,6 +319,14 @@ async function toggleBlockProfile(btn, workerId, evt) {
         if (span) span.textContent = origText;
     }
     btn.disabled = false;
+    };
+
+    // B7-миграция: кастомный диалог вместо нативного confirm
+    if (window.showConfirm) {
+        window.showConfirm(message, function() { doRequest(); });
+    } else {
+        doRequest();
+    }
 }
 </script>
 {% endif %}

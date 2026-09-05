@@ -75,7 +75,7 @@ trudnik/
 ├── app/
 │   ├── __init__.py                 # create_app() — фабрика приложения, security headers, CSRF, контекст-процессоры
 │   ├── config.py                   # Config — переменные окружения (SECRET_KEY, POSTGREST_*, REDIS_URL, SMTP_*, VAPID_*, WEBSOCKET_*)
-│   ├── decorators.py               # @login_required, @role_required
+│   ├── decorators.py               # @login_required, @admin_required (@role_required — legacy, снят с бизнес-действий мультирольностью 2026-09)
 │   ├── utils/                     # ПАКЕТ app/utils/: postgrest_client.py, auth.py, geo.py, validators.py, redis_cache.py, rate_limit_decorator.py и др.
 │   │
 │   ├── blueprints/                 # ~19 блюпринтов (включая 6 admin_*)
@@ -232,7 +232,7 @@ flowchart TB
         CSRF[CSRF Protection]
         ContextProc[Context Processors - 7 шт]
         Blueprints[Blueprints - ~19 модулей]
-        Decorators[@login_required, @role_required]
+        Decorators[@login_required, @admin_required (мультирольность: роль ≠ доступ — 2026-09)]
     end
 
     subgraph Services[Services Layer - 13 сервисов]

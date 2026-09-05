@@ -220,6 +220,16 @@ def uploaded_avatar(filename):
     return response
 
 
+@core_bp.route('/uploads/jobs/<path:filename>')
+def uploaded_job_photo(filename):
+    """Фото заданий — публичные (видны в каталоге/деталях всем)."""
+    upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
+    response = send_from_directory(os.path.join(upload_folder, 'jobs'), filename)
+    response.headers['Cache-Control'] = 'public, max-age=86400'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    return response
+
+
 @core_bp.route('/uploads/verification-docs/<path:filename>')
 @login_required
 def uploaded_verification_doc(filename):

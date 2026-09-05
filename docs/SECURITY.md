@@ -261,7 +261,7 @@ content = _html.escape(content)
 - При истечении — автоматическое обновление через `refresh_access_token()`
 - При неудаче — очистка сессии и редирект на `/login`
 
-**`@role_required(role)`** ([`app/decorators.py:52`](../app/decorators.py:52)):
+**`@role_required(role)`** (legacy; **снят со всех бизнес-действий 2026-09-04 — мультирольность: доступ = владение, не роль**; остаётся только admin_required):
 - Проверяет роль пользователя через запрос к `profiles`
 - При несовпадении — flash «Доступ запрещён» и редирект на главную
 
@@ -322,7 +322,7 @@ content = _html.escape(content)
 |---------|----------|-----------------|
 | **Транспортный** | HTTPS (куки Secure), HSTS | Production-окружение |
 | **Аутентификация** | JWT (нативная аутентификация PostgREST), автообновление токена | Все запросы |
-| **Авторизация** | `@login_required`, `@role_required`, RLS (PostgREST) | Маршруты, БД |
+| **Авторизация** | `@login_required`, `@admin_required`, RLS-владение (мультирольность: роль ≠ доступ) | Маршруты, БД |
 | **CSRF** | Глобальный фильтр, двойная проверка (заголовок + тело) | Все мутирующие запросы |
 | **XSS** | CSP с nonce, `html.escape()` в чате, санитизация PostgREST | Шаблоны, API, чат |
 | **Injection** | `sanitize_postgrest()`, whitelist-проверка | Все параметры PostgREST |

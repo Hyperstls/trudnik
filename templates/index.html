@@ -75,6 +75,13 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {% for job in jobs %}
         <article class="card bg-white rounded-2xl shadow-sm border border-neutral-200 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group fade-in{% if job.id in applied_job_ids %} applied{% endif %}">
+            {# C-scope: превью первого фото задания (если есть) #}
+            {% if job.photo_urls %}
+            <a href="/jobs/{{ job.id }}" class="block aspect-video bg-neutral-100 overflow-hidden" tabindex="-1" aria-hidden="true">
+                <img src="{{ job.photo_urls[0] }}" alt="" loading="lazy" decoding="async"
+                     class="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-200">
+            </a>
+            {% endif %}
             <div class="p-4">
                 {% if session.get('user_id') and job.employer_id != session.get('user_id') %}
                 <div class="flex items-start gap-2">

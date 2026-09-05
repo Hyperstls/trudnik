@@ -9,13 +9,13 @@
 
 ### Регистрация и аутентификация
 
-Используется **нативная аутентификация** через PostgREST RPC-функции. При регистрации (`POST /register`) вызывается `register_user(p_email, p_password, p_full_name, p_role)` — функция создаёт запись в `profiles` с хешированным паролем (pgcrypto). При логине (`POST /login`) вызывается `login_user(p_email, p_password)` — проверяет пароль через `crypt()` и возвращает данные пользователя.
+Используется **нативная аутентификация** через PostgREST RPC-функции. При регистрации (`POST /register`) вызывается `register_user(p_email, p_password, p_full_name, p_role, p_worker_visibility)` — функция создаёт запись в `profiles` с хешированным паролем (pgcrypto). **Мультирольность (2026-09-04)**: форма шлёт `intent` (both/find_work/post_jobs → role-ориентация + worker_visibility), при этом роль — лишь лендинг после логина: создавать задания и откликаться может любой пользователь. При логине (`POST /login`) вызывается `login_user(p_email, p_password)` — проверяет пароль через `crypt()` и возвращает данные пользователя.
 
 JWT-токены генерируются на стороне Flask через `pyjwt` с использованием `PGRST_JWT_SECRET` и передаются в заголовках к PostgREST. Токены хранятся в серверной сессии Flask (`session['access_token']`, `session['user_id']`). Для неавторизованных пользователей JWT содержит `role: 'anon'`.
 
 **Ключевые проверки при регистрации:**
 - Обязательные поля: `full_name`, `email`, `password`, `role`
-- Роль только `worker` или `employer`
+- Роль `worker` или `employer` (ориентация лендинга, НЕ барьер доступа — мультирольность); `intent=post_jobs` → worker_visibility=false
 - Для трудника: ИНН (12 цифр), желаемая оплата, опыт, контакты
 - Навыки сохраняются через связующую таблицу `user_skills` (с валидацией UUID)
 
@@ -384,7 +384,7 @@ RPC **`delete_user_cascade(user_id)`** — удаляет пользовател
 
 | Таблица | Назначение | Ключевые поля |
 |---------|------------|---------------|
-| `profiles` | Профили пользователей (создаются нативной аутентификацией через `register_user`) | `id` (UUID), `role`, `full_name`, `city`, `religion`, `skills`, `rating`, `verification_status`, `notification_prefs`, `inn`, `is_self_employed`, `desired_payment`, `experience`, `contact` |
+| `profiles` | Профили пользователей (создаются нативной аутентификацией через `register_user`) | `id` (UUID), `role` (ориентация), `worker_visibility` (каталог/приглашения, мультирольность), `full_name`, `city`, `rating`, `verification_status`, `notification_prefs`, `inn`, `is_self_employed`, `desired_payment`, `experience` |
 | `jobs` | Задания | `id`, `employer_id` → `profiles`, `status` (open/completed/cancelled), `max_workers`, `current_workers`, `is_paid`, `payment_amount`, `address`, `city`, `lat`, `lng`, `work_type`, `preferred_religion`, `expires_at`, `tariff`, `search_vector` (GIN-index для FTS) |
 | `applications` | Отклики на задания | `id`, `job_id` → `jobs`, `worker_id` → `profiles`, `status` (pending/accepted/rejected/withdrawn), `created_at` |
 | `messages` | Сообщения в чатах | `id` (BIGSERIAL), `application_id` → `applications`, `sender_id` → `profiles`, `content`, `created_at` |
@@ -441,8 +441,8 @@ RPC **`delete_user_cascade(user_id)`** — удаляет пользовател
 Row Level Security включён на всех публичных таблицах. Основные принципы:
 
 - **`profiles`** — SELECT доступен всем аутентифицированным; UPDATE только владельцу; INSERT через service_role при регистрации
-- **`jobs`** — SELECT всем; INSERT только employer; UPDATE только владельцу; DELETE владельцу или admin
-- **`applications`** — SELECT участникам (работник или работодатель задания); INSERT только worker; UPDATE статуса — владельцу задания
+- **`jobs`** — SELECT всем; INSERT/UPDATE/DELETE — владение по `employer_id` (роль НЕ проверяется — мультирольность 2026-09-04)
+- **`applications`** — SELECT участникам (worker или владелец задания); INSERT — любой пользователь (RPC отклоняет own_job/blacklist); UPDATE статуса — владельцу задания
 - **`notifications`** — SELECT только получателю; INSERT только service_role (системное)
 - **`messages`** — SELECT только участникам accepted-заявки; INSERT только участнику
 - **`ratings`** — SELECT всем; INSERT/UPDATE только участнику задания

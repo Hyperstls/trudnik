@@ -488,6 +488,19 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
                 except Exception:
                     logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
 
+        # 1l) Фото заданий (2026-09-04, C-scope аудита Kimi3).
+        cur.execute("SELECT count(*) FROM information_schema.columns WHERE table_name='jobs' AND column_name='photo_urls'")
+        if cur.fetchone()[0] == 0:
+            try:
+                _apply_migration('142_job_photos.sql')
+                logger.warning('self-heal: applied migration 142 (jobs.photo_urls)')
+            except Exception as e:
+                logger.warning('self-heal: failed to apply 142: %s', e)
+                try:
+                    conn.rollback()
+                except Exception:
+                    logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
+
         # 2) Политика чтения profiles может быть удалена — гарантируем наличие,
         #    иначе профиль/выход/списки пустые (RLS deny-all).
         cur.execute(

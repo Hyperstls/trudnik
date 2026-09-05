@@ -51,3 +51,12 @@
 - Self-heal РїСЂРёРјРµРЅСЏРµС‚ 123-138 + NOTIFY pgrst Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё (РєР°Р¶РґС‹Рµ 120СЃ).
 - SECURITY DEFINER: `SET search_path = pg_catalog, public` (РќР• РїСѓСЃС‚РѕР№ вЂ” Р»РѕРјР°РµС‚ pgcrypto/PostGIS).
 - RLS: `current_setting('request.jwt.claims', true)::json->>'app_role'` (JSON, РЅРµ GUC).
+
+## Мультирольность (2026-09-04)
+- РОЛЬ ? ДОСТУП: создавать задания и откликаться может любой пользователь; `role_required` снят со всех бизнес-действий (admin_required остался). Доступ = владение (`job.employer_id == user_id`) / участие.
+- ПАТТЕРН БАГА: если добавляешь новый эндпоинт — НЕ ставь role_required; проверяй владение (как invite_worker: check_job_owner).
+- `profiles.worker_visibility` (default true): false > скрыт из /workers и не приглашается. Каталог = `worker_visibility=eq.true` (НЕ role=eq.worker).
+- Регистрация: `intent` (both/find_work/post_jobs) > role + worker_visibility; RPC `register_user(p_worker_visibility)`.
+- Навигация едина для всех ролей; my-applications — табы received/sent.
+- Уведомления-бейджи (invitations/applications) считаются для ВСЕХ ролей (context_processors, без role-гейтов).
+- Docker-dev: templates/static смонтированы; статика 24ч-кэш > при изменении CSS/JS меняй `?v=` в base.html + bump sw.js CACHE_VERSION.

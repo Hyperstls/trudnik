@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 from datetime import datetime, timezone, timedelta
 
 from flask import (
@@ -144,7 +144,7 @@ def index():
 
     # Все открытые/завершённые задания без исключения по сроку (истёкшие переводит
     # в не-open cron expire_old_jobs). detailed_description опущен — тяжёлое поле.
-    query = 'status=in.(open,completed)&select=id,employer_id,organization_name,org_description,object_description,work_type,date_time,payment_amount,address,city,lat,lng,status,created_at,preferred_religion,max_workers,current_workers,expires_at'
+    query = 'status=in.(open,completed)&select=id,employer_id,organization_name,org_description,object_description,work_type,photo_urls,date_time,payment_amount,address,city,lat,lng,status,created_at,preferred_religion,max_workers,current_workers,expires_at'
 
     # C38: Если монетизация включена — показываем только оплаченные задания
     if current_app.config.get('MONETIZATION_ENABLED', False):
@@ -472,6 +472,43 @@ def pricing():
 # Создание заданий
 # ──────────────────────────────────────────────
 
+_MAX_JOB_PHOTOS = 3
+
+
+def _sanitize_job_photos(urls: list) -> list:
+    """Валидация списка фото-URL задания: только наши /uploads/jobs/, ≤3."""
+    clean = []
+    for u in urls[:_MAX_JOB_PHOTOS]:
+        if isinstance(u, str) and u.startswith('/uploads/jobs/') and '..' not in u:
+            clean.append(u)
+    return clean
+
+
+@jobs_bp.route('/jobs/photo', methods=['POST'])
+@login_required
+@rate_limit
+def job_photo_upload():
+    """Загрузка фото задания (до 3; C-scope аудита Kimi3).
+
+    Фото загружается ДО сабмита формы (AJAX): возвращает URL, который
+    форма отправляет как photo_urls[]. Переиспользует upload_photo
+    (magic-bytes JPEG/PNG/WebP, лимит MAX_PHOTO_SIZE).
+    """
+    from app.services.storage_service import upload_photo
+    photo = request.files.get('photo')
+    if not photo or not photo.filename:
+        return jsonify({'success': False, 'error': 'Нет файла'}), 400
+    data = photo.read()
+    if len(data) > Config.MAX_PHOTO_SIZE_MB * 1024 * 1024:
+        return jsonify({'success': False,
+                        'error': f'Файл слишком большой (максимум {Config.MAX_PHOTO_SIZE_MB} МБ)'}), 400
+    url = upload_photo(data, bucket='jobs', folder=session['user_id'])
+    if not url:
+        return jsonify({'success': False,
+                        'error': 'Неверный формат (JPEG, PNG, WebP)'}), 400
+    return jsonify({'success': True, 'url': url})
+
+
 @jobs_bp.route('/job/new', methods=['GET', 'POST'])
 @login_required
 @rate_limit
@@ -586,6 +623,9 @@ def job_new():
                 'current_workers': 0,
                 'status': 'open',
                 'expires_at': (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+                # C-scope (аудит Kimi3): фото задания — до 3, загружены
+                # заранее через POST /jobs/photo (валидация URL ниже)
+                'photo_urls': _sanitize_job_photos(request.form.getlist('photo_urls[]')),
             }
 
             resp = postgrest_request('POST', 'jobs', json=job_data)

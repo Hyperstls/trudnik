@@ -85,6 +85,17 @@
     </div>
     {% endif %}
 
+    {# C-scope: галерея фото задания #}
+    {% if job.photo_urls %}
+    <div class="grid {{ 'grid-cols-3' if job.photo_urls|length > 1 else 'grid-cols-1' }} gap-2 mb-4" aria-label="Фотографии задания">
+        {% for photo in job.photo_urls[:3] %}
+        <a href="{{ photo }}" target="_blank" rel="noopener noreferrer" class="block rounded-xl overflow-hidden border border-neutral-200 {{ 'aspect-video' if job.photo_urls|length == 1 else 'aspect-square' }}">
+            <img src="{{ photo }}" alt="Фото задания {{ loop.index }}" loading="lazy" decoding="async" class="w-full h-full object-cover hover:scale-[1.03] transition-transform duration-200">
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     {# ID задания с копированием #}
     {% if session.get('user_id') == job.employer_id %}
     <div class="flex items-center gap-2 mb-4 px-4 py-2.5 bg-neutral-50 rounded-xl border border-neutral-200">
