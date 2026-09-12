@@ -29,21 +29,30 @@ ADMIN_PASSWORD = os.environ.get('TRUDNIK_ADMIN_PASS', 'test')
 # Хелперы для интеграционных тестов (сессии, CSRF, логин)
 # ═══════════════════════════════════════════════════════════════
 
-def _extract_job_id_from_redirect(text_or_url, resp=None) -> str | None:
-    """Извлекает job_id из URL редиректа или HTML.
+def _extract_job_id_from_redirect(sess, resp=None) -> str | None:
+    """Извлекает job_id из URL редиректа или HTML; fallback — свежайшее
+    задание из /my-jobs (POST /job/new редиректит на /my-jobs без id).
 
-    Совместимые формы: (str) | (session, response) — во второй берётся
-    response.url и response.text.
+    Совместимые формы: (session, response) | (str, None).
     """
+    sources = []
     if resp is not None:
-        for source in (getattr(resp, 'url', ''), getattr(resp, 'text', '')):
-            match = re.search(r'/jobs/([a-f0-9\-]+)', source)
-            if match:
-                return match.group(1)
-        return None
-    match = re.search(r'/jobs/([a-f0-9\-]+)', text_or_url)
-    if match:
-        return match.group(1)
+        sources += [getattr(resp, 'url', ''), getattr(resp, 'text', '')]
+    if isinstance(sess, str):
+        sources.append(sess)
+    for source in sources:
+        match = re.search(r'/jobs/([a-f0-9\-]{36})', source)
+        if match:
+            return match.group(1)
+    # fallback: первое задание на /my-jobs (order=created_at.desc — свежайшее)
+    if hasattr(sess, 'get'):
+        try:
+            mj = sess.get(f'{BASE_URL}/my-jobs', timeout=30)
+            ids = re.findall(r'/jobs/([a-f0-9\-]{36})', mj.text)
+            if ids:
+                return ids[0]
+        except Exception:
+            pass
     return None
 
 
@@ -506,30 +515,37 @@ def published_job_id():
 
 @pytest.fixture
 def created_job_id(employer_session):
-    """Создаёт тестовое задание и возвращает его ID."""
-    csrf = get_csrf_from_page(employer_session, f'{BASE_URL}/jobs/new')
+    """Создаёт тестовое задание и возвращает его ID.
+
+    Маршрут создания — POST /job/new (единственное число; /jobs/<id> —
+    детальная, GET-only → POST давал 405). Поля соответствуют job_new.py.
+    """
+    csrf = get_csrf_from_page(employer_session, f'{BASE_URL}/job/new')
     if not csrf:
         pytest.skip('Не удалось получить CSRF-токен для создания задания')
     resp = employer_session.post(
-        f'{BASE_URL}/jobs/new',
-        data=form_with_csrf({
+        f'{BASE_URL}/job/new',
+        data={
+            '_csrf_token': csrf,
             'title': 'Test Job for Integration Tests',
-            'description': 'Auto-created by pytest fixture',
-            'location': 'Москва',
-            'category': 'Разнорабочие',
-            'payment': '1000',
+            'description': 'Auto-created by pytest fixture (разовая подработка)',
+            'work_type': 'Разнорабочие',
+            'address': 'Москва, Тверская 1',
+            'city': 'Москва',
+            'payment_amount': '1000',
             'max_workers': '5',
-        }, csrf),
+            'workers_needed': '5',
+        },
         timeout=30,
         allow_redirects=True,
     )
     if resp.status_code != 200:
         pytest.skip(f'Не удалось создать тестовое задание: {resp.status_code}')
     # Extract job_id from URL or response
-    match = re.search(r'/jobs/([a-f0-9\-]+)', resp.text)
+    match = re.search(r'/jobs/([a-f0-9\-]{36})', resp.text)
     if match:
         return match.group(1)
-    match = re.search(r'/jobs/([a-f0-9\-]+)', resp.url)
+    match = re.search(r'/jobs/([a-f0-9\-]{36})', resp.url)
     if match:
         return match.group(1)
     pytest.skip('Не удалось извлечь ID созданного задания')
@@ -538,14 +554,19 @@ def created_job_id(employer_session):
 
 @pytest.fixture
 def accepted_application_id(employer_session, worker_session, created_job_id):
-    """Создаёт accepted-отклик и возвращает (application_id, job_id)."""
-    # Worker applies
+    """Создаёт accepted-отклик и возвращает (application_id, job_id).
+
+    Отклик — POST /apply/<job_id> (корневой маршрут applications.py,
+    НЕ /jobs/<id>/apply).
+    """
     csrf = get_csrf_from_page(worker_session, f'{BASE_URL}/jobs/{created_job_id}')
+    if not csrf:
+        csrf = get_csrf_from_page(worker_session, f'{BASE_URL}/')
     if not csrf:
         pytest.skip('Не удалось получить CSRF для отклика')
     resp = worker_session.post(
-        f'{BASE_URL}/jobs/{created_job_id}/apply',
-        data=form_with_csrf({}, csrf),
+        f'{BASE_URL}/apply/{created_job_id}',
+        data={'_csrf_token': csrf},
         timeout=30,
         allow_redirects=True,
     )

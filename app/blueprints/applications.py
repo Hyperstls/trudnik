@@ -253,6 +253,8 @@ def my_applications():
     не было вообще — только фильтр на каталоге).
     """
     user_id = session['user_id']
+    # ?job_id= — точечный просмотр откликов на конкретное задание (оба таба)
+    job_filter = request.args.get('job_id', '')
     skills_filter = request.args.get('skills', '')
     page = max(1, request.args.get('page', 1, type=int))
     per_page = min(100, max(1, request.args.get('per_page', Config.PAGINATION_DEFAULT_PER_PAGE, type=int)))
@@ -269,8 +271,9 @@ def my_applications():
     if tab == 'sent':
         # Мои отклики (как трудника): статусы + ссылка на задание/чат
         offset = (page - 1) * per_page
+        sent_job_q = f'&job_id=eq.{job_filter}' if job_filter else ''
         resp = postgrest_request('GET',
-            f'applications?worker_id=eq.{user_id}'
+            f'applications?worker_id=eq.{user_id}{sent_job_q}'
             f'&select=id,status,created_at,job_id,'
             f'job:jobs(id,organization_name,work_type,date_time,payment_amount,status,address,city,employer_id)'
             f'&order=created_at.desc&limit={per_page}&offset={offset}',
@@ -289,10 +292,15 @@ def my_applications():
                                total_pages=total_pages)
 
     # ── Таб «На мои задания» (исходная employer-логика) ──
+    # ?job_id= — точечный просмотр откликов на конкретное задание
+    # (используется ссылкой «Управление откликами» с детальной страницы).
+    job_filter = request.args.get('job_id', '')
+    job_query = f'&job_id=eq.{job_filter}' if job_filter else ''
+
     if selected_skills:
         # Загружаем все заявки (с разумным верхним пределом 500)
         resp = postgrest_request('GET',
-            f'applications?job.employer_id=eq.{user_id}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,desired_payment,email_public),job:jobs(organization_name,date_time,payment_amount,status,current_workers,max_workers)&limit=500',
+            f'applications?job.employer_id=eq.{user_id}{job_query}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,desired_payment,email_public),job:jobs(organization_name,date_time,payment_amount,status,current_workers,max_workers)&limit=500',
             headers={'Prefer': 'count=exact'})
         all_applications = resp.json() if resp.ok else []
 
@@ -306,7 +314,7 @@ def my_applications():
     else:
         offset = (page - 1) * per_page
         resp = postgrest_request('GET',
-            f'applications?job.employer_id=eq.{user_id}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,desired_payment,email_public),job:jobs(organization_name,date_time,payment_amount,status,current_workers,max_workers)&limit={per_page}&offset={offset}',
+            f'applications?job.employer_id=eq.{user_id}{job_query}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,desired_payment,email_public),job:jobs(organization_name,date_time,payment_amount,status,current_workers,max_workers)&limit={per_page}&offset={offset}',
             headers={'Prefer': 'count=exact'})
         applications = resp.json() if resp.ok else []
         total = 0

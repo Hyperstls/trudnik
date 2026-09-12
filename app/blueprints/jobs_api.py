@@ -95,13 +95,17 @@ def invite_worker(job_id, worker_id):
     if check.ok and check.json():
         return jsonify({'success': False, 'error': 'Приглашение уже отправлено'}), 409
 
-    # Проверить, есть ли свободные места
+    # Проверить, есть ли свободные места и открыт ли набор (INV-004:
+    # приглашение на cancelled/completed задание — отклонять)
     job_resp = postgrest_request(
         'GET',
-        f'jobs?id=eq.{job_id}&select=current_workers,max_workers,organization_name'
+        f'jobs?id=eq.{job_id}&select=current_workers,max_workers,status,organization_name'
     )
     if job_resp.ok and job_resp.json():
         job = job_resp.json()[0]
+        if job.get('status') != 'open':
+            return jsonify({'success': False,
+                            'error': 'Набор на задание закрыт'}), 409
         if job['current_workers'] >= job['max_workers']:
             return jsonify({'success': False, 'error': 'Все места заняты'}), 409
 

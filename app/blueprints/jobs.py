@@ -657,8 +657,11 @@ def my_jobs():
     user_id = session['user_id']
     status_filter = request.args.get('status', 'all')
 
-    # Единый запрос с or-фильтром вместо двух раздельных запросов
-    base_query = f'jobs?employer_id=eq.{user_id}&select=*,applications:applications(count),current_workers,max_workers'
+    # Единый запрос с or-фильтром вместо двух раздельных запросов.
+    # Свежие сверху (стабильный порядок для UI и тест-фикстур).
+    base_query = (f'jobs?employer_id=eq.{user_id}'
+                  f'&select=*,applications:applications(count),current_workers,max_workers'
+                  f'&order=created_at.desc')
     if status_filter == 'open':
         base_query += '&status=eq.open'
     elif status_filter not in ('all', 'open'):

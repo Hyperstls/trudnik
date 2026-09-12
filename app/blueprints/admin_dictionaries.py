@@ -43,9 +43,14 @@ def add_skill():
         if existing.ok and existing.json():
             item = existing.json()[0] if existing.json() else {}
             max_order = item.get('sort_order', 0)
-        resp = postgrest_admin_request('POST', 'skills', json={'name': name, 'sort_order': max_order + 1})
+        resp = postgrest_admin_request(
+            'POST', 'skills',
+            json={'name': name, 'sort_order': max_order + 1},
+            headers={'Prefer': 'return=representation'})
         if resp.ok:
-            return jsonify({'success': True})
+            created = resp.json()
+            skill = created[0] if isinstance(created, list) and created else None
+            return jsonify({'success': True, 'skill': skill})
         current_app.logger.error('add_skill: PostgREST error (status %s): %s', resp.status_code, resp.text)
         return jsonify({'success': False, 'error': safe_error_message(resp, 'Ошибка при добавлении навыка')})
     except Exception as e:
