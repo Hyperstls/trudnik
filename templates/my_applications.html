@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Отклики — Трудник{% endblock %}
-{% from '_icons.html' import star, chat_bubble, send, phone, mail, info, help_circle, eye, eye_off, check, x_close, smiley, briefcase, search %}
+{% from '_icons.html' import star, chat, send, phone, mail, info, help_circle, eye, eye_off, check, x_close, smiley, briefcase, search %}
 {% from '_components.html' import status_badge, empty_state %}
 
 {% block content %}
@@ -193,23 +193,7 @@
 
                         {# Статус-бейдж #}
                         <div class="flex-shrink-0 text-right">
-                            <span class="status-badge
-                                {% if app.status == 'pending' %}status-pending
-                                {% elif app.status == 'accepted' %}status-accepted
-                                {% elif app.status == 'rejected' %}status-rejected
-                                {% elif app.status == 'withdrawn' %}status-withdrawn
-                                {% elif app.status == 'cancelled' %}status-withdrawn
-                                {% else %}status-pending
-                                {% endif %}"
-                                title="Статус отклика: {{ app.status }}">
-                                {% if app.status == 'pending' %}Ожидает
-                                {% elif app.status == 'accepted' %}Принято ✓
-                                {% elif app.status == 'rejected' %}Отклонено
-                                {% elif app.status == 'withdrawn' %}Отозвано
-                                {% elif app.status == 'cancelled' %}Отозвано
-                                {% else %}{{ app.status }}
-                                {% endif %}
-                            </span>
+                            {{ status_badge(app.status) }}
                             {% if app.job.max_workers %}
                             <div class="text-xs text-neutral-400 mt-1">
                                 {{ app.job.current_workers or 0 }}/{{ app.job.max_workers }}
@@ -311,21 +295,13 @@
     {# ============================================ #}
     {# Пустое состояние                             #}
     {# ============================================ #}
-    <div class="flex flex-col items-center justify-center py-16 text-center">
-        <div class="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
-            <svg aria-hidden="true" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-300">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-        </div>
-        <h3 class="text-lg font-semibold text-neutral-700 mb-1">Нет откликов</h3>
-        <p class="text-sm text-neutral-400 mb-6">
-            Когда исполнители откликнутся на ваши задания, они появятся здесь
-        </p>
-        <a href="/my-jobs"
-           class="inline-flex items-center gap-1.5 bg-primary-500 text-white px-6 py-3 rounded-full text-sm font-semibold shadow-md hover:bg-primary-600 active:scale-[0.97] transition-all duration-200">
-            К заданиям
-        </a>
-    </div>
+    {{ empty_state(
+        icon=chat,
+        title='Нет откликов',
+        subtitle='Когда исполнители откликнутся на ваши задания, они появятся здесь',
+        action_url='/my-jobs',
+        action_text='К заданиям'
+    ) }}
     {% endif %}
     {% endif %}{# tab #}
 </div>
@@ -333,5 +309,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/applications.js') }}" nonce="{{ csp_nonce }}"></script>
+<script src="{{ url_for('static', filename='js/applications.js') }}?v=20260905" nonce="{{ csp_nonce }}"></script>
 {% endblock %}

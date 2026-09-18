@@ -22,8 +22,8 @@
         tooltip.className = 'version-tooltip';
         document.body.appendChild(tooltip);
 
-        const DEFAULT_BUTTON_TEXT = '🔖 Текущая версия';
-        const COPIED_BUTTON_TEXT = '✅ Скопировано';
+        const DEFAULT_BUTTON_TEXT = 'Текущая версия';
+        const COPIED_BUTTON_TEXT = '✓ Скопировано';
         let copyTimeout = null;
         let isCopied = false;
 

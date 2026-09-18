@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from '_icons.html' import star, chat, trash, shield, camera, settings, mail, phone, map_pin, info, smiley %}
+{% from '_components.html' import btn_primary %}
 {% block title %}Профиль — Трудник{% endblock %}
 {% block content %}
 <div class="px-4 pb-24 max-w-lg mx-auto" data-user-id="{{ current_user_id }}">
@@ -167,10 +168,7 @@
             <label class="floating-label">Email, Telegram или другой контакт</label>
         </div>
 
-        <button type="submit"
-                class="w-full bg-primary-500 text-white py-3.5 rounded-xl font-bold text-base hover:bg-primary-600 active:scale-[0.97] transition-all duration-200 shadow-md mt-2">
-            Сохранить изменения
-        </button>
+        {{ btn_primary('Сохранить изменения', extra_class='w-full text-base mt-2') }}
     </form>
 
     {# Верификация работодателя #}
@@ -359,7 +357,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-<script src="{{ url_for('static', filename='js/favorites.js') }}" nonce="{{ csp_nonce }}"></script>
+<script src="{{ url_for('static', filename='js/favorites.js') }}?v=20260905" nonce="{{ csp_nonce }}"></script>
 {% endif %}
 
 {% if profile_user and profile_user.get('role') == 'worker' %}
@@ -545,28 +543,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (!deleteBtn || !modal) return;
 
-    // Открыть модальное окно
+    // Открыть модальное окно (нативный dialog: classList.remove('hidden')
+    // не работает — UA-стиль dialog:not([open]) { display:none } побеждает)
     deleteBtn.addEventListener('click', function() {
-        modal.classList.remove('hidden');
         input.value = '';
         submitBtn.disabled = true;
+        modal.showModal();
         input.focus();
     });
 
-    // Закрыть модальное окно
+    // Закрыть модальное окно (Escape закрывает dialog нативно)
     function closeModal() {
-        modal.classList.add('hidden');
+        modal.close();
     }
     cancelBtn.addEventListener('click', closeModal);
     modal.addEventListener('click', function(e) {
         if (e.target === modal) closeModal();
-    });
-
-    // Escape — закрыть
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
-            closeModal();
-        }
     });
 
     // Активировать кнопку только когда введено «УДАЛИТЬ»

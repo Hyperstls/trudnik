@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% from '_icons.html' import star, chevron_left, check %}
+{% from '_icons.html' import star, chevron_left, check, icon_user %}
+{% from '_components.html' import rating_stars %}
 {% block title %}Оценить работников — {{ job.title }} — Трудник{% endblock %}
 {% block content %}
 <div class="px-4 pb-24 max-w-lg mx-auto">
@@ -59,8 +60,8 @@
     {# ============================================ #}
     {% if workers|length == 0 %}
         <div class="flex flex-col items-center justify-center py-16 text-center">
-            <div class="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
-                <span class="text-3xl">👤</span>
+            <div class="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mb-4 text-neutral-300">
+                {{ icon_user(36) }}
             </div>
             <p class="text-lg font-semibold text-neutral-700">Нет принятых работников</p>
             <p class="text-sm text-neutral-400 mt-1">По этому заданию ещё нет принятых откликов</p>
@@ -86,7 +87,7 @@
                     <div class="min-w-0 flex-1">
                         <p class="font-semibold text-neutral-900 text-sm truncate">{{ w.full_name }}</p>
                         <div class="flex items-center gap-1">
-                            <span class="text-amber-500 text-sm">★</span>
+                            {{ rating_stars(w.rating, 14) }}
                             <span class="text-xs text-neutral-400">
                                 {{ '%.1f'|format(w.rating) if w.rating else '—' }}
                             </span>

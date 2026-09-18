@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% from '_icons.html' import save, check, close, search, filter_icon %}
+{% from '_icons.html' import save, check, close, search, filter_icon, info, icon_user, apply, shield, icon_report, users_icon, briefcase, select_all %}
+{% from '_components.html' import status_badge %}
 {% block title %}Администрирование — Трудник{% endblock %}
 {% block content %}
 <style nonce="{{ csp_nonce }}">
@@ -29,7 +30,10 @@
         <h2 class="text-2xl font-bold text-neutral-900">Панель администратора</h2>
         <div class="flex items-center gap-2">
             <span id="git-version" hidden>{{ actual_version }}</span>
-            <button id="current-version-btn" class="action-icon-btn px-4 py-2 text-sm cursor-pointer hover:bg-neutral-100 rounded-lg transition-colors" title="Нажмите, чтобы скопировать версию">🔖 Текущая версия</button>
+            <span class="inline-flex items-center gap-1.5">
+                <span class="inline-flex items-center text-neutral-400" aria-hidden="true">{{ info(14) }}</span>
+                <button id="current-version-btn" class="action-icon-btn px-4 py-2 text-sm cursor-pointer hover:bg-neutral-100 rounded-lg transition-colors" title="Нажмите, чтобы скопировать версию">Текущая версия</button>
+            </span>
             <span class="text-xs bg-primary-100 text-primary-700 px-3 py-1 rounded-full font-medium">admin</span>
         </div>
     </div>
@@ -62,10 +66,10 @@
     <div class="bg-white rounded-xl border border-neutral-200 p-4 mb-6">
         <p class="text-xs font-semibold text-neutral-500 mb-3">Инструменты</p>
         <div class="flex flex-wrap gap-2">
-            <a href="/admin/test-user" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-sm font-medium transition-colors">🧪 Тестовый пользователь</a>
-            <a href="/admin/content/terms" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-sm font-medium transition-colors">📄 Условия использования</a>
-            <a href="/admin/content/privacy" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-sm font-medium transition-colors">🔒 Политика конфиденциальности</a>
-            <a href="/admin/complaints" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-sm font-medium transition-colors">⚠️ Жалобы</a>
+            <a href="/admin/test-user" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-sm font-medium transition-colors">{{ icon_user(16) }} Тестовый пользователь</a>
+            <a href="/admin/content/terms" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-sm font-medium transition-colors">{{ apply(16) }} Условия использования</a>
+            <a href="/admin/content/privacy" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-sm font-medium transition-colors">{{ shield(16) }} Политика конфиденциальности</a>
+            <a href="/admin/complaints" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-sm font-medium transition-colors">{{ icon_report(16) }} Жалобы</a>
         </div>
     </div>
     <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
@@ -88,9 +92,9 @@
     <div class="bg-white rounded-xl border border-neutral-100 p-5 shadow-sm">
         <h3 class="font-semibold text-neutral-800 mb-3">Быстрые действия</h3>
         <div class="flex flex-wrap gap-2">
-            <a href="?tab=users" class="action-icon-btn px-4 py-2 text-sm">👥 Пользователи</a>
-            <a href="?tab=jobs" class="action-icon-btn px-4 py-2 text-sm">📋 Задания</a>
-            <a href="?tab=stats" class="action-icon-btn px-4 py-2 text-sm">📊 Статистика</a>
+            <a href="?tab=users" class="action-icon-btn px-4 py-2 text-sm inline-flex items-center gap-1.5">{{ users_icon(16) }} Пользователи</a>
+            <a href="?tab=jobs" class="action-icon-btn px-4 py-2 text-sm inline-flex items-center gap-1.5">{{ briefcase(16) }} Задания</a>
+            <a href="?tab=stats" class="action-icon-btn px-4 py-2 text-sm inline-flex items-center gap-1.5">{{ select_all(16) }} Статистика</a>
         </div>
     </div>
     {% endif %}
@@ -212,7 +216,7 @@
                         <input type="checkbox" class="js-select-all-jobs rounded border-neutral-300" title="Выбрать все">
                     </th>
                     <th class="text-left px-4 py-3 font-medium">Название</th>
-                    <th class="text-left px-4 py-3 font-medium">Храм</th>
+                    <th class="text-left px-4 py-3 font-medium">Работодатель</th>
                     <th class="text-left px-4 py-3 font-medium">Статус</th>
                     <th class="text-left px-4 py-3 font-medium">Оплата</th>
                     <th class="text-right px-4 py-3 font-medium">Действия</th>
@@ -227,12 +231,7 @@
                     <td class="px-4 py-3 font-medium text-neutral-900">{{ j.get('organization_name', '—')[:40] }}</td>
                     <td class="px-4 py-3 text-neutral-600">{{ j.get('employer_name', '—') }}</td>
                     <td class="px-4 py-3">
-                        <span class="text-xs px-2 py-0.5 rounded-full font-medium
-                            {% if j.get('status') == 'open' %}bg-green-100 text-green-700
-                            {% elif j.get('status') == 'completed' %}bg-blue-100 text-blue-700
-                            {% else %}bg-neutral-100 text-neutral-600{% endif %}">
-                            {{ j.get('status', '—') }}
-                        </span>
+                        {{ status_badge(j.get('status', '')) }}
                     </td>
                     <td class="px-4 py-3 text-neutral-600">{{ j.get('payment_amount', 0) }} ₽</td>
                     <td class="px-4 py-3 text-right">
