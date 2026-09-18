@@ -79,18 +79,17 @@ def inject_unread_notifications() -> dict:
 
         # Redis-промах — запрашиваем БД и сохраняем в Redis
         def _fetch() -> int:
+            from app.blueprints.notifications import is_invitation_notification
             resp = postgrest_request(
                 'GET',
-                f'notifications?user_id=eq.{user_id}&is_read=eq.false&select=id,type,message&limit=100'
+                f'notifications?user_id=eq.{user_id}&is_read=eq.false&select=id,type,message,data&limit=100'
             )
             if resp.ok:
                 data = resp.json()
                 if isinstance(data, list):
-                    # Исключаем уведомления "Вас пригласили" (приглашения трудника)
-                    non_inv = [
-                        n for n in data
-                        if 'вас пригласили' not in (n.get('message') or '').lower()
-                    ]
+                    # Исключаем уведомления-приглашения (data->>type='invitation'
+                    # + legacy-подстрока) — единая логика с notifications.py
+                    non_inv = [n for n in data if not is_invitation_notification(n)]
                     return len(non_inv)
             return 0
 

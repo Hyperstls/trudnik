@@ -1,7 +1,5 @@
 """Blueprint уведомлений — тонкие обёртки над NotificationService."""
 
-import re as _re_inv
-
 from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required, validate_uuid
@@ -12,6 +10,35 @@ from app.services.notification_service import (
 from app.utils import my_query, postgrest_request, postgrest_admin_request
 
 notifications_bp = Blueprint('notifications', __name__)
+
+# Приглашение трудника: основной признак — data->>'type' == 'invitation'
+# (jobs_api.py кладёт его при создании уведомления). Fallback — русская
+# подстрока в message: записи, созданные до введения data.type, имеют
+# только текстовый маркер (обратная совместимость без миграции данных).
+_INVITATION_MESSAGE_SUBSTR = 'вас пригласили'
+
+
+def is_invitation_notification(notification: dict) -> bool:
+    """Определить уведомление-приглашение трудника.
+
+    Основной признак — data->>'type' == 'invitation'; fallback — подстрока
+    'вас пригласили' в message для записей, созданных до data.type.
+    Используется единообразно в счётчике бейджа (context_processors),
+    списке уведомлений и очистке (delete-all).
+    """
+    data = notification.get('data')
+    if isinstance(data, dict) and data.get('type') == 'invitation':
+        return True
+    return _INVITATION_MESSAGE_SUBSTR in (notification.get('message') or '').lower()
+
+
+# PostgREST-фильтр «НЕ приглашение» для серверной очистки (delete-all).
+# NULL-safe: data->>type != 'invitation' ИЛИ data->>type IS NULL,
+# плюс legacy-фильтр по подстроке в message.
+NOT_INVITATION_PGREST_FILTER = (
+    'or=(data->>type.neq.invitation,data->>type.is.null)'
+    f'&message=not.ilike.*{_INVITATION_MESSAGE_SUBSTR}*'
+)
 
 
 @notifications_bp.route('/api/ws/token')
@@ -52,7 +79,7 @@ def notifications():
 
     # Отделяем приглашения трудника — они на странице /invitations
     # Фильтруем только "Вас пригласили", а "Приглашение принято" остаётся у работодателя
-    general_items = [n for n in items if 'вас пригласили' not in (n.get('message') or '').lower()]
+    general_items = [n for n in items if not is_invitation_notification(n)]
 
     # Очистка orphaned-уведомлений вынесена в периодическую Celery-задачу
     # cleanup_orphaned_notifications (app/tasks/maintenance_tasks.py).
@@ -102,9 +129,10 @@ def api_delete_notification(notification_id):
 def api_delete_all_notifications():
     """Удалить все уведомления пользователя (кроме приглашений)."""
     user_id = session['user_id']
-    # Удаляем все уведомления, кроме "Вас пригласили" (приглашения трудника)
+    # Удаляем все уведомления, кроме приглашений трудника
+    # (data->>type='invitation' + legacy-подстрока в message)
     postgrest_admin_request('DELETE',
-        f'notifications?user_id=eq.{user_id}&message=not.ilike.*вас пригласили*')
+        f'notifications?user_id=eq.{user_id}&{NOT_INVITATION_PGREST_FILTER}')
     return jsonify({'success': True})
 
 

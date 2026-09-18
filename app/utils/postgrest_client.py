@@ -1,9 +1,10 @@
-﻿"""PostgREST-клиент (Amvera): HTTP-запросы, JWT-заголовки, Circuit Breaker, connection pooling. Supabase не используется."""
+"""PostgREST-клиент (Amvera): HTTP-запросы, JWT-заголовки, Circuit Breaker, connection pooling. Supabase не используется."""
 
 import inspect
 import json
 import logging
 import os
+import random
 import secrets
 import threading
 import time
@@ -519,11 +520,43 @@ def _normalize_endpoint(method: str, endpoint: str) -> str:
     return endpoint
 
 
+# ═══════════════════════════════════════════════════════════════
+# Retry для идемпотентных GET (транзиентные сбои)
+# ═══════════════════════════════════════════════════════════════
+
+_GET_RETRY_BACKOFF_MIN = 0.2
+_GET_RETRY_BACKOFF_MAX = 0.5
+
+
+def _should_retry_get(method: str, resp: 'PostgrestResponse') -> bool:
+    """Решить, стоит ли повторить запрос одним дополнительным ретраем.
+
+    Ретраим только идемпотентные GET при транзиентных сбоях:
+    5xx (серверная ошибка PostgREST/БД) или status_code=0 (timeout/connection
+    error — запрос мог не дойти, GET безопасно повторить).
+    POST/PATCH/DELETE не ретраим (неидемпотентны).
+    При разомкнутом Circuit Breaker не ретраим: восстановлением управляет CB
+    (health-check), дополнительная попытка лишь удлинит ответ клиенту.
+    """
+    if method.upper() != 'GET':
+        return False
+    if is_circuit_open(resp):
+        return False
+    return resp.status_code == 0 or resp.status_code >= 500
+
+
+def _get_retry_backoff() -> float:
+    """Backoff с jitter для одиночного ретрая GET (~0.2–0.5 сек)."""
+    return random.uniform(_GET_RETRY_BACKOFF_MIN, _GET_RETRY_BACKOFF_MAX)
+
+
 def postgrest_request(method: str, endpoint: str, **kwargs: Any) -> PostgrestResponse:
     """Сделать HTTP-запрос к PostgREST API с пользовательским JWT-токеном.
 
-    Автоматически обновляет access_token при 401. Использует CircuitBreaker.
-    При TESTING=True использует in-memory mock.
+    Автоматически обновляет access_token при 401 (один немедленный ретрай).
+    Идемпотентные GET ретраятся один раз с backoff+jitter при транзиентных
+    сбоях (5xx/timeout/connection error); POST/PATCH/DELETE не ретраятся.
+    Использует CircuitBreaker. При TESTING=True использует in-memory mock.
 
     Args:
         method: HTTP-метод (GET, POST, PATCH, DELETE).
@@ -552,16 +585,24 @@ def postgrest_request(method: str, endpoint: str, **kwargs: Any) -> PostgrestRes
         return PostgrestResponse(ok=resp.ok, status_code=resp.status_code, data=data, text=resp.text,
                                 headers=resp.headers)
 
+    def _call_once() -> PostgrestResponse:
+        try:
+            return _cb_postgrest.call(_make_request)
+        except _requests.RequestException as e:
+            logging.getLogger(__name__).error(f"PostgREST request error: {e}")
+            return PostgrestResponse(ok=False, status_code=0, text=str(e))
+
     try:
-        resp = _cb_postgrest.call(_make_request)
+        resp = _call_once()
         if resp.status_code == 401 and session.get('refresh_token'):
             if refresh_access_token():
-                time.sleep(0.5)  # небольшая задержка перед повтором
-                resp = _cb_postgrest.call(_make_request)
+                # Один немедленный ретрай без sleep — токен уже обновлён
+                resp = _call_once()
+        elif _should_retry_get(method, resp):
+            # Транзиентный сбой идемпотентного GET: один ретрай с backoff+jitter
+            time.sleep(_get_retry_backoff())
+            resp = _call_once()
         return resp
-    except _requests.RequestException as e:
-        logging.getLogger(__name__).error(f"PostgREST request error: {e}")
-        return PostgrestResponse(ok=False, status_code=0, text=str(e))
     except Exception as e:
         logging.getLogger(__name__).error(f"Unexpected error in postgrest_request: {e}")
         return PostgrestResponse(ok=False, status_code=0, text=str(e))
@@ -571,6 +612,8 @@ def postgrest_admin_request(method: str, endpoint: str, **kwargs: Any) -> Postgr
     """Сделать запрос к PostgREST API с JWT service_role (обход RLS).
 
     Использует _admin_session для переиспользования TCP-соединений.
+    Идемпотентные GET ретраятся один раз с backoff+jitter при транзиентных
+    сбоях (5xx/timeout/connection error); POST/PATCH/DELETE не ретраятся.
     Использует CircuitBreaker.
 
     БЕЗОПАСНОСТЬ:
@@ -639,11 +682,20 @@ def postgrest_admin_request(method: str, endpoint: str, **kwargs: Any) -> Postgr
         return PostgrestResponse(ok=resp.ok, status_code=resp.status_code, data=data, text=resp.text,
                                 headers=resp.headers)
 
+    def _call_once() -> PostgrestResponse:
+        try:
+            return _cb_admin.call(_make_request)
+        except _requests.RequestException as e:
+            logging.getLogger(__name__).error(f"PostgREST admin request error: {e}")
+            return PostgrestResponse(ok=False, status_code=0, text=str(e))
+
     try:
-        return _cb_admin.call(_make_request)
-    except _requests.RequestException as e:
-        logging.getLogger(__name__).error(f"PostgREST admin request error: {e}")
-        return PostgrestResponse(ok=False, status_code=0, text=str(e))
+        resp = _call_once()
+        if _should_retry_get(method, resp):
+            # Транзиентный сбой идемпотентного GET: один ретрай с backoff+jitter
+            time.sleep(_get_retry_backoff())
+            resp = _call_once()
+        return resp
     except Exception as e:
         logging.getLogger(__name__).error(f"Unexpected error in postgrest_admin_request: {e}")
         return PostgrestResponse(ok=False, status_code=0, text=str(e))
@@ -673,9 +725,11 @@ def postgrest_rpc(function_name: str, params: dict, use_admin: bool = False) -> 
         headers = get_service_role_headers()
     else:
         headers = get_user_headers()
+    # admin-RPC идёт через _admin_session (connection pooling для service_role)
+    rpc_session = _admin_session if use_admin else _session
 
     def _make_request() -> PostgrestResponse:
-        resp = _session.post(url, headers=headers, json=params, timeout=Config.POSTGREST_RPC_TIMEOUT)
+        resp = rpc_session.post(url, headers=headers, json=params, timeout=Config.POSTGREST_RPC_TIMEOUT)
         try:
             data = resp.json()
         except Exception:

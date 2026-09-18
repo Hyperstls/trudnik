@@ -190,17 +190,18 @@
         <form id="change-password-form" action="/profile/change-password" method="post" class="space-y-3">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
             <div class="floating-label-group">
-                <input type="password" name="current_password" id="current-password" required aria-required="true" minlength="8"
+                <input type="password" name="current_password" id="current-password" required aria-required="true"
                        class="floating-input" placeholder=" " autocomplete="current-password">
                 <label class="floating-label">Текущий пароль</label>
             </div>
             <div class="floating-label-group">
-                <input type="password" name="new_password" id="new-password" required aria-required="true" minlength="6"
+                <input type="password" name="new_password" id="new-password" required aria-required="true" minlength="8"
                        class="floating-input" placeholder=" " autocomplete="new-password">
                 <label class="floating-label">Новый пароль</label>
             </div>
+            <p class="text-xs text-neutral-500 -mt-1">Минимум 8 символов: A-Z, a-z, 0-9, спецсимвол</p>
             <div class="floating-label-group">
-                <input type="password" name="confirm_password" id="confirm-password" required aria-required="true" minlength="6"
+                <input type="password" name="confirm_password" id="confirm-password" required aria-required="true" minlength="8"
                        class="floating-input" placeholder=" ">
                 <label class="floating-label">Подтвердите новый пароль</label>
             </div>

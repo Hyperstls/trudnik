@@ -176,22 +176,26 @@ def update_profile():
         if assert_postgrest_ok(update_resp, 'обновление профиля'):
             flash('Профиль обновлён', 'success')
 
-        # Синхронизация навыков через user_skills (вместо profiles.skills)
-        if skill_ids:
-            # Удаляем старые связи
-            postgrest_request('DELETE', f'user_skills?user_id=eq.{user_id}')
-            # Вставляем новые
+        # Синхронизация навыков через user_skills атомарной RPC (миграция 144).
+        # Поле skill_ids присутствует в форме только у worker — для остальных
+        # навыки не трогаем. Пустой список = удалить все навыки.
+        if 'skill_ids' in request.form:
+            valid_skill_ids = []
             for sid in skill_ids:
-                sid = sid.strip()
-                if not sid:
-                    continue
                 try:
                     uuid.UUID(sid)
                 except (ValueError, AttributeError):
                     continue
-                postgrest_request('POST', 'user_skills', json={
-                    'user_id': user_id, 'skill_id': sid
-                })
+                valid_skill_ids.append(sid)
+            sync_resp = postgrest_rpc('sync_user_skills', {
+                'p_user_id': user_id,
+                'p_skill_ids': valid_skill_ids,
+            })
+            if not sync_resp.ok:
+                current_app.logger.error(
+                    'sync_user_skills failed for user %s: %s %s',
+                    user_id, sync_resp.status_code, sync_resp.text)
+                flash('Не удалось сохранить навыки', 'danger')
     except Exception:
         current_app.logger.exception('Error updating profile for user %s', user_id)
         flash('Не удалось обновить профиль', 'danger')

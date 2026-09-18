@@ -284,14 +284,16 @@ if _is_mock_enabled():
     _install_auth_mock()
 
 
-def _test_mock_request(method: str, endpoint: str, **kwargs: Any) -> PostgrestResponse:
+def _test_mock_request(method: str, endpoint: str, **kwargs: Any) -> 'PostgrestResponse':
     """Обрабатывает HTTP-запрос локально при TESTING=True."""
     global _test_db
 
     # RPC-вызовы: делегируем в _test_mock_rpc
     if endpoint.startswith('rpc/'):
         function_name = endpoint[4:]  # отрезаем 'rpc/'
-        params = kwargs.get('json', {})
+        # RPC шлют параметры как json (postgrest_rpc) либо form-data
+        # (postgrest_admin_request с data=, напр. register_user в auth.py)
+        params = kwargs.get('json') or kwargs.get('data') or {}
         return _test_mock_rpc(function_name, params)
 
     # Парсим endpoint: 'jobs?status=eq.open&select=id,title'
@@ -585,7 +587,7 @@ def _test_mock_request(method: str, endpoint: str, **kwargs: Any) -> PostgrestRe
     return _get_postgrest_response_class()(ok=False, status_code=405, text=f'Method {method} not supported in mock')
 
 
-def _test_mock_rpc(function_name: str, params: dict) -> PostgrestResponse:
+def _test_mock_rpc(function_name: str, params: dict) -> 'PostgrestResponse':
     """Обрабатывает RPC-вызов локально при TESTING=True.
 
     ВАЖНО: все RPC возвращают data как dict (не list), потому что код приложения
@@ -725,6 +727,22 @@ def _test_mock_rpc(function_name: str, params: dict) -> PostgrestResponse:
     # nearby_jobs — геопоиск заданий в радиусе (возвращает список jobs)
     if function_name == 'nearby_jobs':
         return _get_postgrest_response_class()(ok=True, status_code=200, data=[], text=json.dumps([]))
+
+    # sync_user_skills — атомарная синхронизация навыков (миграция 144):
+    # DELETE не входящих в массив + INSERT новых (пустой массив → удалить все)
+    if function_name == 'sync_user_skills':
+        user_id = str(params.get('p_user_id', ''))
+        skill_ids = [str(s) for s in (params.get('p_skill_ids') or [])]
+        records = _test_db.setdefault('user_skills', [])
+        _test_db['user_skills'] = [
+            r for r in records
+            if not (str(r.get('user_id')) == user_id and str(r.get('skill_id')) not in skill_ids)
+        ]
+        existing = {(str(r.get('user_id')), str(r.get('skill_id'))) for r in _test_db['user_skills']}
+        for sid in skill_ids:
+            if (user_id, sid) not in existing:
+                _test_db['user_skills'].append({'user_id': user_id, 'skill_id': sid})
+        return _get_postgrest_response_class()(ok=True, status_code=200, data=None, text='')
 
     return _get_postgrest_response_class()(ok=False, status_code=404, text=f'RPC {function_name} not mocked')
 

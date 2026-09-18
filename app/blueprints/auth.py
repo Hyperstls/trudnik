@@ -6,7 +6,7 @@ from flask import Blueprint, current_app, flash, redirect, render_template, requ
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 
 from app.decorators import rate_limit
-from app.utils import postgrest_admin_request
+from app.utils import postgrest_admin_request, postgrest_rpc
 from app.utils.auth import login_user_session
 from app.utils.redis_client import get_redis_client
 from app.utils.security import has_sql_injection
@@ -307,8 +307,11 @@ def register():
                 if not patch_resp.ok:
                     log.error('Failed to update profile for user %s: %s', user_id, patch_resp.text)
 
-                # Сохраняем навыки через user_skills (с валидацией UUID)
+                # Сохраняем навыки через user_skills атомарной RPC (с валидацией UUID).
+                # use_admin=True: при регистрации пользователь ещё не залогинен
+                # (нет user-JWT); RPC sync_user_skills разрешает service_role.
                 if role == 'worker' and skill_ids:
+                    valid_skill_ids = []
                     for sid in skill_ids:
                         sid = sid.strip()
                         if not sid:
@@ -317,9 +320,16 @@ def register():
                             _uuid.UUID(sid)
                         except (ValueError, AttributeError):
                             continue
-                        postgrest_admin_request('POST', 'user_skills', json={
-                            'user_id': user_id, 'skill_id': sid
-                        })
+                        valid_skill_ids.append(sid)
+                    if valid_skill_ids:
+                        skills_resp = postgrest_rpc(
+                            'sync_user_skills',
+                            {'p_user_id': str(user_id), 'p_skill_ids': valid_skill_ids},
+                            use_admin=True,
+                        )
+                        if not skills_resp.ok:
+                            log.error('Failed to sync skills for user %s: %s %s',
+                                      user_id, skills_resp.status_code, skills_resp.text)
 
                 # Email verification — отправка токена вместо авто-логина
                 verification_token = _generate_email_verification_token(email)
