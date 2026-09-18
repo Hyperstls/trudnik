@@ -36,6 +36,8 @@ def test_ws_token_authenticated_returns_jwt(app_client, monkeypatch):
     """Авторизованный запрос -> JSON с короткоживущим token."""
     # Обходим X7 jti-blacklist: module-mock redis возвращает truthy MagicMock
     monkeypatch.setattr('app.utils.auth.is_jti_blacklisted', lambda jti: False)
+    from app.config import Config
+    monkeypatch.setattr(Config, 'WEBSOCKET_JWT_SECRET', 'test-ws-secret-32-bytes-minimum-ok!')
     _login(app_client)
 
     resp = app_client.get('/api/ws/token')
@@ -45,9 +47,18 @@ def test_ws_token_authenticated_returns_jwt(app_client, monkeypatch):
     assert 'token' in data and data['token']
 
     # Токен — валидный JWT, подписан WS-секретом (не PGRST_JWT_SECRET)
-    from app.config import Config
-    ws_secret = Config.WEBSOCKET_JWT_SECRET or Config.SECRET_KEY
-    decoded = pyjwt.decode(data['token'], ws_secret,
+    decoded = pyjwt.decode(data['token'], 'test-ws-secret-32-bytes-minimum-ok!',
                            algorithms=['HS256'], options={'verify_aud': False})
     assert decoded['user_id'] == 'ws-user'
     assert 'exp' in decoded and 'jti' in decoded
+
+
+def test_ws_token_without_secret_returns_503(app_client, monkeypatch):
+    """Без WEBSOCKET_JWT_SECRET -> 503, несовместимый токен не подписывается."""
+    monkeypatch.setattr('app.utils.auth.is_jti_blacklisted', lambda jti: False)
+    from app.config import Config
+    monkeypatch.setattr(Config, 'WEBSOCKET_JWT_SECRET', '')
+    _login(app_client)
+
+    resp = app_client.get('/api/ws/token')
+    assert resp.status_code == 503

@@ -2,7 +2,7 @@
 
 import re as _re_inv
 
-from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, jsonify, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required, validate_uuid
 from app.services.notification_service import (
@@ -27,13 +27,17 @@ def get_ws_token():
     from datetime import datetime, timedelta, timezone
     import jwt as pyjwt
     from app.config import Config
+    if not Config.WEBSOCKET_JWT_SECRET:
+        current_app.logger.warning(
+            'WEBSOCKET_JWT_SECRET не задан — выдача WS-токенов отключена')
+        return jsonify({'error': 'WebSocket временно недоступен'}), 503
     token = pyjwt.encode(
         {
             'user_id': str(session['user_id']),
             'exp': datetime.now(timezone.utc) + timedelta(minutes=5),
             'jti': str(_uuid.uuid4()),
         },
-        Config.WEBSOCKET_JWT_SECRET or Config.SECRET_KEY,
+        Config.WEBSOCKET_JWT_SECRET,
         algorithm='HS256',
     )
     return jsonify({'token': token, 'wsUrl': Config.WEBSOCKET_PUBLIC_URL})

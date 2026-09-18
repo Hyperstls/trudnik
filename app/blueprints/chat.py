@@ -1,4 +1,4 @@
-﻿import html as _html
+import html as _html
 import logging
 import uuid
 
@@ -161,10 +161,14 @@ def chat_new(worker_id):
 @rate_limit
 def send_message():
     """Отправить сообщение в чат заявки."""
-    data = request.get_json()
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'status': 'error', 'message': 'Некорректное тело запроса'}), 400
     sender_id = session['user_id']
-    application_id = data['application_id']
-    content = data['content']
+    application_id = data.get('application_id')
+    content = data.get('content')
+    if not application_id or not isinstance(content, str) or not content:
+        return jsonify({'status': 'error', 'message': 'Поля application_id и content обязательны'}), 400
     
     # C3: Извлекаем client_message_id для идемпотентности
     client_msg_id = data.get('client_message_id')
@@ -245,6 +249,14 @@ def send_message():
 
     # Публикуем событие в Redis для мгновенной доставки через WebSocket
     if redis_publisher is not None:
+        sender_name = 'Пользователь'
+        try:
+            name_resp = postgrest_request('GET',
+                f'profiles?id=eq.{sender_id}&select=full_name')
+            if name_resp.ok and name_resp.json():
+                sender_name = name_resp.json()[0].get('full_name') or sender_name
+        except Exception:
+            logger.debug('chat.send_message: не удалось получить имя отправителя', exc_info=True)
         try:
             redis_publisher.publish_chat_message(
                 sender_id=sender_id,
@@ -253,7 +265,7 @@ def send_message():
                     'message_id': message_id,
                     'text': sanitized_content,
                     'sender_id': sender_id,
-                    'sender_name': session.get('username', 'Пользователь'),
+                    'sender_name': sender_name,
                     'application_id': application_id,
                     'job_id': app_data.get('job_id')
                 }
