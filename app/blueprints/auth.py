@@ -10,7 +10,7 @@ from app.utils import postgrest_admin_request
 from app.utils.auth import login_user_session
 from app.utils.redis_client import get_redis_client
 from app.utils.security import has_sql_injection
-from app.utils.validators import validate_password, validate_inn_checksum
+from app.utils.validators import validate_password, validate_inn_checksum, is_valid_contact
 from app.services.auth_service import (
     login_direct_sql,
     login_postgrest,
@@ -298,12 +298,7 @@ def register():
                             flash('Контакт должен содержать минимум 3 символа', 'danger')
                             return redirect(url_for('auth.register'))
                         # Базовая проверка формата: email, телефон или username
-                        if not any([
-                            bool(__import__('re').match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', contact)),
-                            bool(__import__('re').match(r'^\+?\d[\d\-\s\(\)]{4,}$', contact)),
-                            bool(__import__('re').match(r'^@?\w{3,}$', contact)),
-                            len(contact) >= 5,
-                        ]):
+                        if not is_valid_contact(contact):
                             flash('Введите корректный контакт: email, телефон или никнейм', 'danger')
                             return redirect(url_for('auth.register'))
                     update_data['contact'] = contact
@@ -516,23 +511,25 @@ def password_reset_request():
         # Устанавливаем rate-limit
         _set_reset_rate_limit(email)
 
-        # Отправляем email через сервис
+        # Асинхронная отправка через Celery — тот же механизм, что и письмо
+        # подтверждения при регистрации (SMTP до 30 с не блокирует request-цикл).
+        # Сбой постановки в очередь не раскрываем пользователю (email-оракул).
         try:
-            from app.services.email_service import send_email
-            send_email(
-                to_email=email,
-                subject='Сброс пароля — Trudnik',
-                body=f'Для сброса пароля перейдите по ссылке:\n\n{reset_url}\n\n'
-                     f'Ссылка действительна в течение 1 часа.\n'
-                     f'Если вы не запрашивали сброс пароля, проигнорируйте это письмо.',
-                html_body=f'<p>Для сброса пароля перейдите по ссылке:</p>'
-                          f'<p><a href="{reset_url}">{reset_url}</a></p>'
-                          f'<p>Ссылка действительна в течение 1 часа.</p>'
-                          f'<p>Если вы не запрашивали сброс пароля, проигнорируйте это письмо.</p>'
+            from app.tasks.email_tasks import send_email_notification
+            send_email_notification.delay(
+                user_id=str(user_data.get('id')),
+                notification_id=0,
+                user_email=email,
+                user_name=email,
+                notification_text=f'Для сброса пароля перейдите по ссылке:\n\n{reset_url}\n\n'
+                                  f'Ссылка действительна в течение 1 часа.\n'
+                                  f'Если вы не запрашивали сброс пароля, проигнорируйте это письмо.',
+                notification_type='password_reset',
+                notification_url=reset_url
             )
-            log.info('Password reset email sent to %s', email)
-        except Exception as e:
-            log.error('Failed to send password reset email to %s: %s', email, e)
+            log.info('Password reset email queued for %s', email)
+        except Exception as email_err:
+            log.warning('Не удалось поставить в очередь письмо сброса пароля для %s: %s', email, email_err, exc_info=True)
 
         # Всегда показываем одинаковое сообщение (безопасность)
         flash('Если аккаунт с таким email существует, ссылка для сброса пароля отправлена.', 'success')

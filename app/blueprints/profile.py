@@ -20,7 +20,7 @@ from app.services.storage_service import upload_photo
 from app.utils import is_circuit_open, postgrest_request, postgrest_rpc, upload_to_storage
 from app.utils.helpers import assert_postgrest_ok
 from app.utils.redis_client import get_redis_client
-from app.utils.validators import validate_password, validate_inn_checksum
+from app.utils.validators import validate_password, validate_inn_checksum, is_valid_contact
 
 profile_bp = Blueprint('profile', __name__)
 
@@ -144,16 +144,10 @@ def update_profile():
 
     contact = request.form.get('contact', '').strip()
     if contact:
-        import re
         if len(contact) < 3:
             flash('Контакт должен содержать минимум 3 символа', 'danger')
             return redirect(url_for('profile.profile'))
-        if not any([
-            bool(re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', contact)),
-            bool(re.match(r'^\+?\d[\d\-\s\(\)]{4,}$', contact)),
-            bool(re.match(r'^@?\w{3,}$', contact)),
-            len(contact) >= 5,
-        ]):
+        if not is_valid_contact(contact):
             flash('Введите корректный контакт: email, телефон или никнейм', 'danger')
             return redirect(url_for('profile.profile'))
     data['contact'] = contact if len(contact) >= 3 else None
@@ -296,9 +290,8 @@ def export_data():
         'profile': f'profiles?id=eq.{user_id}&select=*',
         'skills': f'user_skills?user_id=eq.{user_id}&select=*',
         'applications_as_worker': f'applications?worker_id=eq.{user_id}&select=*',
-        'applications_as_employer': f'applications?employer_id=eq.{user_id}&select=*',
         'favorites': f'favorites?user_id=eq.{user_id}&select=*',
-        'blacklist': f'blacklist?user_id=eq.{user_id}&select=*',
+        'blacklist': f'blacklists?user_id=eq.{user_id}&select=*',
         'ratings_given': f'ratings?rater_id=eq.{user_id}&select=*',
         'ratings_received': f'ratings?target_user_id=eq.{user_id}&select=*',
     }
@@ -307,8 +300,26 @@ def export_data():
             resp = postgrest_request('GET', endpoint)
             data[key] = resp.json() if resp.ok else []
         except Exception:
-            logging.getLogger(__name__).debug('export_data: section %s failed', key, exc_info=True)
+            logging.getLogger(__name__).warning('export_data: section %s failed', key, exc_info=True)
             data[key] = []
+
+    # Отклики на задания пользователя как заказчика: у applications нет колонки
+    # employer_id, поэтому выбираем через его задания (jobs → applications.job_id).
+    try:
+        jobs_resp = postgrest_request('GET', f'jobs?employer_id=eq.{user_id}&select=id')
+        job_ids = [
+            str(j['id']) for j in (jobs_resp.json() if jobs_resp.ok else [])
+            if isinstance(j, dict) and j.get('id')
+        ]
+        if job_ids:
+            apps_resp = postgrest_request(
+                'GET', f'applications?job_id=in.({",".join(job_ids)})&select=*')
+            data['applications_as_employer'] = apps_resp.json() if apps_resp.ok else []
+        else:
+            data['applications_as_employer'] = []
+    except Exception:
+        logging.getLogger(__name__).warning('export_data: section applications_as_employer failed', exc_info=True)
+        data['applications_as_employer'] = []
 
     payload = _json.dumps(data, ensure_ascii=False, default=str, indent=2)
     return Response(

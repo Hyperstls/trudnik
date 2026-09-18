@@ -1,4 +1,4 @@
-"""Валидация: validate_password, _SQL_INJECTION_PATTERNS."""
+"""Валидация: validate_password, is_valid_contact, validate_inn_checksum, parse_float."""
 
 import re
 from typing import Optional
@@ -84,6 +84,31 @@ def check_password_strength(password: str) -> dict:
         'feedback': feedback,
         'is_strong': score >= 4
     }
+
+
+def is_valid_contact(contact: str) -> bool:
+    """Проверить контакт пользователя: email, телефон или никнейм (telegram @username).
+
+    Допустимые форматы (любой из):
+      - email: user@example.com
+      - телефон: +7 999 123-45-67 (цифры, пробелы, дефисы, скобки)
+      - никнейм: @user_name или user_name (от 3 word-символов)
+
+    Минимальная длина (guard от пустоты) проверяется вызывающим кодом отдельно.
+
+    Args:
+        contact: строка контакта (уже strip()'нутая).
+
+    Returns:
+        True если контакт соответствует одному из форматов, иначе False.
+    """
+    if not contact:
+        return False
+    return any([
+        bool(re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', contact)),
+        bool(re.match(r'^\+?\d[\d\-\s\(\)]{4,}$', contact)),
+        bool(re.match(r'^@?\w{3,}$', contact)),
+    ])
 
 
 def validate_inn_checksum(inn: str) -> bool:

@@ -4,6 +4,7 @@
 - validate_password() — требования к паролю (None = валиден)
 - check_password_strength() — {score, max_score, feedback, is_strong}
 - validate_inn_checksum() — контрольная сумма ИНН 10/12 цифр (алгоритм ФНС)
+- is_valid_contact() — email / телефон / никнейм (telegram @username)
 - _SQL_INJECTION_PATTERNS — устаревший regex (обратная совместимость)
 
 Тестовый пароль 'Aa1!aaaa' — намеренно низкой энтропии (правило проекта:
@@ -17,6 +18,7 @@ import pytest
 from app.utils.validators import (
     _SQL_INJECTION_PATTERNS,
     check_password_strength,
+    is_valid_contact,
     parse_float,
     validate_inn_checksum,
     validate_password,
@@ -157,6 +159,50 @@ class TestValidateInnChecksum:
     def test_spaces_around_digits(self):
         """Пробелы не допускаются — isdigit() False."""
         assert validate_inn_checksum(' 7707083893 ') is False
+
+
+# ═══════════════════════════════════════════════════════════════
+# is_valid_contact()
+# ═══════════════════════════════════════════════════════════════
+
+class TestIsValidContact:
+    """email / телефон / никнейм. Регрессия: раньше в any([...]) было условие
+    len(contact) >= 5, пропускавшее любой мусор от 5 символов."""
+
+    # ── Happy path ──
+    def test_email(self):
+        assert is_valid_contact('user@example.com') is True
+
+    def test_phone_with_formatting(self):
+        assert is_valid_contact('+7 (999) 123-45-67') is True
+
+    def test_phone_plain_digits(self):
+        assert is_valid_contact('89991234567') is True
+
+    def test_telegram_username_with_at(self):
+        assert is_valid_contact('@nickname') is True
+
+    def test_username_without_at(self):
+        assert is_valid_contact('nickname') is True
+
+    # ── Negative cases ──
+    def test_garbage_five_plus_chars_rejected(self):
+        """'!!@@@$$' (7 символов) проходил раньше через len >= 5 — теперь нет."""
+        assert is_valid_contact('!!@@@$$') is False
+
+    def test_garbage_with_letters_rejected(self):
+        """'abc!@#def' — не email/телефон, а \\w{3,} требует всю строку word-символов."""
+        assert is_valid_contact('abc!@#def') is False
+
+    def test_empty_string(self):
+        assert is_valid_contact('') is False
+
+    def test_none(self):
+        assert is_valid_contact(None) is False
+
+    def test_at_in_middle_not_email(self):
+        """'a@b' — нет доменной зоны, не телефон, @ не на первой позиции."""
+        assert is_valid_contact('a@b') is False
 
 
 # ═══════════════════════════════════════════════════════════════

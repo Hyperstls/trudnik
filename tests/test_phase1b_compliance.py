@@ -67,6 +67,69 @@ def test_export_data_returns_json(authed_client):
     assert 'profile' in data
 
 
+def test_export_data_fills_blacklist_and_employer_applications(authed_client, monkeypatch):
+    """Регрессия: разделы blacklist и applications_as_employer непустые при данных.
+
+    Раньше запрашивались несуществующие таблица `blacklist` (правильно —
+    `blacklists`) и колонка `applications.employer_id` (её нет — отклики на
+    задания заказчика выбираются через jobs → applications.job_id), поэтому
+    оба раздела молча приходили пустыми.
+    """
+    import app.blueprints.profile as profile_mod
+    from app.utils import PostgrestResponse
+
+    user_id = '11111111-1111-1111-1111-111111111111'
+    job_id = '22222222-2222-2222-2222-222222222222'
+
+    def fake_get(method, endpoint, **kwargs):
+        if endpoint.startswith('blacklists?'):
+            assert f'user_id=eq.{user_id}' in endpoint
+            return PostgrestResponse(
+                ok=True, status_code=200,
+                data=[{'user_id': user_id,
+                       'blocked_user_id': '55555555-5555-5555-5555-555555555555'}],
+                text='[]')
+        if endpoint.startswith('jobs?'):
+            assert f'employer_id=eq.{user_id}' in endpoint
+            return PostgrestResponse(ok=True, status_code=200,
+                                     data=[{'id': job_id}], text='[]')
+        if endpoint.startswith('applications?job_id=in.'):
+            assert job_id in endpoint
+            return PostgrestResponse(
+                ok=True, status_code=200,
+                data=[{'id': '33333333-3333-3333-3333-333333333333',
+                       'job_id': job_id, 'status': 'pending'}],
+                text='[]')
+        return PostgrestResponse(ok=True, status_code=200, data=[], text='[]')
+
+    monkeypatch.setattr(profile_mod, 'postgrest_request', fake_get)
+    response = authed_client.get('/profile/export-data', follow_redirects=False)
+    assert response.status_code == 200
+    data = response.get_json()
+    assert [r['user_id'] for r in data['blacklist']] == [user_id]
+    assert [r['job_id'] for r in data['applications_as_employer']] == [job_id]
+
+
+def test_export_data_employer_without_jobs_skips_in_query(authed_client, monkeypatch):
+    """Нет заданий → applications_as_employer пуст, а запрос applications
+    не выполняется вовсе (пустой `in.()` невалиден в PostgREST)."""
+    import app.blueprints.profile as profile_mod
+    from app.utils import PostgrestResponse
+
+    requested = []
+
+    def fake_get(method, endpoint, **kwargs):
+        requested.append(endpoint)
+        return PostgrestResponse(ok=True, status_code=200, data=[], text='[]')
+
+    monkeypatch.setattr(profile_mod, 'postgrest_request', fake_get)
+    response = authed_client.get('/profile/export-data', follow_redirects=False)
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['applications_as_employer'] == []
+    assert not any(e.startswith('applications?job_id=in.') for e in requested)
+
+
 # ── 152-ФЗ ст.10: вероисповедание убрано из публичных полей ─────────
 def test_religion_removed_from_public_profile_fields():
     """PUBLIC_PROFILE_FIELDS не содержит religion/religion_id."""

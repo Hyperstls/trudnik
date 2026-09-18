@@ -120,6 +120,12 @@ def send_email_notification(
     if notification_type == "new_message":
         template_name = "chat_message"
         subject = "Новое сообщение в чате — Trudnik"
+    elif notification_type == "password_reset":
+        template_name = "notification"
+        subject = "Сброс пароля — Trudnik"
+    elif notification_type == "email_verification":
+        template_name = "notification"
+        subject = "Подтверждение email — Trudnik"
     else:
         template_name = "notification"
         subject = f"Уведомление — Trudnik"

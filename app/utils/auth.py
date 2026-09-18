@@ -295,7 +295,7 @@ def get_user_profile() -> Optional[Dict[str, Any]]:
 
     resp = postgrest_request(
         'GET',
-        f'profiles?id=eq.{session["user_id"]}&select=id,role,created_at,updated_at,is_self_employed,email_public,rating,full_name,photo_url,age,bio,city,experience,desired_payment,verification_status,total_reviews,skills,portfolio_link'
+        f'profiles?id=eq.{session["user_id"]}&select=id,role,created_at,updated_at,is_self_employed,email_public,rating,full_name,photo_url,age,bio,city,experience,desired_payment,verification_status,total_reviews,portfolio_link'
     )
     # Fallback: если пользовательский запрос не удался — пробуем через service_role
     if not resp.ok:
