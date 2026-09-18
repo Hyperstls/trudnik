@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from '_icons.html' import star, chat, users, smiley %}
+{% from '_icons.html' import star, chat, users_icon, smiley, icon_ban, restore %}
 {% from '_sort_panel.html' import sort_panel with context %}
 {% block title %}Трудники{% endblock %}
 {% block content %}
@@ -38,7 +38,7 @@
                             aria-label="Заблокировать трудника"
                             data-action="toggle-block"
                             data-blocked="false">
-                        🚫
+                        {{ icon_ban(16) }}
                     </button>
                     {% endif %}
                     {% if session.get('user_id') %}
@@ -171,45 +171,15 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/favorites.js') }}" nonce="{{ csp_nonce }}"></script>
+<script src="{{ url_for('static', filename='js/favorites.js') }}?v=20260905" nonce="{{ csp_nonce }}"></script>
 {% if session.get('user_id') %}
-<script nonce="{{ csp_nonce }}">
-async function inviteWorker(workerId, workerName, btn) {
-    const jobId = prompt(`Пригласить ${workerName || 'трудника'} на задание.\nВведите ID задания:`);
-    if (!jobId) return;
-
-    btn.disabled = true;
-    const span = btn.querySelector('.invite-text');
-    const orig = span.textContent;
-    span.textContent = '...';
-
-    try {
-        const resp = await fetch(`/api/invite/${jobId}/${workerId}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({message: ''})
-        });
-        const data = await resp.json();
-        if (data.success) {
-            if (window.showToast) window.showToast('✅ Приглашение отправлено', 'success');
-            span.textContent = '✓ Приглашён';
-            btn.classList.add('opacity-60');
-            btn.disabled = true;
-        } else {
-            if (window.showToast) window.showToast('❌ ' + (data.error || 'Ошибка'), 'error');
-            span.textContent = orig;
-            btn.disabled = false;
-        }
-    } catch (e) {
-        if (window.showToast) window.showToast('❌ Ошибка соединения', 'error');
-        span.textContent = orig;
-        btn.disabled = false;
-    }
-}
-</script>
+<script src="{{ url_for('static', filename='js/invite-worker.js') }}?v=20260905" nonce="{{ csp_nonce }}"></script>
 {% endif %}
 {% if session.get('user_id') %}
 <script nonce="{{ csp_nonce }}">
+var ICON_BLOCK_ACTION = {{ icon_ban(16) | tojson }};
+var ICON_UNBLOCK_ACTION = {{ restore(16) | tojson }};
+
 async function toggleBlock(btn, workerId, evt) {
     if (evt) { evt.preventDefault(); evt.stopPropagation(); }
 
@@ -243,26 +213,26 @@ async function toggleBlock(btn, workerId, evt) {
             if (isBlocked) {
                 // Разблокировали
                 btn.dataset.blocked = 'false';
-                btn.innerHTML = '🚫';
+                btn.innerHTML = ICON_BLOCK_ACTION;
                 btn.title = 'Заблокировать';
                 btn.classList.remove('text-green-500', 'hover:text-green-600', 'hover:bg-green-50');
                 btn.classList.add('text-neutral-400', 'hover:text-red-500', 'hover:bg-red-50');
-                if (window.showToast) window.showToast('🔓 Работник разблокирован', 'success');
+                if (window.showToast) window.showToast('Работник разблокирован', 'success');
             } else {
                 // Заблокировали
                 btn.dataset.blocked = 'true';
-                btn.innerHTML = '🔓';
+                btn.innerHTML = ICON_UNBLOCK_ACTION;
                 btn.title = 'Разблокировать';
                 btn.classList.remove('text-neutral-400', 'hover:text-red-500', 'hover:bg-red-50');
                 btn.classList.add('text-green-500', 'hover:text-green-600', 'hover:bg-green-50');
-                if (window.showToast) window.showToast('🔒 Работник заблокирован', 'success');
+                if (window.showToast) window.showToast('Работник заблокирован', 'success');
             }
         } else {
-            if (window.showToast) window.showToast('❌ ' + (data.error || 'Ошибка'), 'error');
+            if (window.showToast) window.showToast(data.error || 'Ошибка', 'error');
         }
     } catch (e) {
         console.error('toggleBlock error:', e);
-        if (window.showToast) window.showToast('❌ Ошибка соединения', 'error');
+        if (window.showToast) window.showToast('Ошибка соединения', 'error');
     }
     btn.disabled = false;
     };
@@ -289,7 +259,7 @@ async function toggleBlock(btn, workerId, evt) {
     var selectedJobId = '';
     var completedJobs = [];
 
-    var backdrop = document.getElementById('rating-modal-backdrop');
+    var dialog = document.getElementById('rating-modal');
     var titleEl = document.getElementById('rating-modal-title');
     var nameEl = document.getElementById('rating-modal-worker-name');
     var starsContainer = document.getElementById('rating-stars');
@@ -328,16 +298,12 @@ async function toggleBlock(btn, workerId, evt) {
 
         submitBtn.textContent = 'Отправить';
 
-        // Показать
-        backdrop.style.display = 'flex';
-        backdrop.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
+        // Показать через нативный dialog.showModal()
+        if (dialog) dialog.showModal();
     }
 
     function closeRatingModal() {
-        backdrop.style.display = 'none';
-        backdrop.classList.add('hidden');
-        document.body.style.overflow = '';
+        if (dialog && dialog.open) dialog.close();
         currentWorkerId = null;
     }
 
@@ -427,34 +393,30 @@ async function toggleBlock(btn, workerId, evt) {
 
                 var data = await resp.json();
                 if (resp.ok && data.success) {
-                    if (window.showToast) window.showToast('✅ Оценка сохранена', 'success');
+                    if (window.showToast) window.showToast('Оценка сохранена', 'success');
                     closeRatingModal();
                 } else {
-                    if (window.showToast) window.showToast('❌ ' + (data.error || 'Ошибка при сохранении оценки'), 'error');
+                    if (window.showToast) window.showToast(data.error || 'Ошибка при сохранении оценки', 'error');
                 }
             } catch (e) {
                 console.error('Rating submit error:', e);
-                if (window.showToast) window.showToast('❌ Ошибка соединения', 'error');
+                if (window.showToast) window.showToast('Ошибка соединения', 'error');
             }
             submitBtn.disabled = false;
             submitBtn.textContent = 'Отправить';
         });
     }
 
-    // Закрытие
+    // Закрытие (Escape обрабатывает нативный dialog)
     if (cancelBtn) {
         cancelBtn.addEventListener('click', closeRatingModal);
     }
-    if (backdrop) {
-        backdrop.addEventListener('click', function(e) {
-            if (e.target === backdrop) closeRatingModal();
+    if (dialog) {
+        // Клик по подложке dialog закрывает (target — сам dialog)
+        dialog.addEventListener('click', function(e) {
+            if (e.target === dialog) closeRatingModal();
         });
     }
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && backdrop && !backdrop.classList.contains('hidden')) {
-            closeRatingModal();
-        }
-    });
 
     // Экспорт
     window.openRatingModal = openRatingModal;
@@ -528,7 +490,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var card = btn.closest('[data-worker-id]');
         var nameEl = card ? card.querySelector('h3') : null;
         var workerName = nameEl ? nameEl.textContent.trim() : '';
-        if (typeof inviteWorker === 'function') inviteWorker(workerId, workerName, btn);
+        if (window.InviteWorker) window.InviteWorker.open(workerId, workerName, btn);
     });
 });
 

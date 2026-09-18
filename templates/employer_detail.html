@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from '_icons.html' import star, heart, map_pin, clock, dollar, phone, smiley, avatar, award, briefcase %}
-{% from '_components.html' import breadcrumbs %}
+{% from '_components.html' import breadcrumbs, status_badge %}
 {% block title %}{{ employer.full_name }} — Работодатель{% endblock %}
 {% block content %}
 <div class="px-4 pb-24 max-w-2xl mx-auto fade-in">
@@ -157,15 +157,7 @@
                             <p class="mt-1.5 text-sm text-neutral-600 line-clamp-2 leading-relaxed">{{ job.object_description }}</p>
                             {% endif %}
                             {% if job.status %}
-                            <span class="inline-block mt-2 text-[11px] font-semibold px-2.5 py-0.5 rounded-full
-                                {% if job.status == 'open' %}bg-green-100 text-green-700
-                                {% elif job.status == 'completed' %}bg-neutral-200 text-neutral-600
-                                {% else %}bg-red-100 text-red-700{% endif %}">
-                                {% if job.status == 'open' %}Открыто
-                                {% elif job.status == 'completed' %}Завершено
-                                {% elif job.status == 'cancelled' %}Отменено
-                                {% else %}{{ job.status }}{% endif %}
-                            </span>
+                            <div class="mt-2">{{ status_badge(job.status) }}</div>
                             {% endif %}
                         </div>
                         {% if job.payment_amount %}
@@ -258,7 +250,7 @@
     var selectedJobId = '';
     var completedJobs = [];
 
-    var backdrop = document.getElementById('rating-modal-backdrop');
+    var dialog = document.getElementById('rating-modal');
     var starsContainer = document.getElementById('rating-stars');
     var ratingInput = document.getElementById('rating-value');
     var commentEl = document.getElementById('rating-comment');
@@ -319,16 +311,12 @@
 
         submitBtn.textContent = 'Отправить';
 
-        // Показать
-        backdrop.style.display = 'flex';
-        backdrop.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
+        // Показать через нативный dialog.showModal()
+        if (dialog) dialog.showModal();
     }
 
     function closeRatingModal() {
-        backdrop.style.display = 'none';
-        backdrop.classList.add('hidden');
-        document.body.style.overflow = '';
+        if (dialog && dialog.open) dialog.close();
         submitBtn.classList.remove('opacity-50');
     }
 
@@ -430,14 +418,14 @@
 
                 var data = await resp.json();
                 if (resp.ok && data.success) {
-                    if (window.showToast) window.showToast('✅ Оценка сохранена', 'success');
+                    if (window.showToast) window.showToast('Оценка сохранена', 'success');
                     closeRatingModal();
                 } else {
-                    if (window.showToast) window.showToast('❌ ' + (data.error || 'Ошибка при сохранении оценки'), 'error');
+                    if (window.showToast) window.showToast(data.error || 'Ошибка при сохранении оценки', 'error');
                 }
             } catch (e) {
                 console.error('Rating submit error:', e);
-                if (window.showToast) window.showToast('❌ Ошибка соединения', 'error');
+                if (window.showToast) window.showToast('Ошибка соединения', 'error');
             }
             submitBtn.disabled = false;
             submitBtn.textContent = 'Отправить';
@@ -452,20 +440,16 @@
         });
     }
 
-    // Закрытие
+    // Закрытие (Escape обрабатывает нативный dialog)
     if (cancelBtn) {
         cancelBtn.addEventListener('click', closeRatingModal);
     }
-    if (backdrop) {
-        backdrop.addEventListener('click', function(e) {
-            if (e.target === backdrop) closeRatingModal();
+    if (dialog) {
+        // Клик по подложке dialog закрывает (target — сам dialog)
+        dialog.addEventListener('click', function(e) {
+            if (e.target === dialog) closeRatingModal();
         });
     }
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && backdrop && !backdrop.classList.contains('hidden')) {
-            closeRatingModal();
-        }
-    });
 })();
 </script>
 {% endif %}

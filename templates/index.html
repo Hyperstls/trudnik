@@ -1,5 +1,6 @@
-﻿{% extends "base.html" %}
-{% from '_icons.html' import star, apply, x_close, check, clock, eye, menu_icon %}
+{% extends "base.html" %}
+{% from '_icons.html' import star, apply, x_close, check, clock, eye, menu_icon, map_pin %}
+{% from '_components.html' import empty_state %}
 {% from '_sort_panel.html' import sort_panel with context %}
 {% block title %}Трудник — Поиск работы{% endblock %}
 {% block content %}
@@ -16,8 +17,8 @@
 
     <!-- Гео-поиск (опциональный): радиус без верхнего предела -->
     <div class="flex items-center gap-2 mb-4 flex-wrap">
-        <button type="button" id="geo-nearby-btn" class="px-3 py-2 rounded-full text-sm font-medium bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50 transition-colors">
-            📍 Рядом со мной
+        <button type="button" id="geo-nearby-btn" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50 transition-colors">
+            {{ map_pin(16) }}<span id="geo-nearby-label">Рядом со мной</span>
         </button>
         <select id="geo-radius" class="px-3 py-2 rounded-full text-sm bg-white border border-neutral-200 text-neutral-700" aria-label="Радиус поиска">
             <option value="" {% if not radius %}selected{% endif %}>Любое расстояние</option>
@@ -161,21 +162,13 @@
         </article>
         {% else %}
         <!-- Empty state (A5: с действием; A2: контраст) -->
-        <div class="col-span-full flex flex-col items-center justify-center py-16 text-center fade-in">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-4" aria-hidden="true">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-            </svg>
-            <p class="text-neutral-600 text-lg font-medium">Пока нет заданий</p>
-            <p class="text-neutral-500 text-sm mt-1">Попробуйте изменить фильтры или зайдите позже</p>
-            <div class="mt-5 flex flex-wrap gap-2 justify-center">
-                {% if session.get('user_id') %}
-                <a href="/job/new" class="px-5 py-2.5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-xl transition-colors">Создать задание</a>
-                {% endif %}
-                <a href="/" class="px-5 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-sm font-semibold rounded-xl transition-colors">Сбросить фильтры</a>
-            </div>
+        <div class="col-span-full flex flex-col items-center">
+            {% if session.get('user_id') %}
+            {{ empty_state(apply, 'Пока нет заданий', 'Попробуйте изменить фильтры или зайдите позже', 'Создать задание', '/job/new') }}
+            <a href="/" class="text-sm text-neutral-500 hover:text-neutral-700 underline underline-offset-2 transition-colors -mt-10 mb-10">Сбросить фильтры</a>
+            {% else %}
+            {{ empty_state(apply, 'Пока нет заданий', 'Попробуйте изменить фильтры или зайдите позже', 'Сбросить фильтры', '/') }}
+            {% endif %}
         </div>
         {% endfor %}
     </div>
@@ -295,16 +288,18 @@ document.addEventListener('click', function(e) {
 (function() {
     var btn = document.getElementById('geo-nearby-btn');
     if (!btn) return;
+    var label = document.getElementById('geo-nearby-label');
     btn.addEventListener('click', function() {
         if (!navigator.geolocation) { window.showToast && window.showToast('Геолокация недоступна', 'warning'); return; }
-        var original = btn.textContent;
-        btn.disabled = true; btn.textContent = 'Определяем…';
+        btn.disabled = true;
+        if (label) label.textContent = 'Определяем…';
         navigator.geolocation.getCurrentPosition(function(pos) {
             var r = document.getElementById('geo-radius').value;
             var url = '/?lat=' + pos.coords.latitude + '&lng=' + pos.coords.longitude + (r ? '&radius=' + encodeURIComponent(r) : '') + '&sort=distance';
             window.location.href = url;
         }, function() {
-            btn.disabled = false; btn.textContent = original;
+            btn.disabled = false;
+            if (label) label.textContent = 'Рядом со мной';
             window.showToast && window.showToast('Не удалось определить местоположение', 'warning');
         }, { timeout: 10000, maximumAge: 60000 });
     });

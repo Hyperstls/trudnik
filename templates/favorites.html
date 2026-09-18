@@ -1,5 +1,6 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% from '_icons.html' import star, heart, trash, map_pin, dollar, clock, smiley %}
+{% from '_components.html' import status_badge %}
 {% block title %}Избранное — Трудник{% endblock %}
 {% block content %}
 <div class="px-4 pb-24 max-w-lg mx-auto">
@@ -171,15 +172,7 @@
                         <p class="mt-1.5 text-sm text-neutral-600 line-clamp-2 leading-relaxed">{{ job.object_description }}</p>
                         {% endif %}
                         {% if job.status %}
-                        <span class="inline-block mt-2 text-[11px] font-semibold px-2.5 py-0.5 rounded-full
-                            {% if job.status == 'open' %}bg-green-100 text-green-700
-                            {% elif job.status == 'completed' %}bg-neutral-200 text-neutral-600
-                            {% else %}bg-red-100 text-red-700{% endif %}">
-                            {% if job.status == 'open' %}Открыто
-                            {% elif job.status == 'completed' %}Завершено
-                            {% elif job.status == 'cancelled' %}Отменено
-                            {% else %}{{ job.status }}{% endif %}
-                        </span>
+                        <div class="mt-2">{{ status_badge(job.status) }}</div>
                         {% endif %}
                     </div>
                     {% if job.payment_amount %}
@@ -235,43 +228,9 @@
     {% endif %}
 </div>
 
-<script src="{{ url_for('static', filename='js/favorites.js') }}" nonce="{{ csp_nonce }}"></script>
+<script src="{{ url_for('static', filename='js/favorites.js') }}?v=20260905" nonce="{{ csp_nonce }}"></script>
 {% if items %}
-<script nonce="{{ csp_nonce }}">
-async function inviteWorker(workerId, workerName, btn) {
-    const jobId = prompt(`Пригласить ${workerName || 'трудника'} на задание.\nВведите ID задания:`);
-    if (!jobId) return;
-
-    btn.disabled = true;
-    const span = btn.querySelector('.invite-text');
-    const orig = span.textContent;
-    span.textContent = '...';
-
-    try {
-        const resp = await apiFetch(`/api/invite/${jobId}/${workerId}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({message: ''})
-        });
-        const data = await resp.json();
-        if (data.success) {
-            if (window.showToast) window.showToast('✅ Приглашение отправлено', 'success');
-            span.textContent = '✓ Приглашён';
-            btn.classList.add('opacity-60');
-            btn.classList.remove('accept-btn');
-            btn.disabled = true;
-        } else {
-            if (window.showToast) window.showToast('❌ ' + (data.error || 'Ошибка'), 'error');
-            span.textContent = orig;
-            btn.disabled = false;
-        }
-    } catch (e) {
-        if (window.showToast) window.showToast('❌ Ошибка соединения', 'error');
-        span.textContent = orig;
-        btn.disabled = false;
-    }
-}
-</script>
+<script src="{{ url_for('static', filename='js/invite-worker.js') }}?v=20260905" nonce="{{ csp_nonce }}"></script>
 {% endif %}
 <script nonce="{{ csp_nonce }}">
 // Специфичные для страницы избранного функции
@@ -295,9 +254,9 @@ document.addEventListener('click', function(e) {
         return;
     }
     var inviteBtn = e.target.closest('.js-invite-btn');
-    if (inviteBtn && inviteBtn.dataset.workerId && typeof inviteWorker === 'function') {
+    if (inviteBtn && inviteBtn.dataset.workerId && window.InviteWorker) {
         e.stopPropagation();
-        inviteWorker(inviteBtn.dataset.workerId, inviteBtn.dataset.workerName || '', inviteBtn);
+        window.InviteWorker.open(inviteBtn.dataset.workerId, inviteBtn.dataset.workerName || '', inviteBtn);
         return;
     }
     var removeBtn = e.target.closest('.js-remove-selected-btn');
