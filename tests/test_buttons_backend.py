@@ -1,4 +1,4 @@
-﻿"""
+"""
 Комплексные бэкенд-тесты всех кнопок приложения «Трудник» через HTTP API.
 
 Покрытие:
@@ -609,10 +609,10 @@ class TestWorker:
         resp = worker_session.get(f"{BASE_URL}/admin", timeout=30, allow_redirects=False)
         assert resp.status_code in (301, 302, 403)
 
-    def test_worker_cannot_access_blacklist(self, worker_session):
-        """Трудник не может открыть чёрный список."""
+    def test_worker_can_access_blacklist(self, worker_session):
+        """Мультирольность: трудник тоже может открыть чёрный список (200)."""
         resp = worker_session.get(f"{BASE_URL}/blacklist", timeout=30, allow_redirects=False)
-        assert resp.status_code in (301, 302, 403)
+        assert resp.status_code == 200
 
     def test_worker_cannot_manage_jobs(self, worker_session, employer_session):
         """Трудник не может управлять чужими заданиями."""

@@ -1,6 +1,6 @@
 import logging
 
-from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required, validate_uuid
 from app.utils import postgrest_request
@@ -16,22 +16,13 @@ def _is_ajax():
             (request.headers.get('Content-Type') or '').startswith('application/json'))
 
 
-def _reject_worker():
-    """Запрещает доступ к ЧС для роли worker — возвращает 403 или редиректит."""
-    if session.get('role') == 'worker':
-        if _is_ajax():
-            abort(403)
-        flash('Доступ запрещён', 'danger')
-        return redirect(url_for('jobs.index'))
-    return None
+# Мультирольность: ЧС доступен любому залогиненному — создавать задания
+# (и блокировать недобросовестных исполнителей) может любой пользователь.
 
 
 @blacklist_bp.route('/blacklist')
 @login_required
 def blacklist():
-    err = _reject_worker()
-    if err:
-        return err
     resp = postgrest_request('GET',
         f'blacklists?user_id=eq.{session["user_id"]}&select=blocked:profiles!fk_blacklists_blocked_user_id(id,full_name,photo_url,city)')
     items = resp.json() if resp.ok else []
@@ -47,9 +38,6 @@ def blacklist():
 @login_required
 @validate_uuid('user_id')
 def block_user(user_id):
-    err = _reject_worker()
-    if err:
-        return err
     # Нельзя заблокировать самого себя (TC-069, QA_TEST_CASES.md):
     # иначе работодатель теряет доступ к собственным заданиям в выдачах
     if str(user_id) == str(session.get('user_id', '')):
@@ -83,9 +71,6 @@ def block_user(user_id):
 @login_required
 @validate_uuid('user_id')
 def unblock_user(user_id):
-    err = _reject_worker()
-    if err:
-        return err
     resp = postgrest_request('DELETE', f'blacklists?user_id=eq.{session["user_id"]}&blocked_user_id=eq.{user_id}')
     if resp.ok:
         if _is_ajax():

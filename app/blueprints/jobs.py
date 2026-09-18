@@ -203,9 +203,10 @@ def index():
     if payment_max: query += f'&payment_amount=lte.{sanitize_postgrest(payment_max)}'
     # Фильтр по вероисповеданию (preferred_religion) убран: дискриминация при найме (ТК РФ ст.3).
 
-    # Фильтрация blacklist ДО пагинации: исключаем задания от работодателей, заблокировавших текущего трудника
+    # Фильтрация blacklist ДО пагинации: исключаем задания от работодателей,
+    # заблокировавших текущего пользователя (мультирольность — любой залогиненный)
     blocked_employer_ids = set()
-    if session.get('role') == 'worker' and 'user_id' in session:
+    if 'user_id' in session:
         bl_resp = postgrest_request('GET',
             f'blacklists?blocked_user_id=eq.{session["user_id"]}&select=user_id')
         if bl_resp.ok and bl_resp.json():
@@ -272,16 +273,20 @@ def index():
         jobs.sort(key=lambda x: x['payment_amount'], reverse=True)
     # sort == 'newest' — уже отсортировано по created_at.desc из запроса
 
-    applied_job_ids = []
-    if session.get('role') == 'worker' and 'user_id' in session:
-        app_resp = postgrest_request('GET',
-            f'applications?worker_id=eq.{session["user_id"]}&select=job_id')
-        if app_resp.ok and app_resp.json():
-            applied_job_ids = [a['job_id'] for a in app_resp.json()]
-
     # Определяем, есть ли следующая страница (запросили per_page+1)
     has_next = len(jobs) > per_page
     jobs = jobs[:per_page]
+
+    # Метки «откликался» — только для заданий текущей страницы, а не всех откликов
+    # пользователя (мультирольность: откликаться может любой залогиненный)
+    applied_job_ids = []
+    if 'user_id' in session and jobs:
+        page_job_ids = ','.join(str(j['id']) for j in jobs if j.get('id'))
+        if page_job_ids:
+            app_resp = postgrest_request('GET',
+                f'applications?worker_id=eq.{session["user_id"]}&job_id=in.({page_job_ids})&select=job_id')
+            if app_resp.ok and app_resp.json():
+                applied_job_ids = [a['job_id'] for a in app_resp.json()]
 
     selected_skills_list = [s.strip() for s in skills_filter.split(',') if s.strip()] if skills_filter else []
     return render_template('index.html', jobs=jobs, applied_job_ids=applied_job_ids,
@@ -372,9 +377,10 @@ def workers():
                     w['distance'] = float('inf')
             workers_list.sort(key=lambda x: x.get('distance', float('inf')))
 
-        # Определяем, какие трудники уже приглашены работодателем
+        # Определяем, какие трудники уже приглашены текущим пользователем
+        # (мультирольность: приглашать может любой залогиненный, не только role='employer')
         invited_worker_ids = set()
-        if session.get('role') == 'employer' and workers_list:
+        if session.get('user_id') and workers_list:
             worker_ids = [w['id'] for w in workers_list if w.get('id')]
             if worker_ids:
                 ids_filter = ','.join(worker_ids)
@@ -440,9 +446,9 @@ def job_detail(job_id):
             my_app_id = app_data.get('id')
             can_withdraw = check_withdraw_window(job.get('date_time'))
 
-    # Проверка: добавлен ли работодатель в избранное у трудника
+    # Проверка: добавлен ли работодатель в избранное (любой залогиненный — мультирольность)
     is_employer_favorited = False
-    if session.get('role') == 'worker' and session.get('user_id') and job.get('employer_id'):
+    if session.get('user_id') and job.get('employer_id'):
         fav_check = postgrest_request('GET',
             f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{job["employer_id"]}&favorite_type=eq.employer')
         is_employer_favorited = bool(fav_check.json()) if fav_check.ok else False
@@ -642,6 +648,7 @@ def job_new():
             else:
                 flash(safe_error_message(resp, 'Ошибка при создании задания'), 'danger')
         except Exception as e:
+            logger.exception('job_new: unexpected error while creating job: %s', e)
             flash('Ошибка сервера', 'danger')
 
     return render_template('job_new.html', **template_data)

@@ -21,8 +21,24 @@ def employers_list():
     search = request.args.get('q', '')
     sort = request.args.get('sort', 'rating')
 
-    # Базовый запрос: только работодатели
-    query = 'role=eq.employer'
+    # Мультирольность: работодатель = любой пользователь с открытыми заданиями
+    # (role — лишь ориентация лендинга, см. AGENTS.md). Заказчик с role='worker',
+    # создавший задания, тоже должен быть виден в каталоге.
+    # Заодно считаем количество открытых заданий на каждого работодателя.
+    jobs_resp = postgrest_request('GET', 'jobs?status=eq.open&select=employer_id')
+    open_jobs_counts = {}
+    if jobs_resp.ok and jobs_resp.json():
+        for job in jobs_resp.json():
+            eid = job.get('employer_id')
+            if eid:
+                open_jobs_counts[eid] = open_jobs_counts.get(eid, 0) + 1
+
+    # Базовый запрос: только пользователи с открытыми заданиями
+    if open_jobs_counts:
+        query = f'id=in.({",".join(sorted(open_jobs_counts))})'
+    else:
+        # Нет открытых заданий — гарантированно пустой результат
+        query = 'id=eq.00000000-0000-0000-0000-000000000000'
     if city:
         query += f'&city=ilike.*{sanitize_postgrest(city)}*'
     if search:
@@ -39,9 +55,10 @@ def employers_list():
         # sort == 'rating' (по умолчанию)
         query += '&order=rating.desc'
 
-    # Фильтрация blacklist ДО пагинации: исключаем работодателей, заблокировавших текущего трудника
+    # Фильтрация blacklist ДО пагинации: исключаем работодателей, заблокировавших
+    # текущего пользователя (мультирольность — любой залогиненный)
     blocked_employer_ids = set()
-    if session.get('role') == 'worker' and session.get('user_id'):
+    if session.get('user_id'):
         bl_resp = postgrest_request('GET',
             f'blacklists?blocked_user_id=eq.{session["user_id"]}&select=user_id')
         if bl_resp.ok and bl_resp.json():
@@ -57,24 +74,15 @@ def employers_list():
     resp = postgrest_request('GET', f'profiles?{query}', headers={'Prefer': 'count=exact'})
     employers = resp.json() if resp.ok and resp.json() else []
 
-    # Подсчёт открытых заданий для каждого работодателя
-    open_jobs_counts = {}
-    if employers:
-        ids = ','.join(e['id'] for e in employers)
-        jobs_resp = postgrest_request('GET',
-            f'jobs?employer_id=in.({ids})&status=eq.open&select=employer_id')
-        if jobs_resp.ok and jobs_resp.json():
-            for job in jobs_resp.json():
-                eid = job['employer_id']
-                open_jobs_counts[eid] = open_jobs_counts.get(eid, 0) + 1
+    # open_jobs_counts уже посчитан выше по всем открытым заданиям (superset страницы)
 
     # Сортировка по количеству заданий (если выбрана)
     if sort == 'jobs_count':
         employers.sort(key=lambda e: open_jobs_counts.get(e['id'], 0), reverse=True)
 
-    # Проверка избранного (только для трудников)
+    # Проверка избранного (любой залогиненный — мультирольность)
     favorited_ids = set()
-    if session.get('user_id') and session.get('role') == 'worker':
+    if session.get('user_id'):
         fav_resp = postgrest_request('GET',
             f'favorites?user_id=eq.{session["user_id"]}&favorite_type=eq.employer&select=target_id')
         if fav_resp.ok and fav_resp.json():
@@ -111,14 +119,11 @@ def employer_detail(employer_id):
         return redirect(url_for('employers.employers_list'))
 
     employer = profile_resp.json()[0]
-    if employer.get('role') != 'employer':
-        flash('Работодатель не найден', 'danger')
-        return redirect(url_for('employers.employers_list'))
 
     # Открытые задания работодателя
-    # Если текущий трудник заблокирован этим работодателем — скрываем задания
+    # Если текущий пользователь заблокирован этим работодателем — скрываем задания
     open_jobs = []
-    if session.get('role') == 'worker' and session.get('user_id'):
+    if session.get('user_id'):
         bl_check = postgrest_request('GET',
             f'blacklists?user_id=eq.{employer_id}&blocked_user_id=eq.{session["user_id"]}&select=user_id')
         is_blocked = bl_check.ok and len(bl_check.json() or []) > 0
@@ -130,10 +135,16 @@ def employer_detail(employer_id):
             f'jobs?employer_id=eq.{employer_id}&status=eq.open&select=*&order=created_at.desc')
         open_jobs = jobs_resp.json() if jobs_resp.ok and jobs_resp.json() else []
 
-    # Проверка избранного и откликов
+    # Мультирольность: работодатель = любой пользователь с открытыми заданиями
+    # (как в каталоге employers_list); role — лишь ориентация лендинга.
+    if not open_jobs:
+        flash('Работодатель не найден', 'danger')
+        return redirect(url_for('employers.employers_list'))
+
+    # Проверка избранного и откликов (любой залогиненный)
     is_favorited = False
     already_applied_job_ids = set()
-    if session.get('role') == 'worker':
+    if user_id:
         fav_resp = postgrest_request('GET',
             f'favorites?user_id=eq.{user_id}&target_id=eq.{employer_id}&favorite_type=eq.employer')
         is_favorited = fav_resp.ok and len(fav_resp.json() or []) > 0

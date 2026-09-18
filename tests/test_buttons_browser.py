@@ -658,14 +658,14 @@ class TestSecurityBrowser:
             "Работодатель не должен иметь доступ к /admin"
 
     @pytest.mark.e2e
-    def test_worker_cannot_access_blacklist(self, worker_page: Page):
-        """Трудник не может зайти в чёрный список."""
+    def test_worker_can_access_blacklist(self, worker_page: Page):
+        """Мультирольность: трудник может зайти в чёрный список."""
         page = worker_page
         page.goto(f'{BASE_URL}/blacklist', wait_until='domcontentloaded')
         page.wait_for_timeout(5000)
 
-        assert '/blacklist' not in page.url or '403' in page.content() or 'доступ' in page.content().lower(), \
-            "Трудник не должен иметь доступ к /blacklist"
+        assert page.url.endswith('/blacklist'), \
+            "Трудник должен иметь доступ к /blacklist (мультирольность)"
 
     @pytest.mark.e2e
     def test_guest_cannot_access_profile(self, playwright_browser: Browser):
