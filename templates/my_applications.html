@@ -30,6 +30,13 @@
     {# ============================================ #}
     {# ТАБ: Мои отклики (как трудника)               #}
     {# ============================================ #}
+    <div class="flex items-center justify-between mb-5">
+        <h2 class="text-2xl font-bold text-neutral-900">Мои отклики</h2>
+        {% with filter_id='apps-filter-sent', selected_skills=selected_skills|default([]) %}
+        {% include '_filter_skills.html' %}
+        {% endwith %}
+    </div>
+    {% set skills_qs = ('&skills=' ~ selected_skills|join(',')) if selected_skills else '' %}
     {% if applications %}
     <div class="space-y-3">
         {% for app in applications %}
@@ -57,9 +64,9 @@
     </div>
     {% if total_pages > 1 %}
     <nav class="flex items-center justify-center gap-2 mt-5" aria-label="Пагинация">
-        {% if page > 1 %}<a href="/my-applications?tab=sent&page={{ page - 1 }}" class="px-4 py-2 rounded-xl bg-neutral-100 text-sm font-semibold text-neutral-700 hover:bg-neutral-200">←</a>{% endif %}
+        {% if page > 1 %}<a href="/my-applications?tab=sent&page={{ page - 1 }}{{ skills_qs }}" class="px-4 py-2 rounded-xl bg-neutral-100 text-sm font-semibold text-neutral-700 hover:bg-neutral-200">←</a>{% endif %}
         <span class="text-sm text-neutral-600">Стр. {{ page }} из {{ total_pages }}</span>
-        {% if page < total_pages %}<a href="/my-applications?tab=sent&page={{ page + 1 }}" class="px-4 py-2 rounded-xl bg-neutral-100 text-sm font-semibold text-neutral-700 hover:bg-neutral-200">→</a>{% endif %}
+        {% if page < total_pages %}<a href="/my-applications?tab=sent&page={{ page + 1 }}{{ skills_qs }}" class="px-4 py-2 rounded-xl bg-neutral-100 text-sm font-semibold text-neutral-700 hover:bg-neutral-200">→</a>{% endif %}
     </nav>
     {% endif %}
     {% else %}

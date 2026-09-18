@@ -243,6 +243,22 @@ def api_withdraw_application(app_id):
     return jsonify(result)
 
 
+def _skill_ids_by_names(skill_names):
+    """Имена навыков из ?skills= → skill_id справочника (точное совпадение, case-insensitive).
+
+    Справочник мал (~40 записей): забираем целиком и матчим в Python —
+    надёжнее or=(name.ilike...) и одинаково работает в mock-режиме.
+    """
+    wanted = {n for n in skill_names if n}
+    if not wanted:
+        return []
+    resp = postgrest_request('GET', 'skills?select=id,name')
+    if not resp.ok:
+        return []
+    return [s['id'] for s in resp.json()
+            if s.get('id') and str(s.get('name') or '').strip().lower() in wanted]
+
+
 @applications_bp.route('/my-applications')
 @login_required
 def my_applications():
@@ -266,12 +282,32 @@ def my_applications():
             'GET', f'jobs?employer_id=eq.{user_id}&select=id&limit=1')
         tab = 'received' if (has_jobs_resp.ok and has_jobs_resp.json()) else 'sent'
 
-    selected_skills = [s.strip().lower() for s in skills_filter.split(',') if s.strip()] if skills_filter else []
+    selected_skills = [s.strip().lower() for s in skills_filter.split(',') if s.strip()][:5] if skills_filter else []
 
     if tab == 'sent':
         # Мои отклики (как трудника): статусы + ссылка на задание/чат
         offset = (page - 1) * per_page
         sent_job_q = f'&job_id=eq.{job_filter}' if job_filter else ''
+        if selected_skills:
+            # Фильтр по навыкам ЗАДАНИЯ: skills → job_skills → job_id,
+            # затем job_id IN (...) в основном запросе (серверная пагинация
+            # и count=exact остаются корректными).
+            sent_skill_ids = _skill_ids_by_names(selected_skills)
+            skill_job_ids = []
+            if sent_skill_ids:
+                js_resp = postgrest_request('GET',
+                    f'job_skills?skill_id=in.({",".join(sent_skill_ids)})&select=job_id')
+                if js_resp.ok:
+                    skill_job_ids = list({j['job_id'] for j in js_resp.json() if j.get('job_id')})
+            if not skill_job_ids:
+                # Нет заданий с такими навыками — честный пустой результат,
+                # а не нефильтрованный список.
+                return render_template('my_applications.html', tab='sent',
+                                       applications=[], jobs={},
+                                       selected_skills=selected_skills, page=page,
+                                       per_page=per_page, total=0,
+                                       total_pages=1)
+            sent_job_q += f'&job_id=in.({",".join(skill_job_ids)})'
         resp = postgrest_request('GET',
             f'applications?worker_id=eq.{user_id}{sent_job_q}'
             f'&select=id,status,created_at,job_id,'
@@ -287,7 +323,7 @@ def my_applications():
         total_pages = max(1, (total + per_page - 1) // per_page) if total else 1
         return render_template('my_applications.html', tab='sent',
                                applications=applications, jobs={},
-                               selected_skills=[], page=page,
+                               selected_skills=selected_skills, page=page,
                                per_page=per_page, total=total,
                                total_pages=total_pages)
 
@@ -297,31 +333,35 @@ def my_applications():
     job_filter = request.args.get('job_id', '')
     job_query = f'&job_id=eq.{job_filter}' if job_filter else ''
 
+    # Фильтр по навыкам ОТКЛИКНУВШЕГОСЯ (карточки откликов показывают навыки
+    # трудника): skills → user_skills → worker_id, затем worker_id IN (...)
+    # в основном запросе — серверная пагинация (count=exact) остаётся корректной.
+    worker_q = ''
     if selected_skills:
-        # Загружаем все заявки (с разумным верхним пределом 500)
-        resp = postgrest_request('GET',
-            f'applications?job.employer_id=eq.{user_id}{job_query}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,desired_payment,email_public),job:jobs(organization_name,date_time,payment_amount,status,current_workers,max_workers)&limit=500',
-            headers={'Prefer': 'count=exact'})
-        all_applications = resp.json() if resp.ok else []
+        skill_ids = _skill_ids_by_names(selected_skills)
+        skill_worker_ids = []
+        if skill_ids:
+            us_resp = postgrest_request('GET',
+                f'user_skills?skill_id=in.({",".join(skill_ids)})&select=user_id')
+            if us_resp.ok:
+                skill_worker_ids = list({us['user_id'] for us in us_resp.json() if us.get('user_id')})
+        if skill_worker_ids:
+            worker_q = f'&worker_id=in.({",".join(skill_worker_ids)})'
+        else:
+            # Нет трудников с такими навыками — заведомо пустой результат
+            # (не отдаём нефильтрованный список без предупреждения).
+            worker_q = '&worker_id=eq.00000000-0000-0000-0000-000000000000'
 
-        # Фильтрация по навыкам отключена: profiles.skills убран (миграция на user_skills).
-        # TODO: реализовать фильтр через user_skills junction table.
-        # all_applications проходит без фильтра.
-
-        total = len(all_applications)
-        offset = (page - 1) * per_page
-        applications = all_applications[offset:offset + per_page]
-    else:
-        offset = (page - 1) * per_page
-        resp = postgrest_request('GET',
-            f'applications?job.employer_id=eq.{user_id}{job_query}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,desired_payment,email_public),job:jobs(organization_name,date_time,payment_amount,status,current_workers,max_workers)&limit={per_page}&offset={offset}',
-            headers={'Prefer': 'count=exact'})
-        applications = resp.json() if resp.ok else []
-        total = 0
-        if resp.ok:
-            content_range = resp.headers.get('Content-Range', '')
-            if '/' in content_range:
-                total = int(content_range.split('/')[-1])
+    offset = (page - 1) * per_page
+    resp = postgrest_request('GET',
+        f'applications?job.employer_id=eq.{user_id}{job_query}{worker_q}&select=*,worker:profiles!inner(id,full_name,photo_url,rating,desired_payment,email_public),job:jobs(organization_name,date_time,payment_amount,status,current_workers,max_workers)&limit={per_page}&offset={offset}',
+        headers={'Prefer': 'count=exact'})
+    applications = resp.json() if resp.ok else []
+    total = 0
+    if resp.ok:
+        content_range = resp.headers.get('Content-Range', '')
+        if '/' in content_range:
+            total = int(content_range.split('/')[-1])
 
     # Используем встроенные данные заданий из запроса (job:jobs(...))
     # вместо повторного запроса к API
