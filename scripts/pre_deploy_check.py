@@ -13,6 +13,7 @@
      (понимает многострочные вызовы и переменные-запросы с select=)
   5. current_app.logger в Celery tasks: не использовать вне request-context
   6. Двойные атрибуты: нет duplicate class= на одном элементе
+  7. Свежесть Tailwind: tailwind.min.css не старше templates/ и static/js/
 """
 import re
 import sys
@@ -39,7 +40,7 @@ def ok(msg):
 
 def check_py_compile():
     """1. py_compile всех .py файлов."""
-    print("\n[1/6] py_compile...")
+    print("\n[1/7] py_compile...")
     py_files = list(ROOT.glob("app/**/*.py")) + list(ROOT.glob("tests/**/*.py"))
     py_files = [f for f in py_files if "__pycache__" not in str(f)]
     failed = []
@@ -56,7 +57,7 @@ def check_py_compile():
 
 def check_csp_nonce():
     """2. Все <script> в шаблонах должны иметь nonce."""
-    print("\n[2/6] CSP nonce check...")
+    print("\n[2/7] CSP nonce check...")
     tpl_dir = ROOT / "templates"
     for f in tpl_dir.rglob("*.html"):
         content = f.read_text(encoding="utf-8")
@@ -73,7 +74,7 @@ def check_inline_handlers():
     Исключение (project_patterns.md): onerror на <img> допустим — image fallback.
     Тег <img> может стоять на несколько строк выше onerror (многострочные атрибуты).
     """
-    print("\n[3/6] Inline event handlers (CSP strict-dynamic)...")
+    print("\n[3/7] Inline event handlers (CSP strict-dynamic)...")
     tpl_dir = ROOT / "templates"
     found = False
     for f in tpl_dir.rglob("*.html"):
@@ -149,7 +150,7 @@ def check_profiles_select():
       - Многострочные вызовы: postgrest_admin_request/PATCH может быть на предыдущей строке.
       - Переменные-запросы: select= может быть в переменной (query += '&select=...').
     """
-    print("\n[4/6] profiles select= check (user-JWT only)...")
+    print("\n[4/7] profiles select= check (user-JWT only)...")
     app_dir = ROOT / "app"
     found = False
     for f in app_dir.rglob("*.py"):
@@ -199,7 +200,7 @@ def check_profiles_select():
 
 def check_current_app_in_tasks():
     """5. Celery tasks не должны использовать current_app.logger."""
-    print("\n[5/6] current_app.logger in Celery tasks...")
+    print("\n[5/7] current_app.logger in Celery tasks...")
     tasks_dir = ROOT / "app" / "tasks"
     found = False
     for f in tasks_dir.glob("*.py"):
@@ -214,7 +215,7 @@ def check_current_app_in_tasks():
 
 def check_duplicate_attributes():
     """6. Нет дублирующихся атрибутов (например, два class= на одном элементе)."""
-    print("\n[6/6] Duplicate HTML attributes...")
+    print("\n[6/7] Duplicate HTML attributes...")
     tpl_dir = ROOT / "templates"
     found = False
     for f in tpl_dir.rglob("*.html"):
@@ -234,6 +235,31 @@ def check_duplicate_attributes():
         print("  ✅ No duplicate attributes")
 
 
+def check_tailwind_freshness():
+    """7. tailwind.min.css собран ПОСЛЕ последней правки templates/ и static/js/.
+
+    Пайплайн: npm run build:css (tailwindcss CLI, конфиг tailwind.config.js).
+    Если CSS старше исходников — утилитарные классы из новых шаблонов не имеют
+    стилей (skip-link невидим, сетки схлопываются и т.п.). Лечение: npm run build:css.
+    """
+    print("\n[7/7] Tailwind CSS freshness...")
+    css_file = ROOT / "static" / "css" / "tailwind.min.css"
+    if not css_file.exists():
+        err("static/css/tailwind.min.css not found — run: npm install && npm run build:css")
+        return
+    sources = list((ROOT / "templates").rglob("*.html")) + \
+              list((ROOT / "static" / "js").rglob("*.js"))
+    if not sources:
+        print("  ✅ No template/JS sources to compare")
+        return
+    css_mtime = css_file.stat().st_mtime
+    newest = max(sources, key=lambda f: f.stat().st_mtime)
+    if css_mtime < newest.stat().st_mtime:
+        err(f"tailwind.min.css older than {newest.relative_to(ROOT)} — run: npm run build:css")
+    else:
+        print(f"  ✅ tailwind.min.css is fresh (newest source: {newest.relative_to(ROOT)})")
+
+
 def main():
     print("=" * 60)
     print("  PRE-DEPLOY CHECK — Trudnik")
@@ -245,6 +271,7 @@ def main():
     check_profiles_select()
     check_current_app_in_tasks()
     check_duplicate_attributes()
+    check_tailwind_freshness()
 
     print("\n" + "=" * 60)
     if ERRORS:

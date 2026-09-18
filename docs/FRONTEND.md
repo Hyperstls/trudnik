@@ -15,6 +15,7 @@
 5. [Карта навигации и ролевые представления](#5-карта-навигации-и-ролевые-представления)
 6. [Адаптивность и мобильная версия](#6-адаптивность-и-мобильная-версия)
 7. [Доступность (Accessibility)](#7-доступность-accessibility)
+8. [Сборка CSS (Tailwind)](#8-сборка-css-tailwind)
 
 ---
 
@@ -555,6 +556,20 @@ TailwindCSS-брейкпоинты:
 | **Формы** | `<form>` с `<label>` | Все поля имеют связанный `<label>`, `for` соответствует `id` |
 | **Кнопки** | `<button>` (не `<div onclick>`) | Все интерактивные элементы — семантические кнопки |
 | **Изображения** | `<img>` с `alt` | Содержательные — описание, декоративные — `alt=""` |
+
+---
+
+## 8. Сборка CSS (Tailwind)
+
+- **Пайплайн:** Tailwind CSS v3 CLI (npm) → `static/css/tailwind.min.css`. Файл коммитится в репо — Dockerfile CSS **не** собирает (`COPY . .`).
+- **Конфиг:** `tailwind.config.js` (v3-синтаксис; content: `./templates/**/*.html`, `./static/js/**/*.js`; брендовая палитра `primary` = amber `#d97706`).
+- **Вход:** `static/css/tailwind.src.css` — только `@tailwind`-директивы. Кастомные стили живут в `static/css/app.css` и в сборку **не** включаются.
+- **Команды:** `npm install` (один раз) → `npm run build:css` — после **любой** правки классов в шаблонах или JS.
+  Tailwind CLI пропускает запись при идентичном контенте, поэтому скрипт дополнительно обновляет mtime файла (нужно для гейта свежести).
+- **Гейты против протухания:**
+  - `scripts/pre_deploy_check.py` — проверка `[7/7]`: mtime `tailwind.min.css` ≥ mtime всех `templates/**/*.html` и `static/js/**/*.js`, иначе FAIL с подсказкой `npm run build:css`.
+  - CI `.github/workflows/test.yml` — шаг «Проверка свежести Tailwind CSS»: `npm ci && npm run build:css && git diff --exit-code static/css/tailwind.min.css`.
+- **HTML, генерируемый в JS** (innerHTML-строки в шаблонах и `static/js`): content-сканер читает файл целиком, поэтому классы попадают в сборку — при условии, что имена классов записаны **полностью**, без конкатенации. Inline-`<style>` костыли под «невидимые» классы не нужны (пример: toggle в `notification_settings.html`).
 
 ---
 

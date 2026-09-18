@@ -1,0 +1,5 @@
+/* Входной файл для сборки Tailwind (npm run build:css).
+   Только утилиты Tailwind; кастомные стили — в app.css (в сборку НЕ включается). */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

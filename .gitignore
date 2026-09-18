@@ -99,3 +99,6 @@ venv/
 
 # Playwright MCP artifacts (screenshots/snapshots)
 .playwright-mcp/
+
+# Node (Tailwind build: npm run build:css)
+node_modules/

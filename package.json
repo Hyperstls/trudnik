@@ -1,0 +1,10 @@
+{
+  "name": "trudnik",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -c tailwind.config.js -i static/css/tailwind.src.css -o static/css/tailwind.min.css --minify && node -e \"require('fs').utimesSync('static/css/tailwind.min.css', new Date(), new Date())\""
+  },
+  "devDependencies": {
+    "tailwindcss": "^3"
+  }
+}
