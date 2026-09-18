@@ -171,6 +171,8 @@ services:
       - REDIS_URL=redis://:trudnik-local-dev@redis:6379/0
       - POSTGREST_URL=http://postgrest:3000
       - PGRST_JWT_SECRET=${PGRST_JWT_SECRET}
+      # volume uploads_data смонтирован в /data/uploads — выравниваем конфиг
+      - UPLOAD_FOLDER=/data/uploads
     volumes:
       - ./app:/app/app
       # Шаблоны и статика в корне проекта — без монтирования контейнер

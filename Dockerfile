@@ -15,6 +15,9 @@ ENV GIT_VERSION=$GIT_VERSION
 # ═══════════════════════════════════════════════════════════
 ENV PIP_CACHE_DIR=/data/pip-cache
 ENV PYTHONPYCACHEPREFIX=/data/pycache
+# Загрузки — в persistence-монт /data (amvera.yaml: persistenceMount),
+# иначе теряются при каждом редеплое (config.py: UPLOAD_FOLDER)
+ENV UPLOAD_FOLDER=/data/uploads
 
 # Установка системных зависимостей + Python-зависимостей + очистка
 COPY requirements.txt .
@@ -33,7 +36,8 @@ RUN python -m compileall -q /app
 
 # Создание непривилегированного пользователя
 RUN useradd -m -u 1000 appuser && \
-    mkdir -p /data/pip-cache /data/pycache && \
+    mkdir -p /data/pip-cache /data/pycache \
+             /data/uploads/avatars /data/uploads/jobs /data/uploads/verification-docs && \
     chown -R appuser:appuser /app /data
 USER appuser
 
