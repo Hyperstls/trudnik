@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% from '_icons.html' import send, chevron_left %}
 {% block title %}Чат — Трудник{% endblock %}
+{# Подпись даты для серверных дивидеров (UTC-дата; на клиенте chat.js пересчитает в локальную TZ) #}
+{% macro ru_day_label(day) -%}
+{%- set months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'] -%}
+{{ day[8:10]|int }} {{ months[(day[5:7]|int) - 1] }}
+{%- endmacro %}
 {% block content %}
 <div class="flex flex-col h-[calc(100dvh-3.5rem)] max-w-lg mx-auto">
     <!-- Header (компактный: назад + собеседник; breadcrumbs не нужны — дублируют стрелку) -->
@@ -17,11 +22,21 @@
         </div>
     </div>
 
-    <!-- Messages -->
-    <div id="messages" class="flex-1 overflow-y-auto px-4 py-3 space-y-2" role="log" aria-live="polite" aria-label="История сообщений">
+    <!-- Messages (id="chat-messages": глобальный WS-рендер в notifications-init.js сюда не вмешивается) -->
+    <div id="chat-messages" class="flex-1 overflow-y-auto px-4 py-3 space-y-2" role="log" aria-live="polite" aria-label="История сообщений">
+        {% set ns = namespace(prev_day='') %}
         {% for msg in messages %}
         {% set is_mine = msg.sender_id == user_id %}
-        <div class="flex {% if is_mine %}justify-end{% else %}justify-start{% endif %} animate-fade-in">
+        {% set msg_day = msg.created_at[:10] if msg.created_at else '' %}
+        {% if msg_day and msg_day != ns.prev_day %}
+        <div class="chat-date-divider flex items-center gap-3 py-1" data-day="{{ msg_day }}">
+            <span class="flex-1 border-t border-neutral-200"></span>
+            <time class="chat-date-label text-[11px] font-medium text-neutral-400 px-1" datetime="{{ msg.created_at }}">{{ ru_day_label(msg_day) }}</time>
+            <span class="flex-1 border-t border-neutral-200"></span>
+        </div>
+        {% set ns.prev_day = msg_day %}
+        {% endif %}
+        <div class="msg-row flex {% if is_mine %}justify-end{% else %}justify-start{% endif %} animate-fade-in" id="msg-{{ msg.id }}"{% if msg.created_at %} data-ts="{{ msg.created_at }}"{% endif %}>
             <div class="max-w-[80%] px-4 py-2 rounded-2xl shadow-sm text-sm leading-relaxed break-words
                 {% if is_mine %}
                     bg-primary-500 text-white rounded-br-md
@@ -29,8 +44,11 @@
                     bg-neutral-100 text-neutral-800 rounded-bl-md
                 {% endif %}">
                 {{ msg.content }}
-                <div class="text-xs mt-0.5 {% if is_mine %}text-white/60{% else %}text-neutral-400{% endif %} text-right">
-                    <time datetime="{{ msg.created_at }}">{{ msg.created_at[11:16] if msg.created_at else '' }}</time>
+                <div class="msg-meta flex items-center justify-end gap-1 text-xs mt-0.5 {% if is_mine %}text-white/60{% else %}text-neutral-400{% endif %}">
+                    <time class="msg-time"{% if msg.created_at %} datetime="{{ msg.created_at }}"{% endif %}>{{ msg.created_at[11:16] if msg.created_at else '' }}</time>
+                    {% if is_mine %}
+                    <span class="msg-status inline-flex items-center" data-status="sent"><svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg></span>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -53,7 +71,7 @@
     <!-- Input -->
     <div class="shrink-0 bg-white border-t border-neutral-100" style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px))">
         <div class="max-w-lg mx-auto px-4 py-3">
-            <form id="chat-form" class="flex gap-2 items-end" aria-label="Отправка сообщения">
+            <form id="chat-form" class="flex gap-2 items-end" aria-label="Отправка сообщения" data-no-loader>
                 <div class="flex-1 relative">
                     <textarea id="message-input" rows="1" class="w-full border border-neutral-200 rounded-xl px-4 py-2.5 text-sm
                         focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500
@@ -71,197 +89,13 @@
 </div>
 
 <script nonce="{{ csp_nonce }}">
-const applicationId = "{{ application_id }}";
-const currentUserId = "{{ user_id }}";
-let lastMessageId = "{{ messages[-1].id if messages else '' }}";
-
-function addMessage(msg, isMine) {
-    const messagesDiv = document.getElementById('messages');
-    const existing = document.getElementById('msg-' + msg.id);
-    if (existing) return;
-
-    const time = (msg.created_at || '').substring(11, 16);
-    const bubble = document.createElement('div');
-    bubble.id = 'msg-' + msg.id;
-    bubble.className = 'flex ' + (isMine ? 'justify-end' : 'justify-start') + ' animate-fade-in';
-    bubble.innerHTML = `
-        <div class="max-w-[80%] px-4 py-2 rounded-2xl shadow-sm text-sm leading-relaxed break-words
-            ${isMine ? 'bg-primary-500 text-white rounded-br-md' : 'bg-neutral-100 text-neutral-800 rounded-bl-md'}">
-            <span class="msg-content"></span>
-            <div class="text-xs mt-0.5 ${isMine ? 'text-white/60' : 'text-neutral-400'} text-right">${window.escapeHtml(time)}</div>
-        </div>
-    `;
-    bubble.querySelector('.msg-content').textContent = msg.content || '';
-    messagesDiv.appendChild(bubble);
-
-    // Highlight new message
-    bubble.querySelector('div').style.transition = 'box-shadow 0.5s ease';
-    bubble.querySelector('div').style.boxShadow = '0 0 0 3px rgba(217,119,6,0.3)';
-    setTimeout(() => {
-        bubble.querySelector('div').style.boxShadow = '';
-    }, 1500);
-
-    // Smooth scroll
-    messagesDiv.scrollTo({ top: messagesDiv.scrollHeight, behavior: 'smooth' });
-}
-
-// Polling с exponential backoff и AbortController (рекурсивный setTimeout вместо setInterval)
-let chatPollTimer = null;
-let chatPollDelay = 3000;
-let chatAbortController = null;
-
-async function pollMessages() {
-    try {
-        const url = `/api/messages/${applicationId}/poll${lastMessageId ? '?since_id=' + lastMessageId : ''}`;
-        const resp = await apiFetch(url, { signal: chatAbortController ? chatAbortController.signal : undefined });
-        if (!resp.ok) return;
-        const data = await resp.json();
-        for (const msg of data.messages) {
-            if (msg.id !== lastMessageId) {
-                addMessage(msg, msg.sender_id === currentUserId);
-                lastMessageId = msg.id;
-            }
-        }
-        // Сброс задержки при успешном запросе
-        chatPollDelay = 3000;
-    } catch (e) {
-        if (e.name === 'AbortError') return;
-        // Exponential backoff: 3s → 6s → 12s → 24s → 30s
-        chatPollDelay = Math.min(30000, chatPollDelay * 2);
-    }
-}
-
-function scheduleNextPoll() {
-    chatAbortController = new AbortController();
-    chatPollTimer = setTimeout(async () => {
-        await pollMessages();
-        scheduleNextPoll();
-    }, chatPollDelay);
-}
-
-function startChatPolling() {
-    stopChatPolling();
-    chatPollDelay = 3000;
-    chatAbortController = new AbortController();
-    // Первый вызов сразу, затем рекурсивно
-    chatPollTimer = setTimeout(async () => {
-        await pollMessages();
-        scheduleNextPoll();
-    }, chatPollDelay);
-}
-
-function stopChatPolling() {
-    if (chatPollTimer) {
-        clearTimeout(chatPollTimer);
-        chatPollTimer = null;
-    }
-    if (chatAbortController) {
-        chatAbortController.abort();
-        chatAbortController = null;
-    }
-}
-
-// Останавливаем polling при уходе со страницы
-window.addEventListener('beforeunload', stopChatPolling);
-
-async function sendMessage(event) {
-    if (event) event.preventDefault();
-    const input = document.getElementById('message-input');
-    const content = input.value.trim();
-    if (!content) return;
-
-    const btn = document.getElementById('send-btn');
-    btn.disabled = true;
-    btn.innerHTML = `<svg class="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>`;
-
-    try {
-        const clientMessageId = (typeof crypto !== 'undefined' && crypto.randomUUID)
-            ? crypto.randomUUID()
-            : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                const r = Math.random() * 16 | 0;
-                return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-            });
-
-        const abortCtrl = new AbortController();
-        const timeoutId = setTimeout(() => abortCtrl.abort(), 15000);
-
-        const resp = await apiFetch('/api/send_message', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                application_id: applicationId,
-                content: content,
-                client_message_id: clientMessageId
-            }),
-            signal: abortCtrl.signal
-        });
-        clearTimeout(timeoutId);
-
-        if (!resp.ok) {
-            const errData = resp.json().catch(() => ({}));
-            throw new Error((await errData).message || 'Ошибка отправки (' + resp.status + ')');
-        }
-        input.value = '';
-        // B5: сброс авто-высоты textarea после отправки
-        input.style.height = 'auto';
-        await pollMessages();
-    } catch (e) {
-        if (e.name === 'AbortError') {
-            if (window.showToast) window.showToast('⏱ Превышено время ожидания. Попробуйте ещё раз.', 'error');
-        } else {
-            if (window.showToast) window.showToast('❌ ' + (e.message || 'Ошибка отправки сообщения'), 'error');
-        }
-    } finally {
-        btn.innerHTML = `{{ send(20)|safe }}`;
-        btn.disabled = false;
-    }
-}
-
-function isWsConnected() {
-    var ws = window.NotificationsWS;
-    return ws && ws.ws && ws.ws.readyState === WebSocket.OPEN;
-}
-
-window.addEventListener('load', function() {
-    var form = document.getElementById('chat-form');
-    // B5: textarea авто-рост + Enter=отправка, Shift+Enter=перенос строки
-    var msgInput = document.getElementById('message-input');
-    if (msgInput) {
-        msgInput.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 128) + 'px';
-        });
-        msgInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                if (form) {
-                    form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit', {cancelable: true}));
-                }
-            }
-        });
-    }
-    if (form) form.addEventListener('submit', sendMessage);
-    const msgs = document.getElementById('messages');
-    if (msgs) msgs.scrollTop = msgs.scrollHeight;
-
-    // Запускаем polling только если WebSocket не подключён
-    if (!isWsConnected()) {
-        startChatPolling();
-    } else {
-        // Один раз вызываем poll для загрузки последних сообщений
-        pollMessages();
-    }
-
-    // Следим за состоянием WebSocket
-    if (window.NotificationsWS) {
-        window.NotificationsWS.on('connected', function() {
-            stopChatPolling();
-            pollMessages(); // Загружаем пропущенные сообщения
-        });
-        window.NotificationsWS.on('disconnected', function() {
-            startChatPolling();
-        });
-    }
+window.CHAT_CONFIG = {
+    applicationId: {{ application_id|tojson }},
+    currentUserId: {{ user_id|tojson }},
+    lastMessageId: {{ (messages[-1].id if messages else '')|tojson }}
 };
 </script>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/chat.js') }}?v=20260905" nonce="{{ csp_nonce }}"></script>
 {% endblock %}

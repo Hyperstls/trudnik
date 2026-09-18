@@ -7,6 +7,7 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 from app.decorators import login_required, rate_limit, validate_uuid
 from app.utils import postgrest_request
 from app.utils.redis_client import get_redis_client
+from app.services.chat_access import check_participant
 from app.services.notification_service import enqueue_notification
 
 logger = logging.getLogger(__name__)
@@ -95,18 +96,20 @@ def chat(application_id):
     user_id = session['user_id']
 
     # Проверить, что пользователь — участник заявки
-    # employer_id получаем через join с jobs
-    app_resp = postgrest_request('GET',
-        f'applications?id=eq.{application_id}&select=worker_id,job_id,job:jobs(employer_id)')
-    if not app_resp.ok or not app_resp.json():
+    # request_fn пробрасываем из модуля, чтобы mock-патчи
+    # app.blueprints.chat.postgrest_request в тестах продолжали работать
+    allowed, app_data = check_participant(
+        application_id, user_id,
+        select='worker_id,job_id,job:jobs(employer_id)',
+        request_fn=postgrest_request)
+    if app_data is None:
         flash('Чат не найден', 'danger')
         return redirect(url_for('chat.chats_list'))
-
-    app_data = app_resp.json()[0]
-    employer_id = (app_data.get('job') or {}).get('employer_id')
-    if user_id not in (app_data.get('worker_id'), employer_id):
+    if not allowed:
         flash('Нет доступа к этому чату', 'danger')
         return redirect(url_for('chat.chats_list'))
+
+    employer_id = (app_data.get('job') or {}).get('employer_id')
 
     # Заголовок чата: имя собеседника + название задания (для шапки страницы)
     chat_title = 'Чат'
@@ -189,16 +192,15 @@ def send_message():
         return jsonify({'status': 'error', 'message': 'Сообщение слишком длинное (максимум 2000 символов)'}), 400
 
     # Проверить, что пользователь — участник заявки
-    # employer_id получаем через join с jobs
-    app_resp = postgrest_request('GET',
-        f'applications?id=eq.{application_id}&select=worker_id,job_id,status,job:jobs(employer_id)')
-    if not app_resp.ok or not app_resp.json():
+    allowed, app_data = check_participant(
+        application_id, sender_id,
+        request_fn=postgrest_request)
+    if app_data is None:
         return jsonify({'status': 'error', 'message': 'Заявка не найдена'}), 404
-
-    app_data = app_resp.json()[0]
-    employer_id = (app_data.get('job') or {}).get('employer_id')
-    if sender_id not in (app_data.get('worker_id'), employer_id):
+    if not allowed:
         return jsonify({'status': 'error', 'message': 'Нет доступа к этому чату'}), 403
+
+    employer_id = (app_data.get('job') or {}).get('employer_id')
 
     # Чат доступен только для принятых заявок (общение разрешено после accept, не дожидаясь completed)
     if app_data.get('status') != 'accepted':
@@ -233,10 +235,12 @@ def send_message():
         return jsonify({'status': 'error', 'message': 'Не удалось отправить сообщение'}), 503
 
     message_id = None
+    message_created_at = None
     try:
         msg_data = msg_resp.json()
         if isinstance(msg_data, list) and len(msg_data) > 0:
             message_id = msg_data[0].get('id')
+            message_created_at = msg_data[0].get('created_at')
     except Exception as e:
         logger.warning('Failed to extract message_id from response: %s', e, exc_info=True)
 
@@ -267,14 +271,19 @@ def send_message():
                     'sender_id': sender_id,
                     'sender_name': sender_name,
                     'application_id': application_id,
-                    'job_id': app_data.get('job_id')
+                    'job_id': app_data.get('job_id'),
+                    # client_message_id + created_at — для дедупликации
+                    # оптимистичных сообщений на клиенте (чат 2.0)
+                    'client_message_id': client_msg_id,
+                    'created_at': message_created_at
                 }
             )
         except Exception as e:
             from flask import current_app
             current_app.logger.warning("Не удалось опубликовать сообщение чата в Redis: %s", e)
 
-    return jsonify({'status': 'ok'})
+    return jsonify({'status': 'ok', 'message_id': message_id,
+                    'created_at': message_created_at})
 
 
 @chat_bp.route('/api/messages/<application_id>/poll')
@@ -285,19 +294,16 @@ def poll_messages(application_id):
     user_id = session['user_id']
 
     # Проверить доступ
-    # employer_id получаем через join с jobs
-    app_resp = postgrest_request('GET',
-        f'applications?id=eq.{application_id}&select=worker_id,job:jobs(employer_id)')
-    if not app_resp.ok or not app_resp.json():
-        return jsonify({'messages': [], 'user_id': user_id})
-    app_data = app_resp.json()[0]
-    employer_id = (app_data.get('job') or {}).get('employer_id')
-    if user_id not in (app_data.get('worker_id'), employer_id):
+    allowed, app_data = check_participant(
+        application_id, user_id,
+        select='worker_id,job:jobs(employer_id)',
+        request_fn=postgrest_request)
+    if app_data is None or not allowed:
         return jsonify({'messages': [], 'user_id': user_id})
 
     since_id = request.args.get('since_id', '')
     query = (f'messages?application_id=eq.{application_id}'
-             f'&select=id,sender_id,content,created_at&order=created_at.asc')
+             f'&select=id,sender_id,content,created_at,client_message_id&order=created_at.asc')
     if since_id:
         since_resp = postgrest_request('GET', f'messages?id=eq.{since_id}&select=created_at')
         if since_resp.ok and since_resp.json():
@@ -322,15 +328,14 @@ def delete_chats():
     errors = []
     for aid in application_ids:
         # Проверяем, что пользователь — участник заявки
-        # employer_id получаем через join с jobs
-        resp = postgrest_request('GET',
-            f'applications?id=eq.{aid}&select=id,worker_id,job:jobs(employer_id)')
-        if not resp.ok or not resp.json():
+        allowed, app_data = check_participant(
+            aid, user_id,
+            select='id,worker_id,job:jobs(employer_id)',
+            request_fn=postgrest_request)
+        if app_data is None:
             errors.append(f'Чат {aid} не найден')
             continue
-        app_data = resp.json()[0]
-        employer_id = (app_data.get('job') or {}).get('employer_id')
-        if app_data['worker_id'] != user_id and employer_id != user_id:
+        if not allowed:
             errors.append(f'Нет доступа к чату {aid}')
             continue
 
