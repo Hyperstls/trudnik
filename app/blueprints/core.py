@@ -276,21 +276,16 @@ def favicon():
 
 @core_bp.route('/jobs')
 def jobs_redirect():
-    return redirect(url_for('jobs.index', tab='jobs'))
+    args = request.args.to_dict()
+    args.setdefault('tab', 'jobs')
+    return redirect(url_for('jobs.index', **args))
 
 
 @core_bp.route('/search')
 def search_redirect():
-    return redirect(url_for('jobs.index', tab='search'))
-
-
-@core_bp.before_request
-def log_static_requests():
-    """Диагностический лог: отслеживание запросов к /static/ для поиска 500."""
-    if request.path.startswith('/static/'):
-        current_app.logger.info('Static request: %s | method=%s | user_agent=%s',
-                                request.path, request.method,
-                                request.headers.get('User-Agent', 'unknown')[:120])
+    args = request.args.to_dict()
+    args.setdefault('tab', 'search')
+    return redirect(url_for('jobs.index', **args))
 
 
 @core_bp.route('/static/')
