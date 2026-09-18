@@ -53,6 +53,16 @@ module.exports = {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
+      boxShadow: {
+        card: '0 1px 3px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.04)',
+        elevated: '0 4px 12px rgb(0 0 0 / 0.08)',
+      },
+      borderRadius: {
+        card: '0.875rem',
+      },
+      transitionDuration: {
+        250: '250ms',
+      },
     }
   }
 }

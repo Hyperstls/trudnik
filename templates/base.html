@@ -127,15 +127,6 @@
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
                 </button>
-                <!-- Трудники: мобайл-иконка (на десктопе — пункт меню) -->
-                <a href="/workers" class="md:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors touch-target" aria-label="Трудники" title="Каталог трудников">
-                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="9" cy="7" r="4"></circle>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
-                </a>
                 <!-- Уведомления -->
                 <a href="/notifications" class="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors touch-target" aria-label="Уведомления">
                     <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -146,43 +137,86 @@
                     <output id="notifications-badge" aria-live="polite" class="absolute -top-0.5 -right-0.5 bg-danger text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border-2 border-white">{{ '99+' if unread_notifications > 99 else unread_notifications }}</output>
                     {% endif %}
                 </a>
-                <!-- Приглашения (только для трудника) -->
-                {% if session.get('role') == 'worker' %}
-                <a href="/invitations" class="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-blue-100 transition-colors touch-target" aria-label="Приглашения" title="Приглашения">
-                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="9" cy="7" r="4"></circle>
-                        <line x1="19" y1="8" x2="19" y2="14"></line>
-                        <line x1="22" y1="11" x2="16" y2="11"></line>
-                    </svg>
-                    {% if pending_invitations is defined and pending_invitations > 0 %}
-                    <output id="chat-badge" aria-live="polite" class="absolute -top-0.5 -right-0.5 bg-danger text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border-2 border-white">{{ '99+' if pending_invitations > 99 else pending_invitations }}</output>
-                    {% endif %}
-                </a>
-                {% endif %}
-                <!-- Админка (только для admin) -->
-                {% if session.get('role') == 'admin' %}
-                <a href="/admin" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-purple-100 transition-colors touch-target" aria-label="Админка" title="Админ-панель">
-                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                    </svg>
-                </a>
-                {% endif %}
-                <!-- ЧС (любой залогиненный — мультирольность) -->
-                <a href="/blacklist" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors touch-target" aria-label="Чёрный список" title="ЧС">
-                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
-                    </svg>
-                </a>
-                <!-- Профиль -->
-                <a href="/profile" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors touch-target" aria-label="Профиль">
-                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
-                    </svg>
-                </a>
+                <!-- Профиль-меню (dropdown): Профиль / Приглашения / Трудники (мобайл) / ЧС / Админка / Выход.
+                     Иконки Приглашений, Админки, ЧС и Трудников вынесены сюда из иконочного ряда —
+                     разгрузка мобильной шапки (на 360px было до 8 иконок).
+                     Все ссылки и бейджи счётчиков сохранены. -->
+                <div class="relative">
+                    <button id="profile-menu-btn" type="button"
+                            class="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors touch-target"
+                            aria-label="Меню профиля" aria-haspopup="true" aria-expanded="false" aria-controls="profile-menu">
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        {% if session.get('role') == 'worker' and pending_invitations is defined and pending_invitations > 0 %}
+                        <span class="absolute top-1.5 right-1.5 block w-2 h-2 rounded-full bg-danger border border-white" aria-hidden="true"></span>
+                        {% endif %}
+                    </button>
+                    <div id="profile-menu" role="menu" aria-label="Меню профиля"
+                         class="hidden absolute right-0 top-full mt-2 w-60 bg-white rounded-2xl border border-neutral-200 shadow-elevated py-1.5 z-50">
+                        <a href="/profile" role="menuitem" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-100 transition-colors">
+                            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-neutral-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                            Профиль
+                        </a>
+                        {% if session.get('role') == 'worker' %}
+                        <a href="/invitations" role="menuitem" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-100 transition-colors">
+                            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <line x1="19" y1="8" x2="19" y2="14"></line>
+                                <line x1="22" y1="11" x2="16" y2="11"></line>
+                            </svg>
+                            <span class="flex-1">Приглашения</span>
+                            {% if pending_invitations is defined and pending_invitations > 0 %}
+                            <output id="chat-badge" aria-live="polite" class="bg-danger text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">{{ '99+' if pending_invitations > 99 else pending_invitations }}</output>
+                            {% endif %}
+                        </a>
+                        {% endif %}
+                        {# Трудники: на десктопе — пункт основного меню, поэтому в dropdown только на мобильных #}
+                        <a href="/workers" role="menuitem" class="md:hidden flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-100 transition-colors">
+                            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-neutral-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                            Трудники
+                        </a>
+                        <a href="/blacklist" role="menuitem" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-100 transition-colors">
+                            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-neutral-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                            </svg>
+                            Чёрный список
+                        </a>
+                        {% if session.get('role') == 'admin' %}
+                        <a href="/admin" role="menuitem" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-purple-600 hover:bg-purple-50 transition-colors">
+                            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-purple-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                            </svg>
+                            Админка
+                        </a>
+                        {% endif %}
+                        <hr class="my-1.5 border-neutral-100" aria-hidden="true">
+                        <form action="{{ url_for('auth.logout') }}" method="post">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" role="menuitem"
+                                    class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-danger hover:bg-neutral-100 transition-colors">
+                                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                    <polyline points="16 17 21 12 16 7"></polyline>
+                                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                                </svg>
+                                Выход
+                            </button>
+                        </form>
+                    </div>
+                </div>
                 {% else %}
                 {# Гость на десктопе: гостевой бар скрыт (md:hidden) — даём вход/регистрацию в шапке #}
                 <a href="/login" class="hidden md:inline-flex px-4 py-2 rounded-xl text-sm font-semibold text-neutral-700 hover:bg-neutral-100 transition-colors">Войти</a>
@@ -204,6 +238,39 @@
             <input type="text" id="mobile-search-input" name="q" placeholder="Задание или город…" aria-label="Поиск заданий или города" class="flex-1 px-4 py-2.5 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
         </div>
     </div>
+
+    <!-- Профиль-меню (dropdown): toggle по кнопке, закрытие по клику вне и Escape -->
+    <script nonce="{{ csp_nonce }}">
+    (function() {
+        var btn = document.getElementById('profile-menu-btn');
+        var menu = document.getElementById('profile-menu');
+        if (!btn || !menu) return;
+
+        function openMenu() {
+            menu.classList.remove('hidden');
+            btn.setAttribute('aria-expanded', 'true');
+        }
+        function closeMenu() {
+            menu.classList.add('hidden');
+            btn.setAttribute('aria-expanded', 'false');
+        }
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (menu.classList.contains('hidden')) { openMenu(); } else { closeMenu(); }
+        });
+        document.addEventListener('click', function(e) {
+            if (!menu.classList.contains('hidden') && !menu.contains(e.target) && !btn.contains(e.target)) {
+                closeMenu();
+            }
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && !menu.classList.contains('hidden')) {
+                closeMenu();
+                btn.focus();
+            }
+        });
+    })();
+    </script>
 
     {{ toast_container() }}
 
