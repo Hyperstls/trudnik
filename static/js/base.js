@@ -464,6 +464,10 @@ window.addEventListener('pageshow', function() {
 (function() {
     function addToggle(pwInput) {
         if (pwInput._toggleReady) return;
+        // Поля с собственной кнопкой показа пароля (data-no-toggle или внутри
+        // контейнера .js-password-field) пропускаем — иначе две кнопки (login.html).
+        if (pwInput.hasAttribute('data-no-toggle')) return;
+        if (pwInput.closest('.js-password-field')) return;
         pwInput._toggleReady = true;
         var btn = document.createElement('button');
         btn.type = 'button';

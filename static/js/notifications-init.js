@@ -3,11 +3,7 @@
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = String(text || '');
-        return div.innerHTML;
-    }
+    // escapeHtml — глобальный window.escapeHtml из base.js (локальная копия удалена)
 
     // Инициализация WebSocket (только для аутентифицированных пользователей)
     // JWT-токен для WS НЕ встраивается в HTML (XSS) — запрашиваем через /api/ws/token.
@@ -25,8 +21,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const notificationsList = document.getElementById('notifications-list');
             if (notificationsList && data.data) {
                 const notif = data.data;
-                const item = document.createElement('div');
-                item.className = 'flex items-start gap-3 p-4 bg-white border border-neutral-100 rounded-xl hover:bg-neutral-50 transition-colors cursor-pointer';
+                // Ссылка перехода — из payload (data.link, как в серверных карточках);
+                // разрешаем только http(s)/внутренние пути, иначе — на /notifications
+                let href = (notif.data && notif.data.link) || '/notifications';
+                if (!/^(https?:\/\/|\/)/.test(href)) href = '/notifications';
+                const item = document.createElement('a');
+                item.href = href;
+                item.className = 'flex items-start gap-3 p-4 bg-white border border-neutral-100 rounded-xl hover:bg-neutral-50 transition-colors no-underline text-inherit';
                 item.innerHTML = '<div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center shrink-0">' +
                     '<svg class="w-5 h-5 text-primary-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
                     '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></div>' +

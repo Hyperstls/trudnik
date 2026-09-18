@@ -330,6 +330,8 @@
         if (!card) return;
 
         // Обновить data-атрибут статуса на карточке
+        // ВАЖНО: старое значение читаем ДО присваивания — ниже проверка перехода в rejected
+        const oldStatus = card.dataset.status;
         card.dataset.status = newStatus;
 
         const statusBadge = card.querySelector('.status-badge');
@@ -359,7 +361,7 @@
 
         // Скрыть контактные данные при отклонении принятого отклика
         const contactSection = card.querySelector('[id^="contact-section-"]');
-        if (contactSection && newStatus === 'rejected' && card.dataset.status !== 'rejected') {
+        if (contactSection && newStatus === 'rejected' && oldStatus !== 'rejected') {
             contactSection.innerHTML = `
                 <div class="text-xs text-gray-400 italic mt-2">
                     🔒 Контакты скрыты после отклонения

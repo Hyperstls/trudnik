@@ -185,6 +185,42 @@
 <span class="inline-flex items-center rounded-full font-semibold {{ color_map.get(color, color_map['amber']) }} {{ size_map.get(size, size_map['sm']) }}">{{ text }}</span>
 {% endmacro %}
 
+{# === МАКРОСЫ КНОПОК (канонические наборы классов) ===
+   Классы собраны из наиболее частых вариантов в шаблонах (см. login/register/job_new/job_detail).
+   Сигнатуры:
+     btn_primary(text, type='submit', extra_class='', id='', disabled=false)
+       — основная CTA-кнопка (amber). w-full/flex-1 передавать через extra_class.
+     btn_secondary(text, type='button', extra_class='', id='', disabled=false)
+       — нейтральная кнопка («Назад», «Отмена»).
+     btn_danger(text, type='button', extra_class='', id='', disabled=false)
+       — деструктивное действие (красная). Подтверждение — через .js-confirm-form/showConfirm.
+     btn_icon(icon, label, type='button', extra_class='', id='')
+       — квадратная иконка-кнопка 40×40; icon — макрос из _icons.html (вызывается как icon(18)),
+         label — обязательный aria-label.
+   Пример:
+     {{ btn_primary('Войти', extra_class='w-full') }}
+     {{ btn_icon(trash, 'Удалить', id='delete-btn') }}
+#}
+{% macro btn_primary(text, type='submit', extra_class='', id='', disabled=false) %}
+<button type="{{ type }}"{% if id %} id="{{ id }}"{% endif %}{% if disabled %} disabled{% endif %}
+    class="bg-primary-500 hover:bg-primary-600 active:scale-[0.98] text-white font-bold py-3.5 px-5 rounded-xl shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed {{ extra_class }}">{{ text }}</button>
+{% endmacro %}
+
+{% macro btn_secondary(text, type='button', extra_class='', id='', disabled=false) %}
+<button type="{{ type }}"{% if id %} id="{{ id }}"{% endif %}{% if disabled %} disabled{% endif %}
+    class="bg-neutral-100 hover:bg-neutral-200 active:scale-[0.98] text-neutral-700 font-semibold py-3.5 px-5 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neutral-300 disabled:opacity-50 disabled:cursor-not-allowed {{ extra_class }}">{{ text }}</button>
+{% endmacro %}
+
+{% macro btn_danger(text, type='button', extra_class='', id='', disabled=false) %}
+<button type="{{ type }}"{% if id %} id="{{ id }}"{% endif %}{% if disabled %} disabled{% endif %}
+    class="bg-danger hover:bg-red-700 active:scale-[0.98] text-white font-semibold py-3.5 px-5 rounded-xl shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-danger focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed {{ extra_class }}">{{ text }}</button>
+{% endmacro %}
+
+{% macro btn_icon(icon, label, type='button', extra_class='', id='') %}
+<button type="{{ type }}"{% if id %} id="{{ id }}"{% endif %} aria-label="{{ label }}" title="{{ label }}"
+    class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors touch-target disabled:opacity-50 disabled:cursor-not-allowed {{ extra_class }}">{{ icon(18) }}</button>
+{% endmacro %}
+
 {% macro pagination(page, total_pages, base_url) %}
 {# Пагинация. page/total_pages — 1-based; base_url — путь без ?page=.
    Строит окно из 5 страниц + prev/next. Без JS — обычные ссылки. #}

@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
     <link rel="apple-touch-icon" sizes="512x512" href="{{ url_for('static', filename='icons/icon-512x512.png') }}">
     <meta name="theme-color" content="#d97706">
-    <meta name="color-scheme" content="light dark">
+    <meta name="color-scheme" content="light">
     <meta name="description" content="Платформа для поиска разовой подработки. Работодатели публикуют задания, исполнители откликаются и выполняют работу.">
     <meta name="csrf-token" content="{{ csrf_token }}">
     <meta name="mobile-web-app-capable" content="yes">
@@ -23,13 +23,13 @@
     <meta name="msapplication-TileImage" content="{{ url_for('static', filename='icons/icon-144x144.png') }}">
     <!-- Splash screen for iOS (iPhone 14/15 Pro) -->
     <link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" href="{{ url_for('static', filename='icons/icon-512x512.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.min.css') }}?v=20260905">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap" rel="stylesheet">
     <!-- ?v= — cache-busting: статика кэшируется 24ч (max-age=86400),
          без версии пользователи не получают обновления CSS/JS до суток -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=20260904">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=20260905">
     {% if trudnik_ws_config %}
     <script nonce="{{ csp_nonce }}">
         window.TRUDNIK_CONFIG = {
@@ -340,17 +340,19 @@
     <!-- ================================ -->
     <!-- Global JavaScript                 -->
     <!-- ================================ -->
-    <script src="{{ url_for('static', filename='js/base.js') }}?v=20260904" nonce="{{ csp_nonce }}"></script>
+    <script src="{{ url_for('static', filename='js/base.js') }}?v=20260905" nonce="{{ csp_nonce }}"></script>
+    {# api.js — ДО block scripts: страничные скрипты (favorites.js, applications.js) используют apiFetch #}
+    <script src="{{ url_for('static', filename='js/api.js') }}?v=20260905" nonce="{{ csp_nonce }}"></script>
 
     {% block scripts %}{% endblock %}
 
-{{ loading_overlay() }}    <script src="{{ url_for('static', filename='js/api.js') }}" nonce="{{ csp_nonce }}"></script>
-    <script src="{{ url_for('static', filename='js/form-guard.js') }}" nonce="{{ csp_nonce }}"></script>
+    {{ loading_overlay() }}
+    <script src="{{ url_for('static', filename='js/form-guard.js') }}?v=20260905" nonce="{{ csp_nonce }}"></script>
     {% if trudnik_ws_config %}
-    <script src="{{ url_for('static', filename='js/notifications-ws.js') }}" nonce="{{ csp_nonce }}"></script>
-    <script src="{{ url_for('static', filename='js/notifications-init.js') }}" nonce="{{ csp_nonce }}"></script>
+    <script src="{{ url_for('static', filename='js/notifications-ws.js') }}?v=20260905" nonce="{{ csp_nonce }}"></script>
+    <script src="{{ url_for('static', filename='js/notifications-init.js') }}?v=20260905" nonce="{{ csp_nonce }}"></script>
     {% if trudnik_ws_config.pushEnabled %}
-    <script src="{{ url_for('static', filename='js/push-notifications.js') }}" nonce="{{ csp_nonce }}"></script>
+    <script src="{{ url_for('static', filename='js/push-notifications.js') }}?v=20260905" nonce="{{ csp_nonce }}"></script>
     {% endif %}
     {% endif %}
     
@@ -435,18 +437,9 @@
     });
     </script>
 
-    <!-- F5: Confirm dialog для деструктивных действий -->
-    <script nonce="{{ csp_nonce }}">
-    document.addEventListener('click', function(e) {
-        const btn = e.target.closest('[data-confirm]');
-        if (!btn) return;
-        const message = btn.dataset.confirm || 'Вы уверены?';
-        if (!confirm(message)) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-    });
-    </script>
+    <!-- F5: Confirm dialog для деструктивных действий — ТОЛЬКО кастомный showConfirm
+         на формах .js-confirm-form (static/js/base.js). Нативный confirm() по [data-confirm]
+         удалён 2026-09-05: давал двойное подтверждение на формах с обоими атрибутами. -->
 
     <!-- F9: Keyboard shortcuts (Alt+H/Alt+N удалены 2026-08-27 по аудиту:
          конфликтуют с браузерными/скрин-ридерными хоткеями и нигде не анонсированы) -->

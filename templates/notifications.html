@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% from '_icons.html' import bell %}
+{% from '_icons.html' import bell, icon_user, chat, star %}
+{% from '_components.html' import empty_state %}
 {% block title %}Уведомления — Трудник{% endblock %}
 {% block content %}
 <div class="px-4 pb-24 max-w-lg mx-auto">
@@ -36,7 +37,7 @@
             'system': 'Системное',
         }.get(notification.type, notification.type or 'Уведомление') %}
         {% set is_invitation = notification.type == 'application_received' and 'Вас пригласили' in (notification.message or '') %}
-        <div class="relative">
+        <div class="relative"{% if is_invitation %} data-invitation="1"{% endif %}>
             <div class="app-card bg-white rounded-2xl shadow-sm border p-4 transition-all duration-200
                 {% if not notification.is_read %}border-primary-200 bg-primary-50/60{% else %}border-neutral-100{% endif %}">
                 {% if is_invitation %}
@@ -44,8 +45,8 @@
                 {% else %}
                 <div class="flex items-start gap-3">
                 {% endif %}
-                    <div class="w-9 h-9 rounded-full {% if not notification.is_read %}bg-primary-100{% else %}bg-neutral-100{% endif %} flex items-center justify-center shrink-0 mt-0.5">
-                        <span class="{% if not notification.is_read %}text-primary-600{% else %}text-neutral-400{% endif %} font-semibold text-sm">!</span>
+                    <div class="w-9 h-9 rounded-full {% if not notification.is_read %}bg-primary-100 text-primary-600{% else %}bg-neutral-100 text-neutral-400{% endif %} flex items-center justify-center shrink-0 mt-0.5">
+                        {% if is_invitation %}{{ icon_user(18) }}{% elif notification.type == 'new_message' %}{{ chat(18) }}{% elif notification.type == 'new_rating' %}{{ star(18) }}{% else %}{{ bell(18) }}{% endif %}
                     </div>
                     <div class="flex-1 min-w-0">
                         <p class="font-semibold text-neutral-900 text-sm">{{ type_label }}</p>
@@ -53,7 +54,7 @@
                         <p class="text-xs text-neutral-400 mt-1.5"><time datetime="{{ notification.created_at }}">{{ notification.created_at | format_date }}</time></p>
                     </div>
                     {% if not notification.is_read %}
-                    <span class="w-2 h-2 rounded-full bg-primary-500 shrink-0 mt-2"></span>
+                    <span class="js-unread-dot w-2 h-2 rounded-full bg-primary-500 shrink-0 mt-2"></span>
                     {% endif %}
                 {% if is_invitation %}
                 </a>
@@ -61,46 +62,95 @@
                 </div>
                 {% endif %}
             </div>
-            <button class="js-delete-one-btn w-11 h-11 flex items-center justify-center rounded-full bg-white border border-neutral-200 text-neutral-400 hover:text-danger hover:border-danger shadow-sm transition-all"
-                style="position:absolute; top:6px; right:-10px;"
+            <button class="js-delete-one-btn absolute top-1.5 -right-2.5 w-11 h-11 flex items-center justify-center rounded-full bg-white border border-neutral-200 text-neutral-400 hover:text-danger hover:border-danger shadow-sm transition-all"
                 data-notif-id="{{ notification.id }}" title="Удалить уведомление" aria-label="Удалить уведомление">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
         </div>
         {% endfor %}
     </div>
-    {% else %}
-    <div class="flex flex-col items-center justify-center py-16 text-center">
-        <div class="w-20 h-20 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
-            {{ bell(36) }}
-        </div>
-        <p class="text-lg font-semibold text-neutral-700">Нет уведомлений</p>
-        <p class="text-sm text-neutral-400 mt-1">У вас пока нет уведомлений</p>
-        <a href="/" class="mt-4 inline-flex items-center gap-1.5 bg-primary-500 text-white px-6 py-3 rounded-full text-sm font-semibold shadow-md hover:bg-primary-600 active:scale-[0.97] transition-all duration-200">
-            К заданиям
-        </a>
-    </div>
     {% endif %}
+    <div id="notifications-empty"{% if items %} class="hidden"{% endif %}>
+        {{ empty_state(bell, 'Нет уведомлений', 'У вас пока нет уведомлений', 'К заданиям', '/') }}
+    </div>
 </div>
 
 <script nonce="{{ csp_nonce }}">
-function deleteNotification(id) {
+// ── Бейдж непрочитанных в шапке (base.html #notifications-badge) ──
+function updateNotifBadge(delta) {
+    var badge = document.getElementById('notifications-badge');
+    if (!badge) return;
+    var current = parseInt(badge.textContent, 10);
+    if (isNaN(current)) return;
+    var next = current + delta;
+    if (next <= 0) {
+        badge.remove();
+    } else {
+        badge.textContent = next > 99 ? '99+' : String(next);
+    }
+}
+
+// Показать пустое состояние, если карточек не осталось
+function checkNotificationsEmpty() {
+    var list = document.getElementById('notifications-list');
+    var hasCards = list && list.querySelector('.relative');
+    if (!hasCards) {
+        if (list) list.remove();
+        var empty = document.getElementById('notifications-empty');
+        if (empty) empty.classList.remove('hidden');
+        var delAll = document.querySelector('.js-delete-all-btn');
+        if (delAll) delAll.remove();
+    }
+}
+
+function removeCard(wrapper) {
+    wrapper.style.transition = 'opacity 0.3s';
+    wrapper.style.opacity = '0';
+    setTimeout(function() {
+        wrapper.remove();
+        checkNotificationsEmpty();
+    }, 300);
+}
+
+function deleteNotification(id, btn) {
     window.showConfirm('Удалить уведомление?', function() {
         apiFetch('/api/notifications/' + id + '/delete', {method: 'POST'})
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            if (data.success) location.reload();
-            else window.showToast(data.error || 'Ошибка', 'error');
+            if (data.success) {
+                var wrapper = btn.closest('.relative');
+                if (wrapper) {
+                    // Непрочитанная карточка — уменьшаем бейдж в шапке
+                    if (wrapper.querySelector('.js-unread-dot')) updateNotifBadge(-1);
+                    removeCard(wrapper);
+                }
+            } else {
+                window.showToast(data.error || 'Ошибка', 'error');
+            }
         });
     });
 }
+
 function deleteAllNotifications() {
     window.showConfirm('Удалить все уведомления?', function() {
         apiFetch('/api/notifications/delete-all', {method: 'POST'})
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            if (data.success) location.reload();
-            else window.showToast(data.error || 'Ошибка', 'error');
+            if (data.success) {
+                // Сервер сохраняет приглашения ([data-invitation]) — их карточки не трогаем
+                var list = document.getElementById('notifications-list');
+                if (list) {
+                    var removedUnread = 0;
+                    list.querySelectorAll('.relative:not([data-invitation])').forEach(function(w) {
+                        if (w.querySelector('.js-unread-dot')) removedUnread++;
+                        w.remove();
+                    });
+                    if (removedUnread) updateNotifBadge(-removedUnread);
+                }
+                checkNotificationsEmpty();
+            } else {
+                window.showToast(data.error || 'Ошибка', 'error');
+            }
         });
     });
 }
@@ -109,7 +159,7 @@ function deleteAllNotifications() {
 document.addEventListener('click', function(e) {
     var btn = e.target.closest('.js-delete-one-btn');
     if (btn && btn.dataset.notifId) {
-        deleteNotification(btn.dataset.notifId);
+        deleteNotification(btn.dataset.notifId, btn);
         return;
     }
     var allBtn = e.target.closest('.js-delete-all-btn');
