@@ -1,4 +1,5 @@
 """Trudnik Flask Application Factory — create_app() < 100 строк."""
+import logging
 import os
 import time as _time_module
 from flask import Flask

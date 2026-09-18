@@ -1,6 +1,6 @@
-﻿import logging
+import logging
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required, validate_uuid
 from app.utils import postgrest_request
