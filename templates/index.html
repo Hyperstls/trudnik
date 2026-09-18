@@ -94,10 +94,10 @@
                     <a href="/jobs/{{ job.id }}" class="block">
                         <div class="flex items-start justify-between gap-2">
                             {# A4: суть работы в заголовке; организация — вторичной строкой #}
-                            <h3 class="font-semibold text-neutral-800 text-base leading-tight line-clamp-1 flex-1 min-w-0">{{ job.work_type or (job.object_description | truncate(60)) }}</h3>
+                            <h3 class="font-semibold text-neutral-900 text-base leading-tight line-clamp-1 flex-1 min-w-0">{{ job.work_type or (job.object_description | truncate(60)) }}</h3>
                             <span class="bg-primary-500 text-white text-xs font-bold px-2.5 py-1 rounded-lg shadow-sm shrink-0">{{ job.payment_amount }} ₽</span>
                         </div>
-                        <p class="text-sm text-neutral-700 mt-1 flex items-center gap-1.5 truncate">
+                        <p class="text-sm text-neutral-500 mt-1 flex items-center gap-1.5 truncate">
                             <span class="font-medium truncate">{{ job.organization_name }}</span>
                             {% if employer_ratings and employer_ratings.get(job.employer_id) %}
                             <span class="inline-flex items-center gap-0.5 text-neutral-500 shrink-0">

@@ -21,7 +21,7 @@
     </div>
 
     {% if items %}
-    <div class="space-y-3" id="notifications-list">
+    <div class="space-y-2" id="notifications-list">
         {% for notification in items %}
         {% set type_label = {
             'application_received': 'Новый отклик',
@@ -39,7 +39,7 @@
         {% set is_invitation = notification.type == 'application_received' and 'Вас пригласили' in (notification.message or '') %}
         <div class="relative"{% if is_invitation %} data-invitation="1"{% endif %}>
             <div class="app-card bg-white rounded-2xl shadow-sm border p-4 transition-all duration-200
-                {% if not notification.is_read %}border-primary-200 bg-primary-50/60{% else %}border-neutral-100{% endif %}">
+                {% if not notification.is_read %}border-primary-200 bg-primary-50/60 border-l-2 border-l-primary-500{% else %}border-neutral-100{% endif %}">
                 {% if is_invitation %}
                 <a href="/invitations" class="flex items-start gap-3 no-underline text-inherit">
                 {% else %}

@@ -42,7 +42,7 @@
         {% for app in applications %}
         {% set job = app.get('job') or {} %}
         <a href="/jobs/{{ job.get('id') or app.get('job_id') }}"
-           class="block bg-white rounded-2xl border border-neutral-200 p-4 hover:shadow-md transition-shadow">
+           class="card block bg-white rounded-2xl border border-neutral-200 shadow-sm p-4 hover:shadow-md transition-shadow duration-200">
             <div class="flex items-start justify-between gap-3">
                 <div class="flex-1 min-w-0">
                     <h3 class="font-semibold text-neutral-800 text-base leading-tight truncate">
@@ -144,7 +144,7 @@
         </div>
 
         {% for app in applications %}
-        <div class="app-card animate-fade-in"
+        <div class="card app-card animate-fade-in bg-white rounded-2xl border border-neutral-200 shadow-sm p-4 hover:shadow-md transition-shadow duration-200"
              data-app-id="{{ app.id }}" data-status="{{ app.status }}">
 
             <div class="flex items-start gap-3">

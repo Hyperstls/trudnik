@@ -70,7 +70,7 @@
     {# ============================================ #}
     <form method="POST" action="/my-jobs/action" id="bulk-form">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-        <div class="mb-4 flex flex-wrap items-center gap-2">
+        <div class="sticky z-20 mb-4 flex flex-wrap items-center gap-2 bg-white rounded-xl border border-neutral-200 shadow-sm px-3 py-2" style="top: 3.5rem;">
             <button type="button" id="select-all-btn"
                     class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-600 hover:bg-neutral-100 transition-colors border border-neutral-200">
                 {{ select_all(16) }}
@@ -109,7 +109,7 @@
         {% if jobs %}
         <div class="space-y-3">
             {% for job in jobs %}
-            <div class="app-card animate-fade-in bg-white rounded-2xl border border-neutral-200 shadow-sm p-4">
+            <div class="card app-card animate-fade-in bg-white rounded-2xl border border-neutral-200 shadow-sm p-4 hover:shadow-md transition-shadow duration-200">
                 <div class="flex items-start gap-3">
                     <input type="checkbox" name="job_ids" value="{{ job.id }}"
                            class="job-checkbox app-checkbox mt-1.5" aria-label="Выбрать задание {{ job.organization_name or job.title }}">
@@ -126,7 +126,7 @@
                             {{ status_badge(job.status) }}
                         </div>
                         {# Мета-информация #}
-                        <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-neutral-400">
+                        <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-neutral-500">
                             {% if job.application_count is defined and job.application_count > 0 %}
                             <span>{{ job.application_count }} {{ 'отклик' if job.application_count == 1 else 'отклика' if job.application_count < 5 else 'откликов' }}</span>
                             {% endif %}

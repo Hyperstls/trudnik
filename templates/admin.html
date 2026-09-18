@@ -127,21 +127,21 @@
     </div>
     <div class="bg-white rounded-xl border border-neutral-100 shadow-sm overflow-x-auto">
         <table class="w-full text-sm" id="users-table">
-            <thead class="bg-neutral-50 text-neutral-600">
+            <thead class="bg-neutral-50">
                 <tr>
-                    <th class="text-center px-2 py-3 font-medium w-8">
+                    <th class="text-center px-2 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500 w-8">
                         <input type="checkbox" class="js-select-all-users rounded border-neutral-300" title="Выбрать всех">
                     </th>
-                    <th class="text-left px-4 py-3 font-medium">Имя</th>
-                    <th class="text-left px-4 py-3 font-medium">Email</th>
-                    <th class="text-left px-4 py-3 font-medium">Роль</th>
-                    <th class="text-left px-4 py-3 font-medium">Город</th>
-                    <th class="text-right px-4 py-3 font-medium">Действия</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Имя</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Email</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Роль</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Город</th>
+                    <th class="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Действия</th>
                 </tr>
             </thead>
             <tbody>
                 {% for u in users %}
-                <tr class="border-t border-neutral-100 hover:bg-neutral-50" data-user-id="{{ u.id }}">
+                <tr class="border-t border-neutral-100 odd:bg-neutral-50 hover:bg-neutral-50" data-user-id="{{ u.id }}">
                     <td class="px-2 py-3 text-center">
                         <input type="checkbox" class="js-user-checkbox rounded border-neutral-300" data-user-id="{{ u.id }}" aria-label="Выбрать пользователя {{ u.get('full_name', '') }}">
                     </td>
@@ -210,21 +210,21 @@
     </div>
     <div class="bg-white rounded-xl border border-neutral-100 shadow-sm overflow-x-auto">
         <table class="w-full text-sm" id="jobs-table">
-            <thead class="bg-neutral-50 text-neutral-600">
+            <thead class="bg-neutral-50">
                 <tr>
-                    <th class="text-center px-2 py-3 font-medium w-8">
+                    <th class="text-center px-2 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500 w-8">
                         <input type="checkbox" class="js-select-all-jobs rounded border-neutral-300" title="Выбрать все">
                     </th>
-                    <th class="text-left px-4 py-3 font-medium">Название</th>
-                    <th class="text-left px-4 py-3 font-medium">Работодатель</th>
-                    <th class="text-left px-4 py-3 font-medium">Статус</th>
-                    <th class="text-left px-4 py-3 font-medium">Оплата</th>
-                    <th class="text-right px-4 py-3 font-medium">Действия</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Название</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Работодатель</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Статус</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Оплата</th>
+                    <th class="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Действия</th>
                 </tr>
             </thead>
             <tbody>
                 {% for j in jobs %}
-                <tr class="border-t border-neutral-100 hover:bg-neutral-50" data-job-id="{{ j.id }}">
+                <tr class="border-t border-neutral-100 odd:bg-neutral-50 hover:bg-neutral-50" data-job-id="{{ j.id }}">
                     <td class="px-2 py-3 text-center">
                         <input type="checkbox" class="js-job-checkbox rounded border-neutral-300" data-job-id="{{ j.id }}" aria-label="Выбрать задание {{ j.get('title', '') }}">
                     </td>
@@ -264,7 +264,7 @@
     {# ВЕРИФИКАЦИЯ                                                    #}
     {# ============================================================ #}
     {% if tab == 'verification' %}
-    <h3 class="text-lg font-semibold text-neutral-800 mb-3">Заявки на верификацию</h3>
+    <h3 class="text-lg font-bold text-neutral-900 mb-3">Заявки на верификацию</h3>
     {% if pending %}
     <div class="space-y-2 mb-8">
         {% for user in pending %}
@@ -313,7 +313,7 @@
     {% endif %}
 
     {% if verified %}
-    <h3 class="text-lg font-semibold text-neutral-800 mb-3 mt-6">История верификаций</h3>
+    <h3 class="text-lg font-bold text-neutral-900 mb-3 mt-6">История верификаций</h3>
     <div class="space-y-2 mb-8">
         {% for user in verified %}
         <div class="bg-white rounded-xl border border-neutral-100 p-4 shadow-sm">
@@ -374,7 +374,7 @@
     {# НАВЫКИ                                                         #}
     {# ============================================================ #}
     {% if tab == 'skills' %}
-    <h3 class="text-lg font-semibold text-neutral-800 mb-3">Справочник навыков</h3>
+    <h3 class="text-lg font-bold text-neutral-900 mb-3">Справочник навыков</h3>
     <div class="bg-white rounded-2xl border border-neutral-100 p-5 shadow-sm">
         <div class="flex gap-2 mb-4">
             <input type="text" id="skill-name-input" placeholder="Новый навык..."
@@ -401,7 +401,7 @@
     {# ВЕРОИСПОВЕДАНИЯ                                                #}
     {# ============================================================ #}
     {% if tab == 'religions' %}
-    <h3 class="text-lg font-semibold text-neutral-800 mb-3">Справочник вероисповеданий</h3>
+    <h3 class="text-lg font-bold text-neutral-900 mb-3">Справочник вероисповеданий</h3>
     <div class="bg-white rounded-2xl border border-neutral-100 p-5 shadow-sm">
         <div class="flex gap-2 mb-4">
             <input type="text" id="religion-name-input" placeholder="Новое вероисповедание..."
@@ -427,7 +427,7 @@
     {# СТАТИСТИКА                                                      #}
     {# ============================================================ #}
     {% if tab == 'stats' %}
-    <h3 class="text-lg font-semibold text-neutral-800 mb-3">Статистика публикаций</h3>
+    <h3 class="text-lg font-bold text-neutral-900 mb-3">Статистика публикаций</h3>
     <div id="stats-container" class="space-y-3">
         <p class="text-sm text-neutral-500">Загрузка...</p>
     </div>
