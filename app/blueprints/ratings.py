@@ -64,7 +64,10 @@ def get_user_rating(user_id):
 @login_required
 @rate_limit
 def upsert_rating():
-    """Создать или обновить оценку (один пользователь — одна оценка на задание).
+    """Создать или обновить оценку (одна оценка на пару оценщик–оцениваемый в рамках задания).
+
+    Ключ уникальности: (rater_user_id, job_id, rated_user_id) — миграция 145.
+    Работодатель может оценить каждого исполнителя задания отдельно.
     
     Body:
         job_id (str): ID задания
@@ -151,10 +154,10 @@ def upsert_rating():
         'updated_at': datetime.now(timezone.utc).isoformat(),
     }
 
-    # Пробуем найти существующую оценку
+    # Пробуем найти существующую оценку этой пары (оценщик → оцениваемый) на это задание
     existing = postgrest_admin_request(
         'GET',
-        f'ratings?rater_user_id=eq.{rater_user_id}&job_id=eq.{job_id}&select=id'
+        f'ratings?rater_user_id=eq.{rater_user_id}&job_id=eq.{job_id}&rated_user_id=eq.{rated_user_id}&select=id'
     )
 
     if existing.ok and existing.json():
@@ -175,7 +178,7 @@ def upsert_rating():
         if not resp.ok and resp.text and 'violates unique constraint' in resp.text.lower():
             existing2 = postgrest_admin_request(
                 'GET',
-                f'ratings?rater_user_id=eq.{rater_user_id}&job_id=eq.{job_id}&select=id'
+                f'ratings?rater_user_id=eq.{rater_user_id}&job_id=eq.{job_id}&rated_user_id=eq.{rated_user_id}&select=id'
             )
             if existing2.ok and existing2.json():
                 rating_id = existing2.json()[0]['id']

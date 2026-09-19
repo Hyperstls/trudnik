@@ -15,6 +15,38 @@ from app.services.admin_service import get_dashboard_stats
 
 admin_dashboard_bp = Blueprint('admin_dashboard', __name__, url_prefix='/admin')
 
+# Кэш версии: git вызывается лениво и не более одного раза за жизнь процесса —
+# в контейнере git отсутствует, иначе subprocess падал бы на КАЖДОЙ загрузке админки.
+_version_cache: str | None = None
+
+
+def _get_actual_version() -> str:
+    """Вернуть версию приложения: содержимое файла VERSION или вывод `git log`.
+
+    При недоступности обоих источников (нет git в контейнере и т.п.) —
+    тихий fallback 'unknown': результат кэшируется, ошибка логируется один раз.
+    """
+    global _version_cache
+    if _version_cache is not None:
+        return _version_cache
+
+    version = ''
+    try:
+        version_path = Path(current_app.root_path).parent / 'VERSION'
+        if version_path.exists():
+            version = version_path.read_text(encoding='utf-8').strip()
+        else:
+            version = subprocess.check_output(
+                ['git', 'log', '-1', '--format=%h %s (%ai)'],
+                cwd=str(Path(current_app.root_path).parent), text=True,
+                stderr=subprocess.DEVNULL,
+            ).strip()
+    except Exception as e:
+        current_app.logger.info('Version source unavailable (%s), fallback to "unknown"', e)
+
+    _version_cache = version or 'unknown'
+    return _version_cache
+
 
 @admin_dashboard_bp.route('/health')
 def health_check():
@@ -91,19 +123,8 @@ def admin_panel():
         religions_resp = postgrest_admin_request('GET', 'religions?select=*&order=sort_order.asc,name.asc')
         religions = religions_resp.json() if religions_resp.ok else []
 
-    # Актуальная версия
-    try:
-        version_path = Path(current_app.root_path).parent / 'VERSION'
-        if version_path.exists():
-            actual_version = version_path.read_text(encoding='utf-8').strip()
-        else:
-            actual_version = subprocess.check_output(
-                ['git', 'log', '-1', '--format=%h %s (%ai)'],
-                cwd=str(Path(current_app.root_path).parent), text=True
-            ).strip()
-    except Exception as e:
-        current_app.logger.warning('Failed to get version: %s', e, exc_info=True)
-        actual_version = 'dev'
+    # Актуальная версия (VERSION / git, кэшируется на уровне модуля)
+    actual_version = _get_actual_version()
 
     return render_template('admin.html',
                            tab=tab, stats=stats, users=users,
