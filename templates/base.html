@@ -149,7 +149,7 @@
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                             <circle cx="12" cy="7" r="4"></circle>
                         </svg>
-                        {% if session.get('role') == 'worker' and pending_invitations is defined and pending_invitations > 0 %}
+                        {% if pending_invitations is defined and pending_invitations > 0 %}
                         <span class="absolute top-1.5 right-1.5 block w-2 h-2 rounded-full bg-danger border border-white" aria-hidden="true"></span>
                         {% endif %}
                     </button>
@@ -162,7 +162,7 @@
                             </svg>
                             Профиль
                         </a>
-                        {% if session.get('role') == 'worker' %}
+                        {% if session.get('user_id') %}
                         <a href="/invitations" role="menuitem" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-100 transition-colors">
                             <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>

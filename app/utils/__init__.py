@@ -10,7 +10,7 @@
 # P0: Production guard — mock imports only in test/dev mode
 import os as _os
 _allow_mock_import = (
-    _os.environ.get('POSTGREST_MOCK_MODE', '').lower() == 'true'
+    str(_os.environ.get('POSTGREST_MOCK_MODE', '')).lower() in ('1', 'true', 'yes')
     or _os.environ.get('TESTING', '').lower() == 'true'
     or _os.environ.get('FLASK_ENV', '') == 'development'
 )

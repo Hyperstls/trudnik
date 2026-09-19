@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from '_icons.html' import star, chat, trash, shield, camera, settings, mail, phone, map_pin, info, smiley %}
-{% from '_components.html' import btn_primary %}
+{% from '_components.html' import btn_primary, rating_stars %}
 {% block title %}Профиль — Трудник{% endblock %}
 {% block content %}
 <div class="px-4 pb-24 max-w-lg mx-auto" data-user-id="{{ current_user_id }}">
@@ -43,7 +43,7 @@
             {% endif %}
         </h3>
         <div class="flex items-center gap-1.5 mt-1">
-            <span class="text-warning">★</span>
+            {{ rating_stars(profile_user.get('rating', 0) or 0, 14) }}
             <span class="text-sm font-medium text-neutral-700">{{ "%.1f"|format(profile_user.get('rating', 0) or 0) }}</span>
             <span class="text-xs text-neutral-400">({{ profile_user.get('total_reviews', 0) }} {{ 'отзыв' if profile_user.get('total_reviews', 0) == 1 else 'отзывов' }})</span>
         </div>
