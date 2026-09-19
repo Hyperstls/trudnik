@@ -26,6 +26,7 @@ from app.utils.security import safe_redirect
 from app.utils.errors import safe_error_message
 from app.utils.validators import parse_float
 from app.services.notification_service import enqueue_notification
+from app.services import favorites_service
 from app.services.job_service import (
     check_job_owner,
     check_job_visibility,
@@ -496,9 +497,8 @@ def job_detail(job_id):
     # Проверка: добавлен ли работодатель в избранное (любой залогиненный — мультирольность)
     is_employer_favorited = False
     if session.get('user_id') and job.get('employer_id'):
-        fav_check = postgrest_request('GET',
-            f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{job["employer_id"]}&favorite_type=eq.employer')
-        is_employer_favorited = bool(fav_check.json()) if fav_check.ok else False
+        is_employer_favorited = favorites_service.check_favorite(
+            session['user_id'], 'employer', job['employer_id'])
 
     return render_template('job_detail.html', job=job,
                            employer=employer,
@@ -509,16 +509,6 @@ def job_detail(job_id):
                            can_withdraw=can_withdraw,
                            current_user_role=session.get('role'),
                            is_employer_favorited=is_employer_favorited)
-
-
-# ──────────────────────────────────────────────
-# Тарифы (монетизация)
-# ──────────────────────────────────────────────
-
-@jobs_bp.route('/pricing')
-def pricing():
-    """Страница с тарифами для работодателей."""
-    return render_template('pricing.html')
 
 
 # ──────────────────────────────────────────────
@@ -595,7 +585,7 @@ def job_new():
                         if remaining <= 0:
                             flash(
                                 'Лимит заданий исчерпан. Перейдите на тариф Pro или Бизнес, чтобы '
-                                'разместить больше заданий. <a href="/pricing">Смотреть тарифы</a>',
+                                'разместить больше заданий.',
                                 'danger'
                             )
                             return render_template('job_new.html', **template_data)
@@ -1245,7 +1235,7 @@ def edit_job(job_id):
 @login_required
 @validate_uuid('job_id')
 def add_favorite_job(job_id):
-    fav_resp = postgrest_request('POST', 'job_favorites', json={'user_id': session['user_id'], 'job_id': job_id})
+    _status, fav_resp = favorites_service.add_favorite(session['user_id'], 'job', job_id)
     if assert_postgrest_ok(fav_resp, 'добавление задания в избранное'):
         flash('Задание добавлено в избранное', 'success')
     return safe_redirect('jobs.index')
@@ -1255,7 +1245,7 @@ def add_favorite_job(job_id):
 @login_required
 @validate_uuid('job_id')
 def remove_favorite_job(job_id):
-    unfav_resp = postgrest_request('DELETE', f'job_favorites?user_id=eq.{session["user_id"]}&job_id=eq.{job_id}')
+    unfav_resp = favorites_service.remove_favorite(session['user_id'], 'job', job_id)
     if assert_postgrest_ok(unfav_resp, 'удаление задания из избранного'):
         flash('Задание удалено из избранного', 'success')
     return safe_redirect('favorites.favorites')

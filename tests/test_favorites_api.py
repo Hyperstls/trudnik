@@ -7,9 +7,9 @@
 - Роли: worker на favorites → redirect, гость → 302 login
 
 ⚠️ postgrest_request патчуется детерминированно в каждом тесте: смарт-фикстура
-conftest патчит атрибуты ПАКЕТА app.utils, а blueprints держат прямые ссылки,
-захваченные при импорте — в полном suite порядок импортов решает, попадёт ли
-мок (binding-time lottery). Патчим точно то, что дёргает обработчик.
+conftest патчит атрибуты ПАКЕТА app.utils, а сервис app.services.favorites_service
+держит прямую ссылку, захваченную при импорте — в полном suite порядок импортов
+решает, попадёт ли мок (binding-time lottery). Патчим точно то, что дёргает код.
 """
 
 import pytest
@@ -17,6 +17,10 @@ import pytest
 
 WID = '88888888-8888-8888-8888-888888888888'   # целевой трудник
 EID = '99999999-9999-9999-9999-999999999999'   # целевой работодатель
+
+# Модуль, через который эндпоинты избранного делают PostgREST-вызовы
+# (add/remove/check вынесены в app/services/favorites_service.py).
+FAVORITES_SERVICE = 'app.services.favorites_service'
 
 
 def _login(client, role='employer', uid='aaaaaaaa-1111-1111-1111-111111111111'):
@@ -27,8 +31,12 @@ def _login(client, role='employer', uid='aaaaaaaa-1111-1111-1111-111111111111'):
         sess['access_token'] = generate_jwt(uid, role)
 
 
-def _patch_postgrest(monkeypatch, module_name):
-    """Патчит postgrest_request в конкретном blueprint на успешный мок."""
+def _patch_postgrest(monkeypatch, module_name=FAVORITES_SERVICE):
+    """Патчит postgrest_request в модуле с логикой избранного на успешный мок.
+
+    Дополнительно патчит app.blueprints.favorites: /api/favorites/remove-selected
+    и GET /favorites (view с select=) остались на blueprint-уровне.
+    """
     from app.utils import PostgrestResponse
 
     def ok_request(method=None, url=None, **kw):
@@ -40,6 +48,7 @@ def _patch_postgrest(monkeypatch, module_name):
                                  text='[]')
 
     monkeypatch.setattr(f'{module_name}.postgrest_request', ok_request)
+    monkeypatch.setattr('app.blueprints.favorites.postgrest_request', ok_request)
 
 
 # ═══ /api/favorites/* (employer only) ═══
@@ -47,7 +56,7 @@ def _patch_postgrest(monkeypatch, module_name):
 class TestFavoritesApi:
     def test_check(self, app_client, monkeypatch):
         _login(app_client, role='employer')
-        _patch_postgrest(monkeypatch, 'app.blueprints.favorites')
+        _patch_postgrest(monkeypatch)
         resp = app_client.post('/api/favorites/check', json={'worker_id': WID})
         assert resp.status_code == 200
         data = resp.get_json()
@@ -56,27 +65,27 @@ class TestFavoritesApi:
 
     def test_check_without_worker_id(self, app_client, monkeypatch):
         _login(app_client, role='employer')
-        _patch_postgrest(monkeypatch, 'app.blueprints.favorites')
+        _patch_postgrest(monkeypatch)
         resp = app_client.post('/api/favorites/check', json={})
         assert resp.get_json()['success'] is False
 
     def test_add(self, app_client, monkeypatch):
         _login(app_client, role='employer')
-        _patch_postgrest(monkeypatch, 'app.blueprints.favorites')
+        _patch_postgrest(monkeypatch)
         resp = app_client.post('/api/favorites/add', json={'worker_id': WID})
         assert resp.status_code == 200
         assert resp.get_json()['success'] is True
 
     def test_remove(self, app_client, monkeypatch):
         _login(app_client, role='employer')
-        _patch_postgrest(monkeypatch, 'app.blueprints.favorites')
+        _patch_postgrest(monkeypatch)
         resp = app_client.post('/api/favorites/remove', json={'worker_id': WID})
         assert resp.status_code == 200
         assert resp.get_json()['success'] is True
 
     def test_remove_selected(self, app_client, monkeypatch):
         _login(app_client, role='employer')
-        _patch_postgrest(monkeypatch, 'app.blueprints.favorites')
+        _patch_postgrest(monkeypatch)
         resp = app_client.post('/api/favorites/remove-selected',
                                json={'worker_ids': [WID]})
         assert resp.status_code == 200
@@ -84,7 +93,7 @@ class TestFavoritesApi:
 
     def test_remove_selected_empty(self, app_client, monkeypatch):
         _login(app_client, role='employer')
-        _patch_postgrest(monkeypatch, 'app.blueprints.favorites')
+        _patch_postgrest(monkeypatch)
         resp = app_client.post('/api/favorites/remove-selected',
                                json={'worker_ids': []})
         assert resp.get_json()['success'] is False
@@ -93,7 +102,7 @@ class TestFavoritesApi:
         """Мультирольность (2026-09-03): favorites API доступен любой роли.
         Worker → 200 JSON, не redirect."""
         _login(app_client, role='worker')
-        _patch_postgrest(monkeypatch, 'app.blueprints.favorites')
+        _patch_postgrest(monkeypatch)
         resp = app_client.post('/api/favorites/check', json={'worker_id': WID})
         assert resp.status_code == 200
         assert resp.get_json()['success'] is True
@@ -109,7 +118,7 @@ class TestFavoritesApi:
 class TestEmployerFavoritesApi:
     def test_add(self, app_client, monkeypatch):
         _login(app_client, role='worker')
-        _patch_postgrest(monkeypatch, 'app.blueprints.employers')
+        _patch_postgrest(monkeypatch)
         resp = app_client.post('/api/employers/favorites/add',
                                json={'employer_id': EID})
         assert resp.status_code == 200
@@ -117,7 +126,7 @@ class TestEmployerFavoritesApi:
 
     def test_remove(self, app_client, monkeypatch):
         _login(app_client, role='worker')
-        _patch_postgrest(monkeypatch, 'app.blueprints.employers')
+        _patch_postgrest(monkeypatch)
         resp = app_client.post('/api/employers/favorites/remove',
                                json={'employer_id': EID})
         assert resp.status_code == 200
@@ -125,7 +134,7 @@ class TestEmployerFavoritesApi:
 
     def test_check(self, app_client, monkeypatch):
         _login(app_client, role='worker')
-        _patch_postgrest(monkeypatch, 'app.blueprints.employers')
+        _patch_postgrest(monkeypatch)
         resp = app_client.post('/api/employers/favorites/check',
                                json={'employer_id': EID})
         assert resp.status_code == 200

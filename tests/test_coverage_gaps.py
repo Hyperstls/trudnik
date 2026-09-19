@@ -3,7 +3,7 @@
 Закрывают ранее непокрытые pytest-набором маршруты:
 - /uploads/avatars/<f> и /uploads/verification-docs/<f> (path traversal, IDOR)
 - /verify-email/<token> и /verify-email/resend (auth-флоу)
-- публичные страницы: /terms, /privacy, /pricing, /faq, /robots.txt
+- публичные страницы: /terms, /privacy, /faq, /robots.txt
 - /ready и /metrics (healthcheck Dockerfile + Prometheus)
 - /profile/delete-account (доступ без сессии)
 
@@ -149,7 +149,6 @@ class TestPublicPages:
     @pytest.mark.parametrize('path,marker', [
         ('/terms', 'условия'),
         ('/privacy', 'конфиденциальн'),
-        ('/pricing', ''),
         ('/faq', 'Вопросы и ответы'),
     ])
     def test_public_page_200(self, app_client, path, marker):

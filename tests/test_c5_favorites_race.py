@@ -38,7 +38,7 @@ class TestFavoritesRaceCondition:
     """Тесты для favorites без race condition."""
 
     @patch('app.utils.auth.is_jti_blacklisted', return_value=False)
-    @patch('app.blueprints.favorites.postgrest_request')
+    @patch('app.services.favorites_service.postgrest_request')
     def test_add_favorite_success(
         self, mock_request, mock_blacklist, employer_session
     ):
@@ -55,7 +55,7 @@ class TestFavoritesRaceCondition:
         assert response.status_code == 302
 
     @patch('app.utils.auth.is_jti_blacklisted', return_value=False)
-    @patch('app.blueprints.favorites.postgrest_request')
+    @patch('app.services.favorites_service.postgrest_request')
     def test_add_favorite_handles_duplicate(
         self, mock_request, mock_blacklist, employer_session
     ):
@@ -77,7 +77,7 @@ class TestFavoritesRaceCondition:
         assert response.status_code == 302
 
     @patch('app.utils.auth.is_jti_blacklisted', return_value=False)
-    @patch('app.blueprints.favorites.postgrest_request')
+    @patch('app.services.favorites_service.postgrest_request')
     def test_api_add_favorite_handles_duplicate(
         self, mock_request, mock_blacklist, employer_session
     ):
@@ -101,7 +101,7 @@ class TestFavoritesRaceCondition:
         assert 'уже в избранном' in data['message']
 
     @patch('app.utils.auth.is_jti_blacklisted', return_value=False)
-    @patch('app.blueprints.favorites.postgrest_request')
+    @patch('app.services.favorites_service.postgrest_request')
     def test_concurrent_add_favorite(
         self, mock_request, mock_blacklist, employer_session
     ):

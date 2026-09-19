@@ -40,14 +40,6 @@ def verify_captcha(token: str, ip: str | None = None) -> bool:
         return False
 
 
-def render_captcha_widget() -> str:
-    """HTML-виджет CAPTCHA."""
-    site_key = os.environ.get('SMARTCAPTCHA_CLIENT_KEY', '')
-    if not site_key:
-        return ''
-    return f'<div class="smart-captcha" data-sitekey="{site_key}"></div>'
-
-
 def is_captcha_enabled() -> bool:
     """Включена ли капча (Yandex SmartCaptcha).
 

@@ -1,8 +1,7 @@
-import logging
-
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 
 from app.decorators import login_required, validate_uuid
+from app.services import favorites_service
 from app.utils import postgrest_request
 from app.utils.security import safe_redirect
 
@@ -62,18 +61,11 @@ def favorites():
 @login_required
 @validate_uuid('target_id')
 def add_favorite(target_id):
-    resp = postgrest_request('POST', 'favorites', json={'user_id': session['user_id'], 'target_id': target_id, 'favorite_type': 'worker'})
-    if not resp.ok:
-        # B12: PostgREST returns 400 + code=23505 for unique violation (not 409)
-        err_data = {}
-        try:
-            err_data = resp.json() or {}
-        except Exception:
-            logging.getLogger(__name__).debug("err_data parse ignored", exc_info=True)
-        if err_data.get('code') == '23505':
-            flash('Трудник уже в избранном', 'info')
-        else:
-            flash('Не удалось добавить в избранное', 'danger')
+    status, _resp = favorites_service.add_favorite(session['user_id'], 'worker', target_id)
+    if status == 'exists':
+        flash('Трудник уже в избранном', 'info')
+    elif status == 'error':
+        flash('Не удалось добавить в избранное', 'danger')
     return safe_redirect('jobs.index')
 
 
@@ -81,7 +73,7 @@ def add_favorite(target_id):
 @login_required
 @validate_uuid('target_id')
 def remove_favorite(target_id):
-    postgrest_request('DELETE', f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{target_id}&favorite_type=eq.worker')
+    favorites_service.remove_favorite(session['user_id'], 'worker', target_id)
     return redirect(url_for('favorites.favorites'))
 
 
@@ -99,19 +91,12 @@ def add_favorite_api():
         return jsonify({'success': False, 'error': 'Не указан worker_id'})
 
     try:
-        resp = postgrest_request('POST', 'favorites', json={'user_id': session['user_id'], 'target_id': worker_id, 'favorite_type': 'worker'})
-        if resp.ok:
+        status, resp = favorites_service.add_favorite(session['user_id'], 'worker', worker_id)
+        if status == 'added':
             return jsonify({'success': True, 'message': 'Трудник добавлен в избранное'})
-        else:
-            # B12: PostgREST returns 400 + code=23505 for unique violation
-            err_data = {}
-            try:
-                err_data = resp.json() or {}
-            except Exception:
-                logging.getLogger(__name__).debug("err_data parse ignored", exc_info=True)
-            if err_data.get('code') == '23505':
-                return jsonify({'success': True, 'message': 'Трудник уже в избранном'})
-            return jsonify({'success': False, 'error': f'Ошибка сервера: {resp.status_code}'})
+        if status == 'exists':
+            return jsonify({'success': True, 'message': 'Трудник уже в избранном'})
+        return jsonify({'success': False, 'error': f'Ошибка сервера: {resp.status_code}'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
@@ -126,7 +111,7 @@ def remove_favorite_api():
         return jsonify({'success': False, 'error': 'Не указан worker_id'})
 
     try:
-        postgrest_request('DELETE', f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{worker_id}&favorite_type=eq.worker')
+        favorites_service.remove_favorite(session['user_id'], 'worker', worker_id)
         return jsonify({'success': True, 'message': 'Трудник удалён из избранного'})
     except Exception as e:
         current_app.logger.exception("remove_favorite_api error for worker_id=%s", worker_id)
@@ -143,8 +128,7 @@ def check_favorite_api():
         return jsonify({'success': False, 'error': 'Не указан worker_id'})
 
     try:
-        resp = postgrest_request('GET', f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{worker_id}&favorite_type=eq.worker')
-        is_favorited = resp.ok and len(resp.json()) > 0
+        is_favorited = favorites_service.check_favorite(session['user_id'], 'worker', worker_id)
         return jsonify({'success': True, 'is_favorited': is_favorited})
     except Exception as e:
         current_app.logger.exception("check_favorite_api error for worker_id=%s", worker_id)

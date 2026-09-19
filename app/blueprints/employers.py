@@ -1,9 +1,8 @@
-import logging
-
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 
 from app.config import Config
 from app.decorators import login_required, validate_uuid
+from app.services import favorites_service
 from app.utils import postgrest_request, sanitize_postgrest
 from app.utils.security import safe_redirect
 
@@ -145,9 +144,7 @@ def employer_detail(employer_id):
     is_favorited = False
     already_applied_job_ids = set()
     if user_id:
-        fav_resp = postgrest_request('GET',
-            f'favorites?user_id=eq.{user_id}&target_id=eq.{employer_id}&favorite_type=eq.employer')
-        is_favorited = fav_resp.ok and len(fav_resp.json() or []) > 0
+        is_favorited = favorites_service.check_favorite(user_id, 'employer', employer_id)
 
         if open_jobs:
             job_ids = ','.join(j['id'] for j in open_jobs)
@@ -171,20 +168,11 @@ def toggle_favorite(employer_id):
     user_id = session['user_id']
 
     try:
-        check = postgrest_request('GET',
-            f'favorites?user_id=eq.{user_id}&target_id=eq.{employer_id}&favorite_type=eq.employer')
-        is_favorited = check.ok and len(check.json() or []) > 0
-
-        if is_favorited:
-            postgrest_request('DELETE',
-                f'favorites?user_id=eq.{user_id}&target_id=eq.{employer_id}&favorite_type=eq.employer')
+        if favorites_service.check_favorite(user_id, 'employer', employer_id):
+            favorites_service.remove_favorite(user_id, 'employer', employer_id)
             flash('Работодатель удалён из избранного', 'success')
         else:
-            postgrest_request('POST', 'favorites', json={
-                'user_id': user_id,
-                'target_id': employer_id,
-                'favorite_type': 'employer'
-            })
+            favorites_service.add_favorite(user_id, 'employer', employer_id)
             flash('Работодатель добавлен в избранное', 'success')
     except Exception as e:
         current_app.logger.error(f"toggle_favorite error: {e}")
@@ -208,23 +196,12 @@ def add_employer_favorite_api():
         return jsonify({'success': False, 'error': 'Не указан employer_id'})
 
     try:
-        resp = postgrest_request('POST', 'favorites', json={
-            'user_id': session['user_id'],
-            'target_id': employer_id,
-            'favorite_type': 'employer'
-        })
-        if resp.ok:
+        status, resp = favorites_service.add_favorite(session['user_id'], 'employer', employer_id)
+        if status == 'added':
             return jsonify({'success': True, 'message': 'Работодатель добавлен в избранное'})
-        else:
-            # B12: PostgREST returns 400 + code=23505 for unique violation
-            err_data = {}
-            try:
-                err_data = resp.json() or {}
-            except Exception:
-                logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
-            if err_data.get('code') == '23505':
-                return jsonify({'success': True, 'message': 'Работодатель уже в избранном'})
-            return jsonify({'success': False, 'error': f'Ошибка сервера: {resp.status_code}'})
+        if status == 'exists':
+            return jsonify({'success': True, 'message': 'Работодатель уже в избранном'})
+        return jsonify({'success': False, 'error': f'Ошибка сервера: {resp.status_code}'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
@@ -239,8 +216,7 @@ def remove_employer_favorite_api():
         return jsonify({'success': False, 'error': 'Не указан employer_id'})
 
     try:
-        resp = postgrest_request('DELETE',
-            f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{employer_id}&favorite_type=eq.employer')
+        resp = favorites_service.remove_favorite(session['user_id'], 'employer', employer_id)
         if resp.ok:
             return jsonify({'success': True, 'message': 'Работодатель удалён из избранного'})
         else:
@@ -263,9 +239,7 @@ def check_employer_favorite_api():
         return jsonify({'success': False, 'error': 'Не указан employer_id'})
 
     try:
-        resp = postgrest_request('GET',
-            f'favorites?user_id=eq.{session["user_id"]}&target_id=eq.{employer_id}&favorite_type=eq.employer')
-        is_favorited = resp.ok and len(resp.json() or []) > 0
+        is_favorited = favorites_service.check_favorite(session['user_id'], 'employer', employer_id)
         return jsonify({'success': True, 'is_favorited': is_favorited})
     except Exception as e:
         current_app.logger.exception("check_employer_favorite_api error for employer_id=%s", employer_id)
