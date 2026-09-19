@@ -75,6 +75,8 @@ def extract_csrf_token(html: str) -> str | None:
 
 def get_csrf_from_page(session: requests.Session, url: str) -> str | None:
     """Загружает страницу и возвращает CSRF-токен из HTML."""
+    if url.startswith('/'):
+        url = f'{BASE_URL}{url}'
     resp = session.get(url, timeout=30)
     if resp.status_code == 200:
         return extract_csrf_token(resp.text)

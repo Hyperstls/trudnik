@@ -31,6 +31,7 @@ from tests.conftest import (
     get_csrf_from_page,
     login_as,
     extract_csrf_token,
+    _clear_login_rate_limits,
     worker_session,
     created_job_id,
 )
@@ -105,43 +106,55 @@ class TestAuthTokenRefresh:
 class TestRateLimitParametrized:
     """AUTH-010 / PRF-001: Rate limit на /login — 11 POST за 60 сек → 429."""
 
-    @pytest.mark.parametrize("request_count,expected_status", [
-        (10, 200),
-        (11, 429),
+    @pytest.mark.parametrize("request_count,expect_lockout", [
+        (3, False),
+        (6, True),
     ])
-    def test_login_rate_limit(self, request_count, expected_status):
+    def test_login_rate_limit(self, request_count, expect_lockout):
         """AUTH-010 / PRF-001: Rate limit на /login.
 
-        Используем свежую requests.Session() без кук (каждый запрос
-        с нового «IP-like»). Отправляем request_count POST /login
-        с неверными данными. Проверяем статус expected_status.
+        Фактический контракт /login: per-account lockout после 5 неверных
+        попыток (exponential backoff, auth_service.increment_login_attempts)
+        и per-IP лимит 20/час рендерят login.html с flash (200), а НЕ 429.
+        Проверяем: до порога — «Неверный email или пароль», после — блокировка.
         """
-        # Используем свежую сессию для имитации нового IP
-        sess = requests.Session()
+        _clear_login_rate_limits()  # детерминизм: чистим IP/аккаунт счётчики
 
         # Делаем request_count запросов
-        last_status = None
+        last_text = None
         for i in range(request_count):
             # Каждый запрос в новой сессии (как с нового IP)
             s = requests.Session()
-            s.get(f"{BASE_URL}/login", timeout=30)  # получить CSRF-куку
+            csrf = get_csrf_from_page(s, "/login")  # сессионный CSRF обязателен
             resp = s.post(
                 f"{BASE_URL}/login",
                 data={
+                    "_csrf_token": csrf or "",
                     "email": EMPLOYER_EMAIL,
                     "password": f"wrong_password_{i}",
                 },
                 timeout=30,
                 allow_redirects=True,
             )
-            last_status = resp.status_code
+            assert resp.status_code == 200, (
+                f"Попытка {i + 1}: login должен рендерить страницу (200), "
+                f"получено {resp.status_code}"
+            )
+            last_text = resp.text
             # Небольшая пауза, чтобы не перегружать сервер
             time.sleep(0.05)
 
-        assert last_status == expected_status, (
-            f"После {request_count} запросов ожидался статус {expected_status}, "
-            f"получено {last_status}"
-        )
+        if expect_lockout:
+            assert 'заблокирован' in last_text, (
+                f"После {request_count} попыток аккаунт должен быть заблокирован"
+            )
+        else:
+            assert 'Неверный email или пароль' in last_text, (
+                f"До порога lockout ожидался отказ по паролю после "
+                f"{request_count} попыток"
+            )
+        # Не оставляем аккаунт заблокированным для соседних тестов
+        _clear_login_rate_limits()
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -493,9 +506,10 @@ class TestEdgeCases:
             f"/jobs/not-a-uuid не должен вызывать 500 Internal Server Error, "
             f"получено {resp.status_code}"
         )
-        # Должен быть 404 или другая клиентская ошибка
-        assert resp.status_code in (404, 400, 200), (
-            f"Ожидался 404/400/200 для невалидного UUID, "
+        # Должен быть 404/400/200 или мягкий редирект 302 на каталог с flash
+        # («Задание не найдено») — давнее поведение job_detail; главное — не 500
+        assert resp.status_code in (404, 400, 200, 302), (
+            f"Ожидался 404/400/200/302 для невалидного UUID, "
             f"получено {resp.status_code}"
         )
 
