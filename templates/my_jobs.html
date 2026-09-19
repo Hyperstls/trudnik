@@ -32,7 +32,7 @@
     {% set completed_count = jobs|selectattr('status', 'equalto', 'completed')|list|length %}
     {% set cancelled_count = jobs|selectattr('status', 'equalto', 'cancelled')|list|length %}
     {% if total > 0 %}
-    <div class="flex flex-wrap gap-2 mb-4 text-sm">
+    <div id="jobs-stats" class="flex flex-wrap gap-2 mb-4 text-sm">
         <span class="text-neutral-500">Всего: <strong class="text-neutral-800">{{ total }}</strong></span>
         {% if open_count > 0 %}<span class="text-neutral-300">·</span>
         <span class="text-success font-medium">{{ open_count }} идёт набор</span>{% endif %}
@@ -107,9 +107,10 @@
         {# Список заданий                                #}
         {# ============================================ #}
         {% if jobs %}
-        <div class="space-y-3">
+        <div class="space-y-3" id="jobs-list">
             {% for job in jobs %}
-            <div class="card app-card animate-fade-in bg-white rounded-2xl border border-neutral-200 shadow-sm p-4 hover:shadow-md transition-shadow duration-200">
+            <div class="card app-card animate-fade-in bg-white rounded-2xl border border-neutral-200 shadow-sm p-4 hover:shadow-md transition-shadow duration-200"
+                 data-job-id="{{ job.id }}" data-status="{{ job.status }}">
                 <div class="flex items-start gap-3">
                     <input type="checkbox" name="job_ids" value="{{ job.id }}"
                            class="job-checkbox app-checkbox mt-1.5" aria-label="Выбрать задание {{ job.organization_name or job.title }}">
@@ -128,10 +129,10 @@
                         {# Мета-информация #}
                         <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-neutral-500">
                             {% if job.application_count is defined and job.application_count > 0 %}
-                            <span>{{ job.application_count }} {{ 'отклик' if job.application_count == 1 else 'отклика' if job.application_count < 5 else 'откликов' }}</span>
+                            <span class="js-app-count-span">{{ job.application_count }} {{ 'отклик' if job.application_count == 1 else 'отклика' if job.application_count < 5 else 'откликов' }}</span>
                             {% endif %}
                             {% if job.max_workers %}
-                            <span>{{ job.current_workers }}/{{ job.max_workers }} {{ 'место' if job.max_workers == 1 else 'мест' }}</span>
+                            <span class="js-workers-span">{{ job.current_workers }}/{{ job.max_workers }} {{ 'место' if job.max_workers == 1 else 'мест' }}</span>
                             {% endif %}
                         </div>
                         {# ID задания + копирование #}
@@ -143,8 +144,8 @@
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                             </button>
                         </div>
-                        {# Кнопки действий (матрица секция 3.1) #}
-                        <div class="flex flex-wrap gap-1.5 mt-2">
+                        {# Кнопки действий (матрица секция 3.1); B4: перерисовывается JS без reload #}
+                        <div class="flex flex-wrap gap-1.5 mt-2 js-job-actions">
                             {# Редактировать: только open и cancelled #}
                             {% if job.status in ['open', 'cancelled'] %}
                             <a href="/jobs/{{ job.id }}/edit"
@@ -236,15 +237,17 @@
 
 <script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
-    const checkboxes = document.querySelectorAll('.job-checkbox');
     const selectAllBtn = document.getElementById('select-all-btn');
     const selectAllText = document.getElementById('select-all-text');
     const countSpan = document.getElementById('count');
     const selectedCountDiv = document.getElementById('selected-count');
+    // Серверный таб-фильтр текущей страницы (для скрытия карточек, сменивших статус)
+    const CURRENT_STATUS = '{{ current_status or "all" }}';
     let allSelected = false;
 
     function updateCount() {
         const checked = document.querySelectorAll('.job-checkbox:checked');
+        const total = document.querySelectorAll('.job-checkbox').length;
         const cnt = checked.length;
         if (cnt > 0) {
             selectedCountDiv.classList.remove('hidden');
@@ -252,21 +255,181 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             selectedCountDiv.classList.add('hidden');
         }
-        allSelected = cnt === checkboxes.length;
+        allSelected = total > 0 && cnt === total;
         selectAllText.textContent = allSelected ? 'Снять выделение' : 'Выбрать все';
     }
 
     if (selectAllBtn) {
         selectAllBtn.addEventListener('click', function() {
             const newState = !allSelected;
-            checkboxes.forEach(cb => cb.checked = newState);
+            document.querySelectorAll('.job-checkbox').forEach(cb => cb.checked = newState);
             updateCount();
         });
     }
 
-    checkboxes.forEach(cb => cb.addEventListener('change', updateCount));
+    // Делегирование change: чекбоксы могут добавляться/удаляться динамически
+    document.addEventListener('change', function(e) {
+        if (e.target.classList && e.target.classList.contains('job-checkbox')) updateCount();
+    });
 
-    // Функции для действий над отдельными заданиями (кастомные модалки)
+    // ══════════════════════════════════════════════════
+    // B4: DOM-обновления без перезагрузки страницы
+    // ══════════════════════════════════════════════════
+    var ICONS = {
+        edit: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+        duplicate: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>',
+        complete: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+        cancel: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
+        restore: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>',
+        trash: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>',
+        star: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>'
+    };
+
+    // Метаданные status_badge (_components.html) — зеркалим для перерисовки
+    var STATUS_META = {
+        open: { cls: 'status-open', label: 'Открыто',
+                icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="6"/></svg>' },
+        completed: { cls: 'status-completed', label: 'Завершено',
+                icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' },
+        cancelled: { cls: 'status-cancelled', label: 'Отменено',
+                icon: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' }
+    };
+    var STATUS_CLASSES = ['status-open', 'status-in-progress', 'status-active', 'status-completed',
+                          'status-cancelled', 'status-pending', 'status-accepted', 'status-rejected', 'status-withdrawn'];
+
+    // Матрица кнопок карточки (как в Jinja выше)
+    function buildJobActionsHTML(jobId, status) {
+        var html = '';
+        if (status === 'open' || status === 'cancelled') {
+            html += '<a href="/jobs/' + jobId + '/edit" class="action-icon-btn chat-btn" title="Редактировать">' +
+                ICONS.edit + '<span class="text-xs ml-1 font-medium hidden sm:inline">Редактировать</span></a>';
+        }
+        html += '<button type="button" class="js-job-action action-icon-btn chat-btn" data-action="duplicateJob" data-job-id="' + jobId + '" title="Дублировать" aria-label="Дублировать задание">' +
+            ICONS.duplicate + '<span class="text-xs ml-1 font-medium hidden sm:inline">Дублировать</span></button>';
+        if (status === 'open') {
+            html += '<button type="button" class="js-job-action action-icon-btn reject-btn" data-action="forceCompleteJob" data-job-id="' + jobId + '" title="Завершить задание" aria-label="Завершить задание">' +
+                ICONS.complete + '<span class="text-xs ml-1 font-medium hidden sm:inline">Завершить</span></button>';
+            html += '<button type="button" class="js-job-action action-icon-btn contact-btn" data-action="cancelJob" data-job-id="' + jobId + '" title="Отозвать" aria-label="Отозвать задание">' +
+                ICONS.cancel + '<span class="text-xs ml-1 font-medium hidden sm:inline">Отозвать</span></button>';
+        }
+        if (status === 'cancelled') {
+            html += '<button type="button" class="js-job-action action-icon-btn accept-btn" data-action="restoreJob" data-job-id="' + jobId + '" title="Вернуть" aria-label="Вернуть задание">' +
+                ICONS.restore + '<span class="text-xs ml-1 font-medium hidden sm:inline">Вернуть</span></button>';
+        }
+        html += '<button type="button" class="js-job-action action-icon-btn reject-btn" data-action="deleteJob" data-job-id="' + jobId + '" title="Удалить" aria-label="Удалить задание">' +
+            ICONS.trash + '<span class="text-xs ml-1 font-medium hidden sm:inline">Удалить</span></button>';
+        if (status === 'completed') {
+            html += '<a href="/jobs/' + jobId + '/rate-workers" class="action-icon-btn chat-btn needs-loader" title="Оценить трудника">' +
+                ICONS.star + '<span class="text-xs ml-1 font-medium hidden sm:inline">Оценить</span></a>';
+        }
+        return html;
+    }
+
+    function findCard(jobId) {
+        return document.querySelector('.app-card[data-job-id="' + jobId + '"]');
+    }
+
+    function refreshStats() {
+        var statsEl = document.getElementById('jobs-stats');
+        if (!statsEl) return;
+        var cards = document.querySelectorAll('.app-card[data-job-id]:not(.is-removing)');
+        var counts = { total: 0, open: 0, completed: 0, cancelled: 0 };
+        cards.forEach(function(c) {
+            counts.total++;
+            var s = c.dataset.status;
+            if (counts[s] !== undefined) counts[s]++;
+        });
+        if (counts.total === 0) { statsEl.remove(); return; }
+        var html = '<span class="text-neutral-500">Всего: <strong class="text-neutral-800">' + counts.total + '</strong></span>';
+        if (counts.open > 0) html += ' <span class="text-neutral-300">·</span> <span class="text-success font-medium">' + counts.open + ' идёт набор</span>';
+        if (counts.completed > 0) html += ' <span class="text-neutral-300">·</span> <span class="text-neutral-500">' + counts.completed + ' набор окончен</span>';
+        if (counts.cancelled > 0) html += ' <span class="text-neutral-300">·</span> <span class="text-danger/70">' + counts.cancelled + ' отозвано</span>';
+        statsEl.innerHTML = html;
+    }
+
+    function removeCardWithFade(card) {
+        if (!card) return;
+        card.classList.add('is-removing');
+        card.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+        card.style.opacity = '0';
+        card.style.transform = 'scale(0.97)';
+        refreshStats();
+        setTimeout(function() {
+            card.remove();
+            refreshStats();
+            updateCount();
+            var list = document.getElementById('jobs-list');
+            if (list && !list.querySelector('.app-card')) {
+                list.innerHTML = '<div class="text-center py-12 text-sm text-neutral-400">Заданий в этом списке больше нет</div>';
+            }
+        }, 420);
+    }
+
+    function updateCardStatus(jobId, newStatus) {
+        var card = findCard(jobId);
+        if (!card) return;
+        // Активный серверный таб-фильтр: карточка с чужим статусом исчезает из списка
+        if (CURRENT_STATUS !== 'all' && CURRENT_STATUS !== newStatus) {
+            removeCardWithFade(card);
+            return;
+        }
+        card.dataset.status = newStatus;
+        var badge = card.querySelector('.status-badge');
+        var meta = STATUS_META[newStatus];
+        if (badge && meta) {
+            badge.classList.remove.apply(badge.classList, STATUS_CLASSES);
+            badge.classList.add(meta.cls);
+            badge.innerHTML = meta.icon + ' ' + meta.label;
+        }
+        var actions = card.querySelector('.js-job-actions');
+        if (actions) actions.innerHTML = buildJobActionsHTML(jobId, newStatus);
+        refreshStats();
+    }
+
+    // Клон карточки для «Дублировать» (копия: status=open, 0 откликов, 0 занятых мест)
+    function duplicateCardInDom(origJobId, newJobId) {
+        if (!newJobId) { location.reload(); return; } // нет id копии — честный fallback
+        var orig = findCard(origJobId);
+        var list = document.getElementById('jobs-list');
+        if (!orig || !list) return;
+        // Серверный таб-фильтр: копия (open) видна только в «Все»/«Идёт набор»
+        if (CURRENT_STATUS !== 'all' && CURRENT_STATUS !== 'open') return;
+        var clone = orig.cloneNode(true);
+        clone.dataset.jobId = newJobId;
+        clone.dataset.status = 'open';
+        clone.classList.remove('is-removing');
+        clone.style.opacity = '';
+        clone.style.transform = '';
+        clone.querySelectorAll('[data-job-id]').forEach(function(el) { el.dataset.jobId = newJobId; });
+        clone.querySelectorAll('a[href]').forEach(function(a) {
+            a.setAttribute('href', a.getAttribute('href').split(origJobId).join(newJobId));
+        });
+        var cb = clone.querySelector('input.job-checkbox');
+        if (cb) { cb.value = newJobId; cb.checked = false; }
+        var code = clone.querySelector('code');
+        if (code) code.textContent = newJobId;
+        var badge = clone.querySelector('.status-badge');
+        if (badge) {
+            badge.classList.remove.apply(badge.classList, STATUS_CLASSES);
+            badge.classList.add(STATUS_META.open.cls);
+            badge.innerHTML = STATUS_META.open.icon + ' ' + STATUS_META.open.label;
+        }
+        var appCount = clone.querySelector('.js-app-count-span');
+        if (appCount) appCount.remove();
+        var workers = clone.querySelector('.js-workers-span');
+        if (workers) workers.textContent = workers.textContent.replace(/^\s*\d+\//, '0/');
+        var actions = clone.querySelector('.js-job-actions');
+        if (actions) actions.innerHTML = buildJobActionsHTML(newJobId, 'open');
+        list.insertBefore(clone, list.firstChild);
+        refreshStats();
+    }
+
+    function clearSelection() {
+        document.querySelectorAll('.job-checkbox:checked').forEach(function(cb) { cb.checked = false; });
+        updateCount();
+    }
+
+    // ── Функции для действий над отдельными заданиями (кастомные модалки) ──
     window.duplicateJob = function(jobId) {
         window.showConfirm('Дублировать задание?', function() {
             apiFetch('/repost-job/' + jobId, {
@@ -277,7 +440,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.success) {
                     window.showToast('Задание продублировано', 'success');
-                    setTimeout(() => location.reload(), 1200);
+                    duplicateCardInDom(jobId, data.new_job_id);
                 } else {
                     window.showToast(data.error || 'Ошибка при дублировании', 'error');
                 }
@@ -296,7 +459,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.success) {
                     window.showToast('Задание отозвано', 'success');
-                    setTimeout(() => location.reload(), 1200);
+                    updateCardStatus(jobId, 'cancelled');
                 } else {
                     window.showToast(data.error || 'Ошибка при отзыве', 'error');
                 }
@@ -318,7 +481,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.success) {
                     window.showToast('Задание завершено, непринятые отклики отклонены', 'success');
-                    setTimeout(() => location.reload(), 1500);
+                    updateCardStatus(jobId, data.new_status || 'completed');
                 } else {
                     window.showToast(data.error || 'Ошибка при завершении', 'error');
                 }
@@ -337,7 +500,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.success) {
                     window.showToast('Задание восстановлено, старые отклики сброшены', 'success');
-                    setTimeout(() => location.reload(), 1200);
+                    updateCardStatus(jobId, data.new_status || 'open');
                 } else {
                     window.showToast(data.error || 'Ошибка при восстановлении', 'error');
                 }
@@ -361,7 +524,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.success) {
                     window.showToast('Задание удалено', 'success');
-                    setTimeout(() => location.reload(), 1200);
+                    removeCardWithFade(findCard(jobId));
                 } else if (data.needs_confirm) {
                     window.deleteJob(jobId, true);
                 } else {
@@ -371,6 +534,57 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(() => window.showToast('Ошибка соединения', 'error'));
         }, {okText: 'Удалить', title: 'Удаление задания'});
     };
+
+    // ── Массовые действия: fetch + точечное обновление карточек (B4) ──
+    var bulkForm = document.getElementById('bulk-form');
+    if (bulkForm) {
+        bulkForm.addEventListener('submit', function(e) {
+            if (!e.submitter || !e.submitter.value) return; // нет action — нативный submit
+            e.preventDefault();
+            var action = e.submitter.value;
+            var checked = document.querySelectorAll('.job-checkbox:checked');
+            if (checked.length === 0) {
+                window.showToast('Выберите хотя бы одно задание', 'warning');
+                return;
+            }
+            var messages = {
+                restore: 'Вернуть выбранные задания (' + checked.length + ')? Все предыдущие отклики будут сброшены.',
+                cancel: 'Отозвать выбранные задания (' + checked.length + ')? Все текущие отклики будут отклонены.',
+                duplicate: 'Дублировать выбранные задания (' + checked.length + ')?',
+                delete: 'Удалить выбранные задания (' + checked.length + ') безвозвратно?'
+            };
+            window.showConfirm(messages[action] || 'Выполнить действие?', function() {
+                var fd = new FormData(bulkForm); // csrf + отмеченные job_ids
+                fd.append('action', action);
+                apiFetch('/my-jobs/action', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: fd
+                })
+                .then(r => r.json())
+                .then(data => {
+                    (data.succeeded || []).forEach(function(item) {
+                        if (action === 'delete') {
+                            removeCardWithFade(findCard(item.id));
+                        } else if (action === 'duplicate') {
+                            duplicateCardInDom(item.id, item.new_job_id);
+                        } else if (item.new_status) {
+                            updateCardStatus(item.id, item.new_status);
+                        }
+                    });
+                    var failedCount = (data.failed || []).length;
+                    if (failedCount > 0) {
+                        window.showToast(data.failed[0].error + (failedCount > 1 ? ' (и ещё ' + (failedCount - 1) + ')' : ''), 'error');
+                    }
+                    if (data.message && failedCount === 0) {
+                        window.showToast(data.message, 'success');
+                    }
+                    clearSelection();
+                })
+                .catch(() => window.showToast('Ошибка соединения', 'error'));
+            }, {okText: 'Подтвердить', title: 'Массовое действие'});
+        });
+    }
 
     window.copyJobId = function(btn, text) {
         if (navigator.clipboard && navigator.clipboard.writeText) {

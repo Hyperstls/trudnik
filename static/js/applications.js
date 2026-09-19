@@ -67,7 +67,9 @@
         } else if (failCount > 0) {
             showToast('Не удалось отправить отложенные запросы. Попробуем позже.', 'warning');
         }
-        // Reload page to reflect changes if queue was processed
+        // Reload осознанно оставлен: офлайн-очередь могла изменить произвольный
+        // набор карточек, пока страница была открыта — дешевле синхронизироваться
+        // целиком, чем угадывать diff. Срабатывает редко (после восстановления сети).
         if (successCount > 0 && offlineQueue.length === 0) {
             setTimeout(() => location.reload(), 1500);
         }

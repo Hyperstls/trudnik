@@ -14,11 +14,11 @@
     {% if invitations %}
     <div class="space-y-3">
         {% for inv in invitations %}
-        <div class="relative">
+        <div class="relative" data-invite-id="{{ inv.id }}" data-status="{{ inv.status }}">
             <div class="app-card bg-white rounded-2xl shadow-sm border p-4 transition-all duration-200
                 {% if inv.status == 'pending' %}border-primary-200 bg-primary-50/60{% else %}border-neutral-100{% endif %}">
                 <div class="flex items-start gap-3">
-                    <div class="w-9 h-9 rounded-full {% if inv.status == 'pending' %}bg-primary-100{% else %}bg-neutral-100{% endif %} flex items-center justify-center shrink-0 mt-0.5">
+                    <div class="js-inv-icon w-9 h-9 rounded-full {% if inv.status == 'pending' %}bg-primary-100{% else %}bg-neutral-100{% endif %} flex items-center justify-center shrink-0 mt-0.5">
                         <span class="{% if inv.status == 'pending' %}text-primary-600{% else %}text-neutral-400{% endif %} font-semibold text-sm">@</span>
                     </div>
                     <div class="flex-1 min-w-0">
@@ -32,16 +32,16 @@
                             Приглашён: {{ inv.worker.full_name if inv.worker else 'Трудник' }}
                         </p>
                         {% endif %}
-                        <p class="text-xs text-neutral-400 mt-1.5">
+                        <p class="js-inv-meta text-xs text-neutral-400 mt-1.5">
                             <time datetime="{{ inv.created_at }}">{{ inv.created_at | format_date }}</time>
                             {% if inv.status != 'pending' %}
-                            · <span class="{% if inv.status == 'accepted' %}text-success{% else %}text-neutral-500{% endif %}">
+                            · <span class="js-inv-status {% if inv.status == 'accepted' %}text-success{% else %}text-neutral-500{% endif %}">
                                 {% if inv.status == 'accepted' %}Принято{% elif inv.status == 'rejected' %}Отклонено{% else %}{{ inv.status }}{% endif %}
                             </span>
                             {% endif %}
                         </p>
                         {% if inv.status == 'pending' %}
-                        <div class="flex gap-2 mt-3">
+                        <div class="js-inv-actions flex gap-2 mt-3">
                             <button class="js-respond-btn px-4 py-2 bg-success text-white text-sm font-medium rounded-lg hover:bg-green-600 transition-colors"
                                     data-invite-id="{{ inv.id }}" data-action="accept">
                                 Принять
@@ -54,7 +54,7 @@
                         {% endif %}
                     </div>
                     {% if inv.status == 'pending' %}
-                    <span class="w-2 h-2 rounded-full bg-primary-500 shrink-0 mt-2"></span>
+                    <span class="js-inv-dot w-2 h-2 rounded-full bg-primary-500 shrink-0 mt-2"></span>
                     {% endif %}
                 </div>
             </div>
@@ -80,7 +80,73 @@
 </div>
 
 <script nonce="{{ csp_nonce }}">
-function respondInvite(invitationId, action) {
+// ── B4: DOM-обновления без перезагрузки ──
+function updateInvitationsBadge(delta) {
+    var badge = document.getElementById('chat-badge');
+    if (!badge) return;
+    var n = parseInt(badge.textContent, 10) || 0;
+    n = Math.max(0, n + delta);
+    if (n === 0) {
+        badge.remove();
+        // Красная точка на кнопке профиль-меню тоже больше не нужна
+        var menuBtn = document.getElementById('profile-menu-btn');
+        if (menuBtn) {
+            var dot = menuBtn.querySelector('span.bg-danger');
+            if (dot) dot.remove();
+        }
+    } else {
+        badge.textContent = n > 99 ? '99+' : n;
+    }
+}
+
+function hideRejectAllIfNoPending() {
+    if (!document.querySelector('[data-invite-id][data-status="pending"]')) {
+        var btn = document.querySelector('.js-reject-all-btn');
+        if (btn) btn.remove();
+    }
+}
+
+function updateInviteCard(inviteId, newStatus) {
+    var wrap = document.querySelector('[data-invite-id="' + inviteId + '"]');
+    if (!wrap) return;
+    var wasPending = wrap.dataset.status === 'pending';
+    wrap.dataset.status = newStatus;
+    var card = wrap.querySelector('.app-card');
+    if (card) {
+        card.classList.remove('border-primary-200', 'bg-primary-50/60');
+        card.classList.add('border-neutral-100');
+    }
+    var icon = wrap.querySelector('.js-inv-icon');
+    if (icon) {
+        icon.classList.remove('bg-primary-100');
+        icon.classList.add('bg-neutral-100');
+        var iconSpan = icon.querySelector('span');
+        if (iconSpan) {
+            iconSpan.classList.remove('text-primary-600');
+            iconSpan.classList.add('text-neutral-400');
+        }
+    }
+    var actions = wrap.querySelector('.js-inv-actions');
+    if (actions) actions.remove();
+    var dot = wrap.querySelector('.js-inv-dot');
+    if (dot) dot.remove();
+    var corner = wrap.querySelector('.js-reject-one-btn');
+    if (corner) corner.remove();
+    var meta = wrap.querySelector('.js-inv-meta');
+    if (meta && !meta.querySelector('.js-inv-status')) {
+        var label = newStatus === 'accepted' ? 'Принято' : 'Отклонено';
+        var cls = newStatus === 'accepted' ? 'text-success' : 'text-neutral-500';
+        meta.insertAdjacentHTML('beforeend',
+            ' · <span class="js-inv-status ' + cls + '">' + label + '</span>');
+    }
+    if (wasPending) {
+        updateInvitationsBadge(-1);
+        hideRejectAllIfNoPending();
+    }
+}
+
+function respondInvite(invitationId, action, btn) {
+    if (btn) btn.disabled = true;
     apiFetch('/api/invitations/' + invitationId + '/respond', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -89,17 +155,23 @@ function respondInvite(invitationId, action) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            location.reload();
+            var newStatus = data.new_status || (action === 'accept' ? 'accepted' : 'rejected');
+            updateInviteCard(invitationId, newStatus);
+            window.showToast(newStatus === 'accepted' ? 'Приглашение принято' : 'Приглашение отклонено', 'success');
         } else {
+            if (btn) btn.disabled = false;
             window.showToast(data.error || 'Ошибка', 'error');
         }
     })
-    .catch(function(e) { window.showToast('Ошибка: ' + e.message, 'error'); });
+    .catch(function(e) {
+        if (btn) btn.disabled = false;
+        window.showToast('Ошибка: ' + e.message, 'error');
+    });
 }
 
 function rejectInvite(invitationId) {
     window.showConfirm('Отклонить приглашение?', function() {
-        respondInvite(invitationId, 'reject');
+        respondInvite(invitationId, 'reject', null);
     });
 }
 
@@ -111,8 +183,14 @@ function rejectAllInvites() {
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            if (data.success) location.reload();
-            else window.showToast(data.error || 'Ошибка', 'error');
+            if (data.success) {
+                document.querySelectorAll('[data-invite-id][data-status="pending"]').forEach(function(wrap) {
+                    updateInviteCard(wrap.dataset.inviteId, 'rejected');
+                });
+                window.showToast('Все приглашения отклонены', 'success');
+            } else {
+                window.showToast(data.error || 'Ошибка', 'error');
+            }
         })
         .catch(function(e) { window.showToast('Ошибка: ' + e.message, 'error'); });
     });
@@ -123,7 +201,7 @@ document.addEventListener('click', function(e) {
     var respondBtn = e.target.closest('.js-respond-btn');
     if (respondBtn) {
         e.stopPropagation();
-        respondInvite(respondBtn.dataset.inviteId, respondBtn.dataset.action);
+        respondInvite(respondBtn.dataset.inviteId, respondBtn.dataset.action, respondBtn);
         return;
     }
     var rejectBtn = e.target.closest('.js-reject-one-btn');

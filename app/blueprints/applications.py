@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 from datetime import datetime, timezone
 
 from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, session, url_for
@@ -13,13 +13,14 @@ logger = logging.getLogger(__name__)
 applications_bp = Blueprint('applications', __name__)
 
 
-@applications_bp.route('/apply/<job_id>', methods=['POST'])
-@login_required
-@validate_uuid('job_id')
-@rate_limit
-def apply_job(job_id):
-    user_id = session['user_id']
+def _apply_job_core(job_id, user_id):
+    """Общая логика отклика: атомарная RPC + уведомление работодателя.
 
+    Возвращает (payload, http_status):
+      успех: ({'ok': True, 'my_app_status': 'pending', 'application_id': ...}, 200)
+      ошибка: ({'ok': False, 'error': ..., 'code': ...}, 4xx/5xx)
+    Используется form-маршрутом /apply/<job_id> и JSON /api/jobs/<job_id>/apply.
+    """
     # Атомарная RPC: все проверки + вставка отклика в одной транзакции PostgreSQL
     # RPC сам обрабатывает дубликаты (code=duplicate) — pre-check удалён (B24)
     rpc_result = postgrest_rpc('apply_job_atomic', {
@@ -33,26 +34,36 @@ def apply_job(job_id):
                 "apply_job: RPC apply_job_atomic not found for job_id=%s user_id=%s",
                 job_id, user_id
             )
-            return jsonify({'success': False, 'error': 'Сервис не настроен'}), 503
-        flash('Ошибка при отправке отклика', 'danger')
-        return redirect(url_for('jobs.index'))
+            return {'ok': False, 'error': 'Сервис не настроен', 'code': 'rpc_missing'}, 503
+        return {'ok': False, 'error': 'Ошибка при отправке отклика', 'code': 'rpc_error'}, 500
 
     result = rpc_result.json()
 
     if not result or not result.get('success'):
         error_code = (result or {}).get('code', 'unknown')
         error_msg = (result or {}).get('error', 'Не удалось отправить отклик')
-
-        # Для blacklist-ошибки при POST-запросе возвращаем JSON (как в оригинале)
-        if error_code == 'blacklisted':
-            if request.method == 'POST':
-                return jsonify({'success': False, 'error': error_msg}), 403
-            flash(error_msg, 'danger')
-            return redirect(url_for('jobs.index'))
-
-        category = 'info' if error_code in ('duplicate', 'no_slots') else 'danger'
-        flash(error_msg, category)
-        return redirect(url_for('jobs.index'))
+        status_code = {
+            'blacklisted': 403,
+            'own_job': 403,
+            'duplicate': 409,
+            'no_slots': 409,
+            'job_not_open': 409,
+        }.get(error_code, 400)
+        # RPC отдаёт error='duplicate' сырым — показываем человекочитаемый текст
+        if error_code == 'duplicate' and error_msg == 'duplicate':
+            error_msg = 'Вы уже откликнулись на это задание'
+        payload = {'ok': False, 'error': error_msg, 'code': error_code}
+        if error_code == 'duplicate':
+            # Отдаём текущий отклик — клиент восстановит реальное состояние UI
+            app_resp = postgrest_request(
+                'GET',
+                f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}&select=id,status&limit=1'
+            )
+            if app_resp.ok and app_resp.json():
+                row = app_resp.json()[0]
+                payload['application_id'] = row.get('id')
+                payload['my_app_status'] = row.get('status')
+        return payload, status_code
 
     # Успех: уведомить работодателя о новом отклике (transactional outbox)
     employer_id = result.get('employer_id')
@@ -65,8 +76,50 @@ def apply_job(job_id):
             logger.error("apply_job: enqueue_notification() вернул False для employer_id=%s job_id=%s",
                          employer_id, job_id)
 
-    flash('Отклик отправлен', 'success')
+    return {
+        'ok': True,
+        'my_app_status': 'pending',
+        'application_id': result.get('application_id'),
+    }, 200
+
+
+@applications_bp.route('/apply/<job_id>', methods=['POST'])
+@login_required
+@validate_uuid('job_id')
+@rate_limit
+def apply_job(job_id):
+    """Form-маршрут отклика (progressive enhancement для noscript).
+
+    Логика — в _apply_job_core; здесь только flash+redirect-поведение.
+    """
+    payload, status_code = _apply_job_core(job_id, session['user_id'])
+
+    if payload.get('ok'):
+        flash('Отклик отправлен', 'success')
+        return redirect(url_for('jobs.index'))
+
+    if status_code == 503:
+        return jsonify({'success': False, 'error': payload['error']}), 503
+    # Для blacklist-ошибки при POST-запросе возвращаем JSON (как в оригинале)
+    if payload.get('code') == 'blacklisted':
+        return jsonify({'success': False, 'error': payload['error']}), 403
+    category = 'info' if payload.get('code') in ('duplicate', 'no_slots') else 'danger'
+    flash(payload['error'], category)
     return redirect(url_for('jobs.index'))
+
+
+@applications_bp.route('/api/jobs/<job_id>/apply', methods=['POST'])
+@login_required
+@validate_uuid('job_id')
+@rate_limit
+def api_apply_job(job_id):
+    """JSON-вариант отклика (B4: действие без перезагрузки страницы).
+
+    Ответ: {ok: true, my_app_status, application_id} или
+           {ok: false, error, code} со статусами 400/403/409/503.
+    """
+    payload, status_code = _apply_job_core(job_id, session['user_id'])
+    return jsonify(payload), status_code
 
 
 @applications_bp.route('/apply-selected', methods=['POST'])
@@ -82,6 +135,7 @@ def apply_selected():
     applied = 0
     skipped_count = 0
     error_count = 0
+    applied_job_ids = []
     # Словарь для группировки уведомлений: employer_id -> list of job_ids
     employer_jobs = {}
 
@@ -114,6 +168,7 @@ def apply_selected():
             continue
 
         applied += 1
+        applied_job_ids.append(job_id)
         employer_id = result.get('employer_id')
         if employer_id:
             if employer_id not in employer_jobs:
@@ -133,6 +188,18 @@ def apply_selected():
             if not success:
                 logger.error("apply_selected: enqueue_notification() вернул False для employer_id=%s job_ids=%s",
                              emp_id, jids)
+
+    # AJAX-вариант (B4): JSON-сводка для точечного обновления карточек без reload
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'success': error_count == 0,
+            'applied': applied,
+            'skipped': skipped_count,
+            'errors': error_count,
+            'applied_job_ids': applied_job_ids,
+            'message': f'Отклик отправлен на {applied} заданий' if applied else
+                       'Ни один отклик не отправлен',
+        })
 
     if applied > 0:
         flash(f'Отклик отправлен на {applied} заданий', 'success')
@@ -176,6 +243,51 @@ def unapply_job(job_id):
     return redirect(url_for('jobs.index'))
 
 
+@applications_bp.route('/api/jobs/<job_id>/unapply', methods=['POST'])
+@login_required
+@validate_uuid('job_id')
+def api_unapply_job(job_id):
+    """JSON-вариант отзыва отклика по job_id (B4: без перезагрузки страницы).
+
+    Ответ: {ok: true, my_app_status: null} или {ok: false, error, code}
+    со статусами 403/404/409.
+    """
+    from app.services.application_service import withdraw_application_atomic
+
+    user_id = session['user_id']
+    # Найти отклик по job_id + worker_id
+    app_resp = postgrest_request(
+        'GET',
+        f'applications?job_id=eq.{job_id}&worker_id=eq.{user_id}&select=id,status&limit=1'
+    )
+    if not app_resp.ok or not app_resp.json():
+        return jsonify({'ok': False, 'error': 'Отклик не найден (возможно, он уже отозван)',
+                        'code': 'not_found'}), 404
+
+    app_row = app_resp.json()[0]
+    if app_row.get('status') == 'withdrawn':
+        return jsonify({'ok': False, 'error': 'Отклик уже отозван',
+                        'code': 'already_withdrawn', 'my_app_status': None}), 409
+
+    result = withdraw_application_atomic(app_row['id'], user_id)
+    if not result.get('success'):
+        error_msg = result.get('error', 'Не удалось отозвать отклик')
+        status_code = 409
+        if 'не найден' in error_msg:
+            status_code = 404
+        elif 'не автор' in error_msg:
+            status_code = 403
+        return jsonify({'ok': False, 'error': error_msg,
+                        'code': result.get('code', 'withdraw_failed')}), status_code
+
+    return jsonify({
+        'ok': True,
+        'my_app_status': None,
+        'application_id': app_row['id'],
+        'message': result.get('message', 'Отклик отозван'),
+    })
+
+
 @applications_bp.route('/unapply-selected', methods=['POST'])
 @login_required
 def unapply_selected():
@@ -193,6 +305,7 @@ def unapply_selected():
     user_id = session['user_id']
     withdrawn = 0
     errors = 0
+    withdrawn_job_ids = []
     for job_id in job_ids:
         app_resp = postgrest_request(
             'GET',
@@ -205,8 +318,21 @@ def unapply_selected():
         result = withdraw_application_atomic(app_id, user_id)
         if result.get('success'):
             withdrawn += 1
+            withdrawn_job_ids.append(job_id)
         else:
             errors += 1
+
+    # AJAX-вариант (B4): JSON-сводка для точечного обновления карточек без reload
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'success': errors == 0,
+            'withdrawn': withdrawn,
+            'errors': errors,
+            'withdrawn_job_ids': withdrawn_job_ids,
+            'message': f'Отклики отозваны ({withdrawn} заданий)' if withdrawn else
+                       'Ни один отклик не отозван',
+        })
+
     if withdrawn > 0:
         flash(f'Отклики отозваны ({withdrawn} заданий)', 'success')
     if errors > 0:

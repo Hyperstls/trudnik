@@ -138,6 +138,12 @@ def index():
     radius = request.args.get('radius', type=float)  # км; None = без ограничения (любое расстояние)
     sort = request.args.get('sort', 'newest')
     skills_filter = request.args.get('skills', '')
+    # B4: серверный фильтр «Все/Новые/Откликнулся» (раньше — клиентское скрытие
+    # карточек, из-за чего на страницах 2+ была ложная пустота).
+    # Семантика как у старого JS-фильтра: new = без моих откликов, applied = мои отклики.
+    job_filter = request.args.get('filter', '')
+    if job_filter not in ('new', 'applied'):
+        job_filter = ''
     page = request.args.get('page', 1, type=int)
     per_page = 20
     offset = (page - 1) * per_page
@@ -215,6 +221,27 @@ def index():
                 blocked_ids_str = ','.join(blocked_employer_ids)
                 query += f'&employer_id=not.in.({blocked_ids_str})'
 
+    # Серверный фильтр «Новые/Откликнулся» (только для залогиненного; гостю
+    # пилюли не показываются, параметр игнорируем).
+    if job_filter and 'user_id' in session:
+        user_id = session['user_id']
+        if job_filter == 'applied':
+            # Только задания с моим откликом: фильтр через embedded-ресурс
+            # (!inner) — без длинного id IN (...) в URL.
+            query += f'&applications!inner.worker_id=eq.{user_id}'
+        else:
+            # «Новые» = без моих откликов. Анти-джойна в PostgREST нет —
+            # исключаем через not.in по свежим откликам (cap 200 защищает
+            # от слишком длинного URL у прокси).
+            my_apps_resp = postgrest_request('GET',
+                f'applications?worker_id=eq.{user_id}&select=job_id'
+                f'&order=created_at.desc&limit=200')
+            if my_apps_resp.ok and my_apps_resp.json():
+                my_applied = ','.join(str(a['job_id']) for a in my_apps_resp.json()
+                                      if a.get('job_id'))
+                if my_applied:
+                    query += f'&id=not.in.({my_applied})'
+
     # Фильтрация по навыкам на стороне БД (ilike по work_type и object_description)
     if skills_filter:
         selected_skills = [s.strip().lower() for s in skills_filter.split(',') if s.strip()]
@@ -289,10 +316,30 @@ def index():
                 applied_job_ids = [a['job_id'] for a in app_resp.json()]
 
     selected_skills_list = [s.strip() for s in skills_filter.split(',') if s.strip()] if skills_filter else []
+
+    # URL'ы фильтр-пилюль «Все/Новые/Откликнулся»: сохраняют остальные
+    # query-параметры (город, поиск, гео, сортировка, навыки), сбрасывают page.
+    from urllib.parse import urlencode
+    base_args = request.args.to_dict()
+    base_args.pop('page', None)
+
+    def _filter_url(filter_value):
+        args = dict(base_args)
+        if filter_value:
+            args['filter'] = filter_value
+        else:
+            args.pop('filter', None)
+        qs = urlencode(args)
+        return url_for('jobs.index') + ('?' + qs if qs else '')
+
+    filter_urls = {'all': _filter_url(''), 'new': _filter_url('new'),
+                   'applied': _filter_url('applied')}
+
     return render_template('index.html', jobs=jobs, applied_job_ids=applied_job_ids,
                            employer_ratings=employer_ratings,
                            lat=lat, lng=lng, radius=radius, sort=sort,
                            selected_skills=selected_skills_list,
+                           current_filter=job_filter, filter_urls=filter_urls,
                            page=page, has_next=has_next)
 
 
@@ -697,23 +744,42 @@ def my_jobs_action():
     
     A1: Все state-changing операции используют атомарные RPC для предотвращения
     частичных обновлений и race conditions.
+
+    B4: при X-Requested-With: XMLHttpRequest возвращает JSON с per-job
+    результатами (для точечного обновления карточек без reload); иначе —
+    прежнее flash+redirect поведение (progressive enhancement).
     """
     user_id = session['user_id']
     action = request.form.get('action')
     job_ids = request.form.getlist('job_ids')
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     if not job_ids:
+        if is_ajax:
+            return jsonify({'success': False, 'error': 'Не выбрано ни одного задания'}), 400
         flash('Не выбрано ни одного задания', 'danger')
         return redirect(url_for('jobs.my_jobs'))
 
+    if action not in ('cancel', 'restore', 'delete', 'duplicate'):
+        if is_ajax:
+            return jsonify({'success': False, 'error': f'Неизвестное действие: {action}'}), 400
+
     success_count = 0
     error_count = 0
-    
+    succeeded = []  # [{'id': ..., 'new_status': ...} | {'id': ..., 'new_job_id': ...}]
+    failed = []     # [{'id': ..., 'error': ...}]
+
+    def _fail(job_id, error_msg, flash_msg, flash_cat='warning'):
+        if not is_ajax:
+            flash(flash_msg, flash_cat)
+        failed.append({'id': job_id, 'error': error_msg})
+
     for job_id in job_ids:
         if not check_job_owner(job_id, user_id):
             error_count += 1
+            failed.append({'id': job_id, 'error': 'Нет доступа'})
             continue
-            
+
         if action == 'restore':
             # A1: Используем атомарный RPC вместо прямого PATCH
             rpc_result = postgrest_rpc('restore_job_atomic', {
@@ -724,16 +790,17 @@ def my_jobs_action():
                 result_data = rpc_result.json()
                 if result_data.get('success'):
                     success_count += 1
+                    succeeded.append({'id': job_id, 'new_status': 'open'})
                 else:
                     error_msg = result_data.get('error', 'неизвестная ошибка')
                     logger.warning('restore_job_atomic failed for job %s: %s', job_id, error_msg)
-                    flash('Ошибка восстановления: %s' % error_msg, 'warning')
+                    _fail(job_id, error_msg, 'Ошибка восстановления: %s' % error_msg)
                     error_count += 1
             else:
                 logger.warning('restore_job_atomic HTTP error for job %s: status=%s', job_id, rpc_result.status_code)
-                flash('Ошибка восстановления задания', 'warning')
+                _fail(job_id, 'Ошибка восстановления задания', 'Ошибка восстановления задания')
                 error_count += 1
-                
+
         elif action == 'cancel':
             # A1: Используем атомарный RPC вместо прямого PATCH
             # RPC проверяет наличие accepted workers и возвращает 409 если есть
@@ -745,22 +812,24 @@ def my_jobs_action():
                 result_data = rpc_result.json()
                 if result_data.get('success'):
                     success_count += 1
+                    succeeded.append({'id': job_id, 'new_status': 'cancelled'})
                 else:
                     error_code = result_data.get('code', '')
                     error_msg = result_data.get('error', 'неизвестная ошибка')
                     if error_code == 'has_accepted_workers':
                         # 409 Conflict: нельзя отменить задание с принятыми работниками
                         logger.warning('cancel_job_atomic conflict for job %s: %s', job_id, error_msg)
-                        flash('Невозможно отменить: есть принятые работники', 'danger')
+                        _fail(job_id, 'Невозможно отменить: есть принятые работники',
+                              'Невозможно отменить: есть принятые работники', 'danger')
                     else:
                         logger.warning('cancel_job_atomic failed for job %s: %s', job_id, error_msg)
-                        flash('Ошибка отмены: %s' % error_msg, 'warning')
+                        _fail(job_id, error_msg, 'Ошибка отмены: %s' % error_msg)
                     error_count += 1
             else:
                 logger.warning('cancel_job_atomic HTTP error for job %s: status=%s', job_id, rpc_result.status_code)
-                flash('Ошибка отмены задания', 'warning')
+                _fail(job_id, 'Ошибка отмены задания', 'Ошибка отмены задания')
                 error_count += 1
-                
+
         elif action == 'delete':
             # delete_job_cascade уже использует RPC - оставляем как есть
             rpc_result = postgrest_rpc('delete_job_cascade', {'p_job_id': job_id}, use_admin=True)
@@ -768,30 +837,51 @@ def my_jobs_action():
                 result_data = rpc_result.json()
                 if result_data.get('success'):
                     success_count += 1
+                    succeeded.append({'id': job_id, 'deleted': True})
                 else:
                     error_msg = result_data.get('error', 'неизвестная ошибка')
                     logger.warning('delete_job_cascade failed for job %s: %s', job_id, error_msg)
-                    flash('Ошибка удаления: %s' % error_msg, 'warning')
+                    _fail(job_id, error_msg, 'Ошибка удаления: %s' % error_msg)
                     error_count += 1
             else:
                 logger.warning('delete_job_cascade HTTP error for job %s: status=%s', job_id, rpc_result.status_code)
-                flash('Ошибка удаления задания', 'warning')
+                _fail(job_id, 'Ошибка удаления задания', 'Ошибка удаления задания')
                 error_count += 1
-                
+
         elif action == 'duplicate':
             # Дублирование не требует атомарного RPC - это просто копирование
             resp = postgrest_request('GET', f'jobs?id=eq.{job_id}&select=*')
             if resp.ok and resp.json():
                 new_job = copy_job(resp.json()[0])
-                dup_resp = postgrest_request('POST', 'jobs', json=new_job)
+                dup_resp = postgrest_request('POST', 'jobs', json=new_job,
+                                             headers={'Prefer': 'return=representation'})
                 if dup_resp.ok:
                     success_count += 1
+                    new_job_id = None
+                    try:
+                        created = dup_resp.json()
+                        if isinstance(created, list) and created:
+                            new_job_id = created[0].get('id')
+                    except Exception:
+                        new_job_id = None
+                    succeeded.append({'id': job_id, 'new_job_id': new_job_id})
                 else:
                     logger.warning('duplicate job failed for job %s: status=%s', job_id, dup_resp.status_code)
-                    flash('Ошибка дублирования задания', 'warning')
+                    _fail(job_id, 'Ошибка дублирования задания', 'Ошибка дублирования задания')
                     error_count += 1
             else:
                 error_count += 1
+                failed.append({'id': job_id, 'error': 'Задание не найдено'})
+
+    if is_ajax:
+        return jsonify({
+            'success': error_count == 0 and success_count > 0,
+            'action': action,
+            'succeeded': succeeded,
+            'failed': failed,
+            'message': 'Операция выполнена для %d заданий' % success_count
+                       if success_count else 'Операция не выполнена',
+        })
 
     # Итоговое сообщение
     if success_count > 0 and error_count == 0:
@@ -800,7 +890,7 @@ def my_jobs_action():
         flash('Выполнено: %d, ошибок: %d' % (success_count, error_count), 'warning')
     elif error_count > 0:
         flash('Операция не выполнена: %d ошибок' % error_count, 'danger')
-        
+
     return redirect(url_for('jobs.my_jobs'))
 
 
@@ -818,10 +908,19 @@ def repost_job(job_id):
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     if resp.ok and resp.json():
         new_job = copy_job(resp.json()[0])
-        repost_resp = postgrest_request('POST', 'jobs', json=new_job)
+        repost_resp = postgrest_request('POST', 'jobs', json=new_job,
+                                        headers={'Prefer': 'return=representation'})
         if assert_postgrest_ok(repost_resp, 'пересоздание задания'):
             if is_ajax:
-                return jsonify({'success': True, 'message': 'Задание дублировано'})
+                new_job_id = None
+                try:
+                    created = repost_resp.json()
+                    if isinstance(created, list) and created:
+                        new_job_id = created[0].get('id')
+                except Exception:
+                    new_job_id = None
+                return jsonify({'success': True, 'message': 'Задание дублировано',
+                                'new_job_id': new_job_id})
             flash('Задание дублировано', 'success')
     else:
         if is_ajax:
