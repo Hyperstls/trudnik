@@ -1,0 +1,29 @@
+{# Мультиселект навыков (поиск + dropdown + chips, до 5).
+   Параметры (передавать через with ... или set перед include):
+     ms_selected_ids  — строка id через запятую для предвыбора (редактирование), default ''
+     ms_with_names    — рендерить скрытое поле name="skills" со списком имён, default false
+   Требует подключения static/js/skills-multiselect.js и вызова
+   SkillsMultiselect.init('skills-multiselect', {...}) после include.
+   Форма получает скрытые input'ы name="skill_ids" (по одному на навык). #}
+<span class="form-label" id="skills-label">Навыки</span>
+<div class="skills-multiselect relative" id="skills-multiselect"
+     data-max="5" data-selected-ids="{{ ms_selected_ids | default('') }}"
+     aria-labelledby="skills-label">
+    <div class="selected-skills flex flex-wrap gap-1 mb-2 min-h-[28px]" id="selected-skills" aria-live="polite"></div>
+    <input type="text" id="skill-search" placeholder="Поиск навыка..."
+           aria-label="Поиск навыка" autocomplete="off"
+           class="form-input mb-1">
+    <button type="button" id="skills-dropdown-btn"
+            aria-haspopup="listbox" aria-expanded="false"
+            class="w-full flex items-center justify-between px-3 py-2.5 border border-neutral-200 rounded-lg bg-white text-sm text-neutral-500 hover:border-neutral-300 transition-colors focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15">
+        <span id="skills-placeholder">Выберите навыки</span>
+        <svg id="skills-arrow" class="w-4 h-4 text-neutral-400 transition-transform duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </button>
+    <div id="skills-dropdown" class="absolute top-full left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg z-20 max-h-52 overflow-y-auto hidden">
+        <div id="skills-list" class="p-2 text-sm text-neutral-400" role="listbox" aria-labelledby="skills-label">Загрузка...</div>
+    </div>
+    <div id="skills-hidden-inputs" class="hidden" aria-hidden="true"></div>
+    {% if ms_with_names | default(false) %}
+    <input type="hidden" name="skills" id="skills-hidden" value="">
+    {% endif %}
+</div>

@@ -31,14 +31,14 @@
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <!-- ===== Шаг 1: Информация ===== -->
         <div id="step-1" class="space-y-4">
-            <div class="floating-label-group">
-                <input type="text" name="title" id="title" placeholder=" " required aria-required="true" value="{{ job.get('organization_name') or '' if job else '' }}">
-                <label for="title">Название организации/задания <span class="text-danger">*</span></label>
+            <div class="form-field">
+                <label for="title" class="form-label">Название организации/задания <span class="text-danger">*</span></label>
+                <input type="text" name="title" id="title" class="form-input" placeholder="Например: грузчики в магазин" required aria-required="true" value="{{ job.get('organization_name') or '' if job else '' }}">
             </div>
 
-            <div class="floating-label-group">
-                <textarea name="description" id="job-description" rows="4" placeholder=" " required aria-required="true">{{ job.get('detailed_description') or '' if job else '' }}</textarea>
-                <label for="job-description">Описание задания <span class="text-danger">*</span></label>
+            <div class="form-field">
+                <label for="job-description" class="form-label">Описание задания <span class="text-danger">*</span></label>
+                <textarea name="description" id="job-description" rows="4" class="form-input" placeholder="Что нужно сделать, где и когда" required aria-required="true">{{ job.get('detailed_description') or '' if job else '' }}</textarea>
             </div>
             <div id="stop-words-warning" class="hidden bg-danger-light/50 border border-danger/20 text-danger-dark px-3 py-2 rounded-lg text-xs flex items-center gap-2">
                 {{ info(14) }}
@@ -59,20 +59,19 @@
 
             <!-- Вид работы -->
             <div class="mb-4">
-                <label for="work_type" class="block text-sm font-medium text-neutral-700 mb-1.5">
-                    Вид работы <span class="text-red-500">*</span>
+                <label for="work_type" class="form-label">
+                    Вид работы <span class="text-danger">*</span>
                 </label>
-                <select name="work_type" id="work_type" required aria-required="true"
-                        class="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl 
-                               focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all
-                               text-neutral-900 appearance-none
-                               bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%20stroke%3D%22%23737373%22%3E%3Cpath%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%222%22%20d%3D%22M19%209l-7%207-7-7%22%2F%3E%3C%2Fsvg%3E')] 
-                               bg-[length:20px] bg-[right_12px_center] bg-no-repeat pr-10">
-                    <option value="" disabled selected hidden>Выберите вид работы</option>
-                    {% for skill in skills_list %}
-                    <option value="{{ skill.id }}" {% if job and job.get('work_type') == skill.id %}selected{% endif %}>{{ skill.name }}</option>
-                    {% endfor %}
-                </select>
+                <div class="relative">
+                    <select name="work_type" id="work_type" required aria-required="true"
+                            class="form-input appearance-none pr-10">
+                        <option value="" disabled selected hidden>Выберите вид работы</option>
+                        {% for skill in skills_list %}
+                        <option value="{{ skill.id }}" {% if job and job.get('work_type') == skill.id %}selected{% endif %}>{{ skill.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <svg class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
             </div>
 
             {{ btn_primary('Далее', type='button', extra_class='w-full', id='to-step-2') }}
@@ -80,14 +79,14 @@
 
         <!-- ===== Шаг 2: Локация ===== -->
         <div id="step-2" class="space-y-4" style="display:none;">
-            <div class="floating-label-group">
-                <input type="text" name="city" id="city" placeholder=" " required aria-required="true" value="{{ (job.get('city') or '') if job else '' }}">
-                <label for="city">Город <span class="text-danger">*</span></label>
+            <div class="form-field">
+                <label for="city" class="form-label">Город <span class="text-danger">*</span></label>
+                <input type="text" name="city" id="city" class="form-input" placeholder="Москва" required aria-required="true" value="{{ (job.get('city') or '') if job else '' }}">
             </div>
 
-            <div class="floating-label-group">
-                <input type="text" name="address" id="address" placeholder=" " value="{{ (job.get('address') or '') if job else '' }}">
-                <label for="address">Адрес</label>
+            <div class="form-field">
+                <label for="address" class="form-label">Адрес</label>
+                <input type="text" name="address" id="address" class="form-input" placeholder="Улица, дом" value="{{ (job.get('address') or '') if job else '' }}">
             </div>
 
             <div>
@@ -102,28 +101,26 @@
             <input type="hidden" name="longitude" id="lng">
 
             <div class="flex gap-3">
-                <button type="button" id="back-to-step-1" class="flex-1 bg-neutral-100 hover:bg-neutral-200 active:scale-[0.98] text-neutral-700 font-semibold py-3.5 rounded-xl transition-all duration-200">
-                    Назад
-                </button>
+                {{ btn_secondary('Назад', type='button', extra_class='flex-1', id='back-to-step-1') }}
                 {{ btn_primary('Далее', type='button', extra_class='flex-1', id='to-step-3') }}
             </div>
         </div>
 
         <!-- ===== Шаг 3: Условия ===== -->
         <div id="step-3" class="space-y-4" style="display:none;">
-            <div class="floating-label-group">
-                <input type="number" name="payment" id="payment" min="0" placeholder=" " value="{{ (job.get('payment_amount') or '') if job else '' }}">
-                <label for="payment">Оплата (₽) <span class="text-danger">*</span></label>
+            <div class="form-field">
+                <label for="payment" class="form-label">Оплата (₽) <span class="text-danger">*</span></label>
+                <input type="number" name="payment" id="payment" min="0" class="form-input" placeholder="1500" value="{{ (job.get('payment_amount') or '') if job else '' }}">
             </div>
 
-            <div class="floating-label-group">
-                <input type="datetime-local" name="deadline" id="deadline" placeholder=" " value="{{ job.get('date_time', '')[:16] if job else '' }}">
-                <label for="deadline">Дата и время</label>
+            <div class="form-field">
+                <label for="deadline" class="form-label">Дата и время</label>
+                <input type="datetime-local" name="deadline" id="deadline" class="form-input" value="{{ job.get('date_time', '')[:16] if job else '' }}">
             </div>
 
-            <div class="floating-label-group">
-                <input type="number" name="max_workers" id="max_workers" value="{{ job.get('max_workers', 1) if job else 1 }}" min="1" placeholder=" ">
-                <label for="max_workers">Максимум работников</label>
+            <div class="form-field">
+                <label for="max_workers" class="form-label">Максимум работников</label>
+                <input type="number" name="max_workers" id="max_workers" class="form-input" value="{{ job.get('max_workers', 1) if job else 1 }}" min="1">
             </div>
 
             <!-- Info block -->
@@ -143,9 +140,7 @@
             </div>
 
             <div class="flex gap-3">
-                <button type="button" id="back-to-step-2" class="flex-1 bg-neutral-100 hover:bg-neutral-200 active:scale-[0.98] text-neutral-700 font-semibold py-3.5 rounded-xl transition-all duration-200">
-                    Назад
-                </button>
+                {{ btn_secondary('Назад', type='button', extra_class='flex-1', id='back-to-step-2') }}
                 {{ btn_primary('Далее', type='button', extra_class='flex-1', id='to-step-4') }}
             </div>
         </div>
@@ -164,9 +159,7 @@
             </div>
 
             <div class="flex gap-3">
-                <button type="button" id="back-to-step-3" class="flex-1 bg-neutral-100 hover:bg-neutral-200 active:scale-[0.98] text-neutral-700 font-semibold py-3.5 rounded-xl transition-all duration-200">
-                    Назад
-                </button>
+                {{ btn_secondary('Назад', type='button', extra_class='flex-1', id='back-to-step-3') }}
                 {{ btn_primary('Сохранить изменения' if is_edit else 'Создать задание', extra_class='flex-1') }}
             </div>
         </div>
@@ -265,9 +258,11 @@
         var found = STOP_WORDS.some(function(word) { return text.includes(word); });
         stopWarning.classList.toggle('hidden', !found);
         if (found) {
-            descTextarea.classList.add('border-danger', 'bg-danger-light/20');
+            // form-input-error — компонентный класс из app.css, перекрывает .form-input
+            // (утилита border-danger из tailwind.min.css проигрывает по порядку подключения)
+            descTextarea.classList.add('border-danger', 'bg-danger-light/20', 'form-input-error');
         } else {
-            descTextarea.classList.remove('border-danger', 'bg-danger-light/20');
+            descTextarea.classList.remove('border-danger', 'bg-danger-light/20', 'form-input-error');
         }
         return found;
     }
@@ -374,8 +369,9 @@
         if (!dl) return;
         dl.addEventListener('input', function() {
             var err = validateDeadline();
-            var group = dl.closest('.floating-label-group');
-            if (group) { group.classList.toggle('error', !!err); }
+            dl.classList.toggle('form-input-error', !!err);
+            if (err) { dl.setAttribute('aria-invalid', 'true'); }
+            else { dl.removeAttribute('aria-invalid'); }
         });
     })();
 

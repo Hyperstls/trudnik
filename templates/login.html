@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from '_components.html' import btn_primary %}
 {% block title %}Вход — Трудник{% endblock %}
 {% block content %}
 <div class="min-h-[calc(100vh-3.5rem)] flex items-center justify-center px-4 py-8">
@@ -17,42 +18,42 @@
 
         <form method="post" class="space-y-4" novalidate>
             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-            <div class="floating-label-group">
-                <input type="email" name="email" id="email" placeholder=" " required aria-required="true" autocomplete="email">
-                <label for="email">Email</label>
-                <div class="error-text">
-                    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <div class="form-field">
+                <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                <input type="email" name="email" id="email" class="form-input" placeholder="you@example.com" required aria-required="true" autocomplete="email" aria-describedby="email-client-error">
+                <p class="form-error hidden" id="email-client-error" role="alert">
+                    <svg class="inline-block" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>
                     </svg>
                     <span>Введите корректный email</span>
-                </div>
+                </p>
             </div>
 
-            <div class="floating-label-group relative">
-                <input type="password" name="password" id="password" placeholder=" " required aria-required="true" autocomplete="current-password" data-no-toggle>
-                <label for="password">Пароль</label>
-                <button type="button" id="toggle-password" class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors touch-target" aria-label="Показать пароль" tabindex="-1">
-                    <svg aria-hidden="true" id="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                        <circle cx="12" cy="12" r="3"></circle>
-                    </svg>
-                    <svg aria-hidden="true" id="eye-off-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden">
-                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path>
-                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path>
-                        <line x1="1" y1="1" x2="23" y2="23"></line>
-                    </svg>
-                </button>
-                <div class="error-text">
-                    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <div class="form-field">
+                <label for="password" class="form-label">Пароль <span class="text-danger">*</span></label>
+                <div class="relative">
+                    <input type="password" name="password" id="password" class="form-input pr-10" placeholder="Ваш пароль" required aria-required="true" autocomplete="current-password" data-no-toggle aria-describedby="password-client-error">
+                    <button type="button" id="toggle-password" class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors touch-target" aria-label="Показать пароль" tabindex="-1">
+                        <svg aria-hidden="true" id="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <svg aria-hidden="true" id="eye-off-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path>
+                            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path>
+                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                        </svg>
+                    </button>
+                </div>
+                <p class="form-error hidden" id="password-client-error" role="alert">
+                    <svg class="inline-block" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>
                     </svg>
                     <span>Введите пароль</span>
-                </div>
+                </p>
             </div>
 
-            <button type="submit" class="w-full bg-primary-500 hover:bg-primary-600 active:scale-[0.98] text-white font-bold py-3.5 rounded-xl shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2">
-                Войти
-            </button>
+            {{ btn_primary('Войти', extra_class='w-full') }}
         </form>
 
         <p class="mt-4 text-center text-sm">
@@ -94,40 +95,57 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Real-time validation
-    email.addEventListener('blur', function() {
-        var group = this.closest('.floating-label-group');
-        if (this.value && !this.value.includes('@')) {
-            group.classList.add('error');
-            group.classList.remove('success');
-        } else if (this.value) {
-            group.classList.remove('error');
-            group.classList.add('success');
+    // Real-time validation (единый паттерн .form-*: ошибка = .form-input-error
+    // + aria-invalid + видимая .form-error; успех = зелёная рамка inline-стилем,
+    // т.к. утилита border-success проигрывает .form-input из-за порядка CSS)
+    function setState(input, state) {
+        var errorEl = document.getElementById(input.id + '-client-error');
+        if (state === 'error') {
+            input.classList.add('form-input-error');
+            input.style.borderColor = '';
+            input.setAttribute('aria-invalid', 'true');
+            if (errorEl) errorEl.classList.remove('hidden');
+        } else if (state === 'success') {
+            input.classList.remove('form-input-error');
+            input.style.borderColor = '#10b981';
+            input.removeAttribute('aria-invalid');
+            if (errorEl) errorEl.classList.add('hidden');
         } else {
-            group.classList.remove('error', 'success');
+            input.classList.remove('form-input-error');
+            input.style.borderColor = '';
+            input.removeAttribute('aria-invalid');
+            if (errorEl) errorEl.classList.add('hidden');
+        }
+    }
+
+    email.addEventListener('blur', function() {
+        if (this.value && !this.value.includes('@')) {
+            setState(this, 'error');
+        } else if (this.value) {
+            setState(this, 'success');
+        } else {
+            setState(this, 'neutral');
         }
     });
 
     password.addEventListener('blur', function() {
-        var group = this.closest('.floating-label-group');
         // Без проверки длины: страница входа не должна подсказывать
         // требования к паролю (серверная проверка при логине и так есть)
         if (this.value) {
-            group.classList.remove('error');
-            group.classList.add('success');
+            setState(this, 'success');
         } else {
-            group.classList.remove('error', 'success');
+            setState(this, 'neutral');
         }
     });
 
     form.addEventListener('submit', function(e) {
         var valid = true;
         if (!email.value || !email.value.includes('@')) {
-            email.closest('.floating-label-group').classList.add('error');
+            setState(email, 'error');
             valid = false;
         }
         if (!password.value) {
-            password.closest('.floating-label-group').classList.add('error');
+            setState(password, 'error');
             valid = false;
         }
         if (!valid) {

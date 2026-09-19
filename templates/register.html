@@ -33,40 +33,35 @@
             {% endif %}
             <!-- ===== Шаг 1: Аккаунт ===== -->
             <div id="step-1" class="space-y-4">
-                <div class="floating-label-group">
-                    <input type="text" name="full_name" id="full_name" placeholder=" " required aria-required="true" maxlength="100" autocomplete="name">
-                    <label for="full_name">Полное имя <span class="text-danger">*</span></label>
-                    <div class="error-text">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <div class="form-field">
+                    <label for="full_name" class="form-label">Полное имя <span class="text-danger">*</span></label>
+                    <input type="text" name="full_name" id="full_name" class="form-input{% if field_errors is defined and field_errors.full_name %} form-input-error{% endif %}" placeholder="Иван Иванов" required aria-required="true" maxlength="100" autocomplete="name"{% if field_errors is defined and field_errors.full_name %} aria-invalid="true" aria-describedby="full_name-error"{% endif %}>
+                    <p class="form-error hidden" id="full_name-client-error">
+                        <svg class="inline-block" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>
                         </svg>
                         <span>Введите имя</span>
-                    </div>
-                    {% if field_errors is defined and field_errors.full_name %}<span class="text-red-500 text-sm">{{ field_errors.full_name }}</span>{% endif %}
+                    </p>
+                    {% if field_errors is defined and field_errors.full_name %}<p class="form-error" id="full_name-error">{{ field_errors.full_name }}</p>{% endif %}
                 </div>
 
-                <div class="floating-label-group">
-                    <input type="email" name="email" id="email" placeholder=" " required aria-required="true" autocomplete="email">
-                    <label for="email">Email <span class="text-danger">*</span></label>
-                    <div class="error-text">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <div class="form-field">
+                    <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                    <input type="email" name="email" id="email" class="form-input{% if field_errors is defined and field_errors.email %} form-input-error{% endif %}" placeholder="you@example.com" required aria-required="true" autocomplete="email"{% if field_errors is defined and field_errors.email %} aria-invalid="true" aria-describedby="email-error"{% endif %}>
+                    <p class="form-error hidden" id="email-client-error">
+                        <svg class="inline-block" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>
                         </svg>
                         <span>Введите корректный email</span>
-                    </div>
-                    {% if field_errors is defined and field_errors.email %}<span class="text-red-500 text-sm">{{ field_errors.email }}</span>{% endif %}
+                    </p>
+                    {% if field_errors is defined and field_errors.email %}<p class="form-error" id="email-error">{{ field_errors.email }}</p>{% endif %}
                 </div>
 
-                <div class="floating-label-group">
-                    <input type="password" name="password" id="password" placeholder=" " required aria-required="true" minlength="8" autocomplete="new-password">
-                    <label for="password">Пароль <span class="text-danger">*</span></label>
-                    <div class="error-text">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>
-                        </svg>
-                        <span id="password-hint">Минимум 8 символов: A-Z, a-z, 0-9, спецсимвол</span>
-                    </div>
-                    {% if field_errors is defined and field_errors.password %}<span class="text-red-500 text-sm">{{ field_errors.password }}</span>{% endif %}
+                <div class="form-field">
+                    <label for="password" class="form-label">Пароль <span class="text-danger">*</span></label>
+                    <input type="password" name="password" id="password" class="form-input{% if field_errors is defined and field_errors.password %} form-input-error{% endif %}" required aria-required="true" minlength="8" autocomplete="new-password" aria-describedby="password-hint{% if field_errors is defined and field_errors.password %} password-error{% endif %}"{% if field_errors is defined and field_errors.password %} aria-invalid="true"{% endif %}>
+                    <p class="form-hint" id="password-hint">Минимум 8 символов: A-Z, a-z, 0-9, спецсимвол</p>
+                    {% if field_errors is defined and field_errors.password %}<p class="form-error" id="password-error">{{ field_errors.password }}</p>{% endif %}
                     <!-- Password strength indicator -->
                     <div id="password-strength" class="mt-2 hidden">
                         <div class="flex gap-1 mb-1">
@@ -117,7 +112,7 @@
                         </label>
                     </div>
                     <p class="text-xs text-neutral-500 mt-2">Любой аккаунт может и подрабатывать, и размещать задания — это выбирается в любой момент в профиле.</p>
-                    {% if field_errors is defined and field_errors.role %}<span class="text-red-500 text-sm">{{ field_errors.role }}</span>{% endif %}
+                    {% if field_errors is defined and field_errors.role %}<p class="form-error" id="role-error">{{ field_errors.role }}</p>{% endif %}
                 </fieldset>
 
                 {{ btn_primary('Далее', type='button', extra_class='w-full', id='to-step-2', disabled=true) }}
@@ -127,49 +122,32 @@
             <div id="step-2" class="space-y-4" style="display:none;">
                 <!-- Вероисповедание убрано: спецкатегория ПДн (152-ФЗ ст.10). -->
 
-                <div class="floating-label-group">
-                    <input type="text" name="city" id="city" placeholder=" " maxlength="50" autocomplete="address-level2">
-                    <label for="city">Город</label>
-                    {% if field_errors is defined and field_errors.city %}<span class="text-red-500 text-sm">{{ field_errors.city }}</span>{% endif %}
+                <div class="form-field">
+                    <label for="city" class="form-label">Город</label>
+                    <input type="text" name="city" id="city" class="form-input{% if field_errors is defined and field_errors.city %} form-input-error{% endif %}" placeholder="Москва" maxlength="50" autocomplete="address-level2"{% if field_errors is defined and field_errors.city %} aria-invalid="true" aria-describedby="city-error"{% endif %}>
+                    {% if field_errors is defined and field_errors.city %}<p class="form-error" id="city-error">{{ field_errors.city }}</p>{% endif %}
                 </div>
 
-                <div class="floating-label-group">
-                    <input type="url" name="portfolio_link" id="portfolio_link" placeholder=" ">
-                    <label for="portfolio_link">Ссылка на портфолио</label>
+                <div class="form-field">
+                    <label for="portfolio_link" class="form-label">Ссылка на портфолио</label>
+                    <input type="url" name="portfolio_link" id="portfolio_link" class="form-input" placeholder="https://...">
                 </div>
-                <div class="floating-label-group">
-                    <input type="text" name="contact" id="contact" placeholder=" " maxlength="255">
-                    <label for="contact">Email, Telegram или другой контакт</label>
+                <div class="form-field">
+                    <label for="contact" class="form-label">Email, Telegram или другой контакт</label>
+                    <input type="text" name="contact" id="contact" class="form-input" placeholder="@username или телефон" maxlength="255">
                 </div>
 
                 <!-- Worker-specific fields -->
                 <div id="worker-fields" class="space-y-4" style="display:none;">
                     <!-- Навыки (мультиселект) — только для трудников -->
-                    <div>
-                        <label class="text-sm font-medium text-neutral-700 mb-2 block">Навыки</label>
-                        <div class="skills-multiselect relative">
-                            <div class="selected-skills flex flex-wrap gap-1 mb-2 min-h-[28px]" id="selected-skills"></div>
-                            <input type="text" id="skill-search-reg" placeholder="Поиск навыка..."
-                                   aria-label="Поиск навыка"
-                                   class="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm mb-1 focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15">
-                            <button type="button" id="skills-dropdown-btn"
-                                    class="w-full flex items-center justify-between px-3 py-2.5 border border-neutral-200 rounded-lg bg-white text-sm text-neutral-500 hover:border-neutral-300 transition-colors focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/15">
-                                <span id="skills-placeholder">Выберите навыки</span>
-                                <svg id="skills-arrow" class="w-4 h-4 text-neutral-400 transition-transform duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                            </button>
-                            <div id="skills-dropdown" class="absolute top-full left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg z-20 max-h-52 overflow-y-auto hidden">
-                                <div id="skills-list" class="p-2 text-sm text-neutral-400">Загрузка...</div>
-                            </div>
-                            <input type="hidden" name="skills" id="skills-hidden" value="">
-                            <input type="hidden" name="skill_ids" id="skill-ids-hidden" value="">
-                        </div>
-                    </div>
+                    {% set ms_with_names = true %}
+                    {% include '_skills_multiselect.html' %}
 
-                    <div class="floating-label-group">
-                        <input type="text" name="inn" id="inn" placeholder=" " pattern="\d{12}" inputmode="numeric" maxlength="12">
-                        <label for="inn"><abbr title="Идентификационный номер налогоплательщика">ИНН</abbr> (12 цифр, опционально)</label>
-                        <p class="text-xs text-neutral-400 mt-1 px-1"><abbr title="Идентификационный номер налогоплательщика">ИНН</abbr> (для самозанятых, опционально).</p>
-                        {% if field_errors is defined and field_errors.inn %}<span class="text-red-500 text-sm">{{ field_errors.inn }}</span>{% endif %}
+                    <div class="form-field">
+                        <label for="inn" class="form-label"><abbr title="Идентификационный номер налогоплательщика">ИНН</abbr> (12 цифр, опционально)</label>
+                        <input type="text" name="inn" id="inn" class="form-input{% if field_errors is defined and field_errors.inn %} form-input-error{% endif %}" placeholder="123456789012" pattern="\d{12}" inputmode="numeric" maxlength="12"{% if field_errors is defined and field_errors.inn %} aria-invalid="true" aria-describedby="inn-error"{% endif %}>
+                        <p class="form-hint"><abbr title="Идентификационный номер налогоплательщика">ИНН</abbr> (для самозанятых, опционально).</p>
+                        {% if field_errors is defined and field_errors.inn %}<p class="form-error" id="inn-error">{{ field_errors.inn }}</p>{% endif %}
                     </div>
 
                     <label class="flex items-start gap-3 p-3 bg-neutral-50 rounded-xl cursor-pointer">
@@ -177,14 +155,14 @@
                         <span class="text-sm text-neutral-700">Я зарегистрирован как самозанятый (опционально)</span>
                     </label>
 
-                    <div class="floating-label-group">
-                        <input type="text" name="experience" id="experience" placeholder=" " maxlength="200">
-                        <label for="experience">Опыт (кратко)</label>
+                    <div class="form-field">
+                        <label for="experience" class="form-label">Опыт (кратко)</label>
+                        <input type="text" name="experience" id="experience" class="form-input" placeholder="Например: 2 года грузчиком" maxlength="200">
                     </div>
 
-                    <div class="floating-label-group">
-                        <input type="number" name="desired_payment" id="desired_payment" placeholder=" ">
-                        <label for="desired_payment">Желаемая оплата за смену</label>
+                    <div class="form-field">
+                        <label for="desired_payment" class="form-label">Желаемая оплата за смену</label>
+                        <input type="number" name="desired_payment" id="desired_payment" class="form-input" placeholder="1500">
                     </div>
                 </div>
 
@@ -261,23 +239,40 @@
 
         // Live-подсказка: какое именно правило не выполнено
         var hint = document.getElementById('password-hint');
-        if (hint) hint.textContent = passError || 'Минимум 8 символов: A-Z, a-z, 0-9, спецсимвол';
+        if (hint) {
+            hint.textContent = passError || 'Минимум 8 символов: A-Z, a-z, 0-9, спецсимвол';
+            // inline-стиль: .form-hint (app.css) перекрывает утилиту text-danger
+            hint.style.color = (passError && password.value.length > 0) ? '#ef4444' : '';
+        }
 
         toStep2Btn.disabled = !(nameValid && emailValid && passValid && roleValid);
     }
 
+    // Единый паттерн .form-*: ошибка — класс .form-input-error + aria-invalid
+    // + показ .form-error; успех — зелёная рамка через inline-стиль
+    // (компонентного класса success нет, а утилита проигрывает .form-input
+    // из-за порядка подключения app.css после tailwind.min.css).
     function toggleError(input, show) {
-        var group = input.closest('.floating-label-group');
-        if (!group) return;
+        var clientError = document.getElementById(input.id + '-client-error');
+        var serverError = document.getElementById(input.id + '-error');
         if (show) {
-            group.classList.add('error');
-            group.classList.remove('success');
+            input.classList.add('form-input-error');
+            input.style.borderColor = '';
+            input.setAttribute('aria-invalid', 'true');
+            if (clientError) clientError.classList.remove('hidden');
         } else if (input.value) {
-            group.classList.remove('error');
-            group.classList.add('success');
+            input.classList.remove('form-input-error');
+            input.style.borderColor = '#10b981';
+            input.removeAttribute('aria-invalid');
+            if (clientError) clientError.classList.add('hidden');
         } else {
-            group.classList.remove('error', 'success');
+            input.classList.remove('form-input-error');
+            input.style.borderColor = '';
+            input.removeAttribute('aria-invalid');
+            if (clientError) clientError.classList.add('hidden');
         }
+        // Серверная ошибка (field_errors) скрывается при первом же вводе
+        if (serverError) serverError.classList.add('hidden');
     }
 
     fullName.addEventListener('input', validateStep1);
@@ -393,160 +388,14 @@
     validateStep1();
 })();
 
-// Загрузка справочника навыков (вероисповедания убраны — спецкатегория ПДн)
-async function loadDictionaries() {
-    try {
-        const skillsResp = await fetch('/api/skills');
-        const skillsData = await skillsResp.json();
-        const skillsData2 = skillsData; // совместимость
-        void skillsData2;
-    } catch (e) {
-        console.error('Failed to load dictionaries:', e);
+// Мультиселект навыков — общий компонент (templates/_skills_multiselect.html).
+// withNamesField: register дополнительно отправляет name="skills" (имена через запятую).
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.SkillsMultiselect) {
+        window.SkillsMultiselect.init('skills-multiselect', { withNamesField: true });
     }
-}
-document.addEventListener('DOMContentLoaded', loadDictionaries);
-
-// Мультиселект навыков (как в profile_edit)
-(function() {
-    var skillsHidden = document.getElementById('skills-hidden');
-    var skillIdsHidden = document.getElementById('skill-ids-hidden');
-    if (!skillsHidden) return;
-
-    var selectedContainer = document.getElementById('selected-skills');
-    var dropdownBtn = document.getElementById('skills-dropdown-btn');
-    var dropdown = document.getElementById('skills-dropdown');
-    var skillsList = document.getElementById('skills-list');
-    var placeholder = document.getElementById('skills-placeholder');
-    var arrow = document.getElementById('skills-arrow');
-    var skillSearch = document.getElementById('skill-search-reg');
-
-    var selectedSkills = [];
-    var selectedIds = [];
-
-    function updateUI() {
-        skillsHidden.value = selectedSkills.join(',');
-        skillIdsHidden.value = selectedIds.join(',');
-        if (selectedSkills.length === 0) {
-            selectedContainer.innerHTML = '';
-            placeholder.textContent = 'Выберите навыки';
-            placeholder.classList.remove('text-neutral-700');
-            placeholder.classList.add('text-neutral-500');
-        } else {
-            placeholder.textContent = 'Выбрано: ' + selectedSkills.length;
-            placeholder.classList.remove('text-neutral-500');
-            placeholder.classList.add('text-neutral-700');
-            selectedContainer.innerHTML = '';
-            selectedSkills.forEach(function(skill, i) {
-                var span = document.createElement('span');
-                span.className = 'inline-flex items-center gap-1 bg-primary-50 text-primary-700 px-2.5 py-1 rounded-lg text-xs font-medium';
-                span.textContent = skill;
-                var btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'remove-skill ml-0.5 hover:text-danger transition-colors';
-                btn.setAttribute('data-skill', skill);
-                btn.setAttribute('data-idx', i);
-                btn.textContent = '\u00d7';
-                span.appendChild(btn);
-                selectedContainer.appendChild(span);
-            });
-        }
-        var checkboxes = skillsList.querySelectorAll('input[type="checkbox"]');
-        checkboxes.forEach(function(cb) {
-            cb.checked = selectedSkills.indexOf(cb.value) !== -1;
-        });
-    }
-
-    // Функция фильтрации навыков по поиску
-    function filterSkills() {
-        var q = (skillSearch && skillSearch.value || '').toLowerCase();
-        var items = skillsList.querySelectorAll('label.skill-filter-item');
-        items.forEach(function(item) {
-            var skillName = (item.getAttribute('data-skill') || '').toLowerCase();
-            item.style.display = skillName.indexOf(q) !== -1 ? 'flex' : 'none';
-        });
-    }
-
-    if (skillSearch) {
-        skillSearch.addEventListener('input', filterSkills);
-    }
-
-    fetch('/api/skills')
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            var skills = data.skills || [];
-            if (skills.length === 0) {
-                skillsList.innerHTML = '<span class="text-neutral-400">Нет доступных навыков</span>';
-                return;
-            }
-            skillsList.innerHTML = '';
-            skills.forEach(function(s) {
-                var label = document.createElement('label');
-                label.className = 'skill-filter-item flex items-center gap-2 px-2 py-1.5 hover:bg-neutral-50 rounded cursor-pointer text-sm';
-                label.setAttribute('data-skill', s.name);
-                var cb = document.createElement('input');
-                cb.type = 'checkbox';
-                cb.value = s.name;
-                cb.setAttribute('data-id', s.id);
-                cb.className = 'skill-checkbox rounded border-neutral-300 text-primary-500 focus:ring-primary-500';
-                var span = document.createElement('span');
-                span.className = 'text-neutral-700';
-                span.textContent = s.name;
-                label.appendChild(cb);
-                label.appendChild(span);
-                skillsList.appendChild(label);
-            });
-
-            skillsList.querySelectorAll('.skill-checkbox').forEach(function(cb) {
-                cb.addEventListener('change', function() {
-                    var skillName = this.value;
-                    var skillId = this.getAttribute('data-id');
-                    if (this.checked) {
-                        if (selectedSkills.indexOf(skillName) === -1) {
-                            selectedSkills.push(skillName);
-                            selectedIds.push(skillId);
-                        }
-                    } else {
-                        var idx = selectedSkills.indexOf(skillName);
-                        if (idx !== -1) {
-                            selectedSkills.splice(idx, 1);
-                            selectedIds.splice(idx, 1);
-                        }
-                    }
-                    updateUI();
-                });
-            });
-            updateUI();
-        })
-        .catch(function() {
-            skillsList.innerHTML = '<span class="text-red-400">Ошибка загрузки</span>';
-        });
-
-    dropdownBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        var isOpen = !dropdown.classList.contains('hidden');
-        dropdown.classList.toggle('hidden');
-        arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
-    });
-
-    document.addEventListener('click', function(e) {
-        if (!dropdownBtn.contains(e.target) && !dropdown.contains(e.target) && (!skillSearch || !skillSearch.contains(e.target))) {
-            dropdown.classList.add('hidden');
-            arrow.style.transform = 'rotate(0deg)';
-        }
-    });
-
-    selectedContainer.addEventListener('click', function(e) {
-        var removeBtn = e.target.closest('.remove-skill');
-        if (!removeBtn) return;
-        var skillName = removeBtn.getAttribute('data-skill');
-        var idx = selectedSkills.indexOf(skillName);
-        if (idx !== -1) {
-            selectedSkills.splice(idx, 1);
-            selectedIds.splice(idx, 1);
-        }
-        updateUI();
-    });
-})();
+});
 
 </script>
+<script src="{{ url_for('static', filename='js/skills-multiselect.js') }}?v=20260905" nonce="{{ csp_nonce }}"></script>
 {% endblock %}
