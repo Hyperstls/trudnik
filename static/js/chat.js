@@ -225,6 +225,9 @@
         if (!container) return null;
         if (msg.id && document.getElementById('msg-' + msg.id)) return null;
 
+        var emptyState = document.getElementById('chat-empty');
+        if (emptyState) emptyState.remove();
+
         var cmid = msg.client_message_id;
         if (cmid && pending[cmid]) {
             var entry = pending[cmid];
@@ -265,6 +268,8 @@
     function addOptimistic(content, cmid) {
         var tempId = 'msg-local-' + cmid;
         var nowIso = new Date().toISOString();
+        var emptyState = document.getElementById('chat-empty');
+        if (emptyState) emptyState.remove();
         var row = buildRow({ sender_id: currentUserId, content: content, created_at: nowIso }, true);
         row.id = tempId;
         row.setAttribute('data-cmid', cmid);
