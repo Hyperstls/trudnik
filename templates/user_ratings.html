@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from '_icons.html' import star, chevron_left %}
+{% from '_components.html' import skeleton_card %}
 {% block title %}Оценки пользователя — Трудник{% endblock %}
 {% block content %}
 <div class="px-4 pb-24 max-w-lg mx-auto">
@@ -19,15 +20,8 @@
 
     {# Список отзывов #}
     <div id="ratings-container" class="space-y-3">
-        <div class="flex flex-col items-center justify-center py-12 text-center">
-            <div class="w-12 h-12 rounded-full bg-neutral-100 flex items-center justify-center mb-3">
-                <svg class="animate-spin h-6 w-6 text-primary-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                </svg>
-            </div>
-            <p class="text-sm text-neutral-400">Загрузка отзывов...</p>
-        </div>
+        {{ skeleton_card() }}
+        {{ skeleton_card() }}
     </div>
 </div>
 

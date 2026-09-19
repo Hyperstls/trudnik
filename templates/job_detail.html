@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from '_icons.html' import star, chat, map_pin, clock, check, dollar, info, eye, login_icon %}
-{% from '_components.html' import breadcrumbs, status_badge %}
+{% from '_components.html' import breadcrumbs, status_badge, skeleton_block %}
 {% block title %}{{ job.work_type or job.organization_name }} — Трудник{% endblock %}
 {% block content %}
 <div class="max-w-2xl mx-auto px-4 py-4 fade-in">
@@ -345,7 +345,7 @@
                 <span id="rating-average" class="text-sm text-neutral-500">—</span>
             </div>
             <div id="ratings-list" class="space-y-3">
-                <p class="text-sm text-neutral-400 text-center py-4">Загрузка...</p>
+                {{ skeleton_block(3) }}
             </div>
         </div>
     </div>
@@ -633,14 +633,19 @@ document.addEventListener('DOMContentLoaded', function() {
     var employerId = section.dataset.employerId;
     var userId = '{{ session.get("user_id", "") }}';
 
+    function showRatingsError() {
+        var list = document.getElementById('ratings-list');
+        list.innerHTML = '<p class="text-sm text-neutral-400 text-center py-4">Не удалось загрузить оценки</p>';
+    }
+
     function loadRatings() {
         fetch('/api/ratings/' + jobId)
             .then(function(r) { return r.json(); })
             .then(function(data) {
-                if (!data.success) return;
+                if (!data.success) { showRatingsError(); return; }
                 renderRatings(data);
             })
-            .catch(function() {});
+            .catch(function() { showRatingsError(); });
     }
 
     function renderRatings(data) {

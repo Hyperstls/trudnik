@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from '_icons.html' import star, chat, users_icon, smiley, icon_ban, restore %}
 {% from '_sort_panel.html' import sort_panel with context %}
+{% from '_components.html' import skeleton_block %}
 {% block title %}Трудники{% endblock %}
 {% block content %}
 <div class="px-4 pb-24 max-w-6xl mx-auto">
@@ -149,6 +150,12 @@
     <h3 id="rating-modal-title" class="text-lg font-bold text-neutral-800 mb-1">Оценить трудника</h3>
     <p id="rating-modal-worker-name" class="text-sm text-neutral-500 mb-4"></p>
 
+    {# Skeleton на время подгрузки завершённых заданий #}
+    <div id="rating-loading" class="py-2">
+        {{ skeleton_block(2) }}
+    </div>
+
+    <div id="rating-body" class="hidden">
     {# Звёзды #}
     <div id="rating-stars" class="flex justify-center gap-2 mb-4">
         {% for i in range(1, 6) %}
@@ -166,6 +173,7 @@
     <div class="flex gap-3 justify-end">
         <button id="rating-modal-cancel" class="px-5 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl text-sm font-medium transition-colors">Отмена</button>
         <button id="rating-modal-submit" class="px-5 py-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-xl text-sm font-medium transition-colors">Отправить</button>
+    </div>
     </div>
 </dialog>
 {% endblock %}
@@ -267,6 +275,8 @@ async function toggleBlock(btn, workerId, evt) {
     var commentEl = document.getElementById('rating-comment');
     var cancelBtn = document.getElementById('rating-modal-cancel');
     var submitBtn = document.getElementById('rating-modal-submit');
+    var loadingEl = document.getElementById('rating-loading');
+    var bodyEl = document.getElementById('rating-body');
 
     async function openRatingModal(workerId, workerName) {
         currentWorkerId = workerId;
@@ -282,7 +292,12 @@ async function toggleBlock(btn, workerId, evt) {
         stars.forEach(function(s) { s.classList.remove('text-warning'); s.classList.add('text-neutral-300'); });
 
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Загрузка...';
+        submitBtn.textContent = 'Отправить';
+
+        // Показать модалку сразу: skeleton вместо формы на время подгрузки
+        if (loadingEl) loadingEl.classList.remove('hidden');
+        if (bodyEl) bodyEl.classList.add('hidden');
+        if (dialog && !dialog.open) dialog.showModal();
 
         // Загрузить завершённые задания с этим работником
         try {
@@ -296,10 +311,8 @@ async function toggleBlock(btn, workerId, evt) {
             console.error('Failed to load completed jobs:', e);
         }
 
-        submitBtn.textContent = 'Отправить';
-
-        // Показать через нативный dialog.showModal()
-        if (dialog) dialog.showModal();
+        if (loadingEl) loadingEl.classList.add('hidden');
+        if (bodyEl) bodyEl.classList.remove('hidden');
     }
 
     function closeRatingModal() {
