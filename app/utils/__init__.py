@@ -35,9 +35,9 @@ if _allow_mock_import:
             _seed_test_db,
         )
 
-        # Устанавливаем перехватчик, если mock включён
-        if _is_mock_enabled():
-            _install_auth_mock()
+        # Установка перехватчика — отложена в конец __init__ (см. ниже):
+        # _install_auth_mock импортирует app.tasks.email_tasks, которому нужен
+        # уже связанный app.utils.postgrest_admin_request (иначе circular import).
         _mock_available = True
     except Exception as e:
         import logging
@@ -191,6 +191,15 @@ delete_from_storage = _storage_service.delete_from_storage
 # --- Рейтинги ---
 update_rating = _ratings_service.update_rating
 get_user_rating = _ratings_service.get_user_rating
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 4. Mock-перехватчики — ПОСЛЕ полной инициализации модуля (во избежание
+#    circular import: mock install тянет app.tasks.email_tasks → app.utils)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+if _mock_available and _is_mock_enabled():
+    _install_auth_mock()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
