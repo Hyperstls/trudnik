@@ -692,7 +692,7 @@ class TestNotificationsGaps:
         # MANUAL: Требуется реальный SMTP-сервер для проверки формата письма.
         # Тест проверяет, что email-сервис корректно обрабатывает шаблоны.
         # Проверяем наличие email-шаблонов через health endpoint (если есть).
-        r = sess.get(f"{BASE_URL}/api/health", timeout=30) if (sess := employer_session) else None
+        r = sess.get(f"{BASE_URL}/health", timeout=30) if (sess := employer_session) else None
         if r and r.status_code == 200:
             assert r.json().get('status') == 'ok', f"NOT-014: health check failed"
 
@@ -977,8 +977,8 @@ class TestAdminGaps:
                     f"ADM-006: unexpected response: {data}"
 
     def test_admin_health_check(self):
-        """ADM-007: GET /api/health — health check админки возвращает JSON."""
-        resp = requests.get(f"{BASE_URL}/api/health", timeout=30)
+        """ADM-007: GET /health — health check возвращает JSON."""
+        resp = requests.get(f"{BASE_URL}/health", timeout=30)
         assert resp.status_code == 200, f"ADM-007: expected 200, got {resp.status_code}"
         data = resp.json()
         assert data.get('status') == 'ok', f"ADM-007: health status not ok: {data}"

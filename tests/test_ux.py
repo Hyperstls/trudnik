@@ -208,13 +208,13 @@ class TestCreateJobPage:
         )
 
     def test_create_job_page_redirects_worker(self, worker_session):
-        """GET /job/new → редирект для трудника (только работодатели)."""
+        """GET /job/new → 200 для трудника (мультирольность: любой пользователь
+        может создавать задания; role — только ориентация лендинга)."""
         resp = worker_session.get(
             f"{BASE_URL}/job/new", timeout=30, allow_redirects=False
         )
-        # Трудник не должен иметь доступ к созданию задания
-        assert resp.status_code in (302, 301, 403), (
-            f"Worker should be redirected from job creation, got {resp.status_code}"
+        assert resp.status_code == 200, (
+            f"Worker должен иметь доступ к созданию задания (мультирольность), got {resp.status_code}"
         )
 
 

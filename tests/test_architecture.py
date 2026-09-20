@@ -109,11 +109,11 @@ class TestNotificationTypes:
     """P0: Проверка количества и состава типов уведомлений."""
 
     def test_notification_types_count(self):
-        """Получить список типов уведомлений, проверить что их 14."""
+        """Канонический набор типов уведомлений (shift/payment-типы удалены)."""
         from app.services.notification_service import NOTIFICATION_TYPES
         count = len(NOTIFICATION_TYPES)
-        assert count == 14, (
-            f"Ожидалось 14 типов уведомлений, получено {count}: {list(NOTIFICATION_TYPES.keys())}"
+        assert count == 7, (
+            f"Ожидалось 7 типов уведомлений, получено {count}: {list(NOTIFICATION_TYPES.keys())}"
         )
 
     def test_no_shift_notification_types(self):
@@ -205,11 +205,11 @@ class TestDBSchemaCleanup:
     def test_shifts_table_not_referenced_in_code(self):
         """Проверить что 'shift_id' не используется в Python-коде приложения."""
         # Исключаем: original_app.py (старый монолит), tests/ (старые тесты со сдвигами),
-        # test_chat.py (содержит проверки на отсутствие shift_id в комментариях к assertions),
+        # trash/ (legacy-мусор), test_chat.py (комментарии про shift_id),
         # scripts/ (вспомогательные скрипты с комментариями про shift_id)
         occurrences = self._find_in_python_code(
             r"\bshift_id\b",
-            exclude_dirs=["migrations", "archive", "__pycache__", ".pytest_cache", "tests", "scripts"],
+            exclude_dirs=["migrations", "archive", "trash", "__pycache__", ".pytest_cache", "tests", "scripts"],
             exclude_files=["original_app.py", "test_chat.py"]
         )
         assert len(occurrences) == 0, (
@@ -304,10 +304,10 @@ class TestHealthCheck:
     """P0: Проверка эндпоинта health check."""
 
     def test_health_endpoint(self):
-        """GET /api/health → 200."""
-        resp = requests.get(f"{BASE_URL}/api/health", timeout=30)
+        """GET /health → 200."""
+        resp = requests.get(f"{BASE_URL}/health", timeout=30)
         assert resp.status_code == 200, (
-            f"GET /api/health должен возвращать 200, получено {resp.status_code}"
+            f"GET /health должен возвращать 200, получено {resp.status_code}"
         )
         # Проверяем JSON-ответ
         try:

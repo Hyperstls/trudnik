@@ -603,16 +603,15 @@ class TestApiEndpoints:
         assert "skills" in data
 
     def test_api_religions_returns_list(self):
-        """GET /api/religions возвращает список вероисповеданий."""
+        """GET /api/religions — осознанно УДАЛЁН (справочник спецкатегории ПДн
+        не публичен, jobs_api.py:74) → 404, а не 500."""
         resp = requests.get(f"{BASE_URL}/api/religions", timeout=30)
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "religions" in data
+        assert resp.status_code == 404, (
+            f"Публичный /api/religions должен быть удалён (404), получен {resp.status_code}"
+        )
 
     def test_api_search_jobs_returns_results(self):
-        """GET /api/search/jobs возвращает результаты поиска."""
-        resp = requests.get(f"{BASE_URL}/api/search/jobs?status=open", timeout=30)
+        """JSON /api/search/* не существует (поиск — SSR): GET /?q=... → 200 + карточки."""
+        resp = requests.get(f"{BASE_URL}/?q=Уборка&status=open", timeout=30)
         assert resp.status_code == 200
-        data = resp.json()
-        assert "results" in data
-        assert "total" in data
+        assert "Задания" in resp.text
