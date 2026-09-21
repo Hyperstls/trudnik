@@ -12,12 +12,12 @@
 ## Структура
 ```
 app/                  # Flask приложение
-  blueprints/         # 20 blueprints (auth, jobs, chat, profile, messenger_verify, ...)
-  services/           # 13 сервисов (auth, notification, push, email, ...)
-  tasks/              # Celery задачи (5 файлов, 7 beat-задач)
+  blueprints/         # 21 blueprint (auth, jobs, chat, profile, faq, messenger_verify, ...)
+  services/           # 14 сервисов (auth, notification, push, email, chat_access, favorites, ...)
+  tasks/              # Celery задачи (5 файлов, 8 beat-задач)
   utils/              # PostgREST клиент, auth, валидаторы
 websocket_server/     # FastAPI WebSocket сервер
-migrations/           # 39 SQL миграций (до #139)
+migrations/           # 60 SQL миграций (до #145)
 tests/                # pytest (385+ тестов)
 tests/manual/         # Standalone CLI скрипты (не в pytest)
 docs/                 # Документация
@@ -32,11 +32,15 @@ docker-compose up -d redis db postgrest
 py -3.12 -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 
-# 3. Тесты
+# 3. Frontend (Tailwind CSS)
+npm install
+npm run build:css    # static/css/tailwind.min.css (пересборка после правок templates/ и static/js/)
+
+# 4. Тесты
 $env:REDIS_URL='redis://:trudnik-local-dev@localhost:6379/0'
 .venv\Scripts\python.exe -m pytest tests -p no:cacheprovider --tb=no -q
 
-# 4. Flask dev сервер
+# 5. Flask dev сервер
 docker-compose up web    # HTTP на :8000
 ```
 

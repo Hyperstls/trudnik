@@ -14,8 +14,9 @@
 
 ## Верификация кода
 - Линтеров/typecheck в репо НЕТ. Проверка — через `pytest` (см. 08_testing_and_verify.md).
+- При правках `templates/` или `static/js/`: сначала `npm run build:css` (иначе упадёт проверка [7/7] Tailwind freshness).
 - **Перед коммитом:** `.venv\Scripts\python.exe scripts\pre_deploy_check.py` (0 проблем).
-- Затем: `.venv\Scripts\python.exe -m py_compile <изменённые .py>` + `.venv\Scripts\python.exe -m pytest tests -q --ignore=tests/test_job_lifecycle.py`.
+- Затем: `.venv\Scripts\python.exe -m py_compile <изменённые .py>` + `.venv\Scripts\python.exe -m pytest tests -q`.
 - Pre-commit хук `detect-secrets` блокирует коммиты с захардкоженными секретами (никогда не хардкоди PGRST_JWT_SECRET и т.п.).
 - Тестовые пароли: `Aa1!aaaa` (низкая энтропия, НЕ флагируется).
 

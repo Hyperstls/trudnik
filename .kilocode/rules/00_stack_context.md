@@ -17,13 +17,13 @@ stack:
     primary_local: "PostgreSQL 15 + PostGIS 3.4 (docker-compose: postgis/postgis:15-3.4-alpine)"
     api_prod: "PostgREST v14.10 (Amvera)"
     api_local: "PostgREST v14 (docker-compose: postgrest/postgrest:latest, резолвится ~14.15) — D1 привёл к dev=prod parity"
-    access: "requests.Session (app/utils/postgrest_client.py) — см. 07_postgrest_client_api.md"
+    access: "requests.Session (app/utils/postgrest_client.py) — retry GET (1 доп. попытка, backoff 0.2–0.5с jitter) при 5xx/timeout; admin-RPC через _admin_session. См. 07_postgrest_client_api.md"
     response_class: "PostgrestResponse (НЕ Pydantic, НЕ requests.Response)"
   async_tasks:
     broker: "Celery 5.6.3"
     cache_pubsub: "Redis 8.0.0 (прод) / Redis 7-alpine (docker-compose)"
     redis_db: "broker+pubsub — db 0; celery result-backend — db 1 (celery_app.py формирует /1)"
-    beat_schedule:  # celery_app.py — 7 задач
+    beat_schedule:  # celery_app.py — 8 задач
       - "drain_notification_outbox (10с)"
       - "ensure_postgrest_role_grants (120с, self-heal: гранты 123 + RLS 132/133/134 + Phase 3 миграции 135/136/137 + NOTIFY pgrst 'reload schema')"
       - "expire_old_jobs (3600с, + expire_unfilled_jobs RPC)"
@@ -31,9 +31,10 @@ stack:
       - "cleanup_orphaned_notifications (3600с)"
       - "cleanup_old_email_logs (86400с)"
       - "cleanup_expired_push_subscriptions (3600с)"
+      - "ensure_max_webhook (600с, self-heal подписки MAX-бота)"
   frontend:
     templates: "Jinja2 3.1.6"
-    styling: "Tailwind CSS (precompiled tailwind.min.css)"
+    styling: "Tailwind CSS v3 (precompiled tailwind.min.css, коммитится). Пайплайн: npm run build:css (tailwind.src.css → tailwind.min.css, конфиг tailwind.config.js; node_modules в .gitignore). Freshness-гейт: pre_deploy_check [7/7] + CI (npm ci && npm run build:css && git diff --exit-code). Классы — только полными литералами (сканер templates/**/*.html + static/js/**/*.js)."
     js: "Vanilla JS (no React/TypeScript)"
     pwa: "Service Worker + Web Push (VAPID)"
   auth:
