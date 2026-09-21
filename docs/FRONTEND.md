@@ -191,11 +191,11 @@ Include-шаблон [`_filter_skills.html`](../templates/_filter_skills.html):
 - `window.addEventListener('offline')` → показать `#offline-bar`
 - Service Worker перехватывает запросы, отдаёт `/offline` при отсутствии сети
 
-### 3.7 Floating Label
+### 3.7 Формы (паттерн полей)
 
-- Инициализация всех `<select>` с классом `floating-label`
-- `MutationObserver` следит за динамически добавленными select (например, в модальных окнах)
-- При изменении значения select — label перемещается вверх
+> Floating-label удалён (2026-09): несовместим с label сверху и хуже для a11y.
+
+Единый паттерн поля формы: `<label class="form-label" for="…">` → `input/textarea/select.form-input` → под полем `.form-hint` / `.form-error` (ошибка: `form-input-error` на инпуте + `aria-invalid="true"` + `aria-describedby="<id ошибки>"`). Классы — компонентный слой `static/css/app.css` (грузится ПОСЛЕ tailwind.min.css, поэтому переопределяет утилиты при равной специфичности; для success-состояния в JS — inline `style.borderColor`).
 
 ### 3.8 Версия приложения
 
@@ -570,6 +570,30 @@ TailwindCSS-брейкпоинты:
   - `scripts/pre_deploy_check.py` — проверка `[7/7]`: mtime `tailwind.min.css` ≥ mtime всех `templates/**/*.html` и `static/js/**/*.js`, иначе FAIL с подсказкой `npm run build:css`.
   - CI `.github/workflows/test.yml` — шаг «Проверка свежести Tailwind CSS»: `npm ci && npm run build:css && git diff --exit-code static/css/tailwind.min.css`.
 - **HTML, генерируемый в JS** (innerHTML-строки в шаблонах и `static/js`): content-сканер читает файл целиком, поэтому классы попадают в сборку — при условии, что имена классов записаны **полностью**, без конкатенации. Inline-`<style>` костыли под «невидимые» классы не нужны (пример: toggle в `notification_settings.html`).
+
+---
+
+## 9. Дизайн-система (2026-09)
+
+**Макросы** (`templates/_components.html`, импорт через `{% from '_components.html' import ... %}`):
+
+| Макрос | Назначение |
+|--------|-----------|
+| `btn_primary/btn_secondary/btn_danger(text, type, extra_class, id, disabled)` | Канонические кнопки (единый набор классов вместо копипасты 8–12 утилит) |
+| `btn_icon(icon, label, ...)` | Квадратная иконка-кнопка с aria-label (icon — макрос из `_icons.html`) |
+| `status_badge(status, extra_class)` | Единственный источник правды по цветам статусов (задания/отклики/админка) |
+| `empty_state(icon, title, subtitle, action_text, action_url)` | Пустые состояния всех списков |
+| `rating_stars(rating, size=16)` | SVG-звёзды с `role="img"` + aria-label (полные/половинки) |
+| `skeleton_block(lines=3)` / `skeleton_card()` | Скелетоны загрузки с `role="status"` (замена текста «Загрузка...») |
+| `pagination`, `confirm_modal`, `toast_container`, `offline_bar`, `install_banner`, `loading_overlay` | Прочие общие блоки |
+
+**Иконки** (`_icons.html`, ~34 макроса, Feather-стиль): включая `icon_ban`, `icon_report`, `icon_user`, `icon_bell` (2026-09). Эмодзи в UI заменены на SVG.
+
+**Компонентные классы** (`app.css`): `.card` (rounded-2xl + shadow-card → hover elevated), `.form-*` (см. 3.7), `.text-meta`. Токены Tailwind (`tailwind.config.js`): `shadow-card`/`shadow-elevated`, `rounded-card`, `duration-250`.
+
+**JS-модули**: `api.js` грузится ДО `{% block scripts %}`; `window.escapeHtml` — единственная копия (в base.js); `chat.js` (чат 2.0: дивидеры дат, статусы, retry по client_message_id); `invite-worker.js` (модалка приглашения с select заданий); `skills-multiselect.js` + `_skills_multiselect.html` (общий мультиселект навыков для register/profile).
+
+**Шапка**: навигация разгружена — Приглашения/Чёрный список/Админка в dropdown `#profile-menu` (бейджи `#notifications-badge`, `#chat-badge` сохранены; точка-индикатор приглашений на аватаре).
 
 ---
 

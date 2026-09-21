@@ -145,5 +145,20 @@
 
 ---
 
+## 8. Сценарии оживлённого UI (2026-09, покрыто `tests_e2e/test_revived_ui.py`)
+
+| # | Действие | Ожидаемый результат | Где |
+|---|----------|---------------------|-----|
+| 1 | Worker на /workers жмёт «Оценить» | `dialog#rating-modal` открывается через `showModal()`; на время подгрузки — skeleton, затем форма со звёздами; Escape закрывает | `test_workers_rating_modal_opens_and_closes_on_escape` |
+| 2 | Employer на /workers жмёт «Пригласить» | `dialog#invite-modal` с select открытых заданий (ленивая подгрузка из `/my-jobs?status=open`); «Отмена» закрывает | `test_workers_invite_modal_lists_open_jobs` |
+| 3 | Worker на / жмёт «Откликнуться», затем «Отозвать» | Без перезагрузки (URL не меняется): карточка получает бейдж «Отклик отправлен» ↔ кнопка «Отозвать», обратно — «Откликнуться»; `POST /api/jobs/<id>/apply|unapply` | `test_apply_and_unapply_without_page_reload` |
+| 4 | Любой пользователь жмёт аватар в шапке | dropdown `#profile-menu` (Профиль/Приглашения/ЧС/Выход), Escape закрывает; «Чёрный список» → `/blacklist` 200 (мультирольность) | `test_profile_menu_dropdown_items_escape_and_blacklist` |
+| 5 | Worker в чате пишет сообщение (Enter) | Оптимистичный ряд со статусом «отправляется» → «✓»; время ЧЧ:ММ; дивидер «Сегодня»; empty-state «Нет сообщений» исчезает | `test_chat_send_message_shows_status_time_and_today_divider` |
+| 6 | Worker на /profile жмёт «Удалить аккаунт» | `dialog#js-delete-account-modal` открывается через `showModal()`; submit заблокирован без ввода «УДАЛИТЬ»; «Отмена»/Escape закрывают. Аккаунт НЕ удаляется | `test_delete_account_modal_open_and_close` |
+
+> **Технические заметки e2e:** CSP запрещает `wait_for_function`/eval → используются `wait_for_selector` с CSS (`[open]`, `:not(.hidden)`); optimistic-рендер удаляет форму синхронно во время click → `dispatch_event('click')` вместо `locator.click()`; login-хелпер сбрасывает Redis rate-limit ключи перед входом.
+
+---
+
 > **Статус документа:** полный набор E2E-сценариев, покрывающий все роли и ключевые пользовательские пути.
 > **Связанные документы:** пошаговые тест-кейсы см. в [`../tests/`](../tests) и [`../tests_e2e/`](../tests_e2e), [`FRONTEND.md`](FRONTEND.md) для UI-деталей страниц.

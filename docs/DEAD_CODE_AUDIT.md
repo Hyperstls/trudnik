@@ -21,6 +21,21 @@
 
 ---
 
+## ✅ УТИЛИЗИРОВАНО 2026-09-20
+
+| Что | Детали |
+|-----|--------|
+| `app/services/payment_service.py` (218 строк) | Монетизация отключена (`MONETIZATION_ENABLED=false`); импортов нигде не было. Вместе с ним — маршрут `/pricing` и `templates/pricing.html` |
+| `app/utils/db_pool.py` | Legacy psycopg2-пул, 0 импортов |
+| `render_captcha_widget` (`app/utils/captcha.py`) | Legacy Turnstile (сама Turnstile удалена в 2026-08 по 152-ФЗ) |
+| `EmailService.send_batch` + `send_batch_async` | 0 живых вызовов; удалены вместе с их 3 тестами |
+| `register_webhooks` | Не существовало (только исторический комментарий в maintenance_tasks.py) |
+| Mock PostgREST | «Оживлён»: гейт `POSTGREST_MOCK_MODE in ('1','true','yes')`, NameError в аннотациях убран, `_install_auth_mock` перенесён в конец `app/utils/__init__.py` (circular import) |
+
+**Осталось (не тронуто, решение владельца):** `set_lockout`/`get_lockout`/`add_to_jti_blacklist` в `app/utils/redis_client.py` (0 живых вызовов — рекомендуется удалить), `send_batch_email_notifications` в `app/tasks/email_tasks.py` (0 вызовов, нет в beat_schedule), `employer_required`/`worker_required` (`app/decorators.py` — оставлены как точки расширения; прямых вызовов нет после мультирольности).
+
+---
+
 ## 1. Неиспользуемые импорты (33)
 
 Эвристика: имя из `from X import Y` не встречается в файле вне import-строк. Большинство — остатки рефакторинга.

@@ -1,8 +1,8 @@
 # Реестр RPC-функций проекта «Трудник»
 
-Дата обновления: 2026-08-15 (ревизия: удалены неподтверждённые записи)  
-Источник: все миграции 067–139  
-Всего функций: 30 RPC + 4 trigger-функции (уникальных по сигнатуре)
+Дата обновления: 2026-09-20 (sync_user_skills + rate_user_atomic по тройке)  
+Источник: все миграции 067–145  
+Всего функций: 31 RPC + 4 trigger-функции (уникальных по сигнатуре)
 
 ---
 
@@ -47,7 +47,7 @@
 
 | Функция | Параметры | Возврат | Назначение | SECURITY DEFINER | Миграция | Вызывается в коде |
 |---------|-----------|---------|------------|------------------|----------|-------------------|
-| `rate_user_atomic` | `p_job_id uuid, p_rater_user_id uuid, p_rated_user_id uuid, p_rating int, p_comment text DEFAULT '', p_rating_type text DEFAULT 'worker', p_target_type text DEFAULT 'worker'` | `jsonb` | Сохранение оценки с пересчётом рейтинга профиля | Да | 067, 069, 075 | Да (ratings.py) |
+| `rate_user_atomic` | `p_job_id uuid, p_rater_user_id uuid, p_rated_user_id uuid, p_rating int, p_comment text DEFAULT '', p_rating_type text DEFAULT 'worker', p_target_type text DEFAULT 'worker'` | `jsonb` | Сохранение оценки с пересчётом рейтинга профиля; UPSERT по тройке `(rater_user_id, job_id, rated_user_id)` (с 145 — работодатель может оценить нескольких исполнителей одного задания) | Да | 067, 069, 075, 145 | Да (ratings.py) |
 | `recompute_profile_rating` | — (trigger function) | `TRIGGER` | Триггер авто-пересчёта рейтинга при изменении ratings | Да | 101 | Нет (авто через триггер) |
 
 ### 🔔 Notifications (уведомления)
@@ -65,6 +65,7 @@
 | `users_exceeding_reports` | `p_threshold int DEFAULT 3, p_hours int DEFAULT 24` | `TABLE(reported_id uuid, report_count bigint)` | Кандидаты на заморозку (≥ порога жалоб) | Да | 135 | Да (maintenance_tasks.py) |
 | `suspend_user` | `p_user_id uuid, p_reason text` | `boolean` | Заморозка пользователя | Да | 135 | Да (maintenance_tasks.py) |
 | `unsuspend_user` | `p_user_id uuid` | `boolean` | Разморозка пользователя | Да | 135 | Да (admin_users.py) |
+| `sync_user_skills` | `p_user_id uuid, p_skill_ids uuid[]` | `void` | Атомарная замена навыков пользователя (DELETE вне массива + INSERT новых, одна транзакция; вызывающий = self или service_role) | Да | 144 | Да (auth.py, profile.py) |
 
 ### 🛠 Admin/Internal (админ/системные)
 

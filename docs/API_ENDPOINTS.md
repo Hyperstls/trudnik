@@ -74,11 +74,13 @@
 | URL | Method | Role | Назначение | CSRF | Ответ |
 |-----|--------|------|------------|------|-------|
 | `/apply/<job_id>` | POST | all (авториз.) |  | да | JSON |
-| `/apply-selected` | POST | worker |  | да | REDIR |
+| `/api/jobs/<job_id>/apply` | POST | all (авториз.) | JSON-отклик без перезагрузки (2026-09): 200 ok+`my_app_status`; 400 невалидный job_id; 403; 404 нет задания; 409 уже откликался/нет мест; 503 БД недоступна | да | JSON |
+| `/api/jobs/<job_id>/unapply` | POST | all (авториз.) | JSON-отзыв отклика (2026-09): 200; 409 `already_withdrawn`; те же коды ошибок | да | JSON |
+| `/apply-selected` | POST | all (авториз.) | Массовый отклик; при `X-Requested-With: XMLHttpRequest` — JSON (2026-09) | да | REDIR/JSON |
 | `/unapply/<job_id>` | POST | all (авториз.) | Отзыв отклика по job_id (редирект на withdraw_application_atomic) | да | REDIR |
 | `/unapply-selected` | POST | all (авториз.) | Массовый отзыв откликов через withdraw_application_atomic | да | REDIR |
 | `/api/applications/<app_id>/withdraw` | POST | all (авториз.) | Отзыв отклика работником (автором) | да | JSON |
-| `/my-applications` | GET | employer | Отображение откликов на задания работодателя (с пагинацией) | — | HTML |
+| `/my-applications` | GET | all (авториз.) | Отклики: `?tab=received` (на мои задания) / `?tab=sent` (мои отклики), пагинация, рабочий фильтр навыков `?skills=` (2026-09) | — | HTML |
 | `/api/applications/<app_id>/accept` | POST | all (авториз.) |  | да | REDIR |
 | `/api/applications/<app_id>/reject` | POST | all (авториз.) |  | да | REDIR |
 | `/api/applications/<app_id>/reopen` | POST | all (авториз.) |  | да | REDIR |
@@ -112,7 +114,7 @@
 | `/chats` | GET | all (авториз.) | Список чатов пользователя: все принятые заявки, где он участник | — | HTML |
 | `/chat/<application_id>` | GET | all (авториз.) | Чат по заявке (application_id) | — | HTML |
 | `/chat/new/<worker_id>` | GET | employer | Поиск существующего чата с работником (по accepted-заявке) или редирект на список чатов | — | REDIR |
-| `/api/send_message` | POST | all (авториз.) | Отправить сообщение в чат заявки | да | JSON |
+| `/api/send_message` | POST | all (авториз.) | Отправить сообщение в чат заявки; 400 при невалидном теле (2026-09); ответ `{status, message_id, created_at}` | да | JSON |
 | `/api/messages/<application_id>/poll` | GET | all (авториз.) | Polling-эндпоинт: вернуть сообщения новее указанного ID | — | JSON |
 | `/api/delete-chats` | POST | all (авториз.) | Удаление одного или нескольких чатов (application_id). Доступно работодателю и труднику | да | JSON |
 
@@ -165,13 +167,12 @@
 
 | URL | Method | Role | Назначение | CSRF | Ответ |
 |-----|--------|------|------------|------|-------|
-| `/` | GET | guest (публичный) |  | — | HTML |
+| `/` | GET | guest (публичный) | Каталог заданий; серверные фильтры `?filter=new\|applied` (2026-09) | — | HTML |
 | `/workers` | GET | guest (публичный) |  | — | HTML |
 | `/jobs/<job_id>` | GET | guest (публичный) | Детальная страница задания | — | HTML |
-| `/pricing` | GET | guest (публичный) | Страница с тарифами для работодателей | — | HTML |
-| `/job/new` | GET,POST | employer | Создание задания (единственный маршрут, заменяет /create-job) | да | HTML |
-| `/my-jobs` | GET | employer |  | — | HTML |
-| `/my-jobs/action` | POST | employer | Bulk-операции над заданиями (cancel/restore/delete/duplicate) | да | REDIR |
+| `/job/new` | GET,POST | all (авториз.) | Создание задания (мультирольность: любой пользователь) | да | HTML |
+| `/my-jobs` | GET | all (авториз.) | Задания текущего пользователя | — | HTML |
+| `/my-jobs/action` | POST | all (авториз.) | Bulk-операции над заданиями (cancel/restore/delete/duplicate); при `X-Requested-With: XMLHttpRequest` — JSON per-job сводка (без reload, 2026-09) | да | REDIR/JSON |
 | `/repost-job/<job_id>` | POST | employer |  | да | JSON |
 | `/cancel-job/<job_id>` | POST | employer |  | да | JSON |
 | `/restore-job/<job_id>` | POST | employer |  | да | JSON |
@@ -187,7 +188,7 @@
 
 | URL | Method | Role | Назначение | CSRF | Ответ |
 |-----|--------|------|------------|------|-------|
-| `/api/skills` | GET | guest (публичный) | Получить список навыков (JSON) | — | REDIR |
+| `/api/skills` | GET | guest (публичный) | Список навыков, JSON `{"skills": [...]}` | — | JSON |
 | `/api/invite/<job_id>/<worker_id>` | POST | employer | Работодатель приглашает трудника на задание | да | JSON |
 | `/api/invitations` | GET | all (авториз.) | JSON API: список приглашений (использует унифицированный сервис) | — | JSON |
 | `/api/invitations/<invitation_id>/respond` | POST | worker | Трудник принимает или отклоняет приглашение | да | JSON |
@@ -205,7 +206,7 @@
 
 | URL | Method | Role | Назначение | CSRF | Ответ |
 |-----|--------|------|------------|------|-------|
-| `/api/ws/token` | GET | all (авториз.) | Выдать короткоживущий JWT для подключения к WebSocket-серверу | — | JSON |
+| `/api/ws/token` | GET | all (авториз.) | Выдать короткоживущий JWT для подключения к WebSocket-серверу; 503 без `WEBSOCKET_JWT_SECRET` (fail-closed, 2026-09) | — | JSON |
 | `/notifications` | GET | all (авториз.) |  | — | HTML |
 | `/api/notifications/unread-count` | GET | all (авториз.) |  | — | JSON |
 | `/api/notifications` | GET | all (авториз.) |  | — | JSON |

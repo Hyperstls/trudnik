@@ -1,8 +1,8 @@
 # Архитектура приложения «Трудник»
 
-> **Актуализировано:** 2026-07-17
+> **Актуализировано:** 2026-09-20
 > **Ветка:** `main` (монетизация отключена, `MONETIZATION_ENABLED=false`)
-> **Версия документа:** 5.1 — актуализация стека по коду на 2026-07: Python 3.12, Flask 3.1.3, FastAPI 0.137.1 + a2wsgi, PostgreSQL 17.6/15 + PostGIS, PostgREST v14.10/v12.2.3, 126+ миграций, ~19 blueprints, 13 сервисов
+> **Версия документа:** 5.2 — актуализация 2026-09: 14 сервисов (+chat_access, +favorites, −payment), RPC sync_user_skills (миграция 144) и rate_user_atomic по тройке (145), dropdown-меню профиля, Tailwind-пайплайн с гейтами свежести; стек по коду на 2026-07: Python 3.12, Flask 3.1.3, FastAPI 0.137.1 + a2wsgi, PostgreSQL 17.6/15 + PostGIS, PostgREST v14.10/v12.2.3, 145 миграций, ~20 blueprints
 
 ---
 
@@ -44,8 +44,8 @@
 | **Фоновые задачи** | Celery 5.6.3 (worker + beat) |
 | **Брокер сообщений** | Redis 8 (прод) / Redis 7-alpine (локально) — Celery broker + Pub/Sub + кеш |
 | **База данных** | PostgreSQL 17.6 + PostGIS (прод Amvera) / PostgreSQL 15 + PostGIS 3.4 (локально) + PostgREST (v14.10 прод / v12.2.3 локально) + нативная JWT-аутентификация |
-| **RPC** | PostgreSQL функции (`accept_application`, `reject_application`, `apply_job_atomic`, `delete_job_cascade`, `delete_user_cascade`, `get_job_stats`, `nearby_jobs`, `force_complete_job`, `cancel_job_atomic`, `cancel_worker_atomic`, `rate_user_atomic`, `resolve_user_atomic`, `login_user`, `register_user`, `change_password`) |
-| **Фронтенд** | Jinja2 3.1.6 + TailwindCSS (precompiled `tailwind.min.css`) + Vanilla JS (без React/TypeScript) + PWA |
+| **RPC** | PostgreSQL функции (`accept_application`, `reject_application`, `apply_job_atomic`, `delete_job_cascade`, `delete_user_cascade`, `get_job_stats`, `nearby_jobs`, `force_complete_job`, `cancel_job_atomic`, `cancel_worker_atomic`, `rate_user_atomic` — UPSERT по тройке (rater, job, rated), миграция 145, `resolve_user_atomic`, `login_user`, `register_user`, `change_password`, `sync_user_skills` — атомарная замена навыков, миграция 144) |
+| **Фронтенд** | Jinja2 3.1.6 + TailwindCSS (precompiled `tailwind.min.css`; `npm run build:css` + гейты свежести: `pre_deploy_check.py` [7/7] и CI-шаг `git diff --exit-code`) + Vanilla JS (без React/TypeScript) + PWA |
 | **Карты** | Яндекс.Карты API |
 | **Реальное время** | WebSocket (FastAPI) + Redis Pub/Sub |
 | **Push-уведомления** | Web Push API (VAPID) + Email (SMTP) |
@@ -94,10 +94,12 @@ trudnik/
 │   │   ├── blacklist.py            # /blacklist, /blacklist/<id>, /unblock/<id>
 │   │   └── seo.py                  # /robots.txt, /sitemap.xml
 │   │
-│   ├── services/                   # 13 сервисов: auth, application, job, notification, notification_dispatcher, email, push, ratings, invitation, admin, payment, storage, redis_publisher
+│   ├── services/                   # 14 сервисов: admin, application, auth, chat_access (проверка участника чата), email, favorites, invitation, job, notification, notification_dispatcher, push, ratings, redis_publisher, storage (payment_service удалён 2026-09)
 │   │   ├── __init__.py
-│   │   ├── job_service.py          # search_jobs, search_workers, check_job_visibility
-│   │   ├── notification_service.py # create, get_notifications, mark_read, preferences
+│   │   ├── job_service.py          # get_job_by_id, check_job_visibility, check_job_owner
+│   │   ├── chat_access.py          # check_participant — единая проверка доступа к чату
+│   │   ├── favorites_service.py    # add/remove/check избранного (job/employer/worker)
+│   │   ├── notification_service.py # create, get_notifications, mark_read, preferences (7 типов)
 │   │   ├── email_service.py        # Отправка email (SMTP) через Celery
 │   │   ├── push_service.py         # Web Push уведомления (VAPID)
 │   │   └── redis_publisher.py      # Публикация событий в Redis Pub/Sub
@@ -111,7 +113,7 @@ trudnik/
 │   └── templates/                  # <!-- УСТАРЕЛО: Email-шаблоны в app/templates/ → templates/email/ -->
 │
 ├── templates/                      # Jinja2-шаблоны (30 файлов)
-│   ├── base.html                   # Базовый layout (навигация, заголовки, скрипты, PWA)
+│   ├── base.html                   # Базовый layout (навигация + dropdown #profile-menu, заголовки, скрипты, PWA)
 │   ├── index.html                  # Главная страница (поиск заданий/трудников)
 │   ├── workers.html                # Список трудников с фильтрацией
 │   ├── employers.html              # Список работодателей

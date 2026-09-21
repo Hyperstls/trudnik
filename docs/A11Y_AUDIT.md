@@ -1,6 +1,20 @@
 # A11Y-аудит шаблонов «Трудник»
 
-Дата: 2026-08-15 (исправления: 2026-08-16)
+Дата: 2026-08-15 (исправления: 2026-08-16, 2026-09-20)
+
+## ✅ Волна 2026-09
+
+Вторая волна исправлений (вместе с редизайном дизайн-системы):
+
+- **Skip-link ожил**: ссылка «Перейти к содержимому» (`base.html` → `#main-content`) была в разметке, но её классы отсутствовали в собранном CSS — после пересборки Tailwind (`npm run build:css`, гейты свежести в pre_deploy_check/CI) работает.
+- **Звёзды рейтинга с aria-label**: макрос `rating_stars` (`_components.html`) — контейнер `role="img" aria-label="Рейтинг X из 5"`, SVG `aria-hidden="true"`; звёзды, генерируемые в JS (модалки оценки), также получили aria-label.
+- **`<dialog>` с `aria-labelledby`**: `dialog#rating-modal` → `rating-modal-title`, `dialog#js-delete-account-modal` → `delete-account-title`, invite-модалка — аналогично; открытие через `showModal()` (нативный focus-trap и Escape).
+- **Profile-menu dropdown**: кнопка `#profile-menu-btn` — `aria-haspopup="true"`, `aria-expanded` (переключается JS), `aria-controls="profile-menu"`; меню `role="menu"`, закрытие по Escape/клику вне.
+- **Контраст**: смысловой текст переведён с `neutral-400` на `neutral-500` (~4.6:1 на белом) — **закрывает I-3**.
+- **Формы**: паттерн «label сверху + `.form-input` + `.form-hint`/`.form-error`», floating-label удалён; на ошибках `aria-invalid="true"` + `aria-describedby` на текст ошибки; все `<label for>` связаны с `id`.
+- **Skeleton-загрузка**: макросы `skeleton_block`/`skeleton_card` — `role="status" aria-label="Загрузка содержимого"` (вместо текста «Загрузка...»).
+
+Покрыто e2e: `tests_e2e/test_revived_ui.py` (модалки, profile-menu).
 
 ## ✅ СТАТУС ИСПРАВЛЕНИЙ (2026-08-16)
 
@@ -12,7 +26,7 @@
 - **W-10..W-13**: aria-label на 4 select в admin.html (фильтры + per-row с именем пользователя/ID задания)
 - **I-1**: register.html декоративный SVG aria-hidden
 
-Осталось (info, при следующем рефакторинге): I-3 (контраст placeholder neutral-400), I-4 (title → aria-label дублирование).
+Осталось (info, при следующем рефакторинге): ~~I-3~~ (закрыт 2026-09 — смысловой текст на neutral-500), I-4 (title → aria-label дублирование).
 Верификация: pre_deploy_check 0 проблем; f-серия (aria_labels, input_labels) зелёная.
 
 ---
@@ -154,9 +168,9 @@
 
 `<form id="chat-form">` — внутри input имеет `aria-label="Сообщение"`, поэтому некритично. Рекомендуется `aria-label="Отправка сообщения"`.
 
-### I-3. Контраст placeholder'ов (text-neutral-400 на белом)
+### I-3. Контраст placeholder'ов (text-neutral-400 на белом) — ✅ ЗАКРЫТО 2026-09
 
-Широко используется `placeholder:text-neutral-400` и `text-neutral-400` для подсказок — ориентировочно ~2.8:1, ниже WCAG AA 4.5:1 для текста. Placeholder — не единственный источник информации (есть labels), поэтому info. Рекомендация: заменить на `neutral-500`.
+Широко использовался `placeholder:text-neutral-400` и `text-neutral-400` для подсказок (~2.8:1, ниже WCAG AA 4.5:1). **Исправлено 2026-09**: смысловой текст и подсказки переведены на `text-neutral-500` (~4.6:1); `neutral-400` оставлен только для декоративных элементов.
 
 ### I-4. title= вместо aria-label на кнопках действий
 
@@ -200,9 +214,8 @@
 | offline.html | ✅ | lang="ru" |
 | password_reset_confirm.html | ✅ | label for ✅ |
 | password_reset_request.html | ✅ | label for ✅ |
-| pricing.html | ✅ | — |
 | privacy.html | ✅ | — |
-| profile.html | ⚠️ warning | W-9 |
+| profile.html | ✅ | W-9 закрыт 2026-09 (floating-label удалён, label/for + aria-invalid/describedby) |
 | profile_worker.html | ⚠️ warning | W-5 |
 | rate_workers.html | ⚠️ warning | W-4 (звёзды — эталон W-1) |
 | register.html | ✅ info | I-1; labels/fieldset/legend ✅ |

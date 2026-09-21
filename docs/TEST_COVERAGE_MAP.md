@@ -1,6 +1,14 @@
 # Карта покрытия тестами (Test Coverage Map)
 
-Дата: 2026-08-15 (обновления: 2026-08-16, 2026-08-21, 2026-09-04, **2026-09-12**). Метод: статический анализ (`@*_bp.route` в `app/blueprints/*.py` → поиск URL-литералов в `tests/test_*.py`; locustfile.py и conftest* НЕ учитываются как тесты) + ручная верификация ложных срабатываний/пропусков чтением кода тестов.
+Дата: 2026-08-15 (обновления: 2026-08-16, 2026-08-21, 2026-09-04, 2026-09-12, **2026-09-20**). Метод: статический анализ (`@*_bp.route` в `app/blueprints/*.py` → поиск URL-литералов в `tests/test_*.py`; locustfile.py и conftest* НЕ учитываются как тесты) + ручная верификация ложных срабатываний/пропусков чтением кода тестов.
+
+## 📌 Обновление 2026-09-20: mock-suite 777 ✓ / e2e 119 ✓
+
+**Последний полный прогон: `tests` (mock PostgREST, `POSTGREST_MOCK_MODE`) — 777 passed / 0 failed**; `tests_e2e` — **119 passed** (включая новый `test_revived_ui.py`, 6 тестов: rating/invite-модалки, profile-menu dropdown, apply/unapply без reload, чат 2.0, модалка удаления аккаунта).
+- Отдельной строкой (НЕ входит в процент покрытия): **159 errors** — dormant browser-suite (`test_buttons_browser.py`, `test_buttons_frontend.py` и др. требуют фикстуру `playwright_browser` из `conftest_playwright.py`; пре-существующее состояние, не регрессия).
+- Новые unit-файлы в карте: `test_apply_unapply_api.py` (23: `/api/jobs/<id>/apply|unapply`), `test_chat_access.py` (9: сервис `chat_access.check_participant`, без маршрутов), `test_my_applications_skills_filter.py` (5: `/my-applications?skills=`), `test_ratings_upsert_per_rated_user.py` (2: миграция 145 — оценка нескольких исполнителей одного задания), `test_validators.py` (+10 → 54), `test_ws_token.py` (обновлён: 503 без `WEBSOCKET_JWT_SECRET`).
+- Изменения маршрутов 2026-09: +`/api/jobs/<job_id>/apply`, +`/api/jobs/<job_id>/unapply`, +`/jobs/photo`, +`/uploads/jobs/<path>`, +`/faq` (blueprint faq), −`/pricing` (удалён), −`/messenger/webhook/telegram` (удалён в 2026-08, строка снята).
+- Live-ловушки (для живых прогонов): `/login` lockout = **200 + flash** (НЕ 429); CSRF обязателен в login-хелперах; bcrypt `$2a` для локальных паролей (PG15 Alpine).
 
 ## 📌 Обновление 2026-09-12: integration 100%
 
@@ -109,11 +117,13 @@
 | Endpoint | Method | URL | Test file | Match | Status |
 |----------|--------|-----|-----------|-------|--------|
 | apply_job | POST | `/apply/<job_id>` | test_backend_gaps.py | apply | ✅ |
+| api_apply_job | POST | `/api/jobs/<job_id>/apply` | test_apply_unapply_api.py | api/jobs | ✅ |
 | apply_selected | POST | `/apply-selected` | test_coverage_completion.py | apply-selected | ✅ |
 | unapply_job | POST | `/unapply/<job_id>` | test_buttons_backend.py | unapply | ✅ |
+| api_unapply_job | POST | `/api/jobs/<job_id>/unapply` | test_apply_unapply_api.py | api/jobs | ✅ |
 | unapply_selected | POST | `/unapply-selected` | - | - | ❌ |
 | api_withdraw_application | POST | `/api/applications/<app_id>/withdraw` | test_buttons_backend.py | api/applications | ✅ |
-| my_applications | GET | `/my-applications` | test_buttons_backend.py | my-applications | ✅ |
+| my_applications | GET | `/my-applications` | test_buttons_backend.py, test_my_applications_skills_filter.py | my-applications | ✅ |
 | api_accept_application | POST | `/api/applications/<app_id>/accept` | test_buttons_backend.py | api/applications | ✅ |
 | api_reject_application | POST | `/api/applications/<app_id>/reject` | test_buttons_backend.py | api/applications | ✅ |
 | api_reopen_application | POST | `/api/applications/<app_id>/reopen` | test_buttons_backend.py | api/applications | ✅ |
@@ -161,6 +171,7 @@
 | circuit_breaker_health | GET | `/health/circuit-breaker` | - | - | ❌ |
 | postgrest_health | GET | `/health/postgrest` | - | - | ❌ |
 | uploaded_avatar | GET | `/uploads/avatars/<path:filename>` | - | - | ❌ |
+| uploaded_job_photo | GET | `/uploads/jobs/<path:filename>` | - | - | ❌ |
 | uploaded_verification_doc | GET | `/uploads/verification-docs/<path:filename>` | - | - | ❌ |
 | service_worker | GET | `/sw.js` | test_critical_gaps.py | sw.js | ✅ |
 | offline | GET | `/offline` | test_architecture.py | offline | ✅ |
@@ -196,6 +207,12 @@
 | check_favorite_api | POST | `/api/favorites/check` | - | - | ❌ |
 | remove_favorites_selected | POST | `/api/favorites/remove-selected` | test_buttons_backend.py | api/favorites/remove-selected | ✅ |
 
+## faq (`app/blueprints/faq.py`)
+
+| Endpoint | Method | URL | Test file | Match | Status |
+|----------|--------|-----|-----------|-------|--------|
+| faq | GET | `/faq` | test_coverage_gaps.py | /faq | ✅ |
+
 ## jobs (`app/blueprints/jobs.py`)
 
 | Endpoint | Method | URL | Test file | Match | Status |
@@ -203,8 +220,8 @@
 | index | GET | `/` | test_worker_job_visibility.py | app_client.get('/') (строки 23,47) | ✅ |
 | workers | GET | `/workers` | test_a1_bulk_operations.py | workers | ✅ |
 | job_detail | GET | `/jobs/<job_id>` | test_buttons_backend.py | GET /jobs/{id} (62,84) + 404-кейс test_backend_gaps.py:477 | ✅ |
-| pricing | GET | `/pricing` | - | - | ❌ |
 | job_new | GET,POST | `/job/new` | test_api.py | job/new | ✅ |
+| job_photo_upload | POST | `/jobs/photo` | - | - | ❌ |
 | my_jobs | GET | `/my-jobs` | test_a1_bulk_operations.py | my-jobs | ✅ |
 | my_jobs_action | POST | `/my-jobs/action` | test_a1_bulk_operations.py | my-jobs/action | ✅ |
 | repost_job | POST | `/repost-job/<job_id>` | test_buttons_backend.py | repost-job | ✅ |
@@ -234,7 +251,6 @@
 | start_verification | GET | `/messenger/start/<platform>` | test_messenger_verify.py | messenger/start | ✅ |
 | diagnose | GET | `/messenger/diagnose` | test_messenger_verify.py | messenger/diagnose | ✅ |
 | max_webhook | POST | `/messenger/webhook/max` | test_messenger_verify.py | messenger/webhook/max | ✅ |
-| telegram_webhook | POST | `/messenger/webhook/telegram` | test_messenger_verify.py | messenger/webhook/telegram | ✅ |
 
 ## notifications (`app/blueprints/notifications.py`)
 
@@ -277,7 +293,7 @@
 |----------|--------|-----|-----------|-------|--------|
 | get_job_ratings | GET | `/api/ratings/<job_id>` | test_a7_ratings_pii.py | api/ratings | ✅ |
 | get_user_rating | GET | `/api/ratings/user/<user_id>` | test_a7_ratings_pii.py | api/ratings/user | ✅ |
-| upsert_rating | POST | `/api/ratings` | test_a7_ratings_pii.py | api/ratings | ✅ |
+| upsert_rating | POST | `/api/ratings` | test_a7_ratings_pii.py, test_ratings_upsert_per_rated_user.py | api/ratings | ✅ |
 | get_completed_jobs_for_rating | GET | `/api/ratings/completed-jobs/<target_user_id>` | test_buttons_backend.py | api/ratings/completed-jobs | ✅ |
 | get_user_rating_details | GET | `/api/ratings/user/<user_id>/details` | test_a7_ratings_pii.py | api/ratings/user | ✅ |
 | user_ratings_page | GET | `/ratings/user/<user_id>` | test_a7_ratings_pii.py | ratings/user | ✅ |
@@ -294,12 +310,17 @@
 
 ## Summary
 
-- Всего маршрутов: **146** (20 blueprints)
-- Покрыто pytest-тестами: **111** (**76%**)
-- Не покрыто: **35**
+> Актуализировано 2026-09-20: прежняя сводка (111/146 = 76%) была снимком 2026-08-15 и противоречила шапке (~97%) — противоречие снято, единая актуальная цифра ниже.
+
+- Всего маршрутов: **149** (21 blueprint: +`faq`; изменения 2026-09: +`/api/jobs/<id>/apply`, +`/api/jobs/<id>/unapply`, +`/jobs/photo`, +`/uploads/jobs/<path>`, −`/pricing`, −`/messenger/webhook/telegram`)
+- Покрыто pytest-тестами: **~144** (**~97%**); последний полный прогон: **777 passed / 0 failed** (mock-suite `tests`), **119 passed** (`tests_e2e`)
+- Не покрыто: ~5 — статистика/редиректы без бизнес-логики + новые `/jobs/photo`, `/uploads/jobs/<path>`
+- Отдельной строкой (НЕ входит в процент): dormant browser-suite — 159 errors при прогоне без фикстуры `playwright_browser` (`tests/conftest_playwright.py`), пре-существующее
 
 
 ## Топ-5 непокрытых по критичности
+
+> ⚠️ Снимок 2026-08-15 (исторический): пункты 1, 2, 4, 5 закрыты в 2026-08 (`test_coverage_gaps.py`, `test_push_endpoints.py`, `test_notifications_api.py` — см. обновления 2026-08-16/21 выше); п. 3 — частично (UI модалки удаления аккаунта покрыт `tests_e2e/test_revived_ui.py`). Актуальный остаток — см. Summary.
 
 1. **`/uploads/avatars/<path:filename>` + `/uploads/verification-docs/<path:filename>`** — path traversal и IDOR: доступ к чужим верификационным документам без теста авторизации. Security-критично (правило 03_security_review.md п.16).
 2. **`/verify-email/<token>` + `/verify-email/resend`** — auth-флоу подтверждения email: валидация/одноразовость токена, rate limit. Безопасность токена не протестирована.
@@ -307,7 +328,7 @@
 4. **`/push/subscription` (POST/DELETE/GET) + оба `/push/vapid-public-key`** — HTTP-слой не протестирован: test_c10/test_push_service покрывают только service-слой (push_service), не эндпоинты.
 5. **`/metrics` (публичный Prometheus) + `/ready` (Dockerfile HEALTHCHECK прода)** — /metrics может утечь внутренние метрики без авторизации; /ready отказ = ложные рестарты контейнера на Amvera.
 
-Прочие непокрытые (35 всего): admin bulk-операции (skills/religions/jobs), /admin/test-user, /admin/content/<slug>, /admin/health, /unapply-selected, /health/circuit-breaker, /health/postgrest, api/notifications/unread-count + read-all, api/employers/favorites/{remove,check}, api/favorites/check, /favicon.ico, /terms, /privacy, /pricing, /robots.txt, /jobs (тривиальный редирект).
+Прочие непокрытые (снимок 2026-08-15, 35 позиций; `/pricing` из списка удалён вместе с маршрутом в 2026-09): admin bulk-операции (skills/religions/jobs), /admin/test-user, /admin/content/<slug>, /admin/health, /unapply-selected, /health/circuit-breaker, /health/postgrest, api/notifications/unread-count + read-all, api/employers/favorites/{remove,check}, api/favorites/check, /favicon.ico, /terms, /privacy, /robots.txt, /jobs (тривиальный редирект).
 
 ## Рекомендации
 

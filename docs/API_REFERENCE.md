@@ -4,7 +4,10 @@
 > эндпоинты (`/api/search/jobs`, `/api/search/workers` — фантомы; реальный
 > поиск — HTML-каталог `/` и `/workers`) и не отражает изменения после
 > 2026-08 (удаление Telegram-верификации, Turnstile → Yandex SmartCaptcha,
-> admin-only `/messenger/diagnose`, новая страница `/faq`).
+> admin-only `/messenger/diagnose`, новая страница `/faq`) и 2026-09
+> (`/api/religions` удалён — спецкатегория ПДн; `/pricing` удалён — монетизация
+> отключена; +`POST /api/jobs/<id>/apply|unapply` — JSON-отклики без reload;
+> `/api/send_message` — 400 на невалидном теле; `/api/ws/token` — 503 fail-closed).
 >
 > **Актуальный справочник: docs/API_ENDPOINTS.md** (сгенерирован из кода,
 > 146 маршрутов, 2026-08-16). Дополнительные источники: docs/RPC_REGISTRY.md
@@ -82,9 +85,9 @@
 | Метод | URL | Доступ | Описание |
 |-------|-----|--------|----------|
 | GET | `/api/skills` | 🔓 public | Список навыков из справочника `skills` (JSON) |
-| GET | `/api/religions` | 🔓 public | Список религий из справочника `religions` (JSON) |
-| GET | `/api/search/jobs` | 🔓 public | Поиск заданий (JSON). Поддерживает: `q` (FTS), `city`, `status`, `min_pay`, `max_pay`, `date_from`, `date_to`, `available_slots`, `skills`, `religion`, `page`, `per_page`, `sort`, `lat`, `lng`, `radius` |
-| GET | `/api/search/workers` | 🔓 public | Поиск трудников (JSON). Поддерживает: `q` (FTS), `skills`, `rating_min`, `city`, `lat`, `lng`, `radius`, `page`, `per_page`, `sort` |
+| GET | `/api/religions` | — | ❌ Удалён (спецкатегория ПДн — справочник религий не публичен; jobs_api.py) |
+| GET | `/api/search/jobs` | — | ❌ Фантом: такого эндпоинта никогда не было. Поиск — SSR: `GET /?q=...&city=...&lat&lng&radius` |
+| GET | `/api/search/workers` | — | ❌ Фантом: см. выше. Реально — `GET /workers?q=...` (SSR) |
 | POST | `/api/invite` | 🏢 employer | Пригласить трудника на задание. Создаёт запись в `invitations` (status=pending). Отправляет уведомление. Проверки: дубликат приглашения, владелец задания, статус задания |
 | GET | `/api/invitations/<id>` | 🔒 auth | Детали приглашения (JSON). Проверка: участник приглашения |
 
@@ -94,10 +97,12 @@
 
 | Метод | URL | Доступ | Описание |
 |-------|-----|--------|----------|
-| POST | `/apply/<job_id>` | 👤 worker | Отклик на задание. Проверки: дубликат, владелец (не свой), чёрный список, статус=open, свободные места (`current_workers < max_workers`). Создаёт заявку (status=pending). Отправляет уведомление работодателю |
-| POST | `/apply-selected` | 👤 worker | Массовый отклик на выбранные задания (из чекбоксов на странице) |
-| GET | `/my-applications` | 👤 worker | Список откликов трудника с фильтрацией по статусу |
-| POST | `/api/applications/batch` | 🏢 employer | Массовое действие над заявками: accept/reject. Вызывает `accept_application`/`reject_application` RPC для каждой |
+| POST | `/apply/<job_id>` | 🔒 auth | Отклик на задание (мультирольность: любой пользователь). Проверки: дубликат, владелец (не свой), чёрный список, статус=open, свободные места (`current_workers < max_workers`). Создаёт заявку (status=pending). Отправляет уведомление работодателю |
+| POST | `/api/jobs/<job_id>/apply` | 🔒 auth | JSON-вариант отклика без перезагрузки (2026-09): `200 {ok, my_app_status}`; 400 невалидный UUID; 404 задание не найдено; 409 уже откликался/нет мест; 503 БД недоступна |
+| POST | `/api/jobs/<job_id>/unapply` | 🔒 auth | JSON-вариант отзыва (2026-09): 200; 409 `already_withdrawn` |
+| POST | `/apply-selected` | 🔒 auth | Массовый отклик на выбранные задания (из чекбоксов на странице); при `X-Requested-With: XMLHttpRequest` — JSON per-job сводка |
+| GET | `/my-applications` | 🔒 auth | Отклики: `?tab=sent` (мои) / `?tab=received` (на мои задания); фильтр навыков `?skills=` (2026-09) |
+| POST | `/api/applications/batch` | 🔒 auth (владелец задания) | Массовое действие над заявками: accept/reject. Вызывает `accept_application`/`reject_application` RPC для каждой |
 | POST | `/cancel-application/<id>` | 👤 worker | Отменить отклик (status=withdrawn). Проверка: владелец отклика, окно отзыва (12 часов до начала) через `check_withdraw_window()` |
 
 ---
@@ -152,7 +157,7 @@
 | GET | `/chats` | 🔒 auth | Список чатов: все accepted-заявки, где пользователь участник |
 | GET | `/chat/<application_id>` | 🔒 auth | Чат по заявке. Проверка: пользователь — участник (worker_id или employer_id через job). Загружает историю сообщений |
 | GET | `/chat/new/<worker_id>` | 🏢 employer | Поиск существующего accepted-чата с работником → редирект |
-| POST | `/api/send_message` | 🔒 auth | Отправить сообщение. Валидация: длина ≤ 2000 символов. XSS-санитизация через `html.escape()`. Публикация в Redis для WebSocket-доставки. Отправка уведомления собеседнику |
+| POST | `/api/send_message` | 🔒 auth | Отправить сообщение. Валидация тела (400 при невалидном JSON/полях, 2026-09): длина ≤ 2000 символов. XSS-санитизация через `html.escape()`. Идемпотентность по `client_message_id`. Ответ `{status, message_id, created_at}`. Публикация в Redis для WebSocket-доставки. Отправка уведомления собеседнику |
 | GET | `/api/messages/poll` | 🔒 auth | Long-polling сообщений (GET-параметр `after` — временная метка). Возвращает новые сообщения с момента `after` |
 | POST | `/api/delete-chats` | 🔒 auth | Удаление выбранных чатов (application_id) — очистка сообщений |
 
@@ -240,8 +245,8 @@
 
 | Источник (Blueprint) | Метод | URL | Назначение |
 |----------------------|-------|-----|------------|
-| `app/blueprints/jobs_api.py` | GET | `/api/search/jobs` | AJAX-поиск заданий (фильтры, FTS, гео) |
-| `app/blueprints/jobs_api.py` | GET | `/api/search/workers` | AJAX-поиск трудников |
+| `app/blueprints/jobs_api.py` | GET | `/api/search/jobs` | ❌ Фантом (не существует; поиск — SSR на `/`) |
+| `app/blueprints/jobs_api.py` | GET | `/api/search/workers` | ❌ Фантом (не существует; каталог — SSR `/workers`) |
 | `app/blueprints/chat.py` | POST | `/api/send_message` | Отправка сообщения в чате |
 | `app/blueprints/chat.py` | GET | `/api/messages/poll` | Long-polling новых сообщений |
 | `app/blueprints/notifications.py` | POST | `/api/notifications/read` | Отметить одно уведомление |
