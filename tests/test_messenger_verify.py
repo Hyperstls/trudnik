@@ -8,10 +8,9 @@
 - POST /messenger/webhook/max       — webhook MAX (CSRF-exempt, middleware.py:49)
 - GET  /messenger/diagnose          — диагностика API MAX
 
-⚠️ Примечание по безопасности (задокументировано тестом
-test_webhooks_have_no_signature_check): текущая реализация webhook'ов НЕ
-проверяет подпись/секрет вебхука — любой POST получает 200. Тесты отражают
-фактическое поведение; добавление проверки подписи — отдельная задача.
+⚠️ Безопасность (2026-09): webhook fail-closed — проверяется заголовок
+X-Max-Bot-Api-Secret (секрет в MAX_WEBHOOK_SECRET; без env — 503, без/с
+неверным — 401). Обёртка-фикстура app_client подставляет валидный секрет.
 
 Webhook'и EXEMPT от CSRF (правило 13) — CSRF-токен в запросы НЕ добавляется.
 Redis замокан stateful-моком (conftest._mock_redis_store), RPC — мок.
@@ -23,6 +22,33 @@ import pytest
 
 
 TEST_USER_ID = '11111111-1111-1111-1111-111111111111'
+WEBHOOK_SECRET = 'test-webhook-secret-32chars-xxxxx'
+
+
+@pytest.fixture(autouse=True)
+def _webhook_secret_env(monkeypatch):
+    """MAX_WEBHOOK_SECRET задан для всех тестов файла (2026-09: webhook
+    fail-closed без env — 503, без/с неверным секретом — 401)."""
+    from app.config import Config
+    monkeypatch.setattr(Config, 'MAX_WEBHOOK_SECRET', WEBHOOK_SECRET)
+
+
+@pytest.fixture
+def app_client(app_client):
+    """Оборачивает app_client из conftest: добавляет валидный
+    X-Max-Bot-Api-Secret во все POST /messenger/webhook/* (fail-closed 2026-09).
+    Для негативных тестов секрет переопределяется явным headers={...}."""
+    orig_post = app_client.post
+
+    def post_with_secret(url, *args, **kwargs):
+        if url.startswith('/messenger/webhook/'):
+            headers = dict(kwargs.get('headers') or {})
+            headers.setdefault('X-Max-Bot-Api-Secret', WEBHOOK_SECRET)
+            kwargs['headers'] = headers
+        return orig_post(url, *args, **kwargs)
+
+    app_client.post = post_with_secret
+    return app_client
 
 
 # ── Хелперы ────────────────────────────────────────────────────────
@@ -468,18 +494,29 @@ class TestDiagnose:
 # ── Документирование CSRF/webhook-политики ─────────────────────────
 
 class TestWebhookPolicy:
-    def test_webhooks_have_no_signature_check(self, app_client, monkeypatch):
-        """ДОКУМЕНТИРУЕТ ФАКТИЧЕСКОЕ ПОВЕДЕНИЕ: webhook не требует подпись/секрет.
-
-        Любой анонимный POST (без auth-заголовков и без CSRF — webhook exempt)
-        получает 200. Если будет добавлена проверка подписи — этот тест нужно
-        обновить на ожидание 403 без подписи.
-        """
-        _, calls = _rpc_spy(monkeypatch)
-        resp = app_client.post('/messenger/webhook/max',
-                               json={'update_type': 'ping'})
+    def test_webhook_requires_secret(self, app_client):
+        """2026-09: webhook fail-closed — без секрета/с неверным → 401, с верным → 200."""
+        raw = app_client.application.test_client()  # клиент БЕЗ авто-секрета
+        # Без заголовка → 401
+        resp = raw.post('/messenger/webhook/max', json={'update_type': 'ping'})
+        assert resp.status_code == 401
+        # Неверный секрет → 401
+        resp = raw.post('/messenger/webhook/max', json={'update_type': 'ping'},
+                        headers={'X-Max-Bot-Api-Secret': 'wrong-secret'})
+        assert resp.status_code == 401
+        # Верный секрет → 200
+        resp = raw.post('/messenger/webhook/max', json={'update_type': 'ping'},
+                        headers={'X-Max-Bot-Api-Secret': WEBHOOK_SECRET})
         assert resp.status_code == 200
-        assert calls == []
+        assert resp.get_json()['ok'] is True
+
+    def test_webhook_fail_closed_without_env(self, app_client, monkeypatch):
+        """Без MAX_WEBHOOK_SECRET webhook не принимает события — 503 (fail-closed)."""
+        from app.config import Config
+        monkeypatch.setattr(Config, 'MAX_WEBHOOK_SECRET', '')
+        raw = app_client.application.test_client()
+        resp = raw.post('/messenger/webhook/max', json={'update_type': 'ping'})
+        assert resp.status_code == 503
 
     def test_webhook_exempt_from_csrf(self, app_client):
         """POST webhook'а без CSRF-токена не отклоняется CSRF-middleware."""

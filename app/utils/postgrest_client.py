@@ -46,14 +46,83 @@ class CircuitBreaker:
       для быстрого восстановления, если сервис снова стал доступен
     """
 
-    def __init__(self, failure_threshold: int = 5, recovery_timeout: float = 30.0) -> None:
+    def __init__(self, failure_threshold: int = 5, recovery_timeout: float = 30.0,
+                 name: str | None = None) -> None:
         self.failure_threshold = failure_threshold
         self.recovery_timeout = recovery_timeout
+        self.name = name  # задан → состояние синхронизируется с Redis (shared, 2026-09)
         self.failure_count = 0
         self.last_failure_time = 0.0
         self.state = 'CLOSED'  # CLOSED | OPEN | HALF_OPEN
         self._lock = Lock()
         self._last_health_check_time = 0.0
+
+    # ── Shared state (Redis) с fallback на in-memory ───────────────
+    # Прод: uvicorn --workers 2 — раньше каждый процесс имел СВОЙ CB,
+    # и /metrics + /admin/reset-circuit-breaker видели/сбрасывали только свой.
+    # Теперь состояние в Redis-ключах cb:<name>:* (TTL 300с авто-очистка).
+    # Недоступность Redis → in-memory (прежнее поведение). В mock-режиме
+    # тестов CB обходится до этих вызовов — backend не задействуется.
+    _STATE_TTL = 300
+
+    def _redis(self):
+        try:
+            from app.utils.redis_client import get_redis_client
+            return get_redis_client()
+        except Exception:
+            return None
+
+    def _keys(self) -> tuple[str, str]:
+        base = f'cb:{self.name}'
+        return f'{base}:failures', f'{base}:opened_at'
+
+    def _load_shared(self) -> None:
+        """Подтянуть общее состояние из Redis в in-memory поля (best-effort)."""
+        if not self.name:
+            return
+        r = self._redis()
+        if not r:
+            return
+        try:
+            kf, ko = self._keys()
+            failures = r.get(kf)
+            opened_at = r.get(ko)
+            if failures is None:
+                self.failure_count = 0
+                self.state = 'CLOSED'
+                return
+            self.failure_count = int(failures)
+            self.last_failure_time = float(opened_at or 0)
+            self.state = 'OPEN' if self.failure_count >= self.failure_threshold else 'CLOSED'
+        except Exception as e:
+            logger.debug('CB shared state load failed: %s', e)
+
+    def _save_shared(self) -> None:
+        if not self.name:
+            return
+        r = self._redis()
+        if not r:
+            return
+        try:
+            kf, ko = self._keys()
+            if self.state == 'CLOSED' and self.failure_count == 0:
+                r.delete(kf, ko)
+            else:
+                r.setex(kf, self._STATE_TTL, str(self.failure_count))
+                r.setex(ko, self._STATE_TTL, str(self.last_failure_time))
+        except Exception as e:
+            logger.debug('CB shared state save failed: %s', e)
+
+    def _delete_shared(self) -> None:
+        if not self.name:
+            return
+        r = self._redis()
+        if not r:
+            return
+        try:
+            r.delete(*self._keys())
+        except Exception:
+            pass
 
     def _check_postgrest_health(self) -> bool:
         """Проверить доступность PostgREST через health endpoint (в обход CB).
@@ -89,6 +158,7 @@ class CircuitBreaker:
             return func(*args, **kwargs)
 
         with self._lock:
+            self._load_shared()  # синхронизация с общим состоянием (другие воркеры)
             if self.state == 'OPEN':
                 if time.time() - self.last_failure_time >= self.recovery_timeout:
                     self.state = 'HALF_OPEN'
@@ -115,6 +185,7 @@ class CircuitBreaker:
             logger.warning('Circuit breaker call failed: %s', e, exc_info=True)
             with self._lock:
                 self._record_failure(exception=True)
+                self._save_shared()
             raise
 
         with self._lock:
@@ -128,12 +199,15 @@ class CircuitBreaker:
                     )
                 else:
                     self._record_failure(status_code=result.status_code)
+                    self._save_shared()
             elif isinstance(result, dict) and not result.get('ok', True):
                 self._record_failure()
+                self._save_shared()
             else:
                 self.failure_count = 0
                 if self.state == 'HALF_OPEN':
                     self.state = 'CLOSED'
+                self._save_shared()
 
         return result
 
@@ -164,11 +238,15 @@ class CircuitBreaker:
                 logger.warning('Failed to log circuit breaker state change: %s', e, exc_info=True)
 
     def reset(self) -> None:
-        """Сбросить Circuit Breaker в исходное состояние (CLOSED, failures=0)."""
+        """Сбросить Circuit Breaker в исходное состояние (CLOSED, failures=0).
+
+        При name — сбрасывает и общее состояние в Redis (все воркеры увидят).
+        """
         with self._lock:
             self.failure_count = 0
             self.last_failure_time = 0.0
             self.state = 'CLOSED'
+            self._delete_shared()
 
 
 def _circuit_open_response() -> 'PostgrestResponse':
@@ -210,16 +288,24 @@ def is_circuit_open(resp: Any) -> bool:
 
 _cb_postgrest = CircuitBreaker(
     failure_threshold=Config.CB_FAILURE_THRESHOLD,
-    recovery_timeout=Config.CB_RECOVERY_TIMEOUT
+    recovery_timeout=Config.CB_RECOVERY_TIMEOUT,
+    name='postgrest',
 )
 _cb_admin = CircuitBreaker(
     failure_threshold=Config.CB_FAILURE_THRESHOLD,
-    recovery_timeout=Config.CB_RECOVERY_TIMEOUT
+    recovery_timeout=Config.CB_RECOVERY_TIMEOUT,
+    name='admin',
 )
 
 
 def get_circuit_breaker_state():
-    """Возвращает состояние обоих Circuit Breaker для мониторинга."""
+    """Возвращает состояние обоих Circuit Breaker для мониторинга.
+
+    Синхронизирует с общим Redis-состоянием — видно реальную картину
+    всех воркеров (не только текущего процесса).
+    """
+    _cb_postgrest._load_shared()
+    _cb_admin._load_shared()
     return {
         'postgrest': {
             'state': _cb_postgrest.state,
@@ -640,9 +726,8 @@ def postgrest_admin_request(method: str, endpoint: str, **kwargs: Any) -> Postgr
 
     # P1-1: caller allowlist audit. service_role (BYPASSRLS) must NEVER be reachable
     # from client/template render context. Deny-list (templates) checked first, then
-    # allow-list of server-side prefixes. Логируем предупреждение, но НЕ прерываем
-    # выполнение (раньше raise RuntimeError ломал admin_required из app.decorators —
-    # реальная защита остаётся на уровне RLS; аудит-лог сохраняется).
+    # allow-list of server-side prefixes. 2026-09 (TC-088): fail-closed для обоих
+    # случаев — warn-not-block заменён на RuntimeError.
     _is_template = any(caller.startswith(p) for p in _ADMIN_WARN_PREFIXES)
     _is_allowed = (not _is_template) and any(
         caller.startswith(p) for p in _ADMIN_ALLOWED_PREFIXES
@@ -654,10 +739,11 @@ def postgrest_admin_request(method: str, endpoint: str, **kwargs: Any) -> Postgr
         logger.error(_msg)
         raise RuntimeError(_msg)
     if not _is_allowed:
-        # Не в allowlist (но и не шаблон) — defence-in-depth аудит. Реальная защита — RLS:
-        # service_role доступен только серверному коду; логируем и продолжаем.
-        _msg = f"SECURITY: postgrest_admin_request from disallowed context: {caller}"
-        logger.warning(_msg)
+        # Fail-closed (TC-088): вызывающий вне allowlist серверных модулей —
+        # потенциальный спуф caller. Логируем и прерываем.
+        _msg = f"SECURITY BLOCK: postgrest_admin_request from disallowed context: {caller}"
+        logger.error(_msg)
+        raise RuntimeError(_msg)
 
     if _is_mock_enabled():
         return _test_mock_request(method, endpoint, **kwargs)

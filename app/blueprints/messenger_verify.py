@@ -12,12 +12,11 @@ Deep-link flow:
   5. Bot отправляет подтверждение в чат.
 """
 import logging
+import os
 import re
 import uuid
 
 import requests
-import urllib3
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from flask import Blueprint, jsonify, request, session
 
@@ -28,6 +27,20 @@ from app.utils.redis_client import get_redis_client
 
 logger = logging.getLogger(__name__)
 messenger_bp = Blueprint('messenger_verify', __name__, url_prefix='/messenger')
+
+
+def _max_verify():
+    """CA-бандл для MAX API.
+
+    platform-api2.max.ru использует сертификат «Russian Trusted Sub CA»
+    (Минцифры), отсутствующий в публичных CA-бандлах. Корневой
+    «Russian Trusted Root CA» лежит в репо (certs/, публичный сертификат).
+    Переопределяется env MAX_CA_BUNDLE; при отсутствии файла — системный бандл.
+    """
+    bundle = (Config.MAX_CA_BUNDLE or '').strip()
+    if bundle and os.path.isfile(bundle):
+        return bundle
+    return True
 
 # Значения вынесены в Config (app/config.py), override через env:
 # MAX_API_URL / MESSENGER_VERIFY_TTL / MESSENGER_API_TIMEOUT
@@ -87,7 +100,7 @@ def diagnose():
     # MAX: GET /me
     if _max_token():
         try:
-            r = _req.get(f'{_MAX_API}/me', headers={'Authorization': _max_token()}, timeout=Config.MESSENGER_API_TIMEOUT, verify=False)
+            r = _req.get(f'{_MAX_API}/me', headers={'Authorization': _max_token()}, timeout=Config.MESSENGER_API_TIMEOUT, verify=_max_verify())
             result['max']['reachable'] = r.ok
             result['max']['status'] = r.status_code
             if r.ok:
@@ -129,6 +142,20 @@ def max_webhook():
     не найдена» (последний отвечает сценарий MaxBot Studio; наш бот отвечает
     сообщением через API параллельно).
     """
+    # Проверка секрета webhook (X-Max-Bot-Api-Secret; MAX Bot API шлёт его,
+    # если задан при регистрации подписки). Fail-closed: без env — 503,
+    # без/с неверным заголовком — 401. Не принимаем события из чужих источников.
+    import hmac as _hmac
+    expected_secret = (Config.MAX_WEBHOOK_SECRET or '').strip()
+    if not expected_secret:
+        logger.error('messenger_verify: MAX_WEBHOOK_SECRET не задан — webhook отклонён (fail-closed)')
+        return jsonify({'ok': False, 'error': 'webhook not configured'}), 503
+    provided = request.headers.get('X-Max-Bot-Api-Secret', '')
+    if not _hmac.compare_digest(provided, expected_secret):
+        logger.warning('messenger_verify: webhook с неверным/пустым секретом от %s',
+                       request.remote_addr)
+        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
     data = request.get_json(silent=True) or {}
     update_type = data.get('update_type', '')
     chat_id = data.get('chat_id')
@@ -280,7 +307,7 @@ def _send_max(chat_id, text, button: dict | None = None) -> bool:
             json=payload,
             headers={'Authorization': token, 'Content-Type': 'application/json'},
             timeout=Config.MESSENGER_API_TIMEOUT,
-            verify=False,  # MAX API SSL cert not in Docker CA store
+            verify=_max_verify(),
         )
         if resp.status_code >= 300:
             logger.warning('messenger_verify: MAX send %s failed: %s %s',
@@ -312,7 +339,7 @@ def get_max_subscriptions() -> list:
             f'{_MAX_API}/subscriptions',
             headers={'Authorization': token},
             timeout=Config.MESSENGER_API_TIMEOUT,
-            verify=False,
+            verify=_max_verify(),
         )
         if resp.ok:
             data = resp.json()
@@ -334,13 +361,18 @@ def _find_subscription(subs: list, url: str) -> dict | None:
 
 def _register_subscription(url: str, token: str) -> tuple[bool, str]:
     """POST /subscriptions. Возвращает (ok, error)."""
+    payload = {'url': url, 'update_types': list(_NEEDED_UPDATE_TYPES)}
+    # MAX будет слать этот секрет в X-Max-Bot-Api-Secret — см. max_webhook
+    secret = (Config.MAX_WEBHOOK_SECRET or '').strip()
+    if secret:
+        payload['secret'] = secret
     try:
         resp = requests.post(
             f'{_MAX_API}/subscriptions',
-            json={'url': url, 'update_types': list(_NEEDED_UPDATE_TYPES)},
+            json=payload,
             headers={'Authorization': token, 'Content-Type': 'application/json'},
             timeout=Config.MESSENGER_API_TIMEOUT,
-            verify=False,
+            verify=_max_verify(),
         )
         if resp.status_code < 300:
             return True, ''
@@ -381,7 +413,7 @@ def ensure_max_webhook(base_url: str | None = None) -> dict:
                     params={'url': url},
                     headers={'Authorization': token},
                     timeout=Config.MESSENGER_API_TIMEOUT,
-                    verify=False,
+                    verify=_max_verify(),
                 )
             except Exception as e:
                 logger.warning('messenger_verify: subscription delete failed: %s', e)

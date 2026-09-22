@@ -136,6 +136,14 @@ class Config:
     # Telegram отключён (152-ФЗ ст. 12 — трансграничная передача, 2026-08).
     MAX_BOT_TOKEN = os.environ.get('MAX_BOT_TOKEN', '')
     MAX_BOT_USERNAME = os.environ.get('MAX_BOT_USERNAME', 'se13803803_bot')
+    # Секрет подписи webhook MAX (заголовок X-Max-Bot-Api-Secret); fail-closed без него
+    MAX_WEBHOOK_SECRET = os.environ.get('MAX_WEBHOOK_SECRET', '')
+    # CA-бандл для MAX API (Russian Trusted Root CA, Минцифры — вне публичных бандлов)
+    _DEFAULT_MAX_CA = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')),
+                                   'certs', 'russian_trusted_root_ca.crt')
+    MAX_CA_BUNDLE = os.environ.get('MAX_CA_BUNDLE', _DEFAULT_MAX_CA)
+    # Токен доступа к /metrics (X-Metrics-Token); в production без него /metrics → 404
+    METRICS_TOKEN = os.environ.get('METRICS_TOKEN', '')
     CACHE_MAX_SIZE = 256
     PAGINATION_DEFAULT_PER_PAGE = 20
 

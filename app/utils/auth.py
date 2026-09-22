@@ -74,7 +74,11 @@ def hash_password(password: str) -> str:
 # в login_required + refresh_access_token() корректно перевыпускают токен при
 # истечении, поэтому TTL можно сократить. Это уменьшает окно использования
 # утёкшего JWT с 24ч до 1ч (≈ TTL сессии).
-ACCESS_TOKEN_TTL_SECONDS = 3600  # 1 час — синхронно с PERMANENT_SESSION_LIFETIME
+# 2026-09 (TC-091): единственный источник правды — Config.PERMANENT_SESSION_LIFETIME
+# (переопределение через env ACCESS_TOKEN_TTL_SECONDS при необходимости).
+import os as _os
+ACCESS_TOKEN_TTL_SECONDS = int(_os.environ.get(
+    'ACCESS_TOKEN_TTL_SECONDS', str(Config.PERMANENT_SESSION_LIFETIME)))
 
 
 def generate_jwt(user_id, role, exp_seconds=300, password_changed_at=None):

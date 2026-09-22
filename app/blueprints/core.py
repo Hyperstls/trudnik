@@ -57,7 +57,22 @@ _ws_connections = Gauge(
 
 @core_bp.route('/metrics')
 def metrics():
-    """Prometheus metrics endpoint (Задача 10-2)."""
+    """Prometheus metrics endpoint (Задача 10-2).
+
+    Закрыт токеном: X-Metrics-Token против env METRICS_TOKEN (2026-09).
+    Production без METRICS_TOKEN → 404 (не раскрываем существование);
+    dev без токена → открыт для локальной отладки. /health остаётся публичным.
+    """
+    import hmac as _hmac
+    token_expected = (current_app.config.get('METRICS_TOKEN') or '').strip()
+    if token_expected:
+        provided = request.headers.get('X-Metrics-Token', '')
+        if not _hmac.compare_digest(provided, token_expected):
+            abort(404)
+    elif os.environ.get('DEPLOYMENT_ENV') == 'production':
+        current_app.logger.error('/metrics запрошен, но METRICS_TOKEN не задан — 404 (fail-closed)')
+        abort(404)
+
     from app.utils.postgrest_client import get_circuit_breaker_state
 
     # Circuit breaker gauges

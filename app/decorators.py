@@ -134,18 +134,29 @@ def login_required(f: F) -> F:
                     # блокировать пользователя на 60 секунд.
                     if user_exists:
                         set_cached(cache_key, True, ttl=60)
-                # Решение по сессии:
+                # Решение по сессии (2026-09, TC-087 — fail-closed):
                 # - Если БД подтвердила, что пользователя НЕТ (200 + пусто) — закрываем доступ.
-                # - Если PostgREST недоступен (CB open / network error / role error) —
-                #   НЕ выкидываем пользователя (fail-open): он аутентифицирован валидным JWT,
-                #   логин прошёл через прямой SQL. Временный сбой API не должен разлогинивать.
+                # - Если PostgREST недоступен (CB open / network error) — 503 без разлогина:
+                #   сессия сохраняется, пользователь может повторить. Раньше был fail-open —
+                #   удалённый/замороженный пользователь сохранял доступ на весь даунтайм БД.
                 if not user_exists:
                     if db_reachable:
                         # БД доступна и подтвердила отсутствие пользователя (удалён)
                         session.clear()
                         return redirect(url_for('auth.login'))
-                    # БД недоступна — пропускаем проверку, не трогая сессию
-                    pass
+                    # БД недоступна — fail-closed: 503, сессию НЕ трогаем.
+                    # Шаблон НЕ рендерим: рендер дёргает context-процессоры,
+                    # которые снова упадут в ту же недоступную БД.
+                    from flask import request as _req, jsonify as _jsonify
+                    if _req.path.startswith('/api/') or _req.accept_mimetypes.best == 'application/json':
+                        return _jsonify({'error': 'Сервис временно недоступен. Повторите позже.'}), 503
+                    return ('<!doctype html><html lang="ru"><head><meta charset="utf-8">'
+                            '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+                            '<title>Сервис недоступен</title></head><body style="font-family:sans-serif;'
+                            'max-width:32rem;margin:4rem auto;text-align:center">'
+                            '<h1>Сервис временно недоступен</h1>'
+                            '<p>База данных не отвечает. Попробуйте через минуту — ваша сессия сохранена.</p>'
+                            '<p><a href="/">Обновить страницу</a></p></body></html>'), 503
 
                 # Phase 3: проверка suspended (кэш 30с — блокировка срабатывает оперативно).
                 from app.utils import postgrest_admin_request as _pgadm_susp
