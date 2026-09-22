@@ -34,6 +34,11 @@ Env: `listEnvVars(slug, isSecret)`, `createEnvVars(slug, envVarsJson)`, `updateE
 - Команды: `amvera -v`, `amvera` (список), `<cmd> -h` (справка).
 - Ключевые: `amvera describe project --slug trudnik`, `amvera rebuild --slug trudnik`, `amvera logs {build|run} --slug trudnik`, `amvera env ...` (⚠️ баг v1.2.2 на JSON-парсинге → флаг `dotenv`).
 - Регионы MCP: msk0 (Москва) `https://openmcp.msk0.amvera.ru/mcp`, waw0 (Варшава) `https://openmcp.waw0.amvera.ru/mcp`.
+- ⚠️ **2026-09-18: msk0 отдавал 504 Gateway Time-out даже без токена (регион лежал на стороне Amvera); waw0 при этом работал.** Диагностика MCP:
+  1. Без токена: `curl -X POST <region-url> -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'` → ожидаем 401 (жив) или 504 (лежит, пробуй другой регион).
+  2. С токеном: то же + `Authorization: Bearer <token>` → 200 с `serverInfo amvera-mcp`.
+  3. Токен — в ЛК Amvera; в Kimi Code хранится в `~/.kimi-code/mcp.json` → servers.amvera.headers.Authorization (user-level, вне git). Валиден до 2029-07.
+  4. В Kimi Code MCP-серверы регистрируются только в НОВЫХ сессиях (`/mcp` — статус).
 
 ## 4. Деплой-воркфлоу (git + rebuild)
 - Remotes: `amvera` → `https://git.msk0.amvera.ru/hyperstls/trudnik`; `origin` → GitHub `Hyperstls/trudnik`.
