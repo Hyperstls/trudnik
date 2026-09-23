@@ -121,8 +121,8 @@ class CircuitBreaker:
             return
         try:
             r.delete(*self._keys())
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug('CB shared state delete failed: %s', e)
 
     def _check_postgrest_health(self) -> bool:
         """Проверить доступность PostgREST через health endpoint (в обход CB).

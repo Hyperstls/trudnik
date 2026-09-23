@@ -19,4 +19,9 @@
 16. Uploads: проверяй размер (MAX_PHOTO_SIZE_MB=5 → MAX_UPLOAD_SIZE; MAX_CONTENT_LENGTH=16MB) и MIME/расширение; защищайся от path traversal в именах файлов (не доверяй user-supplied filename для пути).
 17. JWT app_role: app_role должен браться из сессии/БД (session['role'] в get_user_headers), НЕ из клиентского ввода. Проверяй, что role нельзя подменить с клиента.
 18. Внешние ключи: SMARTCAPTCHA_SERVER_KEY, YANDEX_GEOCODER_KEY, VAPID_PRIVATE_KEY, MAX_BOT_TOKEN — только из env; не хардкодить, не логировать, не возвращать клиенту (SMARTCAPTCHA_CLIENT_KEY, VAPID_PUBLIC_KEY — можно). Капча — Yandex SmartCaptcha (РФ); Turnstile/Telegram-верификация удалены 2026-08 (152-ФЗ ст. 12, трансграничная передача).
+19. MAX API TLS (2026-09): `verify=False` ЗАПРЕЩЁН. Сертификат MAX — «Russian Trusted Sub CA» (Минцифры): корневой CA в `certs/russian_trusted_root_ca.crt` (публичный), `Config.MAX_CA_BUNDLE`; `_max_verify()` в messenger_verify. Webhook MAX — fail-closed: заголовок `X-Max-Bot-Api-Secret` (env MAX_WEBHOOK_SECRET; без env 503, без/неверный 401); секрет регистрируется в подписке.
+20. /metrics закрыт (2026-09): заголовок `X-Metrics-Token` vs env METRICS_TOKEN (compare_digest); prod без env → 404; dev без env открыт. /health — публичный (мониторинг).
+21. CB — общее состояние в Redis (2026-09): ключи `cb:<name>:*` (TTL 300с), in-memory fallback; не держи состояние CB в процессе при --workers 2.
+22. login_required — fail-closed (TC-087): БД недоступна → 503 (API JSON / HTML-заглушка БЕЗ рендера шаблона — рендер дёргает те же запросы), сессия сохраняется; БД подтвердила удаление → редирект login.
+23. postgrest_admin_request — fail-closed (TC-088): caller вне `_ADMIN_ALLOWED_PREFIXES` или из template-context → RuntimeError SECURITY BLOCK (раньше warn-not-block).
 ```

@@ -101,12 +101,11 @@ def test_login_required_clears_session_if_user_not_exists(client, app, mocker):
 
 
 def test_login_required_failopen_when_postgrest_unavailable(client, app, mocker):
-    """B5: login_required НЕ должен разлогинивать при недоступности PostgREST.
+    """B5: login_required при недоступности PostgREST — fail-CLOSED 503 (TC-087).
 
-    Если PostgREST недоступен (Circuit Breaker OPEN / сетевая ошибка / ошибка роли),
-    мы не можем подтвердить существование пользователя, но и не должны выкидывать
-    легитимного пользователя с валидным JWT (логин прошёл через прямой SQL).
-    Поведение: fail-open — сессию не трогаем, запрос выполняется.
+    Раньше был fail-open (200, запрос выполнялся) — удалённый/замороженный
+    пользователь сохранял доступ на весь даунтайм БД. С 2026-09: 503, но сессия
+    НЕ очищается — повторный запрос после восстановления БД пройдёт.
     """
     mocker.patch('app.utils.redis_cache.get_cached', return_value=None)
     mocker.patch('app.utils.redis_cache.set_cached')
@@ -141,6 +140,8 @@ def test_login_required_failopen_when_postgrest_unavailable(client, app, mocker)
 
     response = client.get('/test-b5-failopen')
 
-    # Пользователь НЕ выкинут — fail-open: маршрут отдал 200 OK
-    assert response.status_code == 200
-    assert response.data == b'OK'
+    # Fail-closed: 503, маршрут НЕ выполнен; сессия сохранена (не редирект на login)
+    assert response.status_code == 503
+    assert response.data != b'OK'
+    with client.session_transaction() as sess:
+        assert sess.get('access_token') == token, 'Сессия должна сохраниться при 503'
