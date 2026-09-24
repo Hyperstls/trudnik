@@ -21,10 +21,11 @@ from playwright.sync_api import Browser, BrowserContext, Page, sync_playwright
 # ──────────────────────────────────────────────
 
 BASE_URL = os.environ.get('TEST_BASE_URL', os.environ.get('BASE_URL', 'http://localhost:8000'))
+# Креды совпадают с live-suite (tests/test_critical_gaps.py): те же пользователи
 EMPLOYER_EMAIL = os.environ.get('EMPLOYER_EMAIL', 'org@test.ru')
-EMPLOYER_PASSWORD = os.environ.get('EMPLOYER_PASSWORD', 'Step@1986')
-WORKER_EMAIL = os.environ.get('WORKER_EMAIL', 'trud@test.ru')
-WORKER_PASSWORD = os.environ.get('WORKER_PASSWORD', 'Step@1986')
+EMPLOYER_PASSWORD = os.environ.get('EMPLOYER_PASSWORD', 'test123')
+WORKER_EMAIL = os.environ.get('WORKER_EMAIL', 'trud3@test.ru')
+WORKER_PASSWORD = os.environ.get('WORKER_PASSWORD', 'test123')
 
 VIEWPORTS = {
     'mobile': (320, 568),
@@ -53,31 +54,36 @@ def login_as(page: Page, email: str, password: str) -> None:
 
     POST /login не требует CSRF (явно пропущен в csrf_check).
     При 429 (rate limit) — ждёт 5 сек и пробует снова (до 3 попыток).
+    Сначала сбрасывает per-IP/per-account лимиты в Redis (2026-09):
+    без этого 20/час per-IP съедается предыдущими тестами/прогонами.
     """
+    from tests.conftest import _clear_login_rate_limits
+    _clear_login_rate_limits()
     for attempt in range(3):
         page.goto(f'{BASE_URL}/login', wait_until='domcontentloaded')
-        page.wait_for_selector('form', timeout=10000)
+        # Ждём именно поле email: на /login у залогиненного есть и скрытая
+        # logout-форма (profile-menu) — wait_for_selector('form') виснет на ней
+        page.wait_for_selector('input[name="email"]', state='visible', timeout=10000)
 
         # Заполняем и отправляем форму
         page.fill('input[name="email"]', email)
         page.fill('input[name="password"]', password)
         page.click('button[type="submit"]')
 
-        # Ждём завершения навигации после логина
-        page.wait_for_load_state('networkidle', timeout=15000)
+        # Ждём ухода со страницы логина (редирект после успеха)
+        try:
+            page.wait_for_url(lambda url: '/login' not in url, timeout=10000)
+            return
+        except Exception:
+            pass
 
         # Если попали на rate-limit — ждём и пробуем снова
         if '429' in page.content() or 'Too Many Requests' in page.content():
             time.sleep(5)
             continue
 
-        # Проверяем, что нет сообщения об ошибке входа
-        if 'Ошибка входа' in page.content():
-            time.sleep(2)
-            continue
-
-        # Успешный вход
-        return
+        # Остались на /login — ошибка входа, следующая попытка
+        time.sleep(1)
 
     raise RuntimeError(
         f'Не удалось залогиниться как {email} после 3 попыток'

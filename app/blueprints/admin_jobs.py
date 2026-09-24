@@ -53,20 +53,29 @@ def update_job_status(job_id):
 @admin_required
 @validate_uuid('job_id')
 def delete_job_admin(job_id):
-    _delete_job_cascade(job_id)
-    log_admin_action('delete_job', table_name='jobs', record_id=job_id)
-    flash('Задание удалено', 'success')
+    if _delete_job_cascade(job_id):
+        log_admin_action('delete_job', table_name='jobs', record_id=job_id)
+        flash('Задание удалено', 'success')
+    else:
+        flash('Не удалось удалить задание — подробности в логе сервера', 'danger')
     return redirect(url_for('admin_dashboard.admin_panel', tab='jobs'))
 
 
 def _delete_job_cascade(job_id):
-    """Каскадное удаление задания и всех связанных записей через RPC."""
+    """Каскадное удаление задания и всех связанных записей через RPC.
+
+    Возвращает True при успехе; при ошибке RPC — False (логируется),
+    чтобы вызывающий мог честно ответить пользователю (2026-09: раньше
+    ошибка глоталась и показывался «Задание удалено»).
+    """
     rpc_result = postgrest_rpc('delete_job_cascade', {'p_job_id': job_id}, use_admin=True)
     if not rpc_result.ok:
         current_app.logger.error(
             "Admin delete job RPC: failed for %s: status=%s text=%s",
             job_id, rpc_result.status_code, (rpc_result.text or '')[:200]
         )
+        return False
+    return True
 
 
 @admin_jobs_bp.route('/bulk-delete-jobs', methods=['POST'])

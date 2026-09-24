@@ -10,6 +10,11 @@ import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+# Регистрация browser-фикстур (playwright_browser, employer_context, worker_context,
+# employer_page, worker_page) для browser-suite: test_buttons_browser.py и др.
+# Раньше conftest_playwright.py не был подключён — 159 ошибок «fixture not found».
+pytest_plugins = ['tests.conftest_playwright']
 import requests
 
 # ═══════════════════════════════════════════════════════════════
