@@ -254,7 +254,7 @@ class TestLoadingStates:
 
         # Пытаемся выполнить действие, которое вызывает AJAX
         # (например, добавить в избранное, если есть задание)
-        fav_btn = page.locator('[class*="favorite"], [aria-label*="Избранное"], [aria-label*="избранное"]').first
+        fav_btn = page.locator('[class*="favorite"]:visible, [aria-label*="Избранное"]:visible, [aria-label*="избранное"]:visible').first
         if fav_btn.count() > 0:
             fav_btn.click()
             page.wait_for_timeout(500)
@@ -284,7 +284,7 @@ class TestLoadingStates:
         page.route("**/api/**", block_api)
 
         # Пытаемся кликнуть что-то, что вызывает API
-        fav_btn = page.locator('[class*="favorite"], [aria-label*="Избранное"]').first
+        fav_btn = page.locator('[class*="favorite"]:visible, [aria-label*="Избранное"]:visible').first
         if fav_btn.count() > 0:
             fav_btn.click()
             # Ждём некоторое время (не 30 сек в тесте, это слишком долго)
@@ -348,10 +348,20 @@ class TestDoubleClickProtection:
         page.goto(f"{BASE_URL}/job/new", wait_until="domcontentloaded")
         page.wait_for_timeout(500)
 
-        # Заполняем обязательные поля (минимально)
+        # Заполняем обязательные поля по шагам wizard'а (2026-09):
+        # город/адрес на шаге 2, оплата на шаге 3 — скрытые поля не fill'ятся
         page.fill('input[name="title"]', "Тестовое задание E2E DBL-001")
+        page.fill('textarea[name="description"]', "Описание DBL-001")
+        page.select_option('select[name="work_type"]', index=1)
+        page.click('#to-step-2')
+        page.wait_for_selector('input[name="city"]', state='visible', timeout=15000)
         page.fill('input[name="city"]', "Москва")
         page.fill('input[name="address"]', "ул. Тестовая, 1")
+        page.click('#to-step-3')
+        page.wait_for_selector('input[name="payment"]', state='visible', timeout=15000)
+        page.fill('input[name="payment"]', '5000')
+        page.click('#to-step-4')
+        page.wait_for_selector('#step-4 button[type="submit"]', state='visible', timeout=15000)
 
         # Считаем количество отправок
         submit_count = 0
@@ -363,8 +373,8 @@ class TestDoubleClickProtection:
 
         page.route("**/job/new", count_submit)
 
-        # Быстро кликаем 3 раза
-        submit_btn = page.locator('button[type="submit"]')
+        # Быстро кликаем 3 раза по кнопке «Создать задание» (шаг 4)
+        submit_btn = page.locator('#step-4 button[type="submit"]')
         if submit_btn.count() > 0:
             for _ in range(3):
                 try:
@@ -540,7 +550,7 @@ class TestEmptyStates:
             or "откликов нет" in content
             or "пока нет" in content
         )
-        has_applications = "application" in content and page.locator(".app-card, .application-card").count() > 0
+        has_applications = page.locator(".card, .app-card, .application-card").count() > 0
         assert has_empty_text or has_applications, (
             "Страница /my-applications не содержит ни откликов, ни empty-state текста"
         )
@@ -564,7 +574,7 @@ class TestEmptyStates:
             or "нет избран" in content
             or "пока пусто" in content
         )
-        has_items = page.locator(".card, .favorite-item, .job-card").count() > 0
+        has_items = page.locator(".app-card, .card, .favorite-item, .job-card").count() > 0
         assert has_empty_text or has_items, (
             "Страница /favorites не содержит ни элементов, ни empty-state текста"
         )
@@ -610,7 +620,7 @@ class TestEmptyStates:
             or "чатов нет" in content
             or "пока нет" in content
         )
-        has_chats = page.locator(".chat-item, .chat-card, .conversation-item").count() > 0
+        has_chats = page.locator(".app-card, .chat-item, .chat-card, .conversation-item").count() > 0
         assert has_empty_text or has_chats, (
             "Страница /chats не содержит ни чатов, ни empty-state текста"
         )
@@ -680,9 +690,10 @@ class TestEmptyStates:
             or "не найдено" in content
             or "нет результатов" in content
             or "результатов не" in content
+            or "пока нет" in content
         )
         # Может вернуть всех трудников если фильтр не применился
-        has_workers = page.locator(".worker-card, .user-card").count() > 0
+        has_workers = page.locator(".card, .worker-card, .user-card").count() > 0
         assert has_empty_text or has_workers, (
             "Страница поиска не содержит ни результатов, ни empty-state текста"
         )

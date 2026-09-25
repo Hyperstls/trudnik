@@ -29,6 +29,23 @@ from tests.conftest_playwright import (
     run_accessibility_audit,
 )
 
+LONG_TIMEOUT = 60_000
+
+# Пароль админа локального dev-стека (см. docs: admin@test.ru / Aa1!aaaa).
+ADMIN_EMAIL = 'admin@test.ru'
+ADMIN_PASSWORD = 'Aa1!aaaa'
+
+
+def _settle(page: Page, timeout: int = LONG_TIMEOUT) -> None:
+    """Ждёт готовности страницы вместо networkidle (2026-09).
+
+    networkidle НЕ используем: Yandex.Maps, WebSocket-уведомления и service
+    worker держат соединения открытыми — networkidle не наступает никогда.
+    Страницы рендерятся сервером — достаточно видимого main-контента.
+    wait_for_selector переживает навигацию (перезапускается на новой странице).
+    """
+    page.wait_for_selector('main#main-content', state='visible', timeout=timeout)
+
 
 # ══════════════════════════════════════════════════════════════════════
 # 1. ГОСТЬ (неавторизованный) — ~12 тестов
@@ -45,11 +62,12 @@ def test_guest_sees_login_register_buttons_on_index(playwright_browser: Browser)
     page = context.new_page()
     try:
         page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
-        # Кнопки в bottom-nav для гостя
-        login_btn = page.locator('.bottom-nav a[href="/login"]')
-        register_btn = page.locator('.bottom-nav a[href="/register"]')
+        # 2026-09: гостевой bottom-nav — md:hidden (только мобильные).
+        # На десктопе «Войти»/«Регистрация» живут в шапке.
+        login_btn = page.locator('header a[href="/login"]')
+        register_btn = page.locator('header a[href="/register"]')
 
         assert login_btn.is_visible(), 'Кнопка «Войти» не видна гостю'
         assert register_btn.is_visible(), 'Кнопка «Регистрация» не видна гостю'
@@ -68,7 +86,7 @@ def test_guest_can_click_job_card(playwright_browser: Browser) -> None:
     page = context.new_page()
     try:
         page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
         # Ищем первую карточку с ссылкой на задание
         job_link = page.locator('a[href^="/jobs/"]').first
@@ -76,7 +94,7 @@ def test_guest_can_click_job_card(playwright_browser: Browser) -> None:
             pytest.skip('На главной нет карточек заданий')
 
         job_link.click()
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
         assert re.search(r'/jobs/[a-f0-9-]{36}', page.url), f'Не перешли на страницу задания, URL: {page.url}'
     finally:
         page.close()
@@ -93,14 +111,14 @@ def test_guest_sees_login_cta_on_job_detail(playwright_browser: Browser) -> None
     page = context.new_page()
     try:
         page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
         job_link = page.locator('a[href^="/jobs/"]').first
         if job_link.count() == 0:
             pytest.skip('На главной нет карточек заданий')
 
         job_link.click()
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
         # Ищем ссылку на логин или призыв залогиниться
         login_cta = page.locator('a[href="/login"]')
@@ -198,8 +216,11 @@ def test_guest_register_form_steps(playwright_browser: Browser) -> None:
         # Заполняем поля шага 1
         page.fill('input[name="full_name"]', 'Тестовый Пользователь')
         page.fill('input[name="email"]', 'test_guest@example.com')
-        page.fill('input[name="password"]', 'Test1234')
-        page.locator('input[name="role"][value="worker"]').check(force=True)
+        # 2026-09: validatePasswordFull требует спецсимвол — «Test1234» без него
+        # не разблокирует «Далее»
+        page.fill('input[name="password"]', 'Test1234!')
+        # 2026-09: мультирольность — вместо role теперь intent (both/find_work/post_jobs)
+        page.locator('input[name="intent"][value="find_work"]').check(force=True)
         page.wait_for_timeout(500)
 
         # Кнопка должна разблокироваться и кликаться
@@ -232,20 +253,45 @@ def test_guest_filter_by_skills(playwright_browser: Browser) -> None:
     page = context.new_page()
     try:
         page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
-        # Ищем кнопку фильтра навыков
-        filter_btn = page.locator('[id$="-filter-btn"], #skills-filter-btn, [data-filter-trigger]').first
+        # 2026-09: фильтр навыков — partial _filter_skills.html с триггером
+        # #jobs-filter-trigger и панелью #jobs-filter-panel (bottom sheet / dropdown)
+        filter_btn = page.locator('#jobs-filter-trigger')
         if filter_btn.count() == 0:
-            # Пробуем найти любой элемент управления фильтром
-            filter_toggle = page.locator('#jobs-filter-btn, button:has-text("Навыки")').first
-            if filter_toggle.count() == 0:
-                pytest.skip('Фильтр по навыкам не найден на странице')
+            pytest.skip('Фильтр по навыкам не найден на странице')
 
-        # Проверяем что фильтр вообще существует в DOM
-        skills_filter = page.locator('[id$="-filter"], #jobs-filter, .filter-drawer').first
-        # Фильтр может быть скрыт, проверяем что он есть в DOM
-        assert skills_filter.count() >= 0, 'Секция фильтра не найдена'
+        # JS-партиал инициализируется после DOMContentLoaded — клик с ретраем,
+        # пока триггер не получит aria-expanded (handler ещё не навешан → no-op)
+        opened = False
+        for _ in range(4):
+            filter_btn.click()
+            try:
+                page.wait_for_selector('#jobs-filter-trigger[aria-expanded="true"]',
+                                       timeout=2500)
+                opened = True
+                break
+            except Exception:
+                continue
+        assert opened, 'Панель фильтра не открылась после кликов по триггеру'
+        # Панель: class hidden снимается при открытии. state='attached': на
+        # десктопе content абсолютно позиционирован → у panel-контейнера нулевой
+        # bbox, Playwright 'visible' по нему никогда не наступает (2026-09).
+        page.wait_for_selector('#jobs-filter-panel:not(.hidden)', state='attached', timeout=10000)
+        # Контент панели видим (dropdown на десктопе)
+        page.wait_for_selector('#jobs-filter-content', state='visible', timeout=5000)
+
+        # Навыки подгружаются лениво через /api/skills
+        skill_cb = page.locator('#jobs-filter-list .skill-filter-cb')
+        if skill_cb.count() == 0:
+            pytest.skip('В справочнике нет навыков для выбора')
+
+        # Выбираем первый навык и применяем → навигация с ?skills=
+        skill_cb.first.check()
+        page.click('#jobs-filter-apply')
+        _settle(page)
+        assert 'skills=' in page.url, \
+            f'После применения фильтра URL не содержит ?skills=: {page.url}'
     finally:
         page.close()
         context.close()
@@ -261,16 +307,18 @@ def test_guest_sort_panel(playwright_browser: Browser) -> None:
     page = context.new_page()
     try:
         page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
-        # Ищем кнопки сортировки
-        sort_buttons = page.locator('a[href*="sort="], button[data-sort], .sort-panel a, [id*="sort"] a')
-        if sort_buttons.count() == 0:
+        # Ищем кнопки сортировки (2026-09: _sort_panel.html — ссылки ?sort=...)
+        # Берём неактивную сортировку, чтобы URL гарантированно изменился
+        sort_link = page.locator('a[href*="sort=price_asc"]')
+        if sort_link.count() == 0:
+            sort_link = page.locator('a[href*="sort="]')
+        if sort_link.count() == 0:
             pytest.skip('Панель сортировки не найдена на странице')
 
-        # Кликаем на первую доступную сортировку
-        sort_buttons.first.click()
-        page.wait_for_load_state('networkidle', timeout=10000)
+        sort_link.first.click()
+        _settle(page)
 
         # Проверяем, что URL изменился (содержит sort= или мы на той же странице)
         current_url = page.url
@@ -291,7 +339,7 @@ def test_guest_mobile_bottom_nav(playwright_browser: Browser) -> None:
     page = context.new_page()
     try:
         page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
         bottom_nav = page.locator('.bottom-nav')
         assert bottom_nav.is_visible(), 'Нижняя панель не видна на мобильном'
@@ -317,7 +365,7 @@ def test_guest_search_bar_visible(playwright_browser: Browser) -> None:
     page = context.new_page()
     try:
         page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
         # Десктопный поиск в base.html показывается только если session.get('user_id')
         search_form = page.locator('#desktop-search-form')
@@ -337,7 +385,7 @@ def test_guest_cannot_see_employer_buttons(playwright_browser: Browser) -> None:
     page = context.new_page()
     try:
         page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
         # Проверяем отсутствие ссылок работодателя
         create_job_link = page.locator('a[href="/job/new"]')
@@ -365,7 +413,7 @@ def test_guest_cannot_see_admin_buttons(playwright_browser: Browser) -> None:
     page = context.new_page()
     try:
         page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
         admin_link = page.locator('a[href="/admin"]')
         assert admin_link.count() == 0 or not admin_link.is_visible(), \
@@ -384,7 +432,7 @@ def test_guest_cannot_see_admin_buttons(playwright_browser: Browser) -> None:
 def test_worker_sees_apply_button_on_index(worker_page: Page) -> None:
     """Кнопка «Откликнуться» видна на карточках open заданий."""
     worker_page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     # Ищем кнопки отклика (accept-btn на карточках)
     apply_buttons = worker_page.locator('.accept-btn')
@@ -399,7 +447,7 @@ def test_worker_sees_apply_button_on_index(worker_page: Page) -> None:
 def test_worker_can_click_apply(worker_page: Page) -> None:
     """Клик «Откликнуться» → кнопка меняется на «Отозвать» или «Отклик отправлен»."""
     worker_page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     apply_form = worker_page.locator('form[action^="/apply/"]').first
     if apply_form.count() == 0:
@@ -407,7 +455,7 @@ def test_worker_can_click_apply(worker_page: Page) -> None:
 
     apply_btn = apply_form.locator('button[type="submit"]')
     apply_btn.click()
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     # После отклика должна появиться кнопка «Отозвать» или бейдж «Отклик отправлен»
     page_content = worker_page.content()
@@ -419,7 +467,7 @@ def test_worker_can_click_apply(worker_page: Page) -> None:
 def test_worker_can_unapply(worker_page: Page) -> None:
     """Клик «Отозвать» → кнопка меняется обратно на «Откликнуться»."""
     worker_page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     # Ищем кнопку отозвать (если уже откликались)
     unapply_form = worker_page.locator('form[action^="/unapply/"]').first
@@ -429,7 +477,7 @@ def test_worker_can_unapply(worker_page: Page) -> None:
         if apply_form.count() == 0:
             pytest.skip('Нет доступных заданий для отклика/отзыва')
         apply_form.locator('button[type="submit"]').click()
-        worker_page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(worker_page)
         unapply_form = worker_page.locator('form[action^="/unapply/"]').first
 
     if unapply_form.count() == 0:
@@ -437,7 +485,7 @@ def test_worker_can_unapply(worker_page: Page) -> None:
 
     unapply_btn = unapply_form.locator('button[type="submit"]')
     unapply_btn.click()
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     # После отзыва должна снова появиться кнопка «Откликнуться»
     page_content = worker_page.content()
@@ -449,7 +497,7 @@ def test_worker_can_unapply(worker_page: Page) -> None:
 def test_worker_sees_filters_all_new_applied(worker_page: Page) -> None:
     """Три фильтра «Все»/«Новые»/«Откликнулся» видны и работают (JS-фильтрация)."""
     worker_page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     filter_all = worker_page.locator('.js-filter-btn[data-filter="all"]')
     filter_new = worker_page.locator('.js-filter-btn[data-filter="new"]')
@@ -482,7 +530,7 @@ def test_worker_sees_filters_all_new_applied(worker_page: Page) -> None:
 def test_worker_favorite_job_toggle(worker_page: Page) -> None:
     """Клик «★ В избранное» на задании → иконка заполняется / опустошается."""
     worker_page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     fav_form = worker_page.locator('form[action^="/favorite-job/"]').first
     if fav_form.count() == 0:
@@ -491,7 +539,7 @@ def test_worker_favorite_job_toggle(worker_page: Page) -> None:
     fav_btn = fav_form.locator('button[type="submit"]')
     assert fav_btn.is_visible(), 'Кнопка «В избранное» не видна'
     fav_btn.click()
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     # Проверяем что страница перезагрузилась или изменился текст кнопки
     page_content = worker_page.content()
@@ -504,7 +552,7 @@ def test_worker_favorite_job_toggle(worker_page: Page) -> None:
 def test_worker_favorite_employer_toggle(worker_page: Page) -> None:
     """На /employers клик «В избранное» → переключение."""
     worker_page.goto(f'{BASE_URL}/employers', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     # Ищем кнопку избранного работодателя
     fav_btn = worker_page.locator('form[action*="/favorite"] button, .favorite-employer-btn').first
@@ -512,7 +560,7 @@ def test_worker_favorite_employer_toggle(worker_page: Page) -> None:
         pytest.skip('На странице работодателей нет кнопки избранного')
 
     fav_btn.click()
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     # Проверяем что страница не упала
     assert worker_page.locator('body').is_visible()
@@ -522,7 +570,7 @@ def test_worker_favorite_employer_toggle(worker_page: Page) -> None:
 def test_worker_sees_invitations_page(worker_page: Page) -> None:
     """GET /invitations — видны кнопки «Принять»/«Отклонить» или empty state."""
     worker_page.goto(f'{BASE_URL}/invitations', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     # Либо есть приглашения с кнопками, либо empty state
     accept_btns = worker_page.locator('.js-respond-btn[data-action="accept"]')
@@ -545,7 +593,7 @@ def test_worker_sees_invitations_page(worker_page: Page) -> None:
 def test_worker_can_reject_all_invitations(worker_page: Page) -> None:
     """Клик «Отклонить все» → список очищается."""
     worker_page.goto(f'{BASE_URL}/invitations', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     reject_all_btn = worker_page.locator('.js-reject-all-btn')
     if reject_all_btn.count() == 0 or not reject_all_btn.is_visible():
@@ -559,7 +607,7 @@ def test_worker_can_reject_all_invitations(worker_page: Page) -> None:
     if confirm_modal.is_visible():
         ok_btn = worker_page.locator('#confirm-modal-ok')
         ok_btn.click()
-        worker_page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(worker_page)
 
     # Проверяем что страница перезагрузилась
     assert worker_page.locator('body').is_visible()
@@ -569,7 +617,7 @@ def test_worker_can_reject_all_invitations(worker_page: Page) -> None:
 def test_worker_notifications_page(worker_page: Page) -> None:
     """GET /notifications → кнопки «Удалить все», «Настройки»."""
     worker_page.goto(f'{BASE_URL}/notifications', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     # Ссылка на настройки уведомлений
     settings_link = worker_page.locator('a[href="/notifications/settings"]')
@@ -585,7 +633,7 @@ def test_worker_notifications_page(worker_page: Page) -> None:
 def test_worker_profile_edit(worker_page: Page) -> None:
     """GET /profile → форма с кнопкой «Сохранить изменения»."""
     worker_page.goto(f'{BASE_URL}/profile', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     # Ищем форму редактирования профиля
     form = worker_page.locator('form[method="post"]').first
@@ -605,7 +653,7 @@ def test_worker_profile_edit(worker_page: Page) -> None:
 def test_worker_logout_button(worker_page: Page) -> None:
     """На любой странице есть кнопка выхода."""
     worker_page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     # Ищем кнопку выхода в навбаре или на странице
     logout_link = worker_page.locator('a[href="/logout"]')
@@ -616,7 +664,7 @@ def test_worker_logout_button(worker_page: Page) -> None:
     if not has_logout:
         # Проверяем в навбаре профиля
         worker_page.goto(f'{BASE_URL}/profile', wait_until='domcontentloaded')
-        worker_page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(worker_page)
         logout_link = worker_page.locator('a[href="/logout"]')
         logout_form = worker_page.locator('form[action="/logout"]')
         has_logout = logout_link.count() > 0 or logout_form.count() > 0
@@ -628,7 +676,7 @@ def test_worker_logout_button(worker_page: Page) -> None:
 def test_worker_navbar_icons(worker_page: Page) -> None:
     """Иконки уведомлений (колокольчик), профиля, чатов видны."""
     worker_page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     # Ссылка на уведомления
     notifications_link = worker_page.locator('a[href="/notifications"]')
@@ -647,7 +695,7 @@ def test_worker_navbar_icons(worker_page: Page) -> None:
 def test_worker_cannot_see_admin_link(worker_page: Page) -> None:
     """Ссылка на /admin отсутствует у трудника."""
     worker_page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     admin_link = worker_page.locator('a[href="/admin"]')
     assert admin_link.count() == 0 or not admin_link.is_visible(), \
@@ -655,39 +703,40 @@ def test_worker_cannot_see_admin_link(worker_page: Page) -> None:
 
 
 @pytest.mark.e2e
-def test_worker_cannot_see_create_job_button(worker_page: Page) -> None:
-    """Кнопка «Создать задание» отсутствует у трудника."""
+def test_worker_can_see_create_job_button(worker_page: Page) -> None:
+    """2026-09 (мультирольность): кнопка «Создать задание» ДОСТУПНА труднику —
+    любой пользователь может создавать задания (role — лишь лендинг)."""
     worker_page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     create_job_link = worker_page.locator('a[href="/job/new"]')
-    assert create_job_link.count() == 0 or not create_job_link.is_visible(), \
-        'Кнопка «Создать задание» видна труднику'
+    assert create_job_link.count() > 0, \
+        'Кнопка «Создать задание» должна быть видна (мультирольность)'
 
 
 @pytest.mark.e2e
-def test_worker_cannot_see_my_jobs_link(worker_page: Page) -> None:
-    """Нет ссылки на /my-jobs у трудника."""
+def test_worker_can_see_my_jobs_link(worker_page: Page) -> None:
+    """2026-09 (мультирольность): ссылка на /my-jobs ДОСТУПНА труднику."""
     worker_page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     my_jobs_link = worker_page.locator('a[href="/my-jobs"]')
-    assert my_jobs_link.count() == 0 or not my_jobs_link.is_visible(), \
-        'Ссылка «Мои задания» видна труднику'
+    assert my_jobs_link.count() > 0, \
+        'Ссылка «Мои задания» должна быть видна (мультирольность)'
 
 
 @pytest.mark.e2e
 def test_worker_job_detail_buttons(worker_page: Page) -> None:
     """На /jobs/<id>: кнопки «Откликнуться», «В избранное (работодатель)», «Написать в чат»."""
     worker_page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     job_link = worker_page.locator('a[href^="/jobs/"]').first
     if job_link.count() == 0:
         pytest.skip('Нет карточек заданий на главной')
 
     job_link.click()
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     page_content = worker_page.content()
 
@@ -705,14 +754,14 @@ def test_worker_job_detail_buttons(worker_page: Page) -> None:
 def test_worker_employer_detail_rating_modal(worker_page: Page) -> None:
     """На /employers/<id> модалка оценки открывается и закрывается."""
     worker_page.goto(f'{BASE_URL}/employers', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     employer_link = worker_page.locator('a[href^="/employers/"]').first
     if employer_link.count() == 0:
         pytest.skip('Нет работодателей на странице')
 
     employer_link.click()
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     # Ищем элементы оценки (звёзды, кнопка «Оценить»)
     rating_elements = worker_page.locator('[id*="rating"], [class*="rating"], button:has-text("Оценить"), .star-rating')
@@ -725,7 +774,7 @@ def test_worker_employer_detail_rating_modal(worker_page: Page) -> None:
 def test_worker_favorites_empty_state(worker_page: Page) -> None:
     """Пустое избранное → кнопки-ссылки для перехода к заданиям/работодателям."""
     worker_page.goto(f'{BASE_URL}/favorites', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     # Если есть элементы в избранном — скипаем проверку empty state
     fav_cards = worker_page.locator('.app-card, [class*="favorite"]')
@@ -743,7 +792,7 @@ def test_worker_mobile_bottom_nav(worker_page: Page) -> None:
     """На мобильном нижняя панель с иконками: Главная, Избранное, Уведомления, Профиль."""
     worker_page.set_viewport_size({"width": 375, "height": 812})
     worker_page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     bottom_nav = worker_page.locator('.bottom-nav')
     assert bottom_nav.is_visible(), 'Нижняя панель не видна на мобильном у трудника'
@@ -772,18 +821,18 @@ def test_worker_mobile_bottom_nav(worker_page: Page) -> None:
 def test_worker_can_open_chat(worker_page: Page) -> None:
     """Клик «Написать в чат» → переход на /chat/<id> или /chats."""
     worker_page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     # Ищем ссылку на чат
     chat_link = worker_page.locator('a[href^="/chat/"], a[href="/chats"]').first
     if chat_link.count() == 0:
         # Пробуем зайти на страницу чатов напрямую
         worker_page.goto(f'{BASE_URL}/chats', wait_until='domcontentloaded')
-        worker_page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(worker_page)
         assert '/chats' in worker_page.url, 'Не удалось перейти на страницу чатов'
     else:
         chat_link.click()
-        worker_page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(worker_page)
         assert '/chat' in worker_page.url or '/chats' in worker_page.url, \
             f'Не перешли на страницу чата, URL: {worker_page.url}'
 
@@ -797,7 +846,7 @@ def test_worker_can_open_chat(worker_page: Page) -> None:
 def test_employer_sees_my_jobs_on_index(employer_page: Page) -> None:
     """На главной (своя карточка): ссылки «Мои задания», «Отклики»."""
     employer_page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     # Для работодателя на главной должны быть ссылки на его задания
     my_jobs_link = employer_page.locator('a[href="/my-jobs"]')
@@ -815,7 +864,7 @@ def test_employer_sees_my_jobs_on_index(employer_page: Page) -> None:
 def test_employer_my_jobs_tabs_visual(employer_page: Page) -> None:
     """GET /my-jobs → 4 таба: Все, Идёт набор, Завершённые, Отозванные."""
     employer_page.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     # Проверяем табы
     tab_all = employer_page.locator('a[href*="/my-jobs"]').first
@@ -831,12 +880,12 @@ def test_employer_my_jobs_tabs_visual(employer_page: Page) -> None:
 
     # Кликаем на таб «Идёт набор»
     tab_open.first.click()
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
     assert 'status=open' in employer_page.url, 'Не перешли на таб «Идёт набор»'
 
     # Кликаем на таб «Завершённые»
     tab_completed.first.click()
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
     assert 'status=completed' in employer_page.url, 'Не перешли на таб «Завершённые»'
 
 
@@ -844,7 +893,7 @@ def test_employer_my_jobs_tabs_visual(employer_page: Page) -> None:
 def test_employer_job_creation_wizard(employer_page: Page) -> None:
     """GET /job/new → многошаговый wizard с кнопками «Далее»/«Назад»."""
     employer_page.goto(f'{BASE_URL}/job/new', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     # Ищем элементы wizard
     page_content = employer_page.content()
@@ -864,7 +913,7 @@ def test_employer_job_creation_wizard(employer_page: Page) -> None:
 def test_employer_wizard_step_validation(employer_page: Page) -> None:
     """Валидация wizard: пустой title → ошибка, остаться на форме."""
     employer_page.goto(f'{BASE_URL}/job/new', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     # Ищем кнопку отправки
     submit_btn = employer_page.locator('button[type="submit"]').first
@@ -890,42 +939,39 @@ def test_employer_wizard_step_validation(employer_page: Page) -> None:
 
 @pytest.mark.e2e
 def test_employer_can_fill_and_submit_job(employer_page: Page) -> None:
-    """Заполнить wizard (title, description, city, pay) → кнопка «Создать задание» → редирект."""
+    """Заполнить wizard по шагам (to-step-2/3/4) → «Создать задание» → редирект."""
     employer_page.goto(f'{BASE_URL}/job/new', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
-    # Заполняем основные поля
-    title_input = employer_page.locator('input[name="title"], input[name="organization_name"]').first
+    # Шаг 1: название/описание/вид работы
+    title_input = employer_page.locator('input[name="title"]').first
     if title_input.count() == 0:
         pytest.skip('Поле названия не найдено в форме')
-
     title_input.fill('Тестовое задание E2E')
-    employer_page.wait_for_timeout(200)
+    employer_page.locator('textarea[name="description"]').first.fill('Описание тестового задания')
+    # work_type — required select: без выбора submit молча блокируется
+    employer_page.select_option('select[name="work_type"]', index=1)
+    employer_page.click('#to-step-2')
 
-    # Описание
-    desc_input = employer_page.locator(
-        'textarea[name="object_description"], textarea[name="description"], '
-        'textarea[name="detailed_description"]'
-    ).first
-    if desc_input.count() > 0:
-        desc_input.fill('Описание тестового задания')
+    # Шаг 2: город/адрес (поля становятся видимыми после переключения шага)
+    employer_page.wait_for_selector('input[name="city"]', state='visible', timeout=15000)
+    employer_page.fill('input[name="city"]', 'Москва')
+    employer_page.click('#to-step-3')
 
-    # Город
-    city_input = employer_page.locator('input[name="city"]').first
-    if city_input.count() > 0:
-        city_input.fill('Москва')
+    # Шаг 3: оплата
+    employer_page.wait_for_selector('input[name="payment"]', state='visible', timeout=15000)
+    employer_page.fill('input[name="payment"]', '5000')
+    employer_page.click('#to-step-4')
 
-    # Оплата
-    pay_input = employer_page.locator('input[name="payment_amount"], input[name="payment"]').first
-    if pay_input.count() > 0:
-        pay_input.fill('5000')
-
-    # Отправляем форму
-    submit_btn = employer_page.locator('button[type="submit"]').first
+    # Шаг 4: отправка
+    submit_btn = employer_page.locator('#step-4 button[type="submit"]').first
     submit_btn.click()
-    employer_page.wait_for_load_state('networkidle', timeout=15000)
 
     # Проверяем редирект (должны уйти с /job/new)
+    try:
+        employer_page.wait_for_url(lambda url: '/job/new' not in url, timeout=15000)
+    except Exception:
+        pass
     assert '/job/new' not in employer_page.url, \
         f'Не ушли со страницы создания задания, URL: {employer_page.url}'
 
@@ -934,7 +980,7 @@ def test_employer_can_fill_and_submit_job(employer_page: Page) -> None:
 def test_employer_job_card_buttons(employer_page: Page) -> None:
     """На карточке задания в /my-jobs: кнопки действий видны."""
     employer_page.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     # Ищем кнопки действий на карточках
     action_buttons = employer_page.locator('.action-icon-btn, button[name="action"]')
@@ -951,7 +997,7 @@ def test_employer_job_card_buttons(employer_page: Page) -> None:
 def test_employer_can_cancel_job(employer_page: Page) -> None:
     """Кнопка «Отозвать» → подтверждение → статус меняется."""
     employer_page.goto(f'{BASE_URL}/my-jobs?status=open', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     # Ищем кнопку отозвать
     cancel_btn = employer_page.locator(
@@ -968,7 +1014,7 @@ def test_employer_can_cancel_job(employer_page: Page) -> None:
     if confirm_modal.is_visible():
         employer_page.locator('#confirm-modal-ok').click()
 
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
     assert employer_page.locator('body').is_visible()
 
 
@@ -976,7 +1022,7 @@ def test_employer_can_cancel_job(employer_page: Page) -> None:
 def test_employer_can_restore_job(employer_page: Page) -> None:
     """На cancelled задании кнопка «Вернуть» → статус меняется на open."""
     employer_page.goto(f'{BASE_URL}/my-jobs?status=cancelled', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     restore_btn = employer_page.locator(
         'button[name="action"][value="restore"], button:has-text("Вернуть")'
@@ -985,7 +1031,7 @@ def test_employer_can_restore_job(employer_page: Page) -> None:
         pytest.skip('Нет отозванных заданий для восстановления')
 
     restore_btn.click()
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
     assert employer_page.locator('body').is_visible()
 
 
@@ -993,7 +1039,7 @@ def test_employer_can_restore_job(employer_page: Page) -> None:
 def test_employer_mass_actions_checkboxes(employer_page: Page) -> None:
     """В /my-jobs чекбоксы выбора, кнопка «Выбрать все», массовые кнопки действий."""
     employer_page.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     # Кнопка «Выбрать все»
     select_all_btn = employer_page.locator('#select-all-btn')
@@ -1021,7 +1067,7 @@ def test_employer_my_applications_buttons(employer_page: Page) -> None:
     """GET /my-applications → кнопки «Принять»/«Отклонить» для каждого отклика."""
     employer_page.goto(f'{BASE_URL}/my-applications', wait_until='domcontentloaded')
     try:
-        employer_page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(employer_page)
     except Exception:
         pytest.skip('Таймаут загрузки страницы my-applications')
 
@@ -1040,7 +1086,7 @@ def test_employer_my_applications_buttons(employer_page: Page) -> None:
 def test_employer_batch_actions(employer_page: Page) -> None:
     """Массовый accept/reject с чекбоксами."""
     employer_page.goto(f'{BASE_URL}/my-applications', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     # Ищем чекбоксы откликов
     checkboxes = employer_page.locator('input[type="checkbox"][name="application_ids"], input.application-checkbox')
@@ -1060,7 +1106,7 @@ def test_employer_batch_actions(employer_page: Page) -> None:
 def test_employer_workers_page_buttons(employer_page: Page) -> None:
     """GET /workers → кнопки «Пригласить», «Написать», «В избранное» на карточках трудников."""
     employer_page.goto(f'{BASE_URL}/workers', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     page_content = employer_page.content()
 
@@ -1078,12 +1124,11 @@ def test_employer_workers_page_buttons(employer_page: Page) -> None:
 def test_employer_can_block_worker(employer_page: Page) -> None:
     """Кнопка «Заблокировать» на /workers → подтверждение."""
     employer_page.goto(f'{BASE_URL}/workers', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
-    # Ищем кнопку блокировки или ссылку на ЧС
+    # Ищем ВИДИМУЮ кнопку блокировки на карточке (иконка с data-action)
     block_btn = employer_page.locator(
-        'button:has-text("Заблокировать"), a[href*="blacklist"], '
-        'button:has-text("ЧС"), form[action*="blacklist"] button'
+        'button[data-action="toggle-block"]:visible, [aria-label*="Заблокировать"]:visible'
     ).first
     if block_btn.count() == 0:
         # Проверяем через профиль трудника
@@ -1091,9 +1136,9 @@ def test_employer_can_block_worker(employer_page: Page) -> None:
         if worker_link.count() == 0:
             pytest.skip('Нет трудников для проверки блокировки')
         worker_link.click()
-        employer_page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(employer_page)
         block_btn = employer_page.locator(
-            'button:has-text("Заблокировать"), a[href*="blacklist"]'
+            'button[data-action="toggle-block"], [aria-label*="Заблокировать"], a[href*="blacklist"]'
         ).first
 
     if block_btn.count() == 0:
@@ -1106,7 +1151,7 @@ def test_employer_can_block_worker(employer_page: Page) -> None:
 def test_employer_verify_page(employer_page: Page) -> None:
     """GET /verify-employer → форма верификации, кнопка «Отправить»."""
     employer_page.goto(f'{BASE_URL}/verify-employer', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     # Ищем форму или кнопку отправки
     submit_btn = employer_page.locator(
@@ -1124,7 +1169,7 @@ def test_employer_verify_page(employer_page: Page) -> None:
 def test_employer_favorites_empty_state(employer_page: Page) -> None:
     """Пустое избранное → кнопка «Перейти к трудникам»."""
     employer_page.goto(f'{BASE_URL}/favorites', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     fav_items = employer_page.locator('.app-card, [class*="favorite-item"]')
     if fav_items.count() > 0:
@@ -1140,7 +1185,7 @@ def test_employer_favorites_empty_state(employer_page: Page) -> None:
 def test_employer_copy_job_id(employer_page: Page) -> None:
     """Кнопка копирования ID задания на странице задания работодателя."""
     employer_page.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     # Переходим на страницу своего задания
     job_link = employer_page.locator('a[href^="/jobs/"]').first
@@ -1148,7 +1193,7 @@ def test_employer_copy_job_id(employer_page: Page) -> None:
         pytest.skip('Нет заданий для проверки копирования ID')
 
     job_link.click()
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     # Ищем кнопку копирования
     copy_btn = employer_page.locator('.js-copy-btn, button[data-copy-text]').first
@@ -1162,7 +1207,7 @@ def test_employer_copy_job_id(employer_page: Page) -> None:
 def test_employer_cannot_see_admin_link(employer_page: Page) -> None:
     """Ссылка на /admin отсутствует у работодателя."""
     employer_page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     admin_link = employer_page.locator('a[href="/admin"]')
     assert admin_link.count() == 0 or not admin_link.is_visible(), \
@@ -1173,12 +1218,12 @@ def test_employer_cannot_see_admin_link(employer_page: Page) -> None:
 def test_employer_cannot_see_apply_button(employer_page: Page) -> None:
     """Кнопка «Откликнуться» отсутствует у работодателя."""
     employer_page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     apply_btn = employer_page.locator('button:has-text("Откликнуться"), form[action^="/apply/"]')
     # Может быть на чужих заданиях — тогда это нормально. Проверяем свои.
     employer_page.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     # На странице своих заданий не должно быть кнопки «Откликнуться»
     apply_on_my = employer_page.locator('button:has-text("Откликнуться"), form[action^="/apply/"]')
@@ -1190,7 +1235,7 @@ def test_employer_cannot_see_apply_button(employer_page: Page) -> None:
 def test_employer_rate_workers_page(employer_page: Page) -> None:
     """GET /jobs/<id>/rate-workers → звёзды, поле комментария, кнопка «Сохранить оценку»."""
     employer_page.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     # Ищем ссылку на оценку
     rate_link = employer_page.locator('a[href*="rate-workers"], a[href*="rate"]').first
@@ -1208,7 +1253,7 @@ def test_employer_rate_workers_page(employer_page: Page) -> None:
     else:
         rate_link.click()
 
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
     # Проверяем наличие элементов оценки
     page_content = employer_page.content()
     assert 'оцен' in page_content.lower() or 'зв' in page_content.lower() or 'rate' in page_content.lower(), \
@@ -1219,7 +1264,7 @@ def test_employer_rate_workers_page(employer_page: Page) -> None:
 def test_employer_navbar_has_create_job(employer_page: Page) -> None:
     """В навбаре есть кнопка/ссылка «Создать задание»."""
     employer_page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     create_job_link = employer_page.locator(
         'a[href="/job/new"], a[href*="/job/new"], a:has-text("Создать задание"), '
@@ -1241,7 +1286,7 @@ def _create_admin_context(playwright_browser: Browser) -> tuple[BrowserContext, 
         locale='ru-RU',
     )
     page = context.new_page()
-    login_as(page, 'admin@test.ru', 'Step@1986')
+    login_as(page, ADMIN_EMAIL, ADMIN_PASSWORD)
     return context, page
 
 
@@ -1251,7 +1296,7 @@ def test_admin_dashboard_tabs(playwright_browser: Browser) -> None:
     context, page = _create_admin_context(playwright_browser)
     try:
         page.goto(f'{BASE_URL}/admin', wait_until='domcontentloaded')
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
         # Проверяем вкладки
         tabs = page.locator('nav a[href*="?tab="]')
@@ -1261,14 +1306,14 @@ def test_admin_dashboard_tabs(playwright_browser: Browser) -> None:
         users_tab = page.locator('a[href*="tab=users"]').first
         if users_tab.count() > 0:
             users_tab.click()
-            page.wait_for_load_state('networkidle', timeout=10000)
+            _settle(page)
             assert 'tab=users' in page.url, 'Не переключились на таб «Пользователи»'
 
         # Проверяем переключение на таб «Задания»
         jobs_tab = page.locator('a[href*="tab=jobs"]').first
         if jobs_tab.count() > 0:
             jobs_tab.click()
-            page.wait_for_load_state('networkidle', timeout=10000)
+            _settle(page)
             assert 'tab=jobs' in page.url, 'Не переключились на таб «Задания»'
     finally:
         page.close()
@@ -1281,7 +1326,7 @@ def test_admin_users_tab(playwright_browser: Browser) -> None:
     context, page = _create_admin_context(playwright_browser)
     try:
         page.goto(f'{BASE_URL}/admin?tab=users', wait_until='domcontentloaded')
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
         # Поле поиска
         search_input = page.locator('input[name="search"]').first
@@ -1291,8 +1336,8 @@ def test_admin_users_tab(playwright_browser: Browser) -> None:
         role_select = page.locator('select[name="role"]').first
         assert role_select.is_visible(), 'Фильтр по роли не виден'
 
-        # Кнопка «Найти»
-        search_btn = page.locator('button[type="submit"]').first
+        # Кнопка «Найти» — в форме поиска (а не первая submit на странице)
+        search_btn = page.locator('form:has(input[name="search"]) button[type="submit"]').first
         assert search_btn.is_visible(), 'Кнопка «Найти» не видна'
     finally:
         page.close()
@@ -1305,7 +1350,7 @@ def test_admin_verification_badge(playwright_browser: Browser) -> None:
     context, page = _create_admin_context(playwright_browser)
     try:
         page.goto(f'{BASE_URL}/admin?tab=verification', wait_until='domcontentloaded')
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
         page_content = page.content()
 
@@ -1328,7 +1373,7 @@ def test_admin_skills_crud(playwright_browser: Browser) -> None:
     context, page = _create_admin_context(playwright_browser)
     try:
         page.goto(f'{BASE_URL}/admin?tab=skills', wait_until='domcontentloaded')
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
         page_content = page.content()
 
@@ -1350,7 +1395,7 @@ def test_admin_can_delete_job(playwright_browser: Browser) -> None:
     context, page = _create_admin_context(playwright_browser)
     try:
         page.goto(f'{BASE_URL}/admin?tab=jobs', wait_until='domcontentloaded')
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
         # Ищем ссылку на любое задание в табе
         job_link = page.locator('a[href^="/jobs/"]').first
@@ -1358,7 +1403,7 @@ def test_admin_can_delete_job(playwright_browser: Browser) -> None:
             pytest.skip('Нет заданий в админке')
 
         job_link.click()
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
         # Ищем кнопку удаления
         page_content = page.content()
@@ -1377,7 +1422,7 @@ def test_admin_search_users(playwright_browser: Browser) -> None:
     context, page = _create_admin_context(playwright_browser)
     try:
         page.goto(f'{BASE_URL}/admin?tab=users', wait_until='domcontentloaded')
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
         # Вводим текст в поиск
         search_input = page.locator('input[name="search"]').first
@@ -1387,10 +1432,10 @@ def test_admin_search_users(playwright_browser: Browser) -> None:
         role_select = page.locator('select[name="role"]').first
         role_select.select_option('worker')
 
-        # Кликаем «Найти»
-        search_btn = page.locator('button[type="submit"]').first
+        # Кликаем «Найти» — в форме поиска
+        search_btn = page.locator('form:has(input[name="search"]) button[type="submit"]').first
         search_btn.click()
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
         # Проверяем что URL содержит параметры поиска
         assert 'tab=users' in page.url, 'Не остались на табе пользователей'
@@ -1407,7 +1452,7 @@ def test_admin_mass_user_delete(playwright_browser: Browser) -> None:
     context, page = _create_admin_context(playwright_browser)
     try:
         page.goto(f'{BASE_URL}/admin?tab=users', wait_until='domcontentloaded')
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
         # Ищем чекбоксы пользователей
         user_checkboxes = page.locator('#users-table input[type="checkbox"], .js-select-all-users')
@@ -1435,7 +1480,7 @@ def test_admin_job_stats_autoload(playwright_browser: Browser) -> None:
     context, page = _create_admin_context(playwright_browser)
     try:
         page.goto(f'{BASE_URL}/admin', wait_until='domcontentloaded')
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
         # Проверяем дашборд (первый таб) — там есть статистика
         page_content = page.content()
@@ -1459,7 +1504,7 @@ def test_admin_job_stats_autoload(playwright_browser: Browser) -> None:
 def test_button_hover_state(employer_page: Page) -> None:
     """Наведение на кнопку → визуальный отклик (изменение фона/тени)."""
     employer_page.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     # Берём любую кнопку действия
     btn = employer_page.locator('.action-icon-btn').first
@@ -1488,7 +1533,7 @@ def test_button_hover_state(employer_page: Page) -> None:
 def test_button_focus_state(employer_page: Page) -> None:
     """Tab-фокус на кнопке → :focus-visible кольцо."""
     employer_page.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     # Нажимаем Tab несколько раз чтобы сфокусироваться на кнопке
     employer_page.keyboard.press('Tab')
@@ -1505,26 +1550,27 @@ def test_button_focus_state(employer_page: Page) -> None:
 def test_button_active_state(employer_page: Page) -> None:
     """Нажатие (mousedown) на кнопку → визуальный отклик."""
     employer_page.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
-    btn = employer_page.locator('.action-icon-btn, button[type="submit"], a.button').first
+    btn = employer_page.locator('.action-icon-btn:visible, button[type="submit"]:visible').first
     if btn.count() == 0:
-        pytest.skip('Нет кнопок для проверки active state')
+        pytest.skip('Нет видимых кнопок для проверки active state')
 
     # Проверяем что кнопка кликабельна
     assert btn.is_visible(), 'Кнопка не видна'
 
-    # Проверяем CSS-свойство transform (active: scale)
-    transform = btn.evaluate('el => window.getComputedStyle(el).transform')
-    # transform может быть 'none' в неактивном состоянии
-    assert transform is not None, 'Не удалось получить CSS transform'
+    # Проверяем CSS-классы: CSP запрещает evaluate — computed style недоступен
+    # (2026-09). Прокси-проверка: кнопка видима и активна.
+    assert btn.is_enabled(), 'Кнопка неактивна (disabled)'
+    btn_class = btn.get_attribute('class') or ''
+    assert len(btn_class.strip()) > 0, 'У кнопки нет классов'
 
 
 @pytest.mark.e2e
 def test_button_toast_notification(worker_page: Page) -> None:
     """После успешного действия → toast с «Успешно» появляется."""
     worker_page.goto(f'{BASE_URL}/favorites', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     # Проверяем что toast-контейнер существует
     toast_container = worker_page.locator('#toast-container')
@@ -1535,11 +1581,12 @@ def test_button_toast_notification(worker_page: Page) -> None:
 def test_confirm_dialog(employer_page: Page) -> None:
     """Модальное окно подтверждения с «Да»/«Отмена» существует в DOM."""
     employer_page.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
-    # Проверяем что confirm modal существует в DOM (может быть скрыт)
-    confirm_backdrop = employer_page.locator('#confirm-modal-backdrop')
-    assert confirm_backdrop.count() > 0, 'Модальное окно подтверждения не найдено в DOM'
+    # Проверяем что confirm modal существует в DOM (может быть скрыт).
+    # 2026-09: модалка — нативный <dialog id="confirm-modal"> (не backdrop)
+    confirm_modal = employer_page.locator('#confirm-modal')
+    assert confirm_modal.count() > 0, 'Модальное окно подтверждения не найдено в DOM'
 
     # Кнопки внутри модалки
     cancel_btn = employer_page.locator('#confirm-modal-cancel')
@@ -1552,7 +1599,7 @@ def test_confirm_dialog(employer_page: Page) -> None:
 def test_empty_state_cta(worker_page: Page) -> None:
     """Пустые списки → CTA-кнопки («Создать первое задание», «Найти задания»)."""
     worker_page.goto(f'{BASE_URL}/favorites', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     # Если избранное пустое — должны быть CTA
     fav_items = worker_page.locator('.app-card, [class*="favorite-item"]')
@@ -1573,7 +1620,7 @@ def test_empty_state_cta(worker_page: Page) -> None:
 def test_skeleton_loader(employer_page: Page) -> None:
     """При загрузке страницы — скелетон-плейсхолдеры вместо контента."""
     employer_page.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     # Проверяем наличие skeleton-класса в CSS (определён в base.html)
     # Скелетоны могут присутствовать только во время загрузки,
@@ -1601,14 +1648,14 @@ def test_skeleton_loader(employer_page: Page) -> None:
 def test_button_loading_state(employer_page: Page) -> None:
     """Кнопка действия показывает loading (disabled + спиннер) во время запроса."""
     employer_page.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
-    # Находим форму с кнопкой действия
-    action_form = employer_page.locator('form[method="POST"]').first
+    # Находим видимую форму с кнопкой действия (не скрытые bulk-панели)
+    action_form = employer_page.locator('form[method="POST"]:visible').first
     if action_form.count() == 0:
-        pytest.skip('Нет форм с POST на странице')
+        pytest.skip('Нет видимых форм с POST на странице')
 
-    submit_btn = action_form.locator('button[type="submit"]').first
+    submit_btn = action_form.locator('button[type="submit"]:visible').first
     if submit_btn.count() == 0:
         pytest.skip('Нет кнопок submit в форме')
 
@@ -1622,7 +1669,7 @@ def test_button_loading_state(employer_page: Page) -> None:
 def test_button_disabled_state(employer_page: Page) -> None:
     """Кнопка отклика disabled когда нет мест / своё задание."""
     employer_page.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     # На странице своих заданий кнопки отклика не должны быть активны
     apply_forms = employer_page.locator('form[action^="/apply/"]')
@@ -1634,7 +1681,7 @@ def test_button_disabled_state(employer_page: Page) -> None:
 def test_button_error_toast(worker_page: Page) -> None:
     """Toast-контейнер существует для отображения ошибок."""
     worker_page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     # Проверяем наличие toast-контейнера
     toast_container = worker_page.locator('#toast-container')
@@ -1661,7 +1708,7 @@ def test_a11y_index_page(playwright_browser: Browser) -> None:
     page = context.new_page()
     try:
         page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
         try:
             violations = run_accessibility_audit(page)
@@ -1686,7 +1733,7 @@ def test_a11y_login_page(playwright_browser: Browser) -> None:
     page = context.new_page()
     try:
         page.goto(f'{BASE_URL}/login', wait_until='domcontentloaded')
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
         try:
             violations = run_accessibility_audit(page)
@@ -1713,7 +1760,7 @@ def test_a11y_job_detail_page(playwright_browser: Browser) -> None:
         # Заходим на главную, ищем ссылку на задание
         page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
         try:
-            page.wait_for_load_state('networkidle', timeout=10000)
+            _settle(page)
         except Exception:
             pytest.skip('Таймаут загрузки главной страницы')
 
@@ -1723,7 +1770,7 @@ def test_a11y_job_detail_page(playwright_browser: Browser) -> None:
 
         job_link.click()
         try:
-            page.wait_for_load_state('networkidle', timeout=10000)
+            _settle(page)
         except Exception:
             pytest.skip('Таймаут загрузки страницы задания')
 
@@ -1744,7 +1791,7 @@ def test_a11y_job_detail_page(playwright_browser: Browser) -> None:
 def test_a11y_my_jobs_page(employer_page: Page) -> None:
     """Axe-аудит страницы «Мои задания»."""
     employer_page.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     try:
         violations = run_accessibility_audit(employer_page)
@@ -1766,7 +1813,7 @@ def test_keyboard_navigation(playwright_browser: Browser) -> None:
     page = context.new_page()
     try:
         page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-        page.wait_for_load_state('networkidle', timeout=10000)
+        _settle(page)
 
         # Нажимаем Tab несколько раз
         for _ in range(5):
@@ -1807,7 +1854,7 @@ def test_mobile_hamburger_menu(worker_page: Page) -> None:
     """viewport 375px → на мобильном есть элементы навигации."""
     worker_page.set_viewport_size({"width": 375, "height": 812})
     worker_page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     # На мобильном должна быть нижняя панель навигации
     bottom_nav = worker_page.locator('.bottom-nav')
@@ -1827,7 +1874,7 @@ def test_mobile_bottom_nav_worker(worker_page: Page) -> None:
     """viewport 375px → нижняя панель с 4 иконками для трудника."""
     worker_page.set_viewport_size({"width": 375, "height": 812})
     worker_page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     bottom_nav = worker_page.locator('.bottom-nav')
     assert bottom_nav.is_visible(), 'Нижняя панель не видна'
@@ -1845,7 +1892,7 @@ def test_tablet_layout(employer_page: Page) -> None:
     """viewport 768px → кнопки с иконками + текст."""
     employer_page.set_viewport_size({"width": 768, "height": 1024})
     employer_page.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     # Проверяем что страница отображается
     assert employer_page.locator('body').is_visible()
@@ -1864,7 +1911,7 @@ def test_desktop_full_text_buttons(employer_page: Page) -> None:
     """viewport 1280px → кнопки с полным текстом."""
     employer_page.set_viewport_size({"width": 1280, "height": 800})
     employer_page.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-    employer_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(employer_page)
 
     # На десктопе кнопки должны иметь текст (не только иконки)
     action_btns = employer_page.locator('.action-icon-btn')
@@ -1879,7 +1926,7 @@ def test_touch_target_size(worker_page: Page) -> None:
     """viewport 375px → все интерактивные элементы ≥ 44×44px."""
     worker_page.set_viewport_size({"width": 375, "height": 812})
     worker_page.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-    worker_page.wait_for_load_state('networkidle', timeout=10000)
+    _settle(worker_page)
 
     # Проверяем наличие touch-target класса в CSS
     has_touch_class = worker_page.evaluate("""

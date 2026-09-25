@@ -123,7 +123,17 @@ def playwright_browser() -> Browser:
 
     headless=True — без GUI для CI/автоматизации.
     slow_mo=0 — без замедления.
+
+    Self-guard: без живого сервера (BASE_URL/health недоступен) весь
+    browser-suite пропускается — в CI нет живого стека, локально нужен
+    `docker compose up -d web`.
     """
+    try:
+        import urllib.request
+        urllib.request.urlopen(f'{BASE_URL}/health', timeout=3)
+    except Exception:
+        pytest.skip(f'Живой сервер недоступен ({BASE_URL}) — browser-тесты пропущены',
+                    allow_module_level=False)
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=True,
