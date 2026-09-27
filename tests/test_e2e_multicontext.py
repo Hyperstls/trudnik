@@ -71,7 +71,7 @@ def _safe_reload(page, max_attempts: int = 2) -> None:
     for attempt in range(max_attempts):
         try:
             page.reload(wait_until='domcontentloaded', timeout=15000)
-            page.wait_for_load_state('networkidle', timeout=15000)
+            page.wait_for_load_state('domcontentloaded', timeout=15000)
             return
         except Exception:
             if attempt == max_attempts - 1:
@@ -103,20 +103,31 @@ class TestRealTimeChat:
         ctx_a, page_a = browser_contexts['employer']
         ctx_b, page_b = browser_contexts['worker']
 
+        # Realtime-уведомления требуют живой WS-сервер (локально WS нет — 2026-09).
+        # Без него бейдж не обновляется без перезагрузки — скипаем честно.
+        import socket as _socket
+        from urllib.parse import urlparse as _urlparse
+        ws_url = os.environ.get('WEBSOCKET_URL', 'ws://localhost:8001/ws')
+        _ws = _urlparse(ws_url)
+        try:
+            _socket.create_connection((_ws.hostname or 'localhost', _ws.port or 8001), timeout=2).close()
+        except Exception:
+            pytest.skip(f'WebSocket-сервер недоступен ({ws_url}) — realtime-бейдж не проверяется локально')
+
         # ── Шаг 1: Employer открывает /my-jobs ──
         page_a.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
         relogin_if_expired(page_a, 'org@test.ru', 'test123')
 
         # Запоминаем начальное состояние бейджа уведомлений
         try:
-            badge_before = page_a.locator('#notification-badge').text_content() or '0'
+            badge_before = page_a.locator('#notifications-badge').text_content() or '0'
         except Exception:
             badge_before = '0'
 
         # ── Шаг 2: Worker находит задание и откликается ──
         page_b.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-        page_b.wait_for_load_state('networkidle', timeout=15000)
+        page_b.wait_for_load_state('domcontentloaded', timeout=15000)
         relogin_if_expired(page_b, 'trud3@test.ru', 'test123')
 
         # Ищем первое задание (не своё), у которого нет метки «Вы уже откликались»
@@ -138,35 +149,19 @@ class TestRealTimeChat:
         if not job_id:
             pytest.skip('Нет доступных заданий для отклика — пропускаем тест')
 
-        # Откликаемся через страницу задания (POST /apply/<job_id>)
-        csrf_a = extract_csrf_token(page_a)
-        csrf_b = extract_csrf_token(page_b)
-        result = page_b.evaluate(
-            """
-            async (params) => {
-                const resp = await fetch(params.url, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-Token': params.csrf,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({_csrf_token: params.csrf}),
-                });
-                return {status: resp.status, url: resp.url};
-            }
-            """,
-            {
-                'url': f'{BASE_URL}/apply/{job_id}',
-                'csrf': csrf_b,
-            },
-        )
+        # Откликаемся через UI-кнопку карточки (CSP запрещает evaluate/fetch) —
+        # dispatch_event: optimistic-рендер удаляет форму синхронно при click
+        apply_btn = page_b.locator(f'.js-apply-form[data-job-id="{job_id}"] button[type="submit"]')
+        if apply_btn.count() == 0:
+            pytest.skip(f'Нет кнопки «Откликнуться» для задания {job_id} (уже отклик?)')
+        apply_btn.first.dispatch_event('click')
 
         # ── Шаг 3: Ждём доставки WebSocket-уведомления ──
         page_a.wait_for_timeout(3000)
 
         # Проверяем бейдж уведомлений
         try:
-            badge_after = page_a.locator('#notification-badge').text_content() or '0'
+            badge_after = page_a.locator('#notifications-badge').text_content() or '0'
         except Exception:
             badge_after = '0'
 
@@ -205,7 +200,7 @@ class TestRealTimeChat:
 
         # ── Шаг 0: Employer создаёт тестовое задание ──
         page_a.goto(f'{BASE_URL}/job/new', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
         relogin_if_expired(page_a, 'org@test.ru', 'test123')
 
         csrf_a = extract_csrf_token(page_a)
@@ -240,7 +235,7 @@ class TestRealTimeChat:
 
         # Получаем список заданий работодателя и берём последнее созданное
         page_a.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
 
         job_id = _get_job_id_from_page(page_a, index=0)
         if not job_id:
@@ -248,7 +243,7 @@ class TestRealTimeChat:
 
         # ── Шаг 1: Worker откликается ──
         page_b.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-        page_b.wait_for_load_state('networkidle', timeout=15000)
+        page_b.wait_for_load_state('domcontentloaded', timeout=15000)
         relogin_if_expired(page_b, 'trud3@test.ru', 'test123')
 
         csrf_b = extract_csrf_token(page_b)
@@ -277,7 +272,7 @@ class TestRealTimeChat:
 
         # ── Шаг 2: Employer принимает отклик ──
         page_a.goto(f'{BASE_URL}/jobs/{job_id}', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
 
         # Находим кнопку Accept и нажимаем
         try:
@@ -331,7 +326,7 @@ class TestRealTimeChat:
 
         # ── Шаг 3: Worker проверяет уведомление ──
         page_b.goto(f'{BASE_URL}/notifications', wait_until='domcontentloaded')
-        page_b.wait_for_load_state('networkidle', timeout=15000)
+        page_b.wait_for_load_state('domcontentloaded', timeout=15000)
         page_b.wait_for_timeout(2000)
 
         # Проверяем наличие уведомления об accepted
@@ -359,7 +354,7 @@ class TestRealTimeChat:
 
         # ── Шаг 0: Создать задание ──
         page_a.goto(f'{BASE_URL}/job/new', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
         relogin_if_expired(page_a, 'org@test.ru', 'test123')
 
         csrf_a = extract_csrf_token(page_a)
@@ -394,14 +389,14 @@ class TestRealTimeChat:
 
         # Получаем ID созданного задания
         page_a.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
         job_id = _get_job_id_from_page(page_a, index=0)
         if not job_id:
             pytest.skip('Не удалось создать задание для XSS-теста')
 
         # ── Шаг 0b: Worker откликается ──
         page_b.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-        page_b.wait_for_load_state('networkidle', timeout=15000)
+        page_b.wait_for_load_state('domcontentloaded', timeout=15000)
         relogin_if_expired(page_b, 'trud3@test.ru', 'test123')
         csrf_b = extract_csrf_token(page_b)
         page_b.evaluate(
@@ -422,7 +417,7 @@ class TestRealTimeChat:
 
         # ── Шаг 0c: Employer получает application_id и принимает ──
         page_a.goto(f'{BASE_URL}/jobs/{job_id}', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
 
         # Находим application_id через DOM
         application_id = None
@@ -484,7 +479,7 @@ class TestRealTimeChat:
             f'{BASE_URL}/chat/{application_id}',
             wait_until='domcontentloaded',
         )
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
         page_a.wait_for_timeout(1000)
 
         csrf_a = extract_csrf_token(page_a)
@@ -519,7 +514,7 @@ class TestRealTimeChat:
             f'{BASE_URL}/chat/{application_id}',
             wait_until='domcontentloaded',
         )
-        page_b.wait_for_load_state('networkidle', timeout=15000)
+        page_b.wait_for_load_state('domcontentloaded', timeout=15000)
         page_b.wait_for_timeout(2000)
 
         page_content = page_b.content()
@@ -562,7 +557,7 @@ class TestBlacklist:
 
         # ── Шаг 0: Employer создаёт задание, чтобы было что скрывать ──
         page_a.goto(f'{BASE_URL}/job/new', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
         relogin_if_expired(page_a, 'org@test.ru', 'test123')
 
         csrf_a = extract_csrf_token(page_a)
@@ -596,7 +591,7 @@ class TestBlacklist:
 
         # ── Шаг 1: Worker видит задания ──
         page_b.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-        page_b.wait_for_load_state('networkidle', timeout=15000)
+        page_b.wait_for_load_state('domcontentloaded', timeout=15000)
         relogin_if_expired(page_b, 'trud3@test.ru', 'test123')
 
         # Собираем видимые job_id до блокировки
@@ -612,7 +607,7 @@ class TestBlacklist:
 
         # ── Шаг 2: Employer находит Worker и блокирует ──
         page_a.goto(f'{BASE_URL}/workers', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
 
         worker_id = _get_worker_id_from_page(page_a, index=0)
         if not worker_id:
@@ -696,7 +691,7 @@ class TestBlacklist:
 
         # ── Шаг 0: Employer создаёт задание ──
         page_a.goto(f'{BASE_URL}/job/new', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
         relogin_if_expired(page_a, 'org@test.ru', 'test123')
 
         csrf_a = extract_csrf_token(page_a)
@@ -728,14 +723,14 @@ class TestBlacklist:
         )
 
         page_a.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
         job_id = _get_job_id_from_page(page_a, index=0)
         if not job_id:
             pytest.skip('Не удалось создать задание для теста 403')
 
         # ── Шаг 1: Employer блокирует Worker ──
         page_a.goto(f'{BASE_URL}/workers', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
 
         worker_id = _get_worker_id_from_page(page_a, index=0)
         if not worker_id:
@@ -773,7 +768,7 @@ class TestBlacklist:
 
         # ── Шаг 2: Worker пытается откликнуться напрямую ──
         page_b.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-        page_b.wait_for_load_state('networkidle', timeout=15000)
+        page_b.wait_for_load_state('domcontentloaded', timeout=15000)
         relogin_if_expired(page_b, 'trud3@test.ru', 'test123')
 
         csrf_b = extract_csrf_token(page_b)
@@ -806,7 +801,7 @@ class TestBlacklist:
 
         # Cleanup: разблокируем
         page_a.goto(f'{BASE_URL}/workers', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
         csrf_a = extract_csrf_token(page_a)
         page_a.evaluate(
             """
@@ -837,7 +832,7 @@ class TestBlacklist:
 
         # ── Шаг 0: Создать задание ──
         page_a.goto(f'{BASE_URL}/job/new', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
         relogin_if_expired(page_a, 'org@test.ru', 'test123')
 
         csrf_a = extract_csrf_token(page_a)
@@ -870,7 +865,7 @@ class TestBlacklist:
 
         # Получаем worker_id
         page_a.goto(f'{BASE_URL}/workers', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
 
         worker_id = _get_worker_id_from_page(page_a, index=0)
         if not worker_id:
@@ -910,7 +905,7 @@ class TestBlacklist:
 
         # Проверяем, что worker не видит задания (после блокировки)
         page_b.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-        page_b.wait_for_load_state('networkidle', timeout=15000)
+        page_b.wait_for_load_state('domcontentloaded', timeout=15000)
         relogin_if_expired(page_b, 'trud3@test.ru', 'test123')
 
         jobs_blocked = page_b.evaluate(
@@ -989,7 +984,7 @@ class TestInvitations:
 
         # ── Шаг 1: Employer создаёт задание ──
         page_a.goto(f'{BASE_URL}/job/new', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
         relogin_if_expired(page_a, 'org@test.ru', 'test123')
 
         csrf_a = extract_csrf_token(page_a)
@@ -1024,14 +1019,14 @@ class TestInvitations:
 
         # Получаем ID задания
         page_a.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
         job_id = _get_job_id_from_page(page_a, index=0)
         if not job_id:
             pytest.skip('Не удалось создать задание для теста приглашений')
 
         # ── Шаг 2: Employer находит Worker на /workers и приглашает ──
         page_a.goto(f'{BASE_URL}/workers', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
 
         worker_id = _get_worker_id_from_page(page_a, index=0)
         if not worker_id:
@@ -1078,7 +1073,7 @@ class TestInvitations:
 
         # ── Шаг 3: Worker проверяет бейдж приглашений ──
         page_b.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-        page_b.wait_for_load_state('networkidle', timeout=15000)
+        page_b.wait_for_load_state('domcontentloaded', timeout=15000)
         relogin_if_expired(page_b, 'trud3@test.ru', 'test123')
         page_b.wait_for_timeout(2000)
 
@@ -1091,7 +1086,7 @@ class TestInvitations:
 
         # ── Шаг 4: Worker открывает /invitations и принимает ──
         page_b.goto(f'{BASE_URL}/invitations', wait_until='domcontentloaded')
-        page_b.wait_for_load_state('networkidle', timeout=15000)
+        page_b.wait_for_load_state('domcontentloaded', timeout=15000)
         page_b.wait_for_timeout(2000)
 
         # Получаем ID приглашения из DOM
@@ -1175,7 +1170,7 @@ class TestInvitations:
 
         # ── Шаг 0: Создать задание ──
         page_a.goto(f'{BASE_URL}/job/new', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
         relogin_if_expired(page_a, 'org@test.ru', 'test123')
 
         csrf_a = extract_csrf_token(page_a)
@@ -1207,14 +1202,14 @@ class TestInvitations:
         )
 
         page_a.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
         job_id = _get_job_id_from_page(page_a, index=0)
         if not job_id:
             pytest.skip('Не удалось создать задание')
 
         # Находим worker_id
         page_a.goto(f'{BASE_URL}/workers', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
 
         worker_id = _get_worker_id_from_page(page_a, index=0)
         if not worker_id:
@@ -1256,7 +1251,7 @@ class TestInvitations:
 
         # Worker получает приглашения и отклоняет
         page_b.goto(f'{BASE_URL}/invitations', wait_until='domcontentloaded')
-        page_b.wait_for_load_state('networkidle', timeout=15000)
+        page_b.wait_for_load_state('domcontentloaded', timeout=15000)
         relogin_if_expired(page_b, 'trud3@test.ru', 'test123')
         page_b.wait_for_timeout(2000)
 
@@ -1344,7 +1339,7 @@ class TestFullCycle:
 
         # ═══ Шаг 1: Employer создаёт задание ═══
         page_a.goto(f'{BASE_URL}/job/new', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
         relogin_if_expired(page_a, 'org@test.ru', 'test123')
 
         csrf_a = extract_csrf_token(page_a)
@@ -1378,14 +1373,14 @@ class TestFullCycle:
 
         # Получаем ID задания
         page_a.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
         job_id = _get_job_id_from_page(page_a, index=0)
         if not job_id:
             pytest.skip('Не удалось создать задание для полного цикла')
 
         # ═══ Шаг 2: Worker откликается ═══
         page_b.goto(f'{BASE_URL}/', wait_until='domcontentloaded')
-        page_b.wait_for_load_state('networkidle', timeout=15000)
+        page_b.wait_for_load_state('domcontentloaded', timeout=15000)
         relogin_if_expired(page_b, 'trud3@test.ru', 'test123')
 
         csrf_b = extract_csrf_token(page_b)
@@ -1417,7 +1412,7 @@ class TestFullCycle:
 
         # ═══ Шаг 3: Employer принимает отклик ═══
         page_a.goto(f'{BASE_URL}/jobs/{job_id}', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
 
         # Получаем application_id
         application_id = None
@@ -1475,7 +1470,7 @@ class TestFullCycle:
         # ═══ Шаг 4: Worker проверяет уведомление ═══
         page_b.wait_for_timeout(3000)
         page_b.goto(f'{BASE_URL}/notifications', wait_until='domcontentloaded')
-        page_b.wait_for_load_state('networkidle', timeout=15000)
+        page_b.wait_for_load_state('domcontentloaded', timeout=15000)
         page_b.wait_for_timeout(2000)
 
         # Проверяем, что страница уведомлений загрузилась
@@ -1491,7 +1486,7 @@ class TestFullCycle:
             f'{BASE_URL}/chat/{application_id}',
             wait_until='domcontentloaded',
         )
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
         page_a.wait_for_timeout(1000)
 
         csrf_a = extract_csrf_token(page_a)
@@ -1527,7 +1522,7 @@ class TestFullCycle:
             f'{BASE_URL}/chat/{application_id}',
             wait_until='domcontentloaded',
         )
-        page_b.wait_for_load_state('networkidle', timeout=15000)
+        page_b.wait_for_load_state('domcontentloaded', timeout=15000)
         page_b.wait_for_timeout(3000)
 
         page_b_content = page_b.content()
@@ -1546,7 +1541,7 @@ class TestFullCycle:
         # ═══ Шаг 6: Employer проверяет возможность оценки ═══
         # Переходим на страницу заданий
         page_a.goto(f'{BASE_URL}/my-jobs', wait_until='domcontentloaded')
-        page_a.wait_for_load_state('networkidle', timeout=15000)
+        page_a.wait_for_load_state('domcontentloaded', timeout=15000)
 
         # Проверяем, что задание есть в списке
         page_a_content = page_a.content()
