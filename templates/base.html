@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-{% from '_icons.html' import login_icon, register_icon, star, heart, chat, trash, check, users_icon, map_pin, dollar, alert, camera, bell, home, briefcase, search, filter_icon, menu_icon, plus, clock, chevron_left, info, settings %}
+{% from '_icons.html' import login_icon, register_icon, star, heart, chat, trash, check, users_icon, map_pin, dollar, alert, camera, bell, home, briefcase, search, filter_icon, menu_icon, plus, clock, chevron_left, info, settings, trudnik_logo %}
 {% from '_components.html' import toast_container, confirm_modal, offline_bar, install_banner, loading_overlay %}
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{% block title %}Трудник{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/favicon.svg') }}?v=20261003">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -65,14 +66,7 @@
             {% else %}
             <a href="/" class="flex items-center gap-2.5 shrink-0" aria-label="На главную">
             {% endif %}
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-sm">
-                    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
-                        <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
-                        <line x1="9" y1="9" x2="9.01" y2="9"/>
-                        <line x1="15" y1="9" x2="15.01" y2="9"/>
-                    </svg>
-                </div>
+                {{ trudnik_logo(36, 'hdr') }}
                 <span class="text-lg font-bold tracking-tight text-neutral-800">Трудник</span>
             </a>
 

@@ -1,3 +1,5 @@
+{% from '_icons.html' import trudnik_logo %}
+
 {% macro toast_container() %}
 <!-- Toast Container -->
 <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
@@ -26,13 +28,8 @@
 <!-- PWA Install Banner -->
 <div id="install-banner" class="fixed bottom-20 left-4 right-4 z-[90] bg-white rounded-2xl shadow-xl border border-neutral-200 px-5 py-4 hidden sm:left-auto sm:right-4 sm:w-80" style="display:none;">
     <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shrink-0 shadow-sm">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
-                <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
-                <line x1="9" y1="9" x2="9.01" y2="9"/>
-                <line x1="15" y1="9" x2="15.01" y2="9"/>
-            </svg>
+        <div class="w-10 h-10 flex items-center justify-center shrink-0">
+            {{ trudnik_logo(40, 'pwa') }}
         </div>
         <div class="flex-1">
             <p class="text-sm font-semibold text-neutral-800">Установите приложение</p>

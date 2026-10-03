@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+  <!-- Логотип «Трудник»: незамкнутый круг + ихтис + словесный знак.
+       Палитра приложения (tailwind primary/amber): градиент primary-300 #fbbf24 → primary-600 #b45309. -->
+  <defs>
+    <linearGradient id="amber" gradientUnits="userSpaceOnUse"
+                    x1="150" y1="120" x2="460" y2="520">
+      <stop offset="0" stop-color="#fbbf24"/>
+      <stop offset="1" stop-color="#b45309"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Белый фон -->
+  <rect width="600" height="600" fill="#FFFFFF"/>
+
+  <!-- Эмблема: все линии одной толщины, скруглённые концы -->
+  <g fill="none" stroke="url(#amber)" stroke-width="15" stroke-linecap="round">
+    <!-- Незамкнутый круг (зазор сверху ~50°) -->
+    <path d="M 236.6 144.1 A 150 150 0 1 0 363.4 144.1"/>
+    <!-- Рыба (ихтис), голова вправо: нижняя дуга с хвостом сверху-слева -->
+    <path d="M 178 248 Q 197 265 215 280 Q 317 366 420 280"/>
+    <!-- Рыба (ихтис): верхняя дуга с хвостом снизу-слева -->
+    <path d="M 178 312 Q 197 295 215 280 Q 317 194 420 280"/>
+  </g>
+
+  <!-- Название -->
+  <text x="300" y="520" text-anchor="middle"
+        font-family="'PT Sans', 'Segoe UI', Arial, sans-serif"
+        font-size="86" letter-spacing="2"
+        fill="url(#amber)">Трудник</text>
+</svg>

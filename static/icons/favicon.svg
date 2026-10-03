@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="132 112 336 336" width="336" height="336">
+  <!-- Favicon «Трудник»: эмблема (незамкнутый круг + ихтис), монохром primary-500 #d97706.
+       Прозрачный фон; для полной версии с текстом — logo.svg. -->
+  <g fill="none" stroke="#d97706" stroke-width="15" stroke-linecap="round">
+    <path d="M 236.6 144.1 A 150 150 0 1 0 363.4 144.1"/>
+    <path d="M 178 248 Q 197 265 215 280 Q 317 366 420 280"/>
+    <path d="M 178 312 Q 197 295 215 280 Q 317 194 420 280"/>
+  </g>
+</svg>
