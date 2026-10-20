@@ -48,6 +48,8 @@ def _apply_job_core(job_id, user_id):
             'duplicate': 409,
             'no_slots': 409,
             'job_not_open': 409,
+            'job_expired': 409,
+            'job_in_past': 409,
         }.get(error_code, 400)
         # RPC отдаёт error='duplicate' сырым — показываем человекочитаемый текст
         if error_code == 'duplicate' and error_msg == 'duplicate':
@@ -157,7 +159,7 @@ def apply_selected():
         result = rpc_result.json()
         if not result or not result.get('success'):
             error_code = (result or {}).get('code', 'unknown')
-            if error_code in ('duplicate', 'job_not_open', 'own_job', 'no_slots'):
+            if error_code in ('duplicate', 'job_not_open', 'own_job', 'no_slots', 'job_expired', 'job_in_past'):
                 skipped_count += 1
             else:
                 error_count += 1

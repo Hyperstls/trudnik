@@ -203,6 +203,13 @@ def inject_current_year() -> dict:
     return {'current_year': datetime.now().year}
 
 
+def inject_now_iso() -> dict:
+    """Текущее время UTC ISO для сравнений с датами заданий в шаблонах
+    (напр. дизейбл «Откликнуться» на прошедших заданиях, 2026-09)."""
+    from datetime import datetime, timezone
+    return {'now_iso': datetime.now(timezone.utc).isoformat()}
+
+
 def inject_captcha_config() -> dict:
     """Публичная конфигурация капчи (Yandex SmartCaptcha) для шаблонов.
 
@@ -250,3 +257,4 @@ def register_context_processors(app):
     app.context_processor(inject_sort_url)
     app.context_processor(inject_captcha_config)
     app.context_processor(inject_current_year)
+    app.context_processor(inject_now_iso)

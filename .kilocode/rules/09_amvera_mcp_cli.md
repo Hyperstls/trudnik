@@ -34,7 +34,7 @@ Env: `listEnvVars(slug, isSecret)`, `createEnvVars(slug, envVarsJson)`, `updateE
 - Команды: `amvera -v`, `amvera` (список), `<cmd> -h` (справка).
 - Ключевые: `amvera describe project --slug trudnik`, `amvera rebuild --slug trudnik`, `amvera logs {build|run} --slug trudnik`, `amvera env ...` (⚠️ баг v1.2.2 на JSON-парсинге → флаг `dotenv`).
 - Регионы MCP: msk0 (Москва) `https://openmcp.msk0.amvera.ru/mcp`, waw0 (Варшава) `https://openmcp.waw0.amvera.ru/mcp`.
-- ⚠️ **Регионы — строго msk0 для этого проекта.** Слова техподдержки Amvera (2026-09): «Проекты в регионе Варшава — отдельные: домены другие, внутренние имена (напр. БД) доступны только внутри своего региона, миграции в Варшаву нет — переменные переносить руками». waw0 — ТОЛЬКО диагностический fallback для проверки «жив ли MCP вообще», НЕ для управления проектом.
+- ⚠️ **Регионы: msk1 (2026-09-27, переезд с msk0).** Слова техподдержки Amvera: «Проекты в другом регионе — отдельные: домены другие, внутренние имена (напр. БД) доступны только внутри своего региона, миграции нет — переменные переносить руками». MCP-регионы: msk1 `https://openmcp.msk1.amvera.ru/mcp` (основной), waw0 — только диагностический fallback «жив ли MCP вообще».
 - История: 2026-09-18 msk0 временно отдавал 504 (регион лежал), 2026-09-19 восстановлен. Диагностика MCP:
   1. Без токена: `curl -X POST <region-url> -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'` → ожидаем 401 (жив) или 504 (лежит, пробуй waw0 для диагностики).
   2. С токеном: то же + `Authorization: Bearer <token>` → 200 с `serverInfo amvera-mcp`.

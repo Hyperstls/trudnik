@@ -187,40 +187,68 @@ window.showConfirm = function(message, onConfirm, options) {
     var installBtn = document.getElementById('install-banner-btn');
     var closeBtn = document.getElementById('install-banner-close');
 
+    // 2026-09: баннер НЕ надоедает — закрытие запоминается на 14 дней,
+    // установка — навсегда. Постоянный путь установки — пункт «Установить
+    // приложение» в меню профиля (#menu-install), работает всегда.
+    var DISMISS_KEY = 'pwa_install_dismissed_at';
+    var DISMISS_DAYS = 14;
+    function dismissed() {
+        try {
+            var ts = parseInt(localStorage.getItem(DISMISS_KEY) || '0', 10);
+            return ts && (Date.now() - ts) < DISMISS_DAYS * 86400000;
+        } catch (e) { return false; }
+    }
+    function hideBanner() {
+        if (banner) { banner.style.display = 'none'; banner.classList.add('hidden'); }
+    }
+
     window.addEventListener('beforeinstallprompt', function(e) {
         e.preventDefault();
         deferredPrompt = e;
-        if (banner) {
+        if (banner && !dismissed()) {
             banner.style.display = 'block';
             banner.classList.remove('hidden');
         }
     });
 
+    function triggerInstall() {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then(function(result) {
+                if (result.outcome === 'accepted') {
+                    try { localStorage.setItem(DISMISS_KEY, String(Date.now() + 3650 * 86400000)); } catch (e) {}
+                }
+                deferredPrompt = null;
+                hideBanner();
+            });
+        } else {
+            hideBanner();
+        }
+    }
+
     if (installBtn) {
-        installBtn.addEventListener('click', function() {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then(function(result) {
-                    console.log('PWA install:', result.outcome);
-                    deferredPrompt = null;
-                    if (banner) { banner.style.display = 'none'; banner.classList.add('hidden'); }
-                });
-            } else if (banner) {
-                banner.style.display = 'none';
-                banner.classList.add('hidden');
-            }
+        installBtn.addEventListener('click', triggerInstall);
+    }
+
+    // Постоянный ненавязчивый путь: пункт меню профиля (если есть)
+    var menuInstall = document.getElementById('menu-install');
+    if (menuInstall) {
+        menuInstall.addEventListener('click', function(e) {
+            if (!deferredPrompt) return; // браузер не предлагает установку — ничего не делаем
+            e.preventDefault();
+            triggerInstall();
         });
     }
 
     if (closeBtn && banner) {
         closeBtn.addEventListener('click', function() {
-            banner.style.display = 'none';
-            banner.classList.add('hidden');
+            hideBanner();
+            try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch (e) {}
         });
     }
 
     if (window.matchMedia('(display-mode: standalone)').matches) {
-        if (banner) { banner.style.display = 'none'; banner.classList.add('hidden'); }
+        hideBanner();
     }
 })();
 

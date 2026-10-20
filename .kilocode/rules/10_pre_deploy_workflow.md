@@ -20,3 +20,11 @@ current_app в tasks, duplicate attributes, [7/7] Tailwind freshness
 2. Добавь проверку в scripts/pre_deploy_check.py + tests/test_static_checks.py.
 3. Запиши паттерн в .kilocode/memory/project_patterns.md.
 4. Запусти pre_deploy_check.py — должен быть 0 проблем.
+
+## Локальная версия и документация — ВСЕГДА актуальны (правило владельца, 2026-09-27)
+
+После ЛЮБОЙ правки кода, в том же коммите:
+1. `npm run build:css` (если тронуты templates/static/js) + `pre_deploy_check.py` = 0 проблем.
+2. Тесты затронутых областей зелёные (`pytest tests -q` минимум).
+3. Обнови затронутую документацию: `docs/*` (BUTTON_REGISTRY/API_ENDPOINTS/RPC_REGISTRY/FRONTEND/...), `.kilocode/rules/*` (00/08/10/project), `.kilocode/memory/project_patterns.md` — если появился новый паттерн/ловушка.
+4. Не оставляй «документация догонит потом» — локальная ветка main всегда самодостаточна.

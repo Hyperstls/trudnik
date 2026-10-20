@@ -154,6 +154,13 @@
                             {% else %}bg-green-100 text-green-700{% endif %}">
                             {{ u.get('role', 'worker') }}
                         </span>
+                        {# 2026-09 (мультирольность): возможности пользователя — создаёт задания / готов подрабатывать #}
+                        {% if u.id in employers_with_open_jobs %}
+                        <span class="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-100 text-blue-700" title="Есть открытые задания">создаёт</span>
+                        {% endif %}
+                        {% if u.get('worker_visibility', True) %}
+                        <span class="text-xs px-2 py-0.5 rounded-full font-medium bg-teal-100 text-teal-700" title="Виден в каталоге трудников">подрабатывает</span>
+                        {% endif %}
                     </td>
                     <td class="px-4 py-3 text-neutral-600">{{ u.get('city', '—') }}</td>
                     <td class="px-4 py-3 text-right">

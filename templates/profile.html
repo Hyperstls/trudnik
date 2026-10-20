@@ -122,12 +122,12 @@
                    aria-label="Показывать меня в каталоге трудников">
         </div>
 
-        {% if profile_user.get('role') == 'worker' %}
+        {# 2026-09 (мультирольность): навыки доступны любой роли — пользователь
+           может быть готов подрабатывать трудником вне зависимости от role #}
         <div class="mb-4">
             {% set ms_selected_ids = current_skill_ids|join(',') %}
             {% include '_skills_multiselect.html' %}
         </div>
-        {% endif %}
 
         <div class="form-field">
             <label for="portfolio_link" class="form-label">Ссылка на портфолио</label>
@@ -344,7 +344,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="{{ url_for('static', filename='js/favorites.js') }}?v=20260905" nonce="{{ csp_nonce }}"></script>
 {% endif %}
 
-{% if profile_user and profile_user.get('role') == 'worker' %}
+{% if profile_user %}
 <script nonce="{{ csp_nonce }}">
 // ── Проверка совпадения паролей ──
 (function() {

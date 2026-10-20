@@ -196,6 +196,15 @@
                             Админка
                         </a>
                         {% endif %}
+                        <button type="button" id="menu-install" role="menuitem"
+                                class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-100 transition-colors">
+                            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-neutral-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Установить приложение
+                        </button>
                         <hr class="my-1.5 border-neutral-100" aria-hidden="true">
                         <form action="{{ url_for('auth.logout') }}" method="post">
                             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">

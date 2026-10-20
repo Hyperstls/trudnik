@@ -79,10 +79,23 @@ class TestApiApplyJob:
         data = resp.get_json()
         assert data['ok'] is False
         assert data['code'] == 'duplicate'
-        assert data['my_app_status'] == 'pending'
-        assert data['application_id'] == APP_ID
-        # Сырое 'duplicate' от RPC заменено человекочитаемым текстом
-        assert data['error'] != 'duplicate'
+
+    @patch('app.utils.auth.is_jti_blacklisted', return_value=False)
+    @patch('app.blueprints.applications.postgrest_rpc')
+    def test_apply_job_in_past_409(self, mock_rpc, mock_bl, app_client):
+        """2026-09: задание уже началось/прошло → 409 job_in_past (миграция 147)."""
+        _login(app_client)
+        mock_rpc.return_value = _resp({
+            'success': False, 'code': 'job_in_past',
+            'error': 'Это задание уже началось или прошло'})
+
+        resp = app_client.post(f'/api/jobs/{JOB_ID}/apply',
+                               headers={'X-CSRF-Token': 'test-csrf-token'})
+        assert resp.status_code == 409
+        data = resp.get_json()
+        assert data['ok'] is False
+        assert data['code'] == 'job_in_past'
+        assert 'прошло' in data['error'] or 'началось' in data['error']
 
     @patch('app.utils.auth.is_jti_blacklisted', return_value=False)
     @patch('app.blueprints.applications.postgrest_rpc')

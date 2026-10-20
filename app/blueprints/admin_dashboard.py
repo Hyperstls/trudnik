@@ -68,6 +68,7 @@ def admin_panel():
 
     # Пользователи
     users = []
+    employers_with_open_jobs = set()
     if tab == 'users':
         search = request.args.get('search', '')
         role_filter = request.args.get('role', '')
@@ -79,6 +80,11 @@ def admin_panel():
         query += '&order=full_name.asc'
         users_resp = postgrest_admin_request('GET', query)
         users = users_resp.json() if users_resp.ok else []
+        # 2026-09 (мультирольность): бейджи «создаёт задания» / «готов подрабатывать» —
+        # одним запросом вычисляем владельцев открытых заданий
+        jobs_resp = postgrest_admin_request('GET', 'jobs?status=eq.open&select=employer_id&limit=1000')
+        if jobs_resp.ok and jobs_resp.json():
+            employers_with_open_jobs = {j['employer_id'] for j in jobs_resp.json() if j.get('employer_id')}
 
     # Задания
     jobs = []
@@ -130,4 +136,5 @@ def admin_panel():
                            tab=tab, stats=stats, users=users,
                            jobs=jobs, pending=pending, verified=verified,
                            skills=skills, religions=religions,
+                           employers_with_open_jobs=employers_with_open_jobs,
                            actual_version=actual_version)

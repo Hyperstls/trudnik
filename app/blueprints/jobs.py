@@ -151,7 +151,12 @@ def index():
 
     # Все открытые/завершённые задания без исключения по сроку (истёкшие переводит
     # в не-open cron expire_old_jobs). detailed_description опущен — тяжёлое поле.
-    query = 'status=in.(open,completed)&select=id,employer_id,organization_name,org_description,object_description,work_type,photo_urls,date_time,payment_amount,address,city,lat,lng,status,created_at,preferred_religion,max_workers,current_workers,expires_at'
+    # 2026-09: при filter=applied — ВСЕ статусы: иначе задание с моим откликом,
+    # уже не open/completed (отменено/истекло), пропадало из «Откликнулся».
+    base_status = 'status=in.(open,completed)'
+    if request.args.get('filter') == 'applied' and 'user_id' in session:
+        base_status = 'status=in.(open,completed,cancelled)'
+    query = base_status + '&select=id,employer_id,organization_name,org_description,object_description,work_type,photo_urls,date_time,payment_amount,address,city,lat,lng,status,created_at,preferred_religion,max_workers,current_workers,expires_at'
 
     # C38: Если монетизация включена — показываем только оплаченные задания
     if current_app.config.get('MONETIZATION_ENABLED', False):

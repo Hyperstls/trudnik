@@ -202,7 +202,10 @@
              data-has-slots="{{ '1' if (not job.max_workers or (job.current_workers or 0) < job.max_workers) else '0' }}">
             {% if job.status == 'open' %}
                 {% if not already_applied %}
-                    {% if job.max_workers and job.current_workers >= job.max_workers %}
+                    {% if job.date_time and job.date_time < now_iso %}
+                    {# 2026-09: задание уже началось/прошло #}
+                    <p class="text-neutral-500 font-medium text-center py-2">Задание уже началось или прошло</p>
+                    {% elif job.max_workers and job.current_workers >= job.max_workers %}
                     <p class="text-danger font-medium text-center py-2">Мест нет ({{ job.current_workers }}/{{ job.max_workers }})</p>
                     {% else %}
                     <form action="/apply/{{ job.id }}" method="post" class="js-apply-form" data-job-id="{{ job.id }}">
