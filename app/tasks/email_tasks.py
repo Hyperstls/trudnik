@@ -247,61 +247,6 @@ def send_email_notification(
             return {"status": "dead", "error": "SMTP-отправка не удалась"}
 
 
-@celery_app.task(bind=True, max_retries=1, default_retry_delay=300)
-def send_batch_email_notifications(
-    self: Task,
-    recipients: list[dict[str, Any]],
-    _request_id: str | None = None,
-) -> dict[str, Any]:
-    """Диспатчит email-уведомления списку получателей параллельно через celery.group.
-
-    Вместо синхронного цикла с .delay() (блокирует worker) используется
-    celery.group для параллельной постановки всех задач в очередь.
-
-    Args:
-        recipients: Список словарей с ключами:
-            user_id, notification_id, user_email, user_name,
-            notification_text, notification_type, notification_url.
-
-    Returns:
-        Словарь с агрегированным результатом диспатча:
-        {'dispatched': int, 'failed_to_dispatch': int, 'total': int}.
-    """
-    from celery import group
-
-    total = len(recipients)
-    if total == 0:
-        return {"dispatched": 0, "failed_to_dispatch": 0, "total": 0}
-
-    # Формируем список сигнатур задач для параллельной отправки
-    task_sigs = [
-        send_email_notification.s(
-            user_id=recipient.get("user_id", 0),
-            notification_id=recipient.get("notification_id", 0),
-            user_email=recipient.get("user_email", ""),
-            user_name=recipient.get("user_name", ""),
-            notification_text=recipient.get("notification_text", ""),
-            notification_type=recipient.get("notification_type", ""),
-            notification_url=recipient.get("notification_url", ""),
-        )
-        for recipient in recipients
-    ]
-
-    try:
-        # Параллельная постановка всех задач в очередь
-        job = group(task_sigs).apply_async()
-        logger.info(
-            "Пакетный диспатч email-задач через celery.group: %d задач поставлено в очередь (group_id=%s)",
-            total,
-            job.id,
-        )
-        return {"dispatched": total, "failed_to_dispatch": 0, "total": total}
-    except Exception as exc:
-        logger.exception(
-            "Ошибка постановки celery.group для пакетной email-рассылки: %s",
-            exc,
-        )
-        return {"dispatched": 0, "failed_to_dispatch": total, "total": total}
 
 
 @celery_app.task
