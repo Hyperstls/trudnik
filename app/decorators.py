@@ -13,6 +13,42 @@ from app.utils.rate_limit_decorator import rate_limit  # noqa: F401 — ре-э�
 F = TypeVar('F', bound=Callable[..., Any])
 
 
+def _get_session_validity(user_id: str) -> dict | None:
+    """Единая сводка валидности сессии: {'exists', 'suspended', 'pwd_changed_at'}.
+
+    Одна выборка profiles + один Redis-ключ `session_check:{user_id}` (TTL 60с).
+    Возвращает None, если БД недоступна (CB open / ошибка сети) — вызывающий
+    решает fail-closed. Кэшируется и «пользователь не найден» (exists=False) —
+    негативная запись безопасна: сессии у несуществующего пользователя быть
+    не может (сессия появляется только после регистрации).
+    """
+    from app.utils.redis_cache import get_cached, set_cached
+    cache_key = f'session_check:{user_id}'
+    cached = get_cached(cache_key)
+    if cached is not None:
+        return cached
+    from app.utils import postgrest_admin_request as _pgadm, postgrest_request as _pgreq
+    from app.utils.postgrest_client import is_circuit_open as _is_cb_open
+    fields = 'id,password_changed_at,suspended'
+    resp = _pgreq('GET', f'profiles?id=eq.{user_id}&select={fields}')
+    if not (resp.ok and not _is_cb_open(resp)):
+        resp = _pgadm('GET', f'profiles?id=eq.{user_id}&select={fields}')
+    if not resp.ok or _is_cb_open(resp):
+        return None  # БД недоступна
+    rows = resp.json()
+    if rows:
+        row = rows[0]
+        validity = {
+            'exists': True,
+            'suspended': bool(row.get('suspended')),
+            'pwd_changed_at': row.get('password_changed_at'),
+        }
+    else:
+        validity = {'exists': False, 'suspended': False, 'pwd_changed_at': None}
+    set_cached(cache_key, validity, ttl=60)
+    return validity
+
+
 def login_required(f: F) -> F:
     """Декоратор: требует аутентификации пользователя.
 
@@ -57,96 +93,18 @@ def login_required(f: F) -> F:
                     session.clear()
                     return redirect(url_for('auth.login'))
             
-            # B10: Проверка password_changed_at (инвалидация токенов при смене пароля)
-            # Используем postgrest_admin_request (service_role) для надёжности —
-            # пользовательский JWT может быть невалидным или PostgREST может быть недоступен.
-            token_pwd_changed = decoded.get('pwd_changed_at')
-            if token_pwd_changed:
-                user_id = decoded.get('user_id') or decoded.get('sub')
-                if user_id:
-                    cache_key = f'pwd_changed:{user_id}'
-                    from app.utils.redis_cache import get_cached, set_cached
-                    profile_pwd_changed = get_cached(cache_key)
-                    if profile_pwd_changed is None:
-                        from app.utils import postgrest_admin_request as _pgadm, postgrest_request as _pgreq
-                        # Пробуем через service_role (надёжнее — обходит RLS)
-                        resp = _pgadm('GET', f'profiles?id=eq.{user_id}&select=password_changed_at')
-                        if not (resp.ok and resp.json()):
-                            # Fallback: пользовательский запрос
-                            resp = _pgreq('GET', f'profiles?id=eq.{user_id}&select=password_changed_at')
-                        if resp.ok and resp.json():
-                            data = resp.json()
-                            profile_data = data[0] if isinstance(data, list) and data else data
-                            profile_pwd_changed = profile_data.get('password_changed_at') if isinstance(profile_data, dict) else None
-                            if profile_pwd_changed is not None:
-                                set_cached(cache_key, profile_pwd_changed, ttl=60)
-                    
-                    # Сравниваем: если в профиле пароль изменён ПОСЛЕ выпуска токена, токен недействителен
-                    if profile_pwd_changed:
-                        from datetime import datetime
-                        try:
-                            # Нормализуем оба значения к datetime
-                            if isinstance(profile_pwd_changed, str):
-                                profile_dt = datetime.fromisoformat(profile_pwd_changed.replace('Z', '+00:00'))
-                            else:
-                                profile_dt = profile_pwd_changed
-                            
-                            if isinstance(token_pwd_changed, str):
-                                token_dt = datetime.fromisoformat(token_pwd_changed.replace('Z', '+00:00'))
-                            else:
-                                token_dt = token_pwd_changed
-                            
-                            # Если пароль изменён после выпуска токена - инвалидируем
-                            if profile_dt > token_dt:
-                                session.clear()
-                                return redirect(url_for('auth.login'))
-                        except (ValueError, TypeError):
-                            # Если не удалось распарсить даты - используем строковое сравнение
-                            if str(profile_pwd_changed) != str(token_pwd_changed):
-                                session.clear()
-                                return redirect(url_for('auth.login'))
-            
-            # B5: Проверка существования пользователя в profiles (кэш 60 сек)
-            # Используем postgrest_admin_request (service_role) вместо пользовательского JWT,
-            # чтобы проверка работала даже при недоступности/сбоях PostgREST у пользователя.
-            # Кэшируем ТОЛЬКО положительный результат — отрицательный не кэшируется,
-            # чтобы временный сбой PostgREST не блокировал пользователя на 60 секунд.
+            # ── Единая проверка валидности сессии (2026-09, упрощение) ──
+            # Раньше: 3 отдельных ветки (pwd_changed_at, user_exists, suspended)
+            # с тремя кэш-ключами и 2–4 запросами на каждый запрос страницы.
+            # Теперь: ОДНА выборка profiles (id+password_changed_at+suspended)
+            # + один Redis-ключ `session_check:{user_id}` (TTL 60с).
             user_id = decoded.get('user_id') or decoded.get('sub')
             if user_id:
-                cache_key = f'user_exists:{user_id}'
-                from app.utils.redis_cache import get_cached, set_cached
-                user_exists = get_cached(cache_key)
-                if user_exists is None:
-                    from app.utils import postgrest_admin_request as _pgadm, postgrest_request as _pgreq
-                    from app.utils.postgrest_client import is_circuit_open as _is_cb_open
-                    # Пробуем пользовательский запрос (через RLS — быстрее)
-                    resp = _pgreq('GET', f'profiles?id=eq.{user_id}&select=id')
-                    db_reachable = resp.ok
-                    if resp.ok and resp.json():
-                        user_exists = True
-                    else:
-                        # Fallback: запрос через service_role (обходит RLS)
-                        resp2 = _pgadm('GET', f'profiles?id=eq.{user_id}&select=id')
-                        db_reachable = db_reachable or (resp2.ok and not _is_cb_open(resp2))
-                        user_exists = resp2.ok and bool(resp2.json())
-                    # Кэшируем ТОЛЬКО True (положительный результат).
-                    # False не кэшируем — временный сбой PostgREST не должен
-                    # блокировать пользователя на 60 секунд.
-                    if user_exists:
-                        set_cached(cache_key, True, ttl=60)
-                # Решение по сессии (2026-09, TC-087 — fail-closed):
-                # - Если БД подтвердила, что пользователя НЕТ (200 + пусто) — закрываем доступ.
-                # - Если PostgREST недоступен (CB open / network error) — 503 без разлогина:
-                #   сессия сохраняется, пользователь может повторить. Раньше был fail-open —
-                #   удалённый/замороженный пользователь сохранял доступ на весь даунтайм БД.
-                if not user_exists:
-                    if db_reachable:
-                        # БД доступна и подтвердила отсутствие пользователя (удалён)
-                        session.clear()
-                        return redirect(url_for('auth.login'))
-                    # БД недоступна — fail-closed: 503, сессию НЕ трогаем.
-                    # Шаблон НЕ рендерим: рендер дёргает context-процессоры,
-                    # которые снова упадут в ту же недоступную БД.
+                validity = _get_session_validity(user_id)
+                if validity is None:
+                    # БД недоступна (CB open / network) — fail-closed: 503 без
+                    # разлогина (TC-087). Шаблон НЕ рендерим: рендер дёргает
+                    # context-процессоры, которые снова упадут в ту же БД.
                     from flask import request as _req, jsonify as _jsonify
                     if _req.path.startswith('/api/') or _req.accept_mimetypes.best == 'application/json':
                         return _jsonify({'error': 'Сервис временно недоступен. Повторите позже.'}), 503
@@ -157,24 +115,21 @@ def login_required(f: F) -> F:
                             '<h1>Сервис временно недоступен</h1>'
                             '<p>База данных не отвечает. Попробуйте через минуту — ваша сессия сохранена.</p>'
                             '<p><a href="/">Обновить страницу</a></p></body></html>'), 503
-
-                # Phase 3: проверка suspended (кэш 30с — блокировка срабатывает оперативно).
-                from app.utils import postgrest_admin_request as _pgadm_susp
-                from app.utils.postgrest_client import is_circuit_open as _is_cb_open_susp
-                _susp_key = f'user_suspended:{user_id}'
-                _suspended = get_cached(_susp_key)
-                if _suspended is None:
-                    try:
-                        _sresp = _pgadm_susp('GET', f'profiles?id=eq.{user_id}&select=suspended')
-                        _rows = _sresp.json() if (_sresp.ok and not _is_cb_open_susp(_sresp)) else None
-                        _suspended = bool(_rows and _rows[0].get('suspended'))
-                        set_cached(_susp_key, _suspended, ttl=30)
-                    except Exception:
-                        _suspended = False
-                if _suspended:
+                if not validity['exists']:
+                    # БД подтвердила: пользователя нет (удалён)
+                    session.clear()
+                    return redirect(url_for('auth.login'))
+                if validity['suspended']:
                     session.clear()
                     flash('Ваш аккаунт временно приостановлен. Если это ошибка — обратитесь в поддержку.', 'danger')
                     return redirect(url_for('auth.login'))
+                # Инвалидация токенов при смене пароля (B10)
+                token_pwd_changed = decoded.get('pwd_changed_at')
+                profile_pwd_changed = validity['pwd_changed_at']
+                if token_pwd_changed and profile_pwd_changed:
+                    if str(profile_pwd_changed) != str(token_pwd_changed):
+                        session.clear()
+                        return redirect(url_for('auth.login'))
         except (jwt.DecodeError, jwt.ExpiredSignatureError, jwt.InvalidTokenError):
             # Токен невалидный — очищаем сессию и перенаправляем на login
             session.clear()

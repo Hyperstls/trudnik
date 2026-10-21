@@ -74,6 +74,9 @@ def test_login_required_checks_pwd_changed_at(client, app, mocker):
     # (admin и user), перекрывая autouse smart-mock из conftest.
     mocker.patch('app.utils.postgrest_request', return_value=mock_resp)
     mocker.patch('app.utils.postgrest_admin_request', return_value=mock_resp)
+    # CB-флаг: Mock auto-создаёт любой атрибут (resp.circuit_open → truthy Mock),
+    # что иначе читается как «цепь разомкнута» — нейтрализуем проверку.
+    mocker.patch('app.utils.postgrest_client.is_circuit_open', return_value=False)
     
     # Создаем тестовый маршрут с login_required
     from app.decorators import login_required
