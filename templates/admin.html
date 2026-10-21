@@ -276,7 +276,7 @@
     {% if pending %}
     <div class="space-y-2 mb-8">
         {% for user in pending %}
-        <div class="bg-white rounded-xl border border-neutral-100 p-4 shadow-sm">
+        <div class="bg-white rounded-xl border border-neutral-100 p-4 shadow-sm" data-verify-card>
             <div class="flex justify-between items-start gap-3">
                 <div class="min-w-0 flex-1">
                     <p class="font-medium text-neutral-900">{{ user.full_name }}</p>
@@ -298,14 +298,15 @@
                 </div>
             </div>
             <div class="flex gap-2 mt-3 pt-3 border-t border-neutral-100">
-                <form method="post" action="/admin/approve/{{ user.id }}">
+                {# 2026-09 (Admin 2.0): одобрить/отклонить без перезагрузки (карточка уходит) #}
+                <form method="post" action="/admin/approve/{{ user.id }}" class="js-verify-action">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                     <button class="action-icon-btn accept-btn px-3 py-1.5">
                         {{ check(14) }}
                         <span class="text-xs font-medium">Одобрить</span>
                     </button>
                 </form>
-                <form method="post" action="/admin/reject/{{ user.id }}">
+                <form method="post" action="/admin/reject/{{ user.id }}" class="js-verify-action">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                     <button class="action-icon-btn reject-btn px-3 py-1.5">
                         {{ close(14) }}
@@ -1001,4 +1002,35 @@ loadStats();
 </script>
 
 <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/admin-version.js') }}"></script>
+
+<script nonce="{{ csp_nonce }}">
+// Admin 2.0 (2026-09): верификация — одобрить/отклонить без перезагрузки
+// (карточка уходит со fade, счётчики не сбиваются, очередь не скроллится).
+document.addEventListener('submit', function(e) {
+    var form = e.target.closest ? e.target.closest('.js-verify-action') : null;
+    if (!form) return;
+    e.preventDefault();
+    var card = form.closest('[data-verify-card]');
+    var btn = form.querySelector('button');
+    btn.disabled = true;
+    apiFetch(form.action, { method: 'POST', body: new FormData(form) })
+        .then(function(r) {
+            if (r.ok || r.status === 302) {
+                if (card) {
+                    card.style.transition = 'opacity .3s';
+                    card.style.opacity = '0';
+                    setTimeout(function() { card.remove(); }, 300);
+                }
+                if (window.showToast) window.showToast('Готово', 'success');
+            } else {
+                btn.disabled = false;
+                if (window.showToast) window.showToast('Ошибка: ' + r.status, 'error');
+            }
+        })
+        .catch(function() {
+            btn.disabled = false;
+            if (window.showToast) window.showToast('Ошибка соединения', 'error');
+        });
+});
+</script>
 {% endblock %}
