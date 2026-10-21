@@ -78,6 +78,14 @@ def admin_panel():
         if role_filter:
             query += f'&role=eq.{sanitize_postgrest(role_filter)}'
         query += '&order=full_name.asc'
+        # Сортировка по колонкам (Admin 2.0, 2026-09): ?sort=<key>&dir=<asc|desc>
+        _users_sort = {
+            'name': 'full_name', 'email': 'email', 'role': 'role', 'city': 'city',
+        }
+        sort_key = request.args.get('sort', '')
+        if sort_key in _users_sort:
+            direction = 'desc' if request.args.get('dir') == 'desc' else 'asc'
+            query = query.replace('&order=full_name.asc', f'&order={_users_sort[sort_key]}.{direction}')
         users_resp = postgrest_admin_request('GET', query)
         users = users_resp.json() if users_resp.ok else []
         # 2026-09 (мультирольность): бейджи «создаёт задания» / «готов подрабатывать» —
@@ -97,6 +105,15 @@ def admin_panel():
         if status_filter:
             query += f'&status=eq.{sanitize_postgrest(status_filter)}'
         query += '&order=created_at.desc'
+        # Сортировка по колонкам (Admin 2.0, 2026-09)
+        _jobs_sort = {
+            'title': 'organization_name', 'employer': 'employer_id',
+            'status': 'status', 'payment': 'payment_amount', 'created': 'created_at',
+        }
+        sort_key = request.args.get('sort', '')
+        if sort_key in _jobs_sort:
+            direction = 'desc' if request.args.get('dir') == 'desc' else 'asc'
+            query = query.replace('&order=created_at.desc', f'&order={_jobs_sort[sort_key]}.{direction}')
         jobs_resp = postgrest_admin_request('GET', query)
         jobs = jobs_resp.json() if jobs_resp.ok else []
         for j in jobs:

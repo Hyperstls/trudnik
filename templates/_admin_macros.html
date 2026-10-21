@@ -1,0 +1,18 @@
+{# Макросы Admin 2.0 (2026-09) #}
+
+{# Сортируемый заголовок колонки: клик — ?sort=<key>&dir=<asc|desc> (тогл).
+   Сохраняет текущие GET-параметры (tab/search/role/status). #}
+{% macro sort_th(label, key, align='left') %}
+{% set cur_sort = request.args.get('sort', '') %}
+{% set cur_dir = request.args.get('dir', 'asc') %}
+{% set is_cur = cur_sort == key %}
+{% set next_dir = 'desc' if (is_cur and cur_dir == 'asc') else 'asc' %}
+<th class="text-{{ align }} px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+    <a href="?{{ request.args.to_dict() | urlencode }}{{ '&' if request.args else '' }}sort={{ key }}&dir={{ next_dir }}"
+       class="inline-flex items-center gap-1 hover:text-neutral-800 transition-colors"
+       aria-label="Сортировать по колонке {{ label }}">
+        {{ label }}
+        <span aria-hidden="true" class="text-[10px]">{{ '▲' if (is_cur and cur_dir == 'asc') else ('▼' if (is_cur and cur_dir == 'desc') else '⇅') }}</span>
+    </a>
+</th>
+{% endmacro %}

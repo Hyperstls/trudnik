@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% from '_icons.html' import save, check, close, search, filter_icon, info, icon_user, apply, shield, icon_report, users_icon, briefcase, select_all %}
 {% from '_components.html' import status_badge %}
+{% from '_admin_macros.html' import sort_th %}
 {% block title %}Администрирование — Трудник{% endblock %}
 {% block content %}
 <style nonce="{{ csp_nonce }}">
@@ -132,10 +133,10 @@
                     <th class="text-center px-2 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500 w-8">
                         <input type="checkbox" class="js-select-all-users rounded border-neutral-300" title="Выбрать всех">
                     </th>
-                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Имя</th>
-                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Email</th>
-                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Роль</th>
-                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Город</th>
+                    {{ sort_th('Имя', 'name') }}
+                    {{ sort_th('Email', 'email') }}
+                    {{ sort_th('Роль', 'role') }}
+                    {{ sort_th('Город', 'city') }}
                     <th class="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Действия</th>
                 </tr>
             </thead>
@@ -222,10 +223,10 @@
                     <th class="text-center px-2 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500 w-8">
                         <input type="checkbox" class="js-select-all-jobs rounded border-neutral-300" title="Выбрать все">
                     </th>
-                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Название</th>
-                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Работодатель</th>
-                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Статус</th>
-                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Оплата</th>
+                    {{ sort_th('Название', 'title') }}
+                    {{ sort_th('Работодатель', 'employer') }}
+                    {{ sort_th('Статус', 'status') }}
+                    {{ sort_th('Оплата', 'payment', align='right') }}
                     <th class="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Действия</th>
                 </tr>
             </thead>
