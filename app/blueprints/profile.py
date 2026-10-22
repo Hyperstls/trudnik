@@ -444,7 +444,18 @@ def public_profile(user_id):
     if not profile_user:
         flash('Пользователь не найден', 'danger')
         return redirect(url_for('jobs.index'))
-    return render_template('profile_worker.html', profile_user=profile_user)
+    # C1 (2026-09): история для доверия — число выполненных/принятых заданий
+    completed_count = 0
+    try:
+        cnt = postgrest_request(
+            'GET',
+            f'applications?worker_id=eq.{user_id}&status=in.(accepted,completed)&select=id')
+        if cnt.ok and cnt.json():
+            completed_count = len(cnt.json())
+    except Exception:
+        pass
+    return render_template('profile_worker.html', profile_user=profile_user,
+                           completed_count=completed_count)
 
 
 @profile_bp.route('/profile/<user_id>/report', methods=['POST'])

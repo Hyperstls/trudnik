@@ -54,6 +54,12 @@
             <a href="/ratings/user/{{ profile_user.id }}" class="text-xs text-primary-600 hover:text-primary-700 font-medium ml-1 transition-colors">Все отзывы</a>
             {% endif %}
         </div>
+        {# C1 (2026-09): история для доверия — «N выполненных · на платформе с YYYY» #}
+        {% if profile_user.get('created_at') %}
+        <p class="text-xs text-neutral-500 mt-1.5">
+            {% if completed_count %}{{ completed_count }} {{ 'выполненное задание' if completed_count == 1 else ('выполненных задания' if completed_count < 5 else 'выполненных заданий') }} · {% endif %}на платформе с {{ profile_user['created_at'][:4] }} года
+        </p>
+        {% endif %}
 
         {# Быстрые кнопки #}
         <div class="flex gap-2 mt-4">

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from '_icons.html' import star, chat, map_pin, clock, check, dollar, info, eye, login_icon %}
+{% from '_icons.html' import star, chat, map_pin, clock, check, dollar, info, eye, login_icon, shield %}
 {% from '_components.html' import breadcrumbs, status_badge, skeleton_block %}
 {% block title %}{{ job.work_type or job.organization_name }} — Трудник{% endblock %}
 {% block content %}
@@ -126,6 +126,19 @@
         {% endif %}
     </div>
 
+    <!-- C1 (2026-09): trust-блок «Безопасная сделка» -->
+    <div class="card bg-white rounded-2xl border border-neutral-200 shadow-sm p-4 mb-4">
+        <div class="flex items-start gap-3">
+            <div class="w-9 h-9 rounded-xl bg-primary-50 flex items-center justify-center shrink-0 text-primary-600">
+                {{ shield(18) }}
+            </div>
+            <div class="text-sm text-neutral-600 leading-relaxed">
+                <p class="font-semibold text-neutral-800 mb-0.5">Безопасная сделка</p>
+                <p>Оплата — напрямую от работодателя после выполнения. Договаривайтесь о деталях в чате до начала работы. При конфликте — пожалуйтесь на пользователя, модерация разберётся. <a href="/safety" class="text-primary-600 hover:text-primary-700 font-medium underline underline-offset-2">Как мы защищаем</a></p>
+            </div>
+        </div>
+    </div>
+
     <!-- Meta info -->
     {% if job.max_workers %}
     <div class="card bg-neutral-50 rounded-2xl border border-neutral-200 shadow-sm p-4 mb-4">
@@ -202,7 +215,7 @@
              data-has-slots="{{ '1' if (not job.max_workers or (job.current_workers or 0) < job.max_workers) else '0' }}">
             {% if job.status == 'open' %}
                 {% if not already_applied %}
-                    {% if job.date_time and job.date_time < now_iso %}
+                    {% if job.date_time and job.date_time < past_threshold_iso %}
                     {# 2026-09: задание уже началось/прошло #}
                     <p class="text-neutral-500 font-medium text-center py-2">Задание уже началось или прошло</p>
                     {% elif job.max_workers and job.current_workers >= job.max_workers %}

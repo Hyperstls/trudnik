@@ -322,6 +322,12 @@ def privacy():
     return _render_site_page('privacy', 'privacy.html', 'Политика конфиденциальности')
 
 
+@core_bp.route('/safety')
+def safety():
+    """Страница «Как мы защищаем» (C1 trust-слой, 2026-09)."""
+    return render_template('safety.html')
+
+
 @core_bp.route('/api/client-error', methods=['POST'])
 def client_error_report():
     """Приём отчётов об ошибках от frontend JavaScript.

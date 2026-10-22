@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Как мы защищаем — Трудник{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-8">
+    <h1 class="text-2xl font-bold text-neutral-900 mb-6">Как мы защищаем</h1>
+
+    <div class="space-y-4">
+        <div class="card bg-white rounded-2xl border border-neutral-200 shadow-sm p-5">
+            <h2 class="font-semibold text-neutral-900 mb-2">Проверенные пользователи</h2>
+            <p class="text-sm text-neutral-600 leading-relaxed">Работодатели и исполнители могут подтвердить личность через мессенджер MAX или документы. Подтверждённые пользователи отмечены значком «✓ Подтверждён» в профиле и на странице задания.</p>
+        </div>
+
+        <div class="card bg-white rounded-2xl border border-neutral-200 shadow-sm p-5">
+            <h2 class="font-semibold text-neutral-900 mb-2">Рейтинг и отзывы</h2>
+            <p class="text-sm text-neutral-600 leading-relaxed">После каждого завершённого задания стороны оценивают друг друга. Рейтинг и история отзывов видны в публичном профиле — выбирайте тех, кому доверяют другие.</p>
+        </div>
+
+        <div class="card bg-white rounded-2xl border border-neutral-200 shadow-sm p-5">
+            <h2 class="font-semibold text-neutral-900 mb-2">Оплата напрямую</h2>
+            <p class="text-sm text-neutral-600 leading-relaxed">Мы не удерживаем деньги: договорённость об оплате — между вами. Рекомендуем: обсудите сумму и условия в чате до начала работы и зафиксируйте договорённость перепиской.</p>
+        </div>
+
+        <div class="card bg-white rounded-2xl border border-neutral-200 shadow-sm p-5">
+            <h2 class="font-semibold text-neutral-900 mb-2">Что делать при конфликте</h2>
+            <p class="text-sm text-neutral-600 leading-relaxed">1) Попробуйте решить вопрос в чате. 2) Если не вышло — пожалуйтесь на пользователя (кнопка в профиле): модерация рассматривает жалобы и при серьёзных нарушениях блокирует аккаунт. 3) При повторных жалобах аккаунт замораживается автоматически.</p>
+        </div>
+
+        <div class="card bg-white rounded-2xl border border-neutral-200 shadow-sm p-5">
+            <h2 class="font-semibold text-neutral-900 mb-2">Ваши данные</h2>
+            <p class="text-sm text-neutral-600 leading-relaxed">Мы храним данные по 152-ФЗ: серверы в России, без трансграничной передачи. Свой архив данных можно выгрузить в любой момент: «Профиль → Экспорт данных». Подробности — в <a href="/privacy" class="text-primary-600 hover:underline">Политике конфиденциальности</a>.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
