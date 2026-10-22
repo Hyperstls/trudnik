@@ -204,10 +204,12 @@ def inject_current_year() -> dict:
 
 
 def inject_now_iso() -> dict:
-    """Текущее время UTC ISO для сравнений с датами заданий в шаблонах
-    (напр. дизейбл «Откликнуться» на прошедших заданиях, 2026-09)."""
-    from datetime import datetime, timezone
-    return {'now_iso': datetime.now(timezone.utc).isoformat()}
+    """Текущее время UTC ISO + граница «задание в прошлом» (now − 24ч) для
+    дизейбла «Откликнуться» (2026-09; грейс синхронен с RPC apply_job_atomic 147)."""
+    from datetime import datetime, timedelta, timezone
+    now = datetime.now(timezone.utc)
+    return {'now_iso': now.isoformat(),
+            'past_threshold_iso': (now - timedelta(hours=24)).isoformat()}
 
 
 def inject_captcha_config() -> dict:

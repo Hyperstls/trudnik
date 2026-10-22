@@ -591,9 +591,13 @@ TailwindCSS-брейкпоинты:
 
 **Компонентные классы** (`app.css`): `.card` (rounded-2xl + shadow-card → hover elevated), `.form-*` (см. 3.7), `.text-meta`. Токены Tailwind (`tailwind.config.js`): `shadow-card`/`shadow-elevated`, `rounded-card`, `duration-250`.
 
-**JS-модули**: `api.js` грузится ДО `{% block scripts %}`; `window.escapeHtml` — единственная копия (в base.js); `chat.js` (чат 2.0: дивидеры дат, статусы, retry по client_message_id); `invite-worker.js` (модалка приглашения с select заданий); `skills-multiselect.js` + `_skills_multiselect.html` (общий мультиселект навыков для register/profile).
+**JS-модули**: `api.js` грузится ДО `{% block scripts %}`; `window.escapeHtml` — единственная копия (в base.js); `chat.js` (чат 2.0: дивидеры дат, статусы, retry по client_message_id); `invite-worker.js` (модалка приглашения с select заданий); `skills-multiselect.js` + `_skills_multiselect.html` (общий мультиселект навыков для register/profile — доступен любой роли, 2026-09).
 
-**Шапка**: навигация разгружена — Приглашения/Чёрный список/Админка в dropdown `#profile-menu` (бейджи `#notifications-badge`, `#chat-badge` сохранены; точка-индикатор приглашений на аватаре).
+**Шапка**: навигация разгружена — Приглашения/Чёрный список/Админка в dropdown `#profile-menu` (бейджи `#notifications-badge`, `#chat-badge` сохранены; точка-индикатор приглашений на аватаре) + пункт «Установить приложение» (PWA-установка без навязчивого баннера — баннер запоминает закрытие на 14 дней, 2026-09).
+
+**Карточка задания** — макрос `job_card(job, applied_job_ids, employer_ratings)` в `templates/_job_card.html` (импорт `with context` — использует session/csrf_token/now_iso). Используется в ленте index и секции «Подобрано для вас».
+
+**C3 (2026-09)**: шаблоны первого задания на /job/new (Грузчик/Уборка/Промоутер — предзаполнение полей); «Подобрано для вас» на index (задания по навыкам пользователя, только чистая первая страница); отказ отклика на прошедшее задание (`job_in_past` 409, миграция 147 + дизейбл кнопки).
 
 ---
 

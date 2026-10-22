@@ -31,6 +31,23 @@
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <!-- ===== Шаг 1: Информация ===== -->
         <div id="step-1" class="space-y-4">
+            {% if not is_edit %}
+            {# C3 (2026-09): шаблоны первого задания — «Создайте задание за 60 секунд» #}
+            <div class="bg-primary-50 border border-primary-100 rounded-2xl p-4">
+                <p class="text-sm font-semibold text-neutral-800 mb-2.5">Начните с шаблона:</p>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" class="js-job-template px-3.5 py-2 bg-white border border-primary-200 rounded-xl text-sm font-medium text-primary-700 hover:bg-primary-100 active:scale-[0.97] transition-all"
+                            data-title="Нужны грузчики" data-work-type="Грузчик"
+                            data-desc="Требуются грузчики для разгрузки/переноски товара. Работа на складе/в помещении. Оплата по факту выполнения.">Грузчик</button>
+                    <button type="button" class="js-job-template px-3.5 py-2 bg-white border border-primary-200 rounded-xl text-sm font-medium text-primary-700 hover:bg-primary-100 active:scale-[0.97] transition-all"
+                            data-title="Нужна уборка помещения" data-work-type="Уборка"
+                            data-desc="Требуется уборка помещения: мытьё полов, вынос мусора, протирка поверхностей. Инвентарь предоставляется. Оплата по факту.">Уборка</button>
+                    <button type="button" class="js-job-template px-3.5 py-2 bg-white border border-primary-200 rounded-xl text-sm font-medium text-primary-700 hover:bg-primary-100 active:scale-[0.97] transition-all"
+                            data-title="Нужен промоутер" data-work-type="Промоутер"
+                            data-desc="Требуется промоутер для раздачи листовок/презентации товара. Работа на улице/в ТЦ. Оплата за смену.">Промоутер</button>
+                </div>
+            </div>
+            {% endif %}
             <div class="form-field">
                 <label for="title" class="form-label">Название организации/задания <span class="text-danger">*</span></label>
                 <input type="text" name="title" id="title" class="form-input" placeholder="Например: грузчики в магазин" required aria-required="true" value="{{ job.get('organization_name') or '' if job else '' }}">
@@ -170,6 +187,27 @@
 <script nonce="{{ csp_nonce }}">
 (function() {
     'use strict';
+
+    // C3 (2026-09): шаблоны первого задания — предзаполнение полей шага 1
+    document.querySelectorAll('.js-job-template').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var title = document.getElementById('title');
+            var desc = document.getElementById('job-description');
+            var workType = document.querySelector('select[name="work_type"]');
+            if (title) { title.value = btn.dataset.title || ''; title.dispatchEvent(new Event('input', {bubbles: true})); }
+            if (desc) { desc.value = btn.dataset.desc || ''; desc.dispatchEvent(new Event('input', {bubbles: true})); }
+            if (workType && btn.dataset.workType) {
+                for (var i = 0; i < workType.options.length; i++) {
+                    if (workType.options[i].text.trim() === btn.dataset.workType) {
+                        workType.selectedIndex = i;
+                        workType.dispatchEvent(new Event('change', {bubbles: true}));
+                        break;
+                    }
+                }
+            }
+            if (title) title.focus();
+        });
+    });
 
     var form = document.getElementById('job-form');
 

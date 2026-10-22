@@ -18,6 +18,7 @@ WebSocket, Redis Pub/Sub, чат, чёрный список и приглаше�
     TestFullCycle         — полный цикл Employer-Worker (INT-001, INT-002)
 """
 
+import os
 import re
 import time
 

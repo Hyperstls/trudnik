@@ -18,8 +18,10 @@ BEGIN
     IF NOT FOUND THEN RETURN jsonb_build_object('success',false,'error','job_not_found','code','job_not_found'); END IF;
     IF v_st NOT IN ('open','active') THEN RETURN jsonb_build_object('success',false,'error','job_not_open','code','job_not_open'); END IF;
     IF v_exp IS NOT NULL AND v_exp < now() THEN RETURN jsonb_build_object('success',false,'error','job_expired','code','job_expired'); END IF;
-    -- 2026-09: задание уже началось/прошло по date_time — откликаться бессмысленно
-    IF v_dt IS NOT NULL AND v_dt < now() THEN
+    -- 2026-09: задание уже началось/прошло по date_time — откликаться бессмысленно.
+    -- Окно-грейс 24ч: задание «на сегодня» (date_time=now по умолчанию формы) —
+    -- откликаться можно; явно прошедшие (напр. 1,5 месяца назад) — нельзя.
+    IF v_dt IS NOT NULL AND v_dt < now() - interval '24 hours' THEN
         RETURN jsonb_build_object('success',false,'error','Это задание уже началось или прошло','code','job_in_past');
     END IF;
     IF v_eid = p_worker_id THEN RETURN jsonb_build_object('success',false,'error','own_job','code','own_job'); END IF;

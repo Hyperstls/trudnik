@@ -341,11 +341,38 @@ def index():
     filter_urls = {'all': _filter_url(''), 'new': _filter_url('new'),
                    'applied': _filter_url('applied')}
 
+    # C3 (2026-09): «Подобрано для вас» — задания по навыкам пользователя.
+    # Только чистая первая страница (без фильтров/поиска/гео), залогиненный.
+    recommended_jobs = []
+    if (session.get('user_id') and page == 1 and not job_filter
+            and not search_q and not skills_filter and lat is None):
+        try:
+            skills_resp = postgrest_request(
+                'GET', f"user_skills?user_id=eq.{session['user_id']}&select=skill_id")
+            skill_ids = [s['skill_id'] for s in (skills_resp.json() or []) if s.get('skill_id')] if skills_resp.ok else []
+            if skill_ids:
+                js_resp = postgrest_request(
+                    'GET', 'job_skills?skill_id=in.(' + ','.join(skill_ids) + ')&select=job_id')
+                job_ids = list({j['job_id'] for j in (js_resp.json() or []) if j.get('job_id')}) if js_resp.ok else []
+                if job_ids:
+                    page_job_ids = {str(j['id']) for j in jobs}
+                    rec_ids = [jid for jid in job_ids if str(jid) not in page_job_ids][:6]
+                    if rec_ids:
+                        rec_resp = postgrest_request(
+                            'GET', 'jobs?id=in.(' + ','.join(rec_ids) + ')'
+                            '&status=eq.open&select=id,employer_id,organization_name,object_description,work_type,photo_urls,date_time,payment_amount,address,city,lat,lng,status,created_at,max_workers,current_workers'
+                            '&order=created_at.desc')
+                        if rec_resp.ok and rec_resp.json():
+                            recommended_jobs = rec_resp.json()
+        except Exception as e:
+            current_app.logger.debug('index: recommended_jobs skipped: %s', e)
+
     return render_template('index.html', jobs=jobs, applied_job_ids=applied_job_ids,
                            employer_ratings=employer_ratings,
                            lat=lat, lng=lng, radius=radius, sort=sort,
                            selected_skills=selected_skills_list,
                            current_filter=job_filter, filter_urls=filter_urls,
+                           recommended_jobs=recommended_jobs,
                            page=page, has_next=has_next)
 
 

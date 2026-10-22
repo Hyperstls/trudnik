@@ -36,12 +36,19 @@ def test_job_cards_use_article_tag():
     with open(index_path, 'r', encoding='utf-8') as f:
         content = f.read()
     
-    # Ищем карточки вакансий (они имеют класс 'card' или 'job-card')
-    # Проверяем, что они обёрнуты в <article>
+    # Ищем карточки вакансий (класс 'card') — обёрнуты в <article>.
+    # 2026-09: карточка вынесена в макрос templates/_job_card.html
+    # (используется в index.html и секции «Подобрано для вас»).
     article_pattern = r'<article[^>]*class="[^"]*card[^"]*"'
+    card_path = templates_dir / '_job_card.html'
+    with open(card_path, 'r', encoding='utf-8') as f:
+        content = f.read()
     matches = re.findall(article_pattern, content)
-    
-    assert len(matches) > 0, "Карточки вакансий в index.html должны быть обёрнуты в <article>"
+    assert len(matches) > 0, "Карточки вакансий в _job_card.html должны быть обёрнуты в <article>"
+    # index.html использует макрос
+    with open(templates_dir / 'index.html', 'r', encoding='utf-8') as f:
+        index_content = f.read()
+    assert 'job_card(' in index_content, "index.html должен использовать макрос job_card"
 
 
 def test_all_templates_extend_base():
