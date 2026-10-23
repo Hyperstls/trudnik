@@ -341,6 +341,14 @@ def index():
     filter_urls = {'all': _filter_url(''), 'new': _filter_url('new'),
                    'applied': _filter_url('applied')}
 
+    # C2 (2026-09): задания с координатами для карты (JSON data island в index.html)
+    jobs_map = [
+        {'id': str(j.get('id')), 't': j.get('work_type') or j.get('organization_name'),
+         'org': j.get('organization_name'), 'lat': j.get('lat'), 'lng': j.get('lng'),
+         'pay': j.get('payment_amount'), 'city': j.get('city')}
+        for j in jobs if j.get('lat') is not None and j.get('lng') is not None
+    ]
+
     # C3 (2026-09): «Подобрано для вас» — задания по навыкам пользователя.
     # Только чистая первая страница (без фильтров/поиска/гео), залогиненный.
     recommended_jobs = []
@@ -373,6 +381,8 @@ def index():
                            selected_skills=selected_skills_list,
                            current_filter=job_filter, filter_urls=filter_urls,
                            recommended_jobs=recommended_jobs,
+                           yandex_api_key=current_app.config['YANDEX_MAPS_API_KEY'],
+                           jobs_map=jobs_map,
                            page=page, has_next=has_next)
 
 

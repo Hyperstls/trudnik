@@ -56,6 +56,20 @@
         {'value': 'distance', 'label': 'Ближе'},
     ], has_coords=has_coords) }}
 
+    {# C2 (2026-09): переключатель «Список / Карта» — задания с координатами на Яндекс.Карте #}
+    <div class="flex items-center justify-between mt-3 mb-1">
+        <div class="flex gap-1 p-1 bg-neutral-100 rounded-xl" role="tablist" aria-label="Вид каталога">
+            <button type="button" id="view-list-btn" role="tab" aria-selected="true"
+                    class="px-3.5 py-1.5 rounded-lg text-sm font-medium bg-white shadow-sm text-neutral-900 transition-colors">Список</button>
+            <button type="button" id="view-map-btn" role="tab" aria-selected="false"
+                    class="px-3.5 py-1.5 rounded-lg text-sm font-medium text-neutral-500 hover:text-neutral-700 transition-colors">Карта</button>
+        </div>
+    </div>
+    <div id="jobs-map-wrap" class="hidden mb-6">
+        <div id="jobs-map" class="w-full rounded-2xl border border-neutral-200 shadow-sm overflow-hidden" style="height: 60vh; min-height: 320px;"></div>
+        <p class="text-xs text-neutral-500 mt-2">На карте — задания с указанной геолокацией. Нажмите на метку, чтобы увидеть суть и перейти к заданию.</p>
+    </div>
+
     {% if session.get('user_id') %}
     <!-- Mass actions bar (floating) -->
     <div id="mass-actions-bar" class="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-4 sm:w-auto bg-white rounded-2xl shadow-lg border border-neutral-200 px-4 py-3 flex items-center gap-2 z-30 hidden animate-slide-in" style="max-width: 100%; overflow-x: auto;">
@@ -78,17 +92,17 @@
     {% if recommended_jobs %}
     {# C3 (2026-09): «Подобрано для вас» — задания по навыкам пользователя,
        только на чистой первой странице каталога (без фильтров/поиска) #}
-    <h2 class="text-lg font-bold text-neutral-900 mb-3 flex items-center gap-2">
+    <h2 class="text-lg font-bold text-neutral-900 mb-3 flex items-center gap-2 js-list-view">
         {{ star(18) }} Подобрано для вас
     </h2>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 js-list-view">
         {% for job in recommended_jobs %}
         {{ job_card(job, applied_job_ids, employer_ratings) }}
         {% endfor %}
     </div>
-    <h2 class="text-lg font-bold text-neutral-900 mb-3">Все задания</h2>
+    <h2 class="text-lg font-bold text-neutral-900 mb-3 js-list-view">Все задания</h2>
     {% endif %}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div id="jobs-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 js-list-view">
         {% for job in jobs %}
         {{ job_card(job, applied_job_ids, employer_ratings) }}
         {% else %}
@@ -282,6 +296,66 @@ document.addEventListener('click', function(e) {
             window.showToast && window.showToast('Не удалось определить местоположение', 'warning');
         }, { timeout: 10000, maximumAge: 60000 });
     });
+})();
+</script>
+
+{# C2 (2026-09): данные заданий для карты (JSON data island — CSP-safe) #}
+<script type="application/json" id="jobs-map-data" nonce="{{ csp_nonce }}">
+{{ jobs_map | tojson }}
+</script>
+<script nonce="{{ csp_nonce }}">
+// Переключатель «Список / Карта» + ленивая инициализация Яндекс.Карты
+(function() {
+    var listBtn = document.getElementById('view-list-btn');
+    var mapBtn = document.getElementById('view-map-btn');
+    var mapWrap = document.getElementById('jobs-map-wrap');
+    var grid = document.getElementById('jobs-grid');
+    var mapInited = false;
+    if (!listBtn || !mapBtn || !mapWrap) return;
+    function activate(mapMode) {
+        listBtn.className = 'px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors ' + (mapMode ? 'text-neutral-500 hover:text-neutral-700' : 'bg-white shadow-sm text-neutral-900');
+        mapBtn.className = 'px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors ' + (mapMode ? 'bg-white shadow-sm text-neutral-900' : 'text-neutral-500 hover:text-neutral-700');
+        listBtn.setAttribute('aria-selected', mapMode ? 'false' : 'true');
+        mapBtn.setAttribute('aria-selected', mapMode ? 'true' : 'false');
+        document.querySelectorAll('.js-list-view').forEach(function(el) { el.classList.toggle('hidden', mapMode); });
+        mapWrap.classList.toggle('hidden', !mapMode);
+        if (mapMode && !mapInited) initMap();
+    }
+    var jobsData = [];
+    try {
+        jobsData = JSON.parse(document.getElementById('jobs-map-data').textContent || '[]');
+    } catch (e) { jobsData = []; }
+
+    function initMap() {
+        mapInited = true;
+        var script = document.createElement('script');
+        script.src = 'https://api-maps.yandex.ru/2.1/?apikey={{ yandex_api_key }}&lang=ru_RU';
+        script.onload = function() {
+            ymaps.ready(function() {
+                var map = new ymaps.Map('jobs-map', {
+                    center: [55.751, 37.618],
+                    zoom: jobsData.length ? 11 : 10,
+                    controls: ['zoomControl', 'fullscreenControl']
+                });
+                var bounds = [];
+                jobsData.forEach(function(j) {
+                    var pm = new ymaps.Placemark([j.lat, j.lng], {
+                        balloonContentHeader: '<b>' + j.t + '</b>',
+                        balloonContentBody: j.org + '<br>' + (j.city || '') + ' · <b>' + j.pay + ' ₽</b><br><a href="/jobs/' + j.id + '">Открыть задание →</a>',
+                        iconCaption: j.pay + ' ₽'
+                    }, { preset: 'islands#orangeDotIconWithCaption' });
+                    map.geoObjects.add(pm);
+                    bounds.push([j.lat, j.lng]);
+                });
+                if (bounds.length) {
+                    map.setBounds(ymaps.util.bounds.fromPoints(bounds), {checkZoomRange: true, zoomMargin: 40});
+                }
+            });
+        };
+        document.head.appendChild(script);
+    }
+    listBtn.addEventListener('click', function() { activate(false); });
+    mapBtn.addEventListener('click', function() { activate(true); });
 })();
 </script>
 {% endblock %}
