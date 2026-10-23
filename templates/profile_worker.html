@@ -45,6 +45,9 @@
             {% if profile_user.get('verification_status') == 'approved' %}
             <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium" style="background:#dcfce7;color:#15803d">✓ Подтверждён</span>
             {% endif %}
+            {% if reliable %}
+            <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800" title="10+ выполненных заданий без отказов">★ Надёжный исполнитель</span>
+            {% endif %}
         </h3>
         <div class="flex items-center gap-1.5 mt-1">
             <span class="text-warning">★</span>

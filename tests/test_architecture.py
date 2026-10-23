@@ -112,7 +112,7 @@ class TestNotificationTypes:
         """Канонический набор типов уведомлений (shift/payment-типы удалены)."""
         from app.services.notification_service import NOTIFICATION_TYPES
         count = len(NOTIFICATION_TYPES)
-        assert count == 7, (
+        assert count == 8, (
             f"Ожидалось 7 типов уведомлений, получено {count}: {list(NOTIFICATION_TYPES.keys())}"
         )
 

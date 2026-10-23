@@ -446,16 +446,24 @@ def public_profile(user_id):
         return redirect(url_for('jobs.index'))
     # C1 (2026-09): история для доверия — число выполненных/принятых заданий
     completed_count = 0
+    rejected_count = 0
     try:
         cnt = postgrest_request(
             'GET',
             f'applications?worker_id=eq.{user_id}&status=in.(accepted,completed)&select=id')
         if cnt.ok and cnt.json():
             completed_count = len(cnt.json())
+        rej = postgrest_request(
+            'GET',
+            f'applications?worker_id=eq.{user_id}&status=eq.rejected&select=id')
+        if rej.ok and rej.json():
+            rejected_count = len(rej.json())
     except Exception:
         pass
+    # C4 (2026-09): значок «Надёжный исполнитель» — 10+ выполненных без отказов
+    reliable = completed_count >= 10 and rejected_count == 0
     return render_template('profile_worker.html', profile_user=profile_user,
-                           completed_count=completed_count)
+                           completed_count=completed_count, reliable=reliable)
 
 
 @profile_bp.route('/profile/<user_id>/report', methods=['POST'])

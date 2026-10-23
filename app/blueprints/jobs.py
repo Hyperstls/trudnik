@@ -470,8 +470,27 @@ def workers():
                     invited_worker_ids = {inv['worker_id'] for inv in inv_resp.json()}
 
         selected_skills_list = [s.strip() for s in filters['skills'].split(',') if s.strip()] if filters['skills'] else []
+
+        # C4 (2026-09): «Надёжный исполнитель» — 10+ выполненных и 0 отказов,
+        # два агрегатных запроса по странице (не N+1)
+        reliable_worker_ids = set()
+        if workers_list:
+            worker_ids = [w['id'] for w in workers_list if w.get('id')]
+            if worker_ids:
+                ids_filter = ','.join(worker_ids)
+                acc_resp = postgrest_request('GET',
+                    f'applications?worker_id=in.({ids_filter})&status=in.(accepted,completed)&select=worker_id')
+                rej_resp = postgrest_request('GET',
+                    f'applications?worker_id=in.({ids_filter})&status=eq.rejected&select=worker_id')
+                from collections import Counter
+                acc_counts = Counter(a['worker_id'] for a in (acc_resp.json() or []) if acc_resp.ok) if acc_resp.ok else Counter()
+                rej_counts = Counter(r['worker_id'] for r in (rej_resp.json() or []) if rej_resp.ok) if rej_resp.ok else Counter()
+                reliable_worker_ids = {wid for wid in worker_ids
+                                       if acc_counts.get(wid, 0) >= 10 and rej_counts.get(wid, 0) == 0}
+
         return render_template('workers.html', workers=workers_list, selected_skills=selected_skills_list,
-                               invited_worker_ids=invited_worker_ids, sort=sort, lat=lat, lng=lng)
+                               invited_worker_ids=invited_worker_ids, reliable_worker_ids=reliable_worker_ids,
+                               sort=sort, lat=lat, lng=lng)
     except Exception as e:
         current_app.logger.exception('[WORKERS] Unexpected error rendering /workers: %s', e)
         flash('Произошла ошибка при загрузке страницы. Попробуйте позже.', 'danger')
@@ -1093,6 +1112,16 @@ def api_force_complete_job(job_id):
                 enqueue_notification(worker_id, 'force_complete', 'Задание завершено',
                        f'Работодатель завершил задание #{job_id}',
                        data={'job_id': job_id, 'link': url_for('applications.my_applications', _external=True)})
+                # C4 (2026-09): фидбек-луп — просим оценить работодателя после завершения
+                enqueue_notification(worker_id, 'rating_prompt', 'Оцените работодателя',
+                       'Задание завершено. Оцените работодателя — это помогает другим исполнителям.',
+                       data={'job_id': job_id, 'link': url_for('jobs.job_detail', job_id=job_id, _external=True)})
+        # И работодателю — напоминание оценить исполнителей
+        employer_id = result.get('employer_id') or session.get('user_id')
+        if employer_id:
+            enqueue_notification(employer_id, 'rating_prompt', 'Оцените исполнителей',
+                   'Задание завершено. Оцените исполнителей — это укрепляет их репутацию.',
+                   data={'job_id': job_id, 'link': url_for('ratings.rate_workers_page', job_id=job_id, _external=True)})
 
     return jsonify({
         'success': True,

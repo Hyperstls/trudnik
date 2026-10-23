@@ -34,6 +34,7 @@ NOTIFICATION_TYPES = {
     'force_complete':        'Задание завершено',
     'job_cancelled':         'Задание отменено',
     'new_message':           'Новое сообщение в чате',
+    'rating_prompt':         'Напоминание об оценке после завершения задания',
 }
 
 DEFAULT_ENABLED_TYPES = {
@@ -44,6 +45,7 @@ DEFAULT_ENABLED_TYPES = {
     'force_complete': True,
     'job_cancelled': True,
     'new_message': True,
+    'rating_prompt': True,
 }
 
 
