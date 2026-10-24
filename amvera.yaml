@@ -1,3 +1,4 @@
+---
 meta:
   environment: docker
   toolchain:
@@ -8,10 +9,4 @@ build:
   skip: false
 run:
   persistenceMount: /data
-  # Порт, который слушает приложение внутри контейнера.
-  # Amvera по умолчанию пробрасывает его на такой же порт доступа.
-  # Если требуется иной порт доступа, можно добавить servicePort:
-  #   containerPort: 80
-  #   servicePort: 90
   containerPort: 8000
-  servicePort: 80
