@@ -28,3 +28,17 @@ class RouterMiddleware:
 
 
 application = RouterMiddleware(ws_app, flask_asgi)
+# ВРЕМЕННО (восстановление msk1, 2026-10): DNS-проба внутренних имён — удалить после.
+import socket as _socket
+import logging as _logging
+_dnslog = _logging.getLogger('dns-probe')
+for _h in ('amvera-hyperstls-run-trudnik-redis', 'trudnik-redis',
+           'amvera-hyperstls-cnpg-trudnik-db-rw', 'trudnik-db',
+           'amvera-hyperstls-run-trudnik-pr', 'trudnik-pr',
+           'amvera-hyperstls-run-trudnik-redis.tenant-ru-hyperstls',
+           'trudnik-redis.tenant-ru-hyperstls'):
+    try:
+        _socket.getaddrinfo(_h, None)
+        _dnslog.warning('DNS OK: %s', _h)
+    except Exception:
+        _dnslog.warning('DNS FAIL: %s', _h)
