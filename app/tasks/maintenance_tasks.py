@@ -330,6 +330,38 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
             logger.debug('self-heal: другой цикл уже выполняется (advisory lock занят) — пропуск')
             return {'status': 'skipped', 'reason': 'advisory_lock_busy'}
 
+        # 0) Bootstrap пустой схемы (восстановление продa / новый регион, 2026-10):
+        #    если profiles нет — применяем ВСЮ цепочку миграций по порядку (067+).
+        #    Одноразово (guard = наличие profiles). Миграции идемпотентны в большинстве.
+        cur.execute("SELECT to_regclass('public.profiles')")
+        if cur.fetchone()[0] is None and admin_url:
+            mig_files = sorted(p.name for p in mig_dir.glob('*.sql'))
+            logger.warning('self-heal: пустая схема — bootstrap %d миграций (067+)', len(mig_files))
+            applied = 0
+            for mig_file in mig_files:
+                try:
+                    _apply_migration(mig_file)
+                    applied += 1
+                except Exception as e:
+                    # autocommit=True — неудавшийся DO-блок не прерывает цепочку;
+                    # повторный цикл всё равно остановится на guard (profiles появится)
+                    logger.warning('self-heal bootstrap: %s failed (продолжаем): %s', mig_file, e)
+            logger.warning('self-heal: bootstrap завершён — применено %d/%d миграций', applied, len(mig_files))
+            healed.append('bootstrap')
+            # Seed администратора (из env), чтобы можно было войти после восстановления
+            admin_email = os.environ.get('ADMIN_BOOTSTRAP_EMAIL', '').strip().lower()
+            admin_password = os.environ.get('ADMIN_BOOTSTRAP_PASSWORD', '')
+            if admin_email and admin_password:
+                cur.execute("SELECT id FROM public.profiles WHERE email = %s", (admin_email,))
+                if cur.fetchone() is None:
+                    cur.execute(
+                        "INSERT INTO public.profiles (email, password_hash, role, full_name, email_verified) "
+                        "VALUES (%s, crypt(%s, gen_salt('bf', 12)), 'admin', %s, true)",
+                        (admin_email, admin_password, 'Администратор')
+                    )
+                    logger.warning('self-heal: admin-пользователь создан (%s)', admin_email)
+                    healed.append('admin_seed')
+
         # 1) Гранты ролей PostgREST (миграция 123) — без них PostgREST 403 на всём.
         #    CREATE ROLE/GRANT требуют суперпользователя, поэтому чиним только при наличии admin_url.
         cur.execute("SELECT pg_has_role('trudnikapp','authenticated','member')")
