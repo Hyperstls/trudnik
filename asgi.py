@@ -37,9 +37,8 @@ _dnslog = _logging.getLogger('dns-probe')
 for _k in sorted(_os.environ):
     if any(w in _k.upper() for w in ('AMVERA','REDIS','POSTGREST','PGRST','CNPG','SERVICE','HOST')):
         _dnslog.warning('ENV %s=%s', _k, _os.environ.get(_k,'')[:60] if 'PASS' not in _k.upper() and 'SECRET' not in _k.upper() and 'TOKEN' not in _k.upper() else '<masked>')
-for _h in ('amvera-hyperstls-run-trudnik-redis', 'trudnik-redis',
-           'amvera-hyperstls-cnpg-trudnik-db-rw', 'trudnik-db',
-           'amvera-hyperstls-run-trudnik-pr', 'trudnik-pr'):
+for _h in ('run-trudnik-redis', 'run-trudnik-pr', 'cnpg-trudnik-db-rw',
+           'run-trudnik-redis.tenant-ru-hyperstls', 'run-trudnik-pr.tenant-ru-hyperstls', 'cnpg-trudnik-db-rw.tenant-ru-hyperstls'):
     try:
         _socket.getaddrinfo(_h, None)
         _dnslog.warning('DNS OK: %s', _h)
