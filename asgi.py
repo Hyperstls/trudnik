@@ -28,15 +28,18 @@ class RouterMiddleware:
 
 
 application = RouterMiddleware(ws_app, flask_asgi)
-# ВРЕМЕННО (восстановление msk1, 2026-10): DNS-проба внутренних имён — удалить после.
+
+# ВРЕМЕННО (восстановление msk1): DNS-проба + env-инвентаризация — удалить после.
 import socket as _socket
 import logging as _logging
+import os as _os
 _dnslog = _logging.getLogger('dns-probe')
+for _k in sorted(_os.environ):
+    if any(w in _k.upper() for w in ('AMVERA','REDIS','POSTGREST','PGRST','CNPG','SERVICE','HOST')):
+        _dnslog.warning('ENV %s=%s', _k, _os.environ.get(_k,'')[:60] if 'PASS' not in _k.upper() and 'SECRET' not in _k.upper() and 'TOKEN' not in _k.upper() else '<masked>')
 for _h in ('amvera-hyperstls-run-trudnik-redis', 'trudnik-redis',
            'amvera-hyperstls-cnpg-trudnik-db-rw', 'trudnik-db',
-           'amvera-hyperstls-run-trudnik-pr', 'trudnik-pr',
-           'amvera-hyperstls-run-trudnik-redis.tenant-ru-hyperstls',
-           'trudnik-redis.tenant-ru-hyperstls'):
+           'amvera-hyperstls-run-trudnik-pr', 'trudnik-pr'):
     try:
         _socket.getaddrinfo(_h, None)
         _dnslog.warning('DNS OK: %s', _h)
