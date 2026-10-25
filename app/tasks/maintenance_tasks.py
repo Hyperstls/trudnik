@@ -365,10 +365,16 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
                 logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
             logger.warning('self-heal: bootstrap завершён — применено %d/%d миграций', applied, len(mig_files))
             healed.append('bootstrap')
-            # Seed администратора (из env), чтобы можно было войти после восстановления
-            admin_email = os.environ.get('ADMIN_BOOTSTRAP_EMAIL', '').strip().lower()
-            admin_password = os.environ.get('ADMIN_BOOTSTRAP_PASSWORD', '')
-            if admin_email and admin_password:
+
+        # 0c) Seed администратора (из env) — ВНЕ bootstrap-ветки: первая попытка
+        #     bootstrap (2026-10, msk1) упала с aborted-транзакцией ДО сида, а guard
+        #     profiles-IS-NULL на повторных циклах уже не даёт пересоздать. Проверка
+        #     по email идемпотентна — держим всегда.
+        admin_email = os.environ.get('ADMIN_BOOTSTRAP_EMAIL', '').strip().lower()
+        admin_password = os.environ.get('ADMIN_BOOTSTRAP_PASSWORD', '')
+        if admin_email and admin_password and admin_url:
+            cur.execute("SELECT to_regclass('public.profiles')")
+            if cur.fetchone()[0] is not None:
                 cur.execute("SELECT id FROM public.profiles WHERE email = %s", (admin_email,))
                 if cur.fetchone() is None:
                     cur.execute(
