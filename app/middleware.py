@@ -68,6 +68,23 @@ def csrf_check():
         except Exception as e:
             current_app.logger.warning('Failed to get CSRF token from JSON: %s', e, exc_info=True)
     if not token or not hmac.compare_digest(token, session.get('_csrf_token') or ''):
+        # Серверные сессии (Redis) могут быть сброшены (рестарт/фейловер) после
+        # рендера формы — вместо сырого 400 для form-POST перерендериваем форму
+        # с объяснением (как перезагрузка страницы). AJAX/JSON — по-прежнему 400.
+        session_empty = not session.get('_csrf_token')
+        accepts_html = 'text/html' in (request.headers.get('Accept') or '')
+        if session_empty and accepts_html and not request.is_json and 'X-CSRF-Token' not in request.headers:
+            from flask import flash, redirect, url_for
+            from urllib.parse import urlparse
+            flash('Сессия устарела (обновление сервера). Повторите отправку формы.', 'warning')
+            # Только same-origin referrer — иначе открытый редирект
+            ref = request.referrer or ''
+            try:
+                parsed = urlparse(ref)
+                target = ref if (parsed.scheme in ('http', 'https') and parsed.netloc == request.host) else None
+            except Exception:
+                target = None
+            return redirect(target or url_for('auth.login'))
         abort(400, description='CSRF-токен отсутствует или недействителен')
 
 

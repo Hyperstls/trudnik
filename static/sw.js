@@ -1,5 +1,5 @@
-﻿const CACHE_VERSION = 'trudnik-v13';
-const CACHE_NAME = 'trudnik-v13';
+const CACHE_VERSION = 'trudnik-v14';
+const CACHE_NAME = 'trudnik-v14';
 const PRECACHE_URLS = [
   '/',
   '/offline',
@@ -80,7 +80,10 @@ self.addEventListener('fetch', event => {
     // Service Worker не должен кэшировать этот ответ, иначе браузер показывает
     // "Navigation error — server is reachable but request failed" из-за конфликта
     // между SW fetch и Set-Cookie очисткой сессии.
-    if (url.pathname.startsWith('/admin') || url.pathname.startsWith('/logout') || url.pathname.startsWith('/verify-email') || url.pathname.startsWith('/password-reset') || url.pathname.startsWith('/chat') || url.pathname.startsWith('/messenger') || url.pathname.startsWith('/my-applications') || url.pathname.startsWith('/profile') || url.pathname.startsWith('/notifications')) {
+    if (url.pathname.startsWith('/admin') || url.pathname.startsWith('/logout') || url.pathname.startsWith('/verify-email') || url.pathname.startsWith('/password-reset') || url.pathname.startsWith('/chat') || url.pathname.startsWith('/messenger') || url.pathname.startsWith('/my-applications') || url.pathname.startsWith('/profile') || url.pathname.startsWith('/notifications')
+      // Формы с CSRF-токеном: кэшированная копия содержит протухший токен —
+      // POST вернёт 400 после рестарта сервера/сессий. Не кэшируем.
+      || url.pathname.startsWith('/login') || url.pathname.startsWith('/register')) {
       return;
     }
     event.respondWith(
