@@ -29,7 +29,15 @@ def get_redis_client():
         try:
             import redis as _redis_lib
             redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
-            _redis_client = _redis_lib.from_url(redis_url, decode_responses=True)
+            # Таймауты обязательны: без них мёртвое TCP-соединение вешает
+            # recv навсегда. Через CB (self._lock) один зависший вызов
+            # блокирует ВСЕ admin-запросы процесса (было на msk1: /health
+            # и логин висли ~50с, celery с отдельным коннектом — работал).
+            _redis_client = _redis_lib.from_url(
+                redis_url, decode_responses=True,
+                socket_connect_timeout=5, socket_timeout=5,
+                health_check_interval=30,
+            )
             # Проверяем соединение
             _redis_client.ping()
             logger.info('Redis client connected to %s', redis_url)

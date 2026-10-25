@@ -395,6 +395,21 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
                     'Без этого PostgREST отдаёт 403.'
                 )
 
+        # 1s) Восстановленная из bootstrap БД: таблицы принадлежат postgres
+        #     (миграции применялись через DATABASE_ADMIN_URL), а 132 сузила
+        #     колонки роли authenticated (в т.ч. email) → прямой SQL под
+        #     trudnikapp (login_direct_sql) падает с permission denied.
+        #     Даём trudnikapp ПРЯМЫЕ гранты на все таблицы: PostgREST-сессии
+        #     SET ROLE anon/authenticated их не видят (RLS-модель не меняется).
+        cur.execute("SELECT has_column_privilege('trudnikapp','profiles','email','SELECT')")
+        if not bool(cur.fetchone()[0]):
+            cur.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO trudnikapp")
+            cur.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO trudnikapp")
+            cur.execute("ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO trudnikapp")
+            cur.execute("ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO trudnikapp")
+            logger.warning('self-heal: trudnikapp получил прямые гранты на все таблицы (bootstrap-fix)')
+            healed.append('trudnikapp_grants')
+
         # 1b) profiles: сузить SELECT до публичных колонок (миграция 132).
         #     123 даёт table-level SELECT на все таблицы; password_hash/email/inn/phone
         #     НЕ должны читаться anon/authenticated (P0: был слив хешей паролей).
