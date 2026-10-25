@@ -410,6 +410,19 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
             logger.warning('self-heal: trudnikapp получил прямые гранты на все таблицы (bootstrap-fix)')
             healed.append('trudnikapp_grants')
 
+        # 1t) service_role (postgrest_admin_request): BYPASSRLS обходит RLS, но НЕ
+        #     заменяет table-level GRANT. На старом проде таблицы принадлежали
+        #     trudnikapp (owner); bootstrap на пустой БД создаёт их от postgres →
+        #     admin-запросы 403. Даём service_role DML на все таблицы.
+        cur.execute("SELECT has_table_privilege('service_role','profiles','SELECT')")
+        if not bool(cur.fetchone()[0]):
+            cur.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO service_role")
+            cur.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role")
+            cur.execute("ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO service_role")
+            cur.execute("ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO service_role")
+            logger.warning('self-heal: service_role получил гранты на все таблицы (bootstrap-fix)')
+            healed.append('service_role_grants')
+
         # 1b) profiles: сузить SELECT до публичных колонок (миграция 132).
         #     123 даёт table-level SELECT на все таблицы; password_hash/email/inn/phone
         #     НЕ должны читаться anon/authenticated (P0: был слив хешей паролей).
