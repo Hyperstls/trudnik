@@ -375,8 +375,16 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
         if admin_email and admin_password and admin_url:
             cur.execute("SELECT to_regclass('public.profiles')")
             if cur.fetchone()[0] is not None:
-                cur.execute("SELECT id FROM public.profiles WHERE email = %s", (admin_email,))
-                if cur.fetchone() is None:
+                # 067 сидит admin@test.ru с паролем из GUC app.admin_init_password
+                # (не установлен → password_hash NULL). Если hash не проверяется —
+                # перезаписываем паролем из env.
+                cur.execute(
+                    "SELECT password_hash = crypt(%s, password_hash) FROM public.profiles "
+                    "WHERE email = %s",
+                    (admin_password, admin_email),
+                )
+                row = cur.fetchone()
+                if row is None:
                     cur.execute(
                         "INSERT INTO public.profiles (email, password_hash, role, full_name, email_verified) "
                         "VALUES (%s, crypt(%s, gen_salt('bf', 12)), 'admin', %s, true)",
@@ -384,6 +392,14 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
                     )
                     logger.warning('self-heal: admin-пользователь создан (%s)', admin_email)
                     healed.append('admin_seed')
+                elif row[0] is not True:
+                    cur.execute(
+                        "UPDATE public.profiles SET password_hash = crypt(%s, gen_salt('bf', 12)), "
+                        "role = 'admin', email_verified = true WHERE email = %s",
+                        (admin_password, admin_email),
+                    )
+                    logger.warning('self-heal: admin-пароль перезаписан из env (%s)', admin_email)
+                    healed.append('admin_password_reset')
 
         # 1) Гранты ролей PostgREST (миграция 123) — без них PostgREST 403 на всём.
         #    CREATE ROLE/GRANT требуют суперпользователя, поэтому чиним только при наличии admin_url.
