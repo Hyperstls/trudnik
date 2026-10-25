@@ -432,6 +432,20 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
             logger.warning('self-heal: trudnikapp получил прямые гранты на все таблицы (bootstrap-fix)')
             healed.append('trudnikapp_grants')
 
+        # 1u) BYPASSRLS для trudnikapp: прямой SQL приложения (login_direct_sql,
+        #     session_check) подключается без JWT, а RLS-политики 067 требуют
+        #     request.jwt.claims → ни одной строки не видно ("invalid credentials").
+        #     На старом проде таблицы принадлежали trudnikapp (owner обходит RLS);
+        #     bootstrap создаёт их от postgres. На PostgREST-сессии (SET ROLE
+        #     anon/authenticated) BYPASSRLS trudnikapp НЕ влияет — RLS продолжает
+        #     работать для пользовательских запросов.
+        cur.execute("SELECT rolbypassrls FROM pg_roles WHERE rolname='trudnikapp'")
+        _row = cur.fetchone()
+        if _row and not bool(_row[0]):
+            cur.execute("ALTER ROLE trudnikapp WITH BYPASSRLS")
+            logger.warning('self-heal: trudnikapp получил BYPASSRLS (direct SQL не видел строк из-за RLS)')
+            healed.append('trudnikapp_bypassrls')
+
         # 1t) service_role (postgrest_admin_request): BYPASSRLS обходит RLS, но НЕ
         #     заменяет table-level GRANT. На старом проде таблицы принадлежали
         #     trudnikapp (owner); bootstrap на пустой БД создаёт их от postgres →
