@@ -35,7 +35,10 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- 2. geom column + GiST index
-ALTER TABLE jobs ADD COLUMN IF NOT EXISTS geom public.geometry(public.Point, 4326);
+-- NOTE: typmod-синтаксис (Point,4326) не парсится с qualified-именем типа
+-- (public.geometry(...) → "type modifiers must be simple constants"); тип
+-- оставляем unqualified — search_path включает public (postgis создан выше).
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS geom geometry(Point, 4326);
 CREATE INDEX IF NOT EXISTS idx_jobs_geom ON jobs USING GIST (geom);
 
 -- 3. Trigger function (FIXED search_path + qualified PostGIS calls)

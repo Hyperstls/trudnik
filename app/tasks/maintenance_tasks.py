@@ -330,7 +330,15 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
             logger.debug('self-heal: другой цикл уже выполняется (advisory lock занят) — пропуск')
             return {'status': 'skipped', 'reason': 'advisory_lock_busy'}
 
-        # 0) Bootstrap пустой схемы (восстановление продa / новый регион, 2026-10):
+        # 0) Tracking-таблица _migrations: в проде её создавал apply_migrations.py,
+        #    в восстановленной БД её может не быть — 133+ падают без неё.
+        #    Идемпотентно, дёшево — держим всегда.
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS public._migrations ("
+            "filename TEXT PRIMARY KEY, applied_at TIMESTAMPTZ DEFAULT now(), checksum TEXT)"
+        )
+
+        # 0b) Bootstrap пустой схемы (восстановление продa / новый регион, 2026-10):
         #    если profiles нет — применяем ВСЮ цепочку миграций по порядку (067+).
         #    Одноразово (guard = наличие profiles). Миграции идемпотентны в большинстве.
         cur.execute("SELECT to_regclass('public.profiles')")
@@ -343,9 +351,18 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
                     _apply_migration(mig_file)
                     applied += 1
                 except Exception as e:
-                    # autocommit=True — неудавшийся DO-блок не прерывает цепочку;
-                    # повторный цикл всё равно остановится на guard (profiles появится)
+                    # Миграции с BEGIN;...COMMIT; при ошибке оставляют соединение в
+                    # aborted-состоянии (COMMIT пакета игнорируется) — без rollback
+                    # все последующие миграции упадут с "current transaction is aborted".
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
                     logger.warning('self-heal bootstrap: %s failed (продолжаем): %s', mig_file, e)
+            try:
+                conn.rollback()
+            except Exception:
+                logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
             logger.warning('self-heal: bootstrap завершён — применено %d/%d миграций', applied, len(mig_files))
             healed.append('bootstrap')
             # Seed администратора (из env), чтобы можно было войти после восстановления
@@ -545,6 +562,78 @@ def ensure_postgrest_role_grants() -> dict[str, Any]:
                 logger.warning('self-heal: applied migration 143 (register_user overload)')
             except Exception as e:
                 logger.warning('self-heal: failed to apply 143: %s', e)
+                try:
+                    conn.rollback()
+                except Exception:
+                    logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
+
+        # 1n) PostGIS geom-колонка jobs.geom (миграция 127): без неё nearby_jobs/
+        #     карта молчат. Bootstrap мог пропустить её (падение 127 отравляло
+        #     транзакцию 133+). Guard: колонки нет.
+        cur.execute("SELECT count(*) FROM information_schema.columns WHERE table_name='jobs' AND column_name='geom'")
+        if cur.fetchone()[0] == 0:
+            try:
+                _apply_migration('127_fix_postgis_geom_search_path.sql')
+                logger.warning('self-heal: applied migration 127 (jobs.geom + nearby_jobs)')
+            except Exception as e:
+                logger.warning('self-heal: failed to apply 127 (geom): %s', e)
+                try:
+                    conn.rollback()
+                except Exception:
+                    logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
+
+        # 1o) sync_user_skills RPC (миграция 144, навыки работодателей).
+        cur.execute("SELECT count(*) FROM pg_proc WHERE proname='sync_user_skills'")
+        if cur.fetchone()[0] == 0:
+            try:
+                _apply_migration('144_sync_user_skills_rpc.sql')
+                logger.warning('self-heal: applied migration 144 (sync_user_skills)')
+            except Exception as e:
+                logger.warning('self-heal: failed to apply 144: %s', e)
+                try:
+                    conn.rollback()
+                except Exception:
+                    logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
+
+        # 1p) ratings: UNIQUE per rated_user (миграция 145). Guard: constraint нет.
+        cur.execute(
+            "SELECT count(*) FROM pg_constraint WHERE conname='ratings_rater_job_rated_unique'"
+        )
+        if cur.fetchone()[0] == 0:
+            try:
+                _apply_migration('145_ratings_unique_per_rated_user.sql')
+                logger.warning('self-heal: applied migration 145 (ratings unique)')
+            except Exception as e:
+                logger.warning('self-heal: failed to apply 145: %s', e)
+                try:
+                    conn.rollback()
+                except Exception:
+                    logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
+
+        # 1q) pgrst_pre_request — консолидация JWT-claims (миграция 146).
+        #     Функция появляется уже в 124; guard: тело ещё НЕ no-op
+        #     (старая версия материализует GUC request.jwt.claim.*).
+        cur.execute("SELECT count(*) FROM pg_proc WHERE proname='pgrst_pre_request' AND prosrc LIKE '%request.jwt.claim.%'")
+        if cur.fetchone()[0] == 0:
+            try:
+                _apply_migration('146_consolidate_jwt_claims.sql')
+                logger.warning('self-heal: applied migration 146 (pgrst_pre_request)')
+            except Exception as e:
+                logger.warning('self-heal: failed to apply 146: %s', e)
+                try:
+                    conn.rollback()
+                except Exception:
+                    logging.getLogger(__name__).debug("ignored non-critical error", exc_info=True)
+
+        # 1r) apply_job_atomic: отказ на отклик к заданию из прошлого (миграция 147).
+        #     Guard: в теле функции нет кода 'job_in_past'.
+        cur.execute("SELECT count(*) FROM pg_proc WHERE proname='apply_job_atomic' AND prosrc LIKE '%job_in_past%'")
+        if cur.fetchone()[0] == 0:
+            try:
+                _apply_migration('147_apply_job_no_past.sql')
+                logger.warning('self-heal: applied migration 147 (apply_job_no_past)')
+            except Exception as e:
+                logger.warning('self-heal: failed to apply 147: %s', e)
                 try:
                     conn.rollback()
                 except Exception:

@@ -458,8 +458,8 @@ def public_profile(user_id):
             f'applications?worker_id=eq.{user_id}&status=eq.rejected&select=id')
         if rej.ok and rej.json():
             rejected_count = len(rej.json())
-    except Exception:
-        pass
+    except Exception as e:
+        logging.getLogger(__name__).debug('public_profile: counts failed for %s: %s', user_id, e)
     # C4 (2026-09): значок «Надёжный исполнитель» — 10+ выполненных без отказов
     reliable = completed_count >= 10 and rejected_count == 0
     return render_template('profile_worker.html', profile_user=profile_user,
