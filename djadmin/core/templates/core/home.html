@@ -1,0 +1,24 @@
+{% extends "core/base.html" %}
+{% block content %}
+<section class="bg-white border border-gray-200 rounded-lg p-6">
+  <h1 class="text-3xl font-bold">Трудник</h1>
+  <p class="mt-2 text-gray-700">Платформа разовой подработки: трудники откликаются на задания церковных и частных работодателей.</p>
+  <div class="mt-5 flex gap-3">
+    <a href="{% url 'core:jobs' %}" class="bg-gray-900 text-white rounded px-4 py-2 font-medium">Найти задание</a>
+    <a href="{% url 'core:workers' %}" class="bg-white border border-gray-300 rounded px-4 py-2 font-medium">Каталог трудников</a>
+  </div>
+</section>
+
+{% if jobs %}
+<h2 class="text-xl font-bold mt-8 mb-3">Свежие задания</h2>
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  {% for job in jobs %}
+  <a href="{% url 'core:job_detail' job.pk %}" class="bg-white border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+    <p class="font-semibold">{{ job.work_type|default:"Задание" }}</p>
+    <p class="text-sm text-gray-600">{{ job.organization_name|default:"Частное лицо" }}{% if job.city %} · {{ job.city }}{% endif %}</p>
+    <p class="mt-2 font-bold">{% if job.payment_amount %}{{ job.payment_amount }} ₽{% else %}договорная{% endif %}</p>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

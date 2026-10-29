@@ -1,0 +1,206 @@
+"""Настройки Django-компаньона «Трудник».
+
+Работает поверх СУЩЕСТВУЮЩЕЙ схемы PostgreSQL (unmanaged-модели, см. core/models.py).
+Секреты — только из окружения; локально подхватывается .env корня репозитория.
+"""
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+BASE_DIR = Path(__file__).resolve().parent.parent        # djadmin/
+REPO_ROOT = BASE_DIR.parent                              # корень репозитория
+
+# Локальная разработка: берём .env репозитория (в .gitignore). На Amvera переменные
+# приходят от платформы, файла нет — load_dotenv просто ничего не сделает.
+load_dotenv(REPO_ROOT / ".env")
+
+DEPLOYMENT_ENV = os.getenv("DEPLOYMENT_ENV", "development")
+DEBUG = DEPLOYMENT_ENV != "production"
+PROD = not DEBUG
+
+# Пароль отдаёт окружение; фолбэк — только DEBUG-режим локальной разработки.
+_dev_fallback_key = "trudnik-dj-local-dev-key"
+SECRET_KEY = os.getenv("SECRET_KEY") or (_dev_fallback_key if DEBUG else "")
+if PROD and not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY обязателен в production (env)")
+
+# ── Хосты / CSRF ────────────────────────────────────────────────────────────
+_hosts = os.getenv("DJANGO_ALLOWED_HOSTS", "")
+ALLOWED_HOSTS = (
+    [h.strip() for h in _hosts.split(",") if h.strip()]
+    if _hosts
+    else (["*"] if DEBUG else [".amvera.io", "localhost", "127.0.0.1"])
+)
+_origins = os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "")
+CSRF_TRUSTED_ORIGINS = (
+    [o.strip() for o in _origins.split(",") if o.strip()]
+    if _origins
+    else ["https://*.amvera.io", "http://localhost:8000", "http://127.0.0.1:8000"]
+)
+
+# ── База данных ─────────────────────────────────────────────────────────────
+def _database_url() -> dict:
+    """DATABASE_URL или PG*-переменные (тот же фолбэк, что у Flask app/config.py)."""
+    import re
+
+    url = os.getenv("DATABASE_URL", "")
+    if not url:
+        pg = {k: os.getenv(k, "") for k in ("PGHOST", "PGPORT", "PGUSER", "PGPASSWORD", "PGDATABASE")}
+        if pg["PGHOST"] and pg["PGUSER"]:
+            return {
+                "NAME": pg["PGDATABASE"] or "trudnik",
+                "USER": pg["PGUSER"],
+                "PASSWORD": pg["PGPASSWORD"],
+                "HOST": pg["PGHOST"],
+                "PORT": pg["PGPORT"] or "5432",
+            }
+        # docker-compose по умолчанию (локальная разработка)
+        return {"NAME": "trudnik", "USER": "trudnik", "PASSWORD": "trudnik_dev", "HOST": "localhost", "PORT": "5433"}  # pragma: allowlist secret (docker-compose dev-креды)
+    m = re.match(
+        r"postgres(?:ql)?://(?P<user>[^:]+):(?P<pw>[^@]+)@(?P<host>[^:/]+):?(?P<port>\d+)?/(?P<name>.+)",
+        url,
+    )
+    if not m:
+        raise RuntimeError("DATABASE_URL не разобран: %s" % url[:30])
+    return {
+        "NAME": m.group("name"),
+        "USER": m.group("user"),
+        "PASSWORD": m.group("pw"),
+        "HOST": m.group("host"),
+        "PORT": m.group("port") or "5432",
+    }
+
+
+_db = _database_url()
+if _db["HOST"] == "db":  # compose-алиас из .env; снаружи контейнера БД на localhost:5433
+    _db = {**_db, "HOST": "localhost", "PORT": "5433"}
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DJANGO_DB_NAME", _db["NAME"]),
+        "USER": _db["USER"],
+        "PASSWORD": _db["PASSWORD"],
+        "HOST": _db["HOST"],
+        "PORT": _db["PORT"],
+        "CONN_MAX_AGE": 60,
+        "TEST": {
+            # Тесты идут против клона dev-БД (scripts/dj_test_clone.py создаёт
+            # trudnik_test по шаблону trudnik: в клоне живут триггеры и RPC).
+            "NAME": "trudnik_test",
+            "SERIALIZE": False,
+        },
+    }
+}
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+# user_skills/job_skills: составной PK без суррогатного id — primary_key на FK
+# даёт fields.W342, это осознанный маппинг unmanaged-таблиц (запись — raw SQL).
+SILENCED_SYSTEM_CHECKS = ["fields.W342"]
+
+# ── Приложения ──────────────────────────────────────────────────────────────
+INSTALLED_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "core",
+]
+AUTH_USER_MODEL = "core.Profile"
+AUTHENTICATION_BACKENDS = ["core.auth_backend.ProfileBackend"]
+
+# Пароли: Profile сам переопределяет set_password/check_password на сырой bcrypt
+# (совместимость с Flask/pgcrypto — см. core/models.py); этот список — запасной
+# путь для make_password при случайном использовании.
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.BCryptPasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+]
+
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "core.middleware.AdminIpAllowlistMiddleware",
+]
+
+ROOT_URLCONF = "config.urls"
+
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+                "core.context.workers_site_url",
+            ]
+        },
+    }
+]
+
+WSGI_APPLICATION = "config.wsgi.application"
+
+# ── Статика ─────────────────────────────────────────────────────────────────
+# Публичные страницы используют уже скомпилированный Tailwind из Flask-части
+# (freshness-гейт Flask сканирует только корневые templates/ и static/js/).
+STATIC_URL = "/static/"
+STATICFILES_DIRS = [REPO_ROOT / "static"]
+STATIC_ROOT = Path(os.getenv("DJANGO_STATIC_ROOT", "/data/static" if PROD else BASE_DIR / "_static"))
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    # manifest-хэши только в проде (требует collectstatic; в dev/тестах его нет)
+    "staticfiles": {
+        "BACKEND": (
+            "whitenoise.storage.CompressedManifestStaticFilesStorage"
+            if PROD
+            else "django.contrib.staticfiles.storage.StaticFilesStorage"
+        )
+    },
+}
+
+# Абсолютизация /uploads/... (файлы лежат в volume Flask-сервиса).
+WORKER_SITE_URL = os.getenv("WORKER_SITE_URL", "").rstrip("/")
+
+# ── Безопасность ────────────────────────────────────────────────────────────
+if PROD:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+X_FRAME_OPTIONS = "DENY"
+
+# Админка: опциональный IP-allowlist (аналог ADMIN_API_ALLOWED_IPS у Flask).
+DJANGO_ADMIN_ALLOWED_IPS = [
+    ip.strip() for ip in os.getenv("DJANGO_ADMIN_ALLOWED_IPS", "").split(",") if ip.strip()
+]
+
+LOGIN_URL = "/admin/login/"
+LOGIN_REDIRECT_URL = "/admin/"
+
+# ── Локализация ─────────────────────────────────────────────────────────────
+LANGUAGE_CODE = "ru-ru"
+TIME_ZONE = "Europe/Moscow"
+USE_I18N = True
+USE_TZ = True
+
+# ── Логирование ─────────────────────────────────────────────────────────────
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"plain": {"format": "%(asctime)s %(levelname)s %(name)s %(message)s"}},
+    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "plain"}},
+    "root": {"handlers": ["console"], "level": os.getenv("DJANGO_LOG_LEVEL", "INFO")},
+}

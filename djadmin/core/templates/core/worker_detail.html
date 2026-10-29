@@ -1,0 +1,37 @@
+{% extends "core/base.html" %}
+{% load core_extras %}
+{% block title %}{{ p.full_name }} — Трудник{% endblock %}
+{% block content %}
+<a href="{% url 'core:workers' %}" class="text-sm text-gray-600 hover:underline">← Все трудники</a>
+<article class="bg-white border border-gray-200 rounded-lg p-6 mt-3">
+  <div class="flex items-center gap-4">
+    {% if p.avatar_url %}<img src="{{ p.avatar_url|absurl }}" alt="" class="w-16 h-16 rounded-full object-cover">{% endif %}
+    <div>
+      <h1 class="text-2xl font-bold">{{ p.full_name }}</h1>
+      <p class="text-gray-600">{% if p.city %}{{ p.city }} · {% endif %}★ {{ p.rating|default:0|floatformat:1 }} ({{ p.total_reviews|default:0 }} отзывов)</p>
+      {% if p.verification_status == 'approved' %}<span class="inline-block mt-1 text-xs bg-green-100 text-green-800 rounded px-2 py-0.5">Верифицирован</span>{% endif %}
+    </div>
+  </div>
+
+  <dl class="grid sm:grid-cols-3 gap-4 mt-5 text-sm">
+    {% if p.age %}<div><dt class="text-gray-500">Возраст</dt><dd class="font-semibold">{{ p.age }}</dd></div>{% endif %}
+    {% if p.desired_payment %}<div><dt class="text-gray-500">Желаемая оплата</dt><dd class="font-semibold">{{ p.desired_payment }} ₽</dd></div>{% endif %}
+    {% if p.is_self_employed %}<div><dt class="text-gray-500">Статус</dt><dd class="font-semibold">Самозанятый</dd></div>{% endif %}
+  </dl>
+
+  {% if skills %}
+  <div class="mt-4 flex flex-wrap gap-2">
+    {% for s in skills %}<span class="text-xs bg-gray-100 rounded px-2 py-1">{{ s }}</span>{% endfor %}
+  </div>
+  {% endif %}
+
+  {% if p.bio %}<section class="mt-5"><h2 class="font-semibold mb-1">О себе</h2><p class="text-gray-700 whitespace-pre-line">{{ p.bio }}</p></section>{% endif %}
+  {% if p.experience %}<section class="mt-4"><h2 class="font-semibold mb-1">Опыт</h2><p class="text-gray-700 whitespace-pre-line">{{ p.experience }}</p></section>{% endif %}
+
+  {% if p.contact or p.email_public %}
+  <p class="mt-5 text-sm text-gray-700">Связь: {{ p.contact|default:p.email_public }}</p>
+  {% else %}
+  <p class="mt-5 text-sm text-gray-500">Контакты открываются после отклика на основной платформе.</p>
+  {% endif %}
+</article>
+{% endblock %}

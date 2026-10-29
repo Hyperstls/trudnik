@@ -1,0 +1,23 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<div id="content-main">
+  <h1>{{ title }}</h1>
+  <p class="help">Навыки хранятся в user_skills (составной PK) — сохранение выполняет DELETE+INSERT в транзакции.</p>
+  <form method="post">{% csrf_token %}
+    <div class="module" style="margin-top:1rem">
+      {% for s in all_skills %}
+      <label style="display:block;padding:.25rem 0">
+        <input type="checkbox" name="skills" value="{{ s.id }}" {% if s.id in selected %}checked{% endif %}>
+        {{ s.name }}
+      </label>
+      {% empty %}
+      <p>Справочник навыков пуст.</p>
+      {% endfor %}
+    </div>
+    <div class="submit-row">
+      <input type="submit" value="Сохранить навыки" class="default">
+      <a href="{% url 'admin:core_profile_changelist' %}" class="button">К списку профилей</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

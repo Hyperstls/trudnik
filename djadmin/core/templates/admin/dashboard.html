@@ -1,0 +1,36 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<div id="content-main">
+  <h1>Дашборд платформы</h1>
+  <p class="help">Статистика из RPC get_admin_dashboard_stats и get_job_stats (те же источники, что у Flask-админки).</p>
+
+  {% for e in errors %}
+    <ul class="messagelist"><li class="error">{{ e }}</li></ul>
+  {% endfor %}
+
+  <div class="module" style="margin-top:1rem">
+    <table style="width:100%">
+      <caption style="text-align:left;font-weight:bold;padding:.5rem 0">Пользователи и задания</caption>
+      <tr>
+        <th>Метрика</th><th>Значение</th><th>Метрика</th><th>Значение</th>
+      </tr>
+      {% for key, value in stats.items %}
+        {% if forloop.counter0|divisibleby:2 %}<tr>{% endif %}
+        <td>{{ key }}</td><td><strong>{{ value }}</strong></td>
+        {% if forloop.counter|divisibleby:2 %}</tr>{% endif %}
+      {% endfor %}
+      {% if stats|length|divisibleby:2 == 0 %}<td></td><td></td></tr>{% endif %}
+    </table>
+  </div>
+
+  <div class="module" style="margin-top:1rem">
+    <table style="width:100%">
+      <caption style="text-align:left;font-weight:bold;padding:.5rem 0">Задания по статусам</caption>
+      <tr><th>Метрика</th><th>Значение</th></tr>
+      {% for key, value in job_stats.items %}
+        <tr><td>{{ key }}</td><td><strong>{{ value }}</strong></td></tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}

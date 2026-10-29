@@ -1,0 +1,37 @@
+{% extends "core/base.html" %}
+{% load core_extras %}
+{% block title %}Трудники — Трудник{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Трудники</h1>
+<form method="get" class="bg-white border border-gray-200 rounded-lg p-4 mb-6 flex gap-3 items-end">
+  <label class="text-sm flex-1">Поиск
+    <input type="search" name="q" value="{{ q }}" class="w-full border border-gray-300 rounded px-2 py-1 mt-1">
+  </label>
+  <button type="submit" class="bg-gray-900 text-white rounded px-4 py-2 font-medium">Найти</button>
+</form>
+
+{% if page.object_list %}
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  {% for w in page.object_list %}
+  <a href="{% url 'core:worker_detail' w.pk %}" class="bg-white border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+    <div class="flex items-center gap-3">
+      {% if w.avatar_url %}<img src="{{ w.avatar_url|absurl }}" alt="" class="w-12 h-12 rounded-full object-cover">{% endif %}
+      <div>
+        <p class="font-semibold">{{ w.full_name }}</p>
+        <p class="text-sm text-gray-600">{% if w.city %}{{ w.city }} · {% endif %}★ {{ w.rating|default:0|floatformat:1 }} ({{ w.total_reviews|default:0 }})</p>
+      </div>
+    </div>
+    {% if w.bio %}<p class="text-sm text-gray-600 mt-2 line-clamp-3">{{ w.bio }}</p>{% endif %}
+  </a>
+  {% endfor %}
+</div>
+
+<nav class="mt-6 flex gap-2 items-center text-sm">
+  {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}&q={{ q }}" class="px-3 py-1 bg-white border border-gray-300 rounded">← Назад</a>{% endif %}
+  <span class="text-gray-600">стр. {{ page.number }} из {{ page.paginator.num_pages }}</span>
+  {% if page.has_next %}<a href="?page={{ page.next_page_number }}&q={{ q }}" class="px-3 py-1 bg-white border border-gray-300 rounded">Вперёд →</a>{% endif %}
+</nav>
+{% else %}
+<p class="text-gray-600">Никого не найдено.</p>
+{% endif %}
+{% endblock %}

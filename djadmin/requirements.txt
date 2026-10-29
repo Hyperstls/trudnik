@@ -1,0 +1,8 @@
+# Django-компаньон «Трудник» (фаза 1: админка + публичные read-only страницы).
+# Flask-образ (корневой requirements.txt) не зависит от этого файла.
+django==5.2.18
+gunicorn==26.2.0
+whitenoise==6.12.0
+psycopg2-binary==2.9.12
+bcrypt==5.0.0
+python-dotenv==1.2.2

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Трудник — платформа разовой подработки{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/tailwind.min.css">
+  <meta name="robots" content="noindex, nofollow">
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+  <header class="bg-white border-b border-gray-200">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+      <a href="{% url 'core:home' %}" class="text-xl font-bold">Трудник</a>
+      <nav class="flex items-center gap-4 text-sm font-medium">
+        <a href="{% url 'core:jobs' %}" class="hover:underline">Задания</a>
+        <a href="{% url 'core:workers' %}" class="hover:underline">Трудники</a>
+        <a href="{% url 'core:terms' %}" class="hover:underline">Правила</a>
+        {% if user.is_staff %}
+          <a href="/admin/" class="px-3 py-1 rounded-lg bg-gray-900 text-white">Админка</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 py-6">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="bg-white border-t border-gray-200 text-sm text-gray-600">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex flex-wrap gap-4 justify-between">
+      <span>© Трудник</span>
+      <span class="flex gap-4">
+        <a href="{% url 'core:terms' %}" class="hover:underline">Пользовательское соглашение</a>
+        <a href="{% url 'core:privacy' %}" class="hover:underline">Политика конфиденциальности</a>
+        <a href="{% url 'core:safety' %}" class="hover:underline">Безопасность</a>
+      </span>
+    </div>
+  </footer>
+</body>
+</html>
