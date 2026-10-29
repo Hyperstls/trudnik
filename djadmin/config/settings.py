@@ -187,8 +187,9 @@ DJANGO_ADMIN_ALLOWED_IPS = [
     ip.strip() for ip in os.getenv("DJANGO_ADMIN_ALLOWED_IPS", "").split(",") if ip.strip()
 ]
 
-LOGIN_URL = "/admin/login/"
-LOGIN_REDIRECT_URL = "/admin/"
+LOGIN_URL = "/login"
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/jobs"
 
 # ── Локализация ─────────────────────────────────────────────────────────────
 LANGUAGE_CODE = "ru-ru"

@@ -1,0 +1,36 @@
+{% extends "core/base.html" %}
+{% block title %}Мои задания — Трудник{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-2xl font-bold">Мои задания</h1>
+  <a href="{% url 'core:job_create' %}" class="bg-gray-900 text-white rounded px-4 py-2 text-sm font-medium">+ Новое</a>
+</div>
+{% if jobs %}
+<div class="grid gap-3">
+  {% for job in jobs %}
+  <article class="bg-white border border-gray-200 rounded-lg p-4">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <a href="{% url 'core:job_detail' job.pk %}" class="font-semibold hover:underline">{{ job.work_type|default:"Без типа" }}</a>
+        <p class="text-sm text-gray-600">{{ job.organization_name|default:"Частное лицо" }} · {{ job.get_status_display }} · {{ job.date_time|date:"d.m.Y H:i" }}</p>
+      </div>
+      <div class="flex flex-wrap gap-2 text-sm">
+        <a href="{% url 'core:job_applicants' job.pk %}" class="border border-gray-300 rounded px-3 py-1">Отклики</a>
+        <a href="{% url 'core:job_edit' job.pk %}" class="border border-gray-300 rounded px-3 py-1">Изменить</a>
+        {% if job.status == 'open' or job.status == 'active' %}
+        <form method="post" action="{% url 'core:job_action' job.pk 'cancel' %}">{% csrf_token %}<button class="border border-gray-300 rounded px-3 py-1">Отменить</button></form>
+        <form method="post" action="{% url 'core:job_action' job.pk 'force_complete' %}">{% csrf_token %}<button class="border border-gray-300 rounded px-3 py-1">Завершить</button></form>
+        {% endif %}
+        {% if job.status == 'cancelled' %}
+        <form method="post" action="{% url 'core:job_action' job.pk 'restore' %}">{% csrf_token %}<button class="border border-gray-300 rounded px-3 py-1">Восстановить</button></form>
+        {% endif %}
+        <form method="post" action="{% url 'core:job_action' job.pk 'delete' %}">{% csrf_token %}<button class="border border-red-300 text-red-700 rounded px-3 py-1">Удалить</button></form>
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<p class="text-gray-600">У вас ещё нет заданий. <a href="{% url 'core:job_create' %}" class="underline">Создать первое</a>.</p>
+{% endif %}
+{% endblock %}

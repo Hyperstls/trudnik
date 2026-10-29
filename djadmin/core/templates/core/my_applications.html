@@ -1,0 +1,31 @@
+{% extends "core/base.html" %}
+{% block title %}Мои отклики — Трудник{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Мои отклики</h1>
+{% if apps %}
+<div class="grid gap-3">
+  {% for a in apps %}
+  <article class="bg-white border border-gray-200 rounded-lg p-4 flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <a href="{% url 'core:job_detail' a.job.pk %}" class="font-semibold hover:underline">{{ a.job.work_type|default:"Задание" }}</a>
+      <p class="text-sm text-gray-600">{{ a.job.organization_name }} · {{ a.job.date_time|date:"d.m.Y H:i" }}</p>
+      <p class="text-sm mt-1">
+        Статус:
+        {% if a.status == 'pending' %}<span class="bg-gray-100 rounded px-2 py-0.5">Ожидает</span>
+        {% elif a.status == 'accepted' %}<span class="bg-green-100 text-green-800 rounded px-2 py-0.5">Принят</span>
+        {% elif a.status == 'rejected' %}<span class="bg-red-100 text-red-800 rounded px-2 py-0.5">Отклонён</span>
+        {% else %}<span class="bg-gray-100 rounded px-2 py-0.5">{{ a.get_status_display }}</span>{% endif %}
+      </p>
+    </div>
+    {% if a.status == 'pending' or a.status == 'accepted' %}
+    <form method="post" action="{% url 'core:application_action' a.pk 'withdraw' %}">{% csrf_token %}
+      <button class="border border-gray-300 rounded px-3 py-1 text-sm">Отозвать</button>
+    </form>
+    {% endif %}
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<p class="text-gray-600">Откликов пока нет. <a href="{% url 'core:jobs' %}" class="underline">Найти задание</a>.</p>
+{% endif %}
+{% endblock %}

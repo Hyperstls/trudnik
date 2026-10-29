@@ -11,7 +11,7 @@ from django.http import Http404, HttpResponse, JsonResponse
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, render
 
-from .models import Job, Profile, SitePage
+from .models import Application, Job, JobFavorite, Profile, SitePage
 
 PAGE_SIZE = 20
 
@@ -83,10 +83,25 @@ def job_detail(request, job_id):
         raise Http404("Задание не найдено или недоступно")
     photos = list(job.photos.all())
     skills = list(job.job_skills.select_related("skill").values_list("skill__name", flat=True))
+    my_app = None
+    is_owner = request.user.is_authenticated and job.employer_id == request.user.pk
+    if request.user.is_authenticated and not is_owner:
+        my_app = (
+            Application.objects.filter(job=job, worker=request.user)
+            .exclude(status__in=("withdrawn", "cancelled"))
+            .values("id", "status")
+            .first()
+        )
     return render(request, "core/job_detail.html", {
         "job": job,
         "photos": [(i, _abs(p.photo_url)) for i, p in enumerate(photos)],
         "skills": skills,
+        "my_app": my_app,
+        "is_owner": is_owner,
+        "is_fav": (
+            request.user.is_authenticated
+            and JobFavorite.objects.filter(user=request.user, job=job).exists()
+        ),
     })
 
 

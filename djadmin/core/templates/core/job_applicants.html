@@ -1,0 +1,39 @@
+{% extends "core/base.html" %}
+{% block title %}Отклики: {{ job.work_type }} — Трудник{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold">Отклики: {{ job.work_type|default:"задание" }}</h1>
+<p class="text-gray-600 text-sm mb-4">Статус задания: {{ job.get_status_display }} · занято {{ job.current_workers|default:0 }} из {{ job.max_workers|default:"—" }}</p>
+{% if apps %}
+<div class="grid gap-3">
+  {% for a in apps %}
+  <article class="bg-white border border-gray-200 rounded-lg p-4 flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <a href="{% url 'core:worker_detail' a.worker.pk %}" class="font-semibold hover:underline">{{ a.worker.full_name }}</a>
+      <p class="text-sm text-gray-600">★ {{ a.worker.rating|default:0|floatformat:1 }} ({{ a.worker.total_reviews|default:0 }}){% if a.worker.city %} · {{ a.worker.city }}{% endif %}</p>
+      <p class="text-sm mt-1">
+        {% if a.status == 'pending' %}<span class="bg-gray-100 rounded px-2 py-0.5">Ожидает</span>
+        {% elif a.status == 'accepted' %}<span class="bg-green-100 text-green-800 rounded px-2 py-0.5">Принят</span>
+        {% elif a.status == 'rejected' %}<span class="bg-red-100 text-red-800 rounded px-2 py-0.5">Отклонён</span>
+        {% elif a.status == 'withdrawn' %}<span class="bg-gray-100 rounded px-2 py-0.5">Отозван</span>
+        {% else %}<span class="bg-gray-100 rounded px-2 py-0.5">{{ a.get_status_display }}</span>{% endif %}
+      </p>
+    </div>
+    <div class="flex flex-wrap gap-2 text-sm">
+      {% if a.status == 'pending' %}
+      <form method="post" action="{% url 'core:application_action' a.pk 'accept' %}">{% csrf_token %}<button class="bg-gray-900 text-white rounded px-3 py-1">Принять</button></form>
+      <form method="post" action="{% url 'core:application_action' a.pk 'reject' %}">{% csrf_token %}<button class="border border-gray-300 rounded px-3 py-1">Отклонить</button></form>
+      {% endif %}
+      {% if a.status == 'rejected' %}
+      <form method="post" action="{% url 'core:application_action' a.pk 'reopen' %}">{% csrf_token %}<button class="border border-gray-300 rounded px-3 py-1">Вернуть</button></form>
+      {% endif %}
+      {% if a.status == 'accepted' %}
+      <form method="post" action="{% url 'core:application_action' a.pk 'cancel' %}">{% csrf_token %}<button class="border border-gray-300 rounded px-3 py-1">Снять</button></form>
+      {% endif %}
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<p class="text-gray-600">Откликов пока нет.</p>
+{% endif %}
+{% endblock %}

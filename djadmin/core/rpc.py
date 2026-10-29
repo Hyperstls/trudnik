@@ -51,3 +51,19 @@ def sync_user_skills_raw(user_id, skill_ids) -> int:
                 )
             cur.execute("SELECT count(*) FROM user_skills WHERE user_id = %s", [user_id])
             return cur.fetchone()[0]
+
+
+def sync_job_skills_raw(job_id, skill_ids) -> int:
+    """Атомарная замена job_skills (составной PK, отдельного RPC нет)."""
+    from django.db import transaction
+
+    with transaction.atomic():
+        with connection.cursor() as cur:
+            cur.execute("DELETE FROM job_skills WHERE job_id = %s", [job_id])
+            for skill_id in skill_ids:
+                cur.execute(
+                    "INSERT INTO job_skills (job_id, skill_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                    [job_id, skill_id],
+                )
+            cur.execute("SELECT count(*) FROM job_skills WHERE job_id = %s", [job_id])
+            return cur.fetchone()[0]

@@ -42,6 +42,33 @@
   </section>
   {% endif %}
 
-  <p class="mt-6 text-sm text-gray-500">Размещено {{ job.created_at|date:"d.m.Y" }}. Отклик — на основной платформе «Трудник».</p>
+  <p class="mt-6 text-sm text-gray-500">Размещено {{ job.created_at|date:"d.m.Y" }}.</p>
+
+  <div class="mt-4 flex flex-wrap gap-2 items-center border-t border-gray-200 pt-4">
+    {% if is_owner %}
+      <a href="{% url 'core:job_applicants' job.pk %}" class="bg-gray-900 text-white rounded px-4 py-2 text-sm font-medium">Отклики</a>
+      <a href="{% url 'core:job_edit' job.pk %}" class="border border-gray-300 rounded px-4 py-2 text-sm">Изменить</a>
+    {% elif user.is_authenticated %}
+      {% if my_app %}
+        <span class="text-sm text-gray-700">Ваш отклик: {{ my_app.status|default:"pending" }}.</span>
+        {% if my_app.status == 'pending' or my_app.status == 'accepted' %}
+        <form method="post" action="{% url 'core:job_unapply' job.pk %}">{% csrf_token %}
+          <button class="border border-gray-300 rounded px-4 py-2 text-sm">Отозвать отклик</button>
+        </form>
+        {% endif %}
+      {% elif job.status == 'open' %}
+        <form method="post" action="{% url 'core:job_apply' job.pk %}">{% csrf_token %}
+          <button class="bg-gray-900 text-white rounded px-4 py-2 text-sm font-medium">Откликнуться</button>
+        </form>
+      {% else %}
+        <span class="text-sm text-gray-500">Отклики закрыты ({{ job.get_status_display }}).</span>
+      {% endif %}
+      <form method="post" action="{% url 'core:job_favorite_toggle' job.pk %}">{% csrf_token %}
+        <button class="border border-gray-300 rounded px-4 py-2 text-sm">{{ is_fav|yesno:"В избранном,В избранное" }}</button>
+      </form>
+    {% else %}
+      <a href="{% url 'core:login' %}?next={% url 'core:job_detail' job.pk %}" class="bg-gray-900 text-white rounded px-4 py-2 text-sm font-medium">Войти, чтобы откликнуться</a>
+    {% endif %}
+  </div>
 </article>
 {% endblock %}

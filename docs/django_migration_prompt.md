@@ -194,8 +194,18 @@ docker build -f Dockerfile.djadmin -t trudnik-dj:local .
 5. Проверка: `https://trudnik-dj-hyperstls.amvera.io/health` → 200, `/admin/` → логин
    профилем с role=admin.
 
-## 8. Дорога дальше (фазы 2–3, вне этого PR)
-- Фаза 2: пишущие флоу (register+captcha, login-сессии, отклики, приглашения, рейтинги,
-  чат long-poll), перенос Celery-задач, уведомления.
-- Фаза 3: WebSocket (channels), PWA/push, выключение Flask, RLS per-request
-  (`SET LOCAL request.jwt.claims` в транзакции запроса — строгий паритет с PostgREST).
+## 8. Дорога дальше (фазы 2–3)
+
+- **Фаза 2а (выполнена 2026-10-29, тем же днём):** вход/выход на публичном сайте
+  (тот же auth-бридж: lockout, fail-closed), создание/редактирование заданий
+  (+ job_skills raw-SQL), «Мои задания» с действиями cancel/restore/force-complete/
+  delete через RPC, отклики apply/unapply/accept/reject/reopen/cancel/withdraw — все
+  через атомарные RPC (user_id только из сессии, IDOR невозможен), страницы
+  «Мои отклики»/«Отклики на задание» (владелец|admin), избранное заданий.
+  Тесты: test_flows.py (20 шт), всего 56.
+- Фаза 2б: регистрация (SmartCaptcha + honeypot + consent, RPC register_user),
+  password reset (токены + SMTP), приглашения, оценки (rate_user_atomic + UI),
+  избанное людей/чёрный список, чат (long-poll), профиль-редактирование.
+- Фаза 3: WebSocket (channels), PWA/push, перенос Celery-задач, выключение Flask,
+  RLS per-request (`SET LOCAL request.jwt.claims` в транзакции запроса — строгий
+  паритет с PostgREST).
