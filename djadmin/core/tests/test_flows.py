@@ -26,13 +26,10 @@ class LoginFlowTests(TestCase):
         self.assertContains(response, "Вход")
 
     def test_login_success_redirect(self):
-        user = make_profile("flow-login@example.com")
+        make_profile("flow-login@example.com")
         response = self.client.post("/login", {"email": "flow-login@example.com", "password": "Aa1!aaaa"})
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response["Location"], "/")
-        # сессия установлена
-        self.client.get("/")
-        self.assertTrue(response.wsgi_request.user.is_authenticated or True)  # редирект уже проверен
 
     def test_login_wrong_password(self):
         make_profile("flow-wrong@example.com")

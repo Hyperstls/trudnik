@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+{% load static %}<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Трудник — платформа разовой подработки{% endblock %}</title>
-  <link rel="stylesheet" href="/static/css/tailwind.min.css">
+  <link rel="stylesheet" href="{% static 'css/tailwind.min.css' %}">
   <meta name="robots" content="noindex, nofollow">
 </head>
 <body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">

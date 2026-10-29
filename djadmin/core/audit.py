@@ -1,12 +1,10 @@
-"""Аудит действий админки в таблицу audit_log (паритет log_admin_action Flask)."""
+"""Аудит действий админки в таблицу audit_log (паритет log_admin_action Flask).
+
+Guard'ы прав (роль/блокировка админов и т.п.) живут в формах админок (clean) —
+отклонение показывается инлайн-ошибкой формы, без двойных сообщений.
+"""
+from .middleware import client_ip
 from .models import AuditLog
-
-
-def client_ip(request) -> str | None:
-    xff = request.META.get("HTTP_X_FORWARDED_FOR", "")
-    if xff:
-        return xff.split(",")[0].strip()
-    return request.META.get("REMOTE_ADDR")
 
 
 def log_admin_action(request, action: str, table_name: str = "", record_id=None,
@@ -24,8 +22,7 @@ def log_admin_action(request, action: str, table_name: str = "", record_id=None,
 
 
 class AuditAdminMixin:
-    """ModelAdmin-примесь: аудит save/delete (diff выносится в конкретные админки,
-    здесь — идентификация записи)."""
+    """ModelAdmin-примесь: аудит save/delete (идентификация записи; дифф — в конкретных админках)."""
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
@@ -34,7 +31,7 @@ class AuditAdminMixin:
             action=("update" if change else "create") + "_" + obj._meta.model_name,
             table_name=obj._meta.db_table,
             record_id=getattr(obj, "pk", None),
-            new_data={"__str__": str(obj)[:300]},
+            new_data={"__str__": str(obj)[:300], "changed": list(form.changed_data)},
         )
 
     def delete_model(self, request, obj):

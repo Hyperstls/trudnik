@@ -2,10 +2,17 @@
 
 Инварианты:
 - user_id/employer_id всегда из request.user (не из формы) — IDOR невозможен;
-- мутации бизнес-состояний — только SECURITY DEFINER RPC (контракт
-  {'success': bool, 'error': code}); RPC-инварианты не дублируются в Python;
-- прямой доступ к «чужому» — 404 (не раскрываем существование).
+- мутации бизнес-состояний — только SECURITY DEFINER RPC; машинный код ошибки
+  берётся из result['code'], человекочитаемый текст — из result['error'] RPC;
+- доступ к «чужому/скрытому» — единый ответ «не найдено» (не раскрываем существование);
+- все редиректы (next/referer) валидируются на same-origin (анти open-redirect).
+
+NB (из ревью B2-7): restore_job_atomic внутри БД сверяет владельца только при
+заданном JWT-claim app_role — при прямом вызове из Django guard держит view
+(get_object_or_404(..., employer=request.user)). Не вызывать этот RPC без
+view-проверки владения.
 """
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
@@ -13,38 +20,69 @@ from django.db import transaction
 from django.http import Http404, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
-from .forms import JobForm
+from .forms import JobForm, LoginForm
 from .models import Application, Job, JobFavorite
 from .rpc import call_rpc, sync_job_skills_raw
 
 RPC_ERROR_TEXT = {
     "not_found": "Не найдено или недоступно.",
+    "job_not_found": "Задание не найдено.",
     "job_not_open": "Задание не открыто для откликов.",
     "no_slots": "Все места уже заняты.",
     "bad_status": "Недопустимый статус для этого действия.",
     "already_applied": "Вы уже откликнулись на это задание.",
     "expired": "Задание истекло.",
     "past_date": "Дата работ уже в прошлом.",
-    "self_apply": "Нельзя откликнуться на собственное задание.",
     "not_owner": "Недостаточно прав.",
+    "unknown": "Действие не выполнено.",
 }
 
 
+def _safe_next(request):
+    """Только same-origin относительный redirect (блокирует //evil.com и \\evil.com)."""
+    nxt = request.GET.get("next") or request.POST.get("next") or ""
+    if nxt and url_has_allowed_host_and_scheme(nxt, allowed_hosts=None):
+        return nxt
+    return settings.LOGIN_REDIRECT_URL
+
+
+def _safe_back(request, fallback: str):
+    """Referer валидируется как same-origin; иначе — fallback."""
+    referer = request.META.get("HTTP_REFERER", "")
+    if referer:
+        # referer абсолютный: проверяем путь на нашем хосте
+        from urllib.parse import urlsplit
+
+        parts = urlsplit(referer)
+        host = request.get_host()
+        if (parts.netloc == host or not parts.netloc) and url_has_allowed_host_and_scheme(
+            referer, allowed_hosts={host}
+        ):
+            return referer
+    return fallback
+
+
 def _rpc_message(request, result: dict, ok_text: str = "Готово.") -> bool:
+    """Машинный 'code' приоритетен (стабилен), fallback — человекочитаемый 'error' RPC."""
     if result.get("success"):
         messages.success(request, ok_text)
         return True
-    code = result.get("error") or result.get("code") or "unknown"
-    messages.error(request, RPC_ERROR_TEXT.get(code, "Действие отклонено: %s" % code))
+    code = result.get("code") or "unknown"
+    text = RPC_ERROR_TEXT.get(code) or result.get("error") or RPC_ERROR_TEXT["unknown"]
+    messages.error(request, text)
     return False
+
+
+def _public_job_or_none(job_id):
+    """Скрытые задания ведут себя как несуществующие (RLS-паритет, без оракула)."""
+    return Job.objects.public().filter(pk=job_id).first()
 
 
 # ── Вход / выход ────────────────────────────────────────────────────────────
 def login_view(request):
-    from .forms import LoginForm
-
     if request.user.is_authenticated:
         return redirect("/")
     form = LoginForm(request.POST or None)
@@ -56,8 +94,7 @@ def login_view(request):
         )
         if user is not None:
             auth_login(request, user)
-            nxt = request.GET.get("next") or request.POST.get("next")
-            return redirect(nxt if nxt and nxt.startswith("/") else "/")
+            return redirect(_safe_next(request))
         messages.error(request, "Неверный email или пароль, либо аккаунт заблокирован/не подтверждён.")
     return render(request, "core/login.html", {"form": form})
 
@@ -66,7 +103,7 @@ def login_view(request):
 def logout_view(request):
     auth_logout(request)
     messages.info(request, "Вы вышли.")
-    return redirect("core:jobs")
+    return redirect(settings.LOGOUT_REDIRECT_URL or "core:jobs")
 
 
 # ── Задания: создание/редактирование ───────────────────────────────────────
@@ -87,6 +124,7 @@ def job_create(request):
 
 @login_required
 def job_edit(request, job_id):
+    # свои задания — в любом статусе (draft/expired видны владельцу)
     job = get_object_or_404(Job, pk=job_id, employer=request.user)
     form = JobForm(request.POST or None, instance=job)
     if request.method == "POST" and form.is_valid():
@@ -108,6 +146,8 @@ def my_jobs(request):
 @require_POST
 def job_action(request, job_id, action):
     """cancel / restore / force_complete / delete — всё через RPC от имени владельца."""
+    if action not in ("cancel", "restore", "force_complete", "delete"):
+        return HttpResponseNotAllowed(["POST"])
     job = get_object_or_404(Job, pk=job_id, employer=request.user)
     uid = request.user.pk
     if action == "cancel":
@@ -116,22 +156,20 @@ def job_action(request, job_id, action):
         ok = _rpc_message(request, call_rpc("restore_job_atomic", job.pk, uid) or {}, "Задание восстановлено.")
     elif action == "force_complete":
         ok = _rpc_message(request, call_rpc("force_complete_job", job.pk, uid) or {}, "Задание завершено.")
-    elif action == "delete":
+    else:  # delete
         ok = _rpc_message(request, call_rpc("delete_job_cascade", job.pk) or {}, "Задание удалено.")
-    else:
-        return HttpResponseNotAllowed([])
     if action == "delete" and ok:
         return redirect("core:my_jobs")
-    return redirect(request.META.get("HTTP_REFERER") or reverse("core:my_jobs"))
+    return redirect(_safe_back(request, reverse("core:my_jobs")))
 
 
 # ── Отклики ─────────────────────────────────────────────────────────────────
 @login_required
 @require_POST
 def job_apply(request, job_id):
-    job = Job.objects.filter(pk=job_id).first()
+    job = _public_job_or_none(job_id)
     if job is None or job.employer_id == request.user.pk:
-        messages.error(request, "Отклик невозможен.")
+        messages.error(request, "Задание не найдено или отклик невозможен.")
         return redirect("core:jobs")
     result = call_rpc("apply_job_atomic", job.pk, request.user.pk) or {}
     _rpc_message(request, result, "Отклик отправлен.")
@@ -178,6 +216,8 @@ def job_applicants(request, job_id):
 @require_POST
 def application_action(request, app_id, action):
     """accept / reject (работодатель), withdraw (работник), cancel (работодатель)."""
+    if action not in ("accept", "reject", "reopen", "cancel", "withdraw"):
+        return HttpResponseNotAllowed(["POST"])
     application = Application.objects.select_related("job").filter(pk=app_id).first()
     if application is None:
         messages.error(request, "Отклик не найден.")
@@ -190,7 +230,7 @@ def application_action(request, app_id, action):
             return redirect("core:jobs")
         result = call_rpc("withdraw_application_atomic", application.pk, user.pk) or {}
         ok_text = "Отклик отозван."
-    elif action in ("accept", "reject", "reopen", "cancel"):
+    else:
         if job.employer_id != user.pk and user.role != "admin":
             return redirect("core:jobs")
         if action == "accept":
@@ -210,8 +250,6 @@ def application_action(request, app_id, action):
             else:
                 messages.error(request, "Вернуть можно только отклонённый отклик.")
             return redirect("core:job_applicants", job_id=job.pk)
-    else:
-        return HttpResponseNotAllowed([])
     _rpc_message(request, result, ok_text)
     return redirect("core:job_applicants", job_id=job.pk)
 
@@ -220,7 +258,8 @@ def application_action(request, app_id, action):
 @login_required
 @require_POST
 def job_favorite_toggle(request, job_id):
-    if not Job.objects.filter(pk=job_id).exists():
+    # только публично видимые задания (без оракула существования скрытых)
+    if not Job.objects.public().filter(pk=job_id).exists():
         messages.error(request, "Задание не найдено.")
         return redirect("core:jobs")
     fav, created = JobFavorite.objects.get_or_create(user=request.user, job_id=job_id)
@@ -229,7 +268,7 @@ def job_favorite_toggle(request, job_id):
         messages.info(request, "Удалено из избранного.")
     else:
         messages.success(request, "Добавлено в избранное.")
-    return redirect(request.META.get("HTTP_REFERER") or reverse("core:jobs"))
+    return redirect(_safe_back(request, reverse("core:jobs")))
 
 
 @login_required

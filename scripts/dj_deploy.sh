@@ -17,12 +17,23 @@ set -euo pipefail
 
 SLUG="${AMVERA_DJ_SLUG:-trudnik-dj}"
 BRANCH="$(git branch --show-current)"
+if [ -z "$BRANCH" ]; then
+  echo "ОШИБКА: detached HEAD — переключись на ветку (main-jango)." >&2
+  exit 1
+fi
 HEALTH_URL="https://${SLUG}-hyperstls.amvera.io/health"
 REMOTE_URL="${AMVERA_DJ_REMOTE:-https://git.msk1.amvera.ru/hyperstls/${SLUG}.git}"
+case "$REMOTE_URL" in
+  *"$SLUG"*) ;;  # remote обязан указывать на проект SLUG
+  *) echo "ОШИБКА: AMVERA_DJ_REMOTE ($REMOTE_URL) не содержит слаг $SLUG." >&2; exit 1;;
+esac
 
-# креды из .env (никогда не коммитим и не выводим)
+# креды из .env (никогда не коммитим и не выводим); локальный .env — CRLF,
+# поэтому source через tr -d '\r'
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-set -a; [ -f "$SCRIPT_DIR/../.env" ] && . "$SCRIPT_DIR/../.env"; set +a
+set -a
+. <(tr -d '\r' < "$SCRIPT_DIR/../.env")
+set +a
 AMVERA_CLI="${AMVERA_CLI:-amvera}"
 
 echo "==> 1/5 Вход в Amvera CLI"

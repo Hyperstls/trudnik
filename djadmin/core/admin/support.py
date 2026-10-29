@@ -159,10 +159,6 @@ class ReceiptAdmin(AuditAdminMixin, ModelAdmin):
 class SitePageAdmin(AuditAdminMixin, ModelAdmin):
     list_display = ("slug", "title", "updated_at")
     search_fields = ("slug", "title", "content")
-    prepopulated_fields = {}
-
-    def save_model(self, request, obj, form, change):
-        super().save_model(request, obj, form, change)
 
 
 class MonetizationSettingAdmin(AuditAdminMixin, ModelAdmin):

@@ -30,6 +30,17 @@ uploads/avatars
 .env
 .env.example
 .env.amvera
+.venv/
+
+# Frontend/toolchain — не нужны в Django-образе (и в Flask-образе тоже)
+node_modules/
+
+# Мусор/бэкапы/эксперименты
+trash/
+Trudnik backup/
+twa-project/
+tests_e2e/
+*.png
 
 # Docker / деплой
 Dockerfile

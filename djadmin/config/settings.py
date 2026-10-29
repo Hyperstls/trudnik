@@ -15,8 +15,10 @@ REPO_ROOT = BASE_DIR.parent                              # корень репо
 # приходят от платформы, файла нет — load_dotenv просто ничего не сделает.
 load_dotenv(REPO_ROOT / ".env")
 
-DEPLOYMENT_ENV = os.getenv("DEPLOYMENT_ENV", "development")
-DEBUG = DEPLOYMENT_ENV != "production"
+# Fail-safe: без явного DEPLOYMENT_ENV считаем продакшен (DEBUG off, SECRET_KEY
+# обязателен). Локальная разработка задаёт development в .env.
+DEPLOYMENT_ENV = os.getenv("DEPLOYMENT_ENV", "production")
+DEBUG = DEPLOYMENT_ENV == "development"
 PROD = not DEBUG
 
 # Пароль отдаёт окружение; фолбэк — только DEBUG-режим локальной разработки.
@@ -41,8 +43,8 @@ CSRF_TRUSTED_ORIGINS = (
 
 # ── База данных ─────────────────────────────────────────────────────────────
 def _database_url() -> dict:
-    """DATABASE_URL или PG*-переменные (тот же фолбэк, что у Flask app/config.py)."""
-    import re
+    """DATABASE_URL (с %-декодированием) или PG*-переменные (фолбэк как у Flask)."""
+    from urllib.parse import unquote, urlsplit
 
     url = os.getenv("DATABASE_URL", "")
     if not url:
@@ -57,18 +59,13 @@ def _database_url() -> dict:
             }
         # docker-compose по умолчанию (локальная разработка)
         return {"NAME": "trudnik", "USER": "trudnik", "PASSWORD": "trudnik_dev", "HOST": "localhost", "PORT": "5433"}  # pragma: allowlist secret (docker-compose dev-креды)
-    m = re.match(
-        r"postgres(?:ql)?://(?P<user>[^:]+):(?P<pw>[^@]+)@(?P<host>[^:/]+):?(?P<port>\d+)?/(?P<name>.+)",
-        url,
-    )
-    if not m:
-        raise RuntimeError("DATABASE_URL не разобран: %s" % url[:30])
+    parts = urlsplit(url)
     return {
-        "NAME": m.group("name"),
-        "USER": m.group("user"),
-        "PASSWORD": m.group("pw"),
-        "HOST": m.group("host"),
-        "PORT": m.group("port") or "5432",
+        "NAME": parts.path.lstrip("/") or "trudnik",
+        "USER": unquote(parts.username or "trudnik"),
+        "PASSWORD": unquote(parts.password or ""),
+        "HOST": parts.hostname or "localhost",
+        "PORT": str(parts.port or 5432),
     }
 
 
@@ -143,7 +140,6 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "core.context.workers_site_url",
             ]
         },
     }
@@ -159,11 +155,12 @@ STATICFILES_DIRS = [REPO_ROOT / "static"]
 STATIC_ROOT = Path(os.getenv("DJANGO_STATIC_ROOT", "/data/static" if PROD else BASE_DIR / "_static"))
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    # manifest-хэши только в проде (требует collectstatic; в dev/тестах его нет)
+    # manifest-хэши включаются явно (Dockerfile: DJANGO_WHITENOISE_MANIFEST=1 после
+    # collectstatic); dev/тесты работают на plain-статике
     "staticfiles": {
         "BACKEND": (
             "whitenoise.storage.CompressedManifestStaticFilesStorage"
-            if PROD
+            if os.getenv("DJANGO_WHITENOISE_MANIFEST") == "1"
             else "django.contrib.staticfiles.storage.StaticFilesStorage"
         )
     },

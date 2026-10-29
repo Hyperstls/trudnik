@@ -114,10 +114,13 @@ class JobAdmin(AuditAdminMixin, ModelAdmin):
         if len(ids) > BULK_DELETE_LIMIT:
             messages.error(request, "Массовое удаление: не больше %d за раз." % BULK_DELETE_LIMIT)
             return
+        deleted = 0
         for jid in ids:
             result = call_rpc("delete_job_cascade", jid) or {}
             log_admin_action(request, "delete_job_cascade", "jobs", jid, new_data=result)
-        messages.info(request, "Удалено каскадом: %d." % len(ids))
+            if result.get("success", True):
+                deleted += 1
+        messages.info(request, "Удалено каскадом: %d из %d." % (deleted, len(ids)))
 
     action_delete_cascade.short_description = "Удалить каскадно (≤%d)" % BULK_DELETE_LIMIT
 

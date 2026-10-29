@@ -34,11 +34,13 @@ class JobVisibilityTests(TestCase):
         self.assertEqual(got, {"open", "completed", "cancelled"})
 
     def test_hidden_statuses_404_on_detail(self):
+        from django.contrib.auth.models import AnonymousUser
         from django.test import RequestFactory
 
         from core import views
 
         request = RequestFactory().get("/")
+        request.user = AnonymousUser()
         for status in HIDDEN:
             with self.assertRaises(Exception) as ctx:
                 views.job_detail(request, self._job(status).pk)

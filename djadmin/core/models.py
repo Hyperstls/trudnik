@@ -213,7 +213,7 @@ class UserSkill(models.Model):
     """Составной PK (user_id, skill_id); запись — raw SQL в admin.skills_view."""
 
     user = models.ForeignKey(Profile, on_delete=models.CASCADE, db_column="user_id", primary_key=True, related_name="user_skills")
-    skill = models.ForeignKey(Skill, on_delete=models.CASCADE, db_column="skill_id", related_name="+")
+    skill = models.ForeignKey(Skill, on_delete=models.CASCADE, db_column="skill_id", related_name="user_skills")
 
     class Meta:
         managed = False

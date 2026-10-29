@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.contrib.admin import ModelAdmin
 
 from core.audit import AuditAdminMixin, log_admin_action
-from core.models import Religion, Skill, UserSkill
+from core.models import Religion, Skill
 from core.rpc import call_rpc
 
 
@@ -12,11 +12,18 @@ class SkillAdmin(AuditAdminMixin, ModelAdmin):
     search_fields = ("name",)
     list_editable = ("sort_order",)
     ordering = ("sort_order", "name")
+    list_per_page = 100
     actions = ("action_delete_cascade",)
 
-    def users_count(self, obj):
-        return UserSkill.objects.filter(skill=obj).count()
+    def get_queryset(self, request):
+        from django.db.models import Count
 
+        return super().get_queryset(request).annotate(_users_count=Count("user_skills"))
+
+    def users_count(self, obj):
+        return obj._users_count
+
+    users_count.admin_order_field = "_users_count"
     users_count.short_description = "используют"
 
     def delete_model(self, request, obj):
@@ -24,10 +31,13 @@ class SkillAdmin(AuditAdminMixin, ModelAdmin):
         log_admin_action(request, "delete_skill_cascade", "skills", obj.pk, new_data=result)
 
     def action_delete_cascade(self, request, queryset):
+        deleted = 0
         for skill in queryset:
             result = call_rpc("delete_skill_cascade", skill.pk) or {}
             log_admin_action(request, "delete_skill_cascade", "skills", skill.pk, new_data=result)
-        messages.info(request, "Удалено каскадно: %d." % queryset.count())
+            if result.get("success", True):
+                deleted += 1
+        messages.info(request, "Удалено каскадно: %d из %d." % (deleted, queryset.count()))
 
     action_delete_cascade.short_description = "Удалить каскадно (delete_skill_cascade)"
 
@@ -42,10 +52,17 @@ class ReligionAdmin(AuditAdminMixin, ModelAdmin):
     search_fields = ("name",)
     list_editable = ("sort_order",)
     ordering = ("sort_order", "name")
+    list_per_page = 100
+
+    def get_queryset(self, request):
+        from django.db.models import Count
+
+        return super().get_queryset(request).annotate(_profiles_count=Count("profiles"))
 
     def profiles_count(self, obj):
-        return obj.profiles.count()
+        return obj._profiles_count
 
+    profiles_count.admin_order_field = "_profiles_count"
     profiles_count.short_description = "профилей"
 
 

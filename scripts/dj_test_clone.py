@@ -18,21 +18,25 @@ import psycopg2
 REPO = Path(__file__).resolve().parent.parent
 
 # тот же приоритет, что у djadmin/config/settings.py
-_url = os.getenv("DATABASE_URL", "")
 if not _url and (REPO / ".env").exists():
     for line in (REPO / ".env").read_text(encoding="utf-8").splitlines():
-        m = re.match(r"^DATABASE_URL=(.+)$", line.strip())
-        if m and not line.strip().startswith("#"):
-            _url = m.group(1).strip().strip('"').strip("'")
+        line = line.strip().rstrip("\r")
+        m2 = re.match(r"^DATABASE_URL=([^#]+)$", line)
+        if m2 and not line.startswith("#"):
+            _url = m2.group(1).strip().strip('"').strip("'")
             break
 
-m = re.match(
-    r"postgres(?:ql)?://([^:]+):([^@]+)@([^:/]+):?(\d+)?/(.+)", _url or ""
-)
-if m:
-    USER, PASSWORD, HOST, PORT, DBNAME = (
-        m.group(1), m.group(2), m.group(3), m.group(4) or "5432", m.group(5),
+from urllib.parse import unquote, urlsplit
+
+parts = urlsplit(_url) if _url else None
+if parts and parts.hostname:
+    USER, PASSWORD, HOST = (
+        unquote(parts.username or "trudnik"),
+        unquote(parts.password or ""),
+        parts.hostname,
     )
+    PORT = str(parts.port or 5432)
+    DBNAME = parts.path.lstrip("/") or "trudnik"
 else:
     # docker-compose по умолчанию
     USER = os.getenv("PGUSER", "trudnik")

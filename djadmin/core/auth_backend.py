@@ -12,13 +12,27 @@ from django.core.exceptions import PermissionDenied
 
 MAX_FAILS = 5
 BASE_LOCK_SECONDS = 900
+MAX_LOCKOUT_ENTRIES = 10_000  # cap памяти против спама уникальными email
+LOCKOUT_TTL_SECONDS = 86_400  # записи старше суток — мусор
 
 
 class ProfileBackend(backends.ModelBackend):
     _lockout: dict[str, tuple[int, float]] = {}  # key -> (fails, locked_until_ts)
 
     @classmethod
+    def _purge(cls) -> None:
+        """Выкидываем истёкшие записи и капим размер (in-process dict, воркеров > 1)."""
+        now = time.monotonic()
+        for k in [k for k, v in cls._lockout.items() if v[1] and v[1] <= now]:
+            cls._lockout.pop(k, None)
+        if len(cls._lockout) > MAX_LOCKOUT_ENTRIES:
+            overflow = len(cls._lockout) - MAX_LOCKOUT_ENTRIES
+            for k, _ in sorted(cls._lockout.items(), key=lambda kv: kv[1][1])[:overflow]:
+                cls._lockout.pop(k, None)
+
+    @classmethod
     def _lock_remaining(cls, key: str) -> int:
+        cls._purge()
         entry = cls._lockout.get(key)
         if entry and entry[1] > time.monotonic():
             return int(entry[1] - time.monotonic())

@@ -44,13 +44,20 @@ def health(request):
 
 
 def home(request):
-    jobs = Job.objects.public().order_by("-is_promoted", "-created_at")[:6]
+    jobs = Job.objects.public().order_by(_promoted_first(), "-created_at")[:6]
     return render(request, "core/home.html", {"jobs": jobs})
 
 
+def _promoted_first():
+    """is_promoted nullable: DESC по умолчанию даёт NULLS FIRST — продвигаемое тонет."""
+    from django.db.models import F
+
+    return F("is_promoted").desc(nulls_last=True)
+
+
 def jobs_list(request):
-    qs = Job.objects.public().select_related("employer").order_by("-is_promoted", "-created_at")
-    q = (request.GET.get("q") or "").strip()
+    qs = Job.objects.public().select_related("employer").order_by(_promoted_first(), "-created_at")
+    q = (request.GET.get("q") or "").strip()[:100]
     if q:
         qs = qs.filter(work_type__icontains=q) | qs.filter(organization_name__icontains=q) | \
              qs.filter(city__icontains=q) | qs.filter(detailed_description__icontains=q)
@@ -62,11 +69,17 @@ def jobs_list(request):
     if status in ("open", "completed", "cancelled"):
         qs = qs.filter(status=status)
     payment_min = request.GET.get("payment_min") or ""
-    if payment_min.isdigit():
-        qs = qs.filter(payment_amount__gte=int(payment_min))
+    try:
+        from decimal import Decimal
+
+        qs = qs.filter(payment_amount__gte=Decimal(payment_min))
+    except Exception:
+        pass  # мусор в параметре — игнорируем фильтр
     sort = request.GET.get("sort")
     if sort == "payment":
-        qs = qs.order_by("-payment_amount")
+        from django.db.models import F
+
+        qs = qs.order_by(F("payment_amount").desc(nulls_last=True))
     elif sort == "date":
         qs = qs.order_by("date_time")
 
@@ -78,7 +91,14 @@ def jobs_list(request):
 
 
 def job_detail(request, job_id):
-    job = Job.objects.public().select_related("employer").filter(pk=job_id).first()
+    # публичные статусы + собственные задания в любом статусе (владелец видит свои
+    # draft/expired по ссылкам из «Моих заданий»)
+    job = Job.objects.public().filter(pk=job_id).first()
+    is_owner = False
+    if job is None and request.user.is_authenticated:
+        job = Job.objects.filter(pk=job_id, employer=request.user).first()
+    if job is not None and request.user.is_authenticated:
+        is_owner = job.employer_id == request.user.pk
     if job is None:
         raise Http404("Задание не найдено или недоступно")
     photos = list(job.photos.all())

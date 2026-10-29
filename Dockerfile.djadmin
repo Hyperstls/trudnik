@@ -15,7 +15,8 @@ ENV PIP_CACHE_DIR=/data/pip-cache \
     PYTHONPATH=/app/djadmin \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    DJANGO_STATIC_ROOT=/data/static
+    DJANGO_STATIC_ROOT=/data/static \
+    DJANGO_WHITENOISE_MANIFEST=1
 
 # Системные + Python-зависимости (свой файл — Flask-образ не зависит от Django)
 COPY djadmin/requirements.txt /app/djadmin/requirements.txt
@@ -37,5 +38,6 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
-# collectstatic + migrate (только системные таблицы django_*) + gunicorn
-CMD ["sh", "-c", "python /app/djadmin/manage.py collectstatic --noinput --clear && python /app/djadmin/manage.py migrate --noinput && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60 --access-logfile -"]
+# collectstatic + migrate (только системные таблицы django_*) + gunicorn.
+# Без --clear: при rolling-рестарте старые воркеры продолжают отдавать старый manifest.
+CMD ["sh", "-c", "python /app/djadmin/manage.py collectstatic --noinput && python /app/djadmin/manage.py migrate --noinput && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60 --access-logfile -"]

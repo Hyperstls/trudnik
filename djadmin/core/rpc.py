@@ -36,34 +36,27 @@ def call_rpc_void(name: str, *args: Any) -> None:
         cur.fetchall()
 
 
-def sync_user_skills_raw(user_id, skill_ids) -> int:
-    """Атомарная замена user_skills (в LIVE-БД нет RPC sync_user_skills — миграция 144
-    применена не полностью), поэтому DELETE+INSERT в транзакции вызова."""
+def _replace_through_raw(table: str, owner_col: str, owner_id, other_col: str, other_ids) -> int:
+    """Атомарная замена строк составного-PK M2M (user_skills/job_skills): DELETE+INSERT."""
     from django.db import transaction
 
     with transaction.atomic():
         with connection.cursor() as cur:
-            cur.execute("DELETE FROM user_skills WHERE user_id = %s", [user_id])
-            for skill_id in skill_ids:
+            cur.execute("DELETE FROM %s WHERE %s = %%s" % (table, owner_col), [owner_id])
+            for other_id in other_ids:
                 cur.execute(
-                    "INSERT INTO user_skills (user_id, skill_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
-                    [user_id, skill_id],
+                    "INSERT INTO %s (%s, %s) VALUES (%%s, %%s) ON CONFLICT DO NOTHING" % (table, owner_col, other_col),
+                    [owner_id, other_id],
                 )
-            cur.execute("SELECT count(*) FROM user_skills WHERE user_id = %s", [user_id])
+            cur.execute("SELECT count(*) FROM %s WHERE %s = %%s" % (table, owner_col), [owner_id])
             return cur.fetchone()[0]
+
+
+def sync_user_skills_raw(user_id, skill_ids) -> int:
+    """Замена user_skills (в LIVE-БД нет RPC sync_user_skills — миграция 144
+    применена не полностью), поэтому raw-SQL в транзакции."""
+    return _replace_through_raw("user_skills", "user_id", user_id, "skill_id", skill_ids)
 
 
 def sync_job_skills_raw(job_id, skill_ids) -> int:
-    """Атомарная замена job_skills (составной PK, отдельного RPC нет)."""
-    from django.db import transaction
-
-    with transaction.atomic():
-        with connection.cursor() as cur:
-            cur.execute("DELETE FROM job_skills WHERE job_id = %s", [job_id])
-            for skill_id in skill_ids:
-                cur.execute(
-                    "INSERT INTO job_skills (job_id, skill_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
-                    [job_id, skill_id],
-                )
-            cur.execute("SELECT count(*) FROM job_skills WHERE job_id = %s", [job_id])
-            return cur.fetchone()[0]
+    return _replace_through_raw("job_skills", "job_id", job_id, "skill_id", skill_ids)
