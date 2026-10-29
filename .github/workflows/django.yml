@@ -1,0 +1,37 @@
+name: django
+
+# Django-компаньон (djadmin/): быстрые проверки без БД.
+# Полные DB-тесты — локально против клона dev-БД (scripts/dj_test_clone.py),
+# т.к. схема живёт в SQL-миграциях с триггерами/RPC (см. docs/django_migration_prompt.md ADR-8).
+on:
+  push:
+    branches: [main-jango]
+    paths:
+      - "djadmin/**"
+      - "Dockerfile.djadmin"
+      - "migrations/148_django_admin_role.sql"
+      - ".github/workflows/django.yml"
+  pull_request:
+    branches: [main-jango]
+    paths:
+      - "djadmin/**"
+      - "Dockerfile.djadmin"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: djadmin/requirements.txt
+      - name: Установка зависимостей
+        run: pip install -r djadmin/requirements.txt
+      - name: compileall
+        run: python -m compileall -q djadmin
+      - name: Django check
+        run: python djadmin/manage.py check
+      - name: Дрейф миграций (unmanaged — ожидаемо пусто)
+        run: python djadmin/manage.py makemigrations core --check --dry-run

@@ -102,3 +102,6 @@ venv/
 
 # Node (Tailwind build: npm run build:css)
 node_modules/
+
+# Django-компаньон (djadmin)
+djadmin/_static/

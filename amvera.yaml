@@ -5,7 +5,9 @@ meta:
     name: docker
     version: latest
 build:
-  dockerfile: Dockerfile
+  # Ветка main-jango: Django-компаньон (админка + публичные read-only страницы).
+  # Ветка main продолжает деплоить Flask-образ (Dockerfile) проекта trudnik.
+  dockerfile: Dockerfile.djadmin
   skip: false
 run:
   persistenceMount: /data

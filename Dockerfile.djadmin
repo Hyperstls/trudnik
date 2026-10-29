@@ -1,0 +1,41 @@
+# Django-компаньон «Трудник» (ветка main-jango,.slug trudnik-dj).
+# Моделируется по корневому Dockerfile (python:3.12-slim, /data, appuser, /ready).
+FROM python:3.12-slim
+
+WORKDIR /app
+
+ARG GIT_VERSION=dev
+ENV GIT_VERSION=$GIT_VERSION
+
+# Amvera: изменяемые runtime-файлы — под /data (persistent volume)
+ENV PIP_CACHE_DIR=/data/pip-cache \
+    PYTHONPYCACHEPREFIX=/data/pycache \
+    DEPLOYMENT_ENV=production \
+    DJANGO_SETTINGS_MODULE=config.settings \
+    PYTHONPATH=/app/djadmin \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    DJANGO_STATIC_ROOT=/data/static
+
+# Системные + Python-зависимости (свой файл — Flask-образ не зависит от Django)
+COPY djadmin/requirements.txt /app/djadmin/requirements.txt
+RUN apt-get update && apt-get install -y --no-install-recommends libpq5 && \
+    pip install -r /app/djadmin/requirements.txt && \
+    rm -rf /var/lib/apt/lists/*
+
+# Код (корневой .dockerignore урезает контекст: archive/, tests/, docs/ и т.п.)
+COPY . .
+
+RUN python -m compileall -q /app/djadmin && \
+    useradd -m -u 1000 appuser && \
+    mkdir -p /data/pip-cache /data/pycache /data/static && \
+    chown -R appuser:appuser /app /data
+USER appuser
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+
+# collectstatic + migrate (только системные таблицы django_*) + gunicorn
+CMD ["sh", "-c", "python /app/djadmin/manage.py collectstatic --noinput --clear && python /app/djadmin/manage.py migrate --noinput && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60 --access-logfile -"]
