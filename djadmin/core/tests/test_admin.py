@@ -69,11 +69,6 @@ class AdminAccessTests(TestCase):
         self.assertContains(response, "Навыки")
 
 
-class AdminLoginPageTests(TestCase):
-    def test_login_page_renders(self):
-        response = self.client.get("/admin/login/")
-        self.assertEqual(response.status_code, 200)
-
     def test_env_page_staff_only(self):
         url = "/admin/env/"
         self.assertEqual(self.client.get(url).status_code, 302)  # аноним
@@ -84,3 +79,8 @@ class AdminLoginPageTests(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "PATH")
+
+class AdminLoginPageTests(TestCase):
+    def test_login_page_renders(self):
+        response = self.client.get("/admin/login/")
+        self.assertEqual(response.status_code, 200)
