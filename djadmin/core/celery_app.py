@@ -31,3 +31,6 @@ app.conf.beat_schedule = {
         "schedule": 86400.0,
     },
 }
+
+app.autodiscover_tasks(["core"])
+import core.tasks  # noqa: E402,F401 — явная регистрация (worker сразу видит имена)
