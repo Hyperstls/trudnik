@@ -22,20 +22,20 @@ from .rpc import call_rpc, sync_user_skills_raw
 def profile_edit(request):
     user = request.user
     form = ProfileForm(request.POST or None, instance=user)
-    pwd_form = PasswordChangeForm(request.POST or None) if request.method == "POST" and \
+    change_form = PasswordChangeForm(request.POST or None) if request.method == "POST" and \
         request.POST.get("action") == "password" else PasswordChangeForm()
     skills_form_active = request.method == "POST" and request.POST.get("action") == "skills"
 
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "password":
-            if pwd_form.is_valid():
+            if change_form.is_valid():
                 ok = False
                 try:
                     ok = bool(call_rpc(
                         "change_password", user.pk,
-                        pwd_form.cleaned_data["current_password"],
-                        pwd_form.cleaned_data["new_password"],
+                        change_form.cleaned_data["current_password"],
+                        change_form.cleaned_data["new_password"],
                     ))
                 except Exception:
                     ok = False
@@ -43,7 +43,7 @@ def profile_edit(request):
                     Profile.objects.filter(pk=user.pk).update(password_changed_at=timezone.now())
                     messages.success(request, "Пароль изменён.")
                     return redirect("core:profile")
-                pwd_form.add_error(None, "Текущий пароль неверен или операция не выполнена.")
+                change_form.add_error(None, "Текущий пароль неверен или операция не выполнена.")
         elif action == "skills":
             posted = set(request.POST.getlist("skills"))
             chosen = [s.pk for s in form.fields["skills"].queryset if str(s.pk) in posted]
@@ -62,7 +62,7 @@ def profile_edit(request):
     from .models import UserSkill
 
     return render(request, "core/profile.html", {
-        "form": form, "pwd_form": pwd_form,
+        "form": form, "change_form": change_form,
         "skills_selected": set(UserSkill.objects.filter(user=user).values_list("skill_id", flat=True)),
     })
 

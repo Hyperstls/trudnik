@@ -20,6 +20,9 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    env:
+      # fail-safe дефолт settings — production; раннеру нужен development
+      DEPLOYMENT_ENV: development
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

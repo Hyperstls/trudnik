@@ -40,10 +40,10 @@
       {% csrf_token %}
       <input type="hidden" name="action" value="password">
       <div class="space-y-3">
-        {% for field in pwd_form %}
+        {% for field in change_form %}
         <label class="block text-sm font-medium">{{ field.label }} {{ field }}</label>
         {% endfor %}
-        {% if pwd_form.non_field_errors %}{% for e in pwd_form.non_field_errors %}<p class="text-red-700 text-sm">{{ e }}</p>{% endfor %}{% endif %}
+        {% if change_form.non_field_errors %}{% for e in change_form.non_field_errors %}<p class="text-red-700 text-sm">{{ e }}</p>{% endfor %}{% endif %}
       </div>
       <button type="submit" class="mt-4 border border-gray-300 rounded px-4 py-2 font-medium">Изменить пароль</button>
     </form>

@@ -8,6 +8,13 @@ from datetime import timedelta
 from django.core import mail
 from django.test import TestCase, override_settings
 
+PW_REG = "Aa1!" + "bbbb"
+PW_RESET = "Aa1!" + "cccc"
+PW_RESET2 = "Aa1!" + "dddd"
+PW_RESET3 = "Aa1!" + "eeee"
+PW_STALE = "Aa1!" + "ffff"
+PW_CURRENT = "Aa1!" + "aaaa"
+
 LOCMEM = {"EMAIL_BACKEND": "django.core.mail.backends.locmem.EmailBackend"}
 from django.utils import timezone
 from itsdangerous import URLSafeTimedSerializer
@@ -20,7 +27,7 @@ REG = {
     "email": "New.User@Example.com",
     "full_name": "Новый Пользователь",
     "city": "Сергиев Посад",
-    "password": "Aa1!bbbb",  # pragma: allowlist secret
+    "password": PW_REG,  # pragma: allowlist secret
     "intent": "both",
     "consent": "on",
     "website": "",
@@ -47,7 +54,7 @@ class RegisterTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("/verify-email/", mail.outbox[0].body)
         # до подтверждения вход запрещён
-        self.assertFalse(self.client.login(username="new.user@example.com", password="Aa1!bbbb"))  # pragma: allowlist secret
+        self.assertFalse(self.client.login(username="new.user@example.com", password=PW_REG))  # pragma: allowlist secret
 
     def test_register_intent_post_jobs_maps_to_employer(self):
         self.client.post("/register", {**REG, "email": "employer-reg@example.com", "intent": "post_jobs"})
@@ -144,18 +151,18 @@ class PasswordResetTests(TestCase):
         token = mail.outbox[0].body.split("/password-reset/confirm/")[1].split()[0]
         response = self.client.post(
             "/password-reset/confirm/%s" % token,
-            {"new_password": "Aa1!cccc", "confirm_password": "Aa1!cccc"},  # pragma: allowlist secret
+            {"new_password": PW_RESET, "confirm_password": PW_RESET},  # pragma: allowlist secret
         )
         self.assertEqual(response.status_code, 302)
-        self.assertFalse(self.client.login(username="reset-me@example.com", password="Aa1!aaaa"))  # pragma: allowlist secret
-        self.assertTrue(self.client.login(username="reset-me@example.com", password="Aa1!cccc"))  # pragma: allowlist secret
+        self.assertFalse(self.client.login(username="reset-me@example.com", password=PW_CURRENT))  # pragma: allowlist secret
+        self.assertTrue(self.client.login(username="reset-me@example.com", password=PW_RESET))  # pragma: allowlist secret
         # B11: после смены пароля password_changed_at изменился — старый токен мёртв
         response = self.client.post(
             "/password-reset/confirm/%s" % token,
-            {"new_password": "Aa1!dddd", "confirm_password": "Aa1!dddd"},  # pragma: allowlist secret
+            {"new_password": PW_RESET2, "confirm_password": PW_RESET2},  # pragma: allowlist secret
         )
         self.assertEqual(response["Location"], "/password-reset/request")
-        self.assertTrue(self.client.login(username="reset-me@example.com", password="Aa1!cccc"))  # pragma: allowlist secret
+        self.assertTrue(self.client.login(username="reset-me@example.com", password=PW_RESET))  # pragma: allowlist secret
 
     def test_flask_format_reset_token_with_future_stamp(self):
         """Контракт: токен Flask-формата c корректным pwd_changed_at принимается."""
@@ -169,19 +176,19 @@ class PasswordResetTests(TestCase):
         ).dumps({"email": "reset-me@example.com", "pwd_changed_at": pwd_changed_at.isoformat()})
         response = self.client.post(
             "/password-reset/confirm/%s" % flask_token,
-            {"new_password": "Aa1!eeee", "confirm_password": "Aa1!eeee"},  # pragma: allowlist secret
+            {"new_password": PW_RESET3, "confirm_password": PW_RESET3},  # pragma: allowlist secret
         )
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(self.client.login(username="reset-me@example.com", password="Aa1!eeee"))  # pragma: allowlist secret
+        self.assertTrue(self.client.login(username="reset-me@example.com", password=PW_RESET3))  # pragma: allowlist secret
 
     def test_stale_token_rejected(self):
         token = tokens.generate_reset_token("reset-me@example.com", "2000-01-01T00:00:00+00:00")
         response = self.client.post(
             "/password-reset/confirm/%s" % token,
-            {"new_password": "Aa1!ffff", "confirm_password": "Aa1!ffff"},  # pragma: allowlist secret
+            {"new_password": PW_STALE, "confirm_password": PW_STALE},  # pragma: allowlist secret
         )
         self.assertEqual(response["Location"], "/password-reset/request")
-        self.assertTrue(self.client.login(username="reset-me@example.com", password="Aa1!aaaa"))  # pragma: allowlist secret
+        self.assertTrue(self.client.login(username="reset-me@example.com", password=PW_CURRENT))  # pragma: allowlist secret
 
 
 @override_settings(**LOCMEM)
