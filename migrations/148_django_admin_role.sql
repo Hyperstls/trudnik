@@ -23,13 +23,13 @@ $$;
 -- DML на все существующие таблицы (включая будущие системные таблицы Django,
 -- которые создаются в public: django_session, django_admin_log, auth_group, ...).
 GRANT USAGE, CREATE ON SCHEMA public TO trudnik_dj;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO trudnik_dj;
+GRANT SELECT, INSERT, UPDATE, DELETE, REFERENCES ON ALL TABLES IN SCHEMA public TO trudnik_dj;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO trudnik_dj;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO trudnik_dj;
 
 -- Права по умолчанию для будущих объектов, создаваемых владельцем схемы (trudnik):
 ALTER DEFAULT PRIVILEGES FOR ROLE trudnik IN SCHEMA public
-    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO trudnik_dj;
+    GRANT SELECT, INSERT, UPDATE, DELETE, REFERENCES ON TABLES TO trudnik_dj;
 ALTER DEFAULT PRIVILEGES FOR ROLE trudnik IN SCHEMA public
     GRANT USAGE ON SEQUENCES TO trudnik_dj;
 ALTER DEFAULT PRIVILEGES FOR ROLE trudnik IN SCHEMA public
