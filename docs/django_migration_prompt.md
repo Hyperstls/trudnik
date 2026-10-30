@@ -223,8 +223,15 @@ docker build -f Dockerfile.djadmin -t trudnik-dj:local .
   случай Flask реализует проверками+upsert — зеркалировано) и чат: комнаты по
   заявке (доступ = участие, паритет chat_access), отправка с идемпотентностью
   client_message_id (savepoint), JSON-poll ?after=<id>, список чатов. Тестов 115.
-- Фаза 2д (осталось): мессенджер-верификация MAX/Telegram; фаза 3 — WS/push/
-  Celery/выключение Flask.
+- **Фаза 2д (выполнена 2026-10-30):** web-уведомления — /notifications (только
+  свои, пагинация), отметить прочитанным/все, удалить, JSON
+  /api/notifications/unread-count, бейдж в навигации (context processor).
+  Вставок djadmin не делает — уведомления создаёт Flask-конвейер (RLS:
+  INSERT только service_role). Тестов 123.
+- Фаза 2е (осталось): мессенджер-верификация MAX/Telegram — ТРЕБУЕТ решений:
+  кэш/Redis для одноразовых токенов (Django CACHES: RedisCache при REDIS_URL
+  либо DB-cache), webhook-эндпоинт без CSRF с секретом MAX_WEBHOOK_SECRET,
+  RPC verify_via_messenger; фаза 3 — WS/push/Celery/выключение Flask.
 - MCP-окружение ZCode (2026-10-30): amvera (msk1), redis (local docker),
   postgres (read-only dev-БД), context7 (доки). Осознанно НЕ ставились:
   filesystem/playwright/git/github/sequentialthinking — перекрываются

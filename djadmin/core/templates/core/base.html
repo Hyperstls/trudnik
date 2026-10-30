@@ -20,6 +20,7 @@
           <a href="{% url 'core:my_applications' %}" class="hover:underline">Мои отклики</a>
           <a href="{% url 'core:invitations' %}" class="hover:underline">Приглашения</a>
           <a href="{% url 'core:chats' %}" class="hover:underline">Чаты</a>
+          <a href="{% url 'core:notifications' %}" class="hover:underline">Уведомления{% if unread_count %} <span class="bg-gray-900 text-white rounded-full px-2 text-xs">{{ unread_count }}</span>{% endif %}</a>
           <a href="{% url 'core:favorite_jobs' %}" class="hover:underline">Избранное</a>
           <a href="{% url 'core:profile' %}" class="hover:underline">Профиль</a>
           <span class="text-gray-500">{{ user.full_name }}</span>

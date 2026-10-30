@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_auth, views_flow, views_interact, views_profile
+from . import views, views_auth, views_flow, views_interact, views_notify, views_profile
 
 app_name = "core"
 
@@ -35,6 +35,11 @@ urlpatterns = [
     path("chat/<uuid:app_id>/send", views_interact.chat_send, name="chat_send"),
     path("api/messages/<uuid:app_id>/poll", views_interact.chat_poll, name="chat_poll"),
     path("rate/<uuid:app_id>", views_interact.rate_participant, name="rate_participant"),
+    path("notifications", views_notify.notifications_list, name="notifications"),
+    path("notifications/read-all", views_notify.notifications_mark_all_read, name="notifications_mark_all_read"),
+    path("notifications/<uuid:notification_id>/read", views_notify.notification_mark_read, name="notification_mark_read"),
+    path("notifications/<uuid:notification_id>/delete", views_notify.notification_delete, name="notification_delete"),
+    path("api/notifications/unread-count", views_notify.notifications_unread_count, name="notifications_unread_count"),
     path("login", views_flow.login_view, name="login"),
     path("logout", views_flow.logout_view, name="logout"),
     path("register", views_auth.register, name="register"),
