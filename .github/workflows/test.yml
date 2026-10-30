@@ -118,7 +118,7 @@ jobs:
 
       # ── Ключ Flask и Yandex Maps ───────────────────────────────────────
 
-      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      SECRET_KEY: ${{ secrets.SECRET_KEY || 'ci-test-secret' }}  # фолбэк: GitHub-секрет может не быть задан
 
       YANDEX_MAPS_API_KEY: ${{ secrets.YANDEX_MAPS_API_KEY }}
 
@@ -543,7 +543,7 @@ jobs:
 
       WEBSOCKET_PORT: '8001'
 
-      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      SECRET_KEY: ${{ secrets.SECRET_KEY || 'ci-test-secret' }}  # фолбэк: GitHub-секрет может не быть задан
 
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
