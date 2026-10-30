@@ -105,3 +105,13 @@ node_modules/
 
 # Django-компаньон (djadmin)
 djadmin/_static/
+
+# Мусор/бэкапы — не в git
+Trudnik backup/
+in
+*.png
+trash/
+twa-project/
+archive/
+certs/
+uploads/
