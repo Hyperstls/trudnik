@@ -31,7 +31,7 @@ class NotificationTests(TestCase):
         make_notification(self.user)
         make_notification(self.user, is_read=True)
         response = self.client.get("/")
-        self.assertContains(response, ">1</span>")  # ровно один непрочитанный
+        self.assertContains(response, ">1</output>")  # ровно один непрочитанный
 
     def test_mark_read(self):
         n = make_notification(self.user)
