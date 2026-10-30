@@ -1,0 +1,22 @@
+{% comment %}
+Логотип «Трудник»: незамкнутый круг + ихтис (рыба) — точная копия макроса
+trudnik_logo из Flask templates/_icons.html (main-flask).
+Параметры: size (px, default 36), id_suffix (уникальность градиента), mono (без градиента).
+Палитра: градиент #fbbf24 → #b45309; монохром #d97706.
+Геометрия: круг c(300,280) r150, зазор ~50° сверху; ихтис: хвост (215,280), голова (420,280).
+{% endcomment %}
+<svg width="{{ size|default:36 }}" height="{{ size|default:36 }}" viewBox="132 112 336 336" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  {% if not mono %}
+  <defs>
+    <linearGradient id="logoGrad-{{ id_suffix|default:'a' }}" gradientUnits="userSpaceOnUse" x1="150" y1="120" x2="460" y2="520">
+      <stop offset="0" stop-color="#fbbf24"/>
+      <stop offset="1" stop-color="#b45309"/>
+    </linearGradient>
+  </defs>
+  {% endif %}
+  <g fill="none" stroke="{% if mono %}#d97706{% else %}url(#logoGrad-{{ id_suffix|default:'a' }}){% endif %}" stroke-width="15" stroke-linecap="round">
+    <path d="M 236.6 144.1 A 150 150 0 1 0 363.4 144.1"/>
+    <path d="M 178 248 Q 197 265 215 280 Q 317 366 420 280"/>
+    <path d="M 178 312 Q 197 295 215 280 Q 317 194 420 280"/>
+  </g>
+</svg>

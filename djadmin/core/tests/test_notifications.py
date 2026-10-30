@@ -30,7 +30,7 @@ class NotificationTests(TestCase):
     def test_unread_badge_context(self):
         make_notification(self.user)
         make_notification(self.user, is_read=True)
-        response = self.client.get("/")
+        response = self.client.get("/jobs")
         self.assertContains(response, ">1</output>")  # ровно один непрочитанный
 
     def test_mark_read(self):

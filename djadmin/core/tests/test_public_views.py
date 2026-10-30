@@ -30,10 +30,12 @@ class PublicViewsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["db"])
 
-    def test_home(self):
+    def test_home_redirects_to_jobs_feed(self):
+        """Flask-паритет: / — лента заданий (redirect на /jobs)."""
         response = self.client.get("/")
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Уборка территории")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "/jobs")
+        self.assertContains(self.client.get("/jobs"), "Уборка территории")
 
     def test_jobs_list_and_filters(self):
         self.assertEqual(self.client.get("/jobs").status_code, 200)

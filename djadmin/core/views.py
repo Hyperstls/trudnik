@@ -8,8 +8,9 @@ Profile.objects.public_workers()/public_visible(). Публичные стран
 from django.conf import settings
 from django.db import connection
 from django.http import Http404, HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.core.paginator import Paginator
-from django.shortcuts import get_object_or_404, render
 
 from .models import Application, Job, JobFavorite, Profile, SitePage
 
@@ -44,8 +45,8 @@ def health(request):
 
 
 def home(request):
-    jobs = Job.objects.public().order_by(_promoted_first(), "-created_at")[:6]
-    return render(request, "core/home.html", {"jobs": jobs})
+    """Flask-паритет: / — лента заданий (не отдельный лендинг)."""
+    return redirect("core:jobs")
 
 
 def _promoted_first():
@@ -76,17 +77,33 @@ def jobs_list(request):
     except Exception:
         pass  # мусор в параметре — игнорируем фильтр
     sort = request.GET.get("sort")
-    if sort == "payment":
+    if sort == "price_asc":
+        from django.db.models import F
+
+        qs = qs.order_by(F("payment_amount").asc(nulls_last=True))
+    elif sort == "price_desc":
         from django.db.models import F
 
         qs = qs.order_by(F("payment_amount").desc(nulls_last=True))
     elif sort == "date":
         qs = qs.order_by("date_time")
+    else:
+        sort = "newest"
 
     page = Paginator(qs, PAGE_SIZE).get_page(request.GET.get("page"))
+    applied_ids = set()
+    if request.user.is_authenticated:
+        applied_ids = set(
+            str(pk) for pk in Application.objects.filter(
+                worker=request.user, job__in=page.object_list
+            ).exclude(status__in=("withdrawn", "cancelled")).values_list("job_id", flat=True)
+        )
     return render(request, "core/jobs_list.html", {
         "page": page, "q": q, "city": city, "status": status,
-        "payment_min": payment_min, "sort": sort or "new",
+        "payment_min": payment_min, "sort": sort,
+        "sort_options": (("newest", "Новые"), ("price_asc", "Дешевле"), ("price_desc", "Дороже")),
+        "applied_ids": applied_ids,
+        "now": timezone.now(),
     })
 
 
