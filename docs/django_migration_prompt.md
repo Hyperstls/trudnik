@@ -210,8 +210,18 @@ docker build -f Dockerfile.djadmin -t trudnik-dj:local .
   Контрактная проверка вскрыла баг Flask (reset звал несуществующую перегрузку
   change_password(p_email, p_new_password)) — миграция 149 добавляет её.
   Токены itsdangerous кросс-совместимы с Flask в обе стороны. Тестов всего 87.
-- Фаза 2в (осталось): приглашения, оценки (rate_user_atomic + UI), избранное
-  людей/чёрный список, чат (long-poll), редактирование профиля.
+- **Фаза 2в (выполнена 2026-10-30):** /profile (анкета + навыки raw-SQL +
+  смена пароля RPC change_password(uuid,old,new) c password_changed_at-штампом,
+  паритет B10), избранное людей + чёрный список (toggle/страницы), приглашения
+  (инвайт с карточки трудника: только своё OPEN-задание и видимый трудник;
+  дубль через savepoint; принятие RPC accept_invitation_atomic; decline;
+  входящие/исходящие). Тестов всего 103.
+- Фаза 2г (осталось): оценки (rate_user_atomic + UI), чат (long-poll),
+  мессенджер-верификация; фаза 3 — WS/push/Celery/выключение Flask.
+- MCP-окружение ZCode (2026-10-30): amvera (msk1), redis (local docker),
+  postgres (read-only dev-БД), context7 (доки). Осознанно НЕ ставились:
+  filesystem/playwright/git/github/sequentialthinking — перекрываются
+  нативными инструментами, плагином browser-use, Bash+gh CLI.
 - Фаза 3: WebSocket (channels), PWA/push, перенос Celery-задач, выключение Flask,
   RLS per-request (`SET LOCAL request.jwt.claims` в транзакции запроса — строгий
   паритет с PostgREST).
