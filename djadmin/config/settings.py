@@ -188,6 +188,24 @@ LOGIN_URL = "/login"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/jobs"
 
+# ── Email (SMTP из env; без SMTP_HOST — console-бэкенд для dev) ────────────
+_smtp_host = os.getenv("SMTP_HOST", "")
+if _smtp_host:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = _smtp_host
+    EMAIL_PORT = int(os.getenv("SMTP_PORT", "587"))
+    EMAIL_HOST_USER = os.getenv("SMTP_USERNAME", "")
+    EMAIL_HOST_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+    EMAIL_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
+    EMAIL_USE_SSL = os.getenv("SMTP_USE_SSL", "false").lower() == "true"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", "notifications@trudnik.ru")
+
+# ── Yandex SmartCaptcha (включена при наличии серверного ключа; fail-closed) ─
+SMARTCAPTCHA_SERVER_KEY = os.getenv("SMARTCAPTCHA_SERVER_KEY", "")
+SMARTCAPTCHA_CLIENT_KEY = os.getenv("SMARTCAPTCHA_CLIENT_KEY", "")
+
 # ── Локализация ─────────────────────────────────────────────────────────────
 LANGUAGE_CODE = "ru-ru"
 TIME_ZONE = "Europe/Moscow"

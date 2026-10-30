@@ -1,0 +1,30 @@
+{% extends "core/base.html" %}
+{% block title %}Регистрация — Трудник{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto bg-white border border-gray-200 rounded-lg p-6 mt-4">
+  <h1 class="text-2xl font-bold mb-4">Регистрация</h1>
+  <form method="post" class="space-y-4">
+    {% csrf_token %}
+    {% if form.non_field_errors %}{% for e in form.non_field_errors %}<p class="text-red-700 text-sm">{{ e }}</p>{% endfor %}{% endif %}
+    {% for field in form %}
+      {% if field.is_hidden %}
+        {{ field }}{% if field.name == "website" %}<span class="hidden" aria-hidden="true"></span>{% endif %}
+      {% else %}
+      <label class="block text-sm font-medium">
+        {{ field.label }}
+        {% if field.field.required %}<span class="text-red-600">*</span>{% endif %}
+        {{ field }}
+        {% for error in field.errors %}<span class="text-red-700 block">{{ error }}</span>{% endfor %}
+      </label>
+      {% endif %}
+    {% endfor %}
+    {% if captcha_client_key %}
+    <script src="https://smartcaptcha.yandexcloud.net/captcha.js" defer></script>
+    <div class="smart-captcha" data-sitekey="{{ captcha_client_key }}" data-callback="onCaptcha"></div>
+    {% endif %}
+    <button type="submit" class="w-full bg-gray-900 text-white rounded px-4 py-2 font-medium">Зарегистрироваться</button>
+  </form>
+  <p class="text-sm text-gray-600 mt-4">Уже есть аккаунт? <a href="{% url 'core:login' %}" class="underline">Войти</a></p>
+  <p class="text-xs text-gray-500 mt-2">Регистрируясь, вы соглашаетесь на обработку персональных данных (152-ФЗ).</p>
+</div>
+{% endblock %}

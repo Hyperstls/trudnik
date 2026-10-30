@@ -10,6 +10,10 @@
     <input type="hidden" name="next" value="{{ request.GET.next|default:'' }}">
     <button type="submit" class="w-full bg-gray-900 text-white rounded px-4 py-2 font-medium">Войти</button>
   </form>
-  <p class="text-sm text-gray-600 mt-4">Регистрация — на основной платформе «Трудник».</p>
+  <p class="text-sm text-gray-600 mt-4">
+    Нет аккаунта? <a href="{% url 'core:register' %}" class="underline">Зарегистрироваться</a> ·
+    <a href="{% url 'core:password_reset_request' %}" class="underline">Забыли пароль?</a> ·
+    <a href="{% url 'core:verify_email_resend' %}" class="underline">Письмо не пришло</a>
+  </p>
 </div>
 {% endblock %}

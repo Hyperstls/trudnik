@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_flow
+from . import views, views_auth, views_flow
 
 app_name = "core"
 
@@ -23,6 +23,11 @@ urlpatterns = [
     path("favorite-jobs", views_flow.favorite_jobs, name="favorite_jobs"),
     path("login", views_flow.login_view, name="login"),
     path("logout", views_flow.logout_view, name="logout"),
+    path("register", views_auth.register, name="register"),
+    path("verify-email/resend", views_auth.verify_email_resend, name="verify_email_resend"),
+    path("verify-email/<str:token>", views_auth.verify_email, name="verify_email"),
+    path("password-reset/request", views_auth.password_reset_request, name="password_reset_request"),
+    path("password-reset/confirm/<str:token>", views_auth.password_reset_confirm, name="password_reset_confirm"),
     path("terms", views.legal_page, {"slug": "terms"}, name="terms"),
     path("privacy", views.legal_page, {"slug": "privacy"}, name="privacy"),
     path("safety", views.legal_page, {"slug": "safety"}, name="safety"),
