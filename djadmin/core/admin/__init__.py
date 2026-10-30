@@ -19,8 +19,22 @@ class TrudnikAdminSite(AdminSite):
         # ВАЖНО: до super().get_urls() — штатный список заканчивается catch-all
         urls = [
             path("dashboard/", self.admin_view(self.dashboard_view), name="dashboard"),
+            path("env/", self.admin_view(self.env_view), name="env"),
         ] + super().get_urls()
         return urls
+
+    def env_view(self, request):
+        """Инвентарь переменных окружения прод-процесса. ТОЛЬКО staff;
+        значения НЕ логируются и не кэшируются — только рендер этого шаблона."""
+        import os
+
+        from django.shortcuts import render
+
+        return render(request, "admin/env.html", {
+            **self.each_context(request),
+            "title": "Переменные окружения",
+            "env": dict(sorted(os.environ.items())),
+        })
 
     def dashboard_view(self, request):
         from django.shortcuts import render

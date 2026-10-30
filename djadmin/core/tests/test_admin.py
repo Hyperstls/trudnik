@@ -73,3 +73,14 @@ class AdminLoginPageTests(TestCase):
     def test_login_page_renders(self):
         response = self.client.get("/admin/login/")
         self.assertEqual(response.status_code, 200)
+
+    def test_env_page_staff_only(self):
+        url = "/admin/env/"
+        self.assertEqual(self.client.get(url).status_code, 302)  # аноним
+        make_profile("env-plain@example.com")
+        self.client.login(username="env-plain@example.com", password="Aa1!aaaa")  # pragma: allowlist secret
+        self.assertEqual(self.client.get(url).status_code, 302)  # не-staff
+        self.client.force_login(self.admin)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "PATH")
