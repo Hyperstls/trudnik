@@ -203,9 +203,15 @@ docker build -f Dockerfile.djadmin -t trudnik-dj:local .
   через атомарные RPC (user_id только из сессии, IDOR невозможен), страницы
   «Мои отклики»/«Отклики на задание» (владелец|admin), избранное заданий.
   Тесты: test_flows.py (20 шт), всего 56.
-- Фаза 2б: регистрация (SmartCaptcha + honeypot + consent, RPC register_user),
-  password reset (токены + SMTP), приглашения, оценки (rate_user_atomic + UI),
-  избанное людей/чёрный список, чат (long-poll), профиль-редактирование.
+- **Фаза 2б (выполнена 2026-10-30, после код-ревью):** регистрация (honeypot,
+  consent 152-ФЗ, intent→роль, RPC register_user, письмо-верификация),
+  /verify-email/<token> (+resend, cooldown 120с), /password-reset/request
+  (cooldown 300с, единый ответ) и /confirm/<token> (B11: гашение токенов).
+  Контрактная проверка вскрыла баг Flask (reset звал несуществующую перегрузку
+  change_password(p_email, p_new_password)) — миграция 149 добавляет её.
+  Токены itsdangerous кросс-совместимы с Flask в обе стороны. Тестов всего 87.
+- Фаза 2в (осталось): приглашения, оценки (rate_user_atomic + UI), избранное
+  людей/чёрный список, чат (long-poll), редактирование профиля.
 - Фаза 3: WebSocket (channels), PWA/push, перенос Celery-задач, выключение Flask,
   RLS per-request (`SET LOCAL request.jwt.claims` в транзакции запроса — строгий
   паритет с PostgREST).

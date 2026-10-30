@@ -18,6 +18,7 @@ import psycopg2
 REPO = Path(__file__).resolve().parent.parent
 
 # тот же приоритет, что у djadmin/config/settings.py
+_url = os.getenv("DATABASE_URL", "")
 if not _url and (REPO / ".env").exists():
     for line in (REPO / ".env").read_text(encoding="utf-8").splitlines():
         line = line.strip().rstrip("\r")
