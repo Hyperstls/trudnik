@@ -33,5 +33,29 @@
   {% else %}
   <p class="mt-5 text-sm text-gray-500">Контакты открываются после отклика на основной платформе.</p>
   {% endif %}
+
+  {% if user.is_authenticated and p.id != user.pk %}
+  <div class="mt-5 border-t border-gray-200 pt-4 space-y-3">
+    {% if my_open_jobs %}
+    <form method="post" action="{% url 'core:invite_worker' p.id %}" class="flex flex-wrap gap-2 items-end">
+      {% csrf_token %}
+      <label class="text-sm flex-1">Пригласить на моё задание
+        <select name="job_id" class="w-full border border-gray-300 rounded px-2 py-1 mt-1 text-sm" required>
+          {% for j in my_open_jobs %}<option value="{{ j.pk }}">{{ j.work_type|default:"Задание" }} · {{ j.date_time|date:"d.m" }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="bg-gray-900 text-white rounded px-3 py-2 text-sm font-medium">Пригласить</button>
+    </form>
+    {% endif %}
+    <div class="flex gap-2 text-sm">
+      <form method="post" action="{% url 'core:people_favorite_toggle' p.id %}">{% csrf_token %}
+        <button class="border border-gray-300 rounded px-3 py-1">{{ is_fav_person|yesno:"В избранном,В избранное" }}</button>
+      </form>
+      <form method="post" action="{% url 'core:people_block' p.id %}">{% csrf_token %}
+        <button class="border border-red-300 text-red-700 rounded px-3 py-1">Заблокировать</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
 </article>
 {% endblock %}

@@ -1,0 +1,53 @@
+{% extends "core/base.html" %}
+{% block title %}Мой профиль — Трудник{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6 mt-2">
+
+  <section class="bg-white border border-gray-200 rounded-lg p-6">
+    <h1 class="text-2xl font-bold mb-4">Мой профиль</h1>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="profile">
+      <div class="space-y-3">
+        {% for field in form %}
+          {% if field.name != "skills" %}
+          <label class="block text-sm font-medium">
+            {{ field.label }}
+            {{ field }}
+            {% for error in field.errors %}<span class="text-red-700 block">{{ error }}</span>{% endfor %}
+          </label>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <div class="mt-4">
+        <h2 class="font-semibold mb-1 text-sm">Навыки</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-1 text-sm">
+          {% for choice in form.skills.field.queryset %}
+          <label class="flex items-center gap-2">
+            <input type="checkbox" name="skills" value="{{ choice.pk }}"
+                   {% if choice.pk in skills_selected %}checked{% endif %}> {{ choice.name }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <button type="submit" class="mt-4 bg-gray-900 text-white rounded px-4 py-2 font-medium">Сохранить профиль</button>
+    </form>
+  </section>
+
+  <section class="bg-white border border-gray-200 rounded-lg p-6">
+    <h2 class="text-lg font-bold mb-3">Смена пароля</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="password">
+      <div class="space-y-3">
+        {% for field in pwd_form %}
+        <label class="block text-sm font-medium">{{ field.label }} {{ field }}</label>
+        {% endfor %}
+        {% if pwd_form.non_field_errors %}{% for e in pwd_form.non_field_errors %}<p class="text-red-700 text-sm">{{ e }}</p>{% endfor %}{% endif %}
+      </div>
+      <button type="submit" class="mt-4 border border-gray-300 rounded px-4 py-2 font-medium">Изменить пароль</button>
+    </form>
+  </section>
+
+</div>
+{% endblock %}

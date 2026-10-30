@@ -18,7 +18,9 @@
           <a href="{% url 'core:job_create' %}" class="hover:underline">+ Задание</a>
           <a href="{% url 'core:my_jobs' %}" class="hover:underline">Мои задания</a>
           <a href="{% url 'core:my_applications' %}" class="hover:underline">Мои отклики</a>
+          <a href="{% url 'core:invitations' %}" class="hover:underline">Приглашения</a>
           <a href="{% url 'core:favorite_jobs' %}" class="hover:underline">Избранное</a>
+          <a href="{% url 'core:profile' %}" class="hover:underline">Профиль</a>
           <span class="text-gray-500">{{ user.full_name }}</span>
           <form method="post" action="{% url 'core:logout' %}" class="inline">{% csrf_token %}
             <button type="submit" class="hover:underline">Выйти</button>

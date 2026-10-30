@@ -1,0 +1,50 @@
+{% extends "core/base.html" %}
+{% block title %}Приглашения — Трудник{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Приглашения</h1>
+
+<h2 class="font-semibold mb-2">Мне</h2>
+{% if incoming %}
+<div class="grid gap-3 mb-8">
+  {% for inv in incoming %}
+  <article class="bg-white border border-gray-200 rounded-lg p-4 flex flex-wrap justify-between gap-3">
+    <div>
+      <a href="{% url 'core:job_detail' inv.job.pk %}" class="font-semibold hover:underline">{{ inv.job.work_type|default:"Задание" }}</a>
+      <p class="text-sm text-gray-600">{{ inv.job.organization_name }} · {{ inv.job.date_time|date:"d.m.Y H:i" }}</p>
+      {% if inv.message %}<p class="text-sm text-gray-700 mt-1">{{ inv.message }}</p>{% endif %}
+      <p class="text-sm mt-1">
+        {% if inv.status == 'pending' %}Ожидает ответа{% elif inv.status == 'accepted' %}Принято{% else %}Отклонено{% endif %}
+      </p>
+    </div>
+    {% if inv.status == 'pending' %}
+    <div class="flex gap-2 text-sm">
+      <form method="post" action="{% url 'core:invitation_respond' inv.pk 'accept' %}">{% csrf_token %}
+        <button class="bg-gray-900 text-white rounded px-3 py-1">Принять</button>
+      </form>
+      <form method="post" action="{% url 'core:invitation_respond' inv.pk 'decline' %}">{% csrf_token %}
+        <button class="border border-gray-300 rounded px-3 py-1">Отклонить</button>
+      </form>
+    </div>
+    {% endif %}
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<p class="text-gray-600 mb-8">Входящих приглашений нет.</p>
+{% endif %}
+
+<h2 class="font-semibold mb-2">Отправленные (по моим заданиям)</h2>
+{% if outgoing %}
+<div class="grid gap-3">
+  {% for inv in outgoing %}
+  <article class="bg-white border border-gray-200 rounded-lg p-4">
+    <p class="font-semibold">{{ inv.worker.full_name }}</p>
+    <p class="text-sm text-gray-600">{{ inv.job.work_type|default:"Задание" }} ·
+      {% if inv.status == 'pending' %}ожидает{% elif inv.status == 'accepted' %}принято{% else %}отклонено{% endif %}</p>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<p class="text-gray-600">Вы ещё никого не приглашали.</p>
+{% endif %}
+{% endblock %}

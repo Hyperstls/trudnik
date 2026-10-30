@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_auth, views_flow
+from . import views, views_auth, views_flow, views_profile
 
 app_name = "core"
 
@@ -21,6 +21,15 @@ urlpatterns = [
     path("my-jobs", views_flow.my_jobs, name="my_jobs"),
     path("my-applications", views_flow.my_applications, name="my_applications"),
     path("favorite-jobs", views_flow.favorite_jobs, name="favorite_jobs"),
+    path("favorite-people", views_profile.favorite_people, name="favorite_people"),
+    path("blacklist", views_profile.blacklist_view, name="blacklist"),
+    path("invitations", views_profile.invitations, name="invitations"),
+    path("profile", views_profile.profile_edit, name="profile"),
+    path("workers/<uuid:user_id>/invite", views_profile.invite_worker, name="invite_worker"),
+    path("workers/<uuid:user_id>/favorite", views_profile.people_favorite_toggle, name="people_favorite_toggle"),
+    path("workers/<uuid:user_id>/block", views_profile.people_block, name="people_block"),
+    path("workers/<uuid:user_id>/unblock", views_profile.people_unblock, name="people_unblock"),
+    path("invitations/<uuid:invitation_id>/<str:action>", views_profile.invitation_respond, name="invitation_respond"),
     path("login", views_flow.login_view, name="login"),
     path("logout", views_flow.logout_view, name="logout"),
     path("register", views_auth.register, name="register"),

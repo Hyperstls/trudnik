@@ -144,13 +144,22 @@ def worker_detail(request, user_id):
     )
     if profile is None:
         raise Http404("Профиль не найден")
-    from core.models import UserSkill
+    from core.models import Favorite, Job, UserSkill
 
     skills = list(
         UserSkill.objects.filter(user_id=profile["id"]).select_related("skill")
         .values_list("skill__name", flat=True)
     )
-    return render(request, "core/worker_detail.html", {"p": profile, "skills": skills})
+    context = {"p": profile, "skills": skills}
+    if request.user.is_authenticated and profile["id"] != request.user.pk:
+        context["my_open_jobs"] = list(
+            Job.objects.filter(employer=request.user, status=Job.Status.OPEN)
+            .order_by("date_time").values("id", "work_type", "date_time")[:20]
+        )
+        context["is_fav_person"] = Favorite.objects.filter(
+            user=request.user, target_id=profile["id"]
+        ).exists()
+    return render(request, "core/worker_detail.html", context)
 
 
 def legal_page(request, slug):
