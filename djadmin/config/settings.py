@@ -43,10 +43,11 @@ CSRF_TRUSTED_ORIGINS = (
 
 # ── База данных ─────────────────────────────────────────────────────────────
 def _database_url() -> dict:
-    """DATABASE_URL (с %-декодированием) или PG*-переменные (фолбэк как у Flask)."""
+    """DJANGO_DATABASE_URL (приоритет — своя роль БД) → DATABASE_URL (как у Flask)
+    → PG*-переменные. %-декодирование паролей."""
     from urllib.parse import unquote, urlsplit
 
-    url = os.getenv("DATABASE_URL", "")
+    url = os.getenv("DJANGO_DATABASE_URL") or os.getenv("DATABASE_URL", "")
     if not url:
         pg = {k: os.getenv(k, "") for k in ("PGHOST", "PGPORT", "PGUSER", "PGPASSWORD", "PGDATABASE")}
         if pg["PGHOST"] and pg["PGUSER"]:
