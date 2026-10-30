@@ -1,0 +1,12 @@
+{% extends "core/base.html" %}
+{% block title %}Диагностика мессенджера — Трудник{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-4">Диагностика верификации</h1>
+<dl class="bg-white border border-gray-200 rounded-lg p-4 text-sm space-y-1">
+  <div>Webhook-секрет: {% if secret_set %}<span class="text-green-700">задан</span>{% else %}<span class="text-red-700">НЕТ (webhook fail-closed 503)</span>{% endif %}</div>
+  <div>Бот (username): {% if bot_set %}<span class="text-green-700">задан</span>{% else %}<span class="text-red-700">НЕТ</span>{% endif %}</div>
+  <div>Кэш-бэкенд: <code>{{ cache_backend }}</code></div>
+  <div>Платформы: {{ platforms|join:", " }}</div>
+</dl>
+<p class="text-sm text-gray-600 mt-3">Webhook MAX: <code>POST /messenger/webhook/max</code> (заголовок X-Max-Bot-Api-Secret).</p>
+{% endblock %}

@@ -204,6 +204,21 @@ else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 DEFAULT_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", "notifications@trudnik.ru")
 
+# ── Кэш (токены мессенджер-верификации и пр.; Redis при наличии REDIS_URL) ──
+_redis_url = os.getenv("REDIS_URL", "")
+if _redis_url and ("://redis:" in _redis_url or "@redis:" in _redis_url):
+    # compose-алиас из .env; снаружи контейнера — localhost (docker-compose мапит порт)
+    _redis_url = _redis_url.replace("://redis:", "://localhost:").replace("@redis:", "@localhost:")
+if _redis_url:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache",
+                          "LOCATION": _redis_url}}
+else:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
+# ── MAX Bot API (мессенджер-верификация; webhook fail-closed без секрета) ────
+MAX_WEBHOOK_SECRET = os.getenv("MAX_WEBHOOK_SECRET", "")
+MAX_BOT_USERNAME = os.getenv("MAX_BOT_USERNAME", "")
+
 # ── Yandex SmartCaptcha (включена при наличии серверного ключа; fail-closed) ─
 SMARTCAPTCHA_SERVER_KEY = os.getenv("SMARTCAPTCHA_SERVER_KEY", "")
 SMARTCAPTCHA_CLIENT_KEY = os.getenv("SMARTCAPTCHA_CLIENT_KEY", "")

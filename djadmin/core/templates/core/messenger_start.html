@@ -1,0 +1,14 @@
+{% extends "core/base.html" %}
+{% block title %}Верификация через MAX — Трудник{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto bg-white border border-gray-200 rounded-lg p-6 mt-6">
+  <h1 class="text-2xl font-bold mb-2">Подтверждение через MAX</h1>
+  {% if link %}
+  <p class="text-sm text-gray-600 mb-4">Перейдите по ссылке и нажмите «Start» в боте — профиль получит статус «Верифицирован». Ссылка действует {{ ttl_minutes }} минут и одноразовая.</p>
+  <a href="{{ link }}" class="block text-center bg-gray-900 text-white rounded px-4 py-3 font-medium">Открыть бота в MAX</a>
+  <p class="text-xs text-gray-500 mt-3">Не сработало? Вернитесь на <a href="{% url 'core:profile' %}" class="underline">профиль</a> и получите новую ссылку.</p>
+  {% else %}
+  <p class="text-sm text-red-700">{{ message|default:"Верификация недоступна." }}</p>
+  {% endif %}
+</div>
+{% endblock %}
