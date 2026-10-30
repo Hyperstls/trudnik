@@ -216,8 +216,15 @@ docker build -f Dockerfile.djadmin -t trudnik-dj:local .
   (инвайт с карточки трудника: только своё OPEN-задание и видимый трудник;
   дубль через savepoint; принятие RPC accept_invitation_atomic; decline;
   входящие/исходящие). Тестов всего 103.
-- Фаза 2г (осталось): оценки (rate_user_atomic + UI), чат (long-poll),
-  мессенджер-верификация; фаза 3 — WS/push/Celery/выключение Flask.
+- **Фаза 2г (выполнена 2026-10-30):** оценки после завершённого задания в обе
+  стороны (работодатель→принятый работник, работник→работодатель; upsert
+  (rater,job) по миграции 145, пересчёт профиля — триггером БД; контрактная
+  сверка показала: RPC rate_user_atomic строже — только трудник→трудник, общий
+  случай Flask реализует проверками+upsert — зеркалировано) и чат: комнаты по
+  заявке (доступ = участие, паритет chat_access), отправка с идемпотентностью
+  client_message_id (savepoint), JSON-poll ?after=<id>, список чатов. Тестов 115.
+- Фаза 2д (осталось): мессенджер-верификация MAX/Telegram; фаза 3 — WS/push/
+  Celery/выключение Flask.
 - MCP-окружение ZCode (2026-10-30): amvera (msk1), redis (local docker),
   postgres (read-only dev-БД), context7 (доки). Осознанно НЕ ставились:
   filesystem/playwright/git/github/sequentialthinking — перекрываются

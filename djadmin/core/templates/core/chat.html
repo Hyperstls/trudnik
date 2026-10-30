@@ -1,0 +1,44 @@
+{% extends "core/base.html" %}
+{% block title %}Чат — Трудник{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white border border-gray-200 rounded-lg p-4 mt-2 flex flex-col" style="min-height:60vh">
+  <h1 class="text-lg font-bold mb-2">Чат · {{ app.job.work_type|default:"задание" }}</h1>
+  <div id="chat-log" class="flex-1 space-y-2 overflow-y-auto mb-3" data-app="{{ app.pk }}" data-last="{{ last_id }}">
+    {% for m in chat_messages %}
+    <div class="text-sm {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}text-right{% endif %}">
+      <span class="inline-block rounded-lg px-3 py-2 {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}bg-gray-900 text-white{% else %}bg-gray-100{% endif %}">{{ m.content }}</span>
+      <p class="text-xs text-gray-400">{{ m.created_at|date:"d.m H:i" }}</p>
+    </div>
+    {% endfor %}
+  </div>
+  <form method="post" action="{% url 'core:chat_send' app.pk %}" class="flex gap-2">
+    {% csrf_token %}
+    <input type="hidden" name="client_message_id" value="{{ client_message_id }}">
+    <input type="text" name="content" maxlength="4000" required class="flex-1 border border-gray-300 rounded px-3 py-2" placeholder="Сообщение…">
+    <button class="bg-gray-900 text-white rounded px-4 py-2 text-sm font-medium">Отправить</button>
+  </form>
+  <script>
+    (function () {
+      var log = document.getElementById('chat-log');
+      var last = parseInt(log.dataset.last || '0', 10);
+      setInterval(function () {
+        fetch('/api/messages/' + log.dataset.app + '/poll?after=' + last)
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            (data.messages || []).forEach(function (m) {
+              last = Math.max(last, m.id);
+              var div = document.createElement('div');
+              div.className = 'text-sm';
+              var span = document.createElement('span');
+              span.className = 'inline-block rounded-lg px-3 py-2 bg-gray-100';
+              span.textContent = m.content;
+              div.appendChild(span);
+              log.appendChild(div);
+              log.scrollTop = log.scrollHeight;
+            });
+          }).catch(function () {});
+      }, 5000);
+    })();
+  </script>
+</div>
+{% endblock %}

@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_auth, views_flow, views_profile
+from . import views, views_auth, views_flow, views_interact, views_profile
 
 app_name = "core"
 
@@ -30,6 +30,11 @@ urlpatterns = [
     path("workers/<uuid:user_id>/block", views_profile.people_block, name="people_block"),
     path("workers/<uuid:user_id>/unblock", views_profile.people_unblock, name="people_unblock"),
     path("invitations/<uuid:invitation_id>/<str:action>", views_profile.invitation_respond, name="invitation_respond"),
+    path("chats", views_interact.chats_list, name="chats"),
+    path("chat/<uuid:app_id>", views_interact.chat_room, name="chat_room"),
+    path("chat/<uuid:app_id>/send", views_interact.chat_send, name="chat_send"),
+    path("api/messages/<uuid:app_id>/poll", views_interact.chat_poll, name="chat_poll"),
+    path("rate/<uuid:app_id>", views_interact.rate_participant, name="rate_participant"),
     path("login", views_flow.login_view, name="login"),
     path("logout", views_flow.logout_view, name="logout"),
     path("register", views_auth.register, name="register"),

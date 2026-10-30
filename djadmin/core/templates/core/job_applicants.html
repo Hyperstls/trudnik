@@ -29,6 +29,20 @@
       {% if a.status == 'accepted' %}
       <form method="post" action="{% url 'core:application_action' a.pk 'cancel' %}">{% csrf_token %}<button class="border border-gray-300 rounded px-3 py-1">Снять</button></form>
       {% endif %}
+      {% if a.status == 'accepted' and job.status == 'completed' %}
+      <form method="post" action="{% url 'core:rate_participant' a.pk %}" class="mt-2 flex flex-wrap gap-2 items-center text-sm">
+        {% csrf_token %}
+        <select name="rating" class="border border-gray-300 rounded px-2 py-1">
+          <option value="5">★★★★★</option><option value="4">★★★★</option>
+          <option value="3">★★★</option><option value="2">★★</option><option value="1">★</option>
+        </select>
+        <input type="text" name="comment" placeholder="Комментарий" class="border border-gray-300 rounded px-2 py-1 flex-1 min-w-32">
+        <button class="border border-gray-300 rounded px-3 py-1">Оценить</button>
+      </form>
+      {% endif %}
+      {% if a.status == 'accepted' %}
+      <a href="{% url 'core:chat_room' a.pk %}" class="border border-gray-300 rounded px-3 py-1">Чат</a>
+      {% endif %}
     </div>
   </article>
   {% endfor %}
