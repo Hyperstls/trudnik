@@ -10,7 +10,7 @@ from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
-from .models import Notification
+from .models import Notification, PushSubscription
 
 PAGE_SIZE = 30
 
@@ -57,3 +57,50 @@ def notifications_unread_count(request):
     return JsonResponse({
         "unread_count": Notification.objects.filter(user=request.user, is_read=False).count()
     })
+
+# ── Web Push подписки ───────────────────────────────────────────────────────
+def push_vapid_public_key(request):
+    """Публичный VAPID-ключ (для Service Worker, паритет Flask)."""
+    from django.conf import settings
+    from django.http import JsonResponse
+    key = getattr(settings, "VAPID_PUBLIC_KEY", "")
+    return JsonResponse({"public_key": key})
+
+
+@login_required
+@require_POST
+def push_subscribe(request):
+    """Регистрация push-подписки {endpoint, p256dh, auth}."""
+    import json as _json
+    try:
+        data = _json.loads(request.body.decode("utf-8", "replace"))
+    except Exception:
+        return JsonResponse({"error": "bad_json"}, status=400)
+    endpoint = (data.get("endpoint") or "").strip()
+    p256dh = (data.get("p256dh") or (data.get("keys") or {}).get("p256dh") or "").strip()
+    auth = (data.get("auth") or (data.get("keys") or {}).get("auth") or "").strip()
+    if not (endpoint and p256dh and auth):
+        return JsonResponse({"error": "endpoint, p256dh, auth обязательны"}, status=400)
+    sub, _ = PushSubscription.objects.get_or_create(
+        user=request.user, endpoint=endpoint, defaults={"p256dh": p256dh, "auth": auth}
+    )
+    return JsonResponse({"success": True, "id": sub.pk})
+
+
+@login_required
+@require_POST
+def push_unsubscribe(request):
+    import json as _json
+    try:
+        data = _json.loads(request.body.decode("utf-8", "replace"))
+    except Exception:
+        return JsonResponse({"error": "bad_json"}, status=400)
+    endpoint = (data.get("endpoint") or "").strip()
+    deleted, _ = PushSubscription.objects.filter(user=request.user, endpoint=endpoint).delete()
+    return JsonResponse({"success": True, "deleted": deleted})
+
+
+@login_required
+def push_list(request):
+    subs = list(PushSubscription.objects.filter(user=request.user).values("id", "endpoint", "created_at"))
+    return JsonResponse({"subscriptions": subs})

@@ -215,6 +215,11 @@ if _redis_url:
 else:
     CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
 
+# ── VAPID (Web Push) ────────────────────────────────────────────────────────
+VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
+VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
+VAPID_CLAIMS_EMAIL = os.getenv("VAPID_CLAIMS_EMAIL", "notifications@trudnik.ru")
+
 # ── MAX Bot API (мессенджер-верификация; webhook fail-closed без секрета) ────
 MAX_WEBHOOK_SECRET = os.getenv("MAX_WEBHOOK_SECRET", "")
 MAX_BOT_USERNAME = os.getenv("MAX_BOT_USERNAME", "")

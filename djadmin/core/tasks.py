@@ -43,16 +43,23 @@ def drain_notification_outbox() -> str:
                 message=row.body, data=row.data or {},
             )
         prefs = getattr(row.user, "notification_prefs", None) or {}
+        email_ok = True
         if _email_allowed(prefs) and row.user.email:
-            ok = _send_email(row)
-            processed_or_failed = "sent" if ok else None
-            if ok:
+            email_ok = _send_email(row)
+            if email_ok:
                 processed += 1
             else:
                 failed += 1
         else:
-            processed_or_failed = "skipped"
             skipped += 1
+        # Web Push (VAPID): уведомляем активные подписки
+        _send_pushes(row)
+        if (email_ok and _email_allowed(prefs)) or not _email_allowed(prefs):
+            processed_or_failed = "sent"
+        elif email_ok:
+            processed_or_failed = "skipped"
+        else:
+            processed_or_failed = None
         row.attempts += 1
         if processed_or_failed == "sent" or processed_or_failed == "skipped":
             row.status = "sent"
@@ -84,6 +91,25 @@ def _send_email(row: NotificationOutbox) -> bool:
             log.save()
         except Exception:
             logger.exception("email_log save failed")
+
+
+def _send_pushes(row: NotificationOutbox) -> int:
+    """Отправить push по всем подпискам пользователя; мёртвые (410) — удалить."""
+    from .models import PushSubscription
+    from .push import send_web_push, vapid_configured
+    if not vapid_configured():
+        return 0
+    sent = 0
+    for sub in PushSubscription.objects.filter(user=row.user):
+        result = send_web_push(
+            {"endpoint": sub.endpoint, "p256dh": sub.p256dh, "auth": sub.auth},
+            row.title, row.body or "", url="/notifications",
+        )
+        if result["gone"]:
+            sub.delete()  # подписка отозвана браузером
+        elif result["success"]:
+            sent += 1
+    return sent
 
 
 @app.task(ignore_result=True)
