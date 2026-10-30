@@ -1,60 +1,52 @@
-# djadmin — Django-компаньон «Трудник» (фаза 1)
+# djadmin — Django «Трудник» (продакшен)
 
-Django 5.2 LTS поверх **той же** БД PostgreSQL: полная админка (замена 6 admin-blueprint'ов
-Flask) + публичные read-only страницы. Спецификация и фазы —
-[docs/django_migration_prompt.md](../docs/django_migration_prompt.md).
+Django 5.2 LTS поверх общей БД PostgreSQL. Полностью заменил Flask-деплой
+2026-10-30. Спецификация миграции — [docs/django_migration_prompt.md](../docs/django_migration_prompt.md).
 
-## Что внутри
+## Домены (Amvera, проект trudnik)
 
-- `config/` — settings (env- driven: `DATABASE_URL`/`PG*`, `SECRET_KEY`, `WORKER_SITE_URL`…), urls, wsgi
-- `core/models.py` — unmanaged-модели всех бизнес-таблиц (схема управляется SQL-миграциями, не Django)
-- `core/auth_backend.py` — вход по email+bcrypt из `profiles` (хэши совместимы с Flask/pgcrypto),
-  fail-closed: `suspended` / неподтверждённый email → отказ; лок-аут 5 неудач с бэкофом
-- `core/admin/` — админка: профили (роль/блокировка/верификация/удаление через RPC
-  `delete_user_cascade`, редактор навыков), задания (guard'ы статусов, `delete_job_cascade`,
-  bulk ≤ 50), жалобы (`review_complaint`), справочники, site_pages, outbox (retry), аудит
-- `core/views.py` — публичные read-only страницы с RLS-паритетом видимости + `/health`, `/ready`
-- Роль БД: `trudnik_dj` (миграция `migrations/148_django_admin_role.sql`, BYPASSRLS)
+| Домен | Назначение |
+|---|---|
+| **xn--d1aigknli.xn--p1ai** (трудник.рф) | основной публичный домен |
+| trudnik-hyperstls.msk1.amvera.tech | технический HTTPS-домен |
+| run-trudnik | внутреннее имя сервиса |
+| trudnik-db-hyperstls.tcp-msk1.amvera.tech:5432 | ВНЕШНИЙ доступ к БД (использует Django, роль trudnik_dj) — не удалять! |
+| cnpg-trudnik-db-rw | внутреннее rw-имя БД (кластер с пустыми грантами trudnik_dj — не используется) |
 
-## Локальный запуск
+## Ветки и деплой
+
+- **main** = стабильный Django; работа идёт в **main-jango** (после каждой фазы: `git push origin main-jango:main`).
+- **Прод деплоится из master** репо Amvera: `git push amvera-msk1 main-jango:master --force` + `rebuildProject` (MCP) — смена ветки в ЛК НЕ работает.
+- Откат на Flask: `git push amvera-msk1 9b3ed42:master --force` + restart.
+
+## Локальный запуск и тесты
 
 ```bash
-docker compose up -d db          # Postgres 5433 (+ PostgREST/Redis не нужны)
+docker compose up -d db redis
 .venv/Scripts/python.exe -m pip install -r djadmin/requirements.txt
 .venv/Scripts/python.exe djadmin/manage.py check
-.venv/Scripts/python.exe djadmin/manage.py runserver 8001
-# админка: http://127.0.0.1:8001/admin/ — вход профилем с role=admin (profiles.password_hash bcrypt)
+.venv/Scripts/python.exe scripts/dj_test_clone.py        # клон dev-БД (живые триггеры/RPC)
+.venv/Scripts/python.exe djadmin/manage.py test core --keepdb -v 1   # 131 тест
 ```
 
-Локально роль суперюзера docker (`trudnik`) уже BYPASSRLS — миграция 148 не обязательна.
+## Переменные окружения (прод, проект trudnik)
 
-## Тесты (против клона dev-БД: живые триггеры и RPC)
+Общие с Flask (SECRET_KEY — общий ⇒ токены писем Flask↔Django взаимозаменяемы,
+SMTP_*, SMARTCAPTCHA_*, MAX_WEBHOOK_SECRET, WORKER_SITE_URL, REDIS_URL).
+Django-специфичные: `DJANGO_DATABASE_URL` (роль trudnik_dj, внешний хост БД),
+`DJANGO_WHITENOISE_MANIFEST=1`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`,
+`MAX_BOT_USERNAME` (нужно задать для верификации через MAX).
 
-```bash
-.venv/Scripts/python.exe scripts/dj_test_clone.py
-.venv/Scripts/python.exe djadmin/manage.py test core --keepdb -v 1
-```
+## Верификация через MAX
 
-CI (`django.yml`) гоняет только `check`/`compileall` — без БД; полный прогон — локально/pre-deploy.
+Профиль → «Подтвердить через MAX» → одноразовая ссылка (10 мин) → бот.
+Требует: в ЛК MAX-бота webhook `https://xn--d1aigknli.xn--p1ai/messenger/webhook/max`
+с секретом = MAX_WEBHOOK_SECRET; в env — MAX_BOT_USERNAME.
 
-## Деплой на Amvera (проект trudnik-dj, регион msk1)
+## Известные особенности
 
-1. (однократно) `MIGRATIONS_ENABLED=true python scripts/apply_migrations.py` — применит 148;
-   затем суперпользователем: `ALTER ROLE trudnik_dj LOGIN PASSWORD '<секрет>';`
-2. (однократно) Создать проект `trudnik-dj` (Docker) и заполнить его env — список в
-   `scripts/dj_deploy.sh` (DATABASE_URL с `trudnik_dj`, SECRET_KEY, ALLOWED_HOSTS, CSRF-origins,
-   WORKER_SITE_URL). Через Amvera MCP: `createProject` + `createEnvVars`.
-3. `bash scripts/dj_deploy.sh` — push `main-jango → master`, rebuild, логи, health.
-
-⚠️ Ветка `main-jango` с её `amvera.yaml` предназначена ТОЛЬКО проекту `trudnik-dj`.
-Не пушьте её в проект `trudnik` (Flask): там собирается корневой `Dockerfile`.
-
-Первый старт контейнера: `collectstatic → migrate (системные таблицы django_*) → gunicorn`.
-
-## Известные ограничения фазы 1
-
-- Пишущие пользовательские флоу (отклики, чат, push, регистрация) остаются на Flask — фаза 2+.
-- `/uploads/...` отдаются Flask-сервисом: на страницах djadmin ссылки абсолютизируются
-  через `WORKER_SITE_URL`.
-- Redis/Celery не используются: сессии админки — в БД (`django_session` в схеме public,
-  грантов PostgREST-ролям на системные таблицы Django нет).
+- БД подключена через внешний ингресс (внутренний кластер не имеет грантов trudnik_dj).
+- Роль trudnik_dj: BYPASSRLS ⇒ видимость данных гарантируют queryset-менеджеры
+  (Job.public, Profile.public_workers) — см. спеку §1.3/ADR-4.
+- Фоновые задачи Flask (outbox-доставка, авто-истечение заданий, авто-заморозка)
+  не переноcены до фазы 3.

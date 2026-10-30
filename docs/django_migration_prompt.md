@@ -194,6 +194,14 @@ docker build -f Dockerfile.djadmin -t trudnik-dj:local .
 5. Проверка: `https://trudnik-dj-hyperstls.amvera.io/health` → 200, `/admin/` → логин
    профилем с role=admin.
 
+## 7а. Продакшен-статус (актуально 2026-10-30)
+
+Приложение Django — единственный прод (проект trudnik, замена Flask): домены
+трудник.рф + trudnik-hyperstls.msk1.amvera.tech; БД — через внешний ингресс
+(роль trudnik_dj, гранты вкл. REFERENCES); Redis-кэш из REDIS_URL; фазы 1–2е
+выполнены, 131 тест. Ветки: main=стабильный Django, деплой через master
+(детали — djadmin/README.md).
+
 ## 8. Дорога дальше (фазы 2–3)
 
 - **Фаза 2а (выполнена 2026-10-29, тем же днём):** вход/выход на публичном сайте

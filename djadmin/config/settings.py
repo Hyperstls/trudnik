@@ -32,13 +32,13 @@ _hosts = os.getenv("DJANGO_ALLOWED_HOSTS", "")
 ALLOWED_HOSTS = (
     [h.strip() for h in _hosts.split(",") if h.strip()]
     if _hosts
-    else (["*"] if DEBUG else [".amvera.io", "localhost", "127.0.0.1"])
+    else (["*"] if DEBUG else ["xn--d1aigknli.xn--p1ai", ".amvera.tech", "localhost", "127.0.0.1"])
 )
 _origins = os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "")
 CSRF_TRUSTED_ORIGINS = (
     [o.strip() for o in _origins.split(",") if o.strip()]
     if _origins
-    else ["https://*.amvera.io", "http://localhost:8000", "http://127.0.0.1:8000"]
+    else ["https://xn--d1aigknli.xn--p1ai", "https://*.amvera.tech", "http://localhost:8000", "http://127.0.0.1:8000"]
 )
 
 # ── База данных ─────────────────────────────────────────────────────────────
