@@ -60,3 +60,15 @@ def sync_user_skills_raw(user_id, skill_ids) -> int:
 
 def sync_job_skills_raw(job_id, skill_ids) -> int:
     return _replace_through_raw("job_skills", "job_id", job_id, "skill_id", skill_ids)
+
+def call_rpc_rows(name: str, *args: Any) -> list[dict]:
+    """SELECT * FROM name(...); ВСЕ строки как list[dict] (таблицы-возвраты)."""
+    if not name.replace("_", "").isalnum():
+        raise RpcError("недопустимое имя RPC: %r" % name)
+    placeholders = ", ".join(["%s"] * len(args))
+    with connection.cursor() as cur:
+        cur.execute("SELECT * FROM %s(%s)" % (name, placeholders), args)
+        if cur.description is None:
+            return []
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row)) for row in cur.fetchall()]
