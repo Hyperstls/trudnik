@@ -128,3 +128,27 @@ class ChatTests(TestCase):
         self.assertContains(self.client.get(reverse("core:chats")), "привет")
         self.client.force_login(self.employer)
         self.assertContains(self.client.get(reverse("core:chats")), "привет")
+
+class ChatConsumerLogicTests(TestCase):
+    """Логика WS-consumer (participation + безопасный notify) — без транспорта."""
+
+    def setUp(self):
+        self.employer = make_profile("ws-emp@example.com")
+        self.worker = make_profile("ws-worker@example.com", role="worker")
+        self.job = make_job(self.employer, work_type="WS-работа")
+        self.app = Application.objects.create(job=self.job, worker=self.worker, status="accepted")
+
+    def test_participant_check(self):
+        from core.consumers import ChatConsumer
+
+        self.assertTrue(ChatConsumer._is_participant(self.app.pk, self.worker.pk))
+        self.assertTrue(ChatConsumer._is_participant(self.app.pk, self.employer.pk))
+        stranger = make_profile("ws-stranger@example.com")
+        self.assertFalse(ChatConsumer._is_participant(self.app.pk, stranger.pk))
+        self.assertFalse(ChatConsumer._is_participant("00000000-0000-0000-0000-000000000000", self.worker.pk))
+
+    def test_notify_new_message_safe_without_redis(self):
+        from core.consumers import notify_new_message
+
+        # InMemoryChannelLayer в тестах; вызов не должен падать и не обязан доставлять
+        notify_new_message(self.app.pk, {"id": 1, "sender_id": str(self.worker.pk), "content": "x", "created_at": ""})

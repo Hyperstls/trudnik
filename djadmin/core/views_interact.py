@@ -117,14 +117,23 @@ def chat_send(request, app_id):
         cmid = uuid_lib.UUID(client_message_id)
     except ValueError:
         cmid = uuid_lib.uuid4()
+    created = None
     try:
         with transaction.atomic():  # savepoint: дубль client_message_id не роняет транзакцию
-            Message.objects.create(
+            created = Message.objects.create(
                 sender=request.user, application=app,
                 content=content, client_message_id=cmid,
             )
     except IntegrityError:
         pass  # повторная отправка того же клиентского сообщения — идемпотентно
+    if created is not None:
+        from .consumers import notify_new_message
+        from django.utils import timezone
+
+        notify_new_message(app.pk, {
+            "id": created.pk, "sender_id": str(request.user.pk),
+            "content": created.content, "created_at": timezone.now().isoformat(),
+        })
     return redirect("core:chat_room", app_id=app.pk)
 
 

@@ -29,27 +29,64 @@
         </form>
     </div>
     <script>
-    (function () {
-      var log = document.getElementById('chat-log');
-      var last = parseInt(log.dataset.last || '0', 10);
-      setInterval(function () {
-        fetch('/api/messages/' + log.dataset.app + '/poll?after=' + last)
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            (data.messages || []).forEach(function (m) {
-              last = Math.max(last, m.id);
-              var wrap = document.createElement('div');
-              wrap.className = 'flex';
-              var bubble = document.createElement('span');
-              bubble.className = 'inline-block rounded-2xl px-3.5 py-2 text-sm bg-neutral-100 text-neutral-800';
-              bubble.textContent = m.content;
-              wrap.appendChild(bubble);
-              log.appendChild(wrap);
-              log.scrollTop = log.scrollHeight;
-            });
-          }).catch(function () {});
-      }, 5000);
-    })();
-    </script>
+(function () {
+  var log = document.getElementById('chat-log');
+  var appId = log.dataset.app;
+  var last = parseInt(log.dataset.last || '0', 10);
+  var pollTimer = null;
+
+  function appendBubble(m, mine) {
+    last = Math.max(last, Number(m.id) || 0);
+    var wrap = document.createElement('div');
+    wrap.className = 'flex' + (mine ? ' justify-end' : '');
+    var bubble = document.createElement('span');
+    bubble.className = 'inline-block rounded-2xl px-3.5 py-2 text-sm ' +
+      (mine ? 'bg-primary-500 text-white' : 'bg-neutral-100 text-neutral-800');
+    bubble.textContent = m.content;
+    wrap.appendChild(bubble);
+    log.appendChild(wrap);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function pollOnce() {
+    fetch('/api/messages/' + appId + '/poll?after=' + last)
+      .then(function (r) { return r.json(); })
+      .then(function (data) { (data.messages || []).forEach(function (m) { appendBubble(m, false); }); })
+      .catch(function () {});
+  }
+
+  function startPoll() { if (!pollTimer) { pollOnce(); pollTimer = setInterval(pollOnce, 5000); } }
+  function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+
+  // WebSocket — основной канал; при недоступности — poll-fallback
+  var me = document.body.getAttribute('data-user-id') || '';
+  try {
+    var wsUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/chat/' + appId + '/';
+    var ws = new WebSocket(wsUrl);
+    ws.onopen = function () { stopPoll(); };
+    ws.onmessage = function (ev) {
+      try {
+        var d = JSON.parse(ev.data);
+        if (d && d.type === 'message') { appendBubble(d, String(d.sender_id) === me); }
+      } catch (e) {}
+    };
+    ws.onclose = function () { startPoll(); };
+    ws.onerror = function () { try { ws.close(); } catch (e) {} startPoll(); };
+    setInterval(function () { if (ws.readyState === 1) { ws.send(JSON.stringify({type: 'ping'})); } }, 30000);
+  } catch (e) { startPoll(); }
+
+  // Отправка без перезагрузки (идемпотентность через client_message_id)
+  var form = log.closest('div').querySelector('form');
+  if (form) {
+    form.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var fd = new FormData(form);
+      fetch(form.action, { method: 'POST', body: fd, headers: {'X-CSRFToken': fd.get('csrfmiddlewaretoken')} })
+        .then(function () { form.querySelector('input[name="content"]').value = ''; })
+        .catch(function () { form.submit(); });
+    });
+  }
+})();
+</script>
 </div>
 {% endblock %}
