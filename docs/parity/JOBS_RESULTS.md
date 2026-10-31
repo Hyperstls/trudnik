@@ -1,10 +1,10 @@
-# Jobs / applications — результаты паритета (J001–J012)
+# Jobs / applications — результаты паритета (J001–J013)
 
-**Дата:** 2026-10-31
+**Дата:** 2026-11-01
 **Ветка:** `feat/agent-pipeline` (Django `main` не менялся)
 **Метод:** контракт → dispatch → verify (exit-код) → независимый pattern-review → done.
-**Итог:** P0 закрыт, все P1 jobs/applications закрыты, кроме bulk duplicate; P2-05/P2-06 закрыты.
-Полный `manage.py test core` — **279 OK**; `pre_deploy_check` — 7/7.
+**Итог:** P0 закрыт, все P1 jobs/applications закрыты, кроме bulk duplicate; P2-05/P2-06 закрыты, P2-01 частично.
+Полный `manage.py test core` — **282 OK**; `pre_deploy_check` — 7/7.
 
 ## Контракты
 
@@ -24,6 +24,7 @@
 | **J010** | UI-панели массовых действий (HTML5 `form=`, CSRF, только received) | PASS | PASS |
 | **J011** | P2-06: удаление файлов фото при single/bulk delete задания, refcount для общих файлов | PASS | PASS |
 | **J012** | P2-05: bulk apply — групповые уведомления работодателю, applied/skipped/failed, open-redirect fix | PASS | PASS |
+| **J013** | P2-01 (часть): payment_max, фильтр по навыку, Новые/Откликнулся | PASS | PASS |
 
 ## Ключевая находка контрактной проверки
 
@@ -40,13 +41,13 @@
 | Пункт | Статус |
 |---|---|
 | Bulk duplicate заданий | ❌ требует выноса repost-хелпера в сервис |
-| P2-01 каталог (карта/гео/навыки/payment_max/filter new-applied) | open |
+| P2-01 каталог: гео/карта и мультивыбор навыков | open (payment_max/один навык/new-applied — J013) |
 | P2-02 detail (application_count, share/report/favorite employer) | open |
 | P2-09..P2-13 ratings/employers/workers UI | open |
 
 ## Доказательства
 
-- Контракты: `context/agent-pipeline/tasks/J001.json` … `J012.json`.
+- Контракты: `context/agent-pipeline/tasks/J001.json` … `J013.json`.
 - Логи проверок: `context/agent-pipeline/logs/J00*.verify.log`.
 - Решения/заметки: `context/agent-pipeline/decisions.md`.
 - Матрицы: [ROUTES_MATRIX_JOBS.md](ROUTES_MATRIX_JOBS.md),

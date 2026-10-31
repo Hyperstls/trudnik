@@ -1,0 +1,41 @@
+{
+  "id": "J013",
+  "title": "JOB-P2-01 (часть): payment_max, навык и фильтр Новые/Откликнулся",
+  "goal": "Каталог /jobs поддерживает payment_max, фильтр по одному навыку (?skills=<uuid>) и для авторизованных — filter=new|applied (без моих откликов / только с моими откликами).",
+  "why": "Flask index(): payment_min/max, skills, filter new/applied (jobs.py:137-210). Django имеет только payment_min (JOB-P2-01). Гео/карта остаются вне этого контракта.",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/templates/core/jobs_list.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES_JOBS.md",
+    "djadmin/core/templates/core/_job_card.html"
+  ],
+  "interfaces": "views.py: import Skill, UUID. jobs_list: payment_max=(GET or '') -> Decimal, qs.filter(payment_amount__lte=max) (мусор игнорировать); skills=GET.get('skills') -> UUID (try/except), qs.filter(job_skills__skill_id=skill).distinct(); job_filter=GET.get('filter') in ('new','applied') только authenticated: applied_qs=Application.objects.filter(worker=request.user).exclude(status__in=('withdrawn','cancelled')).values('job_id'); applied -> statuses=PUBLIC_STATUSES+('cancelled',), qs.filter(pk__in=applied_qs); new -> qs.exclude(pk__in=applied_qs); context добавляет payment_max, skills=list(Skill.objects.order_by('name')), selected_skill=str|'', job_filter. jobs_list.html: форма GET (q/city/status/sort скрытые) с input payment_max и select name=skills (Все навыки + skills); для authenticated — пилюли filter=new/applied с сохранением q/city/payment_max/skills/status/sort. Тесты PublicViewsTests: test_payment_max_filters; test_skill_filter; test_filter_new_applied (worker откликнулся на job1: applied -> job1, new -> job2).",
+  "acceptance": [
+    "?payment_max=2000 скрывает задания дороже 2000.",
+    "?skills=<uuid> показывает только задания с этим навыком.",
+    "Авторизованный ?filter=applied показывает задания с его активными откликами.",
+    "Авторизованный ?filter=new исключает задания с его откликами.",
+    "Гость с ?filter=applied/new видит обычный каталог.",
+    "PublicViewsTests проходит."
+  ],
+  "out_of_scope": [
+    "Не делать карту/гео/радиус.",
+    "Не делать мультивыбор навыков и JS-фильтры.",
+    "Не менять _job_card и bulk-форму."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views.PublicViewsTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

@@ -5,6 +5,8 @@ RLS-паритет (спека §1.3): Django ходит в БД напряму�
 Profile.objects.public_workers()/public_visible(). Публичные страницы никогда
 не отображают приватные поля (email/phone/inn) — только колонки из PUBLIC_FIELDS.
 """
+from uuid import UUID
+
 from django.conf import settings
 from django.db import connection
 from django.http import Http404, HttpResponse, JsonResponse
@@ -12,7 +14,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.core.paginator import Paginator
 
-from .models import Application, Blacklist, Job, JobFavorite, Profile, SitePage
+from .models import Application, Blacklist, Job, JobFavorite, Profile, SitePage, Skill
 
 PAGE_SIZE = 20
 
@@ -70,7 +72,11 @@ def _promoted_first():
 
 
 def jobs_list(request):
-    qs = Job.objects.filter(status__in=PUBLIC_STATUSES).select_related("employer").prefetch_related(
+    job_filter = request.GET.get("filter") or ""
+    if job_filter not in ("new", "applied") or not request.user.is_authenticated:
+        job_filter = ""
+    statuses = PUBLIC_STATUSES + (("cancelled",) if job_filter == "applied" else ())
+    qs = Job.objects.filter(status__in=statuses).select_related("employer").prefetch_related(
         "photos"
     ).order_by(_promoted_first(), "-created_at")
     if request.user.is_authenticated:
@@ -90,13 +96,36 @@ def jobs_list(request):
     status = request.GET.get("status") or ""
     if status in PUBLIC_STATUSES:
         qs = qs.filter(status=status)
+    selected_skill = ""
+    skill_raw = request.GET.get("skills") or ""
+    if skill_raw:
+        try:
+            skill_id = UUID(skill_raw)
+        except (TypeError, ValueError):
+            skill_id = None
+        if skill_id is not None:
+            selected_skill = str(skill_id)
+            qs = qs.filter(job_skills__skill_id=skill_id).distinct()
     payment_min = request.GET.get("payment_min") or ""
-    try:
-        from decimal import Decimal
+    payment_max = request.GET.get("payment_max") or ""
+    from decimal import Decimal
 
+    try:
         qs = qs.filter(payment_amount__gte=Decimal(payment_min))
     except Exception:
         pass  # мусор в параметре — игнорируем фильтр
+    try:
+        qs = qs.filter(payment_amount__lte=Decimal(payment_max))
+    except Exception:
+        pass
+    if job_filter:
+        my_jobs = Application.objects.filter(worker=request.user).exclude(
+            status__in=("withdrawn", "cancelled")
+        ).values("job_id")
+        if job_filter == "applied":
+            qs = qs.filter(pk__in=my_jobs)
+        else:
+            qs = qs.exclude(pk__in=my_jobs)
     sort = request.GET.get("sort")
     if sort == "price_asc":
         from django.db.models import F
@@ -123,8 +152,11 @@ def jobs_list(request):
         )
     return render(request, "core/jobs_list.html", {
         "page": page, "q": q, "city": city, "status": status,
-        "payment_min": payment_min, "sort": sort,
+        "payment_min": payment_min, "payment_max": payment_max, "sort": sort,
         "sort_options": (("newest", "Новые"), ("price_asc", "Дешевле"), ("price_desc", "Дороже")),
+        "skills": list(Skill.objects.order_by("sort_order", "name")),
+        "selected_skill": selected_skill,
+        "job_filter": job_filter,
         "applied_ids": applied_ids,
         "now": timezone.now(),
     })

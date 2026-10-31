@@ -20,8 +20,10 @@ JOB-P1-09/10 закрыты J008 (табы/фильтры, application_count, re
 JOB-P2-06 исправлен J011 (файлы фото удаляются при single/bulk delete,
 refcount для общих файлов).
 JOB-P2-05 исправлен J012 (bulk apply: групповые уведомления, applied/skipped/failed,
-open-redirect fix). Остаётся bulk duplicate.
-Полный core-набор — 279 OK.
+open-redirect fix).
+JOB-P2-01 частично J013 (payment_max, навык, Новые/Откликнулся); гео/карта
+и мультивыбор навыков остаются. Остаётся bulk duplicate.
+Полный core-набор — 282 OK.
 Остальные пункты открыты.
 
 ## P0

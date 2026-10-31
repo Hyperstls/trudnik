@@ -615,3 +615,33 @@ P2-06 закрыт: файлы уникальных фото удаляются 
 **Кто:** Hyperstls
 
 P2-05 закрыт. enqueue_notification сам fail-open, поэтому цикл уведомлений не роняет батч; логирование программных ошибок RPC — возможный follow-up.
+
+## 2026-11-01 00:12:03 — J013: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css rebuilt by npm run build:css after jobs_list filter form classes; generated artifact
+
+**Дрейф, который обойдён:** ['static/css/tailwind.min.css']
+
+## 2026-11-01 00:14:38 — J013: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css rebuilt by npm run build:css after jobs_list filter form classes; generated artifact (unchanged since previous skip)
+
+**Дрейф, который обойдён:** ['static/css/tailwind.min.css']
+
+## 2026-11-01 00:18:00 — J013: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J013.review.prompt.md
+
+## 2026-11-01 00:18:01 — J013: заметка
+
+**Кто:** Hyperstls
+
+CSS-дрейф обойдён skip-scope (сгенерированный tailwind). P2-01 частично: payment_max, один навык, Новые/Откликнулся; гео/карта и мультивыбор навыков остаются.

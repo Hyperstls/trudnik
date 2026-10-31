@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core import views
-from core.models import Blacklist, Job, JobPhoto, Religion, SitePage
+from core.models import Application, Blacklist, Job, JobPhoto, JobSkill, Religion, SitePage, Skill
 from core.storage import resolve_upload_url, save_upload
 from core.tests.test_auth import make_profile
 
@@ -52,6 +52,45 @@ class PublicViewsTests(TestCase):
         self.assertContains(self.client.get("/jobs?city=москва"), "Уборка территории")
         self.assertContains(self.client.get("/jobs?payment_min=1000"), "Уборка территории")
         self.assertNotIn("Уборка территории".encode(), self.client.get("/jobs?payment_min=9999").content)
+
+    def test_payment_max_filter(self):
+        Job.objects.create(
+            employer=self.employer, work_type="Дешёвое задание", organization_name="Приход",
+            status="open", city="Москва", payment_amount=1000,
+            date_time=timezone.now() + timedelta(days=2),
+        )
+        response = self.client.get("/jobs?payment_max=2000")
+        self.assertContains(response, "Дешёвое задание")
+        self.assertNotContains(response, "Уборка территории")
+
+    def test_skill_filter(self):
+        skill = Skill.objects.create(name="Тестовый навык J013", sort_order=1)
+        JobSkill.objects.create(job=self.job, skill=skill)
+        other = Job.objects.create(
+            employer=self.employer, work_type="Без навыка", organization_name="Приход",
+            status="open", city="Москва", payment_amount=1500,
+            date_time=timezone.now() + timedelta(days=2),
+        )
+        response = self.client.get("/jobs", {"skills": str(skill.pk)})
+        self.assertContains(response, "Уборка территории")
+        self.assertNotContains(response, other.work_type)
+
+    def test_filter_new_and_applied(self):
+        other = Job.objects.create(
+            employer=self.employer, work_type="Без отклика", organization_name="Приход",
+            status="open", city="Москва", payment_amount=1500,
+            date_time=timezone.now() + timedelta(days=2),
+        )
+        Application.objects.create(
+            job=self.job, worker=self.worker, status="pending"
+        )
+        self.client.force_login(self.worker)
+        applied = self.client.get("/jobs", {"filter": "applied"})
+        self.assertContains(applied, "Уборка территории")
+        self.assertNotContains(applied, other.work_type)
+        fresh = self.client.get("/jobs", {"filter": "new"})
+        self.assertContains(fresh, other.work_type)
+        self.assertNotContains(fresh, "Уборка территории")
 
     def test_jobs_list_shows_jobphoto(self):
         JobPhoto.objects.create(
