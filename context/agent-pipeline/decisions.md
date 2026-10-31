@@ -391,3 +391,17 @@ Append-only: решения и измерения. Числа, команды, �
 **Кто:** Hyperstls
 
 Два гейта: verify 2/2 (compile, public_tests 19/19); functional PASS; pattern PASS (XSS/fail-open/N+1; fallback только privacy/terms/safety, SitePage override, 404 unknown). E2E smoke выявил 404 при пустом site_pages.
+
+## 2026-10-31 20:24:12 — J002: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J002.review.prompt.md
+
+## 2026-10-31 20:24:12 — J002: заметка
+
+**Кто:** Hyperstls
+
+Два гейта: verify 2/2 (compile, JobCrudTests 11/11; test_flows 26/26); functional PASS; pattern PASS (XSS/fail-open/N+1; stop-words/date/ranges field-level, invalid job not created).

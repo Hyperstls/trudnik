@@ -1,7 +1,9 @@
 """Формы пользовательских флоу (фаза 2а)."""
 from django import forms
+from django.utils import timezone
 
 from .models import Job, JobSkill, Skill
+from .validators_jobs import find_stop_words, validate_deadline, validate_payment, validate_workers
 
 INPUT_CLS = "w-full border border-gray-300 rounded px-3 py-2 bg-white"
 
@@ -41,6 +43,36 @@ class JobForm(forms.ModelForm):
             self.fields["skills"].initial = list(
                 JobSkill.objects.filter(job=self.instance).values_list("skill_id", flat=True)
             )
+
+    def clean_date_time(self):
+        value = self.cleaned_data.get("date_time")
+        error = validate_deadline(value, timezone.localdate())
+        if error:
+            raise forms.ValidationError(error)
+        return value
+
+    def clean(self):
+        cleaned = super().clean()
+
+        found = find_stop_words(
+            cleaned.get("organization_name"), cleaned.get("detailed_description")
+        )
+        if found:
+            self.add_error(
+                "detailed_description",
+                "Обнаружены слова, характерные для трудовых отношений: %s. "
+                "Пожалуйста, опишите разовую услугу." % ", ".join(found),
+            )
+
+        error = validate_payment(cleaned.get("payment_amount"))
+        if error:
+            self.add_error("payment_amount", error)
+
+        error = validate_workers(cleaned.get("max_workers"))
+        if error:
+            self.add_error("max_workers", error)
+
+        return cleaned
 
 
 class LoginForm(forms.Form):

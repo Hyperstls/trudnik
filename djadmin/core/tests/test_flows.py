@@ -52,6 +52,18 @@ class JobCrudTests(TestCase):
         self.client.force_login(self.user)
         self.skill = Skill.objects.create(name="Флоу-навык", sort_order=1)
 
+    def _job_payload(self, **overrides):
+        payload = {
+            "work_type": "Уборка", "organization_name": "Храм",
+            "detailed_description": "Убрать территорию",
+            "address": "ул. Ленина 1", "city": "Москва",
+            "payment_amount": "1500.00", "max_workers": "3",
+            "date_time": (timezone.now() + timedelta(days=2)).strftime("%Y-%m-%dT%H:%M"),
+            "skills": [],
+        }
+        payload.update(overrides)
+        return payload
+
     def test_create_job_with_skills(self):
         response = self.client.post(reverse("core:job_create"), {
             "work_type": "Уборка", "organization_name": "Храм",
@@ -69,6 +81,50 @@ class JobCrudTests(TestCase):
         self.assertEqual(
             list(job.job_skills.values_list("skill_id", flat=True)), [self.skill.pk]
         )
+
+    def test_create_job_rejects_past_date(self):
+        response = self.client.post(reverse("core:job_create"), self._job_payload(
+            date_time=(timezone.now() - timedelta(days=2)).strftime("%Y-%m-%dT%H:%M"),
+        ))
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Job.objects.filter(employer=self.user).exists())
+        self.assertContains(response, "Дата выполнения не может быть в прошлом")
+        self.assertIn("date_time", response.context["form"].errors)
+
+    def test_create_job_rejects_stop_words(self):
+        cases = (
+            {"organization_name": "Оплата как зарплата"},
+            {"detailed_description": "Работа в штат, постоянная работа"},
+        )
+        for overrides in cases:
+            with self.subTest(overrides=overrides):
+                response = self.client.post(reverse("core:job_create"), self._job_payload(**overrides))
+                self.assertEqual(response.status_code, 200)
+                self.assertFalse(Job.objects.filter(employer=self.user).exists())
+                self.assertContains(response, "Обнаружены слова, характерные для трудовых отношений")
+                self.assertIn("detailed_description", response.context["form"].errors)
+
+    def test_create_job_rejects_payment_out_of_range(self):
+        for amount in ("-1.00", "1000000.01"):
+            with self.subTest(amount=amount):
+                response = self.client.post(
+                    reverse("core:job_create"), self._job_payload(payment_amount=amount)
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertFalse(Job.objects.filter(employer=self.user).exists())
+                self.assertContains(response, "Оплата должна быть от 0 до 1 000 000")
+                self.assertIn("payment_amount", response.context["form"].errors)
+
+    def test_create_job_rejects_max_workers(self):
+        for workers in ("0", "101"):
+            with self.subTest(workers=workers):
+                response = self.client.post(
+                    reverse("core:job_create"), self._job_payload(max_workers=workers)
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertFalse(Job.objects.filter(employer=self.user).exists())
+                self.assertContains(response, "Количество работников должно быть от 1 до 100")
+                self.assertIn("max_workers", response.context["form"].errors)
 
     def test_preferred_religion_not_in_form_or_admin(self):
         self.assertNotIn("preferred_religion", JobForm().fields)

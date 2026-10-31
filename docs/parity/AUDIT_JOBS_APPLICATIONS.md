@@ -6,7 +6,9 @@
 **Статус:** первая область после auth/profile. Только аудит; код не менялся.
 **Обновление 2026-10-31:** JOB-P0-01 исправлен контрактом J001
 (verify 2/2, functional PASS, pattern PASS; `preferred_religion` удалён из JobForm/JobAdmin,
-колонка dormant). Остальные JOB-пункты открыты.
+колонка dormant). JOB-P1-01/02/03 исправлены J002: stop-words, дата в прошлом,
+оплата 0..1 000 000, работники 1..100 — серверные field-level ошибки; JobCrudTests 11/11,
+test_flows 26/26. Остальные JOB-пункты открыты.
 
 ## Главное
 

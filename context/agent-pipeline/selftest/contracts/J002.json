@@ -1,0 +1,31 @@
+{
+  "id": "J002",
+  "title": "JOB-P1-01/02/03: серверные валидации задания",
+  "goal": "Создание/редактирование задания отклоняет stop-words (ТК РФ ст.15), дату в прошлом, оплату вне 0..1 000 000 и работников вне 1..100; валидное задание создаётся.",
+  "why": "Flask jobs.py:44-100,659-710 проверяет stop-words/дату/диапазоны; Django JobForm не проверяет (JOB-P1-01/02/03).",
+  "files": [
+    "djadmin/core/forms.py",
+    "djadmin/core/validators_jobs.py",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES_JOBS.md",
+    "docs/parity/AUDIT_JOBS_APPLICATIONS.md"
+  ],
+  "interfaces": "validators_jobs.py: STOP_WORDS=('ставка','зарплата','штат','трудовая','график','постоянная работа','вахта'); find_stop_words(*texts) -> list; validate_payment(Decimal|None) -> str|None (0..1_000_000); validate_workers(int|None) -> str|None (1..100); validate_deadline(date|datetime|None, today) -> str|None (date < today -> 'Дата выполнения не может быть в прошлом'). JobForm.clean_date_time: validate_deadline(value, timezone.localdate()), raise ValidationError. JobForm.clean: find_stop_words(organization_name, detailed_description) -> add_error('detailed_description', 'Обнаружены слова, характерные для трудовых отношений: ... Опишите разовую услугу.'); validate_payment -> add_error('payment_amount', ...); validate_workers -> add_error('max_workers', ...). Ошибки — field-level (шаблон уже рендерит field.errors). Тесты JobCrudTests: test_create_job_rejects_past_date, test_create_job_rejects_stop_words, test_create_job_rejects_payment_out_of_range, test_create_job_rejects_max_workers; каждый POST -> 200, Job не создан, assertContains текста ошибки. test_create_job_with_skills остаётся зелёным.",
+  "acceptance": [
+    "Прошлая дата отклоняется с полем date_time и текстом ошибки.",
+    "Stop-words в названии/описании отклоняются с текстом про трудовые отношения.",
+    "Оплата <0 или >1 000 000 отклоняется.",
+    "max_workers <1 или >100 отклоняется.",
+    "Валидное задание создаётся; core.tests.test_flows.JobCrudTests проходит."
+  ],
+  "out_of_scope": [
+    "Не менять модель/миграции и шаблоны.",
+    "Не менять другие формы (auth/profile)."
+  ],
+  "checks": [
+    {"name": "compile", "cmd": "{python} -m py_compile djadmin/core/forms.py djadmin/core/validators_jobs.py djadmin/core/tests/test_flows.py", "cwd": "."},
+    {"name": "job_tests", "cmd": "{python} djadmin/manage.py test core.tests.test_flows.JobCrudTests --keepdb -v 1", "cwd": "."}
+  ]
+}
