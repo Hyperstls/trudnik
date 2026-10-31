@@ -110,7 +110,7 @@ class ProfileAdmin(AuditAdminMixin, ModelAdmin):
         (None, {"fields": ("email", "password_hint", "new_password", "role", "full_name")}),
         ("Контакты и анкета", {"fields": (
             "phone", "city", "age", "bio", "experience", "desired_payment",
-            "religion", "portfolio_link", "contact", "email_public",
+            "portfolio_link", "contact", "email_public",
             "inn", "is_self_employed",
         )}),
         ("Статусы", {"fields": (

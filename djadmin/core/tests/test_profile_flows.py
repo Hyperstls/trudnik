@@ -1,12 +1,12 @@
 """Фаза 2в: профиль, смена пароля, избранное людей, чёрный список, приглашения."""
 from datetime import timedelta
 
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from core.models import (
-    Application, Blacklist, Favorite, Invitation, Job, Profile, Skill, UserSkill,
+    Application, Blacklist, Favorite, Invitation, Job, Profile, Religion, Skill, UserSkill,
 )
 from core.tests.test_auth import make_profile
 from core.tests.test_flows import make_job
@@ -38,9 +38,73 @@ class ProfileEditTests(TestCase):
             [self.skill.pk],
         )
 
+    def test_profile_edit_cannot_modify_other_user(self):
+        """IDOR (AUTH-P1-12): id другого пользователя в POST не меняет его профиль."""
+        other = make_profile(
+            "prof-other@example.com", full_name="Чужой Профиль", city="Чужойгород",
+        )
+        response = self.client.post("/profile", {
+            "action": "profile",
+            "id": str(other.pk),
+            "full_name": "Взломанное Имя", "city": "Взломанск",
+            "worker_visibility": "on",
+        })
+        self.assertEqual(response.status_code, 302)
+        self.user.refresh_from_db()
+        other.refresh_from_db()
+        self.assertEqual(self.user.full_name, "Взломанное Имя")
+        self.assertEqual(self.user.city, "Взломанск")
+        self.assertEqual(other.full_name, "Чужой Профиль")
+        self.assertEqual(other.city, "Чужойгород")
+
     def test_skills_only_action(self):
         self.client.post("/profile", {"action": "skills", "skills": [str(self.skill.pk)]})
         self.assertTrue(UserSkill.objects.filter(user=self.user, skill=self.skill).exists())
+
+    def test_profile_invalid_inn_rejected(self):
+        # формат 12 цифр, но контрольная сумма не сходится (P102)
+        response = self.client.post("/profile", {
+            "action": "profile",
+            "full_name": "Обновлённое Имя", "worker_visibility": "on",
+            "inn": "500100732258",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "контрольную сумму")
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.inn, "")
+
+    def test_profile_invalid_contact_rejected(self):
+        for contact in ("ab", "!!@@@$$"):
+            response = self.client.post("/profile", {
+                "action": "profile",
+                "full_name": "Обновлённое Имя", "worker_visibility": "on",
+                "contact": contact,
+            })
+            self.assertEqual(response.status_code, 200)
+            self.user.refresh_from_db()
+            self.assertFalse(self.user.contact)
+        self.assertContains(response, "корректный контакт")
+
+    def test_religion_not_editable(self):
+        """P0-04 (152-ФЗ ст.10): вероисповедание не выбирается и не меняется."""
+        religion = Religion.objects.create(name="Тестовое вероисповедание")
+        response = self.client.get("/profile")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'name="religion"')
+
+        response = self.client.post("/profile", {
+            "action": "profile",
+            "full_name": "Без вероисповедания", "worker_visibility": "on",
+            "religion": str(religion.pk),
+        })
+        self.assertEqual(response.status_code, 302)
+        self.user.refresh_from_db()
+        self.assertIsNone(self.user.religion_id)
+
+        from core.admin.users import ProfileAdmin
+
+        admin_fields = [f for _, opts in ProfileAdmin.fieldsets for f in opts["fields"]]
+        self.assertNotIn("religion", admin_fields)
 
     def test_password_change_rpc_and_b10_stamp(self):
         old_stamp = self.user.password_changed_at
@@ -65,6 +129,26 @@ class ProfileEditTests(TestCase):
         })
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password("Aa1!aaaa"))
+
+    def test_password_change_invalidates_other_sessions(self):
+        """P1-06: текущая сессия жива, остальные сессии пользователя — нет."""
+        client_a = Client()
+        client_b = Client()
+        client_a.force_login(self.user)
+        client_b.force_login(self.user)
+
+        response = client_a.post("/profile", {
+            "action": "password",
+            "current_password": "Aa1!aaaa", "new_password": "Aa1!zzzz",  # pragma: allowlist secret
+            "confirm_password": "Aa1!zzzz",  # pragma: allowlist secret
+        })
+        self.assertEqual(response.status_code, 302)
+
+        other = client_b.get("/profile")
+        self.assertEqual(other.status_code, 302)
+        self.assertIn("/login", other.url)
+
+        self.assertEqual(client_a.get("/profile").status_code, 200)
 
 
 class PeopleRelationsTests(TestCase):

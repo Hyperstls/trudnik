@@ -3,77 +3,101 @@
 Совместимость хэшей: один и тот же формат $2b$/$2a$ 12 раундов используют
 Flask (app/utils/auth.py), pgcrypto crypt() и Django BCryptPasswordHasher.
 Fail-closed: suspended → отказ (is_active=False), неподтверждённый email → отказ.
-Лок-аут: 5 неудач → экспоненциальный бэкоф (в памяти процесса; масштаб админки).
+Лок-аут: 5 неудач → экспоненциальный бэкоф (2**count) в общем кэше
+(Redis в проде, не в памяти воркера); сбой кэша → вход временно недоступен.
 """
-import time
-
 from django.contrib.auth import backends
+from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 
 MAX_FAILS = 5
-BASE_LOCK_SECONDS = 900
-MAX_LOCKOUT_ENTRIES = 10_000  # cap памяти против спама уникальными email
-LOCKOUT_TTL_SECONDS = 86_400  # записи старше суток — мусор
+FAIL_WINDOW = 900  # окно накопления неудач аккаунта, сек
+BASE_LOCK_SECONDS = 900  # первая блокировка, далее BASE * 2**count
+COUNT_TTL_SECONDS = 86_400  # счётчик серий блокировок живёт сутки
+CACHE_UNAVAILABLE_TEXT = "Сервис входа временно недоступен. Попробуйте позже."
+LOCKOUT_TEXT = "Аккаунт временно заблокирован по числу неудачных попыток (%d сек.)."
 
 
 class ProfileBackend(backends.ModelBackend):
-    _lockout: dict[str, tuple[int, float]] = {}  # key -> (fails, locked_until_ts)
+    @staticmethod
+    def _lock_key(email: str) -> str:
+        return "login_lock:%s" % email
+
+    @staticmethod
+    def _fail_key(email: str) -> str:
+        return "login_fail:%s" % email
+
+    @staticmethod
+    def _count_key(email: str) -> str:
+        return "login_count:%s" % email
 
     @classmethod
-    def _purge(cls) -> None:
-        """Выкидываем истёкшие записи и капим размер (in-process dict, воркеров > 1)."""
-        now = time.monotonic()
-        for k in [k for k, v in cls._lockout.items() if v[1] and v[1] <= now]:
-            cls._lockout.pop(k, None)
-        if len(cls._lockout) > MAX_LOCKOUT_ENTRIES:
-            overflow = len(cls._lockout) - MAX_LOCKOUT_ENTRIES
-            for k, _ in sorted(cls._lockout.items(), key=lambda kv: kv[1][1])[:overflow]:
-                cls._lockout.pop(k, None)
+    def _lock_remaining(cls, lock_key: str) -> int:
+        """Секунды до конца блокировки; 0 — не заблокирован. Сбой кэша — fail-closed."""
+        try:
+            value = cache.get(lock_key)
+        except Exception as exc:
+            raise PermissionDenied(CACHE_UNAVAILABLE_TEXT) from exc
+        return int(value) if value else 0
 
     @classmethod
-    def _lock_remaining(cls, key: str) -> int:
-        cls._purge()
-        entry = cls._lockout.get(key)
-        if entry and entry[1] > time.monotonic():
-            return int(entry[1] - time.monotonic())
-        return 0
+    def _register_fail(cls, fail_key: str, lock_key: str, count_key: str) -> int:
+        """+1 к неудачам; на 5-й — блокировка с экспонентой 2**(число прошлых блокировок)."""
+        try:
+            if cache.add(fail_key, 1, FAIL_WINDOW):
+                fails = 1
+            else:
+                try:
+                    fails = cache.incr(fail_key)
+                except ValueError:  # ключ истёк между add и incr
+                    cache.set(fail_key, 1, FAIL_WINDOW)
+                    fails = 1
+            if fails < MAX_FAILS:
+                return 0
+            lockouts = int(cache.get(count_key) or 0)
+            lock_seconds = BASE_LOCK_SECONDS * (2 ** lockouts)
+            cache.set(lock_key, lock_seconds, lock_seconds)
+            cache.set(count_key, lockouts + 1, COUNT_TTL_SECONDS)
+            cache.delete(fail_key)
+        except Exception as exc:
+            raise PermissionDenied(CACHE_UNAVAILABLE_TEXT) from exc
+        return lock_seconds
 
     @classmethod
-    def _register_fail(cls, key: str) -> int:
-        fails, locked_until = cls._lockout.get(key, (0, 0.0))
-        if locked_until > time.monotonic():
+    def _register_success(cls, lock_key: str, fail_key: str, count_key: str) -> None:
+        try:
+            cache.delete_many([lock_key, fail_key, count_key])
+        except Exception as exc:
+            raise PermissionDenied(CACHE_UNAVAILABLE_TEXT) from exc
+
+    @classmethod
+    def lock_remaining(cls, email: str) -> int:
+        """Сколько секунд аккаунт ещё заблокирован (0 — не заблокирован).
+
+        Django's authenticate() глушит PermissionDenied из бэкенда
+        (django/contrib/auth/__init__.py), поэтому view уточняет блокировку
+        здесь, чтобы показать сообщение вместо общего «неверный пароль».
+        """
+        email = (email or "").strip().lower()
+        if not email:
             return 0
-        fails += 1
-        if fails >= MAX_FAILS:
-            locked_until = time.monotonic() + BASE_LOCK_SECONDS * (2 ** (fails - MAX_FAILS))
-            cls._lockout[key] = (fails, locked_until)
-            return int(locked_until - time.monotonic())
-        cls._lockout[key] = (fails, 0.0)
-        return 0
-
-    @classmethod
-    def _register_success(cls, key: str) -> None:
-        cls._lockout.pop(key, None)
+        return cls._lock_remaining(cls._lock_key(email))
 
     def authenticate(self, request, username=None, password=None, **kwargs):
         email = (username or kwargs.get("email") or "").strip().lower()
         if not email or not password:
             return None
-        lock_key = "login:%s" % email
+        lock_key, fail_key, count_key = self._lock_key(email), self._fail_key(email), self._count_key(email)
         remaining = self._lock_remaining(lock_key)
         if remaining:
-            raise PermissionDenied(
-                "Слишком много неудачных попыток. Повторите через %d сек." % remaining
-            )
+            raise PermissionDenied(LOCKOUT_TEXT % remaining)
         user = super().authenticate(request, username=email, password=password, **kwargs)
         if user is None:
-            locked_for = self._register_fail(lock_key)
+            locked_for = self._register_fail(fail_key, lock_key, count_key)
             if locked_for:
-                raise PermissionDenied(
-                    "Аккаунт временно заблокирован по числу неудачных попыток (%d сек.)." % locked_for
-                )
+                raise PermissionDenied(LOCKOUT_TEXT % locked_for)
             return None
-        self._register_success(lock_key)
+        self._register_success(lock_key, fail_key, count_key)
         return user
 
     def user_can_authenticate(self, user):

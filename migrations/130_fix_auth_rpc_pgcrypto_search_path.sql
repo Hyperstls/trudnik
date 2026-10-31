@@ -16,7 +16,22 @@
 -- which has a normal search_path and works; this fixes the RPC path used by
 -- PostgREST and password change.
 
-ALTER FUNCTION public.register_user(text, text, text, text) SET search_path = pg_catalog, public;
+-- register_user has two historical signatures: 4-arg (067) and 5-arg
+-- (075/080/141). The 4-arg may already be dropped by 143, so alter whichever
+-- exists. This keeps the migration idempotent on dump-restored databases.
+DO $$
+DECLARE
+    fn text;
+BEGIN
+    FOREACH fn IN ARRAY ARRAY[
+        'public.register_user(text,text,text,text,boolean)',
+        'public.register_user(text,text,text,text)'
+    ] LOOP
+        IF to_regprocedure(fn) IS NOT NULL THEN
+            EXECUTE format('ALTER FUNCTION %s SET search_path = pg_catalog, public', fn);
+        END IF;
+    END LOOP;
+END $$;
 ALTER FUNCTION public.login_user(text, text) SET search_path = pg_catalog, public;
 ALTER FUNCTION public.change_password(uuid, text, text) SET search_path = pg_catalog, public;
 

@@ -10,8 +10,8 @@
 
     <div class="bg-white rounded-2xl border border-neutral-200 shadow-card p-6">
         <div class="flex flex-col items-center mb-5">
-            {% if p.avatar_url %}
-            <img src="{{ p.avatar_url|absurl }}" alt="{{ p.full_name }}" loading="lazy" class="w-24 h-24 rounded-full object-cover border-4 border-primary-500 shadow-lg">
+            {% if p.avatar_url or p.photo_url %}
+            <img src="{{ p.avatar_url|default:p.photo_url|absurl }}" alt="{{ p.full_name }}" loading="lazy" class="w-24 h-24 rounded-full object-cover border-4 border-primary-500 shadow-lg">
             {% else %}
             <div class="w-24 h-24 rounded-full border-4 border-primary-500 shadow-lg bg-primary-50 flex items-center justify-center text-primary-400">
                 <svg aria-hidden="true" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
@@ -43,11 +43,7 @@
         {% if p.bio %}<section class="mb-4"><h2 class="text-sm font-semibold text-neutral-600 mb-1.5">О себе</h2><p class="text-sm text-neutral-700 whitespace-pre-line leading-relaxed">{{ p.bio }}</p></section>{% endif %}
         {% if p.experience %}<section class="mb-4"><h2 class="text-sm font-semibold text-neutral-600 mb-1.5">Опыт</h2><p class="text-sm text-neutral-700 whitespace-pre-line leading-relaxed">{{ p.experience }}</p></section>{% endif %}
 
-        {% if p.contact or p.email_public %}
-        <p class="text-sm text-neutral-700 mb-4">Связь: {{ p.contact|default:p.email_public }}</p>
-        {% else %}
         <p class="text-sm text-neutral-500 mb-4">Контакты открываются после отклика на задание.</p>
-        {% endif %}
 
         {% if user.is_authenticated and p.id != user.pk %}
         <div class="border-t border-neutral-100 pt-4 space-y-3">

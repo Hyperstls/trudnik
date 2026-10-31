@@ -1,13 +1,15 @@
 """Формы регистрации, подтверждения email и сброса пароля (фаза 2б).
 
-Паритет Flask: validate_password (≥8, заглавная, строчная, цифра, спецсимвол),
-honeypot «website», согласие 152-ФЗ, intent → роль.
+Паритет Flask: validate_password (≥8, заглавная A-Z, строчная a-z, цифра,
+спецсимвол, без пробелов), is_valid_contact (email/телефон/@username),
+validate_inn_checksum (10/12 цифр, алгоритм ФНС), honeypot «website»,
+согласие 152-ФЗ, intent → роль.
 """
 import re
 
 from django import forms
 
-from .models import Profile
+from .models import Profile, Skill
 
 INPUT_CLS = "w-full border border-gray-300 rounded px-3 py-2 bg-white"
 
@@ -15,18 +17,59 @@ SPECIAL_RE = re.compile(r"[!@#$%^&*()_+\-=\[\]{}|;:,.<>?/]")
 
 
 def validate_password(password: str) -> str | None:
-    """Порт app/utils/validators.py: возвращает текст ошибки или None."""
+    """Порт app/utils/validators.py: возвращает текст ошибки или None.
+
+    Кириллица не удовлетворяет [A-Z]/[a-z] — паритет Flask.
+    """
     if len(password) < 8:
         return "Пароль должен содержать минимум 8 символов."
-    if not re.search(r"[A-ZА-ЯЁ]", password):
+    if not re.search(r"[A-Z]", password):
         return "Пароль должен содержать заглавную букву."
-    if not re.search(r"[a-zа-яё]", password):
+    if not re.search(r"[a-z]", password):
         return "Пароль должен содержать строчную букву."
-    if not re.search(r"\d", password):
+    if not re.search(r"[0-9]", password):
         return "Пароль должен содержать цифру."
     if not SPECIAL_RE.search(password):
         return "Пароль должен содержать специальный символ (!@#$%^&* и т.п.)."
+    if re.search(r"\s", password):
+        return "Пароль не должен содержать пробелы."
     return None
+
+
+def is_valid_contact(contact: str) -> bool:
+    """Порт app/utils/validators.py: email / телефон / @username."""
+    if not contact:
+        return False
+    return any([
+        bool(re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", contact)),
+        bool(re.match(r"^\+?\d[\d\-\s\(\)]{4,}$", contact)),
+        bool(re.match(r"^@?\w{3,}$", contact)),
+    ])
+
+
+def validate_inn_checksum(inn: str) -> bool:
+    """Порт app/utils/validators.py: контрольная сумма ИНН 10/12 цифр (ФНС)."""
+    if not inn or not inn.isdigit():
+        return False
+
+    length = len(inn)
+
+    if length == 10:
+        coeffs = [2, 4, 10, 3, 5, 9, 4, 6, 8]
+        checksum = sum(coeffs[i] * int(inn[i]) for i in range(9))
+        return (checksum % 11) % 10 == int(inn[9])
+
+    if length == 12:
+        coeffs_11 = [7, 2, 4, 10, 3, 5, 9, 4, 6, 8]
+        checksum_11 = sum(coeffs_11[i] * int(inn[i]) for i in range(10))
+        if (checksum_11 % 11) % 10 != int(inn[10]):
+            return False
+
+        coeffs_12 = [3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8]
+        checksum_12 = sum(coeffs_12[i] * int(inn[i]) for i in range(11))
+        return (checksum_12 % 11) % 10 == int(inn[11])
+
+    return False
 
 
 class RegisterForm(forms.Form):
@@ -36,9 +79,34 @@ class RegisterForm(forms.Form):
         ("post_jobs", "Размещаю задания"),
     )
     email = forms.EmailField(label="Email", widget=forms.EmailInput(attrs={"class": INPUT_CLS}))
-    full_name = forms.CharField(label="ФИО", max_length=300, widget=forms.TextInput(attrs={"class": INPUT_CLS}))
-    city = forms.CharField(label="Город", max_length=200, required=False, widget=forms.TextInput(attrs={"class": INPUT_CLS}))
+    full_name = forms.CharField(label="ФИО", max_length=150, widget=forms.TextInput(attrs={"class": INPUT_CLS}))
+    city = forms.CharField(label="Город", max_length=100, required=False, widget=forms.TextInput(attrs={"class": INPUT_CLS}))
     password = forms.CharField(label="Пароль", widget=forms.PasswordInput(attrs={"class": INPUT_CLS}))
+    portfolio_link = forms.URLField(
+        label="Портфолио (ссылка)", required=False,
+        widget=forms.URLInput(attrs={"class": INPUT_CLS}),
+    )
+    contact = forms.CharField(
+        label="Контакт для связи", max_length=300, required=False,
+        widget=forms.TextInput(attrs={"class": INPUT_CLS}),
+    )
+    inn = forms.CharField(
+        label="ИНН", max_length=12, required=False,
+        widget=forms.TextInput(attrs={"class": INPUT_CLS}),
+    )
+    is_self_employed = forms.BooleanField(label="Самозанятый", required=False)
+    experience = forms.CharField(
+        label="Опыт работы", required=False,
+        widget=forms.Textarea(attrs={"class": INPUT_CLS, "rows": 3}),
+    )
+    desired_payment = forms.DecimalField(
+        label="Желаемая оплата, ₽", max_digits=12, decimal_places=2, min_value=0, required=False,
+        widget=forms.NumberInput(attrs={"class": INPUT_CLS, "min": 0, "step": "0.01"}),
+    )
+    skills = forms.ModelMultipleChoiceField(
+        queryset=Skill.objects.order_by("sort_order", "name"),
+        widget=forms.CheckboxSelectMultiple, required=False, label="Навыки",
+    )
     intent = forms.ChoiceField(label="Цель", choices=INTENT_CHOICES, initial="both",
                                widget=forms.RadioSelect)
     consent = forms.BooleanField(label="Согласен с обработкой персональных данных (152-ФЗ)")
@@ -56,6 +124,31 @@ class RegisterForm(forms.Form):
         if error:
             raise forms.ValidationError(error)
         return password
+
+    def _is_worker_intent(self) -> bool:
+        # intent объявлен ниже contact/inn — при их clean() cleaned_data ещё не содержит
+        # intent, поэтому берём сырое значение формы (паритет Flask: роль != employer).
+        return (self.data.get("intent") or "both") != "post_jobs"
+
+    def clean_contact(self):
+        contact = (self.cleaned_data.get("contact") or "").strip()
+        if not self._is_worker_intent() or not contact:
+            return contact
+        if len(contact) < 3:
+            raise forms.ValidationError("Контакт должен содержать минимум 3 символа.")
+        if not is_valid_contact(contact):
+            raise forms.ValidationError("Введите корректный контакт: email, телефон или никнейм.")
+        return contact
+
+    def clean_inn(self):
+        inn = (self.cleaned_data.get("inn") or "").strip()
+        if not self._is_worker_intent() or not inn:
+            return inn
+        if not inn.isdigit() or len(inn) != 12:
+            raise forms.ValidationError("ИНН должен содержать ровно 12 цифр.")
+        if not validate_inn_checksum(inn):
+            raise forms.ValidationError("Некорректный ИНН — проверьте контрольную сумму.")
+        return inn
 
     def clean(self):
         cleaned = super().clean()

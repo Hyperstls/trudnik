@@ -5,6 +5,7 @@
 accept_invitation_atomic(p_invitation_id, p_user_id) — worker_id из сессии.
 """
 from django.contrib import messages
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
@@ -41,6 +42,8 @@ def profile_edit(request):
                 except Exception:
                     ok = False
                 if ok:
+                    user.refresh_from_db()
+                    update_session_auth_hash(request, user)
                     Profile.objects.filter(pk=user.pk).update(password_changed_at=timezone.now())
                     messages.success(request, "Пароль изменён.")
                     return redirect("core:profile")

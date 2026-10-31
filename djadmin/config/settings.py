@@ -211,6 +211,10 @@ else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 DEFAULT_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", "notifications@trudnik.ru")
 
+# Транзакционные письма (подтверждение email, сброс пароля) — через Celery.
+# false/0 → синхронная отправка (SMTP блокирует request-цикл, но это fallback).
+TRANSACTIONAL_EMAIL_ASYNC = os.getenv("TRANSACTIONAL_EMAIL_ASYNC", "true").lower() not in ("0", "false")
+
 # ── Кэш (токены мессенджер-верификации и пр.; Redis при наличии REDIS_URL) ──
 _redis_url = os.getenv("REDIS_URL", "")
 if _redis_url and ("://redis:" in _redis_url or "@redis:" in _redis_url):

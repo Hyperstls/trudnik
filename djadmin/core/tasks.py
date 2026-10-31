@@ -28,6 +28,16 @@ def _email_allowed(profile_prefs: dict | None) -> bool:
     return prefs.get("email", True) not in (False, "false", "off", 0)
 
 
+@app.task(bind=True, max_retries=3, default_retry_delay=60, ignore_result=True)
+def send_transactional_email(self, subject: str, message: str, to_email: str) -> None:
+    """Транзакционное письмо (регистрация/сброс). SMTP-сбой → retry (3 попытки)."""
+    try:
+        send_mail(subject, message, None, [to_email])
+    except Exception as exc:
+        logger.warning("send_transactional_email failed to=%s: %s", to_email, exc)
+        raise self.retry(exc=exc)
+
+
 @app.task(ignore_result=True)
 def drain_notification_outbox() -> str:
     rows = list(
@@ -127,7 +137,13 @@ def expire_old_jobs() -> int:
     ).update(status=Job.Status.EXPIRED)
     rpc_expired = 0
     try:
-        rpc_expired = int(call_rpc("expire_unfilled_jobs") or 0)
+        result = call_rpc("expire_unfilled_jobs")
+        # call_rpc отдаёт первую строку как dict ({'expire_unfilled_jobs': N}),
+        # поэтому скалярный RETURNS integer приходит в обёртке, а не числом.
+        if isinstance(result, dict):
+            rpc_expired = int(result.get("expire_unfilled_jobs") or 0)
+        else:
+            rpc_expired = int(result or 0)
     except Exception:
         logger.warning("expire_unfilled_jobs rpc failed", exc_info=True)
     if updated or rpc_expired:

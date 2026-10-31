@@ -8,7 +8,7 @@ Profile.objects.public_workers()/public_visible(). Публичные стран
 from django.conf import settings
 from django.db import connection
 from django.http import Http404, HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.core.paginator import Paginator
 
@@ -21,8 +21,10 @@ PUBLIC_PROFILE_FIELDS = (
     "id", "full_name", "avatar_url", "photo_url", "age", "bio", "city",
     "experience", "desired_payment", "verification_status", "rating",
     "total_reviews", "ratings_count", "portfolio_link", "is_self_employed",
-    "email_public", "contact", "created_at", "religion_id",
+    "created_at",
 )
+# contact/email_public/religion_id — НЕ публичные (152-ФЗ, P0-03/P0-04):
+# контакты открываются после отклика на задание, вероисповедание — спецкатегория.
 
 
 def _abs(url: str | None) -> str:
@@ -179,9 +181,24 @@ def worker_detail(request, user_id):
     return render(request, "core/worker_detail.html", context)
 
 
+# LEGAL-P0-01: заголовки legacy-страниц, рендерятся, когда site_pages пуст.
+LEGAL_TITLES = {
+    "privacy": "Политика конфиденциальности",
+    "terms": "Условия использования",
+    "safety": "Как мы защищаем",
+}
+
+
 def legal_page(request, slug):
-    page = get_object_or_404(SitePage, pk=slug)
-    return render(request, "core/legal_page.html", {"page": page})
+    page = SitePage.objects.filter(pk=slug).first()
+    if page is not None:
+        return render(request, "core/legal_page.html", {"page": page})
+    if slug in LEGAL_TITLES:
+        return render(request, "core/legal_fallback.html", {
+            "slug": slug,
+            "title": LEGAL_TITLES[slug],
+        })
+    raise Http404("Страница не найдена")
 
 
 def robots(request):

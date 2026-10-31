@@ -236,7 +236,7 @@ def check_duplicate_attributes():
 
 
 def check_tailwind_freshness():
-    """7. tailwind.min.css собран ПОСЛЕ последней правки templates/ и static/js/.
+    """7. tailwind.min.css собран ПОСЛЕ последней правки templates/, djadmin/core/templates/ и static/js/.
 
     Пайплайн: npm run build:css (tailwindcss CLI, конфиг tailwind.config.js).
     Если CSS старше исходников — утилитарные классы из новых шаблонов не имеют
@@ -248,6 +248,7 @@ def check_tailwind_freshness():
         err("static/css/tailwind.min.css not found — run: npm install && npm run build:css")
         return
     sources = list((ROOT / "templates").rglob("*.html")) + \
+              list((ROOT / "djadmin" / "core" / "templates").rglob("*.html")) + \
               list((ROOT / "static" / "js").rglob("*.js"))
     if not sources:
         print("  ✅ No template/JS sources to compare")

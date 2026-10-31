@@ -1,7 +1,7 @@
 """Формы фазы 2в: профиль, смена пароля."""
 from django import forms
 
-from .forms_auth import INPUT_CLS, validate_password
+from .forms_auth import INPUT_CLS, is_valid_contact, validate_inn_checksum, validate_password
 from .models import Profile, Skill
 
 
@@ -16,7 +16,7 @@ class ProfileForm(forms.ModelForm):
         fields = (
             "full_name", "city", "phone", "age", "bio", "experience",
             "desired_payment", "portfolio_link", "contact", "email_public",
-            "inn", "is_self_employed", "religion", "worker_visibility",
+            "inn", "is_self_employed", "worker_visibility",
         )
         widgets = {
             "full_name": forms.TextInput(attrs={"class": INPUT_CLS}),
@@ -40,6 +40,26 @@ class ProfileForm(forms.ModelForm):
             self.fields["skills"].initial = list(
                 UserSkill.objects.filter(user=self.instance).values_list("skill_id", flat=True)
             )
+
+    def clean_inn(self):
+        inn = (self.cleaned_data.get("inn") or "").strip()
+        if not inn:
+            return inn
+        if not inn.isdigit() or len(inn) != 12:
+            raise forms.ValidationError("ИНН должен содержать ровно 12 цифр.")
+        if not validate_inn_checksum(inn):
+            raise forms.ValidationError("Некорректный ИНН — проверьте контрольную сумму.")
+        return inn
+
+    def clean_contact(self):
+        contact = (self.cleaned_data.get("contact") or "").strip()
+        if not contact:
+            return contact
+        if len(contact) < 3:
+            raise forms.ValidationError("Контакт должен содержать минимум 3 символа.")
+        if not is_valid_contact(contact):
+            raise forms.ValidationError("Введите корректный контакт: email, телефон или никнейм.")
+        return contact
 
 
 class PasswordChangeForm(forms.Form):

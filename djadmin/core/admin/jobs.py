@@ -44,7 +44,7 @@ class JobAdmin(AuditAdminMixin, ModelAdmin):
         (None, {"fields": ("employer", "work_type", "organization_name", "status", "date_time")}),
         ("Описание", {"fields": (
             "org_description", "object_description", "detailed_description",
-            "address", "city", "lat", "lng", "preferred_religion",
+            "address", "city", "lat", "lng",
         )}),
         ("Условия", {"fields": (
             "payment_amount", "max_workers", "current_workers", "photo_urls",

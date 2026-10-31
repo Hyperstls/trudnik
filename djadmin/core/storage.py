@@ -1,6 +1,7 @@
 """Загрузка файлов (паритет app/services/storage_service.py).
 
-Проверка magic-bytes (JPEG/PNG/WebP) + лимит MAX_PHOTO_SIZE_MB (env, default 5).
+Проверка magic-bytes (JPEG/PNG/WebP; PDF — только для документов верификации)
++ лимит MAX_PHOTO_SIZE_MB (env, default 5).
 Файлы — в UPLOAD_FOLDER (прод: /data/uploads, dev: djadmin/_uploads).
 """
 import os
@@ -14,6 +15,7 @@ MAGIC = {
     b"\x89PNG\r\n\x1a\n": ".png",
 }
 WEBP_MAGIC = (b"RIFF", b"WEBP")
+PDF_MAGIC = b"%PDF-"
 
 
 class UploadError(ValueError):
@@ -26,7 +28,10 @@ def _upload_root() -> Path:
     return root
 
 
-def detect_extension(data: bytes) -> str | None:
+def detect_extension(data: bytes, allow_pdf: bool = False) -> str | None:
+    """Расширение по magic bytes: JPEG/PNG/WebP всегда, PDF — при allow_pdf."""
+    if allow_pdf and data.startswith(PDF_MAGIC):
+        return ".pdf"
     for magic, ext in MAGIC.items():
         if data.startswith(magic):
             return ext
@@ -35,18 +40,20 @@ def detect_extension(data: bytes) -> str | None:
     return None
 
 
-def save_upload(uploaded_file, subdir: str) -> str:
+def save_upload(uploaded_file, subdir: str, allow_pdf: bool = False) -> str:
     """Сохранить файл, вернуть URL-путь '/uploads/<subdir>/<uuid>.<ext>'.
 
+    PDF принимается только при allow_pdf=True (документы верификации).
     Raises UploadError при неверном типе/размере.
     """
     data = uploaded_file.read()
     max_mb = int(os.getenv("MAX_PHOTO_SIZE_MB", "5"))
     if len(data) > max_mb * 1024 * 1024:
         raise UploadError("Файл больше %d МБ" % max_mb)
-    ext = detect_extension(data)
+    ext = detect_extension(data, allow_pdf=allow_pdf)
     if ext is None:
-        raise UploadError("Допустимы только JPEG, PNG или WebP")
+        allowed = "PDF, JPEG, PNG или WebP" if allow_pdf else "JPEG, PNG или WebP"
+        raise UploadError("Допустимы только %s" % allowed)
     folder = _upload_root() / subdir
     folder.mkdir(parents=True, exist_ok=True)
     name = "%s%s" % (uuid.uuid4().hex, ext)
@@ -61,3 +68,25 @@ def resolve_upload_url(relative_path: str) -> Path | None:
     if root not in candidate.parents and candidate != root:
         return None
     return candidate if candidate.is_file() else None
+
+
+def delete_upload_url(url: str) -> bool:
+    """Удалить файл по URL-пути '/uploads/<subdir>/<name>' (152-ФЗ ст.21, P1-14).
+
+    Query/fragment отбрасываются; путь резолвится через resolve_upload_url,
+    поэтому за пределы upload root выйти нельзя. Ошибки/отсутствие файла → False.
+    """
+    marker = "/uploads/"
+    if not isinstance(url, str) or marker not in url:
+        return False
+    relative = url.split(marker, 1)[1].split("?", 1)[0].split("#", 1)[0]
+    if not relative:
+        return False
+    try:
+        path = resolve_upload_url(relative)
+        if path is None:
+            return False
+        path.unlink()
+        return True
+    except (OSError, ValueError):
+        return False

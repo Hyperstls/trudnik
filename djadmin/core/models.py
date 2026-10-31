@@ -98,7 +98,10 @@ class Profile(AbstractBaseUser):
     password = models.CharField(max_length=255, db_column="password_hash")
     created_at = models.DateTimeField("создан", auto_now_add=True, editable=False)
     updated_at = models.DateTimeField("обновлён", auto_now=True, editable=False)
-    email_verified = models.BooleanField("email подтверждён", default=True)
+    # fail-closed на ORM-пути: create_user создаёт неподтверждённого пользователя.
+    # DB-default остаётся TRUE до P113 (миграция в этом пакете не меняется);
+    # create_superuser ставит True явно.
+    email_verified = models.BooleanField("email подтверждён", default=False)
     consented_at = models.DateTimeField("согласие 152-ФЗ", null=True, blank=True)
     password_changed_at = models.DateTimeField("пароль изменён", null=True, blank=True)
     suspended = models.BooleanField("заблокирован", default=False)

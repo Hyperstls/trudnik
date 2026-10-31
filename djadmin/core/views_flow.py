@@ -16,6 +16,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.http import Http404, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
@@ -23,9 +24,10 @@ from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
+from .auth_backend import LOCKOUT_TEXT, ProfileBackend
 from .forms import JobForm, LoginForm
 from .models import Application, Job, JobFavorite
-from .ratelimit import rate_limit_write
+from .ratelimit import RateLimitExceeded, RateLimitUnavailable, enforce_ip_limit, rate_limit_write
 from .rpc import call_rpc, sync_job_skills_raw
 
 RPC_ERROR_TEXT = {
@@ -87,16 +89,40 @@ def login_view(request):
     if request.user.is_authenticated:
         return redirect("/")
     form = LoginForm(request.POST or None)
+    if request.method == "POST":
+        # per-IP лимит до любых проверок: fail-closed при недоступном кэше
+        try:
+            enforce_ip_limit(request, "login", 20, 3600)
+        except RateLimitExceeded:
+            messages.error(request, "Слишком много попыток с вашего IP. Попробуйте позже.")
+            return render(request, "core/login.html", {"form": form})
+        except RateLimitUnavailable:
+            messages.error(request, "Сервис входа временно недоступен. Попробуйте позже.")
+            return render(request, "core/login.html", {"form": form})
     if request.method == "POST" and form.is_valid():
-        user = authenticate(
-            request,
-            username=form.cleaned_data["email"].strip().lower(),
-            password=form.cleaned_data["password"],
-        )
-        if user is not None:
-            auth_login(request, user)
-            return redirect(_safe_next(request))
-        messages.error(request, "Неверный email или пароль, либо аккаунт заблокирован/не подтверждён.")
+        email = form.cleaned_data["email"].strip().lower()
+        try:
+            user = authenticate(
+                request,
+                username=email,
+                password=form.cleaned_data["password"],
+            )
+        except PermissionDenied as exc:
+            messages.error(request, str(exc))
+        else:
+            if user is not None:
+                auth_login(request, user)
+                return redirect(_safe_next(request))
+            # authenticate() глушит PermissionDenied бэкенда — уточняем лок-аут сами
+            try:
+                remaining = ProfileBackend.lock_remaining(email)
+            except PermissionDenied as exc:
+                messages.error(request, str(exc))
+            else:
+                if remaining:
+                    messages.error(request, LOCKOUT_TEXT % remaining)
+                else:
+                    messages.error(request, "Неверный email или пароль, либо аккаунт заблокирован/не подтверждён.")
     return render(request, "core/login.html", {"form": form})
 
 

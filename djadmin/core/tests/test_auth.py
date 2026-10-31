@@ -1,5 +1,8 @@
 """Auth-бридж: bcrypt-совместимость с Flask/pgcrypto + fail-closed правила."""
+from unittest.mock import patch
+
 import bcrypt
+from django.core.cache import cache
 from django.test import TestCase
 
 from core.models import Profile
@@ -7,11 +10,14 @@ from core.models import Profile
 
 def make_profile(email="user@example.com", password="Aa1!aaaa", **kw):  # pragma: allowlist secret
     kw.setdefault("full_name", "Иван Тестов")
+    # фикстура подтверждённого пользователя; явный email_verified=False сохраняется
+    kw.setdefault("email_verified", True)
     return Profile.objects.create_user(email=email, password=password, **kw)
 
 
 class AuthBridgeTests(TestCase):
     def setUp(self):
+        cache.clear()  # lockout/rate-limit живут в общем кэше — изолируем тесты
         self.email = "bridge@example.com"
         self.password = "Aa1!aaaa"  # pragma: allowlist secret
         self.user = make_profile(self.email, self.password)
@@ -75,18 +81,56 @@ class AuthBridgeTests(TestCase):
         unverified = make_profile("unverified@example.com", email_verified=False)
         self.assertFalse(self.client.login(username="unverified@example.com", password="Aa1!aaaa"))  # pragma: allowlist secret
 
+    def test_create_user_is_unverified_by_default(self):
+        """ORM-путь fail-closed: create_user не ставит email_verified=True."""
+        email = "orm-default@example.com"
+        user = Profile.objects.create_user(email=email, password=self.password, full_name="Без подтверждения")
+        self.assertFalse(user.email_verified)
+        self.assertFalse(Profile.objects.get(pk=user.pk).email_verified)
+        self.assertFalse(self.client.login(username=email, password=self.password))
+
     def test_login_suspended_rejected(self):
         self.user.suspended = True
         self.user.save(update_fields=["suspended"])
         self.assertFalse(self.client.login(username=self.email, password=self.password))
 
     def test_lockout_after_failures(self):
-        from core.auth_backend import ProfileBackend
-
-        key = "login:%s" % self.email
-        ProfileBackend._lockout.pop(key, None)
         for _ in range(5):
             self.client.login(username=self.email, password="bad")  # pragma: allowlist secret
-        # после 5 неудач ключ заблокирован: успех по правильному паролю невозможен
+        # после 5 неудач ключ блокировки в кэше: успех по правильному паролю невозможен
+        self.assertTrue(cache.get("login_lock:%s" % self.email))
         self.assertFalse(self.client.login(username=self.email, password=self.password))
-        ProfileBackend._lockout.pop(key, None)  # чистим за другими тестами
+
+    def test_login_rate_limit_per_ip(self):
+        ip = "198.51.100.77"  # отдельный IP: счётчик 127.0.0.1 не засоряем
+        for i in range(20):
+            response = self.client.post(
+                "/login",
+                {"email": "rl-%d@example.com" % i, "password": "Bad!1234"},  # pragma: allowlist secret
+                REMOTE_ADDR=ip,
+            )
+            self.assertEqual(response.status_code, 200)
+        response = self.client.post(
+            "/login",
+            {"email": "rl-last@example.com", "password": "Bad!1234"},  # pragma: allowlist secret
+            REMOTE_ADDR=ip,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Слишком много попыток с вашего IP")
+
+    def test_login_lockout_message_not_403(self):
+        for _ in range(5):
+            self.client.post(
+                "/login",
+                {"email": self.email, "password": "bad-pass"},  # pragma: allowlist secret
+            )
+        response = self.client.post("/login", {"email": self.email, "password": self.password})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "временно заблокирован")
+        self.assertTrue(cache.get("login_lock:%s" % self.email))
+
+    def test_login_cache_unavailable_fail_closed(self):
+        with patch("core.ratelimit.cache.add", side_effect=RuntimeError("cache down")):
+            response = self.client.post("/login", {"email": self.email, "password": self.password})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "временно недоступен")

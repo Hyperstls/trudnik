@@ -8,7 +8,7 @@ INPUT_CLS = "w-full border border-gray-300 rounded px-3 py-2 bg-white"
 JOB_FIELDS = (
     "work_type", "organization_name", "org_description", "object_description",
     "detailed_description", "address", "city", "payment_amount", "max_workers",
-    "preferred_religion", "date_time",
+    "date_time",
 )
 
 
@@ -31,7 +31,6 @@ class JobForm(forms.ModelForm):
             "city": forms.TextInput(attrs={"class": INPUT_CLS}),
             "payment_amount": forms.NumberInput(attrs={"class": INPUT_CLS, "min": 0, "step": "0.01"}),
             "max_workers": forms.NumberInput(attrs={"class": INPUT_CLS, "min": 1}),
-            "preferred_religion": forms.TextInput(attrs={"class": INPUT_CLS}),
             "date_time": forms.DateTimeInput(attrs={"class": INPUT_CLS, "type": "datetime-local"}),
         }
 

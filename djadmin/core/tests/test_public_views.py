@@ -1,11 +1,16 @@
 """Публичные read-only страницы + health."""
 from datetime import timedelta
 
-from django.test import TestCase
+from django.http import Http404
+from django.test import RequestFactory, TestCase
+from django.urls import reverse
 from django.utils import timezone
 
-from core.models import Job, SitePage
+from core import views
+from core.models import Job, Religion, SitePage
 from core.tests.test_auth import make_profile
+
+CONTACTS_AFTER_RESPONSE_TEXT = "Контакты открываются после отклика на задание."
 
 
 class PublicViewsTests(TestCase):
@@ -66,6 +71,32 @@ class PublicViewsTests(TestCase):
         self.assertNotContains(response, "worker-pub@example.com")
         self.assertNotContains(response, "+79990001122")
 
+    def test_worker_detail_hides_contact_email_public_and_religion(self):
+        """P0-03/P0-04 (152-ФЗ): contact/email_public/religion не публичны."""
+        contact = "+7 999 555-44-33"
+        email_public = "public-contact@example.com"
+        religion, _ = Religion.objects.get_or_create(name="Тестовое вероисповедание")
+        self.worker.contact = contact
+        self.worker.email_public = email_public
+        self.worker.religion = religion
+        self.worker.save(update_fields=["contact", "email_public", "religion"])
+
+        url = f"/workers/{self.worker.pk}"
+
+        anon = self.client.get(url)
+        self.assertEqual(anon.status_code, 200)
+        for value in (contact, email_public, religion.name):
+            self.assertNotContains(anon, value)
+        self.assertContains(anon, CONTACTS_AFTER_RESPONSE_TEXT)
+
+        other = make_profile("other-pub@example.com", role="employer")
+        self.client.force_login(other)
+        auth = self.client.get(url)
+        self.assertEqual(auth.status_code, 200)
+        for value in (contact, email_public, religion.name):
+            self.assertNotContains(auth, value)
+        self.assertContains(auth, CONTACTS_AFTER_RESPONSE_TEXT)
+
     def test_worker_detail_404_for_admin_profile(self):
         admin = make_profile("adm@example.com", role="admin")
         self.assertEqual(self.client.get(f"/workers/{admin.pk}").status_code, 404)
@@ -78,3 +109,89 @@ class PublicViewsTests(TestCase):
 
     def test_robots(self):
         self.assertEqual(self.client.get("/robots.txt").status_code, 200)
+
+
+LEGACY_PHOTO_URL = "https://cdn.example.com/legacy/photo.jpg"
+NEW_AVATAR_URL = "https://cdn.example.com/new/avatar.jpg"
+
+
+class LegalFallbackTests(TestCase):
+    """LEGAL-P0-01: пустой site_pages -> legacy-фолбэк, SitePage -> override."""
+
+    def setUp(self):
+        SitePage.objects.filter(pk__in=("privacy", "terms", "safety")).delete()
+
+    def test_privacy_fallback_without_site_page(self):
+        response = self.client.get(reverse("core:privacy"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Политика конфиденциальности")
+        self.assertContains(response, "1. Общие положения")
+
+    def test_terms_fallback_without_site_page(self):
+        response = self.client.get(reverse("core:terms"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Условия использования")
+        self.assertContains(response, "5. Правила использования")
+
+    def test_safety_fallback_without_site_page(self):
+        response = self.client.get(reverse("core:safety"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Как мы защищаем")
+        self.assertContains(response, "Проверенные пользователи")
+
+    def test_site_page_overrides_fallback(self):
+        SitePage.objects.create(
+            slug="privacy", title="Из БД", content="<p>DB-OVERRIDE</p>"
+        )
+        response = self.client.get(reverse("core:privacy"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "DB-OVERRIDE")
+        self.assertNotContains(response, "1. Общие положения")
+
+    def test_unknown_slug_404(self):
+        request = RequestFactory().get("/unknown")
+        with self.assertRaises(Http404):
+            views.legal_page(request, "unknown")
+
+
+class AvatarFallbackTests(TestCase):
+    """AUTH-P1-08: avatar_url приоритетен, legacy photo_url — фолбэк."""
+
+    def setUp(self):
+        self.worker = make_profile(
+            "worker-avatar@example.com", role="worker",
+            avatar_url="", photo_url=LEGACY_PHOTO_URL,
+        )
+
+    def test_profile_shows_legacy_photo_when_avatar_empty(self):
+        self.client.force_login(self.worker)
+        response = self.client.get("/profile")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, LEGACY_PHOTO_URL)
+
+    def test_worker_detail_shows_legacy_photo_when_avatar_empty(self):
+        response = self.client.get(f"/workers/{self.worker.pk}")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, LEGACY_PHOTO_URL)
+
+    def test_workers_list_shows_legacy_photo_when_avatar_empty(self):
+        response = self.client.get("/workers", {"q": self.worker.full_name})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, LEGACY_PHOTO_URL)
+
+    def test_avatar_url_wins_over_legacy_photo(self):
+        self.worker.avatar_url = NEW_AVATAR_URL
+        self.worker.save(update_fields=["avatar_url"])
+
+        detail = self.client.get(f"/workers/{self.worker.pk}")
+        self.assertContains(detail, NEW_AVATAR_URL)
+        self.assertNotContains(detail, LEGACY_PHOTO_URL)
+
+        listing = self.client.get("/workers", {"q": self.worker.full_name})
+        self.assertContains(listing, NEW_AVATAR_URL)
+        self.assertNotContains(listing, LEGACY_PHOTO_URL)
+
+        self.client.force_login(self.worker)
+        own = self.client.get("/profile")
+        self.assertContains(own, NEW_AVATAR_URL)
+        self.assertNotContains(own, LEGACY_PHOTO_URL)

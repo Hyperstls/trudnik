@@ -9,9 +9,11 @@ notifications.py, storage_service.py):
 - report: RPC file_report(p_reported, p_reason≤500);
 - prefs: notification_prefs JSON — каналы email_enabled/push_enabled/
   in_app_enabled + типы уведомлений (true/false);
-- uploads: magic-bytes JPEG/PNG/WebP, лимит MAX_PHOTO_SIZE_MB.
+- uploads: magic-bytes JPEG/PNG/WebP (+PDF только для verification-docs),
+  лимит MAX_PHOTO_SIZE_MB.
 """
 import json
+import logging
 import mimetypes
 import os
 from pathlib import Path
@@ -27,11 +29,13 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .models import (
-    Application, Blacklist, Favorite, Job, Profile, Rating, UserReport, UserSkill,
+    Application, Blacklist, Favorite, Job, JobPhoto, Profile, Rating, UserReport, UserSkill,
 )
 from .ratelimit import rate_limit_write
 from .rpc import call_rpc, call_rpc_as_user
-from .storage import UploadError, save_upload
+from .storage import UploadError, delete_upload_url, save_upload
+
+logger = logging.getLogger(__name__)
 
 
 def _own_data(user) -> dict:
@@ -76,19 +80,68 @@ def export_data(request):
     return response
 
 
+def _collect_user_upload_urls(user) -> list[str]:
+    """Собрать URL-пути файлов ПДн пользователя ДО удаления строк в БД (P1-14).
+
+    delete_user_cascade удаляет профиль и (для employer) задания, поэтому после
+    RPC пути к файлам уже не найти: профиль + фото заданий (job_photos и
+    legacy jobs.photo_urls). Пустые значения и дубли отбрасываются.
+    """
+    urls = []
+    profile = Profile.objects.filter(pk=user.pk).values(
+        "avatar_url", "photo_url", "verification_doc_url"
+    ).first() or {}
+    for key in ("avatar_url", "photo_url", "verification_doc_url"):
+        if profile.get(key):
+            urls.append(profile[key])
+    urls.extend(
+        JobPhoto.objects.filter(job__employer=user).exclude(photo_url="")
+        .values_list("photo_url", flat=True)
+    )
+    for photo_urls in Job.objects.filter(employer=user).values_list("photo_urls", flat=True):
+        urls.extend(photo_urls or [])
+    return list(dict.fromkeys(urls))
+
+
+def _delete_user_uploads(urls, user_pk) -> int:
+    """Удалить файлы ПДн (152-ФЗ ст.21); ошибки — в лог, аккаунт не ломаем."""
+    deleted = 0
+    for url in urls:
+        try:
+            if delete_upload_url(url):
+                deleted += 1
+            else:
+                logger.warning(
+                    "delete_account: файл upload не удалён: %s (user %s)", url, user_pk
+                )
+        except Exception:  # noqa: BLE001 — сбой файла не должен мешать удалению аккаунта
+            logger.warning(
+                "delete_account: ошибка удаления файла upload: %s (user %s)",
+                url, user_pk, exc_info=True,
+            )
+    return deleted
+
+
 @login_required
 @require_POST
 def delete_account(request):
-    """Удаление аккаунта: RPC delete_user_cascade + выход. Rate-limit 1/час."""
-    key = "delete_account:%s" % request.user.pk
+    """Удаление аккаунта: RPC delete_user_cascade + файлы uploads + выход.
+
+    Rate-limit 1/час. URL файлов собираются до RPC: после удаления строк БД
+    (профиль, задания) их уже не восстановить (P1-14, 152-ФЗ ст.21).
+    """
+    user_pk = request.user.pk
+    key = "delete_account:%s" % user_pk
     if not cache.add(key, "1", 3600):
         messages.warning(request, "Попробуйте позже (не чаще раза в час).")
         return redirect("core:profile")
-    result = call_rpc("delete_user_cascade", request.user.pk) or {}
+    upload_urls = _collect_user_upload_urls(request.user)
+    result = call_rpc("delete_user_cascade", user_pk) or {}
     if not result.get("success", True):
         cache.delete(key)
         messages.error(request, "Ошибка удаления аккаунта. Попробуйте позже.")
         return redirect("core:profile")
+    _delete_user_uploads(upload_urls, user_pk)
     auth_logout(request)
     messages.success(request, "Ваш аккаунт полностью удалён.")
     return redirect("core:login")
@@ -178,7 +231,7 @@ def upload_verification_doc(request):
         messages.error(request, "Файл не выбран.")
         return redirect("core:verify_employer")
     try:
-        url = save_upload(file, "verification-docs")
+        url = save_upload(file, "verification-docs", allow_pdf=True)
     except UploadError as exc:
         messages.error(request, str(exc))
         return redirect("core:verify_employer")
@@ -196,17 +249,51 @@ def verify_employer(request):
     return render(request, "core/verify_employer.html")
 
 
+def _upload_relative_path(file_path: Path) -> str:
+    """Канонический путь файла внутри uploads (без учёта alias-сегментов)."""
+    from .storage import _upload_root
+
+    try:
+        return file_path.relative_to(_upload_root().resolve()).as_posix()
+    except ValueError:
+        return ""
+
+
 def serve_upload(request, path: str):
-    """/uploads/<path> — avatars/jobs публично, verification-docs только login."""
-    if path.startswith("verification-docs/") and not request.user.is_authenticated:
-        raise Http404()
+    """/uploads/<path> — avatars/jobs публично; verification-docs — owner/admin.
+
+    152-ФЗ: скан документа верификации отдаётся только владельцу профиля
+    (profiles.verification_doc_url == '/uploads/' + path) или администратору;
+    остальным — 404 (без раскрытия существования файла). Ответ private/no-store
+    и attachment. ACL считается по фактическому пути внутри uploads, поэтому
+    alias вида avatars/../verification-docs/<file> не обходит проверку.
+    """
     from .storage import resolve_upload_url
 
     file_path = resolve_upload_url(path)
     if file_path is None:
         raise Http404()
+    relative = _upload_relative_path(file_path) or path
+    is_verification_doc = relative.startswith("verification-docs/")
+    if is_verification_doc:
+        if not request.user.is_authenticated:
+            raise Http404()
+        owner = Profile.objects.filter(
+            verification_doc_url="/uploads/" + relative
+        ).first()
+        is_owner = owner is not None and owner.pk == request.user.pk
+        if not (is_owner or request.user.role == "admin"):
+            raise Http404()
+
     content_type = mimetypes.guess_type(str(file_path))[0] or "application/octet-stream"
-    response = FileResponse(open(file_path, "rb"), content_type=content_type)
+    response = FileResponse(
+        open(file_path, "rb"),
+        content_type=content_type,
+        as_attachment=is_verification_doc,
+    )
     response["X-Content-Type-Options"] = "nosniff"
-    response["Cache-Control"] = "public, max-age=86400"
+    if is_verification_doc:
+        response["Cache-Control"] = "private, no-store"
+    else:
+        response["Cache-Control"] = "public, max-age=86400"
     return response

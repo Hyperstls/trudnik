@@ -1,5 +1,6 @@
 """Фаза 3: фоновые задачи (drain/expire/freeze/cleanup) — логика против клона БД."""
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.core import mail
 from django.test import TestCase, override_settings
@@ -74,6 +75,25 @@ class ExpireTests(TestCase):
         job.refresh_from_db()
         self.assertEqual(job.status, "expired")
 
+    def test_expire_old_jobs_uses_rpc_count(self):
+        # call_rpc отдаёт строку как dict: {'expire_unfilled_jobs': N}; счётчик
+        # RPC должен прибавиться к ORM-счётчику, а не упасть в int(dict).
+        neutralize_preloaded_expired_jobs()
+        with patch("core.tasks.call_rpc", return_value={"expire_unfilled_jobs": 3}):
+            total = expire_old_jobs()
+        self.assertEqual(total, 3)  # ORM=0, RPC=3, без TypeError
+
+    def test_expire_old_jobs_keeps_orm_count_when_rpc_fails(self):
+        neutralize_preloaded_expired_jobs()
+        employer = make_profile("exp-emp-rpc@example.com")
+        job = make_job(employer, status="open")
+        Job.objects.filter(pk=job.pk).update(expires_at=timezone.now() - timedelta(hours=1))
+        with patch("core.tasks.call_rpc", side_effect=RuntimeError("rpc down")):
+            with self.assertLogs("core.tasks", level="WARNING") as logs:
+                total = expire_old_jobs()
+        self.assertEqual(total, 1)  # только ORM-счётчик
+        self.assertTrue(any("expire_unfilled_jobs rpc failed" in line for line in logs.output))
+
 
 class AutoFreezeTests(TestCase):
     def test_reports_threshold_suspends_via_rpc(self):
@@ -103,3 +123,12 @@ class CleanupTests(TestCase):
 
 def this_user():
     return Profile.objects.filter(email="cln-user@example.com").first() or make_profile("cln-user@example.com")
+
+
+def neutralize_preloaded_expired_jobs():
+    """Клон БД содержит open-задания с прошедшим expires_at: уводим их из окна
+    задачи, чтобы ORM-счётчик теста зависел только от его собственных данных
+    (TestCase откатит изменения)."""
+    Job.objects.filter(
+        status=Job.Status.OPEN, expires_at__lt=timezone.now()
+    ).update(expires_at=timezone.now() + timedelta(days=365))

@@ -17,7 +17,7 @@
             {% csrf_token %}
             <div class="form-field">
                 <label for="full_name" class="form-label">Полное имя <span class="text-danger">*</span></label>
-                <input type="text" name="full_name" id="full_name" value="{{ form.full_name.value|default:'' }}" class="form-input" placeholder="Иван Иванов" required>
+                <input type="text" name="full_name" id="full_name" maxlength="150" value="{{ form.full_name.value|default:'' }}" class="form-input" placeholder="Иван Иванов" required>
                 {% if form.full_name.errors %}<p class="form-error" role="alert"><span>{{ form.full_name.errors.0 }}</span></p>{% endif %}
             </div>
             <div class="form-field">
@@ -58,8 +58,53 @@
 
             <div class="form-field">
                 <label for="city" class="form-label">Город</label>
-                <input type="text" name="city" id="city" value="{{ form.city.value|default:'' }}" class="form-input" placeholder="Москва">
+                <input type="text" name="city" id="city" maxlength="100" value="{{ form.city.value|default:'' }}" class="form-input" placeholder="Москва">
+                {% if form.city.errors %}<p class="form-error" role="alert"><span>{{ form.city.errors.0 }}</span></p>{% endif %}
             </div>
+
+            <div class="form-field">
+                <label for="portfolio_link" class="form-label">Портфолио (ссылка)</label>
+                <input type="url" name="portfolio_link" id="portfolio_link" value="{{ form.portfolio_link.value|default:'' }}" class="form-input" placeholder="https://example.com/portfolio">
+                {% if form.portfolio_link.errors %}<p class="form-error" role="alert"><span>{{ form.portfolio_link.errors.0 }}</span></p>{% endif %}
+            </div>
+            <div class="form-field">
+                <label for="contact" class="form-label">Контакт для связи</label>
+                <input type="text" name="contact" id="contact" value="{{ form.contact.value|default:'' }}" class="form-input" placeholder="Телефон, мессенджер или email">
+                {% if form.contact.errors %}<p class="form-error" role="alert"><span>{{ form.contact.errors.0 }}</span></p>{% endif %}
+            </div>
+            <div class="form-field">
+                <label for="experience" class="form-label">Опыт работы</label>
+                <textarea name="experience" id="experience" rows="3" class="form-input" placeholder="Расскажите об опыте">{{ form.experience.value|default:'' }}</textarea>
+                {% if form.experience.errors %}<p class="form-error" role="alert"><span>{{ form.experience.errors.0 }}</span></p>{% endif %}
+            </div>
+            <div class="form-field">
+                <label for="desired_payment" class="form-label">Желаемая оплата, ₽</label>
+                <input type="number" name="desired_payment" id="desired_payment" min="0" step="0.01" value="{{ form.desired_payment.value|default:'' }}" class="form-input" placeholder="1500">
+                {% if form.desired_payment.errors %}<p class="form-error" role="alert"><span>{{ form.desired_payment.errors.0 }}</span></p>{% endif %}
+            </div>
+            <div class="form-field">
+                <label for="inn" class="form-label">ИНН</label>
+                <input type="text" name="inn" id="inn" maxlength="12" value="{{ form.inn.value|default:'' }}" class="form-input" placeholder="12 цифр">
+                {% if form.inn.errors %}<p class="form-error" role="alert"><span>{{ form.inn.errors.0 }}</span></p>{% endif %}
+            </div>
+            <label class="flex items-start gap-2.5 text-sm text-neutral-700 cursor-pointer">
+                <input type="checkbox" name="is_self_employed" {% if form.is_self_employed.value %}checked{% endif %} class="mt-0.5 rounded border-neutral-300 text-primary-500 focus:ring-primary-500">
+                <span>Самозанятый</span>
+            </label>
+            {% if form.is_self_employed.errors %}<p class="form-error" role="alert"><span>{{ form.is_self_employed.errors.0 }}</span></p>{% endif %}
+
+            <fieldset>
+                <legend class="block text-sm font-semibold text-neutral-700 mb-2">Навыки</legend>
+                <div class="grid grid-cols-2 gap-1.5 text-sm">
+                    {% for checkbox in form.skills %}
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        {{ checkbox.tag }}
+                        {{ checkbox.choice_label }}
+                    </label>
+                    {% endfor %}
+                </div>
+                {% if form.skills.errors %}<p class="form-error" role="alert"><span>{{ form.skills.errors.0 }}</span></p>{% endif %}
+            </fieldset>
 
             <label class="flex items-start gap-2.5 text-sm text-neutral-700 cursor-pointer">
                 <input type="checkbox" name="consent" required class="mt-0.5 rounded border-neutral-300 text-primary-500 focus:ring-primary-500">

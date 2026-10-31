@@ -9,18 +9,22 @@
   payload {email, pwd_changed_at} — кросс-совместимы с Flask в обе стороны;
 - SmartCaptcha: POST {secret, token} → status=ok; включена при наличии
   SMARTCAPTCHA_SERVER_KEY, тогда fail-closed (см. core/captcha.py);
-- письма — django.core.mail (SMTP из env; volume низкий, синхронно, без Celery).
+- письма — django.core.mail (SMTP из env); через Celery-очередь
+  (TRANSACTIONAL_EMAIL_ASYNC), при недоступном брокере — синхронный fallback;
+- cooldown сброса/ресенда и IP-лимиты register/reset/resend — в общем кэше
+  (Redis в проде): cooldown в памяти процесса обходится вторым воркером.
 
 Анти-паттерны по ревью: не раскрываем существование email (единые ответы),
-cooldown в памяти процесса, honeypot без объяснения причины.
+состояние cooldown в памяти процесса, honeypot без объяснения причины.
+Недоступный кэш = fail-closed с сообщением: лимит/cooldown не проверить.
 """
 import logging
-import time
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model
-from django.db import IntegrityError
+from django.core.cache import cache
+from django.db import IntegrityError, transaction
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -32,7 +36,8 @@ from .forms_auth import (
     RegisterForm,
 )
 from .models import Profile
-from .rpc import call_rpc
+from .ratelimit import RateLimitExceeded, RateLimitUnavailable, enforce_ip_limit
+from .rpc import call_rpc, sync_user_skills_raw
 from .tokens import (
     generate_email_verification_token,
     generate_reset_token,
@@ -45,24 +50,37 @@ User = get_user_model()
 
 RESEND_COOLDOWN_SECONDS = 120
 RESET_COOLDOWN_SECONDS = 300
-_COOLDOWNS: dict[str, float] = {}  # key -> until_ts; in-process, масштаб приложения мал
 
 
 def _cooldown_active(key: str) -> bool:
-    until = _COOLDOWNS.get(key, 0.0)
-    if until > time.monotonic():
-        return True
-    _COOLDOWNS.pop(key, None)
-    return False
+    """True, если cooldown ещё живёт. Общий кэш: второй воркер тоже видит."""
+    try:
+        return bool(cache.get("auth_cd:%s" % key))
+    except Exception as exc:
+        # без кэша cooldown не проверить — fail-closed, а не молчаливая отправка
+        raise RateLimitUnavailable("cooldown cache unavailable") from exc
 
 
 def _set_cooldown(key: str, seconds: int) -> None:
-    _COOLDOWNS[key] = time.monotonic() + seconds
+    try:
+        cache.set("auth_cd:%s" % key, 1, seconds)
+    except Exception as exc:
+        raise RateLimitUnavailable("cooldown cache unavailable") from exc
 
 
 def _send_mail(subject: str, message: str, to_email: str) -> None:
     from django.core.mail import send_mail
 
+    if getattr(settings, "TRANSACTIONAL_EMAIL_ASYNC", True):
+        try:
+            # импорт внутри try: сбой конфигурации Celery — тоже повод для fallback
+            from .tasks import send_transactional_email
+
+            send_transactional_email.delay(subject, message, to_email)
+            return
+        except Exception:
+            # брокер/импорт недоступен: письмо важнее очереди — синхронный fallback
+            logger.warning("transactional email enqueue failed to=%s", to_email, exc_info=True)
     try:
         send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [to_email], fail_silently=False)
     except Exception:
@@ -84,18 +102,32 @@ def register(request):
         return redirect("/")
     form = RegisterForm(request.POST or None)
     captcha_ctx = {"captcha_client_key": settings.SMARTCAPTCHA_CLIENT_KEY}
+    if request.method == "POST":
+        # per-IP лимит до любых проверок: fail-closed при недоступном кэше
+        try:
+            enforce_ip_limit(request, "register", 10, 3600)
+        except RateLimitExceeded:
+            messages.error(request, "Слишком много попыток регистрации. Попробуйте позже.")
+            return render(request, "core/register.html", {"form": form, **captcha_ctx})
+        except RateLimitUnavailable:
+            messages.error(request, "Сервис временно недоступен. Попробуйте позже.")
+            return render(request, "core/register.html", {"form": form, **captcha_ctx})
     if request.method == "POST" and form.is_valid():
-        if not verify_captcha_token(form.cleaned_data.get("smart_token", "")):
+        # виджет Yandex кладёт поле `smart-token`; `smart_token` — backward-compat
+        captcha_token = request.POST.get("smart-token") or form.cleaned_data.get("smart_token", "")
+        if not verify_captcha_token(captcha_token):
             messages.error(request, "Капча не пройдена. Попробуйте ещё раз.")
             return render(request, "core/register.html", {"form": form, **captcha_ctx})
         email = form.cleaned_data["email"]
         role, worker_visibility = form.role_and_visibility()
         try:
-            result = call_rpc(
-                "register_user",
-                email, form.cleaned_data["password"], form.cleaned_data["full_name"],
-                role, worker_visibility,
-            )
+            # savepoint: IntegrityError (дубль email) не должен рушить внешнюю транзакцию
+            with transaction.atomic():
+                result = call_rpc(
+                    "register_user",
+                    email, form.cleaned_data["password"], form.cleaned_data["full_name"],
+                    role, worker_visibility,
+                )
         except IntegrityError:
             result = None
         except Exception:
@@ -109,10 +141,28 @@ def register(request):
             # единый ответ: не подтверждаем, существует ли email
             form.add_error(None, "Регистрация не выполнена. Проверьте данные: возможно, такой email уже зарегистрирован.")
         else:
-            Profile.objects.filter(pk=user_id).update(
-                city=form.cleaned_data.get("city") or None,
-                consented_at=timezone.now(),
-            )
+            profile_fields = {
+                "city": form.cleaned_data.get("city") or None,
+                "portfolio_link": form.cleaned_data.get("portfolio_link") or "",
+                "consented_at": timezone.now(),
+            }
+            skills = []
+            if role == Profile.Role.WORKER:
+                profile_fields.update(
+                    contact=form.cleaned_data.get("contact") or None,
+                    experience=form.cleaned_data.get("experience") or None,
+                    desired_payment=form.cleaned_data.get("desired_payment") or None,
+                    inn=form.cleaned_data.get("inn") or "",
+                    is_self_employed=bool(form.cleaned_data.get("is_self_employed")),
+                )
+                skills = [s.pk for s in form.cleaned_data.get("skills") or []]
+            Profile.objects.filter(pk=user_id).update(**profile_fields)
+            if role == Profile.Role.WORKER:
+                try:
+                    sync_user_skills_raw(user_id, skills)
+                except Exception:
+                    # навыки — не критичный для регистрации шаг: логируем, не роняем флоу
+                    logger.exception("register: sync_user_skills_raw failed user_id=%s", user_id)
             token = generate_email_verification_token(email)
             link = "%s/verify-email/%s" % (_site_url(request), token)
             _send_mail(
@@ -143,18 +193,30 @@ def verify_email(request, token: str):
 
 def verify_email_resend(request):
     if request.method == "POST":
+        try:
+            enforce_ip_limit(request, "resend", 10, 3600)
+        except RateLimitExceeded:
+            messages.error(request, "Слишком много попыток. Попробуйте позже.")
+            return redirect("core:login")
+        except RateLimitUnavailable:
+            messages.error(request, "Сервис временно недоступен. Попробуйте позже.")
+            return redirect("core:login")
         email = (request.POST.get("email") or "").strip().lower()
-        if email and not _cooldown_active("verify_resend:%s" % email):
-            _set_cooldown("verify_resend:%s" % email, RESEND_COOLDOWN_SECONDS)
-            profile = Profile.objects.filter(email=email).values_list("id", flat=True).first()
-            if profile:
-                token = generate_email_verification_token(email)
-                link = "%s/verify-email/%s" % (_site_url(request), token)
-                _send_mail(
-                    "Трудник: подтвердите email",
-                    "Ссылка для подтверждения email (24 часа):\n%s" % link,
-                    email,
-                )
+        try:
+            if email and not _cooldown_active("verify_resend:%s" % email):
+                _set_cooldown("verify_resend:%s" % email, RESEND_COOLDOWN_SECONDS)
+                profile = Profile.objects.filter(email=email).values_list("id", flat=True).first()
+                if profile:
+                    token = generate_email_verification_token(email)
+                    link = "%s/verify-email/%s" % (_site_url(request), token)
+                    _send_mail(
+                        "Трудник: подтвердите email",
+                        "Ссылка для подтверждения email (24 часа):\n%s" % link,
+                        email,
+                    )
+        except RateLimitUnavailable:
+            messages.error(request, "Сервис временно недоступен. Попробуйте позже.")
+            return redirect("core:login")
         messages.info(request, "Если аккаунт существует, письмо отправлено (не чаще раза в 2 минуты).")
         return redirect("core:login")
     return render(request, "core/verify_email_resend.html")
@@ -163,30 +225,47 @@ def verify_email_resend(request):
 # ── Сброс пароля ────────────────────────────────────────────────────────────
 def password_reset_request(request):
     form = PasswordResetRequestForm(request.POST or None)
+    captcha_ctx = {"captcha_client_key": settings.SMARTCAPTCHA_CLIENT_KEY}
+    if request.method == "POST":
+        # per-IP лимит до любых проверок: fail-closed при недоступном кэше
+        try:
+            enforce_ip_limit(request, "reset", 10, 3600)
+        except RateLimitExceeded:
+            messages.error(request, "Слишком много попыток. Попробуйте позже.")
+            return render(request, "core/password_reset_request.html", {"form": form, **captcha_ctx})
+        except RateLimitUnavailable:
+            messages.error(request, "Сервис временно недоступен. Попробуйте позже.")
+            return render(request, "core/password_reset_request.html", {"form": form, **captcha_ctx})
     if request.method == "POST" and form.is_valid():
         email = form.cleaned_data["email"]
-        if not verify_captcha_token(form.cleaned_data.get("smart_token", "")):
+        # виджет Yandex кладёт поле `smart-token`; `smart_token` — backward-compat
+        captcha_token = request.POST.get("smart-token") or form.cleaned_data.get("smart_token", "")
+        if not verify_captcha_token(captcha_token):
             messages.error(request, "Капча не пройдена. Попробуйте ещё раз.")
-            return render(request, "core/password_reset_request.html", {"form": form})
-        if not _cooldown_active("reset:%s" % email):
-            _set_cooldown("reset:%s" % email, RESET_COOLDOWN_SECONDS)
-            profile = Profile.objects.filter(email=email).values_list(
-                "id", "password_changed_at"
-            ).first()
-            if profile:
-                pwd_changed_at = profile[1].isoformat() if profile[1] else ""
-                token = generate_reset_token(email, pwd_changed_at)
-                link = "%s/password-reset/confirm/%s" % (_site_url(request), token)
-                _send_mail(
-                    "Трудник: сброс пароля",
-                    "Для смены пароля перейдите по ссылке (1 час):\n%s\n\n"
-                    "Если вы не запрашивали сброс — игнорируйте письмо." % link,
-                    email,
-                )
+            return render(request, "core/password_reset_request.html", {"form": form, **captcha_ctx})
+        try:
+            if not _cooldown_active("reset:%s" % email):
+                _set_cooldown("reset:%s" % email, RESET_COOLDOWN_SECONDS)
+                profile = Profile.objects.filter(email=email).values_list(
+                    "id", "password_changed_at"
+                ).first()
+                if profile:
+                    pwd_changed_at = profile[1].isoformat() if profile[1] else ""
+                    token = generate_reset_token(email, pwd_changed_at)
+                    link = "%s/password-reset/confirm/%s" % (_site_url(request), token)
+                    _send_mail(
+                        "Трудник: сброс пароля",
+                        "Для смены пароля перейдите по ссылке (1 час):\n%s\n\n"
+                        "Если вы не запрашивали сброс — игнорируйте письмо." % link,
+                        email,
+                    )
+        except RateLimitUnavailable:
+            messages.error(request, "Сервис временно недоступен. Попробуйте позже.")
+            return redirect("core:login")
         # единый ответ: не раскрываем существование email
         messages.info(request, "Если аккаунт существует, письмо с инструкцией отправлено.")
         return redirect("core:login")
-    return render(request, "core/password_reset_request.html", {"form": form})
+    return render(request, "core/password_reset_request.html", {"form": form, **captcha_ctx})
 
 
 def password_reset_confirm(request, token: str):
