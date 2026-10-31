@@ -11,7 +11,7 @@ from django.utils import timezone
 
 from core.admin.jobs import JobAdmin
 from core.forms import JobForm
-from core.models import Application, Blacklist, Job, JobFavorite, NotificationOutbox, Profile, Skill
+from core.models import Application, Blacklist, Job, JobFavorite, JobPhoto, NotificationOutbox, Profile, Skill
 from core.tests.test_auth import make_profile
 
 
@@ -288,6 +288,30 @@ class CatalogVisibilityTests(TestCase):
         self.assertContains(response, visible.work_type)
 
 
+class RepostJobTests(TestCase):
+    def setUp(self):
+        self.employer = make_profile("repost-emp@example.com", role="employer")
+        self.job = make_job(self.employer, work_type="Репost")
+        self.job.photo_urls = ["/uploads/a.jpg", "/uploads/b.jpg"]
+        self.job.save(update_fields=["photo_urls"])
+        JobPhoto.objects.create(job=self.job, photo_url="/uploads/a.jpg", order_num=0)
+        JobPhoto.objects.create(job=self.job, photo_url="/uploads/b.jpg", order_num=1)
+        self.client.force_login(self.employer)
+
+    def test_repost_copies_photos_and_expiry(self):
+        response = self.client.post(reverse("core:repost_job", args=[self.job.pk]))
+        self.assertEqual(response.status_code, 302)
+        new_job = Job.objects.exclude(pk=self.job.pk).get(employer=self.employer)
+        delta = new_job.expires_at - timezone.now()
+        self.assertGreater(delta, timedelta(days=29))
+        self.assertLess(delta, timedelta(days=31))
+        self.assertEqual(new_job.photo_urls, self.job.photo_urls)
+        self.assertEqual(
+            list(new_job.photos.order_by("order_num").values_list("photo_url", flat=True)),
+            ["/uploads/a.jpg", "/uploads/b.jpg"],
+        )
+
+
 class ApplicationFlowTests(TestCase):
     def setUp(self):
         self.employer = make_profile("emp-flow@example.com")
@@ -395,6 +419,32 @@ class ApplicationFlowTests(TestCase):
         )
         self.assertEqual(row.status, "pending")
 
+    def test_reopen_accepts_rejected(self):
+        self.client.post(reverse("core:job_apply", args=[self.job.pk]))
+        app = Application.objects.get(job=self.job, worker=self.worker)
+        self.client.force_login(self.employer)
+        self.client.post(reverse("core:application_action", args=[app.pk, "reject"]))
+        app.refresh_from_db()
+        self.assertEqual(app.status, "rejected")
+
+        self.client.post(reverse("core:application_action", args=[app.pk, "reopen"]))
+        app.refresh_from_db()
+        self.job.refresh_from_db()
+        self.assertEqual(app.status, "accepted")
+        self.assertEqual(self.job.current_workers, 1)
+        self.assertTrue(
+            NotificationOutbox.objects.filter(
+                user=self.worker, type="application_accepted"
+            ).exists()
+        )
+
+        # Повторный reopen уже принятого — RPC bad_status, счётчик не растёт.
+        self.client.post(reverse("core:application_action", args=[app.pk, "reopen"]))
+        app.refresh_from_db()
+        self.job.refresh_from_db()
+        self.assertEqual(app.status, "accepted")
+        self.assertEqual(self.job.current_workers, 1)
+
     def test_reject_then_reopen(self):
         self.client.post(reverse("core:job_apply", args=[self.job.pk]))
         app = Application.objects.get(job=self.job, worker=self.worker)
@@ -404,7 +454,9 @@ class ApplicationFlowTests(TestCase):
         self.assertEqual(app.status, "rejected")
         self.client.post(reverse("core:application_action", args=[app.pk, "reopen"]))
         app.refresh_from_db()
-        self.assertEqual(app.status, "pending")
+        self.job.refresh_from_db()
+        self.assertEqual(app.status, "accepted")
+        self.assertEqual(self.job.current_workers, 1)
 
     def test_accept_by_stranger_denied(self):
         stranger = make_profile("stranger-accept@example.com")

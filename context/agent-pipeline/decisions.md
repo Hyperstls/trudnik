@@ -501,3 +501,25 @@ Append-only: решения и измерения. Числа, команды, �
 **Кто:** Hyperstls
 
 Ревью PASS. Некритично: assertLogs для ветки логирования; идемпотентность reject→reopen→reject (каждая строка = реальный переход) — вынести при необходимости exactly-once.
+
+## 2026-10-31 22:11:57 — J006: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J006.review.prompt.md
+
+## 2026-10-31 22:11:57 — J006T: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J006T.review.prompt.md
+
+## 2026-10-31 22:11:57 — J006: заметка
+
+**Кто:** Hyperstls
+
+Ревью PASS. Некритично: direct POST /reopen/ для pending разрешён RPC (как Flask), шаблон показывает кнопку только для rejected; повторный reopen даёт bad_status без роста счётчика.

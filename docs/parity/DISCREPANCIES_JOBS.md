@@ -9,7 +9,9 @@ JOB-P1-04/05 исправлены J003 (expires_at=now+30d, окно отзыв�
 JOB-P1-06/08 исправлены J004 (каталог open/completed + blacklist; call_rpc
 разворачивает jsonb/boolean, русские коды ошибок).
 JOB-P1-07 исправлен J005 (outbox: application_received/accepted/rejected,
-savepoint + fail-open). Полный core-набор — 252 OK.
+savepoint + fail-open).
+JOB-P1-12/13 исправлены J006 (reopen через accept-RPC; repost копирует фото
+и ставит expires_at, всё в транзакции). Полный core-набор — 254 OK.
 Остальные пункты открыты.
 
 ## P0

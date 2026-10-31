@@ -1,0 +1,34 @@
+{
+  "id": "J006T",
+  "title": "J006: выравнивание теста reopen под accept-семантику",
+  "goal": "test_reopen_only_rejected заменён на test_reopen_pending_accepts: reopen pending-отклика идёт через accept-RPC и даёт accepted + current_workers=1.",
+  "why": "J006 выровнял reopen с Flask: reopen делегирует в accept_application, который принимает pending и rejected. Старый тест ожидал, что pending нельзя вернуть, и упал в полном прогоне (254 теста).",
+  "files": [
+    "djadmin/core/tests/test_review_fixes.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_flow.py",
+    "migrations/120_fix_accept_reject_for_update.sql"
+  ],
+  "interfaces": "PublicDisciplineTests.test_reopen_pending_accepts: job=make_job(...); app=Application.objects.create(job=job, worker=self.worker, status='pending'); POST application_action reopen; app.status == 'accepted'; job.refresh_from_db().current_workers == 1.",
+  "acceptance": [
+    "core.tests.test_review_fixes.PublicDisciplineTests.test_reopen_pending_accepts проходит.",
+    "Полный core-набор снова зелёный."
+  ],
+  "out_of_scope": [
+    "Не менять views_flow.py и бизнес-код.",
+    "Не менять другие тесты."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_review_fixes.py",
+      "cwd": "."
+    },
+    {
+      "name": "review_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_review_fixes.PublicDisciplineTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

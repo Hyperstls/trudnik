@@ -202,12 +202,15 @@ class PublicDisciplineTests(TestCase):
         response = self.client.get(reverse("core:job_detail", args=[self.draft.pk]))
         self.assertEqual(response.status_code, 404)
 
-    def test_reopen_only_rejected(self):
+    def test_reopen_pending_accepts(self):
         from core.models import Application
 
-        app = Application.objects.create(job=make_job(self.employer, work_type="Re"),
-                                         worker=self.worker, status="pending")
+        job = make_job(self.employer, work_type="Re")
+        app = Application.objects.create(job=job, worker=self.worker, status="pending")
         self.client.force_login(self.employer)
         self.client.post(reverse("core:application_action", args=[app.pk, "reopen"]))
         app.refresh_from_db()
-        self.assertEqual(app.status, "pending")  # не изменился: pending нельзя «верернуть»
+        job.refresh_from_db()
+        # Паритет Flask: reopen делегирует в accept_application (pending и rejected).
+        self.assertEqual(app.status, "accepted")
+        self.assertEqual(job.current_workers, 1)

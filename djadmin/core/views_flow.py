@@ -297,17 +297,12 @@ def application_action(request, app_id, action):
         elif action == "cancel":  # работодатель снимает конкретного работника
             result = call_rpc("cancel_worker_atomic", application.pk, user.pk) or {}
             ok_text = "Работник снят с задания."
-        else:  # reopen: rejected → pending (паритет /api/applications/<id>/reopen)
-            if application.status == Application.Status.REJECTED:
-                application.status = Application.Status.PENDING
-                application.save(update_fields=["status", "updated_at"])
-                messages.success(request, "Отклик возвращён в ожидание.")
-            else:
-                messages.error(request, "Вернуть можно только отклонённый отклик.")
-            return redirect("core:job_applicants", job_id=job.pk)
+        elif action == "reopen":  # паритет Flask: reopen делегирует в accept-RPC
+            result = call_rpc("accept_application", job.pk, application.pk) or {}
+            ok_text = "Отклик принят повторно."
     ok = _rpc_message(request, result, ok_text)
-    if ok and action in ("accept", "reject"):
-        accepted = action == "accept"
+    if ok and action in ("accept", "reject", "reopen"):
+        accepted = action != "reject"
         enqueue_notification(
             application.worker_id,
             "application_accepted" if accepted else "application_rejected",

@@ -1,0 +1,42 @@
+{
+  "id": "J006",
+  "title": "JOB-P1-12/13: reopen через accept-RPC и полный repost",
+  "goal": "Reopen отклонённого отклика идёт через accept_application (слоты/FOR UPDATE, статус accepted), а не прямым ORM; repost копирует фото (job_photos + legacy photo_urls) и ставит expires_at=now+30d.",
+  "why": "Flask applications.py:633-636 делегирует reopen в accept (RPC принимает pending/rejected, проверяет слоты с FOR UPDATE). Django views_flow.py:288-295 меняет rejected→pending напрямую, обходя слоты/гонки (JOB-P1-12). Flask copy_job не копирует фото/срок, но Django-repost должен быть полным и не терять данные (JOB-P1-13); expires_at уже ставится при create/edit (J003).",
+  "files": [
+    "djadmin/core/views_flow.py",
+    "djadmin/core/views_public_ext.py",
+    "djadmin/core/templates/core/job_applicants.html",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES_JOBS.md",
+    "migrations/120_fix_accept_reject_for_update.sql"
+  ],
+  "interfaces": "views_flow.application_action: action='reopen' -> result=call_rpc('accept_application', job.pk, application.pk) or {}, ok_text='Отклик принят повторно.'; ORM-ветку reopen удалить. Уведомления: accepted = action != 'reject'; action in ('accept','reject','reopen') -> application_accepted для reopen. job_applicants.html: у rejected-отклика кнопка reopen с текстом 'Принять повторно'. views_public_ext.repost_job: expires_at=timezone.now()+timezone.timedelta(days=30); photo_urls=list(job.photo_urls or []); JobPhoto.objects.bulk_create([JobPhoto(job=new_job, photo_url=p.photo_url, order_num=p.order_num) for p in job.photos.all()]). Тесты: ApplicationFlowTests.test_reopen_accepts_rejected (apply→reject→reopen: status accepted, current_workers=1, outbox application_accepted); RepostJobTests.test_repost_copies_photos_and_expiry (job с photo_urls и 2 JobPhoto → POST repost: expires 29..31d, photo_urls равны, 2 JobPhoto у копии).",
+  "acceptance": [
+    "Reopen переводит rejected → accepted через RPC и увеличивает current_workers.",
+    "Reopen создаёт outbox application_accepted для работника.",
+    "Повторный reopen уже принятого отклика не меняет счётчики (RPC bad_status).",
+    "Repost ставит expires_at в диапазоне now+29d..now+31d.",
+    "Repost копирует legacy photo_urls и все JobPhoto.",
+    "ApplicationFlowTests и RepostJobTests проходят."
+  ],
+  "out_of_scope": [
+    "Не менять SQL/RPC и модель JobPhoto.",
+    "Не менять bulk-операции и my-jobs UI.",
+    "Не удалять файлы фото при удалении задания (P2-06)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_flow.py djadmin/core/views_public_ext.py djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "flow_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows.ApplicationFlowTests core.tests.test_flows.RepostJobTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

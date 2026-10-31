@@ -6,8 +6,11 @@
 /jobs/<job_id>/rate-workers), applications (/apply-selected ≤ лимит),
 invitations (/api/invitations/reject-all), jobs (photo upload).
 """
+from datetime import timedelta
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.db.models import Count, Q
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -196,30 +199,39 @@ def repost_job(request, job_id):
     job = Job.objects.filter(pk=job_id, employer=request.user).first()
     if job is None:
         raise Http404("Задание не найдено")
-    new_job = Job.objects.create(
-        employer=request.user,
-        organization_name=job.organization_name,
-        org_description=job.org_description,
-        object_description=job.object_description,
-        work_type=job.work_type,
-        detailed_description=job.detailed_description,
-        date_time=job.date_time if job.date_time > timezone.now() else timezone.now() + timezone.timedelta(days=1),
-        payment_amount=job.payment_amount,
-        address=job.address,
-        city=job.city,
-        lat=job.lat,
-        lng=job.lng,
-        status="open",
-        is_paid=False,
-        tariff=job.tariff or "Базовый",
-        max_workers=job.max_workers or 1,
-        current_workers=0,
-    )
-    with _c.cursor() as cur:
-        cur.execute(
-            "INSERT INTO job_skills (job_id, skill_id) "
-            "SELECT %s, skill_id FROM job_skills WHERE job_id = %s ON CONFLICT DO NOTHING",
-            [new_job.pk, job.pk],
+    with transaction.atomic():
+        new_job = Job.objects.create(
+            employer=request.user,
+            organization_name=job.organization_name,
+            org_description=job.org_description,
+            object_description=job.object_description,
+            work_type=job.work_type,
+            detailed_description=job.detailed_description,
+            date_time=job.date_time if job.date_time > timezone.now() else timezone.now() + timedelta(days=1),
+            payment_amount=job.payment_amount,
+            address=job.address,
+            city=job.city,
+            lat=job.lat,
+            lng=job.lng,
+            status="open",
+            is_paid=False,
+            tariff=job.tariff or "Базовый",
+            max_workers=job.max_workers or 1,
+            current_workers=0,
+            expires_at=timezone.now() + timedelta(days=30),
+            photo_urls=list(job.photo_urls or []),
         )
+        photos = list(job.photos.all())
+        if photos:
+            JobPhoto.objects.bulk_create([
+                JobPhoto(job=new_job, photo_url=p.photo_url, order_num=p.order_num)
+                for p in photos
+            ])
+        with _c.cursor() as cur:
+            cur.execute(
+                "INSERT INTO job_skills (job_id, skill_id) "
+                "SELECT %s, skill_id FROM job_skills WHERE job_id = %s ON CONFLICT DO NOTHING",
+                [new_job.pk, job.pk],
+            )
     messages.success(request, "Задание перепубликовано.")
     return redirect("core:job_detail", job_id=new_job.pk)

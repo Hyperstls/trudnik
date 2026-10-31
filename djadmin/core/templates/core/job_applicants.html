@@ -29,7 +29,7 @@
                 <form method="post" action="{% url 'core:application_action' a.pk 'reject' %}">{% csrf_token %}<button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Отклонить</span></button></form>
                 {% endif %}
                 {% if a.status == 'rejected' %}
-                <form method="post" action="{% url 'core:application_action' a.pk 'reopen' %}">{% csrf_token %}<button class="action-icon-btn contact-btn"><span class="text-xs font-medium">Вернуть</span></button></form>
+                <form method="post" action="{% url 'core:application_action' a.pk 'reopen' %}">{% csrf_token %}<button class="action-icon-btn contact-btn"><span class="text-xs font-medium">Принять повторно</span></button></form>
                 {% endif %}
                 {% if a.status == 'accepted' %}
                 <form method="post" action="{% url 'core:application_action' a.pk 'cancel' %}">{% csrf_token %}<button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Снять</span></button></form>
