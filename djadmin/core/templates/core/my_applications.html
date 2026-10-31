@@ -9,9 +9,20 @@
     </div>
 
     {% if apps %}
+    {% if tab == 'received' %}
+    <form id="bulk-apps-form" method="post" action="{% url 'core:my_applications_bulk' %}">{% csrf_token %}</form>
+    <div class="flex flex-wrap gap-2 mb-3" role="group" aria-label="Массовые действия">
+        <button type="submit" form="bulk-apps-form" name="action" value="accept" class="px-3 h-9 rounded-xl border border-green-200 text-green-700 hover:bg-green-50 text-sm font-medium transition-colors">Принять выбранные</button>
+        <button type="submit" form="bulk-apps-form" name="action" value="reject" class="px-3 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">Отклонить выбранные</button>
+        <button type="submit" form="bulk-apps-form" name="action" value="reopen" class="px-3 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Принять повторно</button>
+    </div>
+    {% endif %}
     <div class="grid gap-3">
         {% for a in apps %}
         <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 flex flex-wrap items-start justify-between gap-3">
+            {% if tab == 'received' %}
+            <input type="checkbox" name="app_ids" value="{{ a.pk }}" form="bulk-apps-form" class="mt-1 rounded border-neutral-300 text-primary-500 focus:ring-primary-500 shrink-0" aria-label="Выбрать отклик {{ a.worker.full_name|default:a.pk }}">
+            {% endif %}
             <div class="min-w-0">
                 {% if tab == 'received' %}
                 <a href="{% url 'core:worker_detail' a.worker.pk %}" class="font-semibold text-neutral-900 hover:text-primary-600 transition-colors">{{ a.worker.full_name|default:"Трудник" }}</a>

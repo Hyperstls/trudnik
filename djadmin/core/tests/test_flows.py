@@ -546,6 +546,13 @@ class MyJobsTests(TestCase):
                 expected = getattr(self, "%s_job" % status)
                 self.assertEqual([job.pk for job in jobs], [expected.pk])
 
+    def test_bulk_ui_present(self):
+        response = self.client.get(reverse("core:my_jobs"))
+        self.assertContains(response, 'id="bulk-jobs-form"')
+        self.assertContains(response, 'name="job_ids"')
+        self.assertContains(response, reverse("core:my_jobs_bulk"))
+        self.assertContains(response, 'name="action" value="cancel"')
+
 
 class MyApplicationsTabsTests(TestCase):
     def setUp(self):
@@ -587,6 +594,21 @@ class MyApplicationsTabsTests(TestCase):
         response = self.client.get(reverse("core:my_applications"), {"page": 2})
         self.assertEqual(response.context["page"].number, 2)
         self.assertEqual(len(response.context["apps"]), 1)
+
+    def test_bulk_ui_only_received(self):
+        self.client.force_login(self.employer)
+        response = self.client.get(
+            reverse("core:my_applications"), {"tab": "received"}
+        )
+        self.assertContains(response, 'id="bulk-apps-form"')
+        self.assertContains(response, 'name="app_ids"')
+        self.assertContains(response, reverse("core:my_applications_bulk"))
+        self.assertContains(response, "Принять выбранные")
+
+        self.client.force_login(self.worker)
+        response = self.client.get(reverse("core:my_applications"))
+        self.assertNotContains(response, 'name="app_ids"')
+        self.assertNotContains(response, "Принять выбранные")
 
 
 class BulkJobsTests(TestCase):

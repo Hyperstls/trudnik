@@ -14,10 +14,10 @@ JOB-P1-12/13 исправлены J006 (reopen через accept-RPC; repost к�
 и ставит expires_at, всё в транзакции).
 JOB-P1-11 исправлен J007 (JobPhoto+legacy, лимит 3, фото в ленте,
 удаление файла с refcount).
-JOB-P1-09/10 закрыты частично J008 (табы/фильтры, application_count,
-received/sent, пагинация) и J009 (bulk-backend cancel/restore/delete,
-accept/reject/reopen, ≤50, ownership); остаётся UI-панель и bulk duplicate.
-Полный core-набор — 268 OK.
+JOB-P1-09/10 закрыты J008 (табы/фильтры, application_count, received/sent,
+пагинация), J009 (bulk-backend cancel/restore/delete, accept/reject/reopen,
+≤50, ownership) и J010 (чекбоксы + панели массовых действий). Остаётся
+только bulk duplicate (нужен вынос repost-хелпера). Полный core-набор — 270 OK.
 Остальные пункты открыты.
 
 ## P0

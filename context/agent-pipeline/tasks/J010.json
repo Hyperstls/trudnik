@@ -1,0 +1,40 @@
+{
+  "id": "J010",
+  "title": "JOB-P1-09/10 (bulk UI): чекбоксы и панели массовых действий",
+  "goal": "На /my-jobs есть чекбоксы и кнопки массовых cancel/restore/delete; на /my-applications?tab=received — чекбоксы и кнопки accept/reject/reopen. Формы не вложены друг в друга (HTML5 form=), действия уходят на J009-эндпоинты.",
+  "why": "J009 добавил серверные bulk-эндпоинты, но UI их не вызывает. Flask my_jobs.html:71,539-557 и my_applications batch-панель дают чекбоксы + массовые кнопки (JOB-P1-09/10).",
+  "files": [
+    "djadmin/core/templates/core/my_jobs.html",
+    "djadmin/core/templates/core/my_applications.html",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/urls.py",
+    "djadmin/core/views_flow.py"
+  ],
+  "interfaces": "my_jobs.html: <form id=\"bulk-jobs-form\" method=\"post\" action=\"{% url 'core:my_jobs_bulk' %}\">{% csrf_token %}</form> перед списком; в каждой карточке <input type=\"checkbox\" name=\"job_ids\" value=\"{{ job.pk }}\" form=\"bulk-jobs-form\" aria-label=\"Выбрать задание\">; панель с <button type=\"submit\" form=\"bulk-jobs-form\" name=\"action\" value=\"cancel|restore|delete\">Отменить выбранные|Восстановить выбранные|Удалить выбранные</button>. my_applications.html: аналогичный form id=\"bulk-apps-form\" action=\"{% url 'core:my_applications_bulk' %}\"; чекбоксы name=\"app_ids\" form=\"bulk-apps-form\" только при tab=received; панель accept/reject/reopen только при tab=received. Существующие одиночные формы не вкладывать. Тесты: MyJobsTests.test_bulk_ui_present (id формы, name=job_ids, action URL); MyApplicationsTabsTests.test_bulk_ui_only_received (received содержит name=app_ids и action URL; sent не содержит).",
+  "acceptance": [
+    "GET /my-jobs содержит bulk-jobs-form, чекбоксы job_ids и три кнопки action.",
+    "GET /my-applications?tab=received содержит bulk-apps-form, чекбоксы app_ids и кнопки accept/reject/reopen.",
+    "GET /my-applications (sent) не содержит чекбоксов app_ids и bulk-панели.",
+    "HTML не содержит вложенных <form>.",
+    "Bulk UI-тесты и полный core-набор проходят."
+  ],
+  "out_of_scope": [
+    "Не менять серверные bulk-эндпоинты (J009).",
+    "Не добавлять JS select-all/AJAX (progressive enhancement допустим позже).",
+    "Не реализовывать bulk duplicate."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "flow_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows.MyJobsTests core.tests.test_flows.MyApplicationsTabsTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}
