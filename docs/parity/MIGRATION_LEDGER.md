@@ -1,7 +1,9 @@
 # Migration ledger — P1-13 / DB-default P1-10
 
 **Дата:** 2026-10-31
-**Статус:** **локальный dev исправлен**; production (Amvera) — pending deploy-window.
+**Статус:** dev и production приведены к **65/65**; прод RUNNING, `/health` 200,
+`/privacy`, `/terms`, `/safety` — 200. Флаги `MIGRATIONS_ENABLED` и
+`MIGRATIONS_RECONCILE` на проде — **false**.
 
 ## Было
 
@@ -9,6 +11,8 @@
 - В БД уже были объекты поздних миграций (`change_password(text,text)` 149, `job_photos` 142,
   `trudnik_dj` 148, RLS/grants 123–133), но ledger их не знал.
 - Pending по ledger: 123–149 (27 файлов). `profiles.email_verified` default: `true`.
+- **Production был bootstrapped out-of-band**: ledger пуст (`applied_before=0`), а схема
+  уже содержала объекты 067–149.
 
 ## Rehearsal на клоне (Docker Desktop, локально)
 
@@ -50,19 +54,38 @@ python scripts/check_migrations.py
 DATABASE_ADMIN_URL=postgresql://... python scripts/check_migrations.py
 ```
 
-## Production (Amvera) — что сделать в окно
+## Production (Amvera) — выполнено 2026-10-31
 
-`Dockerfile.djadmin` содержит gated hook: при `MIGRATIONS_ENABLED=true` контейнер до старта
-выполняет `apply_migrations.py --dry-run` → `apply_migrations.py` → `check_migrations.py`;
-без флага старт обычный. Это позволяет применить миграции одноразовым деплоем без чтения
-секретов из UI.
+`Dockerfile.djadmin` содержит gated hook. Обычный деплой ничего не применяет; миграции
+запускаются только при явном флаге:
 
-1. Снапшот/бэкап БД Amvera (или `pg_dump`).
-2. `MIGRATIONS_ENABLED=true DATABASE_ADMIN_URL=... python scripts/apply_migrations.py`
-   (роль с DDL-правами; миграция 130 теперь идемпотентна).
-3. `DATABASE_ADMIN_URL=... python scripts/check_migrations.py` → exit 0.
-4. Деплой Django; проверить `change_password` reset и `email_verified` default.
-5. При откате — restore снапшота; ledger восстанавливается вместе с БД.
+- `MIGRATIONS_ENABLED=true` — `apply_migrations.py --dry-run` → `apply_migrations.py` →
+  `check_migrations.py`; ошибка любого шага останавливает контейнер (`exit 1`).
+- `MIGRATIONS_RECONCILE=true` — одноразовая сверка ledger: `reconcile_migrations.py`
+  (8 sentinel-объектов, вставка недостающих 067–149 с checksum, `ON CONFLICT DO NOTHING`)
+  → apply → check. Нужен только для БД, bootstrapped вне ledger.
 
-**Production не трогался.** Локальный dev и rehearsal подтверждают процедуру; прод требует
-своего окна/бэкапа.
+### Ход работ и восстановление после сбоя
+
+1. Бэкап `trudnik-db` сделан владельцем до окна.
+2. Первый деплой с `MIGRATIONS_ENABLED=true` упал: ledger пуст, `067_bootstrap_amvera.sql`
+   не применился (`cannot change return type of existing function login_user`); приложение
+   ушло в `RUN_PROBLEM`.
+3. Восстановление: `MIGRATIONS_ENABLED=false` → restart → `RUNNING`; затем добавлен
+   `scripts/reconcile_migrations.py` и ветка `MIGRATIONS_RECONCILE` в `Dockerfile.djadmin`.
+4. Деплой с `MIGRATIONS_RECONCILE=true`:
+   `RECONCILE: files=65 applied_before=0 inserted_067_149=64 deferred_150_plus=['150_email_verified_default_false.sql']`
+   → `RECONCILE: OK` → apply 150 → `RESULT: OK`.
+5. Флаги возвращены в `false`; следующий restart — обычный, без миграций.
+6. Проверено: ledger **65/65**, `profiles.email_verified default=false`,
+   `change_password(text,text)` present; `/health` 200, проект `RUNNING`.
+7. Дополнительно в прод задеплоены E001 (маскирование секретов на `/admin/env/`) и
+   L001 (`/privacy`, `/terms`, `/safety` → 200).
+
+### Правила на будущее
+
+- Перед миграциями — бэкап БД; после — `check_migrations.py` (exit 0).
+- Не оставлять `MIGRATIONS_ENABLED=true` / `MIGRATIONS_RECONCILE=true` между деплоями.
+- `MIGRATIONS_RECONCILE` — только для сверки bootstrapped-ledger; для обычных миграций
+  использовать `MIGRATIONS_ENABLED`.
+- Откат — restore снапшота; ledger восстанавливается вместе с БД.

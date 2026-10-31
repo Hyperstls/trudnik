@@ -42,6 +42,7 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
-# Старт: опциональный gated SQL-migration runner (MIGRATIONS_ENABLED=true),
-# затем Django migrate и supervisord. Без флага — обычный старт, как раньше.
-CMD ["sh", "-c", "if [ \"$MIGRATIONS_ENABLED\" = \"true\" ]; then python /app/scripts/apply_migrations.py --dry-run && python /app/scripts/apply_migrations.py && python /app/scripts/check_migrations.py || exit 1; fi; python /app/djadmin/manage.py migrate --noinput && exec supervisord -c /etc/supervisor/conf.d/supervisord.conf"]
+# Старт: опциональный gated SQL-migration runner. reconcile — одноразовая
+# сверка ledger (prod bootstrapped out-of-band), true — dry-run+apply+check.
+# Без флагов — обычный старт, как раньше.
+CMD ["sh", "-c", "if [ \"$MIGRATIONS_RECONCILE\" = \"true\" ]; then python /app/scripts/reconcile_migrations.py && MIGRATIONS_ENABLED=true python /app/scripts/apply_migrations.py && MIGRATIONS_ENABLED=true python /app/scripts/check_migrations.py || exit 1; fi; if [ \"$MIGRATIONS_ENABLED\" = \"true\" ]; then python /app/scripts/apply_migrations.py --dry-run && python /app/scripts/apply_migrations.py && python /app/scripts/check_migrations.py || exit 1; fi; python /app/djadmin/manage.py migrate --noinput && exec supervisord -c /etc/supervisor/conf.d/supervisord.conf"]
