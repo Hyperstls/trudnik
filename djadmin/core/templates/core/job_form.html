@@ -38,5 +38,28 @@
             </div>
         </form>
     </div>
+
+    {% if form.instance.pk %}
+    <section class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 mt-4">
+        <h2 class="text-base font-bold text-neutral-800 mb-3">Фотографии задания</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
+            {% for ph in form.instance.photos.all %}
+            <div class="relative">
+                <img src="{{ ph.photo_url }}" alt="Фото" loading="lazy" class="rounded-xl border border-neutral-200 w-full aspect-video object-cover">
+                <form method="post" action="{% url 'core:job_photo_delete' form.instance.pk ph.pk %}" class="absolute top-1 right-1">{% csrf_token %}
+                    <button class="w-7 h-7 rounded-full bg-white/90 border border-neutral-200 text-red-600 text-xs" aria-label="Удалить фото">✕</button>
+                </form>
+            </div>
+            {% empty %}
+            <p class="text-sm text-neutral-500 col-span-full">Фото пока нет.</p>
+            {% endfor %}
+        </div>
+        <form method="post" action="{% url 'core:job_photo_upload' form.instance.pk %}" enctype="multipart/form-data" class="flex flex-wrap gap-2 items-center">
+            {% csrf_token %}
+            <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" required class="text-sm">
+            <button type="submit" class="px-4 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Добавить фото</button>
+        </form>
+    </section>
+    {% endif %}
 </div>
 {% endblock %}
