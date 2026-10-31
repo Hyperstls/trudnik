@@ -230,6 +230,9 @@ if _redis_url:
 else:
     CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 
+# ── Метрики (X-Metrics-Token; прод без токена → 404) ───────────────────────
+METRICS_TOKEN = os.getenv("METRICS_TOKEN", "")
+
 # ── MAX Bot API (мессенджер-верификация; webhook fail-closed без секрета) ────
 MAX_WEBHOOK_SECRET = os.getenv("MAX_WEBHOOK_SECRET", "")
 MAX_BOT_USERNAME = os.getenv("MAX_BOT_USERNAME", "")

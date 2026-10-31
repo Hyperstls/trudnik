@@ -1,7 +1,8 @@
 from django.urls import path
 
 from . import (views, views_auth, views_flow, views_interact, views_messenger,
-               views_notify, views_profile, views_profile_ext, views_public_ext)
+               views_notify, views_profile, views_profile_ext, views_public_ext,
+               views_service)
 
 app_name = "core"
 
@@ -16,6 +17,7 @@ urlpatterns = [
     path("jobs/<uuid:job_id>/applicants", views_flow.job_applicants, name="job_applicants"),
     path("jobs/<uuid:job_id>/favorite", views_flow.job_favorite_toggle, name="job_favorite_toggle"),
     path("jobs/<uuid:job_id>/rate-workers", views_public_ext.rate_workers, name="rate_workers"),
+    path("jobs/<uuid:job_id>/repost", views_public_ext.repost_job, name="repost_job"),
     path("jobs/<uuid:job_id>/photos", views_public_ext.job_photo_upload, name="job_photo_upload"),
     path("jobs/<uuid:job_id>/photos/<uuid:photo_id>/delete", views_public_ext.job_photo_delete, name="job_photo_delete"),
     path("jobs/<uuid:job_id>/<str:action>", views_flow.job_action, name="job_action"),
@@ -81,5 +83,12 @@ urlpatterns = [
     path("terms", views.legal_page, {"slug": "terms"}, name="terms"),
     path("privacy", views.legal_page, {"slug": "privacy"}, name="privacy"),
     path("safety", views.legal_page, {"slug": "safety"}, name="safety"),
-    path("robots.txt", views.robots, name="robots"),
+    path("robots.txt", views.robots, name="robots"),    path("sw.js", views_service.service_worker, name="sw"),
+    path("offline", views_service.offline, name="offline"),
+    path(".well-known/assetlinks.json", views_service.assetlinks, name="assetlinks"),
+    path("favicon.ico", views_service.favicon, name="favicon"),
+    path("metrics", views_service.metrics, name="metrics"),
+    path("api/client-error", views_service.client_error, name="client_error"),
+    path("api/skills", views_service.skills_json, name="skills_api"),
+
 ]

@@ -20,6 +20,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from .models import Application, Job, Message, Profile, Rating
+from .ratelimit import rate_limit_write
 
 
 def _chat_app_or_none(request, app_id):
@@ -105,6 +106,7 @@ def chat_room(request, app_id):
 
 @login_required
 @require_POST
+@rate_limit_write(limit=20, window=60)
 def chat_send(request, app_id):
     app = _chat_app_or_none(request, app_id)
     if app is None:

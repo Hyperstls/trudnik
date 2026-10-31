@@ -38,10 +38,16 @@ def drain_notification_outbox() -> str:
     processed = failed = skipped = 0
     for row in rows:
         with transaction.atomic():
-            Notification.objects.create(
+            notif = Notification.objects.create(
                 user=row.user, type=row.type[:50], title=row.title,
                 message=row.body, data=row.data or {},
             )
+        from .consumers_notify import notify_user
+
+        notify_user(row.user_id, {
+            "id": str(notif.pk), "type": notif.type, "title": notif.title,
+            "message": notif.message or "", "unread": True,
+        })
         prefs = getattr(row.user, "notification_prefs", None) or {}
         email_ok = True
         if _email_allowed(prefs) and row.user.email:

@@ -25,6 +25,7 @@ from django.views.decorators.http import require_POST
 
 from .forms import JobForm, LoginForm
 from .models import Application, Job, JobFavorite
+from .ratelimit import rate_limit_write
 from .rpc import call_rpc, sync_job_skills_raw
 
 RPC_ERROR_TEXT = {
@@ -170,6 +171,7 @@ def job_action(request, job_id, action):
 # ── Отклики ─────────────────────────────────────────────────────────────────
 @login_required
 @require_POST
+@rate_limit_write(limit=10, window=60)
 def job_apply(request, job_id):
     job = _public_job_or_none(job_id)
     if job is None or job.employer_id == request.user.pk:

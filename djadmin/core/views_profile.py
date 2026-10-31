@@ -14,6 +14,7 @@ from django.views.decorators.http import require_POST
 
 from .forms_profile import PasswordChangeForm, ProfileForm
 from .models import Blacklist, Favorite, Invitation, Job, Profile
+from .ratelimit import rate_limit_write
 from .rpc import call_rpc, sync_user_skills_raw
 
 
@@ -121,6 +122,7 @@ def blacklist_view(request):
 # ── Приглашения ─────────────────────────────────────────────────────────────
 @login_required
 @require_POST
+@rate_limit_write(limit=10, window=60, redirect_to="/workers")
 def invite_worker(request, user_id):
     worker = Profile.objects.public_workers().filter(pk=user_id).first()
     job_id = request.POST.get("job_id", "")

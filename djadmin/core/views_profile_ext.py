@@ -29,6 +29,7 @@ from django.views.decorators.http import require_POST
 from .models import (
     Application, Blacklist, Favorite, Job, Profile, Rating, UserReport, UserSkill,
 )
+from .ratelimit import rate_limit_write
 from .rpc import call_rpc, call_rpc_as_user
 from .storage import UploadError, save_upload
 
@@ -95,6 +96,7 @@ def delete_account(request):
 
 @login_required
 @require_POST
+@rate_limit_write(limit=5, window=60, redirect_to="/workers")
 def report_user(request, user_id):
     """Жалоба на пользователя → RPC file_report (антифрод)."""
     reason = (request.POST.get("reason") or "").strip()[:500]
