@@ -1,14 +1,24 @@
 {% extends "core/base.html" %}
 {% block title %}Повторное письмо — Трудник{% endblock %}
 {% block content %}
-<div class="max-w-md mx-auto bg-white border border-gray-200 rounded-lg p-6 mt-6">
-  <h1 class="text-2xl font-bold mb-2">Подтверждение email</h1>
-  <p class="text-sm text-gray-600 mb-4">Введите email — отправим ссылку подтверждения повторно (не чаще раза в 2 минуты).</p>
-  <form method="post" class="space-y-4">
-    {% csrf_token %}
-    <input type="email" name="email" required class="w-full border border-gray-300 rounded px-3 py-2" placeholder="email">
-    <button type="submit" class="w-full bg-gray-900 text-white rounded px-4 py-2 font-medium">Отправить</button>
-  </form>
-  <p class="text-sm mt-4"><a href="{% url 'core:login' %}" class="underline">← Ко входу</a></p>
+<div class="min-h-[calc(100vh-3.5rem)] flex items-center justify-center px-4 py-8">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 sm:p-8 fade-in">
+        <div class="text-center mb-6">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center mx-auto mb-3 shadow-sm">
+                <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            </div>
+            <h1 class="text-2xl font-bold text-neutral-800">Подтверждение email</h1>
+            <p class="text-sm text-neutral-500 mt-1">Отправим ссылку повторно (не чаще раза в 2 минуты)</p>
+        </div>
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            <div class="form-field">
+                <label class="form-label" for="email">Email</label>
+                <input type="email" name="email" id="email" required class="form-input" placeholder="you@example.com">
+            </div>
+            <button type="submit" class="w-full px-4 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors shadow-sm">Отправить</button>
+        </form>
+        <p class="mt-4 text-center text-sm"><a href="{% url 'core:login' %}" class="text-neutral-500 hover:text-primary-500 transition-colors">← Ко входу</a></p>
+    </div>
 </div>
 {% endblock %}

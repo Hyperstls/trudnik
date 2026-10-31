@@ -119,7 +119,7 @@ def job_create(request):
             sync_job_skills_raw(job.pk, [s.pk for s in form.cleaned_data["skills"]])
         messages.success(request, "Задание создано.")
         return redirect("core:job_detail", job_id=job.pk)
-    return render(request, "core/job_form.html", {"form": form, "title": "Новое задание"})
+    return render(request, "core/job_form.html", {"form": form, "title": "Новое задание", "selected_skills": set()})
 
 
 @login_required
@@ -133,7 +133,11 @@ def job_edit(request, job_id):
             sync_job_skills_raw(job.pk, [s.pk for s in form.cleaned_data["skills"]])
         messages.success(request, "Задание обновлено.")
         return redirect("core:job_detail", job_id=job.pk)
-    return render(request, "core/job_form.html", {"form": form, "title": "Редактирование задания"})
+    from django.db import connection as _c
+    with _c.cursor() as cur:
+        cur.execute("SELECT skill_id::text FROM job_skills WHERE job_id = %s", [job.pk])
+        selected = {r[0] for r in cur.fetchall()}
+    return render(request, "core/job_form.html", {"form": form, "title": "Редактирование задания", "selected_skills": selected})
 
 
 @login_required

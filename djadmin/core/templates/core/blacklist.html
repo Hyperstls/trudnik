@@ -1,19 +1,26 @@
 {% extends "core/base.html" %}
 {% block title %}Чёрный список — Трудник{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Чёрный список</h1>
-{% if rows %}
-<div class="grid gap-3">
-  {% for b in rows %}
-  <article class="bg-white border border-gray-200 rounded-lg p-4 flex items-center justify-between gap-3">
-    <span class="font-semibold">{{ b.blocked_user.full_name }}</span>
-    <form method="post" action="{% url 'core:people_unblock' b.blocked_user.pk %}">{% csrf_token %}
-      <button class="border border-gray-300 rounded px-3 py-1 text-sm">Разблокировать</button>
-    </form>
-  </article>
-  {% endfor %}
+<div class="px-0 py-4 max-w-2xl mx-auto fade-in">
+    <h2 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-4">Чёрный список</h2>
+    {% if rows %}
+    <div class="grid gap-2">
+        {% for b in rows %}
+        <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 flex items-center justify-between gap-3">
+            <a href="{% url 'core:worker_detail' b.blocked_user.pk %}" class="font-semibold text-neutral-900 hover:text-primary-600 transition-colors">{{ b.blocked_user.full_name }}</a>
+            <form method="post" action="{% url 'core:people_unblock' b.blocked_user.pk %}">{% csrf_token %}
+                <button class="action-icon-btn contact-btn"><span class="text-xs font-medium">Разблокировать</span></button>
+            </form>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="flex flex-col items-center justify-center py-16 text-center fade-in">
+        <div class="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
+            <svg aria-hidden="true" class="h-8 w-8 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+        </div>
+        <p class="text-neutral-600 text-lg font-medium">Список пуст</p>
+    </div>
+    {% endif %}
 </div>
-{% else %}
-<p class="text-gray-600">Список пуст.</p>
-{% endif %}
 {% endblock %}

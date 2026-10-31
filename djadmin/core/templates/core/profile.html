@@ -1,54 +1,100 @@
 {% extends "core/base.html" %}
-{% block title %}Мой профиль — Трудник{% endblock %}
+{% load core_extras %}
+{% block title %}Профиль — Трудник{% endblock %}
 {% block content %}
-<div class="max-w-2xl mx-auto space-y-6 mt-2">
+<div class="px-0 pb-24 max-w-lg mx-auto py-4 fade-in">
 
-  <section class="bg-white border border-gray-200 rounded-lg p-6">
-    <h1 class="text-2xl font-bold mb-4">Мой профиль</h1>
-    <form method="post">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="profile">
-      <div class="space-y-3">
-        {% for field in form %}
-          {% if field.name != "skills" %}
-          <label class="block text-sm font-medium">
-            {{ field.label }}
-            {{ field }}
-            {% for error in field.errors %}<span class="text-red-700 block">{{ error }}</span>{% endfor %}
-          </label>
-          {% endif %}
-        {% endfor %}
-      </div>
-      <div class="mt-4">
-        <h2 class="font-semibold mb-1 text-sm">Навыки</h2>
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-1 text-sm">
-          {% for choice in form.skills.field.queryset %}
-          <label class="flex items-center gap-2">
-            <input type="checkbox" name="skills" value="{{ choice.pk }}"
-                   {% if choice.pk in skills_selected %}checked{% endif %}> {{ choice.name }}
-          </label>
-          {% endfor %}
+    <!-- Аватар и основная информация -->
+    <div class="flex flex-col items-center mb-6">
+        <div class="relative">
+            {% if user.avatar_url %}
+            <img src="{{ user.avatar_url|absurl }}" loading="lazy" class="w-24 h-24 rounded-full object-cover border-4 border-primary-500 shadow-lg" alt="Ваше фото">
+            {% else %}
+            <div class="w-24 h-24 rounded-full border-4 border-primary-500 shadow-lg bg-primary-50 flex items-center justify-center text-primary-400">
+                <svg aria-hidden="true" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+            </div>
+            {% endif %}
         </div>
-      </div>
-      <button type="submit" class="mt-4 bg-gray-900 text-white rounded px-4 py-2 font-medium">Сохранить профиль</button>
-    </form>
-  </section>
+        <h3 class="text-xl font-bold text-neutral-900 mt-3">
+            {{ user.full_name }}
+            {% if user.verification_status == 'approved' %}
+            <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">✓ Подтверждён</span>
+            {% endif %}
+        </h3>
+        <div class="flex items-center gap-1.5 mt-1">
+            {% for i in "12345" %}{% if forloop.counter0 < user.rating|default:0 %}<span class="text-warning text-sm">★</span>{% else %}<span class="text-neutral-300 text-sm">★</span>{% endif %}{% endfor %}
+            <span class="text-sm font-medium text-neutral-700">{{ user.rating|default:0|floatformat:1 }}</span>
+            <span class="text-xs text-neutral-400">({{ user.total_reviews|default:0 }})</span>
+        </div>
+        <span class="mt-2 inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium {% if user.role == 'employer' %}bg-primary-50 text-primary-700{% elif user.role == 'admin' %}bg-purple-50 text-purple-700{% else %}bg-blue-50 text-blue-700{% endif %}">
+            {% if user.role == 'employer' %}Работодатель{% elif user.role == 'admin' %}Администратор{% else %}Исполнитель{% endif %}
+        </span>
+        <p class="text-sm text-neutral-500 mt-2">{{ user.email }}</p>
+    </div>
 
-  <section class="bg-white border border-gray-200 rounded-lg p-6">
-    <p class="text-sm"><a href="{% url 'core:messenger_start' platform='max' %}" class="underline">Подтвердить личность через MAX →</a></p>
-    <h2 class="text-lg font-bold mb-3">Смена пароля</h2>
-    <form method="post">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="password">
-      <div class="space-y-3">
-        {% for field in change_form %}
-        <label class="block text-sm font-medium">{{ field.label }} {{ field }}</label>
-        {% endfor %}
-        {% if change_form.non_field_errors %}{% for e in change_form.non_field_errors %}<p class="text-red-700 text-sm">{{ e }}</p>{% endfor %}{% endif %}
-      </div>
-      <button type="submit" class="mt-4 border border-gray-300 rounded px-4 py-2 font-medium">Изменить пароль</button>
-    </form>
-  </section>
+    {% if messages %}{% for message in messages %}
+    <div class="{% if message.tags == 'error' %}bg-red-50 border-red-200 text-red-700{% elif message.tags == 'success' %}bg-green-50 border-green-200 text-green-700{% else %}bg-neutral-50 border-neutral-200 text-neutral-700{% endif %} border rounded-xl px-4 py-2.5 text-sm mb-3">{{ message }}</div>
+    {% endfor %}{% endif %}
+
+    <!-- Анкета -->
+    <section class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 mb-4">
+        <h2 class="text-base font-bold text-neutral-800 mb-4">Анкета</h2>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="profile">
+            <div class="space-y-3">
+                {% for field in form %}
+                  {% if field.name != "skills" %}
+                  <div class="form-field">
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% for error in field.errors %}<p class="form-error" role="alert"><span>{{ error }}</span></p>{% endfor %}
+                  </div>
+                  {% endif %}
+                {% endfor %}
+            </div>
+            <div class="mt-4">
+                <h3 class="text-sm font-semibold text-neutral-700 mb-1.5">Навыки</h3>
+                <div class="grid grid-cols-2 gap-1.5 text-sm">
+                    {% for choice in form.skills.field.queryset %}
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="skills" value="{{ choice.pk }}" {% if choice.pk in skills_selected %}checked{% endif %} class="rounded border-neutral-300 text-primary-500 focus:ring-primary-500">
+                        {{ choice.name }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <button type="submit" class="mt-4 w-full px-4 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors shadow-sm">Сохранить профиль</button>
+        </form>
+    </section>
+
+    <!-- Верификация -->
+    <section class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 mb-4">
+        <h2 class="text-base font-bold text-neutral-800 mb-2">Верификация</h2>
+        <p class="text-sm text-neutral-600 mb-3">Подтвердите личность через мессенджер MAX — это повышает доверие.</p>
+        <a href="{% url 'core:messenger_start' platform='max' %}" class="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl bg-neutral-800 hover:bg-neutral-900 text-white text-sm font-semibold transition-colors">
+            Подтвердить через MAX →
+        </a>
+    </section>
+
+    <!-- Смена пароля -->
+    <section class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5">
+        <h2 class="text-base font-bold text-neutral-800 mb-4">Смена пароля</h2>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="password">
+            <div class="space-y-3">
+                {% for field in change_form %}
+                <div class="form-field">
+                    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                </div>
+                {% endfor %}
+                {% if change_form.non_field_errors %}{% for e in change_form.non_field_errors %}<p class="form-error" role="alert"><span>{{ e }}</span></p>{% endfor %}{% endif %}
+            </div>
+            <button type="submit" class="mt-4 w-full px-4 py-2.5 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-semibold transition-colors">Изменить пароль</button>
+        </form>
+    </section>
 
 </div>
 {% endblock %}

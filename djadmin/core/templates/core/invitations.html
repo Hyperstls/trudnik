@@ -1,50 +1,54 @@
 {% extends "core/base.html" %}
 {% block title %}Приглашения — Трудник{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Приглашения</h1>
-
-<h2 class="font-semibold mb-2">Мне</h2>
-{% if incoming %}
-<div class="grid gap-3 mb-8">
-  {% for inv in incoming %}
-  <article class="bg-white border border-gray-200 rounded-lg p-4 flex flex-wrap justify-between gap-3">
-    <div>
-      <a href="{% url 'core:job_detail' inv.job.pk %}" class="font-semibold hover:underline">{{ inv.job.work_type|default:"Задание" }}</a>
-      <p class="text-sm text-gray-600">{{ inv.job.organization_name }} · {{ inv.job.date_time|date:"d.m.Y H:i" }}</p>
-      {% if inv.message %}<p class="text-sm text-gray-700 mt-1">{{ inv.message }}</p>{% endif %}
-      <p class="text-sm mt-1">
-        {% if inv.status == 'pending' %}Ожидает ответа{% elif inv.status == 'accepted' %}Принято{% else %}Отклонено{% endif %}
-      </p>
+<div class="px-0 py-4 fade-in">
+    <h2 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-4">Приглашения</h2>
+    <h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-2">Мне</h3>
+    {% if incoming %}
+    <div class="grid gap-3 mb-8">
+        {% for inv in incoming %}
+        <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 flex flex-wrap justify-between gap-3">
+            <div class="min-w-0">
+                <a href="{% url 'core:job_detail' inv.job.pk %}" class="font-semibold text-neutral-900 hover:text-primary-600 transition-colors">{{ inv.job.work_type|default:"Задание" }}</a>
+                <p class="text-sm text-neutral-500 mt-0.5">{{ inv.job.organization_name }} · {{ inv.job.date_time|date:"d.m.Y H:i" }}</p>
+                {% if inv.message %}<p class="text-sm text-neutral-700 mt-1">{{ inv.message }}</p>{% endif %}
+                <p class="text-sm mt-1">
+                    {% if inv.status == 'pending' %}<span class="text-xs bg-neutral-100 text-neutral-600 rounded-full px-2.5 py-0.5 font-medium">Ожидает ответа</span>
+                    {% elif inv.status == 'accepted' %}<span class="text-xs bg-green-50 text-green-700 border border-green-200 rounded-full px-2.5 py-0.5 font-medium">Принято</span>
+                    {% else %}<span class="text-xs bg-red-50 text-red-700 border border-red-200 rounded-full px-2.5 py-0.5 font-medium">Отклонено</span>{% endif %}
+                </p>
+            </div>
+            {% if inv.status == 'pending' %}
+            <div class="flex gap-2 text-sm shrink-0">
+                <form method="post" action="{% url 'core:invitation_respond' inv.pk 'accept' %}">{% csrf_token %}
+                    <button class="action-icon-btn accept-btn"><span class="text-xs font-medium">Принять</span></button>
+                </form>
+                <form method="post" action="{% url 'core:invitation_respond' inv.pk 'decline' %}">{% csrf_token %}
+                    <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Отклонить</span></button>
+                </form>
+            </div>
+            {% endif %}
+        </article>
+        {% endfor %}
     </div>
-    {% if inv.status == 'pending' %}
-    <div class="flex gap-2 text-sm">
-      <form method="post" action="{% url 'core:invitation_respond' inv.pk 'accept' %}">{% csrf_token %}
-        <button class="bg-gray-900 text-white rounded px-3 py-1">Принять</button>
-      </form>
-      <form method="post" action="{% url 'core:invitation_respond' inv.pk 'decline' %}">{% csrf_token %}
-        <button class="border border-gray-300 rounded px-3 py-1">Отклонить</button>
-      </form>
-    </div>
+    {% else %}
+    <p class="text-sm text-neutral-500 mb-8">Входящих приглашений нет.</p>
     {% endif %}
-  </article>
-  {% endfor %}
-</div>
-{% else %}
-<p class="text-gray-600 mb-8">Входящих приглашений нет.</p>
-{% endif %}
 
-<h2 class="font-semibold mb-2">Отправленные (по моим заданиям)</h2>
-{% if outgoing %}
-<div class="grid gap-3">
-  {% for inv in outgoing %}
-  <article class="bg-white border border-gray-200 rounded-lg p-4">
-    <p class="font-semibold">{{ inv.worker.full_name }}</p>
-    <p class="text-sm text-gray-600">{{ inv.job.work_type|default:"Задание" }} ·
-      {% if inv.status == 'pending' %}ожидает{% elif inv.status == 'accepted' %}принято{% else %}отклонено{% endif %}</p>
-  </article>
-  {% endfor %}
+    <h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-2">Отправленные</h3>
+    {% if outgoing %}
+    <div class="grid gap-3">
+        {% for inv in outgoing %}
+        <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4">
+            <p class="font-semibold text-neutral-900">{{ inv.worker.full_name }}</p>
+            <p class="text-sm text-neutral-500 mt-0.5">{{ inv.job.work_type|default:"Задание" }} ·
+                {% if inv.status == 'pending' %}ожидает{% elif inv.status == 'accepted' %}принято{% else %}отклонено{% endif %}
+            </p>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-neutral-500">Вы ещё никого не приглашали.</p>
+    {% endif %}
 </div>
-{% else %}
-<p class="text-gray-600">Вы ещё никого не приглашали.</p>
-{% endif %}
 {% endblock %}
