@@ -127,6 +127,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.AdminIpAllowlistMiddleware",
+    "core.middleware.GlobalIpRateLimitMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -185,6 +186,9 @@ if PROD:
 X_FRAME_OPTIONS = "DENY"
 
 # Админка: опциональный IP-allowlist (аналог ADMIN_API_ALLOWED_IPS у Flask).
+# Глобальный лимит запросов с IP (паритет Flask GLOBAL_RATE_LIMIT_PER_MIN)
+GLOBAL_RATE_LIMIT_PER_MIN = int(os.getenv("GLOBAL_RATE_LIMIT_PER_MIN", "120"))
+
 DJANGO_ADMIN_ALLOWED_IPS = [
     ip.strip() for ip in os.getenv("DJANGO_ADMIN_ALLOWED_IPS", "").split(",") if ip.strip()
 ]

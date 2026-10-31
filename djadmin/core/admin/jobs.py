@@ -141,7 +141,7 @@ class ApplicationAdmin(AuditAdminMixin, ModelAdmin):
     list_display = ("id", "job", "worker", "status", "contact_paid", "created_at", "updated_at")
     list_filter = ("status", "contact_paid", "created_at")
     search_fields = ("job__work_type", "job__organization_name", "worker__full_name", "worker__email")
-    raw_id_fields = ("job", "worker")
+    autocomplete_fields = ("job", "worker")
     list_select_related = ("job", "worker")
     list_per_page = 50
 

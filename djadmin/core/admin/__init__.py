@@ -38,7 +38,10 @@ class TrudnikAdminSite(AdminSite):
 
     def dashboard_view(self, request):
         from django.shortcuts import render
+        from django.urls import reverse
+        from django.utils import timezone
 
+        from core.models import Application, Job, Profile, UserReport
         from core.rpc import call_rpc
 
         stats, job_stats = {}, {}
@@ -51,12 +54,31 @@ class TrudnikAdminSite(AdminSite):
             job_stats = call_rpc("get_job_stats") or {}
         except Exception as exc:
             errors.append("get_job_stats: %s" % exc)
+        today = timezone.localdate()
+        quick = {
+            "Новые пользователи (сегодня)": Profile.objects.filter(created_at__date=today).count(),
+            "Новые задания (сегодня)": Job.objects.filter(created_at__date=today).count(),
+            "Отклики (сегодня)": Application.objects.filter(created_at__date=today).count(),
+            "Жалобы в очереди": UserReport.objects.exclude(status="reviewed").count(),
+            "Верификация на проверке": Profile.objects.filter(verification_status="pending").count(),
+        }
+        links = [
+            ("Профили", reverse("admin:core_profile_changelist")),
+            ("Задания", reverse("admin:core_job_changelist")),
+            ("Отклики", reverse("admin:core_application_changelist")),
+            ("Жалобы", reverse("admin:core_userreport_changelist")),
+            ("Навыки", reverse("admin:core_skill_changelist")),
+            ("Страницы", reverse("admin:core_sitepage_changelist")),
+            ("Аудит", reverse("admin:core_auditlog_changelist")),
+        ]
         context = dict(
             self.each_context(request),
             title="Дашборд",
             stats=stats,
             job_stats=job_stats,
             errors=errors,
+            quick=quick,
+            links=links,
         )
         return render(request, "admin/dashboard.html", context)
 

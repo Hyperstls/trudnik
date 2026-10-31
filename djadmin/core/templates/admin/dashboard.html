@@ -10,6 +10,25 @@
 
   <div class="module" style="margin-top:1rem">
     <table style="width:100%">
+      <caption style="text-align:left;font-weight:bold;padding:.5rem 0">Сегодня / требует внимания</caption>
+      <tr><th>Метрика</th><th>Значение</th></tr>
+      {% for k, v in quick.items %}
+        <tr><td>{{ k }}</td><td><strong>{{ v }}</strong></td></tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <div class="module" style="margin-top:1rem;padding:1rem">
+    <p style="font-weight:bold;margin:0 0 .5rem">Разделы</p>
+    <p style="display:flex;flex-wrap:wrap;gap:.5rem;margin:0">
+      {% for label, href in links %}
+        <a class="button" href="{{ href }}">{{ label }}</a>
+      {% endfor %}
+    </p>
+  </div>
+
+  <div class="module" style="margin-top:1rem">
+    <table style="width:100%">
       <caption style="text-align:left;font-weight:bold;padding:.5rem 0">Пользователи и задания</caption>
       <tr>
         <th>Метрика</th><th>Значение</th><th>Метрика</th><th>Значение</th>
