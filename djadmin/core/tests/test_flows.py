@@ -764,3 +764,91 @@ class BulkApplicationsTests(TestCase):
         self.assertEqual(
             Application.objects.filter(pk__in=ids, status="pending").count(), 2
         )
+
+
+class BulkApplyTests(TestCase):
+    def setUp(self):
+        self.employer = make_profile("bulk-apply-emp@example.com", role="employer")
+        self.worker = make_profile("bulk-apply-worker@example.com", role="worker")
+        self.jobs = [
+            make_job(self.employer, work_type="BulkApply %d" % i) for i in range(2)
+        ]
+        self.client.force_login(self.worker)
+
+    def test_bulk_apply_creates_applications_and_grouped_notification(self):
+        response = self.client.post(
+            reverse("core:bulk_apply"),
+            {"job_ids": [str(job.pk) for job in self.jobs]},
+            follow=True,
+        )
+        self.assertEqual(
+            Application.objects.filter(
+                worker=self.worker, job__in=self.jobs
+            ).count(),
+            2,
+        )
+        rows = NotificationOutbox.objects.filter(
+            user=self.employer, type="application_received"
+        )
+        self.assertEqual(rows.count(), 1)
+        self.assertEqual(len(rows.get().data["job_ids"]), 2)
+        self.assertContains(response, "Выполнено: 2, пропущено: 0, ошибок: 0")
+
+    def test_bulk_apply_duplicate_skipped(self):
+        for job in self.jobs:
+            Application.objects.create(
+                job=job, worker=self.worker, status="pending"
+            )
+        response = self.client.post(
+            reverse("core:bulk_apply"),
+            {"job_ids": [str(job.pk) for job in self.jobs]},
+            follow=True,
+        )
+        self.assertContains(response, "пропущено: 2")
+        self.assertFalse(
+            NotificationOutbox.objects.filter(
+                user=self.employer, type="application_received"
+            ).exists()
+        )
+
+    def test_bulk_apply_own_job_skipped(self):
+        self.client.force_login(self.employer)
+        response = self.client.post(
+            reverse("core:bulk_apply"),
+            {"job_ids": [str(self.jobs[0].pk)]},
+            follow=True,
+        )
+        self.assertContains(response, "пропущено: 1")
+        self.assertFalse(
+            Application.objects.filter(
+                job=self.jobs[0], worker=self.employer
+            ).exists()
+        )
+
+    def test_bulk_apply_ignores_external_referer(self):
+        response = self.client.post(
+            reverse("core:bulk_apply"),
+            {"job_ids": [str(self.jobs[0].pk)]},
+            HTTP_REFERER="https://evil.example/phish",
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "/jobs")
+
+    def test_bulk_apply_rpc_error_does_not_abort_batch(self):
+        from unittest import mock
+
+        calls = {"n": 0}
+
+        def fake_call(name, *args):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise RuntimeError("rpc down")
+            return {"success": True, "employer_id": str(self.employer.pk)}
+
+        with mock.patch("core.views_public_ext.call_rpc", side_effect=fake_call):
+            response = self.client.post(
+                reverse("core:bulk_apply"),
+                {"job_ids": [str(job.pk) for job in self.jobs]},
+                follow=True,
+            )
+        self.assertContains(response, "Выполнено: 1, пропущено: 0, ошибок: 1")

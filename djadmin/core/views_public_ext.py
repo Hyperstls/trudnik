@@ -10,19 +10,27 @@ from datetime import timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Count, Q
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from .models import Application, Invitation, Job, JobPhoto, Profile, Rating, UserReport
+from .notifications import enqueue_notification
 from .rpc import call_rpc
 from .storage import UploadError, delete_upload_url, save_upload
 from .views import job_photo_urls
 
 BULK_LIMIT = 20
+SKIPPED_APPLY_CODES = {
+    "duplicate", "already_applied", "no_slots", "job_not_open",
+    "own_job", "job_expired", "job_in_past",
+}
 
 
 # ── Работодатели ───────────────────────────────────────────────────────────
@@ -102,29 +110,68 @@ def bulk_unapply(request):
 def _bulk(request, apply: bool):
     raw = request.POST.getlist("job_ids")
     ids = [x for x in raw if x][:BULK_LIMIT]
-    done = failed = 0
+    applied = skipped = failed = 0
+    employer_jobs = {}
     for job_id in ids:
-        job = Job.objects.public().filter(pk=job_id).first()
-        if job is None or job.employer_id == request.user.pk:
+        try:
+            job = Job.objects.public().filter(pk=job_id).first()
+        except (ValidationError, ValueError):
             failed += 1
             continue
+        if job is None:
+            failed += 1
+            continue
+        if job.employer_id == request.user.pk:
+            skipped += 1
+            continue
         if apply:
-            result = call_rpc("apply_job_atomic", job.pk, request.user.pk) or {}
+            try:
+                result = call_rpc("apply_job_atomic", job.pk, request.user.pk) or {}
+            except Exception:
+                failed += 1
+                continue
+            if result.get("success"):
+                applied += 1
+                employer_id = str(result.get("employer_id") or job.employer_id)
+                employer_jobs.setdefault(employer_id, []).append(str(job.pk))
+            elif result.get("code") in SKIPPED_APPLY_CODES:
+                skipped += 1
+            else:
+                failed += 1
         else:
             app_obj = (
                 Application.objects.filter(job=job, worker=request.user)
                 .exclude(status__in=("withdrawn", "cancelled")).first()
             )
             if app_obj is None:
+                skipped += 1
+                continue
+            try:
+                result = call_rpc("withdraw_application_atomic", app_obj.pk, request.user.pk) or {}
+            except Exception:
                 failed += 1
                 continue
-            result = call_rpc("withdraw_application_atomic", app_obj.pk, request.user.pk) or {}
-        if result.get("success"):
-            done += 1
-        else:
-            failed += 1
-    messages.info(request, "Выполнено: %d, пропущено: %d." % (done, failed))
-    return redirect(request.META.get("HTTP_REFERER") or "/jobs")
+            if result.get("success"):
+                applied += 1
+            else:
+                failed += 1
+    for employer_id, job_ids in employer_jobs.items():
+        enqueue_notification(
+            employer_id, "application_received", "Новые отклики",
+            "На ваши задания поступили новые отклики",
+            {
+                "job_ids": job_ids,
+                "link": request.build_absolute_uri(reverse("core:my_applications")),
+            },
+        )
+    messages.info(
+        request,
+        "Выполнено: %d, пропущено: %d, ошибок: %d." % (applied, skipped, failed),
+    )
+    referer = request.META.get("HTTP_REFERER") or ""
+    if not url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}):
+        referer = "/jobs"
+    return redirect(referer)
 
 
 # ── Приглашения: отклонить все ─────────────────────────────────────────────

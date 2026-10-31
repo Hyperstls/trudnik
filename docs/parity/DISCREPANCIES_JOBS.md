@@ -18,8 +18,10 @@ JOB-P1-09/10 закрыты J008 (табы/фильтры, application_count, re
 пагинация), J009 (bulk-backend cancel/restore/delete, accept/reject/reopen,
 ≤50, ownership) и J010 (чекбоксы + панели массовых действий).
 JOB-P2-06 исправлен J011 (файлы фото удаляются при single/bulk delete,
-refcount для общих файлов). Остаётся bulk duplicate.
-Полный core-набор — 274 OK.
+refcount для общих файлов).
+JOB-P2-05 исправлен J012 (bulk apply: групповые уведомления, applied/skipped/failed,
+open-redirect fix). Остаётся bulk duplicate.
+Полный core-набор — 279 OK.
 Остальные пункты открыты.
 
 ## P0

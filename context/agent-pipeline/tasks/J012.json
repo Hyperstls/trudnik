@@ -1,0 +1,40 @@
+{
+  "id": "J012",
+  "title": "JOB-P2-05: bulk apply — уведомления и раздельные счётчики",
+  "goal": "POST /apply-selected применяет отклики пакетом, группирует успешные по работодателю и создаёт одно outbox-уведомление на работодателя; ответ показывает applied/skipped/failed, а не общий failed.",
+  "why": "Flask applications.py:127-214 группирует employer_jobs и вызывает enqueue_notification('application_received','Новые отклики', job_ids), различает skipped (duplicate/no_slots/job_not_open/own_job/job_expired/job_in_past) и errors. Django _bulk (views_public_ext.py:102-127) не уведомляет и считает всё failed (JOB-P2-05).",
+  "files": [
+    "djadmin/core/views_public_ext.py",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_flow.py",
+    "djadmin/core/notifications.py",
+    "docs/parity/DISCREPANCIES_JOBS.md"
+  ],
+  "interfaces": "views_public_ext._bulk: import enqueue_notification, reverse, ValidationError. Для apply: успешные result['success'] -> applied += 1 и employer_jobs[employer_id].append(job_id); ошибки с code in ('duplicate','no_slots','job_not_open','own_job','job_expired','job_in_past','already_applied') -> skipped += 1; прочие/невалидный UUID -> failed += 1. После цикла для каждого employer_id: enqueue_notification(employer_id,'application_received','Новые отклики','На ваши задания поступили новые отклики',{'job_ids': [...], 'link': request.build_absolute_uri(reverse('core:my_applications'))}). Сообщение: 'Выполнено: N, пропущено: M, ошибок: K.'. Для unapply — без уведомлений. Тесты BulkApplyTests: test_bulk_apply_creates_applications_and_grouped_notification (2 задания -> 2 Application, 1 outbox row, data.job_ids длина 2); test_bulk_apply_duplicate_skipped (повторный bulk -> skipped, новых строк outbox нет); test_bulk_apply_own_job_skipped (own_job -> skipped, Application нет).",
+  "acceptance": [
+    "Bulk apply создаёт отклики на все валидные открытые задания.",
+    "На работодателя создаётся одно outbox-уведомление с job_ids всех успешных откликов.",
+    "Duplicate/own_job/no_slots идут в skipped, прочие ошибки — в failed.",
+    "Повторный bulk не создаёт новые уведомления для уже откликнутых заданий.",
+    "BulkApplyTests и ApplicationFlowTests проходят."
+  ],
+  "out_of_scope": [
+    "Не менять одиночный apply и RPC.",
+    "Не менять шаблоны/ленту.",
+    "Не добавлять bulk duplicate."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_public_ext.py djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "flow_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows.BulkApplyTests core.tests.test_flows.ApplicationFlowTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}
