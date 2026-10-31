@@ -51,7 +51,7 @@
     тест `sys.modules['core.tasks']=None`, повторный pattern-review PASS.
 - **Кросс-регрессия:** `test_auth`, `test_auth_flows`, `test_flows`, `test_profile_flows`,
   `test_public_views`, `test_parity_ext` → **114 tests, OK**.
-- **Полный `manage.py test core`:** **226 test, OK** (после P105/миграций); в логе до T001 был
+- **Полный `manage.py test core`:** **231 test, OK** (после L001/миграций); в логе до T001 был
   `TypeError: int() argument ... dict` в `expire_old_jobs` — исправлен T001;
   после T001 задача пишет `rpc=3`/`rpc=106`, TypeError отсутствует.
 - **Pre-deploy:** `scripts/pre_deploy_check.py` → **7/7, 0 проблем, Safe to deploy**.

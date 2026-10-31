@@ -12,7 +12,7 @@ fail-open, RLS/ledger) и 18 P2 (UX/маршруты/мёртвые шаблон
 > P1-01/02/06 исправлены контрактами P101/P102/P106 (кросс-регрессия 109 тестов OK),
 > P1-03/04/11 — P103/P104, P1-07/08/14 — P107/P108/P114.
 > BUILD-01 — B001 (pre_deploy 7/7), TASKS-01 — T001. P1-12 — P112 (IDOR-матрица),
-> P1-10 ORM-путь — P110; P1-05 — P105 (async email). Полный `core` — 226 тестов OK.
+> P1-10 ORM-путь — P110; P1-05 — P105 (async email). Полный `core` — 231 тест OK.
 > Детали — [P0_RESULTS.md](P0_RESULTS.md), [P1_RESULTS.md](P1_RESULTS.md).
 > Остальные: P1-13 + DB-default P1-10 — локально выполнено (65/65, default=false,
 > `check_migrations.py` OK); production — pending deploy-window.
