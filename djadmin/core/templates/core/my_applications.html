@@ -1,45 +1,51 @@
 {% extends "core/base.html" %}
 {% block title %}Мои отклики — Трудник{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Мои отклики</h1>
-{% if apps %}
-<div class="grid gap-3">
-  {% for a in apps %}
-  <article class="bg-white border border-gray-200 rounded-lg p-4 flex flex-wrap items-start justify-between gap-3">
-    <div>
-      <a href="{% url 'core:job_detail' a.job.pk %}" class="font-semibold hover:underline">{{ a.job.work_type|default:"Задание" }}</a>
-      <p class="text-sm text-gray-600">{{ a.job.organization_name }} · {{ a.job.date_time|date:"d.m.Y H:i" }}</p>
-      <p class="text-sm mt-1">
-        Статус:
-        {% if a.status == 'pending' %}<span class="bg-gray-100 rounded px-2 py-0.5">Ожидает</span>
-        {% elif a.status == 'accepted' %}<span class="bg-green-100 text-green-800 rounded px-2 py-0.5">Принят</span>
-        {% elif a.status == 'rejected' %}<span class="bg-red-100 text-red-800 rounded px-2 py-0.5">Отклонён</span>
-        {% else %}<span class="bg-gray-100 rounded px-2 py-0.5">{{ a.get_status_display }}</span>{% endif %}
-      </p>
+<div class="px-0 py-4 fade-in">
+    <h2 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-4">Мои отклики</h2>
+    {% if apps %}
+    <div class="grid gap-3">
+        {% for a in apps %}
+        <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0">
+                <a href="{% url 'core:job_detail' a.job.pk %}" class="font-semibold text-neutral-900 hover:text-primary-600 transition-colors">{{ a.job.work_type|default:"Задание" }}</a>
+                <p class="text-sm text-neutral-500 mt-0.5">{{ a.job.organization_name }} · {{ a.job.date_time|date:"d.m.Y H:i" }}</p>
+                <p class="text-sm mt-1">
+                    {% if a.status == 'pending' %}<span class="text-xs bg-neutral-100 text-neutral-600 rounded-full px-2.5 py-0.5 font-medium">Ожидает</span>
+                    {% elif a.status == 'accepted' %}<span class="text-xs bg-green-50 text-green-700 border border-green-200 rounded-full px-2.5 py-0.5 font-medium">Принят</span>
+                    {% elif a.status == 'rejected' %}<span class="text-xs bg-red-50 text-red-700 border border-red-200 rounded-full px-2.5 py-0.5 font-medium">Отклонён</span>
+                    {% elif a.status == 'withdrawn' %}<span class="text-xs bg-neutral-100 text-neutral-500 rounded-full px-2.5 py-0.5 font-medium">Отозван</span>
+                    {% else %}<span class="text-xs bg-neutral-100 text-neutral-600 rounded-full px-2.5 py-0.5 font-medium">{{ a.get_status_display }}</span>{% endif %}
+                </p>
+            </div>
+            <div class="flex flex-wrap gap-2 text-sm shrink-0">
+                {% if a.status == 'pending' or a.status == 'accepted' %}
+                <form method="post" action="{% url 'core:application_action' a.pk 'withdraw' %}">{% csrf_token %}
+                    <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Отозвать</span></button>
+                </form>
+                {% endif %}
+                {% if a.status == 'accepted' %}
+                <a href="{% url 'core:chat_room' a.pk %}" class="action-icon-btn contact-btn"><span class="text-xs font-medium">Чат</span></a>
+                {% endif %}
+                {% if a.status == 'accepted' and a.job.status == 'completed' %}
+                <form method="post" action="{% url 'core:rate_participant' a.pk %}" class="flex items-center gap-2">{% csrf_token %}
+                    <select name="rating" class="border border-neutral-200 rounded-xl px-2 py-1.5 text-sm bg-white"><option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option></select>
+                    <input type="text" name="comment" placeholder="Комментарий" class="border border-neutral-200 rounded-xl px-2 py-1.5 text-sm w-32">
+                    <button class="action-icon-btn contact-btn"><span class="text-xs font-medium">Оценить</span></button>
+                </form>
+                {% endif %}
+            </div>
+        </article>
+        {% endfor %}
     </div>
-    {% if a.status == 'pending' or a.status == 'accepted' %}
-    <form method="post" action="{% url 'core:application_action' a.pk 'withdraw' %}">{% csrf_token %}
-      <button class="border border-gray-300 rounded px-3 py-1 text-sm">Отозвать</button>
-    </form>
+    {% else %}
+    <div class="flex flex-col items-center justify-center py-16 text-center fade-in">
+        <div class="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
+            <svg aria-hidden="true" class="h-8 w-8 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="6" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="18" y2="12"/></svg>
+        </div>
+        <p class="text-neutral-600 text-lg font-medium">Откликов пока нет</p>
+        <a href="{% url 'core:jobs' %}" class="mt-4 px-5 h-10 inline-flex items-center rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold shadow-sm">Найти задание</a>
+    </div>
     {% endif %}
-    {% if a.status == 'accepted' %}
-    <a href="{% url 'core:chat_room' a.pk %}" class="border border-gray-300 rounded px-3 py-1 text-sm">Чат</a>
-    {% endif %}
-      {% if a.status == 'accepted' and a.job.status == 'completed' %}
-      <form method="post" action="{% url 'core:rate_participant' a.pk %}" class="mt-2 flex flex-wrap gap-2 items-center text-sm">
-        {% csrf_token %}
-        <select name="rating" class="border border-gray-300 rounded px-2 py-1">
-          <option value="5">★★★★★</option><option value="4">★★★★</option>
-          <option value="3">★★★</option><option value="2">★★</option><option value="1">★</option>
-        </select>
-        <input type="text" name="comment" placeholder="Комментарий" class="border border-gray-300 rounded px-2 py-1 flex-1 min-w-32">
-        <button class="border border-gray-300 rounded px-3 py-1">Оценить</button>
-      </form>
-      {% endif %}
-  </article>
-  {% endfor %}
 </div>
-{% else %}
-<p class="text-gray-600">Откликов пока нет. <a href="{% url 'core:jobs' %}" class="underline">Найти задание</a>.</p>
-{% endif %}
 {% endblock %}

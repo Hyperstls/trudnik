@@ -2,36 +2,63 @@
 {% load core_extras %}
 {% block title %}Трудники — Трудник{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Трудники</h1>
-<form method="get" class="bg-white border border-gray-200 rounded-lg p-4 mb-6 flex gap-3 items-end">
-  <label class="text-sm flex-1">Поиск
-    <input type="search" name="q" value="{{ q }}" class="w-full border border-gray-300 rounded px-2 py-1 mt-1">
-  </label>
-  <button type="submit" class="bg-gray-900 text-white rounded px-4 py-2 font-medium">Найти</button>
-</form>
-
-{% if page.object_list %}
-<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-  {% for w in page.object_list %}
-  <a href="{% url 'core:worker_detail' w.pk %}" class="bg-white border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
-    <div class="flex items-center gap-3">
-      {% if w.avatar_url %}<img src="{{ w.avatar_url|absurl }}" alt="" class="w-12 h-12 rounded-full object-cover">{% endif %}
-      <div>
-        <p class="font-semibold">{{ w.full_name }}</p>
-        <p class="text-sm text-gray-600">{% if w.city %}{{ w.city }} · {% endif %}★ {{ w.rating|default:0|floatformat:1 }} ({{ w.total_reviews|default:0 }})</p>
-      </div>
+<div class="px-0 py-4 fade-in">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">Трудники</h2>
     </div>
-    {% if w.bio %}<p class="text-sm text-gray-600 mt-2 line-clamp-3">{{ w.bio }}</p>{% endif %}
-  </a>
-  {% endfor %}
-</div>
 
-<nav class="mt-6 flex gap-2 items-center text-sm">
-  {% if page.has_previous %}<a href="?page={{ page.previous_page_number }}&q={{ q }}" class="px-3 py-1 bg-white border border-gray-300 rounded">← Назад</a>{% endif %}
-  <span class="text-gray-600">стр. {{ page.number }} из {{ page.paginator.num_pages }}</span>
-  {% if page.has_next %}<a href="?page={{ page.next_page_number }}&q={{ q }}" class="px-3 py-1 bg-white border border-gray-300 rounded">Вперёд →</a>{% endif %}
-</nav>
-{% else %}
-<p class="text-gray-600">Никого не найдено.</p>
-{% endif %}
+    <form method="get" class="bg-white rounded-2xl border border-neutral-200 p-4 mb-5 shadow-card flex gap-3 items-end">
+        <label class="text-xs font-medium text-neutral-500 flex-1">Поиск
+            <input type="search" name="q" value="{{ q }}" placeholder="Имя или город…" class="mt-1 w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+        </label>
+        <button type="submit" class="h-10 px-5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors">Найти</button>
+    </form>
+
+    {% if page.object_list %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for w in page.object_list %}
+        <div class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-5 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 relative">
+            <div class="flex items-center gap-3">
+                {% if w.avatar_url %}
+                <img src="{{ w.avatar_url|absurl }}" alt="{{ w.full_name }}" loading="lazy" class="w-14 h-14 rounded-full object-cover border-2 border-neutral-200 shrink-0">
+                {% else %}
+                <div class="w-14 h-14 rounded-full border-2 border-neutral-200 shrink-0 bg-primary-50 flex items-center justify-center text-primary-400">
+                    <svg aria-hidden="true" class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+                </div>
+                {% endif %}
+                <div class="flex-1 min-w-0">
+                    <h3 class="font-semibold text-neutral-900 truncate">
+                        <a href="{% url 'core:worker_detail' w.pk %}" class="hover:text-primary-600 transition-colors">{{ w.full_name }}</a>
+                    </h3>
+                    <div class="flex items-center gap-0.5 mt-0.5">
+                        {% for i in "12345" %}{% if forloop.counter0 < w.rating|default:0 %}<span class="text-warning text-xs">★</span>{% else %}<span class="text-neutral-300 text-xs">★</span>{% endif %}{% endfor %}
+                        <span class="text-xs text-neutral-400 ml-1">({{ w.total_reviews|default:0 }})</span>
+                    </div>
+                    {% if w.city %}<p class="text-xs text-neutral-500 mt-0.5">{{ w.city }}</p>{% endif %}
+                </div>
+            </div>
+            {% if w.bio %}<p class="text-sm text-neutral-600 mt-2 line-clamp-2 leading-relaxed">{{ w.bio }}</p>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <nav class="mt-6 flex gap-2 items-center justify-center text-sm" aria-label="Пагинация">
+        {% if page.has_previous %}
+        <a href="?page={{ page.previous_page_number }}{% if q %}&q={{ q }}{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600">← Назад</a>
+        {% endif %}
+        <span class="text-neutral-400 px-2">{{ page.number }} из {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}
+        <a href="?page={{ page.next_page_number }}{% if q %}&q={{ q }}{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600">Вперёд →</a>
+        {% endif %}
+    </nav>
+    {% else %}
+    <div class="flex flex-col items-center justify-center py-16 text-center fade-in">
+        <div class="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
+            <svg aria-hidden="true" class="h-8 w-8 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        </div>
+        <p class="text-neutral-600 text-lg font-medium">Никого не найдено</p>
+        <p class="text-sm text-neutral-500 mt-1">Попробуйте изменить запрос</p>
+    </div>
+    {% endif %}
+</div>
 {% endblock %}

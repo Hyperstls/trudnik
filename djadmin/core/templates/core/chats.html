@@ -1,21 +1,29 @@
 {% extends "core/base.html" %}
 {% block title %}Чаты — Трудник{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Чаты</h1>
-{% if rows %}
-<div class="grid gap-3">
-  {% for r in rows %}
-  <a href="{% url 'core:chat_room' r.app.pk %}" class="bg-white border border-gray-200 rounded-lg p-4 hover:bg-gray-50 flex justify-between gap-3">
-    <div>
-      <p class="font-semibold">{{ r.counterpart.full_name }}</p>
-      <p class="text-sm text-gray-600">{{ r.app.job.work_type|default:"Задание" }} · {{ r.app.get_status_display }}</p>
-      {% if r.last %}<p class="text-sm text-gray-500 mt-1 truncate">{{ r.last }}</p>{% endif %}
+<div class="px-0 py-4 fade-in">
+    <h2 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-4">Чаты</h2>
+    {% if rows %}
+    <div class="grid gap-2">
+        {% for r in rows %}
+        <a href="{% url 'core:chat_room' r.app.pk %}" class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 hover:shadow-md transition-shadow flex justify-between gap-3">
+            <div class="min-w-0">
+                <p class="font-semibold text-neutral-900">{{ r.counterpart.full_name }}</p>
+                <p class="text-sm text-neutral-500 mt-0.5">{{ r.app.job.work_type|default:"Задание" }} · {{ r.app.get_status_display }}</p>
+                {% if r.last %}<p class="text-sm text-neutral-500 mt-1 truncate">{{ r.last }}</p>{% endif %}
+            </div>
+            <span class="text-xs text-neutral-400 whitespace-nowrap shrink-0">{{ r.app.updated_at|date:"d.m H:i" }}</span>
+        </a>
+        {% endfor %}
     </div>
-    <span class="text-sm text-gray-400 whitespace-nowrap">{{ r.app.updated_at|date:"d.m H:i" }}</span>
-  </a>
-  {% endfor %}
+    {% else %}
+    <div class="flex flex-col items-center justify-center py-16 text-center fade-in">
+        <div class="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
+            <svg aria-hidden="true" class="h-8 w-8 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <p class="text-neutral-600 text-lg font-medium">Чатов нет</p>
+        <p class="text-sm text-neutral-500 mt-1">Они появляются после отклика или приглашения</p>
+    </div>
+    {% endif %}
 </div>
-{% else %}
-<p class="text-gray-600">Чатов нет — они появляются после отклика или приглашения.</p>
-{% endif %}
 {% endblock %}

@@ -1,36 +1,44 @@
 {% extends "core/base.html" %}
 {% block title %}Мои задания — Трудник{% endblock %}
 {% block content %}
-<div class="flex items-center justify-between mb-4">
-  <h1 class="text-2xl font-bold">Мои задания</h1>
-  <a href="{% url 'core:job_create' %}" class="bg-gray-900 text-white rounded px-4 py-2 text-sm font-medium">+ Новое</a>
-</div>
-{% if jobs %}
-<div class="grid gap-3">
-  {% for job in jobs %}
-  <article class="bg-white border border-gray-200 rounded-lg p-4">
-    <div class="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <a href="{% url 'core:job_detail' job.pk %}" class="font-semibold hover:underline">{{ job.work_type|default:"Без типа" }}</a>
-        <p class="text-sm text-gray-600">{{ job.organization_name|default:"Частное лицо" }} · {{ job.get_status_display }} · {{ job.date_time|date:"d.m.Y H:i" }}</p>
-      </div>
-      <div class="flex flex-wrap gap-2 text-sm">
-        <a href="{% url 'core:job_applicants' job.pk %}" class="border border-gray-300 rounded px-3 py-1">Отклики</a>
-        <a href="{% url 'core:job_edit' job.pk %}" class="border border-gray-300 rounded px-3 py-1">Изменить</a>
-        {% if job.status == 'open' or job.status == 'active' %}
-        <form method="post" action="{% url 'core:job_action' job.pk 'cancel' %}">{% csrf_token %}<button class="border border-gray-300 rounded px-3 py-1">Отменить</button></form>
-        <form method="post" action="{% url 'core:job_action' job.pk 'force_complete' %}">{% csrf_token %}<button class="border border-gray-300 rounded px-3 py-1">Завершить</button></form>
-        {% endif %}
-        {% if job.status == 'cancelled' %}
-        <form method="post" action="{% url 'core:job_action' job.pk 'restore' %}">{% csrf_token %}<button class="border border-gray-300 rounded px-3 py-1">Восстановить</button></form>
-        {% endif %}
-        <form method="post" action="{% url 'core:job_action' job.pk 'delete' %}">{% csrf_token %}<button class="border border-red-300 text-red-700 rounded px-3 py-1">Удалить</button></form>
-      </div>
+<div class="px-0 py-4 fade-in">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">Мои задания</h2>
+        <a href="{% url 'core:job_create' %}" class="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold shadow-sm transition-colors">+ Создать</a>
     </div>
-  </article>
-  {% endfor %}
+    {% if jobs %}
+    <div class="grid gap-3">
+        {% for job in jobs %}
+        <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <a href="{% url 'core:job_detail' job.pk %}" class="font-semibold text-neutral-900 hover:text-primary-600 transition-colors">{{ job.work_type|default:"Задание" }}</a>
+                    <p class="text-sm text-neutral-500 mt-0.5">{{ job.organization_name|default:"Частное лицо" }} · {{ job.get_status_display }} · {{ job.date_time|date:"d.m.Y H:i" }}</p>
+                </div>
+                <div class="flex flex-wrap gap-2 text-sm shrink-0">
+                    <a href="{% url 'core:job_applicants' job.pk %}" class="action-icon-btn contact-btn"><span class="text-xs font-medium">Отклики</span></a>
+                    <a href="{% url 'core:job_edit' job.pk %}" class="action-icon-btn"><span class="text-xs font-medium">Изменить</span></a>
+                    {% if job.status == 'open' or job.status == 'active' %}
+                    <form method="post" action="{% url 'core:job_action' job.pk 'cancel' %}">{% csrf_token %}<button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Отменить</span></button></form>
+                    <form method="post" action="{% url 'core:job_action' job.pk 'force_complete' %}">{% csrf_token %}<button class="action-icon-btn accept-btn"><span class="text-xs font-medium">Завершить</span></button></form>
+                    {% endif %}
+                    {% if job.status == 'cancelled' %}
+                    <form method="post" action="{% url 'core:job_action' job.pk 'restore' %}">{% csrf_token %}<button class="action-icon-btn contact-btn"><span class="text-xs font-medium">Восстановить</span></button></form>
+                    {% endif %}
+                    <form method="post" action="{% url 'core:job_action' job.pk 'delete' %}">{% csrf_token %}<button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Удалить</span></button></form>
+                </div>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="flex flex-col items-center justify-center py-16 text-center fade-in">
+        <div class="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
+            <svg aria-hidden="true" class="h-8 w-8 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <p class="text-neutral-600 text-lg font-medium">Пока нет заданий</p>
+        <a href="{% url 'core:job_create' %}" class="mt-4 px-5 h-10 inline-flex items-center rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold shadow-sm">Создать задание</a>
+    </div>
+    {% endif %}
 </div>
-{% else %}
-<p class="text-gray-600">У вас ещё нет заданий. <a href="{% url 'core:job_create' %}" class="underline">Создать первое</a>.</p>
-{% endif %}
 {% endblock %}

@@ -1,30 +1,86 @@
 {% extends "core/base.html" %}
 {% block title %}Регистрация — Трудник{% endblock %}
 {% block content %}
-<div class="max-w-md mx-auto bg-white border border-gray-200 rounded-lg p-6 mt-4">
-  <h1 class="text-2xl font-bold mb-4">Регистрация</h1>
-  <form method="post" class="space-y-4">
-    {% csrf_token %}
-    {% if form.non_field_errors %}{% for e in form.non_field_errors %}<p class="text-red-700 text-sm">{{ e }}</p>{% endfor %}{% endif %}
-    {% for field in form %}
-      {% if field.is_hidden %}
-        {{ field }}{% if field.name == "website" %}<span class="hidden" aria-hidden="true"></span>{% endif %}
-      {% else %}
-      <label class="block text-sm font-medium">
-        {{ field.label }}
-        {% if field.field.required %}<span class="text-red-600">*</span>{% endif %}
-        {{ field }}
-        {% for error in field.errors %}<span class="text-red-700 block">{{ error }}</span>{% endfor %}
-      </label>
-      {% endif %}
-    {% endfor %}
-    {% if captcha_client_key %}
-    <script src="https://smartcaptcha.yandexcloud.net/captcha.js" defer></script>
-    <div class="smart-captcha" data-sitekey="{{ captcha_client_key }}" data-callback="onCaptcha"></div>
-    {% endif %}
-    <button type="submit" class="w-full bg-gray-900 text-white rounded px-4 py-2 font-medium">Зарегистрироваться</button>
-  </form>
-  <p class="text-sm text-gray-600 mt-4">Уже есть аккаунт? <a href="{% url 'core:login' %}" class="underline">Войти</a></p>
-  <p class="text-xs text-gray-500 mt-2">Регистрируясь, вы соглашаетесь на обработку персональных данных (152-ФЗ).</p>
+<div class="min-h-[calc(100vh-3.5rem)] flex items-start justify-center px-4 py-8">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 sm:p-8 fade-in">
+        <div class="text-center mb-6">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center mx-auto mb-3 shadow-sm">
+                <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+            </div>
+            <h1 class="text-2xl font-bold text-neutral-800">Регистрация</h1>
+            <p class="text-sm text-neutral-500 mt-1">Присоединяйтесь к Трудник</p>
+        </div>
+
+        {% if form.non_field_errors %}{% for e in form.non_field_errors %}<p class="form-error mb-3" role="alert"><span>{{ e }}</span></p>{% endfor %}{% endif %}
+
+        <form method="post" class="space-y-4" novalidate>
+            {% csrf_token %}
+            <div class="form-field">
+                <label for="full_name" class="form-label">Полное имя <span class="text-danger">*</span></label>
+                <input type="text" name="full_name" id="full_name" value="{{ form.full_name.value|default:'' }}" class="form-input" placeholder="Иван Иванов" required>
+                {% if form.full_name.errors %}<p class="form-error" role="alert"><span>{{ form.full_name.errors.0 }}</span></p>{% endif %}
+            </div>
+            <div class="form-field">
+                <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                <input type="email" name="email" id="email" value="{{ form.email.value|default:'' }}" class="form-input" placeholder="you@example.com" required autocomplete="email">
+                {% if form.email.errors %}<p class="form-error" role="alert"><span>{{ form.email.errors.0 }}</span></p>{% endif %}
+            </div>
+            <div class="form-field">
+                <label for="password" class="form-label">Пароль <span class="text-danger">*</span></label>
+                <input type="password" name="password" id="password" class="form-input" placeholder="Минимум 8 символов" required autocomplete="new-password">
+                <p class="text-xs text-neutral-500 mt-1">Заглавная, строчная, цифра и спецсимвол обязательны</p>
+                {% if form.password.errors %}<p class="form-error" role="alert"><span>{{ form.password.errors.0 }}</span></p>{% endif %}
+            </div>
+
+            <fieldset>
+                <legend class="block text-sm font-semibold text-neutral-700 mb-2">Что вы хотите делать? <span class="text-danger">*</span></legend>
+                <div class="space-y-2.5">
+                    <label class="role-card group cursor-pointer border-2 border-neutral-200 rounded-xl p-3.5 flex items-center gap-3 hover:border-primary-300 transition-all duration-200 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 has-[:checked]:shadow-sm" tabindex="0">
+                        <input type="radio" name="intent" value="both" class="sr-only" checked aria-required="true">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-neutral-400 group-has-[:checked]:text-primary-500" aria-hidden="true"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                        <span class="flex-1 min-w-0"><span class="block text-sm font-semibold text-neutral-700">И то, и другое</span><span class="block text-xs text-neutral-500 mt-0.5">Подрабатывать и размещать задания</span></span>
+                        <span class="text-[10px] font-bold uppercase tracking-wide bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full shrink-0">Рекомендуем</span>
+                    </label>
+                    <label class="role-card group cursor-pointer border-2 border-neutral-200 rounded-xl p-3.5 flex items-center gap-3 hover:border-primary-300 transition-all duration-200 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 has-[:checked]:shadow-sm" tabindex="0">
+                        <input type="radio" name="intent" value="find_work" class="sr-only">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-neutral-400 group-has-[:checked]:text-primary-500" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <span class="flex-1 min-w-0"><span class="block text-sm font-semibold text-neutral-700">Искать подработку</span><span class="block text-xs text-neutral-500 mt-0.5">Откликаться на задания</span></span>
+                    </label>
+                    <label class="role-card group cursor-pointer border-2 border-neutral-200 rounded-xl p-3.5 flex items-center gap-3 hover:border-primary-300 transition-all duration-200 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 has-[:checked]:shadow-sm" tabindex="0">
+                        <input type="radio" name="intent" value="post_jobs" class="sr-only">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-neutral-400 group-has-[:checked]:text-primary-500" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                        <span class="flex-1 min-w-0"><span class="block text-sm font-semibold text-neutral-700">Только размещать задания</span><span class="block text-xs text-neutral-500 mt-0.5">Нанимать; меня не видно в каталоге исполнителей</span></span>
+                    </label>
+                </div>
+                <p class="text-xs text-neutral-500 mt-2">Любой аккаунт может и подрабатывать, и размещать задания.</p>
+                {% if form.intent.errors %}<p class="form-error" role="alert"><span>{{ form.intent.errors.0 }}</span></p>{% endif %}
+            </fieldset>
+
+            <div class="form-field">
+                <label for="city" class="form-label">Город</label>
+                <input type="text" name="city" id="city" value="{{ form.city.value|default:'' }}" class="form-input" placeholder="Москва">
+            </div>
+
+            <label class="flex items-start gap-2.5 text-sm text-neutral-700 cursor-pointer">
+                <input type="checkbox" name="consent" required class="mt-0.5 rounded border-neutral-300 text-primary-500 focus:ring-primary-500">
+                <span>Согласен с <a href="{% url 'core:privacy' %}" class="text-primary-600 hover:underline" target="_blank">политикой конфиденциальности</a> и обработкой персональных данных (152-ФЗ) <span class="text-danger">*</span></span>
+            </label>
+            {% if form.consent.errors %}<p class="form-error" role="alert"><span>{{ form.consent.errors.0 }}</span></p>{% endif %}
+            <input type="hidden" name="website" value="">
+            <input type="hidden" name="smart_token" value="">
+
+            {% if captcha_client_key %}
+            <script src="https://smartcaptcha.yandexcloud.net/captcha.js" defer></script>
+            <div class="smart-captcha" data-sitekey="{{ captcha_client_key }}"></div>
+            {% endif %}
+
+            <button type="submit" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors shadow-sm">Зарегистрироваться</button>
+        </form>
+
+        <p class="mt-6 text-center text-sm text-neutral-500">
+            Уже есть аккаунт?
+            <a href="{% url 'core:login' %}" class="text-primary-500 font-semibold hover:text-primary-600 transition-colors">Войти</a>
+        </p>
+    </div>
 </div>
 {% endblock %}
