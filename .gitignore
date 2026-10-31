@@ -115,3 +115,11 @@ twa-project/
 archive/
 certs/
 uploads/
+
+# Env-файлы с секретами — НИКОГДА не коммитить
+scripts/env_*.env
+archive/env_*.env
+.env.staging
+.env.amvera
+.env.production
+*.env.local
