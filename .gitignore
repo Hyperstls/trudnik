@@ -123,3 +123,7 @@ archive/env_*.env
 .env.amvera
 .env.production
 *.env.local
+
+# Agent pipeline runtime state (regenerable; contains file SHA-256 hashes,
+# which detect-secrets flags as high-entropy false positives)
+context/agent-pipeline/state.json

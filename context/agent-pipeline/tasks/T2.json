@@ -1,0 +1,30 @@
+{
+  "id": "T2",
+  "title": "Демо: scope-контроль дрейфа",
+  "goal": "demo/scope_ok.py содержит функцию scope_marker(), возвращающую 'SCOPE-OK'.",
+  "why": "Доказать, что verify FAIL-ит при изменении файла вне контракта и PASS-ит после честного отката.",
+  "files": [
+    "demo/scope_ok.py"
+  ],
+  "context_files": [],
+  "interfaces": "def scope_marker() -> str: возвращает ровно 'SCOPE-OK'.",
+  "acceptance": [
+    "demo/scope_ok.py содержит scope_marker(), возвращающую 'SCOPE-OK'.",
+    "Задача не создаёт и не меняет файлы вне demo/scope_ok.py."
+  ],
+  "out_of_scope": [
+    "Любые файлы, кроме demo/scope_ok.py."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile demo/scope_ok.py",
+      "cwd": "."
+    },
+    {
+      "name": "behavior",
+      "cmd": "{python} -c \"import sys; sys.path.insert(0, 'demo'); from scope_ok import scope_marker; assert scope_marker() == 'SCOPE-OK'; print('scope ok')\"",
+      "cwd": "."
+    }
+  ]
+}

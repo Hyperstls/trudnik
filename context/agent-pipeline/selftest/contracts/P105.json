@@ -1,0 +1,33 @@
+{
+  "id": "P105",
+  "title": "P1-05: транзакционная почта через Celery с fallback",
+  "goal": "Письма подтверждения email и сброса пароля ставятся в Celery-очередь; при недоступности брокера — синхронный fallback, регистрация/сброс не ломаются.",
+  "why": "Django send_mail синхронный: SMTP блокирует request-цикл (AUTH-P1-05). Нужен async + fallback, без изменения outbox/prefs.",
+  "files": [
+    "djadmin/core/views_auth.py",
+    "djadmin/core/tasks.py",
+    "djadmin/config/settings.py",
+    "djadmin/core/tests/test_auth_flows.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES.md",
+    "docs/parity/P1_RESULTS.md"
+  ],
+  "interfaces": "settings.TRANSACTIONAL_EMAIL_ASYNC = env 'TRANSACTIONAL_EMAIL_ASYNC' (default true; '0'/'false' -> false). tasks.send_transactional_email(bind=True, max_retries=3, default_retry_delay=60, ignore_result=True)(subject, message, to_email): send_mail(subject, message, None, [to_email]); при исключении logger.warning + self.retry(exc). views_auth._send_mail: если TRANSACTIONAL_EMAIL_ASYNC — try send_transactional_email.delay(...), return; при ошибке enqueue — logger.warning и синхронный send_mail fallback; иначе синхронный send_mail. tests/test_auth_flows.py: LOCMEM добавить TRANSACTIONAL_EMAIL_ASYNC=False (существующие mail-тесты остаются синхронными); новые тесты RegisterTests.test_transactional_email_enqueued (override True, patch core.tasks.send_transactional_email.delay, assert called once, mail.outbox пуст) и test_transactional_email_fallback_on_broker_error (override True, patch delay side_effect=RuntimeError, mail.outbox 1).",
+  "acceptance": [
+    "При TRANSACTIONAL_EMAIL_ASYNC=True письмо ставится в очередь через send_transactional_email.delay.",
+    "При ошибке enqueue выполняется синхронный fallback, письмо уходит, регистрация не падает.",
+    "При TRANSACTIONAL_EMAIL_ASYNC=False поведение синхронное, существующие mail-тесты зелёные.",
+    "Celery-задача ретраит SMTP-ошибку (max_retries=3).",
+    "core.tests.test_auth_flows и core.tests.test_tasks проходят."
+  ],
+  "out_of_scope": [
+    "Не менять NotificationOutbox/drain_notification_outbox и prefs.",
+    "Не менять SMTP-настройки и шаблоны писем."
+  ],
+  "checks": [
+    {"name": "compile", "cmd": "{python} -m py_compile djadmin/core/views_auth.py djadmin/core/tasks.py djadmin/config/settings.py djadmin/core/tests/test_auth_flows.py", "cwd": "."},
+    {"name": "auth_tests", "cmd": "{python} djadmin/manage.py test core.tests.test_auth_flows --keepdb -v 1", "cwd": "."},
+    {"name": "task_tests", "cmd": "{python} djadmin/manage.py test core.tests.test_tasks --keepdb -v 1", "cwd": "."}
+  ]
+}

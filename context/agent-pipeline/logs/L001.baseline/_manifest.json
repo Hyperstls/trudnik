@@ -1,0 +1,14 @@
+{
+  "djadmin/core/views.py": {
+    "exists": true,
+    "snapshot": "001_views.py"
+  },
+  "djadmin/core/templates/core/legal_fallback.html": {
+    "exists": false,
+    "snapshot": null
+  },
+  "djadmin/core/tests/test_public_views.py": {
+    "exists": true,
+    "snapshot": "003_test_public_views.py"
+  }
+}

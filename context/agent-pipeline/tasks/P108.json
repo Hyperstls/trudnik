@@ -1,0 +1,39 @@
+{
+  "id": "P108",
+  "title": "P1-08: fallback photo_url → avatar_url",
+  "goal": "Профиль, публичный профиль и каталог показывают avatar_url, если он задан, иначе legacy photo_url.",
+  "why": "Django пишет avatar_url, а Flask-аватары лежат в photo_url; шаблоны читают только avatar_url (AUTH-P1-08).",
+  "files": [
+    "djadmin/core/templates/core/profile.html",
+    "djadmin/core/templates/core/worker_detail.html",
+    "djadmin/core/templates/core/workers_list.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES.md",
+    "docs/parity/UI_INVENTORY.md"
+  ],
+  "interfaces": "В шаблонах: условие `{% if user.avatar_url or user.photo_url %}` и src `{{ user.avatar_url|default:user.photo_url|absurl }}`; аналогично `p.*` в worker_detail и `w.*` в workers_list. Тест: профиль с photo_url и пустым avatar_url; GET /workers/<uuid> содержит photo_url; GET /profile (свой) содержит photo_url.",
+  "acceptance": [
+    "При пустом avatar_url и заданном photo_url изображение показывается в /profile.",
+    "При пустом avatar_url и заданном photo_url изображение показывается в /workers/<uuid> и /workers.",
+    "При заданном avatar_url приоритет у avatar_url.",
+    "core.tests.test_public_views проходит."
+  ],
+  "out_of_scope": [
+    "Не менять модели/поля photo_url/avatar_url.",
+    "Не менять upload-логику."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

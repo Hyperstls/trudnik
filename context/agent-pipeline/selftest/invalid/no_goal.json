@@ -1,0 +1,13 @@
+{
+  "id": "T90",
+  "title": "Невалидный контракт: нет goal",
+  "why": "Фикстура для проверки отказа add.",
+  "files": ["demo/invalid.py"],
+  "context_files": [],
+  "interfaces": "нет",
+  "acceptance": ["критерий"],
+  "out_of_scope": [],
+  "checks": [
+    {"name": "compile", "cmd": "{python} -m py_compile demo/invalid.py", "cwd": "."}
+  ]
+}

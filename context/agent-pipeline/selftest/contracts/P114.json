@@ -1,0 +1,30 @@
+{
+  "id": "P114",
+  "title": "P1-14: удаление файлов ПДн при удалении аккаунта",
+  "goal": "При удалении аккаунта удаляются аватар, verification-doc и фото заданий пользователя; файлы не остаются на диске.",
+  "why": "delete_user_cascade чистит строки БД, но не файлы uploads; 152-ФЗ требует удаления ПДн (AUTH-P1-14).",
+  "files": [
+    "djadmin/core/storage.py",
+    "djadmin/core/views_profile_ext.py",
+    "djadmin/core/tests/test_parity_ext.py"
+  ],
+  "context_files": [
+    "docs/parity/152FZ_DATA_FLOWS.md",
+    "docs/parity/DISCREPANCIES.md"
+  ],
+  "interfaces": "storage.delete_upload_url(url) -> bool: найти '/uploads/', rel=... (без query), resolve_upload_url(rel), unlink; не выходить за root; ошибки -> False. views_profile_ext.delete_account: до RPC собрать profile.avatar_url/photo_url/verification_doc_url, JobPhoto.photo_url для job__employer=user, Job.photo_urls для employer; после успешного RPC удалить каждый URL через delete_upload_url, неудачи логировать, удаление аккаунта не ломать. Тест UploadTests.test_delete_account_removes_uploads: upload avatar + verification, delete_account, файлы отсутствуют, профиль удалён.",
+  "acceptance": [
+    "После delete_account файлы avatar/verification-doc удалены с диска.",
+    "Фото заданий employer также удаляются (JobPhoto и Job.photo_urls).",
+    "Ошибка удаления файла не мешает удалению аккаунта (логируется).",
+    "core.tests.test_parity_ext.UploadTests проходит."
+  ],
+  "out_of_scope": [
+    "Не менять delete_user_cascade RPC.",
+    "Не менять ACL и upload-форматы."
+  ],
+  "checks": [
+    {"name": "compile", "cmd": "{python} -m py_compile djadmin/core/storage.py djadmin/core/views_profile_ext.py djadmin/core/tests/test_parity_ext.py", "cwd": "."},
+    {"name": "upload_tests", "cmd": "{python} djadmin/manage.py test core.tests.test_parity_ext.UploadTests --keepdb -v 1", "cwd": "."}
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "T91",
+  "title": "Невалидный контракт: 5 файлов",
+  "goal": "Фикстура для проверки отказа add.",
+  "why": "Фикстура для проверки отказа add.",
+  "files": ["demo/a.py", "demo/b.py", "demo/c.py", "demo/d.py", "demo/e.py"],
+  "context_files": [],
+  "interfaces": "нет",
+  "acceptance": ["критерий"],
+  "out_of_scope": [],
+  "checks": [
+    {"name": "compile", "cmd": "{python} -m py_compile demo/a.py", "cwd": "."}
+  ]
+}

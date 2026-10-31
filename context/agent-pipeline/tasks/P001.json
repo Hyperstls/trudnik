@@ -1,0 +1,45 @@
+{
+  "id": "P001",
+  "title": "P0-01: капча — читать smart-token (Yandex), сохранить fail-closed",
+  "goal": "Регистрация и запрос сброса пароля принимают токен Yandex SmartCaptcha из поля `smart-token`; при включённой капче без токена запрос по-прежнему отклоняется.",
+  "why": "Django-форма читает `smart_token`, а виджет Yandex кладёт `smart-token`; в проде с SMARTCAPTCHA_SERVER_KEY регистрация и сброс пароля всегда падают.",
+  "files": [
+    "djadmin/core/views_auth.py",
+    "djadmin/core/tests/test_auth_flows.py",
+    "djadmin/core/templates/core/register.html"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES.md",
+    "docs/parity/AUDIT_AUTH_PROFILE.md"
+  ],
+  "interfaces": "verify_captcha_token(token: str) -> bool не менять. В register и password_reset_request брать токен так: request.POST.get('smart-token') or form.cleaned_data.get('smart_token', ''). Виджет Yandex добавляет поле `smart-token`; `smart_token` — только backward-compat. Fail-closed сохранить: нет токена/ошибка проверки → отказ. Тесты: core.tests.test_auth_flows.RegisterTests.test_register_accepts_yandex_smart_token_field и PasswordResetTests.test_reset_request_accepts_yandex_smart_token_field; в них patch('core.views_auth.verify_captcha_token', return_value=True) и assert_called_once_with('tok-...').",
+  "acceptance": [
+    "register читает `smart-token` и передаёт его в verify_captcha_token; `smart_token` остаётся fallback.",
+    "password_reset_request читает `smart-token` и передаёт его в verify_captcha_token.",
+    "При SMARTCAPTCHA_SERVER_KEY и mocked verify=True POST с `smart-token` создаёт пользователя (register) и отправляет письмо (reset).",
+    "При включённой капче без токена регистрация по-прежнему отклоняется (существующий fail-closed тест зелёный).",
+    "Все тесты core.tests.test_auth_flows проходят."
+  ],
+  "out_of_scope": [
+    "Не менять сервис captcha.py и политику fail-closed.",
+    "Не менять другие формы/шаблоны.",
+    "Не трогать БД/миграции."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_auth.py djadmin/core/tests/test_auth_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "captcha_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_auth_flows.RegisterTests.test_register_accepts_yandex_smart_token_field core.tests.test_auth_flows.PasswordResetTests.test_reset_request_accepts_yandex_smart_token_field --keepdb -v 1",
+      "cwd": "."
+    },
+    {
+      "name": "auth_regression",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_auth_flows --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

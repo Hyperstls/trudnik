@@ -1,0 +1,19 @@
+{
+  "id": "T6",
+  "title": "Демо: exit-код — единственный вердикт",
+  "goal": "Доказать, что текст вывода не влияет на вердикт: 'OK' + exit 1 = FAIL, 'ERROR' + exit 0 = PASS.",
+  "why": "Столп 1: лёгкие модели рапортуют успех там, где его нет; вердикт берётся только из числа процесса.",
+  "files": ["demo/exitcodes.py"],
+  "context_files": [],
+  "interfaces": "def exit_marker() -> str: возвращает 'EXIT'. Проверка liar_error — фикстура с намеренно противоречивым текстом и кодом.",
+  "acceptance": [
+    "Первый прогон liar_ok (текст OK, exit 1) дал общий verify FAIL — зафиксировано в логе.",
+    "Проверка liar_error (текст ERROR, exit 0) сама PASS.",
+    "После удаления liar_ok из контракта verify PASS по exit-кодам."
+  ],
+  "out_of_scope": ["Любые файлы, кроме demo/exitcodes.py."],
+  "checks": [
+    {"name": "compile", "cmd": "{python} -m py_compile demo/exitcodes.py", "cwd": "."},
+    {"name": "liar_error", "cmd": "{python} -c \"print('ERROR: something broke'); import sys; sys.exit(0)\"", "cwd": "."}
+  ]
+}

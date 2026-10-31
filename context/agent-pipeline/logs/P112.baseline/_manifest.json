@@ -1,0 +1,10 @@
+{
+  "djadmin/core/tests/test_profile_flows.py": {
+    "exists": true,
+    "snapshot": "001_test_profile_flows.py"
+  },
+  "djadmin/core/tests/test_parity_ext.py": {
+    "exists": true,
+    "snapshot": "002_test_parity_ext.py"
+  }
+}

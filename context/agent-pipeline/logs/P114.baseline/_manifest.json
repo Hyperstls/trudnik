@@ -1,0 +1,14 @@
+{
+  "djadmin/core/storage.py": {
+    "exists": true,
+    "snapshot": "001_storage.py"
+  },
+  "djadmin/core/views_profile_ext.py": {
+    "exists": true,
+    "snapshot": "002_views_profile_ext.py"
+  },
+  "djadmin/core/tests/test_parity_ext.py": {
+    "exists": true,
+    "snapshot": "003_test_parity_ext.py"
+  }
+}

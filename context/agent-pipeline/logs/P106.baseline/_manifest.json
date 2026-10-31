@@ -1,0 +1,10 @@
+{
+  "djadmin/core/views_profile.py": {
+    "exists": true,
+    "snapshot": "001_views_profile.py"
+  },
+  "djadmin/core/tests/test_profile_flows.py": {
+    "exists": true,
+    "snapshot": "002_test_profile_flows.py"
+  }
+}

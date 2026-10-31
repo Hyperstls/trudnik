@@ -1,0 +1,154 @@
+# Progress — agent pipeline
+
+Хронология: каждая verify/review — строкой. Append-only.
+
+- **2026-10-31 15:12:13** | **T1** | `add` | **OK** | contract=context/agent-pipeline/tasks/T1.json
+- **2026-10-31 15:12:14** | **T1** | `dispatch` | **OK** | status=implementing baseline=17 pack=context/agent-pipeline/packs/T1.impl.prompt.md
+- **2026-10-31 15:13:07** | **T1** | `verify` | **PASS** | scope=ok checks=compile=0, tests=0, behavior=0 attempts=0/3
+- **2026-10-31 15:13:14** | **T1** | `review-packet` | **READY** | bytes=3607 new_files=['demo/calc.py', 'demo/test_calc.py']
+- **2026-10-31 15:13:39** | **T1** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 15:13:46** | **T1** | `verify` | **PASS(recheck)** | scope=ok checks=compile=0, tests=0, behavior=0 (status остаётся done)
+- **2026-10-31 15:13:54** | **T2** | `add` | **OK** | contract=context/agent-pipeline/tasks/T2.json
+- **2026-10-31 15:13:54** | **T2** | `dispatch` | **OK** | status=implementing baseline=23 pack=context/agent-pipeline/packs/T2.impl.prompt.md
+- **2026-10-31 15:13:54** | **T2** | `verify` | **FAIL** | scope=fail checks=skipped(scope) attempts=1/3 → fixing
+- **2026-10-31 15:13:59** | **T2** | `set` | **fixing→fixing** | by=Hyperstls reason=честное исправление: удалён demo/scope_drift.py (вне контракта)
+- **2026-10-31 15:14:00** | **T2** | `verify` | **PASS** | scope=ok checks=compile=0, behavior=0 attempts=1/3
+- **2026-10-31 15:14:01** | **T2** | `review-packet` | **READY** | bytes=2390 new_files=['demo/scope_ok.py']
+- **2026-10-31 15:14:01** | **T2** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 15:14:06** | **T3** | `add` | **OK** | contract=context/agent-pipeline/tasks/T3.json
+- **2026-10-31 15:14:06** | **T3** | `dispatch` | **OK** | status=implementing baseline=28 pack=context/agent-pipeline/packs/T3.impl.prompt.md
+- **2026-10-31 15:14:07** | **T3** | `verify` | **FAIL** | scope=ok checks=compile=0, behavior=1 attempts=1/3 → fixing
+- **2026-10-31 15:14:11** | **T3** | `verify` | **PASS** | scope=ok checks=compile=0, behavior=0 attempts=1/3
+- **2026-10-31 15:14:11** | **T3** | `review-packet` | **READY** | bytes=2310 new_files=['demo/gate.py']
+- **2026-10-31 15:14:12** | **T3** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 15:14:17** | **T4** | `add` | **OK** | contract=context/agent-pipeline/tasks/T4.json
+- **2026-10-31 15:14:17** | **T4** | `dispatch` | **OK** | status=implementing baseline=33 pack=context/agent-pipeline/packs/T4.impl.prompt.md
+- **2026-10-31 15:14:18** | **T4** | `verify` | **FAIL** | scope=ok checks=always_fail=1 attempts=1/3 → fixing
+- **2026-10-31 15:14:18** | **T4** | `verify` | **FAIL** | scope=ok checks=always_fail=1 attempts=2/3 → fixing
+- **2026-10-31 15:14:19** | **T4** | `verify` | **FAIL** | scope=ok checks=always_fail=1 attempts=3/3 → blocked
+- **2026-10-31 15:14:25** | **T5** | `add` | **OK** | contract=context/agent-pipeline/tasks/T5.json
+- **2026-10-31 15:14:25** | **T5** | `dispatch` | **OK** | status=implementing baseline=37 pack=context/agent-pipeline/packs/T5.impl.prompt.md
+- **2026-10-31 15:14:26** | **T5** | `verify` | **PASS** | scope=ok checks=behavior=0 attempts=0/3
+- **2026-10-31 15:14:26** | **T5** | `review-packet` | **READY** | bytes=2385 new_files=['demo/review_limit.py']
+- **2026-10-31 15:14:26** | **T5** | `review` | **FAIL** | by=Hyperstls round=1/2 verdict=фикстура: содержательный блокер №1 → fixing
+- **2026-10-31 15:14:27** | **T5** | `verify` | **PASS** | scope=ok checks=behavior=0 attempts=0/3
+- **2026-10-31 15:14:27** | **T5** | `review-packet` | **READY** | bytes=2385 new_files=['demo/review_limit.py']
+- **2026-10-31 15:14:27** | **T5** | `review` | **FAIL** | by=Hyperstls round=2/2 verdict=фикстура: содержательный блокер №2 → blocked
+- **2026-10-31 15:14:35** | **T6** | `add` | **OK** | contract=context/agent-pipeline/tasks/T6.json
+- **2026-10-31 15:14:35** | **T6** | `dispatch` | **OK** | status=implementing baseline=42 pack=context/agent-pipeline/packs/T6.impl.prompt.md
+- **2026-10-31 15:14:36** | **T6** | `verify` | **FAIL** | scope=ok checks=compile=0, liar_ok=1, liar_error=0 attempts=1/3 → fixing
+- **2026-10-31 15:14:41** | **T6** | `update` | **OK** | revision=1 reason=liar_ok — фикстура, доказавшая столп 1; после фиксации FAIL она удалена из проверок, критерий перенесён в историю
+- **2026-10-31 15:14:42** | **T6** | `verify` | **PASS** | scope=ok checks=compile=0, liar_error=0 attempts=1/3
+- **2026-10-31 15:14:42** | **T6** | `review-packet` | **READY** | bytes=2564 new_files=['demo/exitcodes.py']
+- **2026-10-31 15:14:43** | **T6** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 15:14:50** | **T7** | `add` | **OK** | contract=context/agent-pipeline/tasks/T7.json
+- **2026-10-31 15:14:50** | **T7** | `dispatch` | **OK** | status=implementing baseline=47 pack=context/agent-pipeline/packs/T7.impl.prompt.md
+- **2026-10-31 15:14:51** | **T7** | `verify` | **PASS** | scope=ok checks=behavior=0 attempts=0/3
+- **2026-10-31 15:14:51** | **T7** | `verify` | **SKIP-SCOPE** | by=selftest reason=selftest п.13: демонстрация обязательного следа обхода scope drift=['demo/skip_drift.py']
+- **2026-10-31 15:14:52** | **T7** | `verify` | **PASS** | scope=skipped checks=behavior=0 attempts=0/3
+- **2026-10-31 15:14:53** | **T7** | `verify` | **PASS** | scope=ok checks=behavior=0 attempts=0/3
+- **2026-10-31 15:14:58** | **T7** | `review-packet` | **READY** | bytes=2426 new_files=['demo/skip.py']
+- **2026-10-31 15:14:58** | **T7** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 15:41:21** | **P001** | `add` | **OK** | contract=context/agent-pipeline/tasks/P001.json
+- **2026-10-31 15:41:21** | **P002** | `add` | **OK** | contract=context/agent-pipeline/tasks/P002.json
+- **2026-10-31 15:41:21** | **P003** | `add` | **OK** | contract=context/agent-pipeline/tasks/P003.json
+- **2026-10-31 15:41:21** | **P004** | `add` | **OK** | contract=context/agent-pipeline/tasks/P004.json
+- **2026-10-31 15:41:27** | **P001** | `dispatch` | **OK** | status=implementing baseline=66 pack=context/agent-pipeline/packs/P001.impl.prompt.md
+- **2026-10-31 15:44:17** | **P001** | `verify` | **PASS** | scope=ok checks=compile=0, captcha_tests=0, auth_regression=0 attempts=0/3
+- **2026-10-31 15:44:27** | **P001** | `review-packet` | **READY** | bytes=8269 new_files=[]
+- **2026-10-31 15:45:42** | **P001** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 15:45:43** | **P002** | `dispatch` | **OK** | status=implementing baseline=74 pack=context/agent-pipeline/packs/P002.impl.prompt.md
+- **2026-10-31 15:49:51** | **P002** | `verify` | **PASS** | scope=ok checks=compile=0, upload_tests=0 attempts=0/3
+- **2026-10-31 15:49:58** | **P002** | `review-packet` | **READY** | bytes=10307 new_files=[]
+- **2026-10-31 15:52:10** | **P002** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 15:52:11** | **P003** | `dispatch` | **OK** | status=implementing baseline=81 pack=context/agent-pipeline/packs/P003.impl.prompt.md
+- **2026-10-31 15:54:46** | **P003** | `verify` | **PASS** | scope=ok checks=compile=0, public_tests=0 attempts=0/3
+- **2026-10-31 15:54:52** | **P003** | `review-packet` | **READY** | bytes=6769 new_files=[]
+- **2026-10-31 15:55:40** | **P003** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 15:55:41** | **P004** | `dispatch` | **OK** | status=implementing baseline=90 pack=context/agent-pipeline/packs/P004.impl.prompt.md
+- **2026-10-31 15:57:19** | **P004** | `verify` | **PASS** | scope=ok checks=compile=0, profile_tests=0 attempts=0/3
+- **2026-10-31 15:57:26** | **P004** | `review-packet` | **READY** | bytes=5526 new_files=[]
+- **2026-10-31 15:58:29** | **P004** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 16:07:10** | **P101** | `add` | **OK** | contract=context/agent-pipeline/tasks/P101.json
+- **2026-10-31 16:07:10** | **P102** | `add` | **OK** | contract=context/agent-pipeline/tasks/P102.json
+- **2026-10-31 16:07:10** | **P106** | `add` | **OK** | contract=context/agent-pipeline/tasks/P106.json
+- **2026-10-31 16:07:11** | **P101** | `dispatch` | **OK** | status=implementing baseline=106 pack=context/agent-pipeline/packs/P101.impl.prompt.md
+- **2026-10-31 16:10:53** | **P101** | `verify` | **PASS** | scope=ok checks=compile=0, auth_tests=0 attempts=0/3
+- **2026-10-31 16:10:59** | **P101** | `review-packet` | **READY** | bytes=17959 new_files=[]
+- **2026-10-31 16:13:35** | **P101** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 16:13:35** | **P102** | `dispatch` | **OK** | status=implementing baseline=115 pack=context/agent-pipeline/packs/P102.impl.prompt.md
+- **2026-10-31 16:16:51** | **P102** | `verify` | **PASS** | scope=ok checks=compile=0, auth_tests=0, profile_tests=0 attempts=0/3
+- **2026-10-31 16:16:57** | **P102** | `review-packet` | **READY** | bytes=15170 new_files=[]
+- **2026-10-31 16:18:32** | **P102** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 16:18:32** | **P106** | `dispatch` | **OK** | status=implementing baseline=122 pack=context/agent-pipeline/packs/P106.impl.prompt.md
+- **2026-10-31 16:21:30** | **P106** | `verify` | **PASS** | scope=ok checks=compile=0, profile_tests=0 attempts=0/3
+- **2026-10-31 16:21:37** | **P106** | `review-packet` | **READY** | bytes=5252 new_files=[]
+- **2026-10-31 16:23:24** | **P106** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 16:33:14** | **P103** | `add` | **OK** | contract=context/agent-pipeline/tasks/P103.json
+- **2026-10-31 16:33:15** | **P104** | `add` | **OK** | contract=context/agent-pipeline/tasks/P104.json
+- **2026-10-31 16:33:15** | **P103** | `dispatch` | **OK** | status=implementing baseline=133 pack=context/agent-pipeline/packs/P103.impl.prompt.md
+- **2026-10-31 16:40:32** | **P103** | `verify` | **PASS** | scope=ok checks=compile=0, login_tests=0, auth_regression=0 attempts=0/3
+- **2026-10-31 16:40:39** | **P103** | `review-packet` | **READY** | bytes=20079 new_files=[]
+- **2026-10-31 16:44:19** | **P103** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 16:44:19** | **P104** | `dispatch` | **OK** | status=implementing baseline=144 pack=context/agent-pipeline/packs/P104.impl.prompt.md
+- **2026-10-31 16:48:27** | **P104** | `verify` | **PASS** | scope=ok checks=compile=0, auth_tests=0, login_regression=0 attempts=0/3
+- **2026-10-31 16:48:33** | **P104** | `review-packet` | **READY** | bytes=16246 new_files=[]
+- **2026-10-31 16:52:16** | **P104** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 16:58:02** | **P107** | `add` | **OK** | contract=context/agent-pipeline/tasks/P107.json
+- **2026-10-31 16:58:02** | **P108** | `add` | **OK** | contract=context/agent-pipeline/tasks/P108.json
+- **2026-10-31 16:58:02** | **P114** | `add` | **OK** | contract=context/agent-pipeline/tasks/P114.json
+- **2026-10-31 16:58:03** | **B001** | `add` | **OK** | contract=context/agent-pipeline/tasks/B001.json
+- **2026-10-31 16:58:03** | **P107** | `dispatch` | **OK** | status=implementing baseline=157 pack=context/agent-pipeline/packs/P107.impl.prompt.md
+- **2026-10-31 17:00:16** | **P107** | `verify` | **PASS** | scope=ok checks=compile=0, upload_tests=0 attempts=0/3
+- **2026-10-31 17:00:16** | **P107** | `review-packet` | **READY** | bytes=9407 new_files=[]
+- **2026-10-31 17:01:05** | **P107** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 17:01:05** | **P108** | `dispatch` | **OK** | status=implementing baseline=166 pack=context/agent-pipeline/packs/P108.impl.prompt.md
+- **2026-10-31 17:03:00** | **P108** | `verify` | **PASS** | scope=ok checks=compile=0, public_tests=0 attempts=0/3
+- **2026-10-31 17:03:00** | **P108** | `review-packet` | **READY** | bytes=8389 new_files=[]
+- **2026-10-31 17:03:37** | **P108** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 17:03:37** | **P114** | `dispatch` | **OK** | status=implementing baseline=175 pack=context/agent-pipeline/packs/P114.impl.prompt.md
+- **2026-10-31 17:06:43** | **P114** | `verify` | **PASS** | scope=ok checks=compile=0, upload_tests=0 attempts=0/3
+- **2026-10-31 17:06:43** | **P114** | `review-packet` | **READY** | bytes=9957 new_files=[]
+- **2026-10-31 17:08:08** | **P114** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 17:08:09** | **B001** | `dispatch` | **OK** | status=implementing baseline=181 pack=context/agent-pipeline/packs/B001.impl.prompt.md
+- **2026-10-31 17:09:16** | **B001** | `verify` | **PASS** | scope=ok checks=build_css=0, pre_deploy=0, compile=0 attempts=0/3
+- **2026-10-31 17:09:16** | **B001** | `review-packet` | **READY** | bytes=90242 new_files=[]
+- **2026-10-31 17:10:43** | **B001** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 17:13:34** | **T001** | `add` | **OK** | contract=context/agent-pipeline/tasks/T001.json
+- **2026-10-31 17:13:34** | **T001** | `dispatch` | **OK** | status=implementing baseline=192 pack=context/agent-pipeline/packs/T001.impl.prompt.md
+- **2026-10-31 17:16:16** | **T001** | `verify` | **PASS** | scope=ok checks=compile=0, task_tests=0 attempts=0/3
+- **2026-10-31 17:16:16** | **T001** | `review-packet` | **READY** | bytes=5845 new_files=[]
+- **2026-10-31 17:17:11** | **T001** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 17:50:49** | **P112** | `add` | **OK** | contract=context/agent-pipeline/tasks/P112.json
+- **2026-10-31 17:50:49** | **P112** | `dispatch` | **OK** | status=implementing baseline=201 pack=context/agent-pipeline/packs/P112.impl.prompt.md
+- **2026-10-31 17:58:25** | **P112** | `verify` | **PASS** | scope=ok checks=compile=0, idor_tests=0 attempts=0/3
+- **2026-10-31 17:58:26** | **P112** | `review-packet` | **READY** | bytes=8742 new_files=[]
+- **2026-10-31 18:01:12** | **P112** | `review` | **FAIL** | by=Hyperstls round=1/2 verdict=Pattern FAIL: self-report test can be masked by the one-per-hour report rate limit; cache.clear() only at test start. Fix: clear cache immediately before self-report POST (or use a fresh reporter) and assert the self-report rejection cause. → fixing
+- **2026-10-31 18:04:34** | **P112** | `verify` | **FAIL** | scope=fail checks=skipped(scope) attempts=1/3 → fixing
+- **2026-10-31 18:04:45** | **P112** | `verify` | **SKIP-SCOPE** | by=orchestrator reason=orchestrator added P110 contract source and docs/parity/MIGRATION_LEDGER.md after P112 dispatch; unrelated to P112 test change drift=['context/agent-pipeline/selftest/contracts/P110.json', 'docs/parity/MIGRATION_LEDGER.md']
+- **2026-10-31 18:05:29** | **P112** | `verify` | **PASS** | scope=skipped checks=compile=0, idor_tests=0 attempts=1/3
+- **2026-10-31 18:05:29** | **P112** | `review-packet` | **READY** | bytes=9983 new_files=[]
+- **2026-10-31 18:07:23** | **P112** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 18:07:23** | **P110** | `add` | **OK** | contract=context/agent-pipeline/tasks/P110.json
+- **2026-10-31 18:07:24** | **P110** | `dispatch` | **OK** | status=implementing baseline=209 pack=context/agent-pipeline/packs/P110.impl.prompt.md
+- **2026-10-31 18:10:16** | **P110** | `verify` | **PASS** | scope=ok checks=compile=0, auth_tests=0 attempts=0/3
+- **2026-10-31 18:10:16** | **P110** | `review-packet` | **READY** | bytes=5354 new_files=[]
+- **2026-10-31 18:11:55** | **P110** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 19:00:45** | **P105** | `add` | **OK** | contract=context/agent-pipeline/tasks/P105.json
+- **2026-10-31 19:00:45** | **P105** | `dispatch` | **OK** | status=implementing baseline=217 pack=context/agent-pipeline/packs/P105.impl.prompt.md
+- **2026-10-31 19:03:34** | **P105** | `verify` | **PASS** | scope=ok checks=compile=0, auth_tests=0, task_tests=0 attempts=0/3
+- **2026-10-31 19:03:34** | **P105** | `review-packet` | **READY** | bytes=8365 new_files=[]
+- **2026-10-31 19:06:45** | **P105** | `review` | **FAIL** | by=Hyperstls round=1/2 verdict=Pattern FAIL: import of send_transactional_email is outside try in views_auth._send_mail (views_auth.py:75-77); ImportError/Celery config error bypasses sync fallback and breaks registration. Move import inside try; add test that simulates import failure (sys.modules['core.tasks']=None) and asserts sync fallback + user created. → fixing
+- **2026-10-31 19:08:42** | **P105** | `verify` | **PASS** | scope=ok checks=compile=0, auth_tests=0, task_tests=0 attempts=0/3
+- **2026-10-31 19:08:42** | **P105** | `review-packet` | **READY** | bytes=9454 new_files=[]
+- **2026-10-31 19:10:47** | **P105** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 19:38:31** | **J001** | `add` | **OK** | contract=context/agent-pipeline/tasks/J001.json
+- **2026-10-31 19:38:32** | **J001** | `dispatch` | **OK** | status=implementing baseline=231 pack=context/agent-pipeline/packs/J001.impl.prompt.md
+- **2026-10-31 19:39:52** | **J001** | `verify` | **PASS** | scope=ok checks=compile=0, job_tests=0 attempts=0/3
+- **2026-10-31 19:39:52** | **J001** | `review-packet` | **READY** | bytes=6194 new_files=[]
+- **2026-10-31 19:41:22** | **J001** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 20:03:04** | **L001** | `add` | **OK** | contract=context/agent-pipeline/tasks/L001.json
+- **2026-10-31 20:03:04** | **L001** | `dispatch` | **OK** | status=implementing baseline=245 pack=context/agent-pipeline/packs/L001.impl.prompt.md
+- **2026-10-31 20:06:55** | **L001** | `verify` | **PASS** | scope=ok checks=compile=0, public_tests=0 attempts=0/3
+- **2026-10-31 20:06:55** | **L001** | `review-packet` | **READY** | bytes=58313 new_files=['djadmin/core/templates/core/legal_fallback.html']
+- **2026-10-31 20:08:25** | **L001** | `review` | **PASS** | by=Hyperstls → done

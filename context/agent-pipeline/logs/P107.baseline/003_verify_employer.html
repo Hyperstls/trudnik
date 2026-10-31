@@ -1,0 +1,19 @@
+{% extends "core/base.html" %}
+{% block title %}Верификация — Трудник{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto px-0 py-8 fade-in">
+    <div class="bg-white rounded-2xl border border-neutral-200 shadow-card p-6">
+        <h1 class="text-xl font-bold text-neutral-800 mb-2">Верификация</h1>
+        <p class="text-sm text-neutral-500 mb-4">Загрузите документ, подтверждающий личность (JPEG, PNG или WebP до 5 МБ). После проверки администратором профиль получит статус «Подтверждён».</p>
+        <form method="post" action="{% url 'core:upload_verification_doc' %}" enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+            <div class="form-field">
+                <label class="form-label" for="document">Документ</label>
+                <input type="file" name="document" id="document" accept="image/jpeg,image/png,image/webp" required class="form-input">
+            </div>
+            <button type="submit" class="w-full px-4 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors shadow-sm">Отправить на проверку</button>
+        </form>
+        <p class="text-xs text-neutral-400 mt-3">Текущий статус: {{ user.get_verification_status_display }}</p>
+    </div>
+</div>
+{% endblock %}

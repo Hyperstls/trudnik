@@ -1,0 +1,14 @@
+{
+  "djadmin/core/forms_profile.py": {
+    "exists": true,
+    "snapshot": "001_forms_profile.py"
+  },
+  "djadmin/core/admin/users.py": {
+    "exists": true,
+    "snapshot": "002_users.py"
+  },
+  "djadmin/core/tests/test_profile_flows.py": {
+    "exists": true,
+    "snapshot": "003_test_profile_flows.py"
+  }
+}

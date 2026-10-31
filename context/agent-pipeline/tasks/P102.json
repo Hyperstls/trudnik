@@ -1,0 +1,44 @@
+{
+  "id": "P102",
+  "title": "P1-02: валидация ИНН/контакта/пароля (паритет Flask)",
+  "goal": "Регистрация и профиль отклоняют некорректный ИНН (12 цифр + контрольная сумма) и контакт; пароль соответствует Flask-политике (ASCII, без пробелов).",
+  "why": "Django принимает любой ИНН/контакт и разрешает кириллицу/пробелы в пароле (AUTH-P1-02).",
+  "files": [
+    "djadmin/core/forms_auth.py",
+    "djadmin/core/forms_profile.py",
+    "djadmin/core/tests/test_auth_flows.py",
+    "djadmin/core/tests/test_profile_flows.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES.md",
+    "docs/parity/AUDIT_AUTH_PROFILE.md"
+  ],
+  "interfaces": "Портировать из Flask app/utils/validators.py: validate_inn_checksum (10/12; в формах требовать 12 цифр) и is_valid_contact (email / телефон / @username, минимум 3 символа проверяет форма). validate_password: [A-Z], [a-z], цифра, спецсимвол, запрет пробелов; кириллица не удовлетворяет A-Z/a-z (паритет Flask). RegisterForm.clean_inn/clean_contact: если intent='post_jobs' — пропустить (worker-only поля); иначе валидировать при непустом значении. ProfileForm.clean_inn/clean_contact: валидировать всегда при непустом значении. Тесты: RegisterTests.test_register_invalid_inn_checksum, test_register_invalid_contact, test_register_password_with_space_rejected; ProfileEditTests.test_profile_invalid_inn_rejected, test_profile_invalid_contact_rejected.",
+  "acceptance": [
+    "ИНН с неверной контрольной суммой отклоняется при регистрации (worker) и в профиле.",
+    "Контакт короче 3 символов или не email/телефон/@username отклоняется при регистрации (worker) и в профиле.",
+    "Пароль с пробелом отклоняется; кириллические A-Z/a-z не удовлетворяют политике; существующие валидные пароли проходят.",
+    "core.tests.test_auth_flows и core.tests.test_profile_flows.ProfileEditTests проходят."
+  ],
+  "out_of_scope": [
+    "Не менять набор полей регистрации (это P101).",
+    "Не менять БД/миграции и UI-шаблоны."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/forms_auth.py djadmin/core/forms_profile.py djadmin/core/tests/test_auth_flows.py djadmin/core/tests/test_profile_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "auth_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_auth_flows --keepdb -v 1",
+      "cwd": "."
+    },
+    {
+      "name": "profile_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_profile_flows.ProfileEditTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

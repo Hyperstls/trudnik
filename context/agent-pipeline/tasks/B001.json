@@ -1,0 +1,43 @@
+{
+  "id": "B001",
+  "title": "BUILD-01: Tailwind охватывает Django-шаблоны, pre-deploy freshness",
+  "goal": "Tailwind собирает CSS из реальных Django-шаблонов, а pre_deploy_check [7/7] проверяет свежесть по ним и выходит с кодом 0.",
+  "why": "tailwind.config.js и pre_deploy_check смотрят только корневые legacy templates/; Django-шаблоны в djadmin/core/templates не участвуют в сборке/проверке.",
+  "files": [
+    "tailwind.config.js",
+    "scripts/pre_deploy_check.py",
+    "static/css/tailwind.min.css"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES.md",
+    "docs/parity/P0_RESULTS.md"
+  ],
+  "interfaces": "tailwind.config.js: content += './djadmin/core/templates/**/*.html'. scripts/pre_deploy_check.py, только check_tailwind_freshness: sources = templates/ + djadmin/core/templates/ + static/js/. Затем npm run build:css (генерирует static/css/tailwind.min.css) и pre_deploy_check.py должен выйти 0 (7/7). Не менять CSP/inline-handler проверки.",
+  "acceptance": [
+    "tailwind.config.js content включает djadmin/core/templates/**/*.html.",
+    "check_tailwind_freshness учитывает djadmin/core/templates/**/*.html.",
+    "npm run build:css завершается exit 0 и обновляет CSS.",
+    "scripts/pre_deploy_check.py завершается exit 0 (0 проблем)."
+  ],
+  "out_of_scope": [
+    "Не менять другие проверки pre_deploy_check.",
+    "Не менять Django-шаблоны ради классов."
+  ],
+  "checks": [
+    {
+      "name": "build_css",
+      "cmd": "npm run build:css",
+      "cwd": "."
+    },
+    {
+      "name": "pre_deploy",
+      "cmd": "{python} scripts/pre_deploy_check.py",
+      "cwd": "."
+    },
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile scripts/pre_deploy_check.py",
+      "cwd": "."
+    }
+  ]
+}

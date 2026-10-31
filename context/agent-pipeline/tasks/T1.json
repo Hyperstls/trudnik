@@ -1,0 +1,39 @@
+{
+  "id": "T1",
+  "title": "Демо: модуль calc с add и тестами",
+  "goal": "В demo/ существуют demo/calc.py с функцией add(a, b) и demo/test_calc.py с тестами add; все проверки контракта завершаются exit 0.",
+  "why": "Полный цикл конвейера на изолированном модуле: контракт → исполнитель → exit-код → независимое ревью.",
+  "files": [
+    "demo/calc.py",
+    "demo/test_calc.py"
+  ],
+  "context_files": [],
+  "interfaces": "def add(a, b) -> int | float: возвращает a + b. Без print, без ввода, без сторонних зависимостей. demo/test_calc.py: pytest-тесты, минимум 3 кейса (положительные, отрицательные, ноль).",
+  "acceptance": [
+    "demo/calc.py содержит функцию add(a, b), возвращающую сумму аргументов.",
+    "demo/test_calc.py содержит не менее трёх тестов add, включая отрицательные числа и ноль.",
+    "Команда pytest demo -q завершается с exit-кодом 0.",
+    "Команда py_compile для обоих файлов завершается с exit-кодом 0."
+  ],
+  "out_of_scope": [
+    "Не менять файлы вне demo/calc.py и demo/test_calc.py.",
+    "Не добавлять зависимости и не использовать сеть."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile demo/calc.py demo/test_calc.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} -m pytest demo -q -p no:cacheprovider",
+      "cwd": "."
+    },
+    {
+      "name": "behavior",
+      "cmd": "{python} -c \"import sys; sys.path.insert(0, 'demo'); from calc import add; assert add(2, 3) == 5; assert add(-2, -3) == -5; assert add(0, 0) == 0; assert add(0.5, 0.25) == 0.75; print('behavior ok')\"",
+      "cwd": "."
+    }
+  ]
+}

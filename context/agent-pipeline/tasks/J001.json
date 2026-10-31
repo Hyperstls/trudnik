@@ -1,0 +1,38 @@
+{
+  "id": "J001",
+  "title": "JOB-P0-01: убрать preferred_religion из формы/админки задания",
+  "goal": "Создание/редактирование задания и Django admin не позволяют указать вероисповедание; колонка jobs.preferred_religion остаётся dormant.",
+  "why": "Flask убрал preferred_religion как дискриминацию при найме (ТК РФ ст.3); Django вернул поле в JobForm и JobAdmin (JOB-P0-01).",
+  "files": [
+    "djadmin/core/forms.py",
+    "djadmin/core/admin/jobs.py",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES_JOBS.md",
+    "docs/parity/AUDIT_JOBS_APPLICATIONS.md"
+  ],
+  "interfaces": "JOB_FIELDS: убрать 'preferred_religion'. JobAdmin.fieldsets: убрать 'preferred_religion'. Модель/колонку jobs.preferred_religion не менять. Тесты JobCrudTests: test_preferred_religion_not_in_form_or_admin (JobForm().fields и flatten JobAdmin.fieldsets не содержат), test_create_job_ignores_preferred_religion (валидный POST /jobs/new с preferred_religion='ислам' -> 302, job создан, preferred_religion != 'ислам' (default 'не важно')). Существующий test_create_job_with_skills остаётся зелёным.",
+  "acceptance": [
+    "JobForm не содержит preferred_religion; /jobs/new не рендерит поле.",
+    "JobAdmin.fieldsets не содержит preferred_religion.",
+    "POST с preferred_religion не сохраняет переданное значение в Job.",
+    "core.tests.test_flows.JobCrudTests проходит."
+  ],
+  "out_of_scope": [
+    "Не удалять колонку/модель preferred_religion.",
+    "Не менять другие валидации задания (JOB-P1-01..03 — отдельные контракты)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/forms.py djadmin/core/admin/jobs.py djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "job_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows.JobCrudTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

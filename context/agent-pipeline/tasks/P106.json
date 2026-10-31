@@ -1,0 +1,37 @@
+{
+  "id": "P106",
+  "title": "P1-06: смена пароля инвалидирует другие сессии",
+  "goal": "После успешной смены пароля текущая сессия остаётся живой, а все остальные сессии пользователя становятся недействительными.",
+  "why": "Django обновляет password_changed_at, но не сессионный auth-hash; украденная/старая сессия остаётся живой (AUTH-P1-06).",
+  "files": [
+    "djadmin/core/views_profile.py",
+    "djadmin/core/tests/test_profile_flows.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES.md",
+    "docs/parity/AUDIT_AUTH_PROFILE.md"
+  ],
+  "interfaces": "В profile_edit, ветка action='password': после успешного call_rpc('change_password', user.pk, current, new) выполнить user.refresh_from_db() и django.contrib.auth.update_session_auth_hash(request, user). Это обновляет auth-hash текущей сессии (и cycle_key), а другие сессии с прежним hash Django сбрасывает при следующем запросе. Тест ProfileEditTests.test_password_change_invalidates_other_sessions: два Client, force_login одним пользователем; сменить пароль в client_a; GET /profile в client_b → 302 на login; GET /profile в client_a → 200.",
+  "acceptance": [
+    "После смены пароля текущая сессия остаётся авторизованной (GET /profile → 200).",
+    "Другая сессия того же пользователя после смены пароля разлогинивается (GET /profile → 302 на login).",
+    "password_changed_at обновляется (существующая проверка B10 остаётся зелёной).",
+    "core.tests.test_profile_flows.ProfileEditTests проходит."
+  ],
+  "out_of_scope": [
+    "Не менять RPC change_password и модель Profile.",
+    "Не менять другие ветки profile_edit."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_profile.py djadmin/core/tests/test_profile_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "profile_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_profile_flows.ProfileEditTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

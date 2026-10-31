@@ -1,0 +1,12 @@
+{
+  "id": "T92",
+  "title": "Невалидный контракт: нет checks",
+  "goal": "Фикстура для проверки отказа add.",
+  "why": "Фикстура для проверки отказа add.",
+  "files": ["demo/a.py"],
+  "context_files": [],
+  "interfaces": "нет",
+  "acceptance": ["критерий"],
+  "out_of_scope": [],
+  "checks": []
+}

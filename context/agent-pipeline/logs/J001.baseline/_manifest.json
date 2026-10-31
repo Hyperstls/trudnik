@@ -1,0 +1,14 @@
+{
+  "djadmin/core/forms.py": {
+    "exists": true,
+    "snapshot": "001_forms.py"
+  },
+  "djadmin/core/admin/jobs.py": {
+    "exists": true,
+    "snapshot": "002_jobs.py"
+  },
+  "djadmin/core/tests/test_flows.py": {
+    "exists": true,
+    "snapshot": "003_test_flows.py"
+  }
+}

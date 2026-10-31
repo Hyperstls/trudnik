@@ -1,0 +1,36 @@
+{
+  "id": "T001",
+  "title": "TASKS-01: expire_old_jobs использует счётчик RPC (dict)",
+  "goal": "expire_old_jobs корректно извлекает integer из dict-результата call_rpc('expire_unfilled_jobs') и возвращает ORM+RPC без TypeError.",
+  "why": "call_rpc возвращает {expire_unfilled_jobs: N}, а код делает int(dict) -> TypeError; RPC-счётчик молча игнорируется (найдено полным прогоном core).",
+  "files": [
+    "djadmin/core/tasks.py",
+    "djadmin/core/tests/test_tasks.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES.md"
+  ],
+  "interfaces": "call_rpc('expire_unfilled_jobs') возвращает dict с ключом 'expire_unfilled_jobs' (RPC RETURNS integer). В expire_old_jobs: result = call_rpc(...); если dict — int(result.get('expire_unfilled_jobs') or 0); если скаляр — int(result or 0); None -> 0. Исключение логировать как сейчас, не ронять задачу. Тест test_expire_old_jobs_uses_rpc_count: patch core.tasks.call_rpc -> {'expire_unfilled_jobs': 3}, задача возвращает 3 (ORM=0), без TypeError.",
+  "acceptance": [
+    "expire_old_jobs не делает int(dict) и не логирует TypeError.",
+    "RPC-счётчик прибавляется к ORM-счётчику.",
+    "При исключении RPC задача по-прежнему возвращает ORM-счётчик и логирует warning.",
+    "core.tests.test_tasks проходит."
+  ],
+  "out_of_scope": [
+    "Не менять RPC expire_unfilled_jobs и другие задачи.",
+    "Не менять модели/миграции."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tasks.py djadmin/core/tests/test_tasks.py",
+      "cwd": "."
+    },
+    {
+      "name": "task_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_tasks --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "id": "P004",
+  "title": "P0-04: убрать religion из профиля и админки",
+  "goal": "Вероисповедание нельзя выбрать/изменить через профиль и Django admin; колонка БД остаётся dormant.",
+  "why": "152-ФЗ ст.10: спецкатегория ПДн; Flask удалил religion из профиля, Django вернул.",
+  "files": [
+    "djadmin/core/forms_profile.py",
+    "djadmin/core/admin/users.py",
+    "djadmin/core/tests/test_profile_flows.py"
+  ],
+  "context_files": [
+    "docs/parity/152FZ_DATA_FLOWS.md",
+    "docs/parity/DISCREPANCIES.md"
+  ],
+  "interfaces": "ProfileForm.Meta.fields: убрать 'religion'. ProfileAdmin.fieldsets: убрать 'religion'. Модель/колонку religion_id не менять. Тест ProfileEditTests.test_religion_not_editable: GET /profile не содержит name='religion'; POST с religion=<uuid> не меняет profile.religion_id; ProfileAdmin.fieldsets не содержит 'religion'.",
+  "acceptance": [
+    "ProfileForm не содержит поле religion.",
+    "GET /profile не содержит input/select с name='religion'.",
+    "POST с religion=<uuid> не меняет Profile.religion_id.",
+    "ProfileAdmin.fieldsets не содержит 'religion'.",
+    "core.tests.test_profile_flows.ProfileEditTests проходит."
+  ],
+  "out_of_scope": [
+    "Не удалять колонку religion_id и модель Religion.",
+    "Не менять публичный профиль (это P003)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/forms_profile.py djadmin/core/admin/users.py djadmin/core/tests/test_profile_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "profile_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_profile_flows.ProfileEditTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

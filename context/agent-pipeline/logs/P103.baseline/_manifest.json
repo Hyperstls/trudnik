@@ -1,0 +1,18 @@
+{
+  "djadmin/core/ratelimit.py": {
+    "exists": true,
+    "snapshot": "001_ratelimit.py"
+  },
+  "djadmin/core/auth_backend.py": {
+    "exists": true,
+    "snapshot": "002_auth_backend.py"
+  },
+  "djadmin/core/views_flow.py": {
+    "exists": true,
+    "snapshot": "003_views_flow.py"
+  },
+  "djadmin/core/tests/test_auth.py": {
+    "exists": true,
+    "snapshot": "004_test_auth.py"
+  }
+}

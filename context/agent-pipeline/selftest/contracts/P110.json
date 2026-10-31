@@ -1,0 +1,30 @@
+{
+  "id": "P110",
+  "title": "P1-10: email_verified=false в ORM-пути",
+  "goal": "Профиль, созданный через ORM (create_user), по умолчанию не подтверждён и не может войти до email-верификации; суперпользователь и тестовые verified-фикстуры остаются подтверждёнными.",
+  "why": "Модель Profile.email_verified default=True — fail-open: любой путь создания профиля в обход RPC даёт подтверждённого пользователя (AUTH-P1-10). DB-default остаётся true до P113; ORM-путь закрываем сейчас.",
+  "files": [
+    "djadmin/core/models.py",
+    "djadmin/core/tests/test_auth.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES.md",
+    "docs/parity/152FZ_DATA_FLOWS.md"
+  ],
+  "interfaces": "Profile.email_verified: default=False. ProfileManager.create_user не должен принудительно ставить True (модельный default работает); create_superuser по-прежнему ставит email_verified=True. В tests/test_auth.py make_profile по умолчанию ставит email_verified=True (это фикстура подтверждённого пользователя), explicit email_verified=False сохраняется. Тест test_create_user_is_unverified_by_default: create_user -> email_verified False; client.login -> False. Существующий test_login_unverified_email_rejected и test_admin_flags_from_role остаются зелёными.",
+  "acceptance": [
+    "Profile.email_verified default=False.",
+    "create_user создаёт неподтверждённого пользователя; login запрещён до верификации.",
+    "create_superuser создаёт подтверждённого администратора.",
+    "make_profile по умолчанию verified; explicit email_verified=False работает.",
+    "core.tests.test_auth и core.tests.test_auth_flows проходят."
+  ],
+  "out_of_scope": [
+    "Не менять DB default и не создавать миграцию (это P113).",
+    "Не менять RPC register_user."
+  ],
+  "checks": [
+    {"name": "compile", "cmd": "{python} -m py_compile djadmin/core/models.py djadmin/core/tests/test_auth.py", "cwd": "."},
+    {"name": "auth_tests", "cmd": "{python} djadmin/manage.py test core.tests.test_auth core.tests.test_auth_flows --keepdb -v 1", "cwd": "."}
+  ]
+}

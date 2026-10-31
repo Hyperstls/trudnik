@@ -1,0 +1,14 @@
+{
+  "djadmin/core/views_auth.py": {
+    "exists": true,
+    "snapshot": "001_views_auth.py"
+  },
+  "djadmin/core/tests/test_auth_flows.py": {
+    "exists": true,
+    "snapshot": "002_test_auth_flows.py"
+  },
+  "djadmin/core/templates/core/register.html": {
+    "exists": true,
+    "snapshot": "003_register.html"
+  }
+}

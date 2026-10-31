@@ -1,0 +1,39 @@
+{
+  "id": "P003",
+  "title": "P0-03: публичный профиль — убрать contact/email_public/religion_id",
+  "goal": "Анонимный и любой другой пользователь не видят contact, email_public и religion в публичном профиле; контакты открываются после отклика.",
+  "why": "Django PUBLIC_PROFILE_FIELDS включает contact/religion_id и шаблон рендерит contact; Flask эти поля не отдаёт. 152-ФЗ.",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/templates/core/worker_detail.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "docs/parity/152FZ_DATA_FLOWS.md",
+    "docs/parity/UI_INVENTORY.md"
+  ],
+  "interfaces": "PUBLIC_PROFILE_FIELDS: убрать 'contact', 'email_public', 'religion_id'. worker_detail.html: вместо блока p.contact/p.email_public выводить нейтральный текст 'Контакты открываются после отклика на задание.' Тест: создать профиль с contact/email_public/religion, GET /workers/<uuid> анонимно и другим пользователем; assertNotContains(contact/email/religion); assertContains нейтральный текст.",
+  "acceptance": [
+    "PUBLIC_PROFILE_FIELDS не содержит contact, email_public, religion_id.",
+    "GET /workers/<uuid> анонимно не содержит contact, email_public и religion профиля.",
+    "GET /workers/<uuid> другим авторизованным не содержит эти значения.",
+    "На странице есть нейтральный текст про контакты после отклика.",
+    "core.tests.test_public_views проходит."
+  ],
+  "out_of_scope": [
+    "Не менять ProfileForm (email_public остаётся приватным полем).",
+    "Не менять другие публичные страницы."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

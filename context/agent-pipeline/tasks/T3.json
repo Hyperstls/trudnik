@@ -1,0 +1,30 @@
+{
+  "id": "T3",
+  "title": "Демо: падающая проверка и рост attempts",
+  "goal": "demo/gate.py содержит ready(), возвращающую True.",
+  "why": "Доказать, что FAIL по exit-коду увеличивает attempts, пишет лог, а после исправления verify PASS-ит.",
+  "files": [
+    "demo/gate.py"
+  ],
+  "context_files": [],
+  "interfaces": "def ready() -> bool: возвращает True.",
+  "acceptance": [
+    "demo/gate.py содержит ready(), возвращающую True.",
+    "Команда behavior завершается с exit-кодом 0."
+  ],
+  "out_of_scope": [
+    "Любые файлы, кроме demo/gate.py."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile demo/gate.py",
+      "cwd": "."
+    },
+    {
+      "name": "behavior",
+      "cmd": "{python} -c \"import sys; sys.path.insert(0, 'demo'); from gate import ready; assert ready() is True; print('gate ready')\"",
+      "cwd": "."
+    }
+  ]
+}

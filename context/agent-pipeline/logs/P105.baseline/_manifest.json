@@ -1,0 +1,18 @@
+{
+  "djadmin/core/views_auth.py": {
+    "exists": true,
+    "snapshot": "001_views_auth.py"
+  },
+  "djadmin/core/tasks.py": {
+    "exists": true,
+    "snapshot": "002_tasks.py"
+  },
+  "djadmin/config/settings.py": {
+    "exists": true,
+    "snapshot": "003_settings.py"
+  },
+  "djadmin/core/tests/test_auth_flows.py": {
+    "exists": true,
+    "snapshot": "004_test_auth_flows.py"
+  }
+}

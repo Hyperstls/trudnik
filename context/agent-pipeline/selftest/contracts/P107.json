@@ -1,0 +1,31 @@
+{
+  "id": "P107",
+  "title": "P1-07: PDF в верификации, аватары без PDF",
+  "goal": "Документ верификации принимает PDF/JPEG/PNG/WebP по magic bytes; аватары и фото заданий по-прежнему только изображения.",
+  "why": "Flask принимал PDF/JPG/PNG, Django отвергает PDF (AUTH-P1-07).",
+  "files": [
+    "djadmin/core/storage.py",
+    "djadmin/core/views_profile_ext.py",
+    "djadmin/core/templates/core/verify_employer.html",
+    "djadmin/core/tests/test_parity_ext.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES.md",
+    "docs/parity/152FZ_DATA_FLOWS.md"
+  ],
+  "interfaces": "storage.detect_extension(data, allow_pdf=False): JPEG/PNG/WebP всегда; PDF (b'%PDF-') только при allow_pdf=True. save_upload(uploaded_file, subdir, allow_pdf=False) передаёт флаг; upload_verification_doc вызывает save_upload(..., allow_pdf=True); upload_avatar и job_photo_upload — без флага. verify_employer.html: accept='.pdf,image/jpeg,image/png,image/webp', текст 'PDF, JPEG, PNG или WebP до 5 МБ'. Тесты UploadTests: test_verification_pdf_accepted (PDF -> 302, verification_doc_url оканчивается .pdf, файл существует), test_avatar_pdf_rejected (PDF в avatar -> avatar_url не меняется).",
+  "acceptance": [
+    "PDF принимается только для verification-docs; avatar/job photo PDF отклоняют.",
+    "upload_verification_doc сохраняет .pdf и ставит verification_status=pending.",
+    "Шаблон верификации принимает PDF и сообщает об этом.",
+    "core.tests.test_parity_ext.UploadTests проходит."
+  ],
+  "out_of_scope": [
+    "Не менять лимит размера и проверку magic bytes изображений.",
+    "Не менять ACL verification-docs (P002)."
+  ],
+  "checks": [
+    {"name": "compile", "cmd": "{python} -m py_compile djadmin/core/storage.py djadmin/core/views_profile_ext.py djadmin/core/tests/test_parity_ext.py", "cwd": "."},
+    {"name": "upload_tests", "cmd": "{python} djadmin/manage.py test core.tests.test_parity_ext.UploadTests --keepdb -v 1", "cwd": "."}
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "T5",
+  "title": "Демо: лимит раундов ревью",
+  "goal": "demo/review_limit.py содержит review_marker(), возвращающую 'REVIEW'.",
+  "why": "Столп 3: два содержательных FAIL ревьюера подряд → blocked, счётчик отдельный от attempts.",
+  "files": ["demo/review_limit.py"],
+  "context_files": [],
+  "interfaces": "def review_marker() -> str: возвращает 'REVIEW'.",
+  "acceptance": [
+    "demo/review_limit.py содержит review_marker(), возвращающую 'REVIEW'.",
+    "Два review --fail подряд переводят задачу в blocked."
+  ],
+  "out_of_scope": ["Любые файлы, кроме demo/review_limit.py."],
+  "checks": [
+    {"name": "behavior", "cmd": "{python} -c \"import sys; sys.path.insert(0, 'demo'); from review_limit import review_marker; assert review_marker() == 'REVIEW'; print('review ok')\"", "cwd": "."}
+  ]
+}

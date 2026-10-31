@@ -1,0 +1,31 @@
+{
+  "id": "P104",
+  "title": "P1-04/11: auth cooldowns в cache + fail-closed IP-лимиты",
+  "goal": "Cooldown сброса/ресенда и IP-лимиты регистрации/сброса/ресенда используют общий cache; при недоступности cache auth-эндпоинты fail-closed с сообщением.",
+  "why": "Django использует in-process _COOLDOWNS (multi-worker обход, память) и не имеет лимитов на register/reset/resend (AUTH-P1-04/11).",
+  "files": [
+    "djadmin/core/views_auth.py",
+    "djadmin/core/tests/test_auth_flows.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES.md",
+    "docs/parity/AUDIT_AUTH_PROFILE.md"
+  ],
+  "interfaces": "views_auth.py: импортировать django.core.cache.cache и enforce_ip_limit/RateLimitExceeded/RateLimitUnavailable из .ratelimit. Удалить _COOLDOWNS; _cooldown_active/_set_cooldown через cache (ключ 'auth_cd:<key>', cache.get/cache.set); ошибка cache -> RateLimitUnavailable. register POST: в начале enforce_ip_limit(request,'register',10,3600); RateLimitExceeded -> 'Слишком много попыток регистрации. Попробуйте позже.', RateLimitUnavailable -> 'Сервис временно недоступен. Попробуйте позже.'; password_reset_request POST: enforce_ip_limit(request,'reset',10,3600) и cooldown через cache; verify_email_resend POST: enforce_ip_limit(request,'resend',10,3600) и cooldown через cache; ошибки cache -> сообщение, без 500. tests/test_auth_flows.py: cache.clear() в setUp RegisterTests/PasswordResetTests/ResendCooldownTests; добавить test_register_ip_rate_limit (11 POST -> 11-й 'Слишком много попыток регистрации') и test_register_cache_unavailable_fail_closed (patch core.ratelimit.cache.add -> 'временно недоступен', профиль не создан); существующие cooldown-тесты остаются зелёными.",
+  "acceptance": [
+    "Cooldown сброса/ресенда хранится в django cache (Redis в проде), не в памяти процесса.",
+    "11-й POST /register с одного IP за час блокируется сообщением.",
+    "При недоступности cache register/reset/resend fail-closed с сообщением, без 500 и без создания профиля.",
+    "Повторный reset/resend в пределах cooldown не отправляет второе письмо.",
+    "core.tests.test_auth_flows и core.tests.test_auth проходят."
+  ],
+  "out_of_scope": [
+    "Не менять login/lockout (это P103).",
+    "Не менять модель Profile, RPC, шаблоны."
+  ],
+  "checks": [
+    {"name": "compile", "cmd": "{python} -m py_compile djadmin/core/views_auth.py djadmin/core/tests/test_auth_flows.py", "cwd": "."},
+    {"name": "auth_tests", "cmd": "{python} djadmin/manage.py test core.tests.test_auth_flows --keepdb -v 1", "cwd": "."},
+    {"name": "login_regression", "cmd": "{python} djadmin/manage.py test core.tests.test_auth core.tests.test_flows --keepdb -v 1", "cwd": "."}
+  ]
+}

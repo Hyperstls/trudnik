@@ -1,0 +1,45 @@
+{
+  "id": "P103",
+  "title": "P1-03: login — per-IP rate-limit, cache lockout, friendly 403",
+  "goal": "Логин ограничен по IP (20/час), блокировка аккаунта после 5 неудач хранится в общем кэше (Redis в проде), а PermissionDenied показывается сообщением формы, не 403.",
+  "why": "Django login без per-IP лимита, lockout в памяти процесса (multi-worker обход), PermissionDenied -> 403 (AUTH-P1-03).",
+  "files": [
+    "djadmin/core/ratelimit.py",
+    "djadmin/core/auth_backend.py",
+    "djadmin/core/views_flow.py",
+    "djadmin/core/tests/test_auth.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES.md",
+    "docs/parity/AUDIT_AUTH_PROFILE.md"
+  ],
+  "interfaces": "ratelimit.py: добавить RateLimitExceeded(retry_after), RateLimitUnavailable и enforce_ip_limit(request, bucket, limit, window): ключ 'rl:ip:<bucket>:<ip>' (ip=REMOTE_ADDR), cache.add/incr; count>limit -> RateLimitExceeded; любое исключение cache -> RateLimitUnavailable (fail-closed). auth_backend.py: убрать in-process _lockout; cache-ключи login_lock:<email>, login_fail:<email>, login_count:<email>; 5 неудач, FAIL_WINDOW=900, BASE_LOCK_SECONDS=900, экспонента 2**count; ошибка cache -> PermissionDenied('Сервис входа временно недоступен...'); успех чистит ключи; user_can_authenticate не менять. views_flow.login_view: на POST enforce_ip_limit(request,'login',20,3600); RateLimitExceeded -> 'Слишком много попыток с вашего IP. Попробуйте позже.', RateLimitUnavailable -> 'Сервис входа временно недоступен. Попробуйте позже.'; authenticate обернуть в try/except PermissionDenied -> messages.error(str(exc)). tests/test_auth.py: cache.clear() в setUp; обновить test_lockout_after_failures на cache; добавить test_login_rate_limit_per_ip (21 уникальный email, 21-й содержит IP-сообщение), test_login_lockout_message_not_403 (5 неверных + верный -> 200 и 'временно заблокирован', не 403), test_login_cache_unavailable_fail_closed (patch core.ratelimit.cache.add -> 'временно недоступен', не 500).",
+  "acceptance": [
+    "21-й POST /login с одного IP за час блокируется сообщением (не 500, не 403).",
+    "После 5 неудач аккаунт блокируется; 6-я попытка с верным паролем показывает сообщение о блокировке, а не 403.",
+    "Lockout/счётчики живут в django cache (Redis в проде), не в памяти процесса.",
+    "При недоступности cache login fail-closed с сообщением, без 500.",
+    "core.tests.test_auth, core.tests.test_flows, core.tests.test_auth_flows проходят."
+  ],
+  "out_of_scope": [
+    "Не менять cooldown регистрации/сброса (это P104).",
+    "Не менять модель Profile, RPC, шаблоны."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/ratelimit.py djadmin/core/auth_backend.py djadmin/core/views_flow.py djadmin/core/tests/test_auth.py",
+      "cwd": "."
+    },
+    {
+      "name": "login_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_auth core.tests.test_flows --keepdb -v 1",
+      "cwd": "."
+    },
+    {
+      "name": "auth_regression",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_auth_flows --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

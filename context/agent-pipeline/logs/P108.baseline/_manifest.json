@@ -1,0 +1,18 @@
+{
+  "djadmin/core/templates/core/profile.html": {
+    "exists": true,
+    "snapshot": "001_profile.html"
+  },
+  "djadmin/core/templates/core/worker_detail.html": {
+    "exists": true,
+    "snapshot": "002_worker_detail.html"
+  },
+  "djadmin/core/templates/core/workers_list.html": {
+    "exists": true,
+    "snapshot": "003_workers_list.html"
+  },
+  "djadmin/core/tests/test_public_views.py": {
+    "exists": true,
+    "snapshot": "004_test_public_views.py"
+  }
+}

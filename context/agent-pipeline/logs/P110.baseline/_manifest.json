@@ -1,0 +1,10 @@
+{
+  "djadmin/core/models.py": {
+    "exists": true,
+    "snapshot": "001_models.py"
+  },
+  "djadmin/core/tests/test_auth.py": {
+    "exists": true,
+    "snapshot": "002_test_auth.py"
+  }
+}

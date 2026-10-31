@@ -1,0 +1,39 @@
+{
+  "id": "P112",
+  "title": "P1-12: IDOR-матрица профиля (RLS-компенсация)",
+  "goal": "Пользователь A не может читать/менять/удалять данные B через profile/edit/export/delete/report; session identity не подменяется.",
+  "why": "Django обходит RLS (BYPASSRLS); компенсирующий контроль — view/queryset-фильтры. Нужна контрактная матрица IDOR (AUTH-P1-12).",
+  "files": [
+    "djadmin/core/tests/test_profile_flows.py",
+    "djadmin/core/tests/test_parity_ext.py"
+  ],
+  "context_files": [
+    "docs/parity/CONTRACT_CHECKS.md",
+    "docs/parity/DISCREPANCIES.md"
+  ],
+  "interfaces": "Тесты: 1) test_profile_edit_cannot_modify_other_user: A/B, A POST /profile с full_name/city и id=B.pk; A изменён, B — нет. 2) test_export_data_only_own: A/B, у B есть favorite/application; A GET /profile/export-data, JSON не содержит id/email B. 3) test_delete_account_only_self: A POST /profile/delete-account; A удалён, B остался. 4) test_report_user_uses_session_identity: A POST /profile/<B>/report; UserReport.reporter=A, reported=B; self-report A->A не создаёт запись. 5) verification-doc other-user 404 — существующий тест P002 остаётся зелёным. Использовать cache.clear() там, где лимиты. Не менять production-код; если тест падает из-за реального IDOR — вернуть NEED/BLOCKED с файлом:строкой.",
+  "acceptance": [
+    "A не может изменить профиль B через POST /profile.",
+    "Экспорт A не содержит данных B.",
+    "A может удалить только себя; B остаётся.",
+    "Жалоба фиксирует reporter=A, reported=B; self-report отклоняется.",
+    "Verification-doc other-user 404 (P002) остаётся зелёным.",
+    "core.tests.test_profile_flows и core.tests.test_parity_ext проходят."
+  ],
+  "out_of_scope": [
+    "Не менять production-код; это контрактная проверка компенсации RLS.",
+    "Не менять другие области (jobs/applications/chat)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_profile_flows.py djadmin/core/tests/test_parity_ext.py",
+      "cwd": "."
+    },
+    {
+      "name": "idor_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_profile_flows core.tests.test_parity_ext --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

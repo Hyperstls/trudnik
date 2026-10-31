@@ -1,0 +1,10 @@
+{
+  "djadmin/core/tasks.py": {
+    "exists": true,
+    "snapshot": "001_tasks.py"
+  },
+  "djadmin/core/tests/test_tasks.py": {
+    "exists": true,
+    "snapshot": "002_test_tasks.py"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "id": "L001",
+  "title": "LEGAL-P0-01: fallback для privacy/terms/safety при пустом site_pages",
+  "goal": "Страницы /privacy, /terms, /safety доступны без записей site_pages: view рендерит fallback-шаблон из legacy-контента; SitePage остаётся override.",
+  "why": "E2E smoke: site_pages пуст -> privacy/terms/safety 404; ссылка согласия 152-ФЗ при регистрации ведёт на /privacy (P0).",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/templates/core/legal_fallback.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "templates/privacy.html",
+    "templates/terms.html",
+    "templates/safety.html"
+  ],
+  "interfaces": "legal_page(request, slug): page=SitePage.objects.filter(pk=slug).first(); если page -> как сейчас core/legal_page.html; иначе для slug in {'privacy','terms','safety'} -> render core/legal_fallback.html с {'slug','title'}; иначе Http404. LEGAL_TITLES: privacy='Политика конфиденциальности', terms='Условия использования', safety='Как мы защищаем'. legal_fallback.html: extends core/base.html, title block с {{ title }}, content block с {% if slug == 'privacy' %}...{% elif slug == 'terms' %}...{% elif slug == 'safety' %}...{% endif %}; контент скопировать из legacy templates/privacy.html, terms.html, safety.html (внутри block content, без extends/block-обёрток; заменить Jinja url_for на прямые пути, если есть). Тест test_public_views.LegalFallbackTests: удалить SitePage privacy/terms/safety, GET reverse('core:privacy'/'terms'/'safety') -> 200 и ключевой текст; создать SitePage(slug='privacy', content='<p>DB-OVERRIDE</p>') -> GET /privacy содержит DB-OVERRIDE.",
+  "acceptance": [
+    "GET /privacy, /terms, /safety при пустом site_pages -> 200, не 404.",
+    "Fallback-контент соответствует legacy-страницам (заголовок и ключевые разделы).",
+    "При наличии SitePage используется его content (override).",
+    "Неизвестный slug -> 404.",
+    "core.tests.test_public_views проходит."
+  ],
+  "out_of_scope": [
+    "Не менять тексты политики/условий по смыслу.",
+    "Не менять SitePage-модель/админку и другие страницы."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

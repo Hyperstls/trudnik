@@ -1,0 +1,17 @@
+{
+  "id": "T4",
+  "title": "Демо: лимит механических попыток",
+  "goal": "Демонстрационная задача с намеренно красной проверкой; конвейер обязан остановиться после 3 FAIL.",
+  "why": "Столп 3: третья вариация одной ошибки дороже вопроса человеку. Проверяем blocked после attempts=3.",
+  "files": ["demo/limit.py"],
+  "context_files": [],
+  "interfaces": "def limit_marker() -> str: возвращает 'LIMIT'. Проверка always_fail намеренно возвращает exit 1 — это фикстура, а не баг кода.",
+  "acceptance": [
+    "demo/limit.py содержит limit_marker(), возвращающую 'LIMIT'.",
+    "После трёх verify FAIL задача переходит в blocked."
+  ],
+  "out_of_scope": ["Любые файлы, кроме demo/limit.py."],
+  "checks": [
+    {"name": "always_fail", "cmd": "{python} -c \"import sys; print('simulated red check'); sys.exit(1)\"", "cwd": "."}
+  ]
+}

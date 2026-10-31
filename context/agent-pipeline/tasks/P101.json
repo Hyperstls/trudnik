@@ -1,0 +1,41 @@
+{
+  "id": "P101",
+  "title": "P1-01: паритет регистрации — поля Flask + навыки",
+  "goal": "Регистрация собирает и сохраняет те же поля, что Flask: портфолио, контакт, ИНН, самозанятость, опыт, желаемую оплату, навыки; для employer рабочие поля не сохраняются.",
+  "why": "Django-регистрация упрощена: данные, которые Flask собирал, теряются (AUTH-P1-01).",
+  "files": [
+    "djadmin/core/forms_auth.py",
+    "djadmin/core/views_auth.py",
+    "djadmin/core/templates/core/register.html",
+    "djadmin/core/tests/test_auth_flows.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES.md",
+    "docs/parity/AUDIT_AUTH_PROFILE.md"
+  ],
+  "interfaces": "RegisterForm: добавить portfolio_link (URLField, optional), contact (CharField, optional), inn (CharField, optional), is_self_employed (BooleanField, optional), experience (CharField/Textarea, optional), desired_payment (DecimalField max_digits=12 decimal_places=2 min_value=0, optional), skills (ModelMultipleChoiceField queryset=Skill.objects.order_by('sort_order','name'), optional, CheckboxSelectMultiple). full_name.max_length=150, city.max_length=100 — как Flask. В views_auth.register после успешного register_user: Profile.objects.filter(pk=user_id).update(city=..., portfolio_link=..., consented_at=now) для всех; для role='worker' дополнительно contact, experience, desired_payment, inn, is_self_employed; навыки — sync_user_skills_raw(user_id, [s.pk...]) в try/except с логом, регистрацию не ронять. Шаблон: поля + ошибки + чекбоксы навыков, maxlength 150/100. Тесты: RegisterTests.test_register_persists_extended_worker_fields и test_register_employer_ignores_worker_fields (Skill через get_or_create, проверка UserSkill).",
+  "acceptance": [
+    "RegisterForm содержит поля portfolio_link, contact, inn, is_self_employed, experience, desired_payment, skills; full_name ≤150, city ≤100.",
+    "Шаблон регистрации рендерит эти поля, ошибки и чекбоксы навыков.",
+    "Worker-регистрация сохраняет все поля в Profile и навыки в UserSkill.",
+    "Employer-регистрация сохраняет city/portfolio_link/consented_at, но не сохраняет worker-only поля и навыки.",
+    "core.tests.test_auth_flows проходит."
+  ],
+  "out_of_scope": [
+    "Не менять валидацию ИНН/контакта и политику пароля (это P102).",
+    "Не менять ProfileForm и публичный профиль.",
+    "Не менять БД/миграции."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/forms_auth.py djadmin/core/views_auth.py djadmin/core/tests/test_auth_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "auth_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_auth_flows --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

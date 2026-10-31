@@ -1,0 +1,14 @@
+{
+  "tailwind.config.js": {
+    "exists": true,
+    "snapshot": "001_tailwind.config.js"
+  },
+  "scripts/pre_deploy_check.py": {
+    "exists": true,
+    "snapshot": "002_pre_deploy_check.py"
+  },
+  "static/css/tailwind.min.css": {
+    "exists": true,
+    "snapshot": "003_tailwind.min.css"
+  }
+}
