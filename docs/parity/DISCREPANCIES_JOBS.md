@@ -13,7 +13,9 @@ savepoint + fail-open).
 JOB-P1-12/13 исправлены J006 (reopen через accept-RPC; repost копирует фото
 и ставит expires_at, всё в транзакции).
 JOB-P1-11 исправлен J007 (JobPhoto+legacy, лимит 3, фото в ленте,
-удаление файла с refcount). Полный core-набор — 259 OK.
+удаление файла с refcount).
+JOB-P1-09/10 закрыты частично J008 (табы/фильтры, application_count,
+received/sent, пагинация); bulk-операции остаются. Полный core-набор — 263 OK.
 Остальные пункты открыты.
 
 ## P0

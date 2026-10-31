@@ -19,7 +19,9 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
 from django.db import transaction
+from django.db.models import Count
 from django.http import Http404, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -181,8 +183,17 @@ def job_edit(request, job_id):
 
 @login_required
 def my_jobs(request):
-    jobs = Job.objects.filter(employer=request.user).order_by("-created_at")
-    return render(request, "core/my_jobs.html", {"jobs": jobs})
+    status = request.GET.get("status") or ""
+    if status not in ("open", "completed", "cancelled"):
+        status = ""
+    jobs = (
+        Job.objects.filter(employer=request.user)
+        .annotate(application_count=Count("applications"))
+        .order_by("-created_at")
+    )
+    if status:
+        jobs = jobs.filter(status=status)
+    return render(request, "core/my_jobs.html", {"jobs": jobs, "status": status})
 
 
 @login_required
@@ -247,11 +258,21 @@ def job_unapply(request, job_id):
 
 @login_required
 def my_applications(request):
-    apps = (
-        Application.objects.filter(worker=request.user)
-        .select_related("job").order_by("-created_at")
-    )
-    return render(request, "core/my_applications.html", {"apps": apps})
+    tab = request.GET.get("tab") or "sent"
+    if tab not in ("received", "sent"):
+        tab = "sent"
+    if tab == "received":
+        qs = Application.objects.filter(job__employer=request.user).select_related(
+            "job", "worker"
+        )
+    else:
+        qs = Application.objects.filter(worker=request.user).select_related("job")
+    page = Paginator(qs.order_by("-created_at"), 20).get_page(request.GET.get("page"))
+    return render(request, "core/my_applications.html", {
+        "page": page,
+        "apps": page.object_list,
+        "tab": tab,
+    })
 
 
 @login_required

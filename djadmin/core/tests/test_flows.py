@@ -509,3 +509,81 @@ class FavoriteFlowTests(TestCase):
         self.client.force_login(owner)
         response = self.client.get(reverse("core:job_detail", args=[self.job.pk]))
         self.assertContains(response, "Отклики")
+
+
+class MyJobsTests(TestCase):
+    def setUp(self):
+        self.employer = make_profile("myjobs-emp@example.com", role="employer")
+        self.worker = make_profile("myjobs-worker@example.com", role="worker")
+        self.open_job = make_job(self.employer, work_type="Открытое")
+        self.completed_job = make_job(
+            self.employer, status="completed", work_type="Завершённое"
+        )
+        self.cancelled_job = make_job(
+            self.employer, status="cancelled", work_type="Отменённое"
+        )
+        Application.objects.create(
+            job=self.open_job, worker=self.worker, status="pending"
+        )
+        self.client.force_login(self.employer)
+
+    def test_all_jobs_and_counts(self):
+        response = self.client.get(reverse("core:my_jobs"))
+        self.assertEqual(len(response.context["jobs"]), 3)
+        open_job = next(
+            job for job in response.context["jobs"] if job.pk == self.open_job.pk
+        )
+        self.assertEqual(open_job.application_count, 1)
+        self.assertContains(response, "Отклики · 1")
+
+    def test_status_filter(self):
+        for status in ("open", "completed", "cancelled"):
+            with self.subTest(status=status):
+                response = self.client.get(
+                    reverse("core:my_jobs"), {"status": status}
+                )
+                jobs = list(response.context["jobs"])
+                expected = getattr(self, "%s_job" % status)
+                self.assertEqual([job.pk for job in jobs], [expected.pk])
+
+
+class MyApplicationsTabsTests(TestCase):
+    def setUp(self):
+        self.employer = make_profile("tabs-emp@example.com", role="employer")
+        self.worker = make_profile("tabs-worker@example.com", role="worker")
+        self.job = make_job(self.employer, work_type="Tab-задание")
+        self.app = Application.objects.create(
+            job=self.job, worker=self.worker, status="pending"
+        )
+
+    def test_sent_default_and_received(self):
+        self.client.force_login(self.worker)
+        response = self.client.get(reverse("core:my_applications"))
+        self.assertEqual(response.context["tab"], "sent")
+        self.assertEqual(list(response.context["apps"]), [self.app])
+        self.assertContains(response, "Tab-задание")
+
+        self.client.force_login(self.employer)
+        response = self.client.get(
+            reverse("core:my_applications"), {"tab": "received"}
+        )
+        self.assertEqual(response.context["tab"], "received")
+        self.assertEqual(list(response.context["apps"]), [self.app])
+        self.assertContains(response, self.worker.full_name)
+
+        self.client.force_login(self.worker)
+        response = self.client.get(
+            reverse("core:my_applications"), {"tab": "received"}
+        )
+        self.assertEqual(list(response.context["apps"]), [])
+
+    def test_pagination(self):
+        for i in range(20):
+            job = make_job(self.employer, work_type="Pag %d" % i)
+            Application.objects.create(
+                job=job, worker=self.worker, status="pending"
+            )
+        self.client.force_login(self.worker)
+        response = self.client.get(reverse("core:my_applications"), {"page": 2})
+        self.assertEqual(response.context["page"].number, 2)
+        self.assertEqual(len(response.context["apps"]), 1)

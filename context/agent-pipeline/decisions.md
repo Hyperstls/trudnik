@@ -537,3 +537,25 @@ Append-only: решения и измерения. Числа, команды, �
 **Кто:** Hyperstls
 
 Ревью PASS. Некритично: дедуп только между JobPhoto и legacy; _job_card используется только в jobs_list; delete_upload_url уже защищён от traversal/не-/uploads.
+
+## 2026-10-31 22:25:39 — J008: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css rebuilt by npm run build:css after my_jobs/my_applications template classes; generated artifact, not business code
+
+**Дрейф, который обойдён:** ['static/css/tailwind.min.css']
+
+## 2026-10-31 22:27:27 — J008: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J008.review.prompt.md
+
+## 2026-10-31 22:27:27 — J008: заметка
+
+**Кто:** Hyperstls
+
+Ревью PASS. CSS-дрейф обойдён штатным --skip-scope (сгенерированный tailwind.min.css после правки шаблонов), след в state/progress/decisions. Bulk-операции остаются на J009.

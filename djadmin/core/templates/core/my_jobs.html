@@ -6,6 +6,12 @@
         <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">Мои задания</h2>
         <a href="{% url 'core:job_create' %}" class="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold shadow-sm transition-colors">+ Создать</a>
     </div>
+    <div class="flex gap-2 mb-4 overflow-x-auto" role="tablist" aria-label="Фильтр заданий">
+        <a href="{% url 'core:my_jobs' %}" role="tab" aria-selected="{% if not status %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if not status %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Все</a>
+        <a href="?status=open" role="tab" aria-selected="{% if status == 'open' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if status == 'open' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Открытые</a>
+        <a href="?status=completed" role="tab" aria-selected="{% if status == 'completed' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if status == 'completed' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Завершённые</a>
+        <a href="?status=cancelled" role="tab" aria-selected="{% if status == 'cancelled' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if status == 'cancelled' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Отменённые</a>
+    </div>
     {% if jobs %}
     <div class="grid gap-3">
         {% for job in jobs %}
@@ -16,7 +22,7 @@
                     <p class="text-sm text-neutral-500 mt-0.5">{{ job.organization_name|default:"Частное лицо" }} · {{ job.get_status_display }} · {{ job.date_time|date:"d.m.Y H:i" }}</p>
                 </div>
                 <div class="flex flex-wrap gap-2 text-sm shrink-0">
-                    <a href="{% url 'core:job_applicants' job.pk %}" class="action-icon-btn contact-btn"><span class="text-xs font-medium">Отклики</span></a>
+                    <a href="{% url 'core:job_applicants' job.pk %}" class="action-icon-btn contact-btn"><span class="text-xs font-medium">Отклики{% if job.application_count %} · {{ job.application_count }}{% endif %}</span></a>
                     <a href="{% url 'core:job_edit' job.pk %}" class="action-icon-btn"><span class="text-xs font-medium">Изменить</span></a>
                     {% if job.status == 'open' or job.status == 'active' %}
                     <form method="post" action="{% url 'core:job_action' job.pk 'cancel' %}">{% csrf_token %}<button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Отменить</span></button></form>

@@ -1,0 +1,42 @@
+{
+  "id": "J008",
+  "title": "JOB-P1-09/10: my-jobs фильтры/счётчики и my-applications received/sent",
+  "goal": "Мои задания: табы Все/Открытые/Завершённые/Отменённые + счётчик откликов у каждого задания. Мои отклики: табы Полученные/Отправленные, пагинация по 20; работодатель видит отклики на свои задания, работник — свои.",
+  "why": "Flask my_jobs.py:759-788 (табы all/open/completed/cancelled, application_count) и applications.py:390-518 (received/sent, пагинация). Django my_jobs отдаёт все задания без счётчиков, my_applications — только sent (JOB-P1-09/10). Bulk-операции в этот контракт не входят (отдельный шаг).",
+  "files": [
+    "djadmin/core/views_flow.py",
+    "djadmin/core/templates/core/my_jobs.html",
+    "djadmin/core/templates/core/my_applications.html",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES_JOBS.md",
+    "djadmin/core/templates/core/job_applicants.html"
+  ],
+  "interfaces": "views_flow.my_jobs: status=request.GET.get('status') или ''; допускаются open/completed/cancelled; qs=Job.objects.filter(employer=request.user).annotate(application_count=Count('applications')).order_by('-created_at'); при status -> filter(status=status); context {'jobs': qs, 'status': status}. my_applications: tab=request.GET.get('tab'); допускается received/sent, default sent; sent -> Application.objects.filter(worker=request.user); received -> Application.objects.filter(job__employer=request.user); select_related('job','worker').order_by('-created_at'); page=Paginator(qs,20).get_page(...); context {'page':page,'apps':page.object_list,'tab':tab}. my_jobs.html: ссылки ?status=... (Все/Открытые/Завершённые/Отменённые), активный стиль; рядом с «Отклики» вывести job.application_count (pluralize: отклик/отклика/откликов). my_applications.html: табы ?tab=received|sent, для received показывать a.worker.full_name и кнопки accept/reject/reopen (как job_applicants), для sent — текущие действия; пагинация сохраняет tab. Тесты: test_my_jobs_status_filter_and_count; test_my_applications_received_vs_sent; test_my_applications_paginated (21 отклик -> 2 страницы).",
+  "acceptance": [
+    "GET /my-jobs показывает все задания владельца с application_count.",
+    "GET /my-jobs?status=open|completed|cancelled фильтрует только этот статус.",
+    "GET /my-applications по умолчанию tab=sent и показывает только свои отклики.",
+    "GET /my-applications?tab=received показывает отклики на задания текущего работодателя.",
+    "Пагинация: при 21 отклике page=2 содержит остаток, ссылки сохраняют tab.",
+    "ApplicationFlowTests и новые тесты проходят."
+  ],
+  "out_of_scope": [
+    "Не реализовывать bulk cancel/restore/delete/duplicate и bulk accept/reject/reopen (отдельный контракт).",
+    "Не менять RPC, модели и права доступа.",
+    "Не добавлять фильтр по навыкам (P2)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_flow.py djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "flow_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows.ApplicationFlowTests core.tests.test_flows.MyJobsTests core.tests.test_flows.MyApplicationsTabsTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

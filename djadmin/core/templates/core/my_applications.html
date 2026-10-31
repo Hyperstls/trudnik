@@ -3,13 +3,23 @@
 {% block content %}
 <div class="px-0 py-4 fade-in">
     <h2 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-4">Мои отклики</h2>
+    <div class="flex gap-2 mb-4 border-b border-neutral-200" role="tablist" aria-label="Типы откликов">
+        <a href="?tab=received" role="tab" aria-selected="{% if tab == 'received' %}true{% else %}false{% endif %}" class="px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors {% if tab == 'received' %}text-primary-600 border-primary-500{% else %}text-neutral-500 border-transparent hover:text-neutral-800{% endif %}">Полученные</a>
+        <a href="?tab=sent" role="tab" aria-selected="{% if tab == 'sent' %}true{% else %}false{% endif %}" class="px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors {% if tab == 'sent' %}text-primary-600 border-primary-500{% else %}text-neutral-500 border-transparent hover:text-neutral-800{% endif %}">Отправленные</a>
+    </div>
+
     {% if apps %}
     <div class="grid gap-3">
         {% for a in apps %}
         <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 flex flex-wrap items-start justify-between gap-3">
             <div class="min-w-0">
+                {% if tab == 'received' %}
+                <a href="{% url 'core:worker_detail' a.worker.pk %}" class="font-semibold text-neutral-900 hover:text-primary-600 transition-colors">{{ a.worker.full_name|default:"Трудник" }}</a>
+                <p class="text-sm text-neutral-500 mt-0.5">{{ a.job.work_type|default:"Задание" }} · {{ a.job.organization_name }} · {{ a.job.date_time|date:"d.m.Y H:i" }}</p>
+                {% else %}
                 <a href="{% url 'core:job_detail' a.job.pk %}" class="font-semibold text-neutral-900 hover:text-primary-600 transition-colors">{{ a.job.work_type|default:"Задание" }}</a>
                 <p class="text-sm text-neutral-500 mt-0.5">{{ a.job.organization_name }} · {{ a.job.date_time|date:"d.m.Y H:i" }}</p>
+                {% endif %}
                 <p class="text-sm mt-1">
                     {% if a.status == 'pending' %}<span class="text-xs bg-neutral-100 text-neutral-600 rounded-full px-2.5 py-0.5 font-medium">Ожидает</span>
                     {% elif a.status == 'accepted' %}<span class="text-xs bg-green-50 text-green-700 border border-green-200 rounded-full px-2.5 py-0.5 font-medium">Принят</span>
@@ -19,32 +29,61 @@
                 </p>
             </div>
             <div class="flex flex-wrap gap-2 text-sm shrink-0">
-                {% if a.status == 'pending' or a.status == 'accepted' %}
-                <form method="post" action="{% url 'core:application_action' a.pk 'withdraw' %}">{% csrf_token %}
-                    <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Отозвать</span></button>
-                </form>
-                {% endif %}
-                {% if a.status == 'accepted' %}
-                <a href="{% url 'core:chat_room' a.pk %}" class="action-icon-btn contact-btn"><span class="text-xs font-medium">Чат</span></a>
-                {% endif %}
-                {% if a.status == 'accepted' and a.job.status == 'completed' %}
-                <form method="post" action="{% url 'core:rate_participant' a.pk %}" class="flex items-center gap-2">{% csrf_token %}
-                    <select name="rating" class="border border-neutral-200 rounded-xl px-2 py-1.5 text-sm bg-white"><option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option></select>
-                    <input type="text" name="comment" placeholder="Комментарий" class="border border-neutral-200 rounded-xl px-2 py-1.5 text-sm w-32">
-                    <button class="action-icon-btn contact-btn"><span class="text-xs font-medium">Оценить</span></button>
-                </form>
+                {% if tab == 'received' %}
+                    {% if a.status == 'pending' %}
+                    <form method="post" action="{% url 'core:application_action' a.pk 'accept' %}">{% csrf_token %}<button class="action-icon-btn accept-btn"><span class="text-xs font-medium">Принять</span></button></form>
+                    <form method="post" action="{% url 'core:application_action' a.pk 'reject' %}">{% csrf_token %}<button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Отклонить</span></button></form>
+                    {% elif a.status == 'rejected' %}
+                    <form method="post" action="{% url 'core:application_action' a.pk 'reopen' %}">{% csrf_token %}<button class="action-icon-btn contact-btn"><span class="text-xs font-medium">Принять повторно</span></button></form>
+                    {% elif a.status == 'accepted' %}
+                    <form method="post" action="{% url 'core:application_action' a.pk 'cancel' %}">{% csrf_token %}<button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Снять</span></button></form>
+                    <a href="{% url 'core:chat_room' a.pk %}" class="action-icon-btn contact-btn"><span class="text-xs font-medium">Чат</span></a>
+                    {% endif %}
+                {% else %}
+                    {% if a.status == 'pending' or a.status == 'accepted' %}
+                    <form method="post" action="{% url 'core:application_action' a.pk 'withdraw' %}">{% csrf_token %}
+                        <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Отозвать</span></button>
+                    </form>
+                    {% endif %}
+                    {% if a.status == 'accepted' %}
+                    <a href="{% url 'core:chat_room' a.pk %}" class="action-icon-btn contact-btn"><span class="text-xs font-medium">Чат</span></a>
+                    {% endif %}
+                    {% if a.status == 'accepted' and a.job.status == 'completed' %}
+                    <form method="post" action="{% url 'core:rate_participant' a.pk %}" class="flex items-center gap-2">{% csrf_token %}
+                        <select name="rating" class="border border-neutral-200 rounded-xl px-2 py-1.5 text-sm bg-white"><option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option></select>
+                        <input type="text" name="comment" placeholder="Комментарий" class="border border-neutral-200 rounded-xl px-2 py-1.5 text-sm w-32">
+                        <button class="action-icon-btn contact-btn"><span class="text-xs font-medium">Оценить</span></button>
+                    </form>
+                    {% endif %}
                 {% endif %}
             </div>
         </article>
         {% endfor %}
     </div>
+
+    {% if page.has_other_pages %}
+    <nav class="flex items-center justify-center gap-2 mt-5" aria-label="Страницы">
+        {% if page.has_previous %}
+        <a href="?tab={{ tab }}&page={{ page.previous_page_number }}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 transition-colors">← Назад</a>
+        {% endif %}
+        <span class="text-sm text-neutral-500">Стр. {{ page.number }} из {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}
+        <a href="?tab={{ tab }}&page={{ page.next_page_number }}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 transition-colors">Вперёд →</a>
+        {% endif %}
+    </nav>
+    {% endif %}
     {% else %}
     <div class="flex flex-col items-center justify-center py-16 text-center fade-in">
         <div class="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
             <svg aria-hidden="true" class="h-8 w-8 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="6" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="18" y2="12"/></svg>
         </div>
+        {% if tab == 'received' %}
+        <p class="text-neutral-600 text-lg font-medium">Откликов на ваши задания пока нет</p>
+        <a href="{% url 'core:jobs' %}" class="mt-4 px-5 h-10 inline-flex items-center rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold shadow-sm">Смотреть задания</a>
+        {% else %}
         <p class="text-neutral-600 text-lg font-medium">Откликов пока нет</p>
         <a href="{% url 'core:jobs' %}" class="mt-4 px-5 h-10 inline-flex items-center rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold shadow-sm">Найти задание</a>
+        {% endif %}
     </div>
     {% endif %}
 </div>
