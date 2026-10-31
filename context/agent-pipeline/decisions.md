@@ -689,3 +689,33 @@ P2-02 частично: count/favorite/report/share. CSS-дрейф skip-scope (
 **Кто:** Hyperstls
 
 Косметика закрыта: label + w-36/w-44/hover:bg-green-50/hover:bg-red-50/-mb-px в app.css; tailwind.min.css не перезаливался.
+
+## 2026-11-01 01:06:45 — J016: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css regenerated after job_detail ratings section; generated artifact
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 01:09:16 — J016: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css generated artifact (unchanged)
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 01:12:55 — J016: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J016.review.prompt.md
+
+## 2026-11-01 01:12:55 — J016: заметка
+
+**Кто:** Hyperstls
+
+P2-02 ratings-секция закрыта. CSS-дрейф skip-scope.

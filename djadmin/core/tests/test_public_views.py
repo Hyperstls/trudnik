@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core import views
-from core.models import Application, Blacklist, Favorite, Job, JobPhoto, JobSkill, Religion, SitePage, Skill
+from core.models import Application, Blacklist, Favorite, Job, JobPhoto, JobSkill, Rating, Religion, SitePage, Skill
 from core.storage import resolve_upload_url, save_upload
 from core.tests.test_auth import make_profile
 
@@ -193,6 +193,22 @@ class PublicViewsTests(TestCase):
         response = self.client.get(f"/jobs/{self.job.pk}")
         self.assertNotContains(response, "Пожаловаться")
         self.assertNotContains(response, "t.me/share")
+
+    def test_detail_shows_employer_rating_and_reviews(self):
+        Rating.objects.create(
+            rated_user=self.employer, rater_user=self.worker, job=self.job,
+            rating=5, comment="Отличный работодатель",
+            rating_type="employer", target_type="employer",
+        )
+        response = self.client.get(f"/jobs/{self.job.pk}")
+        self.assertContains(response, "Отличный работодатель")
+        self.assertContains(
+            response, reverse("core:user_ratings", args=[self.employer.pk])
+        )
+
+    def test_detail_empty_reviews(self):
+        response = self.client.get(f"/jobs/{self.job.pk}")
+        self.assertContains(response, "Отзывов пока нет.")
 
     def test_workers_catalog(self):
         response = self.client.get("/workers")

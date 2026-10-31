@@ -76,6 +76,29 @@
         </section>
         {% endif %}
 
+        <section class="mb-4 border-t border-neutral-100 pt-4">
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <h2 class="text-sm font-semibold text-neutral-600">Работодатель</h2>
+                <a href="{% url 'core:user_ratings' employer.pk %}" class="text-sm text-primary-600 hover:text-primary-700 underline underline-offset-2">Все отзывы</a>
+            </div>
+            <p class="text-sm text-neutral-700">
+                <a href="{% url 'core:worker_detail' employer.pk %}" class="font-medium hover:text-primary-600 transition-colors">{{ employer.full_name|default:"Работодатель" }}</a>
+                <span class="text-neutral-500"> · ★ {{ employer.rating|default:0|floatformat:1 }} ({{ employer.total_reviews|default:0 }})</span>
+            </p>
+            {% if employer_reviews %}
+            <ul class="mt-2 space-y-2">
+                {% for r in employer_reviews %}
+                <li class="text-sm text-neutral-600">
+                    <span class="font-medium text-neutral-800">{{ r.rating }}★</span>
+                    {{ r.comment|default:"без комментария" }}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-sm text-neutral-500 mt-2">Отзывов пока нет.</p>
+            {% endif %}
+        </section>
+
         <div class="flex flex-wrap gap-2 items-center border-t border-neutral-100 pt-4">
             {% if is_owner %}
             <a href="{% url 'core:job_applicants' job.pk %}" class="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors">Отклики ({{ application_count }})</a>

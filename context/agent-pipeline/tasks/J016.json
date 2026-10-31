@@ -1,0 +1,40 @@
+{
+  "id": "J016",
+  "title": "JOB-P2-02 (ratings): рейтинг и последние отзывы работодателя в detail",
+  "goal": "На странице задания видна карточка работодателя: имя, рейтинг, число отзывов, последние 3 отзыва и ссылка на все отзывы.",
+  "why": "Flask job_detail содержит ratings-секцию работодателя. Django detail её не имеет (JOB-P2-02). Используем существующие Rating/Profile и user_ratings, без новых RPC.",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/templates/core/job_detail.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/templates/core/user_ratings.html"
+  ],
+  "interfaces": "views.py: import Rating; job_detail: employer=job.employer; employer_reviews=list(Rating.objects.filter(rated_user_id=job.employer_id).select_related('rater_user').order_by('-created_at')[:3]); context employer, employer_reviews. job_detail.html: секция 'Работодатель' перед action-кнопками: ссылка на worker_detail(employer_id), ★ rating|floatformat:1 (total_reviews), ссылка 'Все отзывы' на user_ratings(employer_id); при reviews — список rating★ + comment + rater_user.full_name, иначе 'Отзывов пока нет.'. Тесты PublicViewsTests: test_detail_shows_employer_rating_and_reviews (Rating(rated_user=employer, rater_user=worker, rating=5, comment='Отличный работодатель', rating_type='employer', target_type='employer') -> guest GET содержит 'Отличный работодатель', '5', user_ratings URL); test_detail_empty_reviews (без Rating -> 'Отзывов пока нет.').",
+  "acceptance": [
+    "Detail показывает имя работодателя, рейтинг и число отзывов.",
+    "Последние 3 отзыва с оценкой и комментарием видны.",
+    "Ссылка «Все отзывы» ведёт на user_ratings работодателя.",
+    "Без отзывов показывается 'Отзывов пока нет.'.",
+    "PublicViewsTests проходит."
+  ],
+  "out_of_scope": [
+    "Не менять Rating/user_ratings и RPC.",
+    "Не добавлять пагинацию отзывов в detail (только 3 + ссылка).",
+    "Не менять другие страницы."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views.PublicViewsTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

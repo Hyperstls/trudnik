@@ -14,7 +14,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.core.paginator import Paginator
 
-from .models import Application, Blacklist, Favorite, Job, JobFavorite, Profile, SitePage, Skill
+from .models import Application, Blacklist, Favorite, Job, JobFavorite, Profile, Rating, SitePage, Skill
 
 PAGE_SIZE = 20
 
@@ -196,6 +196,12 @@ def job_detail(request, job_id):
         is_employer_fav = Favorite.objects.filter(
             user=request.user, target_id=job.employer_id, favorite_type="employer"
         ).exists()
+    employer = job.employer
+    employer_reviews = list(
+        Rating.objects.filter(
+            rated_user_id=job.employer_id, rating_type="employer"
+        ).order_by("-created_at")[:3]
+    )
     return render(request, "core/job_detail.html", {
         "job": job,
         "photos": [(i, _abs(url)) for i, url in enumerate(photos)],
@@ -204,6 +210,8 @@ def job_detail(request, job_id):
         "can_withdraw": can_withdraw,
         "application_count": application_count,
         "is_employer_fav": is_employer_fav,
+        "employer": employer,
+        "employer_reviews": employer_reviews,
         "is_owner": is_owner,
         "is_fav": (
             request.user.is_authenticated
