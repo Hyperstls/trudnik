@@ -7,6 +7,37 @@ from django.contrib.admin import AdminSite
 
 from . import dictionaries, jobs, support, users
 
+# Подстроки в имени переменной окружения, означающие секрет: значение такой
+# переменной на /admin/env/ НЕ выводится (только факт наличия).
+SECRET_ENV_MARKERS = (
+    "SECRET",
+    "PASSWORD",
+    "TOKEN",
+    "KEY",
+    "DATABASE_URL",
+    "DATABASE_ADMIN_URL",
+    "DJANGO_DATABASE_URL",
+    "REDIS_URL",
+    "SMTP_",
+    "MAX_BOT",
+    "PGRST",
+    "VAPID",
+    "WEBSOCKET_JWT",
+    "METRICS",
+)
+
+
+def mask_env(environ):
+    """Имена переменных + факт наличия; секретные значения заменяются маской."""
+    masked = {}
+    for name, value in environ.items():
+        upper = name.upper()
+        if any(marker in upper for marker in SECRET_ENV_MARKERS):
+            masked[name] = "****** (set)" if value else "(empty)"
+        else:
+            masked[name] = value
+    return masked
+
 
 class TrudnikAdminSite(AdminSite):
     site_header = "Трудник — админка (Django)"
@@ -25,7 +56,7 @@ class TrudnikAdminSite(AdminSite):
 
     def env_view(self, request):
         """Инвентарь переменных окружения прод-процесса. ТОЛЬКО staff;
-        значения НЕ логируются и не кэшируются — только рендер этого шаблона."""
+        секретные значения маскируются, значения не логируются и не кэшируются."""
         import os
 
         from django.shortcuts import render
@@ -33,7 +64,7 @@ class TrudnikAdminSite(AdminSite):
         return render(request, "admin/env.html", {
             **self.each_context(request),
             "title": "Переменные окружения",
-            "env": dict(sorted(os.environ.items())),
+            "env": dict(sorted(mask_env(os.environ).items())),
         })
 
     def dashboard_view(self, request):

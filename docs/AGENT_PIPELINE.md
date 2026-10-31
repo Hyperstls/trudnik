@@ -55,9 +55,10 @@ context/agent-pipeline/
 изменения задачи, без чужих правок, которые уже были в рабочем дереве.
 
 `state.json` — runtime-состояние: оно не коммитится (см. `.gitignore`), потому что содержит
-SHA-256 baseline-хэши, которые `detect-secrets` ложно принимает за секреты. Durable-память
-конвейера — `tasks/`, `packs/`, `progress.md`, `decisions.md`; `logs/*.verify.log` также
-локальные (`.gitignore`), а итог каждой проверки фиксируется в `progress.md`.
+SHA-256 baseline-хэши, которые `detect-secrets` ложно принимает за секреты. `packs/` и
+`logs/` тоже runtime: паки генерируются `dispatch`/`review-packet`, baseline-снимки являются
+копиями исходников. Durable-память конвейера — `tasks/`, `selftest/contracts/`,
+`progress.md`, `decisions.md`, `docs/parity/`; итог каждой проверки фиксируется в `progress.md`.
 
 ## 4. Быстрый старт
 

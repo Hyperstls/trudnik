@@ -405,3 +405,17 @@ Append-only: решения и измерения. Числа, команды, �
 **Кто:** Hyperstls
 
 Два гейта: verify 2/2 (compile, JobCrudTests 11/11; test_flows 26/26); functional PASS; pattern PASS (XSS/fail-open/N+1; stop-words/date/ranges field-level, invalid job not created).
+
+## 2026-10-31 20:50:37 — E001: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/E001.review.prompt.md
+
+## 2026-10-31 20:50:37 — E001: заметка
+
+**Кто:** Hyperstls
+
+Два гейта: verify 2/2 (compile, admin_tests 8/8); functional PASS; pattern PASS (XSS/fail-open/N+1; все secret-маркеры маскируются, несекретные видны, staff-only сохранён).

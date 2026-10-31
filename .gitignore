@@ -127,3 +127,5 @@ archive/env_*.env
 # Agent pipeline runtime state (regenerable; contains file SHA-256 hashes,
 # which detect-secrets flags as high-entropy false positives)
 context/agent-pipeline/state.json
+context/agent-pipeline/logs/
+context/agent-pipeline/packs/

@@ -1,0 +1,38 @@
+{
+  "id": "E001",
+  "title": "SEC-01: маскировать секреты на /admin/env/",
+  "goal": "Страница /admin/env/ показывает имена переменных и факт наличия, но не раскрывает значения секретов (SECRET/PASSWORD/TOKEN/KEY/DB/Redis/SMTP/MAX/PGRST/VAPID/JWT).",
+  "why": "Сейчас env_view отдаёт весь os.environ в шаблон, который печатает значения открытым текстом: любой staff/админ видит DB/SMTP/JWT/MAX секреты. Риск утечки и 152-ФЗ.",
+  "files": [
+    "djadmin/core/admin/__init__.py",
+    "djadmin/core/templates/admin/env.html",
+    "djadmin/core/tests/test_admin.py"
+  ],
+  "context_files": [
+    "docs/parity/152FZ_DATA_FLOWS.md",
+    "docs/parity/DISCREPANCIES.md"
+  ],
+  "interfaces": "env_view: для каждого (k,v) из os.environ: если k.upper() содержит любой маркер из ('SECRET','PASSWORD','TOKEN','KEY','DATABASE_URL','DATABASE_ADMIN_URL','DJANGO_DATABASE_URL','REDIS_URL','SMTP_','MAX_BOT','PGRST','VAPID','WEBSOCKET_JWT','METRICS') -> value='****** (set)' если v иначе '(empty)'; иначе value=v. Шаблон: убрать предупреждение 'показывает секреты', написать 'секреты маскируются'; значения выводятся как {{ v }} (autoescape). Тест AdminEnvTests.test_env_page_masks_secrets: patch.dict(os.environ, {'SECRET_KEY':'super-secret-value','SMTP_PASSWORD':'smtp-secret','DJANGO_ALLOWED_HOSTS':'example.com'}), staff login, GET /admin/env/ -> assertNotContains('super-secret-value'), assertNotContains('smtp-secret'), assertContains('****** (set)'), assertContains('example.com'). Существующий test_env_page_staff_only остаётся.",
+  "acceptance": [
+    "Секретные значения не попадают в HTML /admin/env/.",
+    "Имена переменных и факт set/empty видны.",
+    "Несекретные значения (например, DJANGO_ALLOWED_HOSTS) видны.",
+    "core.tests.test_admin проходит."
+  ],
+  "out_of_scope": [
+    "Не менять состав env и деплой.",
+    "Не менять другие admin-страницы."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/admin/__init__.py djadmin/core/tests/test_admin.py",
+      "cwd": "."
+    },
+    {
+      "name": "admin_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_admin --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

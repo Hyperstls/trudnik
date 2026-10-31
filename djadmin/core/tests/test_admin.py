@@ -1,4 +1,7 @@
 """Доступ к админке и ключевым страницам: superuser да, остальные нет."""
+import os
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -79,6 +82,27 @@ class AdminAccessTests(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "PATH")
+
+class AdminEnvTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = User.objects.create_superuser("env-root@example.com", "Aa1!aaaa")  # pragma: allowlist secret
+
+    def test_env_page_masks_secrets(self):
+        env = {
+            "SECRET_KEY": "super-secret-value",  # pragma: allowlist secret
+            "SMTP_PASSWORD": "smtp-secret",  # pragma: allowlist secret
+            "DJANGO_ALLOWED_HOSTS": "example.com",
+        }
+        with patch.dict(os.environ, env):
+            self.client.force_login(self.admin)
+            response = self.client.get("/admin/env/")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "super-secret-value")
+        self.assertNotContains(response, "smtp-secret")
+        self.assertContains(response, "****** (set)")
+        self.assertContains(response, "example.com")
+
 
 class AdminLoginPageTests(TestCase):
     def test_login_page_renders(self):

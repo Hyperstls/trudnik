@@ -12,8 +12,9 @@ P1-12 — P112 (IDOR-матрица, pattern FAIL→fix→PASS). P1-10 ORM-пу�
 (DB-default остаётся до P113). P1-05 — P105 (async email, pattern FAIL→fix→PASS).
 P1-13 + DB-default P1-10 — локальный dev: 65/65 миграций, `email_verified default=false`,
 gate `scripts/check_migrations.py` OK; production — pending deploy-window
-([MIGRATION_LEDGER.md](MIGRATION_LEDGER.md)). Доказательства: [P1_RESULTS.md](P1_RESULTS.md).
-Все P0/P1 auth/profile закрыты локально; открыты P2 и production-окно.
+([MIGRATION_LEDGER.md](MIGRATION_LEDGER.md)). **SEC-01:** `/admin/env/` показывал секреты
+открытым текстом — замаскировано E001 (verify/functional/pattern PASS).
+Доказательства: [P1_RESULTS.md](P1_RESULTS.md).
 
 ## P0 — блокеры
 
