@@ -63,3 +63,8 @@ __pycache__/
 *.log
 *.bat
 *.sh
+
+# Env-файлы (даже placeholder-шаблоны не должны попадать в образ)
+scripts/env_*.env
+archive/env_*.env
+.env.staging
