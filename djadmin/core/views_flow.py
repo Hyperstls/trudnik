@@ -13,6 +13,7 @@ NB (из ревью B2-7): restore_job_atomic внутри БД сверяет �
 view-проверки владения.
 """
 from datetime import timedelta
+from uuid import UUID
 
 from django.conf import settings
 from django.contrib import messages
@@ -337,6 +338,99 @@ def application_action(request, app_id, action):
             },
         )
     return redirect("core:job_applicants", job_id=job.pk)
+
+
+BULK_LIMIT = 50
+
+
+def _bulk_ids(values) -> list[UUID]:
+    """Валидные UUID из POST, без дублей и мусора (иначе pk__in → 500)."""
+    cleaned = []
+    for value in values:
+        try:
+            cleaned.append(UUID(str(value)))
+        except (TypeError, ValueError):
+            continue
+    return list(dict.fromkeys(cleaned))[:BULK_LIMIT]
+
+
+@login_required
+@require_POST
+def my_jobs_bulk(request):
+    """Массовые cancel/restore/delete своих заданий (≤50, только атомарные RPC)."""
+    action = request.POST.get("action")
+    if action not in ("cancel", "restore", "delete"):
+        return HttpResponseNotAllowed(["POST"])
+    job_ids = _bulk_ids(request.POST.getlist("job_ids"))
+    if not job_ids:
+        messages.error(request, "Не выбрано ни одного задания.")
+        return redirect("core:my_jobs")
+    jobs = list(Job.objects.filter(pk__in=job_ids, employer=request.user))
+    done = 0
+    for job in jobs:
+        if action == "cancel":
+            result = call_rpc("cancel_job_atomic", job.pk, request.user.pk) or {}
+        elif action == "restore":
+            result = call_rpc("restore_job_atomic", job.pk, request.user.pk) or {}
+        else:
+            result = call_rpc("delete_job_cascade", job.pk) or {}
+        if result.get("success"):
+            done += 1
+    if done:
+        messages.success(request, "Выполнено: %d." % done)
+    failed = len(job_ids) - done
+    if failed:
+        messages.warning(request, "Не выполнено: %d." % failed)
+    return redirect("core:my_jobs")
+
+
+@login_required
+@require_POST
+def my_applications_bulk(request):
+    """Массовые accept/reject/reopen откликов на свои задания (≤50)."""
+    action = request.POST.get("action")
+    if action not in ("accept", "reject", "reopen"):
+        return HttpResponseNotAllowed(["POST"])
+    app_ids = _bulk_ids(request.POST.getlist("app_ids"))
+    if not app_ids:
+        messages.error(request, "Не выбрано ни одного отклика.")
+        return redirect("core:my_applications")
+    apps = list(
+        Application.objects.filter(
+            pk__in=app_ids, job__employer=request.user
+        ).select_related("job")
+    )
+    done = skipped = 0
+    for app in apps:
+        if action == "reopen" and app.status != Application.Status.REJECTED:
+            skipped += 1
+            continue
+        if action == "reject":
+            result = call_rpc("reject_application", app.job_id, app.pk) or {}
+        else:
+            result = call_rpc("accept_application", app.job_id, app.pk) or {}
+        if not result.get("success"):
+            skipped += 1
+            continue
+        done += 1
+        accepted = action != "reject"
+        enqueue_notification(
+            app.worker_id,
+            "application_accepted" if accepted else "application_rejected",
+            "Отклик принят" if accepted else "Отклик отклонён",
+            "Ваш отклик на задание #%s был %s" % (
+                app.job_id, "принят" if accepted else "отклонён",
+            ),
+            {
+                "job_id": str(app.job_id),
+                "link": request.build_absolute_uri(reverse("core:my_applications")),
+            },
+        )
+    if done:
+        messages.success(request, "Выполнено: %d." % done)
+    if skipped:
+        messages.warning(request, "Пропущено/ошибок: %d." % skipped)
+    return redirect(reverse("core:my_applications") + "?tab=received")
 
 
 # ── Избранное заданий ───────────────────────────────────────────────────────

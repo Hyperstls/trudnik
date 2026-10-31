@@ -1,0 +1,42 @@
+{
+  "id": "J009",
+  "title": "JOB-P1-09/10 (bulk backend): массовые действия заданий/откликов",
+  "goal": "POST /my-jobs/action выполняет cancel/restore/delete для выбранных своих заданий (≤50); POST /my-applications/action выполняет accept/reject/reopen для откликов на свои задания (≤50). Чужие id игнорируются, счётчики успех/ошибка выводятся.",
+  "why": "Flask jobs.py bulk (cancel/restore/delete/duplicate) и applications.py batch (accept/reject/reopen, MAX_BATCH=50) используют атомарные RPC. Django имеет только одиночные действия; bulk отсутствует (JOB-P1-09/10). Duplicate в этот контракт не входит (отдельно, требует вынос repost-хелпера).",
+  "files": [
+    "djadmin/core/views_flow.py",
+    "djadmin/core/urls.py",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES_JOBS.md",
+    "migrations/120_fix_accept_reject_for_update.sql"
+  ],
+  "interfaces": "urls.py: path('my-jobs/action', views_flow.my_jobs_bulk, name='my_jobs_bulk'); path('my-applications/action', views_flow.my_applications_bulk, name='my_applications_bulk'). my_jobs_bulk: @login_required @require_POST; action in ('cancel','restore','delete') иначе HttpResponseNotAllowed(['POST']); ids=request.POST.getlist('job_ids')[:50]; jobs=Job.objects.filter(pk__in=ids, employer=request.user); для каждого call_rpc('cancel_job_atomic',job.pk,user.pk)|'restore_job_atomic'|'delete_job_cascade',job.pk; result.get('success') -> ok+=1; messages.success('Выполнено: N') при ok; messages.warning('Ошибки: M') если M>0; redirect my_jobs. my_applications_bulk: action in ('accept','reject','reopen'); ids[:50]; apps=Application.objects.filter(pk__in=ids, job__employer=request.user).select_related('job'); reopen только при status=='rejected' (иначе skipped); accept/reject/reopen -> call_rpc('accept_application'|'reject_application', app.job_id, app.pk); при успехе enqueue_notification(worker_id, application_accepted|application_rejected, ...); redirect my_applications?tab=received. Тесты: BulkJobsTests.test_cancel_restore_delete; test_stranger_ids_ignored; BulkApplicationsTests.test_accept_reject_reopen; test_worker_cannot_bulk_received.",
+  "acceptance": [
+    "Bulk cancel переводит выбранные свои задания в cancelled.",
+    "Bulk restore возвращает cancelled → open; bulk delete удаляет задания.",
+    "Чужие job_ids не меняются и не раскрываются.",
+    "Bulk accept/reject обрабатывает только отклики на задания текущего работодателя.",
+    "Bulk reopen принимает только rejected-отклики.",
+    "Успешные bulk accept/reject создают outbox-уведомления работнику.",
+    "BulkJobsTests и BulkApplicationsTests проходят."
+  ],
+  "out_of_scope": [
+    "Не делать UI-чекбоксы и панель массовых действий (J010).",
+    "Не реализовывать bulk duplicate (нужен вынос repost-хелпера).",
+    "Не менять RPC/модели."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_flow.py djadmin/core/urls.py djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "flow_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows.BulkJobsTests core.tests.test_flows.BulkApplicationsTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

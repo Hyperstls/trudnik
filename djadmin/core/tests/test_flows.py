@@ -587,3 +587,104 @@ class MyApplicationsTabsTests(TestCase):
         response = self.client.get(reverse("core:my_applications"), {"page": 2})
         self.assertEqual(response.context["page"].number, 2)
         self.assertEqual(len(response.context["apps"]), 1)
+
+
+class BulkJobsTests(TestCase):
+    def setUp(self):
+        self.employer = make_profile("bulk-emp@example.com", role="employer")
+        self.jobs = [
+            make_job(self.employer, work_type="Bulk %d" % i) for i in range(3)
+        ]
+        self.client.force_login(self.employer)
+
+    def test_cancel_restore_delete(self):
+        ids = [str(job.pk) for job in self.jobs[:2]]
+        self.client.post(
+            reverse("core:my_jobs_bulk"), {"action": "cancel", "job_ids": ids}
+        )
+        self.assertEqual(
+            Job.objects.filter(pk__in=ids, status="cancelled").count(), 2
+        )
+        self.client.post(
+            reverse("core:my_jobs_bulk"), {"action": "restore", "job_ids": ids}
+        )
+        self.assertEqual(Job.objects.filter(pk__in=ids, status="open").count(), 2)
+        self.client.post(
+            reverse("core:my_jobs_bulk"),
+            {"action": "delete", "job_ids": [ids[0]]},
+        )
+        self.assertFalse(Job.objects.filter(pk=ids[0]).exists())
+
+    def test_stranger_ids_ignored(self):
+        other = make_profile("bulk-other@example.com", role="employer")
+        stranger = make_job(other, work_type="Чужое")
+        self.client.post(
+            reverse("core:my_jobs_bulk"),
+            {"action": "delete", "job_ids": [str(stranger.pk)]},
+        )
+        self.assertTrue(Job.objects.filter(pk=stranger.pk).exists())
+
+    def test_malformed_ids_do_not_500(self):
+        response = self.client.post(
+            reverse("core:my_jobs_bulk"),
+            {"action": "cancel", "job_ids": ["not-a-uuid", ""]},
+        )
+        self.assertEqual(response.status_code, 302)
+
+
+class BulkApplicationsTests(TestCase):
+    def setUp(self):
+        self.employer = make_profile("bulk-app-emp@example.com", role="employer")
+        self.worker = make_profile("bulk-app-worker@example.com", role="worker")
+        self.jobs = [
+            make_job(self.employer, work_type="BulkApp %d" % i) for i in range(2)
+        ]
+        self.apps = [
+            Application.objects.create(job=job, worker=self.worker, status="pending")
+            for job in self.jobs
+        ]
+        self.client.force_login(self.employer)
+
+    def test_accept_reject_reopen(self):
+        ids = [str(app.pk) for app in self.apps]
+        self.client.post(
+            reverse("core:my_applications_bulk"),
+            {"action": "accept", "app_ids": ids},
+        )
+        self.assertEqual(
+            Application.objects.filter(pk__in=ids, status="accepted").count(), 2
+        )
+        self.assertEqual(
+            Job.objects.filter(pk__in=[j.pk for j in self.jobs], current_workers=1).count(),
+            2,
+        )
+        self.client.post(
+            reverse("core:my_applications_bulk"),
+            {"action": "reject", "app_ids": ids},
+        )
+        self.assertEqual(
+            Application.objects.filter(pk__in=ids, status="rejected").count(), 2
+        )
+        self.client.post(
+            reverse("core:my_applications_bulk"),
+            {"action": "reopen", "app_ids": ids},
+        )
+        self.assertEqual(
+            Application.objects.filter(pk__in=ids, status="accepted").count(), 2
+        )
+        self.assertTrue(
+            NotificationOutbox.objects.filter(
+                user=self.worker, type="application_accepted"
+            ).exists()
+        )
+
+    def test_worker_cannot_bulk_received(self):
+        ids = [str(app.pk) for app in self.apps]
+        self.client.force_login(self.worker)
+        self.client.post(
+            reverse("core:my_applications_bulk"),
+            {"action": "accept", "app_ids": ids},
+        )
+        self.assertEqual(
+            Application.objects.filter(pk__in=ids, status="pending").count(), 2
+        )

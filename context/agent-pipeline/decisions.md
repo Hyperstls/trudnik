@@ -559,3 +559,17 @@ Append-only: решения и измерения. Числа, команды, �
 **Кто:** Hyperstls
 
 Ревью PASS. CSS-дрейф обойдён штатным --skip-scope (сгенерированный tailwind.min.css после правки шаблонов), след в state/progress/decisions. Bulk-операции остаются на J009.
+
+## 2026-10-31 22:37:03 — J009: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J009.review.prompt.md
+
+## 2026-10-31 22:37:03 — J009: заметка
+
+**Кто:** Hyperstls
+
+Ревью PASS. Bulk duplicate не входит (нужен вынос repost-хелпера); UI-панель массовых действий — J010.
