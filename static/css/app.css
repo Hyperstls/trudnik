@@ -718,3 +718,10 @@ progress::-moz-progress-bar {
     background: #d97706;
     border-radius: 9999px;
 }
+
+/* Utilities missing from the purged Tailwind build (newer templates use them). */
+.w-36 { width: 9rem; }
+.w-44 { width: 11rem; }
+.hover\:bg-green-50:hover { background-color: #f0fdf4; }
+.hover\:bg-red-50:hover { background-color: #fef2f2; }
+.-mb-px { margin-bottom: -1px; }

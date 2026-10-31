@@ -1,0 +1,44 @@
+{
+  "id": "J015",
+  "title": "Косметика: label reopen и недостающие CSS-утилиты",
+  "goal": "Кнопка reopen у rejected-отклика подписана «Принять повторно»; в app.css добавлены недостающие утилиты w-36, w-44, hover:bg-green-50, hover:bg-red-50, -mb-px.",
+  "why": "После J006 кнопка всё ещё «Вернуть», хотя reopen принимает отклик. Прод-tailwind.min.css не содержит w-36/w-44 (J013/J014) и hover-оттенков/-mb-px (J010), из-за чего новые элементы выглядят иначе. Полная перезаливка 45 КБ tailwind не нужна — хватает 5 утилит в app.css.",
+  "files": [
+    "static/css/app.css",
+    "djadmin/core/templates/core/job_applicants.html",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "static/css/tailwind.min.css",
+    "djadmin/core/templates/core/my_applications.html"
+  ],
+  "interfaces": "app.css: в конец добавить .w-36{width:9rem}.w-44{width:11rem}.hover\\:bg-green-50:hover{background-color:#f0fdf4}.hover\\:bg-red-50:hover{background-color:#fef2f2}.-mb-px{margin-bottom:-1px}. job_applicants.html: текст кнопки reopen 'Принять повторно' (вместо 'Вернуть'). Тест ApplicationFlowTests.test_applicants_reopen_label: rejected Application -> owner GET job_applicants -> assertContains 'Принять повторно'.",
+  "acceptance": [
+    "На странице откликов rejected-отклик имеет кнопку «Принять повторно».",
+    "app.css содержит w-36, w-44, hover:bg-green-50, hover:bg-red-50, -mb-px.",
+    "ApplicationFlowTests проходит.",
+    "pre_deploy_check 7/7 (tailwind freshness не ломается)."
+  ],
+  "out_of_scope": [
+    "Не пересобирать/не перезаливать tailwind.min.css.",
+    "Не менять бизнес-логику reopen/RPC.",
+    "Не менять другие шаблоны."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "flow_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows.ApplicationFlowTests --keepdb -v 1",
+      "cwd": "."
+    },
+    {
+      "name": "pre_deploy",
+      "cmd": "{python} scripts/pre_deploy_check.py",
+      "cwd": "."
+    }
+  ]
+}

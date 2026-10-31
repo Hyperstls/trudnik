@@ -446,6 +446,19 @@ class ApplicationFlowTests(TestCase):
         )
         self.assertEqual(row.status, "pending")
 
+    def test_applicants_reopen_label(self):
+        self.client.post(reverse("core:job_apply", args=[self.job.pk]))
+        app = Application.objects.get(job=self.job, worker=self.worker)
+        self.client.force_login(self.employer)
+        self.client.post(reverse("core:application_action", args=[app.pk, "reject"]))
+        app.refresh_from_db()
+        self.assertEqual(app.status, "rejected")
+        response = self.client.get(reverse("core:job_applicants", args=[self.job.pk]))
+        self.assertContains(response, "Принять повторно", count=1)
+        self.assertContains(
+            response, reverse("core:application_action", args=[app.pk, "reopen"])
+        )
+
     def test_reopen_accepts_rejected(self):
         self.client.post(reverse("core:job_apply", args=[self.job.pk]))
         app = Application.objects.get(job=self.job, worker=self.worker)

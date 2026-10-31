@@ -675,3 +675,17 @@ CSS-дрейф обойдён skip-scope (сгенерированный tailwin
 **Кто:** Hyperstls
 
 P2-02 частично: count/favorite/report/share. CSS-дрейф skip-scope (w-44).
+
+## 2026-11-01 00:55:49 — J015: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J015.review.prompt.md
+
+## 2026-11-01 00:55:49 — J015: заметка
+
+**Кто:** Hyperstls
+
+Косметика закрыта: label + w-36/w-44/hover:bg-green-50/hover:bg-red-50/-mb-px в app.css; tailwind.min.css не перезаливался.
