@@ -30,6 +30,7 @@ from django.views.decorators.http import require_POST
 from .auth_backend import LOCKOUT_TEXT, ProfileBackend
 from .forms import JobForm, LoginForm
 from .models import Application, Job, JobFavorite
+from .notifications import enqueue_notification
 from .ratelimit import RateLimitExceeded, RateLimitUnavailable, enforce_ip_limit, rate_limit_write
 from .rpc import call_rpc, sync_job_skills_raw
 
@@ -215,7 +216,18 @@ def job_apply(request, job_id):
         messages.error(request, "Задание не найдено или отклик невозможен.")
         return redirect("core:jobs")
     result = call_rpc("apply_job_atomic", job.pk, request.user.pk) or {}
-    _rpc_message(request, result, "Отклик отправлен.")
+    ok = _rpc_message(request, result, "Отклик отправлен.")
+    if ok:
+        enqueue_notification(
+            job.employer_id, "application_received", "Новый отклик",
+            "На ваше задание поступил новый отклик",
+            {
+                "job_id": str(job.pk),
+                "link": request.build_absolute_uri(
+                    reverse("core:job_detail", args=[job.pk])
+                ),
+            },
+        )
     return redirect("core:job_detail", job_id=job.pk)
 
 
@@ -293,7 +305,21 @@ def application_action(request, app_id, action):
             else:
                 messages.error(request, "Вернуть можно только отклонённый отклик.")
             return redirect("core:job_applicants", job_id=job.pk)
-    _rpc_message(request, result, ok_text)
+    ok = _rpc_message(request, result, ok_text)
+    if ok and action in ("accept", "reject"):
+        accepted = action == "accept"
+        enqueue_notification(
+            application.worker_id,
+            "application_accepted" if accepted else "application_rejected",
+            "Отклик принят" if accepted else "Отклик отклонён",
+            "Ваш отклик на задание #%s был %s" % (
+                job.pk, "принят" if accepted else "отклонён",
+            ),
+            {
+                "job_id": str(job.pk),
+                "link": request.build_absolute_uri(reverse("core:my_applications")),
+            },
+        )
     return redirect("core:job_applicants", job_id=job.pk)
 
 

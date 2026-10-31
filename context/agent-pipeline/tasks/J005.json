@@ -1,0 +1,42 @@
+{
+  "id": "J005",
+  "title": "JOB-P1-07: outbox-уведомления apply/accept/reject",
+  "goal": "Успешный отклик создаёт outbox-уведомление работодателю (application_received); accept/reject создают уведомления работнику (application_accepted/application_rejected). Сбой enqueue не ломает действие.",
+  "why": "Flask applications.py:70-79,583-589,619-625 после успешной RPC вызывает enqueue_notification (transactional outbox). Django views_flow.py выполняет RPC, но outbox-запись не создаёт (JOB-P1-07); drain_notification_outbox уже готов и ждёт строк.",
+  "files": [
+    "djadmin/core/notifications.py",
+    "djadmin/core/views_flow.py",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/tasks.py",
+    "djadmin/core/models.py",
+    "docs/parity/DISCREPANCIES_JOBS.md"
+  ],
+  "interfaces": "notifications.py: enqueue_notification(user_id, type, title, body='', data=None) -> bool; type[:50], title[:255], data or {}; NotificationOutbox.objects.create(status='pending'); любое исключение логируется и возвращает False (действие пользователя не падает). views_flow.job_apply: result=call_rpc(apply_job_atomic) or {}; ok=_rpc_message(...); если ok и result.get('employer_id') -> enqueue_notification(employer_id,'application_received','Новый отклик','На ваше задание поступил новый отклик',{'job_id': str(job.pk),'link': request.build_absolute_uri(reverse('core:job_detail', args=[job.pk]))}). application_action accept/reject: после ok и при action in ('accept','reject') -> enqueue_notification(application.worker_id, 'application_accepted'|'application_rejected', 'Отклик принят'|'Отклонён', 'Ваш отклик на задание #<pk> был принят|отклонён', {'job_id': str(job.pk),'link': request.build_absolute_uri(reverse('core:my_applications'))}). Тесты: test_apply_enqueues_notification (pending, получатель employer, data.job_id), test_accept_enqueues_notification (worker), test_reject_enqueues_notification (worker), test_failed_apply_no_notification (own_job → нет строк).",
+  "acceptance": [
+    "После успешного apply появляется NotificationOutbox(status=pending, user=employer, type=application_received, data.job_id).",
+    "После accept появляется application_accepted для worker.",
+    "После reject появляется application_rejected для worker.",
+    "Неуспешный отклик (own_job) не создаёт outbox-строку.",
+    "Сбой enqueue логируется и не меняет ответ пользователю.",
+    "core.tests.test_flows.ApplicationFlowTests проходит."
+  ],
+  "out_of_scope": [
+    "Не менять drain_notification_outbox, модель и SQL.",
+    "Не добавлять bulk_apply-уведомления (JOB-P2-05).",
+    "Не менять шаблоны/UI уведомлений."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/notifications.py djadmin/core/views_flow.py djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "flow_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows.ApplicationFlowTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

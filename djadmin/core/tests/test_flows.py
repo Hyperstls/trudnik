@@ -11,7 +11,7 @@ from django.utils import timezone
 
 from core.admin.jobs import JobAdmin
 from core.forms import JobForm
-from core.models import Application, Blacklist, Job, JobFavorite, Profile, Skill
+from core.models import Application, Blacklist, Job, JobFavorite, NotificationOutbox, Profile, Skill
 from core.tests.test_auth import make_profile
 
 
@@ -301,6 +301,41 @@ class ApplicationFlowTests(TestCase):
         app = Application.objects.get(job=self.job, worker=self.worker)
         self.assertEqual(app.status, "pending")
 
+    def test_apply_enqueues_notification(self):
+        self.client.post(reverse("core:job_apply", args=[self.job.pk]))
+        row = NotificationOutbox.objects.get(
+            user=self.employer, type="application_received"
+        )
+        self.assertEqual(row.status, "pending")
+        self.assertEqual(row.data["job_id"], str(self.job.pk))
+
+    def test_failed_apply_no_notification(self):
+        self.client.force_login(self.employer)
+        self.client.post(reverse("core:job_apply", args=[self.job.pk]))
+        self.assertFalse(
+            NotificationOutbox.objects.filter(
+                user=self.employer, type="application_received"
+            ).exists()
+        )
+
+    def test_enqueue_failure_does_not_break_apply(self):
+        from unittest import mock
+
+        with mock.patch(
+            "core.notifications.NotificationOutbox.objects.create",
+            side_effect=RuntimeError("outbox down"),
+        ):
+            response = self.client.post(reverse("core:job_apply", args=[self.job.pk]))
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            Application.objects.filter(job=self.job, worker=self.worker).exists()
+        )
+        self.assertFalse(
+            NotificationOutbox.objects.filter(
+                user=self.employer, type="application_received"
+            ).exists()
+        )
+
     def test_cannot_apply_to_own_job(self):
         self.client.force_login(self.employer)
         self.client.post(reverse("core:job_apply", args=[self.job.pk]))
@@ -339,6 +374,26 @@ class ApplicationFlowTests(TestCase):
         self.job.refresh_from_db()
         self.assertEqual(app.status, "accepted")
         self.assertEqual(self.job.current_workers, 1)
+
+    def test_accept_enqueues_notification(self):
+        self.client.post(reverse("core:job_apply", args=[self.job.pk]))
+        app = Application.objects.get(job=self.job, worker=self.worker)
+        self.client.force_login(self.employer)
+        self.client.post(reverse("core:application_action", args=[app.pk, "accept"]))
+        row = NotificationOutbox.objects.get(
+            user=self.worker, type="application_accepted"
+        )
+        self.assertEqual(row.status, "pending")
+
+    def test_reject_enqueues_notification(self):
+        self.client.post(reverse("core:job_apply", args=[self.job.pk]))
+        app = Application.objects.get(job=self.job, worker=self.worker)
+        self.client.force_login(self.employer)
+        self.client.post(reverse("core:application_action", args=[app.pk, "reject"]))
+        row = NotificationOutbox.objects.get(
+            user=self.worker, type="application_rejected"
+        )
+        self.assertEqual(row.status, "pending")
 
     def test_reject_then_reopen(self):
         self.client.post(reverse("core:job_apply", args=[self.job.pk]))

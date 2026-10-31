@@ -487,3 +487,17 @@ Append-only: решения и измерения. Числа, команды, �
 **Кто:** Hyperstls
 
 **Пакет:** context/agent-pipeline/packs/J004T.review.prompt.md
+
+## 2026-10-31 21:55:05 — J005: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J005.review.prompt.md
+
+## 2026-10-31 21:55:06 — J005: заметка
+
+**Кто:** Hyperstls
+
+Ревью PASS. Некритично: assertLogs для ветки логирования; идемпотентность reject→reopen→reject (каждая строка = реальный переход) — вынести при необходимости exactly-once.

@@ -7,7 +7,9 @@
 (stop-words/дата/диапазоны, field-level ошибки; 11 JobCrudTests + 26 test_flows OK).
 JOB-P1-04/05 исправлены J003 (expires_at=now+30d, окно отзыва 12 ч для accepted).
 JOB-P1-06/08 исправлены J004 (каталог open/completed + blacklist; call_rpc
-разворачивает jsonb/boolean, русские коды ошибок). Полный core-набор — 247 OK.
+разворачивает jsonb/boolean, русские коды ошибок).
+JOB-P1-07 исправлен J005 (outbox: application_received/accepted/rejected,
+savepoint + fail-open). Полный core-набор — 252 OK.
 Остальные пункты открыты.
 
 ## P0
