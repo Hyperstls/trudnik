@@ -19,6 +19,26 @@ Django 5.2 LTS поверх общей БД PostgreSQL. Полностью за�
 - **Прод деплоится из master** репо Amvera: `git push amvera-msk1 main-jango:master --force` + `rebuildProject` (MCP) — смена ветки в ЛК НЕ работает.
 - Откат на Flask: `git push amvera-msk1 9b3ed42:master --force` + restart.
 
+## Ветки и релизы (политика)
+
+| Ветка | Роль |
+|---|---|
+| **main** | Единственный источник истины (стабильный Django). Сюда идут релизы. |
+| **main-jango** | Рабочая ветка активной миграции; синхронизируется с main после каждой фазы. |
+| **master** (репо Amvera) | Деплой-зеркало: Amvera собирает ТОЛЬКО master (смена ветки в ЛК не работает). |
+| **main-flask** | Архив Flask-версии (эталон UX/UI, контрактов и отката). Не удалять. |
+
+Поток релиза:
+1) работа в `main-jango` → тесты (185) → `git push origin main-jango:main`
+2) деплой: `git push amvera-msk1 main-jango:master --force` → `rebuildProject` (MCP)
+3) тег версии: `git tag vX.Y.Z-django && git push origin vX.Y.Z-django`
+
+После завершения миграции новые изменения допускается вести напрямую в `main`
+(релизный шаг 2–3 не меняется). `main-jango` можно удалить, когда main
+перестанет требовать синхронизации (решение владельца).
+
+Откат на Flask: `git push amvera-msk1 9b3ed42:master --force` + restart.
+
 ## Локальный запуск и тесты
 
 ```bash
