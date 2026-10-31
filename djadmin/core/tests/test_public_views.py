@@ -1,16 +1,19 @@
 """Публичные read-only страницы + health."""
 from datetime import timedelta
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import Http404
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from core import views
-from core.models import Job, Religion, SitePage
+from core.models import Blacklist, Job, JobPhoto, Religion, SitePage
+from core.storage import resolve_upload_url, save_upload
 from core.tests.test_auth import make_profile
 
 CONTACTS_AFTER_RESPONSE_TEXT = "Контакты открываются после отклика на задание."
+PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"0" * 16
 
 
 class PublicViewsTests(TestCase):
@@ -49,6 +52,61 @@ class PublicViewsTests(TestCase):
         self.assertContains(self.client.get("/jobs?city=москва"), "Уборка территории")
         self.assertContains(self.client.get("/jobs?payment_min=1000"), "Уборка территории")
         self.assertNotIn("Уборка территории".encode(), self.client.get("/jobs?payment_min=9999").content)
+
+    def test_jobs_list_shows_jobphoto(self):
+        JobPhoto.objects.create(
+            job=self.job, photo_url="/uploads/jobs/card.png", order_num=0
+        )
+        self.assertContains(self.client.get("/jobs"), "/uploads/jobs/card.png")
+
+    def test_job_detail_legacy_photo_fallback(self):
+        self.job.photo_urls = ["/uploads/jobs/legacy.png"]
+        self.job.save(update_fields=["photo_urls"])
+        self.assertContains(
+            self.client.get(f"/jobs/{self.job.pk}"), "/uploads/jobs/legacy.png"
+        )
+
+    def test_photo_upload_limit_three(self):
+        self.client.force_login(self.employer)
+        for i in range(3):
+            JobPhoto.objects.create(
+                job=self.job, photo_url=f"/uploads/jobs/{i}.png", order_num=i
+            )
+        file = SimpleUploadedFile("p.png", PNG_BYTES, content_type="image/png")
+        response = self.client.post(
+            reverse("core:job_photo_upload", args=[self.job.pk]),
+            {"photo": file}, follow=True,
+        )
+        self.assertContains(response, "не более 3 фото")
+        self.assertEqual(JobPhoto.objects.filter(job=self.job).count(), 3)
+
+    def test_photo_delete_removes_file(self):
+        self.client.force_login(self.employer)
+        url = save_upload(
+            SimpleUploadedFile("p.png", PNG_BYTES, content_type="image/png"), "jobs"
+        )
+        photo = JobPhoto.objects.create(job=self.job, photo_url=url, order_num=0)
+        self.client.post(
+            reverse("core:job_photo_delete", args=[self.job.pk, photo.pk])
+        )
+        self.assertFalse(JobPhoto.objects.filter(pk=photo.pk).exists())
+        self.assertIsNone(resolve_upload_url(url[len("/uploads/"):]))
+
+    def test_photo_delete_keeps_shared_file(self):
+        self.client.force_login(self.employer)
+        url = save_upload(
+            SimpleUploadedFile("p.png", PNG_BYTES, content_type="image/png"), "jobs"
+        )
+        other = Job.objects.create(
+            employer=self.employer, work_type="Копия", status="open",
+            date_time=timezone.now() + timedelta(days=2),
+        )
+        photo = JobPhoto.objects.create(job=self.job, photo_url=url, order_num=0)
+        JobPhoto.objects.create(job=other, photo_url=url, order_num=0)
+        self.client.post(
+            reverse("core:job_photo_delete", args=[self.job.pk, photo.pk])
+        )
+        self.assertIsNotNone(resolve_upload_url(url[len("/uploads/"):]))
 
     def test_job_detail_ok_and_hidden_404(self):
         self.assertEqual(self.client.get(f"/jobs/{self.job.pk}").status_code, 200)

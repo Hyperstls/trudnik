@@ -5,7 +5,7 @@
 .accepted-badge, .contact-btn) — из static/css/app.css (Flask-оригинал).
 {% endcomment %}
 <article class="card bg-white rounded-2xl shadow-sm border border-neutral-200 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group fade-in{% if applied_ids and job.pk|stringformat:"s" in applied_ids %} applied{% endif %}" data-job-id="{{ job.pk }}">
-    {% with photo=job.photo_urls.0 %}
+    {% with photo=job.display_photo_urls.0 %}
     {% if photo %}
     <a href="{% url 'core:job_detail' job.pk %}" class="block aspect-video bg-neutral-100 overflow-hidden" tabindex="-1" aria-hidden="true">
         <img src="{{ photo }}" alt="" loading="lazy" decoding="async" class="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-200">

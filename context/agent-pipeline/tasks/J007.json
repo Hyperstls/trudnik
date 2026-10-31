@@ -1,0 +1,44 @@
+{
+  "id": "J007",
+  "title": "JOB-P1-11: единый массив фото задания",
+  "goal": "Лента и detail используют один массив фото: JobPhoto + legacy photo_urls (без дублей), максимум 3; новые фото видны в ленте; удаление JobPhoto удаляет файл только если на него больше нет ссылок.",
+  "why": "Flask хранит фото в jobs.photo_urls (≤3) и показывает их везде. Django раздвоил хранение: лента читает legacy photo_urls, detail — JobPhoto, лимита 3 нет, delete не удаляет файл (JOB-P1-11). Repost (J006) копирует JobPhoto-ссылки на те же файлы, поэтому удаление обязано учитывать shared-ссылки.",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/views_public_ext.py",
+    "djadmin/core/templates/core/_job_card.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/storage.py",
+    "djadmin/core/models.py",
+    "docs/parity/DISCREPANCIES_JOBS.md"
+  ],
+  "interfaces": "views.py: job_photo_urls(job, limit=None) -> list[str]: [p.photo_url for p in job.photos.all() if p.photo_url] + [u for u in (job.photo_urls or []) if u and u not in photos]; limit применяется после объединения. jobs_list: qs.prefetch_related('photos'); после Paginator для каждого job в page.object_list задать job.display_photo_urls=job_photo_urls(job, limit=3). job_detail: photos=[(i,_abs(url)) for i,url in enumerate(job_photo_urls(job, limit=3))]. views_public_ext: from .views import job_photo_urls; from .storage import delete_upload_url. job_photo_upload: если len(job_photo_urls(job)) >= 3 -> messages.error('Можно добавить не более 3 фото.') и redirect. job_photo_delete: найти JobPhoto по pk/job/owner; url=photo.photo_url; photo.delete(); удалить файл только если JobPhoto.objects.filter(photo_url=url).exists()==False и Job.objects.filter(photo_urls__contains=[url]).exists()==False. _job_card.html: {% with photo=job.display_photo_urls.0 %}. Тесты PublicViewsTests: test_jobs_list_shows_jobphoto; test_job_detail_legacy_photo_fallback; test_photo_upload_limit_three; test_photo_delete_removes_file; test_photo_delete_keeps_shared_file (2 JobPhoto на один URL в разных заданиях).",
+  "acceptance": [
+    "Лента показывает первое JobPhoto, если оно есть.",
+    "Detail показывает legacy photo_urls при отсутствии JobPhoto.",
+    "Лента/detail отдают не более 3 фото без дублей.",
+    "Загрузка 4-го фото отклоняется сообщением, count не растёт.",
+    "Удаление JobPhoto удаляет файл с диска.",
+    "Удаление одной из двух ссылок на общий файл оставляет файл (refcount).",
+    "core.tests.test_public_views.PublicViewsTests проходит."
+  ],
+  "out_of_scope": [
+    "Не менять модель JobPhoto и SQL.",
+    "Не добавлять отображение legacy-фото в форме редактирования (отдельная задача).",
+    "Не менять repost/удаление аккаунта."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views.py djadmin/core/views_public_ext.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views.PublicViewsTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

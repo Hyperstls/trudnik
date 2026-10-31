@@ -523,3 +523,17 @@ Append-only: решения и измерения. Числа, команды, �
 **Кто:** Hyperstls
 
 Ревью PASS. Некритично: direct POST /reopen/ для pending разрешён RPC (как Flask), шаблон показывает кнопку только для rejected; повторный reopen даёт bad_status без роста счётчика.
+
+## 2026-10-31 22:16:30 — J007: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J007.review.prompt.md
+
+## 2026-10-31 22:16:30 — J007: заметка
+
+**Кто:** Hyperstls
+
+Ревью PASS. Некритично: дедуп только между JobPhoto и legacy; _job_card используется только в jobs_list; delete_upload_url уже защищён от traversal/не-/uploads.

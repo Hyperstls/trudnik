@@ -19,7 +19,8 @@ from django.views.decorators.http import require_POST
 
 from .models import Application, Invitation, Job, JobPhoto, Profile, Rating, UserReport
 from .rpc import call_rpc
-from .storage import UploadError, save_upload
+from .storage import UploadError, delete_upload_url, save_upload
+from .views import job_photo_urls
 
 BULK_LIMIT = 20
 
@@ -144,6 +145,9 @@ def job_photo_upload(request, job_id):
     job = Job.objects.filter(pk=job_id, employer=request.user).first()
     if job is None:
         raise Http404("Задание не найдено")
+    if len(job_photo_urls(job)) >= 3:
+        messages.error(request, "Можно добавить не более 3 фото.")
+        return redirect("core:job_edit", job_id=job.pk)
     file = request.FILES.get("photo")
     if file is None:
         messages.error(request, "Файл не выбран.")
@@ -162,8 +166,19 @@ def job_photo_upload(request, job_id):
 @login_required
 @require_POST
 def job_photo_delete(request, job_id, photo_id):
-    deleted, _ = JobPhoto.objects.filter(pk=photo_id, job_id=job_id, job__employer=request.user).delete()
-    if deleted:
+    photo = JobPhoto.objects.filter(
+        pk=photo_id, job_id=job_id, job__employer=request.user
+    ).first()
+    if photo:
+        url = photo.photo_url
+        photo.delete()
+        # Файл общий, если на него ссылаются другие JobPhoto/legacy photo_urls.
+        still_used = (
+            JobPhoto.objects.filter(photo_url=url).exists()
+            or Job.objects.filter(photo_urls__contains=[url]).exists()
+        )
+        if not still_used:
+            delete_upload_url(url)
         messages.info(request, "Фото удалено.")
     return redirect("core:job_edit", job_id=job_id)
 

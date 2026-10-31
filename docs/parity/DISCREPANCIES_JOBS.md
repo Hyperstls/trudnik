@@ -11,7 +11,9 @@ JOB-P1-06/08 исправлены J004 (каталог open/completed + blacklis
 JOB-P1-07 исправлен J005 (outbox: application_received/accepted/rejected,
 savepoint + fail-open).
 JOB-P1-12/13 исправлены J006 (reopen через accept-RPC; repost копирует фото
-и ставит expires_at, всё в транзакции). Полный core-набор — 254 OK.
+и ставит expires_at, всё в транзакции).
+JOB-P1-11 исправлен J007 (JobPhoto+legacy, лимит 3, фото в ленте,
+удаление файла с refcount). Полный core-набор — 259 OK.
 Остальные пункты открыты.
 
 ## P0

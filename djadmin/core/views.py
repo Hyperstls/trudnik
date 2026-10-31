@@ -39,6 +39,13 @@ def _abs(url: str | None) -> str:
     return (settings.WORKER_SITE_URL + url) if settings.WORKER_SITE_URL else url
 
 
+def job_photo_urls(job, limit: int | None = None) -> list[str]:
+    """Единый массив фото: JobPhoto + legacy photo_urls (без дублей, ≤limit)."""
+    photos = [p.photo_url for p in job.photos.all() if p.photo_url]
+    urls = photos + [u for u in (job.photo_urls or []) if u and u not in photos]
+    return urls[:limit] if limit is not None else urls
+
+
 def health(request):
     """Healthcheck платформы: БД обязательна, деградация → 503."""
     try:
@@ -63,9 +70,9 @@ def _promoted_first():
 
 
 def jobs_list(request):
-    qs = Job.objects.filter(status__in=PUBLIC_STATUSES).select_related("employer").order_by(
-        _promoted_first(), "-created_at"
-    )
+    qs = Job.objects.filter(status__in=PUBLIC_STATUSES).select_related("employer").prefetch_related(
+        "photos"
+    ).order_by(_promoted_first(), "-created_at")
     if request.user.is_authenticated:
         # Blacklist до пагинации: задания работодателей, заблокировавших пользователя.
         blocked_employer_ids = Blacklist.objects.filter(
@@ -105,6 +112,8 @@ def jobs_list(request):
         sort = "newest"
 
     page = Paginator(qs, PAGE_SIZE).get_page(request.GET.get("page"))
+    for job in page.object_list:
+        job.display_photo_urls = job_photo_urls(job, limit=3)
     applied_ids = set()
     if request.user.is_authenticated:
         applied_ids = set(
@@ -132,7 +141,7 @@ def job_detail(request, job_id):
         is_owner = job.employer_id == request.user.pk
     if job is None:
         raise Http404("Задание не найдено или недоступно")
-    photos = list(job.photos.all())
+    photos = job_photo_urls(job, limit=3)
     skills = list(job.job_skills.select_related("skill").values_list("skill__name", flat=True))
     my_app = None
     can_withdraw = True
@@ -149,7 +158,7 @@ def job_detail(request, job_id):
         can_withdraw = (job.date_time - timezone.now()).total_seconds() > 12 * 3600
     return render(request, "core/job_detail.html", {
         "job": job,
-        "photos": [(i, _abs(p.photo_url)) for i, p in enumerate(photos)],
+        "photos": [(i, _abs(url)) for i, url in enumerate(photos)],
         "skills": skills,
         "my_app": my_app,
         "can_withdraw": can_withdraw,
