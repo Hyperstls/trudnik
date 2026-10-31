@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends libpq5 supervis
 
 # Код (корневой .dockerignore урезает контекст)
 COPY . .
+COPY supervisord.djadmin.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Белая статика собирается НА СБОРКЕ (не при старте) — старт контейнера ~секунды
 # вместо ~5 минут (collectstatic на /data был главной причиной окна 503 при деплое).
