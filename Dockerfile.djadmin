@@ -42,5 +42,6 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
-# Старт: миграции (обычно «No migrations to apply», секунды) → supervisord.
-CMD ["sh", "-c", "python /app/djadmin/manage.py migrate --noinput && exec supervisord -c /etc/supervisor/conf.d/supervisord.conf"]
+# Старт: опциональный gated SQL-migration runner (MIGRATIONS_ENABLED=true),
+# затем Django migrate и supervisord. Без флага — обычный старт, как раньше.
+CMD ["sh", "-c", "if [ \"$MIGRATIONS_ENABLED\" = \"true\" ]; then python /app/scripts/apply_migrations.py --dry-run && python /app/scripts/apply_migrations.py && python /app/scripts/check_migrations.py || exit 1; fi; python /app/djadmin/manage.py migrate --noinput && exec supervisord -c /etc/supervisor/conf.d/supervisord.conf"]

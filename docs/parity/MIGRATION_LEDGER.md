@@ -52,6 +52,11 @@ DATABASE_ADMIN_URL=postgresql://... python scripts/check_migrations.py
 
 ## Production (Amvera) — что сделать в окно
 
+`Dockerfile.djadmin` содержит gated hook: при `MIGRATIONS_ENABLED=true` контейнер до старта
+выполняет `apply_migrations.py --dry-run` → `apply_migrations.py` → `check_migrations.py`;
+без флага старт обычный. Это позволяет применить миграции одноразовым деплоем без чтения
+секретов из UI.
+
 1. Снапшот/бэкап БД Amvera (или `pg_dump`).
 2. `MIGRATIONS_ENABLED=true DATABASE_ADMIN_URL=... python scripts/apply_migrations.py`
    (роль с DDL-правами; миграция 130 теперь идемпотентна).
