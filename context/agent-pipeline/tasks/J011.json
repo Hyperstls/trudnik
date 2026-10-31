@@ -1,0 +1,40 @@
+{
+  "id": "J011",
+  "title": "JOB-P2-06: удаление файлов фото при удалении задания",
+  "goal": "При удалении задания (одиночном и bulk) удаляются его JobPhoto/legacy-файлы, если на них больше нет ссылок у других заданий; общий файл после repost сохраняется.",
+  "why": "JOB-P2-06: delete_job_cascade удаляет строки БД, но файлы в uploads остаются (152-ФЗ ст.21 — ПДн/контент пользователя). J007 уже умеет refcount-удаление для одного фото; нужно применить при удалении задания.",
+  "files": [
+    "djadmin/core/views_flow.py",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/storage.py",
+    "djadmin/core/views_public_ext.py",
+    "docs/parity/DISCREPANCIES_JOBS.md"
+  ],
+  "interfaces": "views_flow.py: import delete_upload_url from .storage. _delete_job_files(job): urls = [p.photo_url for p in job.photos.all() if p.photo_url] + [u for u in (job.photo_urls or []) if u]; для каждого уникального url: если not JobPhoto.objects.filter(photo_url=url).exists() и not Job.objects.filter(photo_urls__contains=[url]).exists() -> delete_upload_url(url); ошибки удаления файла не ломают RPC (delete_upload_url сам глотает). job_action delete: после успешного RPC вызвать _delete_job_files(job). my_jobs_bulk delete: собрать urls каждого job ДО RPC, после успеха вызвать cleanup (для каждого job). Тесты: test_delete_job_removes_photo_files (save_upload + JobPhoto + legacy, POST delete -> файл отсутствует, resolve_upload_url None); test_delete_job_keeps_shared_photo (один url у двух JobPhoto разных заданий; удалить одно -> файл остался); bulk delete чистит файл.",
+  "acceptance": [
+    "Одиночное удаление задания удаляет его уникальные файлы JobPhoto и legacy photo_urls.",
+    "Общий файл, на который ссылается другое задание, не удаляется.",
+    "Bulk delete также чистит уникальные файлы.",
+    "Ошибки/отсутствие файла не ломают удаление задания.",
+    "ApplicationFlowTests/JobCrudTests и новые тесты проходят."
+  ],
+  "out_of_scope": [
+    "Не менять RPC delete_job_cascade и модель.",
+    "Не чистить файлы при удалении аккаунта (P114 уже есть).",
+    "Не менять шаблоны."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_flow.py djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "flow_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows.JobCrudTests core.tests.test_flows.BulkJobsTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

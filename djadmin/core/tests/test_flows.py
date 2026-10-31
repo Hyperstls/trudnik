@@ -5,6 +5,7 @@
 """
 from datetime import timedelta
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -12,7 +13,10 @@ from django.utils import timezone
 from core.admin.jobs import JobAdmin
 from core.forms import JobForm
 from core.models import Application, Blacklist, Job, JobFavorite, JobPhoto, NotificationOutbox, Profile, Skill
+from core.storage import resolve_upload_url, save_upload
 from core.tests.test_auth import make_profile
+
+TINY_PNG = b"\x89PNG\r\n\x1a\n" + b"0" * 16
 
 
 def make_job(employer, status="open", work_type="Покраска", **kw):
@@ -209,6 +213,29 @@ class JobCrudTests(TestCase):
         self.client.force_login(stranger)
         response = self.client.post(reverse("core:job_action", args=[job.pk, "cancel"]))
         self.assertEqual(response.status_code, 404)
+
+    def test_delete_job_removes_photo_files(self):
+        url = save_upload(
+            SimpleUploadedFile("p.png", TINY_PNG, content_type="image/png"), "jobs"
+        )
+        job = make_job(self.user, work_type="С фото")
+        job.photo_urls = [url]
+        job.save(update_fields=["photo_urls"])
+        JobPhoto.objects.create(job=job, photo_url=url, order_num=0)
+        self.client.post(reverse("core:job_action", args=[job.pk, "delete"]))
+        self.assertFalse(Job.objects.filter(pk=job.pk).exists())
+        self.assertIsNone(resolve_upload_url(url[len("/uploads/"):]))
+
+    def test_delete_job_keeps_shared_photo(self):
+        url = save_upload(
+            SimpleUploadedFile("p.png", TINY_PNG, content_type="image/png"), "jobs"
+        )
+        job = make_job(self.user, work_type="Оригинал")
+        copy = make_job(self.user, work_type="Копия")
+        JobPhoto.objects.create(job=job, photo_url=url, order_num=0)
+        JobPhoto.objects.create(job=copy, photo_url=url, order_num=0)
+        self.client.post(reverse("core:job_action", args=[job.pk, "delete"]))
+        self.assertIsNotNone(resolve_upload_url(url[len("/uploads/"):]))
 
 
 class WithdrawWindowTests(TestCase):
@@ -652,6 +679,33 @@ class BulkJobsTests(TestCase):
             {"action": "cancel", "job_ids": ["not-a-uuid", ""]},
         )
         self.assertEqual(response.status_code, 302)
+
+    def test_bulk_delete_removes_photo_files(self):
+        url = save_upload(
+            SimpleUploadedFile("p.png", TINY_PNG, content_type="image/png"), "jobs"
+        )
+        job = self.jobs[0]
+        JobPhoto.objects.create(job=job, photo_url=url, order_num=0)
+        self.client.post(
+            reverse("core:my_jobs_bulk"),
+            {"action": "delete", "job_ids": [str(job.pk)]},
+        )
+        self.assertFalse(Job.objects.filter(pk=job.pk).exists())
+        self.assertIsNone(resolve_upload_url(url[len("/uploads/"):]))
+
+    def test_bulk_delete_shared_photo_removed_after_last_ref(self):
+        url = save_upload(
+            SimpleUploadedFile("p.png", TINY_PNG, content_type="image/png"), "jobs"
+        )
+        first, second = self.jobs[:2]
+        JobPhoto.objects.create(job=first, photo_url=url, order_num=0)
+        JobPhoto.objects.create(job=second, photo_url=url, order_num=0)
+        self.client.post(
+            reverse("core:my_jobs_bulk"),
+            {"action": "delete", "job_ids": [str(first.pk), str(second.pk)]},
+        )
+        self.assertFalse(Job.objects.filter(pk__in=[first.pk, second.pk]).exists())
+        self.assertIsNone(resolve_upload_url(url[len("/uploads/"):]))
 
 
 class BulkApplicationsTests(TestCase):

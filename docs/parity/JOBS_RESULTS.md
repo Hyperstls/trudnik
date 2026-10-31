@@ -1,10 +1,10 @@
-# Jobs / applications — результаты паритета (J001–J010)
+# Jobs / applications — результаты паритета (J001–J011)
 
 **Дата:** 2026-10-31
 **Ветка:** `feat/agent-pipeline` (Django `main` не менялся)
 **Метод:** контракт → dispatch → verify (exit-код) → независимый pattern-review → done.
-**Итог:** P0 закрыт, все P1 jobs/applications закрыты, кроме bulk duplicate.
-Полный `manage.py test core` — **270 OK**; `pre_deploy_check` — 7/7.
+**Итог:** P0 закрыт, все P1 jobs/applications закрыты, кроме bulk duplicate; P2-06 закрыт.
+Полный `manage.py test core` — **274 OK**; `pre_deploy_check` — 7/7.
 
 ## Контракты
 
@@ -22,6 +22,7 @@
 | **J008** | my-jobs табы + `application_count`; my-applications received/sent + пагинация | PASS | PASS |
 | **J009** | Bulk cancel/restore/delete и accept/reject/reopen, ≤50, ownership, UUID-валидация | PASS | PASS |
 | **J010** | UI-панели массовых действий (HTML5 `form=`, CSRF, только received) | PASS | PASS |
+| **J011** | P2-06: удаление файлов фото при single/bulk delete задания, refcount для общих файлов | PASS | PASS |
 
 ## Ключевая находка контрактной проверки
 
@@ -41,12 +42,11 @@
 | P2-01 каталог (карта/гео/навыки/payment_max/filter new-applied) | open |
 | P2-02 detail (application_count, share/report/favorite employer) | open |
 | P2-05 bulk apply (per-job counts/уведомления) | open |
-| P2-06 удаление файлов при удалении задания | open |
 | P2-09..P2-13 ratings/employers/workers UI | open |
 
 ## Доказательства
 
-- Контракты: `context/agent-pipeline/tasks/J001.json` … `J010.json`.
+- Контракты: `context/agent-pipeline/tasks/J001.json` … `J011.json`.
 - Логи проверок: `context/agent-pipeline/logs/J00*.verify.log`.
 - Решения/заметки: `context/agent-pipeline/decisions.md`.
 - Матрицы: [ROUTES_MATRIX_JOBS.md](ROUTES_MATRIX_JOBS.md),

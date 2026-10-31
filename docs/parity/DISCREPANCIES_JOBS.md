@@ -16,8 +16,10 @@ JOB-P1-11 исправлен J007 (JobPhoto+legacy, лимит 3, фото в л
 удаление файла с refcount).
 JOB-P1-09/10 закрыты J008 (табы/фильтры, application_count, received/sent,
 пагинация), J009 (bulk-backend cancel/restore/delete, accept/reject/reopen,
-≤50, ownership) и J010 (чекбоксы + панели массовых действий). Остаётся
-только bulk duplicate (нужен вынос repost-хелпера). Полный core-набор — 270 OK.
+≤50, ownership) и J010 (чекбоксы + панели массовых действий).
+JOB-P2-06 исправлен J011 (файлы фото удаляются при single/bulk delete,
+refcount для общих файлов). Остаётся bulk duplicate.
+Полный core-набор — 274 OK.
 Остальные пункты открыты.
 
 ## P0

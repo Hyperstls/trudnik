@@ -32,10 +32,11 @@ from django.views.decorators.http import require_POST
 
 from .auth_backend import LOCKOUT_TEXT, ProfileBackend
 from .forms import JobForm, LoginForm
-from .models import Application, Job, JobFavorite
+from .models import Application, Job, JobFavorite, JobPhoto
 from .notifications import enqueue_notification
 from .ratelimit import RateLimitExceeded, RateLimitUnavailable, enforce_ip_limit, rate_limit_write
 from .rpc import call_rpc, sync_job_skills_raw
+from .storage import delete_upload_url
 
 RPC_ERROR_TEXT = {
     "not_found": "Не найдено или недоступно.",
@@ -197,6 +198,24 @@ def my_jobs(request):
     return render(request, "core/my_jobs.html", {"jobs": jobs, "status": status})
 
 
+def _job_file_urls(job) -> list[str]:
+    """Собрать уникальные URL фото задания ДО удаления строк."""
+    urls = [p.photo_url for p in job.photos.all() if p.photo_url]
+    urls += [u for u in (job.photo_urls or []) if u]
+    return list(dict.fromkeys(urls))
+
+
+def _delete_job_files(urls: list[str]) -> None:
+    """Удалить файлы, если на них больше нет ссылок у других заданий."""
+    for url in urls:
+        if (
+            JobPhoto.objects.filter(photo_url=url).exists()
+            or Job.objects.filter(photo_urls__contains=[url]).exists()
+        ):
+            continue
+        delete_upload_url(url)
+
+
 @login_required
 @require_POST
 def job_action(request, job_id, action):
@@ -204,6 +223,7 @@ def job_action(request, job_id, action):
     if action not in ("cancel", "restore", "force_complete", "delete"):
         return HttpResponseNotAllowed(["POST"])
     job = get_object_or_404(Job, pk=job_id, employer=request.user)
+    file_urls = _job_file_urls(job) if action == "delete" else []
     uid = request.user.pk
     if action == "cancel":
         ok = _rpc_message(request, call_rpc("cancel_job_atomic", job.pk, uid) or {}, "Задание отменено.")
@@ -214,6 +234,7 @@ def job_action(request, job_id, action):
     else:  # delete
         ok = _rpc_message(request, call_rpc("delete_job_cascade", job.pk) or {}, "Задание удалено.")
     if action == "delete" and ok:
+        _delete_job_files(file_urls)
         return redirect("core:my_jobs")
     return redirect(_safe_back(request, reverse("core:my_jobs")))
 
@@ -365,7 +386,10 @@ def my_jobs_bulk(request):
     if not job_ids:
         messages.error(request, "Не выбрано ни одного задания.")
         return redirect("core:my_jobs")
-    jobs = list(Job.objects.filter(pk__in=job_ids, employer=request.user))
+    jobs = list(
+        Job.objects.filter(pk__in=job_ids, employer=request.user).prefetch_related("photos")
+    )
+    file_urls = {job.pk: _job_file_urls(job) for job in jobs} if action == "delete" else {}
     done = 0
     for job in jobs:
         if action == "cancel":
@@ -376,6 +400,8 @@ def my_jobs_bulk(request):
             result = call_rpc("delete_job_cascade", job.pk) or {}
         if result.get("success"):
             done += 1
+            if action == "delete":
+                _delete_job_files(file_urls[job.pk])
     if done:
         messages.success(request, "Выполнено: %d." % done)
     failed = len(job_ids) - done
