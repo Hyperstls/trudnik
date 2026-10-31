@@ -82,6 +82,15 @@ class JobCrudTests(TestCase):
             list(job.job_skills.values_list("skill_id", flat=True)), [self.skill.pk]
         )
 
+    def test_create_job_sets_expires_at(self):
+        response = self.client.post(reverse("core:job_create"), self._job_payload())
+        self.assertEqual(response.status_code, 302)
+        job = Job.objects.get(employer=self.user)
+        self.assertIsNotNone(job.expires_at)
+        delta = job.expires_at - timezone.now()
+        self.assertGreater(delta, timedelta(days=29))
+        self.assertLess(delta, timedelta(days=31))
+
     def test_create_job_rejects_past_date(self):
         response = self.client.post(reverse("core:job_create"), self._job_payload(
             date_time=(timezone.now() - timedelta(days=2)).strftime("%Y-%m-%dT%H:%M"),
@@ -163,6 +172,19 @@ class JobCrudTests(TestCase):
         job.refresh_from_db()
         self.assertEqual(job.work_type, "После правки")
 
+    def test_edit_job_refreshes_expires_at(self):
+        job = make_job(self.user, expires_at=timezone.now() - timedelta(days=1))
+        response = self.client.post(reverse("core:job_edit", args=[job.pk]), {
+            "work_type": "После правки", "organization_name": "Храм",
+            "date_time": (timezone.now() + timedelta(days=2)).strftime("%Y-%m-%dT%H:%M"),
+            "skills": [],
+        })
+        self.assertEqual(response.status_code, 302)
+        job.refresh_from_db()
+        delta = job.expires_at - timezone.now()
+        self.assertGreater(delta, timedelta(days=29))
+        self.assertLess(delta, timedelta(days=31))
+
     def test_edit_by_stranger_404(self):
         stranger = make_profile("stranger@example.com")
         job = make_job(self.user)
@@ -187,6 +209,39 @@ class JobCrudTests(TestCase):
         self.client.force_login(stranger)
         response = self.client.post(reverse("core:job_action", args=[job.pk, "cancel"]))
         self.assertEqual(response.status_code, 404)
+
+
+class WithdrawWindowTests(TestCase):
+    """Окно отзыва: принятый отклик блокируется за 12 часов до начала (Flask parity)."""
+
+    def setUp(self):
+        self.employer = make_profile("window-emp@example.com")
+        self.worker = make_profile("window-worker@example.com")
+        self.client.force_login(self.worker)
+
+    def _job_with_app(self, hours, status):
+        job = make_job(
+            self.employer, date_time=timezone.now() + timedelta(hours=hours),
+        )
+        Application.objects.create(job=job, worker=self.worker, status=status)
+        return job
+
+    def test_accepted_inside_12h_disables_withdraw(self):
+        job = self._job_with_app(6, "accepted")
+        response = self.client.get(reverse("core:job_detail", args=[job.pk]))
+        self.assertContains(response, "disabled")
+        self.assertContains(response, "Отзыв недоступен")
+
+    def test_accepted_outside_12h_keeps_withdraw_enabled(self):
+        job = self._job_with_app(24, "accepted")
+        response = self.client.get(reverse("core:job_detail", args=[job.pk]))
+        self.assertNotContains(response, "Отзыв недоступен")
+        self.assertNotContains(response, "disabled")
+
+    def test_pending_inside_12h_not_blocked(self):
+        job = self._job_with_app(6, "pending")
+        response = self.client.get(reverse("core:job_detail", args=[job.pk]))
+        self.assertNotContains(response, "Отзыв недоступен")
 
 
 class ApplicationFlowTests(TestCase):

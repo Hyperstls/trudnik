@@ -419,3 +419,17 @@ Append-only: решения и измерения. Числа, команды, �
 **Кто:** Hyperstls
 
 Два гейта: verify 2/2 (compile, admin_tests 8/8); functional PASS; pattern PASS (XSS/fail-open/N+1; все secret-маркеры маскируются, несекретные видны, staff-only сохранён).
+
+## 2026-10-31 21:20:59 — J003: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J003.review.prompt.md
+
+## 2026-10-31 21:20:59 — J003: заметка
+
+**Кто:** Hyperstls
+
+Ревьюер PASS. Некритичные замечания: (1) assertNotContains('disabled') page-wide — сузить до кнопки; (2) can_withdraw=True при date_time=None — fail-open, но RPC 084 серверно блокирует; (3) pending-тест проверяет отсутствие note, не disabled. Принято без блокировки.

@@ -1,0 +1,43 @@
+{
+  "id": "J003",
+  "title": "JOB-P1-04/05: expires_at 30 дней и окно отзыва 12 часов",
+  "goal": "Задание при создании и редактировании получает expires_at = now + 30 дней; на странице задания для принятого отклика кнопка «Отозвать» блокируется, если до начала менее 12 часов, с пояснением.",
+  "why": "Flask jobs.py:729,1283 ставит expires_at=now+30d; jobs.py:547-556 и job_detail.html показывают can_withdraw=check_withdraw_window(date_time) (12 часов). Django expires_at не пишет и окно в UI не показывает (JOB-P1-04/05). Серверный RPC уже атомарно проверяет 12 часов для accepted (084), поэтому UI должен совпадать с инвариантом.",
+  "files": [
+    "djadmin/core/views_flow.py",
+    "djadmin/core/views.py",
+    "djadmin/core/templates/core/job_detail.html",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES_JOBS.md",
+    "docs/parity/AUDIT_JOBS_APPLICATIONS.md",
+    "migrations/084_fix_withdraw_atomic.sql"
+  ],
+  "interfaces": "views_flow.py: import timedelta, timezone. job_create: job.expires_at = timezone.now() + timedelta(days=30) до save. job_edit: form.save(commit=False), job.expires_at = timezone.now() + timedelta(days=30), job.save(), затем sync_job_skills_raw. views.py job_detail: can_withdraw = True; если my_app есть и job.date_time не None -> (job.date_time - timezone.now()).total_seconds() > 12*3600; передать can_withdraw в контекст. job_detail.html: в ветке my_app.status == 'accepted' кнопка получает disabled title=\"До начала менее 12 часов — отзыв недоступен\" при not can_withdraw; под кнопкой <p ...>Отзыв недоступен: до начала задания осталось менее 12 часов</p>. Для pending кнопка всегда активна (паритет Flask). Тесты: JobCrudTests.test_create_job_sets_expires_at (29..31 день), test_edit_job_refreshes_expires_at; WithdrawWindowTests.test_accepted_inside_12h_disables_withdraw (assertContains 'disabled' и текст), test_accepted_outside_12h_keeps_withdraw_enabled (assertNotContains 'Отзыв недоступен').",
+  "acceptance": [
+    "Созданное задание имеет expires_at в диапазоне now+29d..now+31d.",
+    "Редактирование задания обновляет expires_at до now+29d..now+31d.",
+    "Принятый отклик при старте менее чем через 12 часов: кнопка «Отозвать» disabled и есть пояснение.",
+    "Принятый отклик при старте более чем через 12 часов: кнопка активна, пояснения нет.",
+    "Pending-отклик не блокируется окном (кнопка активна).",
+    "core.tests.test_flows.JobCrudTests и WithdrawWindowTests проходят."
+  ],
+  "out_of_scope": [
+    "Не менять SQL/RPC и модель Job.",
+    "Не менять my_applications.html и repost_job (отдельная задача).",
+    "Не менять серверную проверку RPC 084."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_flow.py djadmin/core/views.py djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "flow_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows.JobCrudTests core.tests.test_flows.WithdrawWindowTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

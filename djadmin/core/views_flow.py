@@ -12,6 +12,8 @@ NB (из ревью B2-7): restore_job_atomic внутри БД сверяет �
 (get_object_or_404(..., employer=request.user)). Не вызывать этот RPC без
 view-проверки владения.
 """
+from datetime import timedelta
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
@@ -21,6 +23,7 @@ from django.db import transaction
 from django.http import Http404, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
@@ -142,6 +145,7 @@ def job_create(request):
             job = form.save(commit=False)
             job.employer = request.user
             job.status = Job.Status.OPEN
+            job.expires_at = timezone.now() + timedelta(days=30)
             job.save()
             sync_job_skills_raw(job.pk, [s.pk for s in form.cleaned_data["skills"]])
         messages.success(request, "Задание создано.")
@@ -156,7 +160,9 @@ def job_edit(request, job_id):
     form = JobForm(request.POST or None, instance=job)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
-            job = form.save()
+            job = form.save(commit=False)
+            job.expires_at = timezone.now() + timedelta(days=30)
+            job.save()
             sync_job_skills_raw(job.pk, [s.pk for s in form.cleaned_data["skills"]])
         messages.success(request, "Задание обновлено.")
         return redirect("core:job_detail", job_id=job.pk)

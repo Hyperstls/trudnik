@@ -123,6 +123,7 @@ def job_detail(request, job_id):
     photos = list(job.photos.all())
     skills = list(job.job_skills.select_related("skill").values_list("skill__name", flat=True))
     my_app = None
+    can_withdraw = True
     is_owner = request.user.is_authenticated and job.employer_id == request.user.pk
     if request.user.is_authenticated and not is_owner:
         my_app = (
@@ -131,11 +132,15 @@ def job_detail(request, job_id):
             .values("id", "status")
             .first()
         )
+    if my_app and job.date_time is not None:
+        # Паритет Flask check_withdraw_window: <12 ч до начала — отзыв недоступен.
+        can_withdraw = (job.date_time - timezone.now()).total_seconds() > 12 * 3600
     return render(request, "core/job_detail.html", {
         "job": job,
         "photos": [(i, _abs(p.photo_url)) for i, p in enumerate(photos)],
         "skills": skills,
         "my_app": my_app,
+        "can_withdraw": can_withdraw,
         "is_owner": is_owner,
         "is_fav": (
             request.user.is_authenticated

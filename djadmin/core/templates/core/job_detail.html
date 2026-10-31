@@ -85,8 +85,12 @@
                 <span class="text-sm text-neutral-500 px-2">Отклик: {{ my_app.status }}.</span>
                 {% if my_app.status == 'pending' or my_app.status == 'accepted' %}
                 <form method="post" action="{% url 'core:job_unapply' job.pk %}">{% csrf_token %}
-                    <button class="px-4 h-10 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 text-sm font-medium transition-colors">Отозвать</button>
+                    <button class="px-4 h-10 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 text-sm font-medium transition-colors"
+                            {% if my_app.status == 'accepted' and not can_withdraw %}disabled title="До начала менее 12 часов — отзыв недоступен"{% endif %}>Отозвать</button>
                 </form>
+                {% if my_app.status == 'accepted' and not can_withdraw %}
+                <p class="text-xs text-neutral-600 mt-2" role="note">Отзыв недоступен: до начала задания осталось менее 12 часов</p>
+                {% endif %}
                 {% endif %}
                 {% elif job.status == 'open' %}
                 <form method="post" action="{% url 'core:job_apply' job.pk %}">{% csrf_token %}
