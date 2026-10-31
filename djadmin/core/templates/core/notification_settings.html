@@ -1,0 +1,35 @@
+{% extends "core/base.html" %}
+{% block title %}Настройки уведомлений — Трудник{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto px-0 py-4 fade-in">
+    <a href="{% url 'core:notifications' %}" class="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 mb-3">
+        <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        Уведомления
+    </a>
+    <div class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5">
+        <h1 class="text-xl font-bold text-neutral-800 mb-4">Настройки уведомлений</h1>
+        <form method="post">
+            {% csrf_token %}
+            <h2 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-2">Каналы</h2>
+            <div class="space-y-2 mb-5">
+                {% for key, label, checked in channels %}
+                <label class="flex items-center gap-2.5 text-sm text-neutral-700 cursor-pointer">
+                    <input type="checkbox" name="{{ key }}" {% if checked %}checked{% endif %} class="rounded border-neutral-300 text-primary-500 focus:ring-primary-500">
+                    {{ label }}
+                </label>
+                {% endfor %}
+            </div>
+            <h2 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-2">Типы</h2>
+            <div class="space-y-2 mb-5">
+                {% for key, label, checked in types %}
+                <label class="flex items-center gap-2.5 text-sm text-neutral-700 cursor-pointer">
+                    <input type="checkbox" name="{{ key }}" {% if checked %}checked{% endif %} class="rounded border-neutral-300 text-primary-500 focus:ring-primary-500">
+                    {{ label }}
+                </label>
+                {% endfor %}
+            </div>
+            <button type="submit" class="w-full px-4 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors shadow-sm">Сохранить</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

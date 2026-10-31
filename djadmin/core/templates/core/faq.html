@@ -1,0 +1,10 @@
+{% extends "core/base.html" %}
+{% block title %}Вопросы и ответы — Трудник{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto px-0 py-4 fade-in">
+    <h1 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-4">Частые вопросы</h1>
+    <div class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 space-y-2">
+        {% include "core/_faq_items.html" %}
+    </div>
+</div>
+{% endblock %}

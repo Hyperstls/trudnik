@@ -15,6 +15,9 @@
     <div class="p-4">
         <a href="{% url 'core:job_detail' job.pk %}" class="block">
             <div class="flex items-start justify-between gap-2">
+                {% if user.is_authenticated and job.employer_id != user.pk %}
+                <input type="checkbox" name="job_ids" value="{{ job.pk }}" form="bulk-form" class="job-checkbox mt-1 rounded border-neutral-300 text-primary-500 focus:ring-primary-500 shrink-0" aria-label="Выбрать задание">
+                {% endif %}
                 <h3 class="font-semibold text-neutral-900 text-base leading-tight line-clamp-1 flex-1 min-w-0">{{ job.work_type|default:job.object_description|truncatechars:60 }}</h3>
                 {% if job.payment_amount %}
                 <span class="bg-primary-500 text-white text-xs font-bold px-2.5 py-1 rounded-lg shadow-sm shrink-0">{{ job.payment_amount }} ₽</span>

@@ -1,0 +1,30 @@
+{% extends "core/base.html" %}
+{% block title %}Работодатели — Трудник{% endblock %}
+{% block content %}
+<div class="px-0 py-4 fade-in">
+    <h2 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-4">Работодатели</h2>
+    <form method="get" class="bg-white rounded-2xl border border-neutral-200 p-4 mb-5 shadow-card flex gap-3 items-end">
+        <label class="text-xs font-medium text-neutral-500 flex-1">Поиск
+            <input type="search" name="q" value="{{ q }}" placeholder="Имя или город…" class="mt-1 w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50">
+        </label>
+        <button type="submit" class="h-10 px-5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold">Найти</button>
+    </form>
+    {% if page.object_list %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for w in page.object_list %}
+        <a href="{% url 'core:employer_detail' w.pk %}" class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-5 hover:shadow-md transition-shadow">
+            <h3 class="font-semibold text-neutral-900 truncate">{{ w.full_name }}</h3>
+            <div class="flex items-center gap-1 mt-0.5">
+                {% for i in "12345" %}{% if forloop.counter0 < w.rating|default:0 %}<span class="text-warning text-xs">★</span>{% else %}<span class="text-neutral-300 text-xs">★</span>{% endif %}{% endfor %}
+                <span class="text-xs text-neutral-400 ml-1">({{ w.total_reviews|default:0 }})</span>
+            </div>
+            {% if w.city %}<p class="text-xs text-neutral-500 mt-1">{{ w.city }}</p>{% endif %}
+            <p class="text-xs text-primary-600 mt-2 font-medium">Открытых заданий: {{ w.open_jobs }}</p>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-neutral-500">Никого не найдено.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -72,3 +72,28 @@ def call_rpc_rows(name: str, *args: Any) -> list[dict]:
             return []
         cols = [d[0] for d in cur.description]
         return [dict(zip(cols, row)) for row in cur.fetchall()]
+
+def call_rpc_as_user(name: str, user_id, *args: Any) -> Any:
+    """Вызов RPC от имени пользователя: SET LOCAL request.jwt.claims в транзакции.
+
+    Контракт: ряд функций (file_report и др.) читает автора из GUC
+    request.jwt.claims (паритет PostgREST + pgrst_pre_request). Прямой вызов
+    из Django без claims вернёт not_authenticated, поэтому claims ставим явно.
+    """
+    import json as _json
+
+    from django.db import transaction
+
+    if not name.replace("_", "").isalnum():
+        raise RpcError("недопустимое имя RPC: %r" % name)
+    claims = _json.dumps({"user_id": str(user_id), "role": "authenticated"})
+    placeholders = ", ".join(["%s"] * len(args))
+    with transaction.atomic():
+        with connection.cursor() as cur:
+            cur.execute("SET LOCAL request.jwt.claims = %s", [claims])
+            cur.execute("SELECT * FROM %s(%s)" % (name, placeholders), args)
+            if cur.description is None:
+                return None
+            cols = [d[0] for d in cur.description]
+            row = cur.fetchone()
+            return dict(zip(cols, row)) if row else None

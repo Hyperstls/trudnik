@@ -68,6 +68,30 @@
         </form>
     </section>
 
+    <!-- Аватар -->
+    <section class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 mb-4">
+        <h2 class="text-base font-bold text-neutral-800 mb-3">Фото профиля</h2>
+        <form method="post" action="{% url 'core:upload_avatar' %}" enctype="multipart/form-data" class="flex flex-wrap gap-2 items-center">
+            {% csrf_token %}
+            <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" required class="text-sm">
+            <button type="submit" class="px-4 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Загрузить</button>
+        </form>
+    </section>
+
+    <!-- Данные и аккаунт (152-ФЗ) -->
+    <section class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 mb-4">
+        <h2 class="text-base font-bold text-neutral-800 mb-3">Данные и аккаунт</h2>
+        <div class="flex flex-wrap gap-2 mb-3">
+            <a href="{% url 'core:export_data' %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Скачать мои данные (JSON)</a>
+            <a href="{% url 'core:notification_prefs' %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Настройки уведомлений</a>
+            <a href="{% url 'core:verify_employer' %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Загрузить документ</a>
+        </div>
+        <form method="post" action="{% url 'core:delete_account' %}" onsubmit="return confirm('Удалить аккаунт безвозвратно? Это действие необратимо.');">
+            {% csrf_token %}
+            <button type="submit" class="px-4 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">Удалить аккаунт</button>
+        </form>
+    </section>
+
     <!-- Верификация -->
     <section class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 mb-4">
         <h2 class="text-base font-bold text-neutral-800 mb-2">Верификация</h2>

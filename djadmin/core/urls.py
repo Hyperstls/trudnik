@@ -1,6 +1,7 @@
 from django.urls import path
 
-from . import views, views_auth, views_flow, views_interact, views_messenger, views_notify, views_profile
+from . import (views, views_auth, views_flow, views_interact, views_messenger,
+               views_notify, views_profile, views_profile_ext, views_public_ext)
 
 app_name = "core"
 
@@ -14,6 +15,9 @@ urlpatterns = [
     path("jobs/<uuid:job_id>/unapply", views_flow.job_unapply, name="job_unapply"),
     path("jobs/<uuid:job_id>/applicants", views_flow.job_applicants, name="job_applicants"),
     path("jobs/<uuid:job_id>/favorite", views_flow.job_favorite_toggle, name="job_favorite_toggle"),
+    path("jobs/<uuid:job_id>/rate-workers", views_public_ext.rate_workers, name="rate_workers"),
+    path("jobs/<uuid:job_id>/photos", views_public_ext.job_photo_upload, name="job_photo_upload"),
+    path("jobs/<uuid:job_id>/photos/<uuid:photo_id>/delete", views_public_ext.job_photo_delete, name="job_photo_delete"),
     path("jobs/<uuid:job_id>/<str:action>", views_flow.job_action, name="job_action"),
     path("applications/<uuid:app_id>/<str:action>", views_flow.application_action, name="application_action"),
     path("workers", views.workers_list, name="workers"),
@@ -35,6 +39,26 @@ urlpatterns = [
     path("chat/<uuid:app_id>/send", views_interact.chat_send, name="chat_send"),
     path("api/messages/<uuid:app_id>/poll", views_interact.chat_poll, name="chat_poll"),
     path("rate/<uuid:app_id>", views_interact.rate_participant, name="rate_participant"),
+    # 152-ФЗ / профиль
+    path("profile/export-data", views_profile_ext.export_data, name="export_data"),
+    path("profile/delete-account", views_profile_ext.delete_account, name="delete_account"),
+    path("profile/<uuid:user_id>/report", views_profile_ext.report_user, name="report_user"),
+    path("profile/avatar", views_profile_ext.upload_avatar, name="upload_avatar"),
+    path("profile/verification-doc", views_profile_ext.upload_verification_doc, name="upload_verification_doc"),
+    path("verify-employer", views_profile_ext.verify_employer, name="verify_employer"),
+    path("notifications/settings", views_profile_ext.notification_prefs, name="notification_prefs"),
+    path("api/notifications/preferences", views_profile_ext.notification_prefs_api, name="notification_prefs_api"),
+    path("uploads/<path:path>", views_profile_ext.serve_upload, name="serve_upload"),
+    # работодатели / оценки / bulk / FAQ / sitemap
+    path("employers", views_public_ext.employers_list, name="employers"),
+    path("employers/<uuid:employer_id>", views_public_ext.employer_detail, name="employer_detail"),
+    path("ratings/user/<uuid:user_id>", views_public_ext.user_ratings, name="user_ratings"),
+    path("apply-selected", views_public_ext.bulk_apply, name="bulk_apply"),
+    path("unapply-selected", views_public_ext.bulk_unapply, name="bulk_unapply"),
+    path("invitations/reject-all", views_public_ext.invitations_reject_all, name="invitations_reject_all"),
+    path("faq", views_public_ext.faq, name="faq"),
+    path("sitemap.xml", views_public_ext.sitemap, name="sitemap"),
+
     path("messenger/start/<str:platform>", views_messenger.start, name="messenger_start"),
     path("messenger/webhook/max", views_messenger.webhook_max, name="messenger_webhook_max"),
     path("messenger/diagnose", views_messenger.diagnose, name="messenger_diagnose"),

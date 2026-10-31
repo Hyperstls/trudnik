@@ -1,0 +1,30 @@
+{% extends "core/base.html" %}
+{% block title %}Оценить работников — Трудник{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto px-0 py-4 fade-in">
+    <h1 class="text-xl font-bold text-neutral-800 mb-1">Оценить работников</h1>
+    <p class="text-sm text-neutral-500 mb-4">{{ job.work_type|default:"Задание" }} · {{ job.get_status_display }}</p>
+    {% if apps %}
+    <div class="grid gap-2">
+        {% for a in apps %}
+        <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <a href="{% url 'core:worker_detail' a.worker.pk %}" class="font-medium text-neutral-800 hover:text-primary-600">{{ a.worker.full_name }}</a>
+                {% if job.status == 'completed' %}
+                <form method="post" action="{% url 'core:rate_participant' a.pk %}" class="flex items-center gap-2">{% csrf_token %}
+                    <select name="rating" class="border border-neutral-200 rounded-xl px-2 py-1.5 text-sm bg-white">
+                        <option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option>
+                    </select>
+                    <input type="text" name="comment" placeholder="Комментарий" class="border border-neutral-200 rounded-xl px-2 py-1.5 text-sm w-40">
+                    <button class="action-icon-btn contact-btn"><span class="text-xs font-medium">Оценить</span></button>
+                </form>
+                {% else %}
+                <span class="text-xs text-neutral-400">Оценка доступна после завершения задания</span>
+                {% endif %}
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}<p class="text-sm text-neutral-500">Нет принятых работников.</p>{% endif %}
+</div>
+{% endblock %}

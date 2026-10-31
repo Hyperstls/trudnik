@@ -69,6 +69,10 @@
                 <form method="post" action="{% url 'core:people_block' p.id %}">{% csrf_token %}
                     <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Заблокировать</span></button>
                 </form>
+                <form method="post" action="{% url 'core:report_user' p.id %}" class="flex items-center gap-2">{% csrf_token %}
+                    <input type="text" name="reason" placeholder="Причина жалобы" maxlength="500" class="border border-neutral-200 rounded-xl px-2 py-1.5 text-sm w-40">
+                    <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Жалоба</span></button>
+                </form>
             </div>
         </div>
         {% endif %}

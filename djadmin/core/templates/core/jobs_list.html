@@ -48,6 +48,28 @@
         {% endfor %}
     </div>
 
+    {% if user.is_authenticated %}
+    <form id="bulk-form" method="post" action="{% url 'core:bulk_apply' %}" class="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white rounded-2xl shadow-lg border border-neutral-200 px-4 py-3 flex items-center gap-3 hidden">
+        {% csrf_token %}
+        <output id="bulk-count" class="text-sm font-semibold text-neutral-600 whitespace-nowrap">0 выбрано</output>
+        <div class="h-6 w-px bg-neutral-200"></div>
+        <button type="submit" class="action-icon-btn accept-btn"><span class="text-xs font-medium">Откликнуться</span></button>
+        <button type="submit" formaction="{% url 'core:bulk_unapply' %}" class="action-icon-btn reject-btn"><span class="text-xs font-medium">Отозвать</span></button>
+    </form>
+    <script>
+    (function(){
+      var bar = document.getElementById('bulk-form');
+      if (!bar) return;
+      function update(){
+        var n = document.querySelectorAll('input.job-checkbox:checked').length;
+        document.getElementById('bulk-count').textContent = n + ' выбрано';
+        bar.classList.toggle('hidden', n === 0);
+      }
+      document.addEventListener('change', function(e){ if (e.target.classList.contains('job-checkbox')) update(); });
+    })();
+    </script>
+    {% endif %}
+
     {% if page.paginator.num_pages > 1 %}
     <nav class="mt-6 flex gap-2 items-center justify-center text-sm" aria-label="Пагинация">
         {% if page.has_previous %}

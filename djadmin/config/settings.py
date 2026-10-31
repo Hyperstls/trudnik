@@ -169,6 +169,8 @@ STORAGES = {
     },
 }
 
+UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "/data/uploads" if PROD else str(BASE_DIR / "_uploads"))
+
 # Абсолютизация /uploads/... (файлы лежат в volume Flask-сервиса).
 WORKER_SITE_URL = os.getenv("WORKER_SITE_URL", "").rstrip("/")
 
