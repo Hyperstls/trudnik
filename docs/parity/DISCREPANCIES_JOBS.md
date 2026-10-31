@@ -1,10 +1,13 @@
 # Расхождения Flask → Django: jobs / applications
 
 **Severity:** P0 — блокер/закон; P1 — высокий; P2 — средний/UX.
-**Статус:** open — аудит. Код не менялся.
+**Статус:** P0 и часть P1 закрыты контрактами; остальное — open.
 **Обновление 2026-10-31:** JOB-P0-01 исправлен контрактом J001
 (verify PASS, functional PASS, pattern PASS). JOB-P1-01/02/03 исправлены J002
 (stop-words/дата/диапазоны, field-level ошибки; 11 JobCrudTests + 26 test_flows OK).
+JOB-P1-04/05 исправлены J003 (expires_at=now+30d, окно отзыва 12 ч для accepted).
+JOB-P1-06/08 исправлены J004 (каталог open/completed + blacklist; call_rpc
+разворачивает jsonb/boolean, русские коды ошибок). Полный core-набор — 247 OK.
 Остальные пункты открыты.
 
 ## P0

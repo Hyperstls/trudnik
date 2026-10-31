@@ -11,7 +11,7 @@ from django.utils import timezone
 
 from core.admin.jobs import JobAdmin
 from core.forms import JobForm
-from core.models import Application, Job, JobFavorite, Profile, Skill
+from core.models import Application, Blacklist, Job, JobFavorite, Profile, Skill
 from core.tests.test_auth import make_profile
 
 
@@ -244,6 +244,50 @@ class WithdrawWindowTests(TestCase):
         self.assertNotContains(response, "Отзыв недоступен")
 
 
+class RpcContractTests(TestCase):
+    """call_rpc: jsonb-объект разворачивается, boolean — прямой результат."""
+
+    def test_jsonb_rpc_unwrapped(self):
+        from uuid import uuid4
+
+        from core.rpc import call_rpc
+
+        result = call_rpc("apply_job_atomic", uuid4(), uuid4())
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result["code"], "job_not_found")
+        self.assertNotIn("apply_job_atomic", result)
+
+    def test_boolean_rpc_unwrapped(self):
+        from uuid import uuid4
+
+        from core.rpc import call_rpc
+
+        self.assertIs(call_rpc("change_password", uuid4(), "old", "new"), False)
+
+
+class CatalogVisibilityTests(TestCase):
+    """JOB-P1-06: лента не показывает cancelled и задания заблокировавших."""
+
+    def setUp(self):
+        self.employer = make_profile("catalog-emp@example.com", role="employer")
+        self.worker = make_profile("catalog-worker@example.com", role="worker")
+        self.job = make_job(self.employer, work_type="Уборка территории")
+
+    def test_cancelled_hidden_by_default(self):
+        make_job(self.employer, status="cancelled", work_type="Отменённая уборка")
+        self.assertNotContains(self.client.get("/jobs"), "Отменённая уборка")
+        self.assertNotContains(self.client.get("/jobs?status=cancelled"), "Отменённая уборка")
+
+    def test_blacklisted_employer_hidden(self):
+        other = make_profile("catalog-other@example.com", role="employer")
+        visible = make_job(other, work_type="Видимая уборка")
+        Blacklist.objects.create(user=self.employer, blocked_user=self.worker)
+        self.client.force_login(self.worker)
+        response = self.client.get("/jobs")
+        self.assertNotContains(response, "Уборка территории")
+        self.assertContains(response, visible.work_type)
+
+
 class ApplicationFlowTests(TestCase):
     def setUp(self):
         self.employer = make_profile("emp-flow@example.com")
@@ -261,6 +305,23 @@ class ApplicationFlowTests(TestCase):
         self.client.force_login(self.employer)
         self.client.post(reverse("core:job_apply", args=[self.job.pk]))
         self.assertFalse(Application.objects.filter(job=self.job).exists())
+
+    def test_apply_blacklisted_shows_message(self):
+        Blacklist.objects.create(user=self.employer, blocked_user=self.worker)
+        response = self.client.post(
+            reverse("core:job_apply", args=[self.job.pk]), follow=True
+        )
+        self.assertContains(response, "ограничил приём откликов")
+        self.assertFalse(
+            Application.objects.filter(job=self.job, worker=self.worker).exists()
+        )
+
+    def test_apply_duplicate_shows_message(self):
+        self.client.post(reverse("core:job_apply", args=[self.job.pk]))
+        response = self.client.post(
+            reverse("core:job_apply", args=[self.job.pk]), follow=True
+        )
+        self.assertContains(response, "Вы уже откликнулись на это задание")
 
     def test_withdraw(self):
         self.client.post(reverse("core:job_apply", args=[self.job.pk]))

@@ -1,0 +1,50 @@
+{
+  "id": "J004",
+  "title": "JOB-P1-06/08: каталог, blacklist и контракт call_rpc",
+  "goal": "Каталог по умолчанию показывает только open/completed и скрывает задания работодателей, заблокировавших пользователя; call_rpc разворачивает jsonb-объект (и boolean), поэтому ошибки apply_job_atomic показываются понятным русским текстом.",
+  "why": "Flask index(): base_status=status=in.(open,completed), blacklist exclude до пагинации (jobs.py:164-210); applications.py:42-57 маппит коды RPC. Django Job.objects.public() включает cancelled, blacklist не учитывает. Контрактная проверка J004 вскрыла: call_rpc возвращает jsonb как {'apply_job_atomic': '<json>'} (dev/тест-БД), поэтому _rpc_message всегда видит unknown; change_password возвращает {'change_password': False} и bool(dict) даёт ложный успех.",
+  "files": [
+    "djadmin/core/rpc.py",
+    "djadmin/core/views.py",
+    "djadmin/core/views_flow.py",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES_JOBS.md",
+    "migrations/147_apply_job_no_past.sql",
+    "migrations/149_change_password_email_overload.sql"
+  ],
+  "interfaces": "rpc.py: _decode_json(value) парсит str с '{'/'[' в объект; call_rpc при одной колонке: json-объект -> плоский dict (без ключа-колонки), boolean -> Python bool, иной скаляр -> {column: value} (совместимость register_user/expire); при нескольких колонках значения декодируются, ключи сохраняются. views.py: PUBLIC_STATUSES=('open','completed'); jobs_list(qs=Job.objects.filter(status__in=PUBLIC_STATUSES)); authenticated -> exclude(employer_id__in=Blacklist.objects.filter(blocked_user=request.user).values('user_id')); status принимается только из PUBLIC_STATUSES. views_flow.py RPC_ERROR_TEXT += {'own_job','blacklisted','duplicate','job_expired','job_in_past'} с русскими текстами; существующие ключи не удалять. tests: RpcContractTests.test_jsonb_rpc_unwrapped (apply_job_atomic с несуществующими uuid -> dict с code=job_not_found, без ключа apply_job_atomic); test_boolean_rpc_unwrapped (change_password с несуществующим uuid -> False); CatalogVisibilityTests (cancelled скрыт, blacklist скрыт); ApplicationFlowTests (blacklisted/duplicate сообщения).",
+  "acceptance": [
+    "call_rpc(apply_job_atomic) возвращает плоский dict с success/code; обёртки-колонки нет.",
+    "call_rpc(change_password) возвращает bool, поэтому неверный пароль не даёт ложный успех.",
+    "GET /jobs не содержит cancelled; ?status=cancelled тоже не показывает.",
+    "GET /jobs скрывает задания работодателя, заблокировавшего пользователя.",
+    "Отклик заблокированному работодателю даёт русское сообщение и не создаёт Application.",
+    "Повторный отклик даёт сообщение 'Вы уже откликнулись на это задание.'",
+    "core.tests.test_flows (RpcContractTests, CatalogVisibilityTests, ApplicationFlowTests) и core.tests.test_public_views проходят."
+  ],
+  "out_of_scope": [
+    "Не менять JobManager.public() (используется job_detail).",
+    "Не менять SQL/RPC и шаблоны.",
+    "Не добавлять filter=new/applied и гео-фильтры (JOB-P2-01).",
+    "Не стандартизировать прочие скалярные RPC (register_user uuid, expire int) — совместимость сохраняется."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/rpc.py djadmin/core/views.py djadmin/core/views_flow.py djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "flow_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows.RpcContractTests core.tests.test_flows.CatalogVisibilityTests core.tests.test_flows.ApplicationFlowTests --keepdb -v 1",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views.PublicViewsTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

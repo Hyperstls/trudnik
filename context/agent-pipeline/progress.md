@@ -167,3 +167,20 @@
 - **2026-10-31 21:19:08** | **J003** | `verify` | **PASS** | scope=ok checks=compile=0, flow_tests=0 attempts=0/3
 - **2026-10-31 21:19:09** | **J003** | `review-packet` | **READY** | bytes=11051 new_files=[]
 - **2026-10-31 21:20:59** | **J003** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 21:25:19** | **J004** | `add` | **OK** | contract=context/agent-pipeline/tasks/J004.json
+- **2026-10-31 21:25:20** | **J004** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/J004.impl.prompt.md
+- **2026-10-31 21:28:57** | **J004** | `set` | **implementing→fixing** | by=Hyperstls reason=Contract gap found by tests: call_rpc jsonb wrapper breaks all RPC messages; change_password bool wrapped gives false success. Expanding contract with rpc.py.
+- **2026-10-31 21:28:57** | **J004** | `update` | **OK** | revision=1 reason=Added call_rpc contract fix; tests consolidated in test_flows.py (4-file limit).
+- **2026-10-31 21:30:11** | **J004** | `verify` | **PASS** | scope=ok checks=compile=0, flow_tests=0, public_tests=0 attempts=0/3
+- **2026-10-31 21:30:11** | **J004** | `review-packet` | **READY** | bytes=16166 new_files=['djadmin/core/rpc.py']
+- **2026-10-31 21:35:36** | **J004** | `review` | **PASS** | by=Hyperstls → done
+- **2026-10-31 21:41:21** | **J004T** | `add` | **OK** | contract=context/agent-pipeline/tasks/J004T.json
+- **2026-10-31 21:41:21** | **J004T** | `dispatch` | **OK** | status=implementing baseline=9 pack=context/agent-pipeline/packs/J004T.impl.prompt.md
+- **2026-10-31 21:41:24** | **J004T** | `verify` | **PASS** | scope=ok checks=compile=0, rpc_tests=0 attempts=0/3
+- **2026-10-31 21:41:25** | **J004T** | `review-packet` | **READY** | bytes=2323 new_files=[]
+- **2026-10-31 21:41:52** | **J004T** | `review` | **FAIL** | by=Hyperstls round=1/2 verdict=Empty diff: baseline captured after the test edit; re-dispatch with pre-edit baseline. → fixing
+- **2026-10-31 21:41:52** | **J004T** | `set` | **fixing→planned** | by=Hyperstls reason=Re-dispatch with pre-edit baseline (process fix).
+- **2026-10-31 21:41:53** | **J004T** | `dispatch` | **OK** | status=implementing baseline=8 pack=context/agent-pipeline/packs/J004T.impl.prompt.md
+- **2026-10-31 21:42:10** | **J004T** | `verify` | **PASS** | scope=ok checks=compile=0, rpc_tests=0 attempts=0/3
+- **2026-10-31 21:42:11** | **J004T** | `review-packet` | **READY** | bytes=3114 new_files=[]
+- **2026-10-31 21:42:31** | **J004T** | `review` | **PASS** | by=Hyperstls → done

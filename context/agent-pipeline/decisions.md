@@ -433,3 +433,57 @@ Append-only: решения и измерения. Числа, команды, �
 **Кто:** Hyperstls
 
 Ревьюер PASS. Некритичные замечания: (1) assertNotContains('disabled') page-wide — сузить до кнопки; (2) can_withdraw=True при date_time=None — fail-open, но RPC 084 серверно блокирует; (3) pending-тест проверяет отсутствие note, не disabled. Принято без блокировки.
+
+## 2026-10-31 21:28:57 — J004: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** Contract gap found by tests: call_rpc jsonb wrapper breaks all RPC messages; change_password bool wrapped gives false success. Expanding contract with rpc.py.
+
+**Переход:** implementing → fixing
+
+## 2026-10-31 21:28:57 — J004: контракт обновлён
+
+**Причина:** Added call_rpc contract fix; tests consolidated in test_flows.py (4-file limit).
+
+**Проверки до:** ['compile', 'flow_tests', 'public_tests']
+
+**Проверки после:** ['compile', 'flow_tests', 'public_tests']
+
+## 2026-10-31 21:35:36 — J004: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J004.review.prompt.md
+
+## 2026-10-31 21:35:36 — J004: заметка
+
+**Кто:** Hyperstls
+
+Ревьюер PASS. Некритично: (1) jobs_list мог бы сохранять .public() в цепочке; (2) call_rpc_rows/as_user пока без _decode_json; (3) неизвестный code даёт generic-текст. Вынести в отдельную задачу по унификации RPC-хелперов.
+
+## 2026-10-31 21:41:52 — J004T: ревью: FAIL
+
+**Раунд:** 1/2
+
+**Вердикт ревьюера:** Empty diff: baseline captured after the test edit; re-dispatch with pre-edit baseline.
+
+**Действие:** fixing — раунд исправлений
+
+## 2026-10-31 21:41:52 — J004T: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** Re-dispatch with pre-edit baseline (process fix).
+
+**Переход:** fixing → planned
+
+## 2026-10-31 21:42:31 — J004T: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J004T.review.prompt.md

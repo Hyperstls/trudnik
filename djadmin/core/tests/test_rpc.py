@@ -16,9 +16,11 @@ class RpcTests(TestCase):
         call_rpc_void("unsuspend_user", self.user.pk)
         self.assertFalse(Profile.objects.get(pk=self.user.pk).suspended)
 
-    def test_call_rpc_returns_dict(self):
+    def test_call_rpc_returns_bool(self):
+        # Контракт J004: boolean-функция возвращается напрямую (не в dict-обёртке),
+        # иначе bool({'suspend_user': False}) даёт ложный успех.
         result = call_rpc("suspend_user", self.user.pk, "тест")
-        self.assertIsInstance(result, dict)
+        self.assertIs(result, True)
 
     def test_sync_user_skills_raw(self):
         s1 = Skill.objects.create(name="Тестовый навык 1", sort_order=1)

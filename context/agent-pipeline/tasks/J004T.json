@@ -1,0 +1,33 @@
+{
+  "id": "J004T",
+  "title": "J004: выравнивание теста call_rpc под boolean-контракт",
+  "goal": "core.tests.test_rpc ожидает boolean-результат call_rpc(suspend_user) и проходит.",
+  "why": "J004 изменил контракт call_rpc: boolean-функции возвращаются напрямую, чтобы bool(result) не давал ложный успех. Старый тест ожидал dict-обёртку и упал в полном прогоне (247 тестов).",
+  "files": [
+    "djadmin/core/tests/test_rpc.py"
+  ],
+  "context_files": [
+    "djadmin/core/rpc.py"
+  ],
+  "interfaces": "test_call_rpc_returns_bool: call_rpc('suspend_user', user.pk, 'тест') is True; тест больше не проверяет isinstance(dict).",
+  "acceptance": [
+    "core.tests.test_rpc.RpcTests.test_call_rpc_returns_bool проходит.",
+    "Полный core-набор снова зелёный."
+  ],
+  "out_of_scope": [
+    "Не менять rpc.py и бизнес-код.",
+    "Не менять другие тесты."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_rpc.py",
+      "cwd": "."
+    },
+    {
+      "name": "rpc_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_rpc.RpcTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

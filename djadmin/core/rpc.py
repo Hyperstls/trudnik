@@ -3,6 +3,7 @@
 Наследуем атомарность и инварианты RPC (apply_job_atomic, delete_user_cascade, …),
 не дублируя бизнес-логику в Python (см. спеку §1.2).
 """
+import json
 from typing import Any
 
 from django.db import connection
@@ -12,8 +13,24 @@ class RpcError(RuntimeError):
     pass
 
 
+def _decode_json(value: Any) -> Any:
+    """json/jsonb из psycopg2 может прийти строкой — декодируем объект/массив."""
+    if isinstance(value, str) and value[:1] in "{[":
+        try:
+            return json.loads(value)
+        except ValueError:
+            return value
+    return value
+
+
 def call_rpc(name: str, *args: Any) -> Any:
-    """SELECT * FROM name(...); возвращает первую строку как dict (jsonb → dict)."""
+    """Вызвать RPC и вернуть её значение.
+
+    Одна колонка: json-объект → плоский dict (контракт success/code), boolean →
+    bool (контракт успеха change_password), прочие скаляры → {column: value}
+    (совместимость register_user/expire_unfilled_jobs). Несколько колонок →
+    dict с декодированными значениями.
+    """
     if not name.replace("_", "").isalnum():
         raise RpcError("недопустимое имя RPC: %r" % name)
     placeholders = ", ".join(["%s"] * len(args))
@@ -24,7 +41,15 @@ def call_rpc(name: str, *args: Any) -> Any:
             return None
         cols = [d[0] for d in cur.description]
         row = cur.fetchone()
-        return dict(zip(cols, row)) if row else None
+        if not row:
+            return None
+        values = [_decode_json(v) for v in row]
+        if len(cols) == 1:
+            value = values[0]
+            if isinstance(value, dict) or isinstance(value, bool):
+                return value
+            return {cols[0]: value}
+        return dict(zip(cols, values))
 
 
 def call_rpc_void(name: str, *args: Any) -> None:

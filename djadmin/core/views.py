@@ -12,9 +12,13 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.core.paginator import Paginator
 
-from .models import Application, Job, JobFavorite, Profile, SitePage
+from .models import Application, Blacklist, Job, JobFavorite, Profile, SitePage
 
 PAGE_SIZE = 20
+
+# JOB-P1-06: каталог по умолчанию — только open/completed (Flask jobs.py:164).
+# cancelled доступен владельцу в «Моих заданиях», но не в публичной ленте.
+PUBLIC_STATUSES = ("open", "completed")
 
 # Публичные колонки профиля (паритет колоночных грантов RLS, миграция 132)
 PUBLIC_PROFILE_FIELDS = (
@@ -59,7 +63,15 @@ def _promoted_first():
 
 
 def jobs_list(request):
-    qs = Job.objects.public().select_related("employer").order_by(_promoted_first(), "-created_at")
+    qs = Job.objects.filter(status__in=PUBLIC_STATUSES).select_related("employer").order_by(
+        _promoted_first(), "-created_at"
+    )
+    if request.user.is_authenticated:
+        # Blacklist до пагинации: задания работодателей, заблокировавших пользователя.
+        blocked_employer_ids = Blacklist.objects.filter(
+            blocked_user=request.user
+        ).values("user_id")
+        qs = qs.exclude(employer_id__in=blocked_employer_ids)
     q = (request.GET.get("q") or "").strip()[:100]
     if q:
         qs = qs.filter(work_type__icontains=q) | qs.filter(organization_name__icontains=q) | \
@@ -69,7 +81,7 @@ def jobs_list(request):
     if city:
         qs = qs.filter(city__icontains=city)
     status = request.GET.get("status") or ""
-    if status in ("open", "completed", "cancelled"):
+    if status in PUBLIC_STATUSES:
         qs = qs.filter(status=status)
     payment_min = request.GET.get("payment_min") or ""
     try:
