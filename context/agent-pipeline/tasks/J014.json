@@ -1,0 +1,41 @@
+{
+  "id": "J014",
+  "title": "JOB-P2-02 (часть): detail — application_count, избранный работодатель, жалоба, share",
+  "goal": "На странице задания владелец видит число откликов; авторизованный не-владелец может добавить работодателя в избранное, пожаловаться на него и поделиться заданием.",
+  "why": "Flask job_detail.html: application_count для владельца, is_employer_favorited, report/share. Django detail не имеет этих блоков (JOB-P2-02). Используем существующие Favorite/report_user/people_favorite_toggle, без новых RPC.",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/templates/core/job_detail.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_profile.py",
+    "djadmin/core/views_profile_ext.py",
+    "djadmin/core/models.py"
+  ],
+  "interfaces": "views.py: import Favorite; job_detail: если is_owner -> application_count=Application.objects.filter(job=job).count(); elif authenticated -> is_employer_fav=Favorite.objects.filter(user=request.user, target_id=job.employer_id, favorite_type='employer').exists(); передать application_count, is_employer_fav. job_detail.html: у владельца кнопка 'Отклики (N)'; у авторизованного не-владельца — form POST people_favorite_toggle(job.employer_id) с кнопкой is_employer_fav|yesno:'В избранном,В избранное'; form POST report_user(job.employer_id) с input name=reason maxlength=500 и кнопкой 'Пожаловаться'; share-ссылки Telegram (https://t.me/share/url?url=<urlencoded>) и WhatsApp (https://wa.me/?text=<urlencoded>), где URL = request.build_absolute_uri. Тесты PublicViewsTests: test_detail_owner_application_count (Application -> 'Отклики (1)'); test_detail_employer_favorite_toggle (POST people_favorite_toggle -> Favorite существует); test_detail_has_report_and_share (contains report_user URL, t.me/share, wa.me).",
+  "acceptance": [
+    "Владелец видит 'Отклики (N)' с точным числом.",
+    "Не-владелец видит кнопку избранного работодателя; POST создаёт Favorite(favorite_type=employer).",
+    "Не-владелец видит форму жалобы и share-ссылки Telegram/WhatsApp.",
+    "Гость не видит favorite/report (только вход).",
+    "PublicViewsTests проходит."
+  ],
+  "out_of_scope": [
+    "Не менять report_user/people_favorite_toggle и их редиректы.",
+    "Не добавлять JS/Web Share API.",
+    "Не менять другие страницы."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views.PublicViewsTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

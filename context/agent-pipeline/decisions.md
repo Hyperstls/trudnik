@@ -645,3 +645,33 @@ P2-05 закрыт. enqueue_notification сам fail-open, поэтому цик
 **Кто:** Hyperstls
 
 CSS-дрейф обойдён skip-scope (сгенерированный tailwind). P2-01 частично: payment_max, один навык, Новые/Откликнулся; гео/карта и мультивыбор навыков остаются.
+
+## 2026-11-01 00:25:15 — J014: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css rebuilt after job_detail employer-action classes (w-44); generated artifact
+
+**Дрейф, который обойдён:** ['static/css/tailwind.min.css']
+
+## 2026-11-01 00:28:17 — J014: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css generated artifact (unchanged)
+
+**Дрейф, который обойдён:** ['static/css/tailwind.min.css']
+
+## 2026-11-01 00:32:38 — J014: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J014.review.prompt.md
+
+## 2026-11-01 00:32:38 — J014: заметка
+
+**Кто:** Hyperstls
+
+P2-02 частично: count/favorite/report/share. CSS-дрейф skip-scope (w-44).

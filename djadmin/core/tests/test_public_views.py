@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core import views
-from core.models import Application, Blacklist, Job, JobPhoto, JobSkill, Religion, SitePage, Skill
+from core.models import Application, Blacklist, Favorite, Job, JobPhoto, JobSkill, Religion, SitePage, Skill
 from core.storage import resolve_upload_url, save_upload
 from core.tests.test_auth import make_profile
 
@@ -154,6 +154,45 @@ class PublicViewsTests(TestCase):
             date_time=timezone.now(),
         )
         self.assertEqual(self.client.get(f"/jobs/{hidden.pk}").status_code, 404)
+
+    def test_detail_owner_application_count(self):
+        Application.objects.create(
+            job=self.job, worker=self.worker, status="pending"
+        )
+        self.client.force_login(self.employer)
+        response = self.client.get(f"/jobs/{self.job.pk}")
+        self.assertContains(response, "Отклики (1)")
+
+    def test_detail_employer_favorite_toggle(self):
+        self.client.force_login(self.worker)
+        response = self.client.get(f"/jobs/{self.job.pk}")
+        self.assertContains(
+            response,
+            reverse("core:people_favorite_toggle", args=[self.employer.pk]),
+        )
+        self.client.post(
+            reverse("core:people_favorite_toggle", args=[self.employer.pk])
+        )
+        self.assertTrue(
+            Favorite.objects.filter(
+                user=self.worker, target=self.employer, favorite_type="employer"
+            ).exists()
+        )
+
+    def test_detail_has_report_and_share(self):
+        self.client.force_login(self.worker)
+        response = self.client.get(f"/jobs/{self.job.pk}")
+        self.assertContains(
+            response, reverse("core:report_user", args=[self.employer.pk])
+        )
+        content = response.content.decode()
+        self.assertIn("t.me/share/url?url=http%3A", content)
+        self.assertIn("wa.me/?text=http%3A", content)
+
+    def test_detail_guest_has_no_employer_actions(self):
+        response = self.client.get(f"/jobs/{self.job.pk}")
+        self.assertNotContains(response, "Пожаловаться")
+        self.assertNotContains(response, "t.me/share")
 
     def test_workers_catalog(self):
         response = self.client.get("/workers")

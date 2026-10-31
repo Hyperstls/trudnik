@@ -14,7 +14,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.core.paginator import Paginator
 
-from .models import Application, Blacklist, Job, JobFavorite, Profile, SitePage, Skill
+from .models import Application, Blacklist, Favorite, Job, JobFavorite, Profile, SitePage, Skill
 
 PAGE_SIZE = 20
 
@@ -188,12 +188,22 @@ def job_detail(request, job_id):
     if my_app and job.date_time is not None:
         # Паритет Flask check_withdraw_window: <12 ч до начала — отзыв недоступен.
         can_withdraw = (job.date_time - timezone.now()).total_seconds() > 12 * 3600
+    application_count = 0
+    is_employer_fav = False
+    if is_owner:
+        application_count = Application.objects.filter(job=job).count()
+    elif request.user.is_authenticated:
+        is_employer_fav = Favorite.objects.filter(
+            user=request.user, target_id=job.employer_id, favorite_type="employer"
+        ).exists()
     return render(request, "core/job_detail.html", {
         "job": job,
         "photos": [(i, _abs(url)) for i, url in enumerate(photos)],
         "skills": skills,
         "my_app": my_app,
         "can_withdraw": can_withdraw,
+        "application_count": application_count,
+        "is_employer_fav": is_employer_fav,
         "is_owner": is_owner,
         "is_fav": (
             request.user.is_authenticated

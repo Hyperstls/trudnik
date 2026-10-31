@@ -78,7 +78,7 @@
 
         <div class="flex flex-wrap gap-2 items-center border-t border-neutral-100 pt-4">
             {% if is_owner %}
-            <a href="{% url 'core:job_applicants' job.pk %}" class="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors">Отклики</a>
+            <a href="{% url 'core:job_applicants' job.pk %}" class="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors">Отклики ({{ application_count }})</a>
             <a href="{% url 'core:job_edit' job.pk %}" class="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Изменить</a>
             {% elif user.is_authenticated %}
                 {% if my_app %}
@@ -103,6 +103,18 @@
                     {{ is_fav|yesno:"В избранном,В избранное" }}
                 </button>
             </form>
+            <div class="w-full mt-3 pt-3 border-t border-neutral-100 flex flex-wrap gap-2 items-center" role="group" aria-label="Действия с работодателем">
+                <form method="post" action="{% url 'core:people_favorite_toggle' job.employer_id %}">{% csrf_token %}
+                    <button class="px-4 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 text-sm font-medium transition-colors">{{ is_employer_fav|yesno:"В избранном,В избранное" }}</button>
+                </form>
+                <form method="post" action="{% url 'core:report_user' job.employer_id %}" class="flex flex-wrap gap-2 items-center">{% csrf_token %}
+                    <input type="text" name="reason" maxlength="500" required placeholder="Причина жалобы" class="px-3 h-9 rounded-xl border border-neutral-200 text-sm w-44">
+                    <button class="px-4 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">Пожаловаться</button>
+                </form>
+                <span class="text-sm text-neutral-500 ml-auto">Поделиться:</span>
+                <a href="https://t.me/share/url?url={{ request.build_absolute_uri|urlencode }}" target="_blank" rel="noopener noreferrer" class="text-sm text-primary-600 hover:text-primary-700 underline underline-offset-2">Telegram</a>
+                <a href="https://wa.me/?text={{ request.build_absolute_uri|urlencode }}" target="_blank" rel="noopener noreferrer" class="text-sm text-primary-600 hover:text-primary-700 underline underline-offset-2">WhatsApp</a>
+            </div>
             {% else %}
             <a href="{% url 'core:login' %}?next={% url 'core:job_detail' job.pk %}" class="px-5 h-10 inline-flex items-center rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors shadow-sm">Войти, чтобы откликнуться</a>
             {% endif %}
