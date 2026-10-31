@@ -97,4 +97,7 @@
 - **P2 auth/profile:** UX/маршруты/мёртвые шаблоны (см. DISCREPANCIES.md).
 - **Jobs/applications P1:** JOB-P1-01…13 — аудит готов, контракты впереди
   ([DISCREPANCIES_JOBS.md](DISCREPANCIES_JOBS.md)).
-- **Коммит не делался:** изменения в рабочем дереве `feat/agent-pipeline`.
+- **Коммиты:** `9a7c0a4` (pipeline tooling/audit) и `00e0cc2` (parity-фиксы) на
+  `feat/agent-pipeline`; `main` — `3f4aa40` без изменений. `state.json` и `*.verify.log` —
+  runtime, в git не коммитятся (`.gitignore`); durable evidence — `progress.md`,
+  `decisions.md`, `tasks/`, `packs/`, `docs/parity/`.

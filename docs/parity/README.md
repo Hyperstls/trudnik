@@ -23,7 +23,9 @@ my-jobs/applications, фото, reopen, repost.
 **E2E smoke (Docker):** `/jobs`, `/workers`, `/login`, `/register`, `/faq` → 200;
 `/privacy`, `/terms`, `/safety` были 404 из-за пустого `site_pages` — исправлено L001
 (fallback из legacy-контента, SitePage остаётся override); после фикса 200.
-**Режим:** только аудит. Код не менялся, контракты pipeline не создавались.
+**Режим:** только аудит и проверяемые фиксы; код менялся только через контракты pipeline.
+**Ветка:** `feat/agent-pipeline`; коммиты `9a7c0a4` (tooling/audit) и `00e0cc2` (parity-фиксы);
+`main` — `3f4aa40` без изменений.
 
 ## Метод
 

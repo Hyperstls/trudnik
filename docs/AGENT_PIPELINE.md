@@ -54,6 +54,11 @@ context/agent-pipeline/
 `logs/<ID>.baseline/` хранит снимки файлов контракта, поэтому diff для ревью — это ровно
 изменения задачи, без чужих правок, которые уже были в рабочем дереве.
 
+`state.json` — runtime-состояние: оно не коммитится (см. `.gitignore`), потому что содержит
+SHA-256 baseline-хэши, которые `detect-secrets` ложно принимает за секреты. Durable-память
+конвейера — `tasks/`, `packs/`, `progress.md`, `decisions.md`; `logs/*.verify.log` также
+локальные (`.gitignore`), а итог каждой проверки фиксируется в `progress.md`.
+
 ## 4. Быстрый старт
 
 ```bash
