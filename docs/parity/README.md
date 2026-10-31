@@ -2,30 +2,30 @@
 
 **Дата:** 2026-10-31
 **Эталон Flask:** `origin/main-flask` @ `9b3ed42` (read-only worktree `../trudnik-flask`)
-**Django:** `main` @ `3f4aa40` (+ незакоммиченный `feat/agent-pipeline`)
-**Статус:** Phase 1 — `auth / registration / profile`. Остальные области — pending.
+**Django:** `feat/agent-pipeline` @ `3d517b0` (`main` @ `3f4aa40` не менялся)
+**Статус:** auth/profile — P0/P1 закрыты; jobs/applications — P0/P1 закрыты (кроме bulk duplicate).
 **Обновление 2026-10-31:** P0-01…P0-04 исправлены контрактами P001–P004
 (verify PASS + functional PASS + pattern PASS), см. [P0_RESULTS.md](P0_RESULTS.md).
 P1-01/02/06 исправлены контрактами P101/P102/P106, P1-03/04/11 — P103/P104,
 P1-07/08/14 — P107/P108/P114; BUILD-01 — B001; TASKS-01 — T001; P1-12 — P112;
 P1-10 ORM-путь — P110; P1-05 — P105. См. [P1_RESULTS.md](P1_RESULTS.md).
-Остальные пункты: P1-13 + DB-default P1-10 — **локально выполнено** (65/65, default=false,
-gate OK); production — pending deploy-window ([MIGRATION_LEDGER.md](MIGRATION_LEDGER.md)).
+P1-13 + DB-default P1-10: dev и production — **65/65**, `email_verified default=false`,
+gate OK; процедура и восстановление описаны в [MIGRATION_LEDGER.md](MIGRATION_LEDGER.md).
 
-**Следующая область:** jobs/applications — аудит завершён:
-[AUDIT_JOBS_APPLICATIONS.md](AUDIT_JOBS_APPLICATIONS.md),
+**Jobs/applications:** аудит и P0/P1 закрыты контрактами J001–J010 —
+см. [JOBS_RESULTS.md](JOBS_RESULTS.md), [AUDIT_JOBS_APPLICATIONS.md](AUDIT_JOBS_APPLICATIONS.md),
 [DISCREPANCIES_JOBS.md](DISCREPANCIES_JOBS.md),
 [ROUTES_MATRIX_JOBS.md](ROUTES_MATRIX_JOBS.md),
-[UI_INVENTORY_JOBS.md](UI_INVENTORY_JOBS.md). P0 — `preferred_religion` в форме задания
-(исправлен J001); P1 — валидации, expires_at, withdraw-window, каталог/blacklist, уведомления,
-my-jobs/applications, фото, reopen, repost.
+[UI_INVENTORY_JOBS.md](UI_INVENTORY_JOBS.md). Остались P2 и bulk duplicate.
+
+**Следующая область:** P2 UX/паритет jobs (каталог, detail, bulk apply, ratings/employers)
+и bulk duplicate; затем финальный e2e-прогон и деплой накопленных J-коммитов.
 
 **E2E smoke (Docker):** `/jobs`, `/workers`, `/login`, `/register`, `/faq` → 200;
 `/privacy`, `/terms`, `/safety` были 404 из-за пустого `site_pages` — исправлено L001
 (fallback из legacy-контента, SitePage остаётся override); после фикса 200.
 **Режим:** только аудит и проверяемые фиксы; код менялся только через контракты pipeline.
-**Ветка:** `feat/agent-pipeline`; коммиты `9a7c0a4` (tooling/audit) и `00e0cc2` (parity-фиксы);
-`main` — `3f4aa40` без изменений.
+**Ветка:** `feat/agent-pipeline`; `main` — `3f4aa40` без изменений.
 
 ## Метод
 
@@ -46,6 +46,7 @@ my-jobs/applications, фото, reopen, repost.
 | [UI_INVENTORY.md](UI_INVENTORY.md) | кликабельные элементы по страницам |
 | [CONTRACT_CHECKS.md](CONTRACT_CHECKS.md) | факты БД/RPC/RLS и очередь contract-проверок |
 | [152FZ_DATA_FLOWS.md](152FZ_DATA_FLOWS.md) | ПДн, доступы, риски 152-ФЗ |
+| [JOBS_RESULTS.md](JOBS_RESULTS.md) | итоги J001–J010: что закрыто, тесты, остаток |
 
 ## Главное (кратко)
 
