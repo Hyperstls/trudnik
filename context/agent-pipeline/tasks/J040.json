@@ -1,0 +1,38 @@
+{
+  "id": "J040",
+  "title": "P2: кнопка «Отклонить все» приглашения",
+  "goal": "На /invitations есть кнопка массового отклонения ожидающих приглашений; endpoint invitations_reject_all уже существует.",
+  "why": "Flask invitations.html:8-9 предлагает массовое отклонение, Django endpoint views_public_ext.invitations_reject_all и URL есть, но в шаблоне только поштучные кнопки.",
+  "files": [
+    "djadmin/core/templates/core/invitations.html",
+    "djadmin/core/tests/test_parity_ext.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_public_ext.py",
+    "djadmin/core/urls.py"
+  ],
+  "interfaces": "invitations.html: в блоке «Мне» при непустом incoming добавить <form method='post' action='{% url \"core:invitations_reject_all\" %}' class='mb-3'>{% csrf_token %}<button class='px-3 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium'>Отклонить все ожидающие</button></form>. test_parity_ext: при наличии pending invitation GET /invitations содержит action invitations_reject_all и текст «Отклонить все ожидающие».",
+  "acceptance": [
+    "На /invitations при наличии входящих есть кнопка «Отклонить все ожидающие».",
+    "Кнопка отправляет POST на core:invitations_reject_all с CSRF.",
+    "Существующий endpoint продолжает отклонять только pending.",
+    "test_parity_ext проходит."
+  ],
+  "out_of_scope": [
+    "Не менять логику endpoint.",
+    "Не менять блок отправленных приглашений.",
+    "Не добавлять JS-подтверждение."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_parity_ext.py",
+      "cwd": "."
+    },
+    {
+      "name": "parity_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_parity_ext --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

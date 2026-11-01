@@ -5,6 +5,9 @@
     <h2 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-4">Приглашения</h2>
     <h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-2">Мне</h3>
     {% if incoming %}
+    <form method="post" action="{% url 'core:invitations_reject_all' %}" class="mb-3">{% csrf_token %}
+        <button class="px-3 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">Отклонить все ожидающие</button>
+    </form>
     <div class="grid gap-3 mb-8">
         {% for inv in incoming %}
         <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 flex flex-wrap justify-between gap-3">

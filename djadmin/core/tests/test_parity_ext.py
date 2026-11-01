@@ -466,3 +466,16 @@ class ApplicationContactsTests(TestCase):
         sent = self.client.get(reverse("core:my_applications"), {"tab": "sent"})
         self.assertNotContains(sent, "+79990000001")
         self.assertNotContains(sent, "@hidden_contact")
+
+
+class InvitationsRejectAllButtonTests(TestCase):
+    def test_invitations_page_has_reject_all_button(self):
+        from core.models import Invitation
+        employer = make_profile("invbtn-emp@example.com", role="employer")
+        worker = make_profile("invbtn-worker@example.com", role="worker")
+        job = make_job(employer)
+        Invitation.objects.create(job=job, employer=employer, worker=worker)
+        self.client.force_login(worker)
+        response = self.client.get(reverse("core:invitations"))
+        self.assertContains(response, reverse("core:invitations_reject_all"))
+        self.assertContains(response, "Отклонить все ожидающие")
