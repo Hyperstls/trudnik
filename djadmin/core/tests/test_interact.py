@@ -72,6 +72,47 @@ class RatingTests(TestCase):
         self.client.post(reverse("core:rate_participant", args=[self.app.pk]), {"rating": "9"})
         self.assertFalse(Rating.objects.exists())
 
+    def test_employer_rates_two_workers_update_keeps_other(self):
+        worker2 = make_profile("rate-worker2@example.com", role="worker")
+        app2 = Application.objects.create(job=self.job, worker=worker2, status="accepted")
+        self.client.force_login(self.employer)
+        self.client.post(reverse("core:rate_participant", args=[self.app.pk]), {"rating": "5"})
+        self.client.post(reverse("core:rate_participant", args=[app2.pk]), {"rating": "4"})
+        self.assertEqual(
+            Rating.objects.filter(rater_user=self.employer, job=self.job).count(), 2
+        )
+        # повторная оценка первого работника не должна затирать оценку второго
+        self.client.post(reverse("core:rate_participant", args=[self.app.pk]), {"rating": "3"})
+        first = Rating.objects.get(
+            rater_user=self.employer, job=self.job, rated_user=self.worker
+        )
+        second = Rating.objects.get(
+            rater_user=self.employer, job=self.job, rated_user=worker2
+        )
+        self.assertEqual((first.rating, second.rating), (3, 4))
+
+    def test_pending_worker_cannot_rate_employer(self):
+        job = make_job(self.employer, status="completed")
+        app = Application.objects.create(job=job, worker=self.worker, status="pending")
+        self.client.force_login(self.worker)
+        self.client.post(reverse("core:rate_participant", args=[app.pk]), {"rating": "5"})
+        self.assertFalse(Rating.objects.filter(rater_user=self.worker).exists())
+
+    def test_job_detail_reviews_filter_by_target_type(self):
+        Rating.objects.create(
+            rated_user=self.employer, rater_user=self.worker, job=self.job,
+            rating=5, comment="Отзыв о работодателе целевой",
+            rating_type="worker", target_type="employer",
+        )
+        Rating.objects.create(
+            rated_user=self.worker, rater_user=self.employer, job=self.job,
+            rating=4, comment="Оценка работнику не в блоке отзывов",
+            rating_type="employer", target_type="worker",
+        )
+        response = self.client.get(f"/jobs/{self.job.pk}")
+        self.assertContains(response, "Отзыв о работодателе целевой")
+        self.assertNotContains(response, "Оценка работнику не в блоке отзывов")
+
 
 class ChatTests(TestCase):
     def setUp(self):

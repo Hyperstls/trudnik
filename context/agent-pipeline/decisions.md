@@ -1047,3 +1047,21 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** Hyperstls
 
 Карта заданий — только офлайн (address+coords); дистанционные без адреса не маркируются.
+
+## 2026-11-01 12:42:08 — J029: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** verify ran with system Python 3.14 (no django); re-run with .venv
+
+**Переход:** fixing → fixing
+
+**Сброс:** attempts=0
+
+## 2026-11-01 12:44:09 — J029: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-reviewer
+
+**Пакет:** context/agent-pipeline/packs/J029.review.prompt.md

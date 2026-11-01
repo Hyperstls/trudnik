@@ -272,7 +272,7 @@ def job_detail(request, job_id):
     employer = job.employer
     employer_reviews = list(
         Rating.objects.filter(
-            rated_user_id=job.employer_id, rating_type="employer"
+            rated_user_id=job.employer_id, target_type="employer"
         ).order_by("-created_at")[:3]
     )
     return render(request, "core/job_detail.html", {

@@ -17,6 +17,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .models import Application, Job, Message, Profile, Rating
@@ -41,7 +42,7 @@ def _chat_app_or_none(request, app_id):
 # Контракт (сверено с app/blueprints/ratings.py upsert_rating): RPC rate_user_atomic
 # допускает только трудник→трудник (оба с accepted-заявкой), поэтому общий случай
 # (работодатель↔работник) Flask реализует проверками + прямым upsert в ratings.
-# Уникальность (rater, job) — миграция 145; профиль пересчитывает триггер БД.
+# Уникальность (rater, job, rated_user) — миграция 145; профиль пересчитывает триггер БД.
 @login_required
 @require_POST
 def rate_participant(request, app_id):
@@ -59,6 +60,9 @@ def rate_participant(request, app_id):
         messages.error(request, "Оценка — от 1 до 5.")
         return redirect(request.META.get("HTTP_REFERER") or "/")
     if request.user.pk == app.worker_id:  # работник оценивает работодателя задания
+        if app.status != Application.Status.ACCEPTED:
+            messages.error(request, "Оценить работодателя можно только после принятия отклика.")
+            return redirect(request.META.get("HTTP_REFERER") or "/")
         rated_id, rating_type, target_type = app.job.employer_id, "worker", "employer"
     else:  # владелец задания оценивает принятого работника
         if app.status != Application.Status.ACCEPTED:
@@ -69,19 +73,21 @@ def rate_participant(request, app_id):
         messages.error(request, "Нельзя оценить самого себя.")
         return redirect(request.META.get("HTTP_REFERER") or "/")
     comment = (request.POST.get("comment") or "")[:1000]
+    defaults = {
+        "rating": stars, "comment": comment,
+        "rating_type": rating_type, "target_type": target_type,
+    }
     try:
         with transaction.atomic():
-            Rating.objects.create(
+            Rating.objects.update_or_create(
                 rated_user_id=rated_id, rater_user=request.user, job=app.job,
-                rating=stars, comment=comment,
-                rating_type=rating_type, target_type=target_type,
+                defaults=defaults,
             )
     except IntegrityError:
-        # upsert: одна оценка (rater, job) — обновляем существующую
-        Rating.objects.filter(rater_user=request.user, job=app.job).update(
-            rated_user_id=rated_id, rating=stars, comment=comment,
-            rating_type=rating_type, target_type=target_type,
-        )
+        # upsert: одна оценка (rater, job, rated_user) — обновляем только её
+        Rating.objects.filter(
+            rater_user=request.user, job=app.job, rated_user_id=rated_id
+        ).update(updated_at=timezone.now(), **defaults)
     messages.success(request, "Оценка сохранена.")
     return redirect(request.META.get("HTTP_REFERER") or "/")
 

@@ -385,3 +385,14 @@
 - **2026-11-01 12:26:24** | **J028** | `verify` | **PASS** | scope=skipped checks=compile=0, public_tests=0 attempts=0/3
 - **2026-11-01 12:26:31** | **J028** | `review-packet` | **READY** | bytes=6547 new_files=[]
 - **2026-11-01 12:27:12** | **J028** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-01 12:40:59** | **J029** | `add` | **OK** | contract=context/agent-pipeline/tasks/J029.json
+- **2026-11-01 12:41:12** | **J030** | `add` | **OK** | contract=context/agent-pipeline/tasks/J030.json
+- **2026-11-01 12:41:12** | **J031** | `add` | **OK** | contract=context/agent-pipeline/tasks/J031.json
+- **2026-11-01 12:41:12** | **J032** | `add` | **OK** | contract=context/agent-pipeline/tasks/J032.json
+- **2026-11-01 12:41:12** | **J029** | `dispatch` | **OK** | status=implementing baseline=5 pack=context/agent-pipeline/packs/J029.impl.prompt.md
+- **2026-11-01 12:41:55** | **J029** | `verify` | **FAIL** | scope=ok checks=compile=0, rating_tests=1 attempts=1/3 → fixing
+- **2026-11-01 12:42:08** | **J029** | `set` | **fixing→fixing** | by=Hyperstls reason=verify ran with system Python 3.14 (no django); re-run with .venv reset=attempts=0
+- **2026-11-01 12:42:24** | **J029** | `verify` | **FAIL** | scope=ok checks=compile=0, rating_tests=1 attempts=1/3 → fixing
+- **2026-11-01 12:43:13** | **J029** | `verify` | **PASS** | scope=ok checks=compile=0, rating_tests=0 attempts=1/3
+- **2026-11-01 12:43:18** | **J029** | `review-packet` | **READY** | bytes=10538 new_files=[]
+- **2026-11-01 12:44:09** | **J029** | `review` | **PASS** | by=independent-reviewer → done

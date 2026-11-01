@@ -1,0 +1,43 @@
+{
+  "id": "J029",
+  "title": "P2-11: корректность оценок (upsert, accepted, target_type)",
+  "goal": "Оценки не затирают друг друга, отзывы работодателя выбираются по target_type, оценивать может только принятый участник.",
+  "why": "Сверка с Flask (app/blueprints/ratings.py) и migrations/145: уникальность ratings — (rater_user_id, job_id, rated_user_id). В Django модель объявляет (rater, job), а upsert в rate_participant фильтрует без rated_user — обновление оценки одного работника перезаписывает оценки всех работников задания. J016 выбирает отзывы по rating_type='employer' (роль автора), а worker→employer имеет rating_type='worker', target_type='employer' — реальные отзывы о работодателе не показываются. Заявка в статусе pending на завершённое задание может оценить работодателя, хотя Flask требует accepted.",
+  "files": [
+    "djadmin/core/models.py",
+    "djadmin/core/views_interact.py",
+    "djadmin/core/views.py",
+    "djadmin/core/tests/test_interact.py"
+  ],
+  "context_files": [
+    "migrations/145_ratings_unique_per_rated_user.sql",
+    "migrations/101_recompute_profile_rating_trigger.sql",
+    "djadmin/core/templates/core/job_detail.html"
+  ],
+  "interfaces": "models.Rating.Meta.unique_together = (('rater_user', 'job', 'rated_user'),) — как constraint ratings_rater_job_rated_unique в БД. views_interact.rate_participant: если request.user == app.worker_id, требовать app.status == 'accepted' (иначе messages.error и redirect без записи); upsert через Rating.objects.update_or_create(rater_user=request.user, job=app.job, rated_user_id=rated_id, defaults={rating, comment[:1000], rating_type, target_type, updated_at=timezone.now()}); при IntegrityError — Rating.objects.filter(rater_user=request.user, job=app.job, rated_user_id=rated_id).update(...) с тем же rated_user_id (не затирать других). views.job_detail employer_reviews: Rating.objects.filter(rated_user_id=job.employer_id, target_type='employer').order_by('-created_at')[:3].",
+  "acceptance": [
+    "Работодатель может оценить двух принятых работников одного задания; обновление оценки первого не меняет оценку второго (2 строки ratings, разные rating).",
+    "Работник с заявкой pending на завершённое задание не может оценить работодателя; accepted — может.",
+    "Повторная оценка того же работника обновляет одну строку и пересчитывает рейтинг триггером.",
+    "На /jobs/<id> в блоке отзывов работодателя видны только оценки с target_type='employer' (работник → работодатель), оценки работников работодателем не попадают.",
+    "test_interact проходит."
+  ],
+  "out_of_scope": [
+    "Не менять схему БД/миграции (managed=False, constraint уже существует).",
+    "Не добавлять JSON API /api/ratings.",
+    "Не менять триггер recompute_profile_rating.",
+    "Не менять шаблоны и страницу rate_workers — это J030."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/models.py djadmin/core/views_interact.py djadmin/core/views.py djadmin/core/tests/test_interact.py",
+      "cwd": "."
+    },
+    {
+      "name": "rating_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_interact --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "id": "J031",
+  "title": "P2-13: каталог работодателей",
+  "goal": "/employers показывает всех пользователей с открытыми заданиями независимо от role, поддерживает поиск/город/сортировку, скрывает заблокировавших, избранное и пагинацию.",
+  "why": "Flask employers.py: работодатель = любой пользователь с открытыми заданиями (role — ориентация), есть city/sort rating|name|jobs_count, blacklist, favorites, пагинация. Django фильтрует role='employer' (role-гейт против AGENTS.md), не исключает blacklist, не умеет избранное/сортировку/пагинацию.",
+  "files": [
+    "djadmin/core/views_public_ext.py",
+    "djadmin/core/urls.py",
+    "djadmin/core/templates/core/employers.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "docs/parity/DISCREPANCIES_JOBS.md",
+    "djadmin/core/templates/core/workers_list.html"
+  ],
+  "interfaces": "views_public_ext.employers_list: qs = Profile.objects.public_visible().annotate(open_jobs=Count('jobs', filter=Q(jobs__status='open'))).filter(open_jobs__gt=0); q по full_name/city/bio (icontains, distinct); city по city__icontains; blacklist: qs.exclude(pk__in=Blacklist.objects.filter(blocked_user=request.user).values('user_id')) для залогиненного; sort ∈ ('rating','name','jobs_count'), rating: order_by('-rating','-total_reviews'), name: full_name, jobs_count: ('-open_jobs','-rating','-total_reviews'); Paginator(qs, 20); favorited_ids = set(Favorite.objects.filter(user=request.user, favorite_type='employer').values_list('target_id', flat=True)); context page, q, city, sort, favorited_ids. Новый view employer_favorite_toggle (login_required, require_POST): профиль public_visible, не сам; Favorite.get_or_create(user=request.user, target=profile, favorite_type='employer'); повторный POST удаляет; safe-referer (url_has_allowed_host_and_scheme) иначе redirect('core:employers'). urls.py: path('employers/<uuid:employer_id>/favorite', views_public_ext.employer_favorite_toggle, name='employer_favorite_toggle'). employers.html: форма q/city/sort, карточки с аватаром/именем/звёздами/рейтингом/отзывами/бейджем «Проверен»/городом/био/числом открытых заданий, форма избранного (favorite_type employer), пагинация с сохранением q/city/sort.",
+  "acceptance": [
+    "Пользователь с role='worker', создавший open-задание, виден в /employers; пользователь без open-заданий — нет.",
+    "Поиск q (имя/город/био) и фильтр city работают; sort=name и sort=jobs_count меняют порядок, rating — дефолт.",
+    "Работодатель, заблокировавший текущего пользователя, отсутствует в каталоге.",
+    "Избранное: POST /employers/<id>/favorite добавляет Favorite(favorite_type='employer'), повторный POST удаляет; состояние отражено на карточке.",
+    "Пагинация сохраняет q/city/sort.",
+    "test_public_views проходит."
+  ],
+  "out_of_scope": [
+    "Не менять карточку работодателя — это J032.",
+    "Не менять каталог трудников и worker_detail.",
+    "Не менять модели/БД и миграции.",
+    "Не добавлять карту работодателей."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_public_ext.py djadmin/core/urls.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "employer_list_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

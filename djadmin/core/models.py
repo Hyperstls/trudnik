@@ -440,7 +440,7 @@ class Rating(models.Model):
     class Meta:
         managed = False
         db_table = "ratings"
-        unique_together = (("rater_user", "job"),)
+        unique_together = (("rater_user", "job", "rated_user"),)
         verbose_name = "оценка"
         verbose_name_plural = "Оценки"
         ordering = ("-created_at",)

@@ -1,0 +1,43 @@
+{
+  "id": "J032",
+  "title": "P2-13: карточка работодателя",
+  "goal": "Карточка работодателя не зависит от role, показывает открытые задания, избранное и статус отклика, скрывается для заблокировавшего пользователя.",
+  "why": "Flask employer_detail: любой пользователь с open-заданиями, проверка blacklist, только open-задания, is_favorited и already_applied_job_ids. Django фильтрует role='employer', показывает все публичные задания (включая completed), не проверяет блокировку, не показывает избранное/отклики.",
+  "files": [
+    "djadmin/core/views_public_ext.py",
+    "djadmin/core/templates/core/employer_detail.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/urls.py",
+    "docs/parity/DISCREPANCIES_JOBS.md"
+  ],
+  "interfaces": "views_public_ext.employer_detail: profile = Profile.objects.public_visible().filter(pk=employer_id).first() без role-фильтра; 404 если нет; 404 если Blacklist.objects.filter(user=profile, blocked_user=request.user).exists(); jobs = Job.objects.public().filter(employer=profile, status='open').order_by('-created_at'); ratings = Rating.objects.filter(rated_user=profile, target_type='employer').select_related('rater_user','job').order_by('-created_at')[:10]; is_favorited = Favorite.objects.filter(user=request.user, target=profile, favorite_type='employer').exists(); already_applied_job_ids = set(Application.objects.filter(worker=request.user, job__in=jobs).values_list('job_id', flat=True)); context p, jobs, ratings, is_favorited, already_applied_job_ids. employer_detail.html: форма POST на core:employer_favorite_toggle с текстом «В избранном»/«В избранное»; у каждого задания метка «Отклик отправлен» при job.pk in already_applied_job_ids; бейдж «✓ Подтверждён» при p.verification_status == 'approved'.",
+  "acceptance": [
+    "Пользователь с role='worker' с open-заданием открывается по /employers/<id> (200), без role-фильтра.",
+    "Карточка показывает только open-задания; completed не отображается.",
+    "Для задания, на которое текущий пользователь откликнулся, видна метка «Отклик отправлен».",
+    "Если работодатель заблокировал текущего пользователя, карточка возвращает 404.",
+    "Кнопка избранного отражает is_favorited и отправляет POST на employer_favorite_toggle.",
+    "В карточке видны только отзывы с target_type='employer'.",
+    "test_public_views проходит."
+  ],
+  "out_of_scope": [
+    "Не менять каталог работодателей — это J031.",
+    "Не менять rate_workers и user_ratings.",
+    "Не менять модели/БД и миграции."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_public_ext.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "employer_detail_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

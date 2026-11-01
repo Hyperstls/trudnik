@@ -1,0 +1,42 @@
+{
+  "id": "J030",
+  "title": "P2-11 UI: rate_workers и подписи оценок",
+  "goal": "Страница оценки работников показывает уже выставленную оценку и комментарий и позволяет обновить; на странице отзывов каждая оценка подписана ролью автора.",
+  "why": "Flask rate_workers.html показывает статус «Оценён/Не оценён», prefill комментария и звёзд; Django rate_workers — пустой select без существующей оценки. Flask user_ratings.html подписывает rating_type как «От работодателя»/«От работника»; Django не показывает источник отзыва.",
+  "files": [
+    "djadmin/core/views_public_ext.py",
+    "djadmin/core/templates/core/rate_workers.html",
+    "djadmin/core/templates/core/user_ratings.html",
+    "djadmin/core/tests/test_parity_ext.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_interact.py",
+    "djadmin/core/models.py",
+    "docs/parity/DISCREPANCIES_JOBS.md"
+  ],
+  "interfaces": "views_public_ext.rate_workers: apps = list(Application.objects.filter(job=job, status='accepted').select_related('worker')); existing = {r.rated_user_id: r for r in Rating.objects.filter(rater_user=request.user, job=job)}; каждому a.my_rating = existing.get(a.worker_id); context job, apps, now. rate_workers.html: select с selected для a.my_rating.rating (1..5), comment value='{{ a.my_rating.comment|default:'' }}', бейдж «Оценён»/«Не оценён», кнопка «Обновить оценку» при a.my_rating, иначе «Оценить»; для status != completed — текст «Оценка доступна после завершения задания». user_ratings.html: под каждой карточкой подпись «От работодателя» при r.rating_type == 'employer', иначе «От работника»; если r.job — ссылка «К заданию» на core:job_detail.",
+  "acceptance": [
+    "GET /jobs/<id>/rate-workers с существующей оценкой: выбран соответствующий балл, комментарий предзаполнен, бейдж «Оценён», кнопка «Обновить оценку».",
+    "Без оценки: бейдж «Не оценён», пустой комментарий, кнопка «Оценить».",
+    "Для незавершённого задания форма не показывается, виден текст о доступности после завершения.",
+    "На /ratings/user/<id> оценка с rating_type='employer' подписана «От работодателя», с rating_type='worker' — «От работника»; есть ссылка на задание при наличии job.",
+    "test_parity_ext проходит."
+  ],
+  "out_of_scope": [
+    "Не добавлять JS/fetch API оценок.",
+    "Не менять серверную логику rate_participant — это J029.",
+    "Не менять my_applications/job_applicants."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_public_ext.py djadmin/core/tests/test_parity_ext.py",
+      "cwd": "."
+    },
+    {
+      "name": "rating_ui_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_parity_ext --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}
