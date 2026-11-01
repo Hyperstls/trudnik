@@ -72,7 +72,7 @@
 
 ## P3 — Прочее
 
-- `YANDEX_SUGGEST_API_KEY` в env Amvera (без него уже работает fallback Geocoder);
+- `YANDEX_SUGGEST_API_KEY` добавлен в env Amvera (2026-11-01); используется официальный JS Suggest + fallback Geocoder;
 - per-job OG-картинка с текстом (сейчас фото/брендовый fallback + OG title/description);
 - PWA-install баннер на `/app` не показывается (страница сама установочная);
 - offline-очередь чата и «отправить при появлении сети»;
