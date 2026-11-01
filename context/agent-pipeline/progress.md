@@ -502,3 +502,19 @@
 - **2026-11-01 15:23:50** | **J048** | `verify` | **PASS** | scope=ok checks=compile=0, chat_tests=0 attempts=0/3
 - **2026-11-01 15:23:57** | **J048** | `review-packet` | **READY** | bytes=7066 new_files=[]
 - **2026-11-01 15:24:44** | **J048** | `review` | **PASS** | by=independent-reviewer → done
+- **2026-11-01 15:34:31** | **J049** | `add` | **OK** | contract=context/agent-pipeline/tasks/J049.json
+- **2026-11-01 15:34:32** | **J049** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/J049.impl.prompt.md
+- **2026-11-01 15:36:06** | **J049** | `verify` | **PASS** | scope=ok checks=compile=0, flow_tests=0 attempts=0/3
+- **2026-11-01 15:36:13** | **J049** | `review-packet` | **READY** | bytes=16674 new_files=[]
+- **2026-11-01 15:37:15** | **J050** | `add` | **OK** | contract=context/agent-pipeline/tasks/J050.json
+- **2026-11-01 15:37:15** | **J050** | `dispatch` | **OK** | status=implementing baseline=5 pack=context/agent-pipeline/packs/J050.impl.prompt.md
+- **2026-11-01 15:38:57** | **J050** | `verify` | **PASS** | scope=ok checks=compile=0, public_tests=0 attempts=0/3
+- **2026-11-01 15:39:06** | **J050** | `review-packet` | **READY** | bytes=9320 new_files=[]
+- **2026-11-01 15:41:36** | **J050** | `set` | **reviewing→fixing** | by=Hyperstls reason=review: city-only hidden, links tied to address; align with J028 map rule reset=attempts=0
+- **2026-11-01 15:43:00** | **J050** | `verify` | **PASS** | scope=ok checks=compile=0, public_tests=0 attempts=0/3
+- **2026-11-01 15:43:07** | **J050** | `review-packet` | **READY** | bytes=10325 new_files=[]
+- **2026-11-01 15:45:07** | **J052** | `add` | **OK** | contract=context/agent-pipeline/tasks/J052.json
+- **2026-11-01 15:45:07** | **J052** | `dispatch` | **OK** | status=implementing baseline=10 pack=context/agent-pipeline/packs/J052.impl.prompt.md
+- **2026-11-01 15:45:52** | **J052** | `verify` | **PASS** | scope=ok checks=compile=0, parity_tests=0 attempts=0/3
+- **2026-11-01 15:46:00** | **J052** | `review-packet` | **READY** | bytes=6687 new_files=[]
+- **2026-11-01 15:46:37** | **J052** | `review` | **PASS** | by=independent-reviewer → done

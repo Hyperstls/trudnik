@@ -1229,3 +1229,21 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-reviewer
 
 **Пакет:** context/agent-pipeline/packs/J048.review.prompt.md
+
+## 2026-11-01 15:41:36 — J050: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** review: city-only hidden, links tied to address; align with J028 map rule
+
+**Переход:** reviewing → fixing
+
+**Сброс:** attempts=0
+
+## 2026-11-01 15:46:37 — J052: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-reviewer
+
+**Пакет:** context/agent-pipeline/packs/J052.review.prompt.md

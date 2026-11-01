@@ -206,6 +206,14 @@ class JobCrudTests(TestCase):
         self.assertContains(response, "api-maps.yandex.ru")
         self.assertContains(response, 'id="id_lat"')
         self.assertContains(response, 'id="id_lng"')
+        self.assertContains(response, 'id="geo-locate"')
+        self.assertContains(response, 'id="geo-find"')
+        self.assertContains(response, 'id="geo-reverse"')
+        self.assertContains(response, 'id="geo-clear"')
+        self.assertContains(response, "navigator.geolocation")
+        self.assertContains(response, "ymaps.geocode")
+        self.assertContains(response, "не сохраняется")
+        self.assertContains(response, "дистанционных")
 
     def test_job_form_without_key_has_no_map(self):
         from unittest.mock import patch
@@ -214,6 +222,7 @@ class JobCrudTests(TestCase):
             response = self.client.get(reverse("core:job_create"))
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, 'id="job-map"')
+        self.assertNotContains(response, 'id="geo-locate"')
         self.assertContains(response, 'id="id_lat"')
 
     def test_job_edit_form_prefills_map_coordinates(self):

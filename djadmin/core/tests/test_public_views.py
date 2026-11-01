@@ -1,6 +1,7 @@
 """Публичные read-only страницы + health."""
 import os
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import Http404
@@ -822,3 +823,47 @@ class LegacySearchTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response["Location"].startswith("/jobs"))
         self.assertIn("q=", response["Location"])
+
+
+class JobDetailGeoTests(TestCase):
+    def setUp(self):
+        self.employer = make_profile("detail-geo-emp@example.com", role="employer")
+        self.job = Job.objects.create(
+            employer=self.employer, work_type="Офлайн J050", organization_name="Приход",
+            status="open", address="Москва, Тверская 1", city="Москва",
+            lat=55.765, lng=37.605,
+            date_time=timezone.now() + timedelta(days=2),
+        )
+
+    def test_detail_shows_address_map_and_route_with_key(self):
+        with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": "test-" + "key"}):  # pragma: allowlist secret
+            response = self.client.get(reverse("core:job_detail", args=[self.job.pk]))
+        self.assertContains(response, "Москва, Тверская 1")
+        self.assertContains(response, 'id="job-detail-map"')
+        self.assertContains(response, "api-maps.yandex.ru")
+        self.assertContains(response, "Открыть на карте")
+        self.assertContains(response, "Маршрут")
+        self.assertContains(response, "Карта показывает адрес задания")
+
+    def test_detail_without_key_has_external_map_links(self):
+        with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": ""}):
+            response = self.client.get(reverse("core:job_detail", args=[self.job.pk]))
+        self.assertNotContains(response, 'id="job-detail-map"')
+        self.assertContains(response, "Открыть на карте")
+        self.assertContains(response, "Маршрут")
+
+    def test_detail_city_only_shows_city_and_search_link(self):
+        self.job.address = ""
+        self.job.save(update_fields=["address"])
+        response = self.client.get(reverse("core:job_detail", args=[self.job.pk]))
+        self.assertContains(response, "Москва")
+        self.assertContains(response, "Найти город")
+        self.assertNotContains(response, 'id="job-detail-map"')
+
+    def test_detail_address_without_coords_has_search_link(self):
+        self.job.lat = None
+        self.job.lng = None
+        self.job.save(update_fields=["lat", "lng"])
+        response = self.client.get(reverse("core:job_detail", args=[self.job.pk]))
+        self.assertContains(response, "Найти адрес")
+        self.assertNotContains(response, 'id="job-detail-map"')

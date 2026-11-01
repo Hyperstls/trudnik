@@ -1,0 +1,42 @@
+{
+  "id": "J049",
+  "title": "UX/geo: автозаполнение координат и адреса в форме задания",
+  "goal": "В форме офлайн-задания можно определить своё местоположение, найти адрес на карте и подставить адрес по метке; координаты сохраняются в lat/lng, геолокация устройства отдельно не сохраняется.",
+  "why": "Сейчас форма умеет только клик/перетаскивание метки. Нет кнопки «Моё местоположение», геокодинга введённого адреса, обратного геокодинга и очистки метки. Пользователь вынужден вручную искать точку на карте; для офлайн-заданий это основной сценарий.",
+  "files": [
+    "djadmin/core/templates/core/job_form.html",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/forms.py",
+    "djadmin/core/views_flow.py",
+    "djadmin/core/templates/core/jobs_list.html"
+  ],
+  "interfaces": "job_form.html (при yandex_maps_key): над картой кнопки id='geo-locate' «Моё местоположение», id='geo-find' «Найти по адресу», id='geo-reverse' «Адрес по метке», id='geo-clear' «Очистить метку»; status id='geo-status' role=status; privacy-hint: координаты нужны только для метки задания, геопозиция устройства не сохраняется; для дистанционных заданий карту не заполнять. JS: ymaps.ready; setCoords(coords, reverse) пишет lat/lng toFixed(6), двигает placemark/map; map click и dragend вызывают setCoords; reverse через ymaps.geocode(coords,{results:1}) → getAddressLine() и getLocalities()[0] заполняют #id_address/#id_city только если пусты (geo-reverse — принудительно перезаписывает); geo-locate через navigator.geolocation.getCurrentPosition(enabledHighAccuracy, timeout 10000) → setCoords + setCenter zoom 15 + reverse; geo-find через ymaps.geocode([city,address].join(', ')) → coords; geo-clear очищает lat/lng, скрывает placemark, status. Ошибки — текст в #geo-status, без alert. test_flows: test_job_form_renders_map_with_key расширить проверками id='geo-locate', id='geo-find', 'navigator.geolocation', 'ymaps.geocode'; test_job_form_without_key_has_no_map дополнить assertNotContains 'geo-locate'; новый test_job_form_geo_hint_mentions_privacy — содержит 'не сохраняется' и 'дистанционных'.",
+  "acceptance": [
+    "При наличии YANDEX_MAPS_API_KEY форма показывает 4 кнопки гео-действий и карту.",
+    "«Моё местоположение» запрашивает разрешение браузера и ставит метку/координаты, не сохраняя устройство отдельно.",
+    "«Найти по адресу» геокодирует введённые город+адрес и ставит метку.",
+    "«Адрес по метке» заполняет address/city через reverse geocode; клик/перетаскивание заполняют их только если пусты.",
+    "«Очистить метку» очищает lat/lng и скрывает метку.",
+    "Без YANDEX_MAPS_API_KEY карта и гео-кнопки не рендерятся.",
+    "test_flows проходит."
+  ],
+  "out_of_scope": [
+    "Не менять модель Job/поля lat/lng.",
+    "Не добавлять отдельное хранение геолокации пользователя.",
+    "Не менять карту ленты и detail — отдельные задачи."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "flow_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

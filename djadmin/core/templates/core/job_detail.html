@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load l10n %}
 {% block title %}{{ job.work_type|default:"Задание" }} — Трудник{% endblock %}
 {% block content %}
 <div class="pt-4">
@@ -42,6 +43,48 @@
                 <dd class="font-medium text-neutral-700">{{ job.get_status_display }}</dd>
             </div>
         </div>
+
+        {% if job.address or job.city %}
+        <section class="mb-4">
+            <h2 class="text-sm font-semibold text-neutral-600 mb-1.5">Адрес</h2>
+            <p class="text-sm text-neutral-700">
+                {% if job.address %}{{ job.address }}{% if job.city %} · {{ job.city }}{% endif %}{% elif job.city %}{{ job.city }}{% endif %}
+            </p>
+            <div class="flex flex-wrap gap-2 mt-2">
+                {% if job.address and job.lat is not None and job.lng is not None %}
+                <a href="https://yandex.ru/maps/?pt={% localize off %}{{ job.lng }},{{ job.lat }}{% endlocalize %}&z=16&l=map" target="_blank" rel="noopener noreferrer" class="px-3 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">Открыть на карте</a>
+                <a href="https://yandex.ru/maps/?rtext=~{% localize off %}{{ job.lat }},{{ job.lng }}{% endlocalize %}&rtt=auto" target="_blank" rel="noopener noreferrer" class="px-3 h-9 inline-flex items-center rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold">Маршрут</a>
+                {% elif job.address %}
+                <a href="https://yandex.ru/maps/?text={{ job.address|urlencode }}" target="_blank" rel="noopener noreferrer" class="px-3 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">Найти адрес</a>
+                {% elif job.city %}
+                <a href="https://yandex.ru/maps/?text={{ job.city|urlencode }}" target="_blank" rel="noopener noreferrer" class="px-3 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">Найти город</a>
+                {% endif %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% if yandex_maps_key and job.address and job.lat is not None and job.lng is not None %}
+        <section class="mb-4">
+            <div id="job-detail-map" data-lat="{% localize off %}{{ job.lat }}{% endlocalize %}" data-lng="{% localize off %}{{ job.lng }}{% endlocalize %}" style="height:280px" class="w-full rounded-xl border border-neutral-200"></div>
+            <p class="text-xs text-neutral-400 mt-1">Карта показывает адрес задания.</p>
+        </section>
+        <script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_key|urlencode }}&lang=ru_RU"></script>
+        <script>
+        document.addEventListener('DOMContentLoaded', function(){
+          if (!window.ymaps) return;
+          var el = document.getElementById('job-detail-map');
+          if (!el) return;
+          var lat = parseFloat(el.dataset.lat), lng = parseFloat(el.dataset.lng);
+          if (isNaN(lat) || isNaN(lng)) return;
+          ymaps.ready(function(){
+            var map = new ymaps.Map('job-detail-map', {
+              center: [lat, lng], zoom: 15, controls: ['zoomControl']
+            });
+            map.geoObjects.add(new ymaps.Placemark([lat, lng], {}, {preset: 'islands#orangeIcon'}));
+          });
+        });
+        </script>
+        {% endif %}
 
         {% if skills %}
         <div class="flex flex-wrap gap-1.5 mb-4">

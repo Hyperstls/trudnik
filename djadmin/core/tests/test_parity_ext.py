@@ -553,3 +553,30 @@ class PushSettingsTests(TestCase):
         source = path.read_text(encoding="utf-8")
         self.assertIn('meta[name="csrf-token"]', source)
         self.assertIn("csrftoken=", source)
+
+
+class NotificationDeepLinksTests(TestCase):
+    def test_notification_links_to_job_and_type_label(self):
+        user = make_profile("notif-link@example.com")
+        employer = make_profile("notif-link-emp@example.com", role="employer")
+        job = make_job(employer, work_type="Уведомление J052")
+        app_obj = Application.objects.create(job=job, worker=user, status="accepted")
+        Notification.objects.create(
+            user=user, type="new_message", title="Новое сообщение",
+            message="Есть новое сообщение", job=job, application=app_obj,
+        )
+        self.client.force_login(user)
+        response = self.client.get(reverse("core:notifications"))
+        self.assertContains(response, "Сообщение")
+        self.assertContains(response, reverse("core:job_detail", args=[job.pk]))
+
+    def test_invitation_notification_links_to_invitations(self):
+        user = make_profile("notif-invite@example.com")
+        Notification.objects.create(
+            user=user, type="application_received", title="Приглашение",
+            message="Вас пригласили на задание", data={"type": "invitation"},
+        )
+        self.client.force_login(user)
+        response = self.client.get(reverse("core:notifications"))
+        self.assertContains(response, reverse("core:invitations"))
+        self.assertContains(response, "Открыть приглашение")

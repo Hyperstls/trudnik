@@ -24,8 +24,15 @@
             {% if yandex_maps_key %}
             <div class="form-field">
                 <span class="form-label">Точка на карте</span>
-                <p class="form-hint mb-2">Кликните по карте или перетащите метку — координаты сохранятся с заданием. Для дистанционных заданий карту не заполняйте: метка нужна только для офлайн-работ по адресу.</p>
-                <div id="job-map" data-lat="{% localize off %}{{ form.instance.lat|default_if_none:'' }}{% endlocalize %}" data-lng="{% localize off %}{{ form.instance.lng|default_if_none:'' }}{% endlocalize %}" style="height:280px" class="w-full rounded-xl border border-neutral-200"></div>
+                <p class="form-hint mb-2">Кликните по карте, найдите адрес или определите своё местоположение. Координаты нужны только для метки офлайн-задания и сохраняются вместе с ним; геопозиция устройства отдельно не сохраняется. Для дистанционных заданий карту не заполняйте.</p>
+                <div class="flex flex-wrap gap-2 mb-2">
+                    <button type="button" id="geo-locate" class="px-3 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Моё местоположение</button>
+                    <button type="button" id="geo-find" class="px-3 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Найти по адресу</button>
+                    <button type="button" id="geo-reverse" class="px-3 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Адрес по метке</button>
+                    <button type="button" id="geo-clear" class="px-3 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-500 text-sm font-medium transition-colors">Очистить метку</button>
+                </div>
+                <p id="geo-status" class="text-xs text-neutral-500 mb-2" role="status" aria-live="polite"></p>
+                <div id="job-map" data-lat="{% localize off %}{{ form.instance.lat|default_if_none:'' }}{% endlocalize %}" data-lng="{% localize off %}{{ form.instance.lng|default_if_none:'' }}{% endlocalize %}" style="height:320px" class="w-full rounded-xl border border-neutral-200"></div>
             </div>
             <script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_key|urlencode }}&lang=ru_RU"></script>
             <script>
@@ -34,32 +41,147 @@
               var el = document.getElementById('job-map');
               var latInput = document.getElementById('id_lat');
               var lngInput = document.getElementById('id_lng');
+              var addressInput = document.getElementById('id_address');
+              var cityInput = document.getElementById('id_city');
+              var statusEl = document.getElementById('geo-status');
               if (!el || !latInput || !lngInput) return;
+
+              function setStatus(text) {
+                if (statusEl) statusEl.textContent = text || '';
+              }
+
               var hasCoords = el.dataset.lat !== '' && el.dataset.lng !== '' &&
                               !isNaN(parseFloat(el.dataset.lat)) && !isNaN(parseFloat(el.dataset.lng));
               var initLat = hasCoords ? parseFloat(el.dataset.lat) : 55.7558;
               var initLng = hasCoords ? parseFloat(el.dataset.lng) : 37.6173;
+              var currentCoords = hasCoords ? [initLat, initLng] : null;
+
               ymaps.ready(function(){
                 var map = new ymaps.Map('job-map', {
                   center: [initLat, initLng], zoom: hasCoords ? 14 : 10,
-                  controls: ['zoomControl', 'geolocationControl']
+                  controls: ['zoomControl', 'searchControl']
                 });
                 var placemark = new ymaps.Placemark([initLat, initLng], {}, {
                   draggable: true, visible: !!hasCoords, preset: 'islands#orangeIcon'
                 });
-                function setCoords(coords){
-                  latInput.value = Number(coords[0]).toFixed(6);
-                  lngInput.value = Number(coords[1]).toFixed(6);
-                  placemark.geometry.setCoordinates(coords);
-                  placemark.options.set('visible', true);
-                }
-                map.events.add('click', function(e){ setCoords(e.get('coords')); });
-                placemark.events.add('dragend', function(){
-                  var coords = placemark.geometry.getCoordinates();
-                  latInput.value = Number(coords[0]).toFixed(6);
-                  lngInput.value = Number(coords[1]).toFixed(6);
-                });
                 map.geoObjects.add(placemark);
+
+                function reverseGeocode(coords, force) {
+                  if (typeof ymaps.geocode !== 'function') {
+                    setStatus('Координаты сохранены. Адрес можно ввести вручную.');
+                    return;
+                  }
+                  ymaps.geocode(coords, {results: 1}).then(function(res){
+                    var obj = res.geoObjects.get(0);
+                    if (!obj) {
+                      setStatus('Координаты сохранены. Адрес не найден — введите вручную.');
+                      return;
+                    }
+                    var address = obj.getAddressLine();
+                    var localities = obj.getLocalities();
+                    if (addressInput && (force || !addressInput.value.trim())) {
+                      addressInput.value = address;
+                    }
+                    if (cityInput && (force || !cityInput.value.trim()) && localities && localities.length) {
+                      cityInput.value = localities[0];
+                    }
+                    setStatus(force
+                      ? 'Адрес подставлен по метке.'
+                      : 'Координаты сохранены. Адрес подставлен — проверьте.');
+                  }).catch(function(){
+                    setStatus('Координаты сохранены. Адрес не подставлен — введите вручную.');
+                  });
+                }
+
+                function setCoords(coords, opts) {
+                  opts = opts || {};
+                  currentCoords = [Number(coords[0]), Number(coords[1])];
+                  latInput.value = currentCoords[0].toFixed(6);
+                  lngInput.value = currentCoords[1].toFixed(6);
+                  placemark.geometry.setCoordinates(currentCoords);
+                  placemark.options.set('visible', true);
+                  if (opts.center !== false) {
+                    map.setCenter(currentCoords, opts.zoom || map.getZoom());
+                  }
+                  if (opts.reverse) reverseGeocode(currentCoords, false);
+                }
+
+                map.events.add('click', function(e){ setCoords(e.get('coords'), {reverse: true}); });
+                placemark.events.add('dragend', function(){
+                  setCoords(placemark.geometry.getCoordinates(), {center: false, reverse: true});
+                });
+
+                var locateBtn = document.getElementById('geo-locate');
+                if (locateBtn) {
+                  locateBtn.addEventListener('click', function(){
+                    if (!navigator.geolocation) {
+                      setStatus('Геолокация недоступна в этом браузере.');
+                      return;
+                    }
+                    setStatus('Определяем местоположение…');
+                    navigator.geolocation.getCurrentPosition(function(pos){
+                      setCoords([pos.coords.latitude, pos.coords.longitude], {zoom: 16, reverse: true});
+                      setStatus('Метка поставлена по вашему местоположению. Проверьте адрес.');
+                    }, function(err){
+                      if (err && err.code === 1) {
+                        setStatus('Доступ к геолокации запрещён. Разрешите его в браузере или кликните по карте.');
+                      } else {
+                        setStatus('Не удалось определить местоположение. Кликните по карте или введите адрес.');
+                      }
+                    }, {enableHighAccuracy: true, timeout: 10000, maximumAge: 60000});
+                  });
+                }
+
+                var findBtn = document.getElementById('geo-find');
+                if (findBtn) {
+                  findBtn.addEventListener('click', function(){
+                    var parts = [];
+                    if (cityInput && cityInput.value.trim()) parts.push(cityInput.value.trim());
+                    if (addressInput && addressInput.value.trim()) parts.push(addressInput.value.trim());
+                    if (!parts.length) {
+                      setStatus('Введите город или адрес, чтобы найти точку на карте.');
+                      return;
+                    }
+                    if (typeof ymaps.geocode !== 'function') {
+                      setStatus('Поиск по адресу недоступен. Кликните по карте.');
+                      return;
+                    }
+                    setStatus('Ищем адрес…');
+                    ymaps.geocode(parts.join(', '), {results: 1}).then(function(res){
+                      var obj = res.geoObjects.get(0);
+                      if (!obj) {
+                        setStatus('Адрес не найден. Уточните город и адрес или кликните по карте.');
+                        return;
+                      }
+                      setCoords(obj.geometry.getCoordinates(), {zoom: 16});
+                      setStatus('Адрес найден: ' + obj.getAddressLine());
+                    }).catch(function(){
+                      setStatus('Не удалось найти адрес. Кликните по карте вручную.');
+                    });
+                  });
+                }
+
+                var reverseBtn = document.getElementById('geo-reverse');
+                if (reverseBtn) {
+                  reverseBtn.addEventListener('click', function(){
+                    if (!currentCoords) {
+                      setStatus('Сначала поставьте метку на карте.');
+                      return;
+                    }
+                    reverseGeocode(currentCoords, true);
+                  });
+                }
+
+                var clearBtn = document.getElementById('geo-clear');
+                if (clearBtn) {
+                  clearBtn.addEventListener('click', function(){
+                    currentCoords = null;
+                    latInput.value = '';
+                    lngInput.value = '';
+                    placemark.options.set('visible', false);
+                    setStatus('Метка удалена. Для офлайн-задания укажите точку на карте.');
+                  });
+                }
               });
             });
             </script>

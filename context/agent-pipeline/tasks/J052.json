@@ -1,0 +1,38 @@
+{
+  "id": "J052",
+  "title": "P3: уведомления — типы и deep-link",
+  "goal": "В инбоксе уведомлений есть человекочитаемый тип и ссылка «Открыть задание/чат/приглашение» в зависимости от уведомления.",
+  "why": "Flask notifications.html:39-44 показывает type-label и ссылку на /invitations. Django выводит только title/message/date; пользователь не может быстро перейти к сущности.",
+  "files": [
+    "djadmin/core/templates/core/notifications.html",
+    "djadmin/core/tests/test_parity_ext.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py"
+  ],
+  "interfaces": "notifications.html: под title — span-бейдж типа: application_received→«Отклик», application_accepted→«Отклик принят», application_rejected→«Отклик отклонён», new_message→«Сообщение», new_rating→«Оценка», job_completed→«Задание завершено», иначе «Уведомление». Внизу карточки ссылка: если type == 'application_received' и 'Вас пригласили' in message → core:invitations «Открыть приглашение»; elif n.job_id → core:job_detail «Открыть задание»; elif n.application_id → core:chat_room «Открыть чат». test_parity_ext: Notification(type='new_message', job=job, application=app, message='...') → GET /notifications содержит reverse job_detail; Notification(type='application_received', message='Вас пригласили...', data={'type':'invitation'}) → содержит reverse invitations.",
+  "acceptance": [
+    "У каждого уведомления виден короткий тип.",
+    "Уведомление с job ведёт на карточку задания.",
+    "Уведомление с application (без job) ведёт в чат.",
+    "Приглашение ведёт на /invitations.",
+    "test_parity_ext проходит."
+  ],
+  "out_of_scope": [
+    "Не менять модель/создание уведомлений.",
+    "Не менять API unread-count.",
+    "Не добавлять JS."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_parity_ext.py",
+      "cwd": "."
+    },
+    {
+      "name": "parity_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_parity_ext --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

@@ -286,6 +286,7 @@ def job_detail(request, job_id):
         "employer": employer,
         "employer_reviews": employer_reviews,
         "is_owner": is_owner,
+        "yandex_maps_key": os.getenv("YANDEX_MAPS_API_KEY", ""),
         "is_fav": (
             request.user.is_authenticated
             and JobFavorite.objects.filter(user=request.user, job=job).exists()

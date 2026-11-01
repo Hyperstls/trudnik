@@ -1,0 +1,41 @@
+{
+  "id": "J050",
+  "title": "UX/geo: адрес и карта в карточке задания",
+  "goal": "Карточка офлайн-задания показывает адрес, карту с меткой и кнопки «Открыть на карте»/«Маршрут»; без координат — ссылка на поиск адреса в Яндекс.Картах.",
+  "why": "Сейчас job_detail не показывает address вообще и не содержит карты, хотя задание хранит lat/lng/address. Пользователь не видит, куда ехать; карта ленты показывает только точку, без маршрута.",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/templates/core/job_detail.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/jobs_list.html",
+    "djadmin/core/models.py"
+  ],
+  "interfaces": "views.job_detail context: yandex_maps_key=os.getenv('YANDEX_MAPS_API_KEY',''). job_detail.html: {% load l10n %}; после блока характеристик при job.address — секция «Адрес» с job.address (+ city), ссылками: при lat/lng — https://yandex.ru/maps/?pt={{ job.lng }},{{ job.lat }}&z=16&l=map («Открыть на карте») и https://yandex.ru/maps/?rtext=~{{ job.lat }},{{ job.lng }}&rtt=auto («Маршрут»); без coords — https://yandex.ru/maps/?text={{ job.address|urlencode }} («Найти адрес»); все внешние ссылки target=_blank rel=noopener noreferrer. При yandex_maps_key и lat/lng и address — div id='job-detail-map' data-lat/data-lng (localize off), height 280, script api-maps + ymaps.ready, Placemark, setCenter zoom 15, controls zoomControl; никакой геолокации пользователя. Подпись «Карта показывает адрес задания». test_public_views: detail с address+lat/lng и ключом содержит id='job-detail-map', api-maps, «Открыть на карте», «Маршрут»; без ключа карты нет, но внешние ссылки есть; с address без coords содержит «Найти адрес».",
+  "acceptance": [
+    "Карточка показывает address и/или city, если заданы.",
+    "При наличии address и lat/lng есть «Открыть на карте» и «Маршрут».",
+    "Карта рендерится только при ключе, address и координатах (правило J028: дистанционные без адреса не маркируются).",
+    "При address без координат — «Найти адрес»; при city без address — город и поиск города на карте.",
+    "Карта не запрашивает и не сохраняет геолокацию пользователя.",
+    "test_public_views проходит."
+  ],
+  "out_of_scope": [
+    "Не менять карту ленты.",
+    "Не менять модель/форму задания.",
+    "Не добавлять отзывы/рейтинги в карту."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}
