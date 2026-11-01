@@ -725,3 +725,8 @@ progress::-moz-progress-bar {
 .hover\:bg-green-50:hover { background-color: #f0fdf4; }
 .hover\:bg-red-50:hover { background-color: #fef2f2; }
 .-mb-px { margin-bottom: -1px; }
+.min-w-\[180px\] { min-width: 180px; }
+.border-amber-200 { border-color: #fde68a; }
+@media (min-width: 640px) {
+    .sm\:w-64 { width: 16rem; }
+}
