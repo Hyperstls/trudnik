@@ -1,0 +1,40 @@
+{
+  "id": "J077",
+  "title": "P1: локальный черновик формы задания",
+  "goal": "При создании задания введённые данные автоматически сохраняются в localStorage на 7 дней; при возврате показывается баннер «Продолжить черновик / Удалить», восстановление заполняет поля.",
+  "why": "Длинная форма теряет данные при случайном уходе/звонке. Локальный черновик даёт основной прирост конверсии без миграций и серверного хранения ПДн.",
+  "files": [
+    "djadmin/core/templates/core/job_form.html",
+    "static/js/job-draft.js",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/forms.py",
+    "docs/UX_ROADMAP_2026Q4.md"
+  ],
+  "interfaces": "job_form.html: {% load static %}; на create-форме data-job-draft='1'; скрытый #job-draft-banner с #job-draft-meta,#job-draft-restore,#job-draft-discard; подключить static/js/job-draft.js. JS: ключ trudnik-job-draft-v1, TTL 7 дней; сохранять только поля формы кроме csrfmiddlewaretoken, lat, lng, file/password; skills как массив; debounce 600мс; не сохранять пустой черновик; баннер показывает дату; restore заполняет text/select/checkbox/radio и dispatch input/change; discard удаляет; localStorage errors игнорируются. Test: GET /jobs/new (авторизованный) содержит data-job-draft, job-draft-banner и job-draft.js; edit-форма не содержит data-job-draft.",
+  "acceptance": [
+    "Черновик сохраняется при вводе и восстанавливается после перезагрузки.",
+    "CSRF, lat/lng, файлы и пароли в localStorage не попадают.",
+    "Черновик старше 7 дней удаляется.",
+    "На edit-форме черновик не включается.",
+    "Без localStorage форма работает как раньше."
+  ],
+  "out_of_scope": [
+    "Не делать серверный черновик/миграции.",
+    "Не делать степпер в этой задаче.",
+    "Не сохранять фото/координаты."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": ".venv\\Scripts\\python.exe -m py_compile djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "draft_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_flows.JobCrudTests.test_job_form_has_local_draft --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

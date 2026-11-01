@@ -1,0 +1,39 @@
+{
+  "id": "J078",
+  "title": "Черновик: очистка после успешной публикации",
+  "goal": "После успешного создания задания локальный черновик удаляется; при ошибке валидации черновик сохраняется.",
+  "why": "Иначе после публикации при следующем открытии формы пользователь снова увидит старый черновик. Успех определяется только сервером, поэтому очистка запускается на странице созданного задания с маркером created=1.",
+  "files": [
+    "djadmin/core/views_flow.py",
+    "djadmin/core/templates/core/job_detail.html",
+    "static/js/job-draft.js",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "docs/UX_ROADMAP_2026Q4.md"
+  ],
+  "interfaces": "views_flow.job_create: redirect job_detail с '?created=1&push=1'. job_detail.html: при request.GET.created == '1' подключить static/js/job-draft.js. job-draft.js: до поиска формы, если query created=1 — localStorage.removeItem('trudnik-job-draft-v1'). test_create_redirects_with_push_prompt дополнить проверкой created=1 и отсутствия повторного баннера после открытия detail.",
+  "acceptance": [
+    "После создания задания черновик удаляется.",
+    "При ошибке валидации (POST возвращает форму) черновик не удаляется автоматически.",
+    "Detail без created=1 не трогает localStorage.",
+    "Скрипт не выполняется на других страницах."
+  ],
+  "out_of_scope": [
+    "Не менять серверное хранение.",
+    "Не менять push-логику.",
+    "Не менять edit-форму."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": ".venv\\Scripts\\python.exe -m py_compile djadmin/core/views_flow.py djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "created_redirect_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_flows.JobCrudTests.test_create_redirects_with_push_prompt --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 {% extends "core/base.html" %}
 {% load l10n %}
+{% load static %}
 {% block title %}{{ title }} — Трудник{% endblock %}
 {% block content %}
 <div class="max-w-2xl mx-auto px-0 py-4 fade-in">
@@ -9,7 +10,19 @@
     </a>
     <div class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 sm:p-6">
         <h1 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-4">{{ title }}</h1>
-        <form method="post" class="space-y-3">
+        {% if not job %}
+        <div id="job-draft-banner" class="hidden mb-4 rounded-xl border border-primary-200 bg-primary-50 p-3 flex flex-wrap items-center justify-between gap-2" role="status" aria-live="polite">
+            <div>
+                <p class="text-sm font-semibold text-neutral-800">Найден черновик задания</p>
+                <p id="job-draft-meta" class="text-xs text-neutral-600 mt-0.5"></p>
+            </div>
+            <div class="flex gap-2">
+                <button type="button" id="job-draft-restore" class="px-3 h-9 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold">Продолжить</button>
+                <button type="button" id="job-draft-discard" class="px-3 h-9 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600 text-sm font-medium">Удалить</button>
+            </div>
+        </div>
+        {% endif %}
+        <form method="post" class="space-y-3"{% if not job %} data-job-draft="1"{% endif %}>
             {% csrf_token %}
             {% if locked %}
             <div class="rounded-xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800" role="note">
@@ -443,4 +456,8 @@
     </section>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/job-draft.js' %}" defer></script>
 {% endblock %}

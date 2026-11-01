@@ -1769,3 +1769,35 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review
 
 **Пакет:** context/agent-pipeline/packs/J076.review.prompt.md
+
+## 2026-11-01 21:12:37 — J077: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** ['djadmin/core/templates/core/job_detail.html', 'djadmin/core/views_flow.py']
+
+## 2026-11-01 21:12:39 — J078: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 21:25:33 — J077: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J077.review.prompt.md
+
+## 2026-11-01 21:25:33 — J078: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J078.review.prompt.md

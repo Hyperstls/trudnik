@@ -91,7 +91,10 @@ class JobCrudTests(TestCase):
         response = self.client.post(reverse("core:job_create"), self._job_payload())
         self.assertEqual(response.status_code, 302)
         self.assertIn("push=1", response["Location"])
-        self.assertContains(self.client.get(response["Location"]), 'id="push-prompt"')
+        self.assertIn("created=1", response["Location"])
+        page = self.client.get(response["Location"])
+        self.assertContains(page, 'id="push-prompt"')
+        self.assertContains(page, "job-draft.js")
 
     def test_create_job_sets_expires_at(self):
         response = self.client.post(reverse("core:job_create"), self._job_payload())
@@ -202,6 +205,15 @@ class JobCrudTests(TestCase):
                     "lat" if "lat" in overrides and overrides["lat"] == "999" else "lng",
                     response.context["form"].errors,
                 )
+
+    def test_job_form_has_local_draft(self):
+        response = self.client.get(reverse("core:job_create"))
+        self.assertContains(response, 'data-job-draft="1"')
+        self.assertContains(response, 'id="job-draft-banner"')
+        self.assertContains(response, "job-draft.js")
+        job = make_job(self.user)
+        edit = self.client.get(reverse("core:job_edit", args=[job.pk]))
+        self.assertNotContains(edit, 'data-job-draft="1"')
 
     def test_job_form_renders_map_with_key(self):
         from unittest.mock import patch

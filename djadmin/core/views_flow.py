@@ -162,7 +162,7 @@ def job_create(request):
             job.save()
             sync_job_skills_raw(job.pk, [s.pk for s in form.cleaned_data["skills"]])
         messages.success(request, "Задание создано.")
-        return redirect(reverse("core:job_detail", args=[job.pk]) + "?push=1")
+        return redirect(reverse("core:job_detail", args=[job.pk]) + "?created=1&push=1")
     return render(request, "core/job_form.html", {
         "form": form, "title": "Новое задание", "selected_skills": set(),
         "yandex_maps_key": os.getenv("YANDEX_MAPS_API_KEY", ""),

@@ -241,6 +241,7 @@
 </div>
 {% endblock %}
 {% block scripts %}
+{% if request.GET.created == '1' %}<script src="{% static 'js/job-draft.js' %}"></script>{% endif %}
 <script src="{% static 'js/api.js' %}"></script>
 <script src="{% static 'js/push-notifications.js' %}"></script>
 <script>
