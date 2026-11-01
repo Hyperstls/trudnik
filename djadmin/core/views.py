@@ -391,7 +391,7 @@ def job_detail(request, job_id):
 
 
 def workers_list(request):
-    qs = Profile.objects.public_workers()
+    qs = Profile.objects.public_workers().prefetch_related("user_skills__skill")
     q = (request.GET.get("q") or "").strip()
     if q:
         qs = (qs.filter(full_name__icontains=q) | qs.filter(city__icontains=q)
@@ -450,6 +450,17 @@ def workers_list(request):
     worker_ids = [w.pk for w in page.object_list]
     reliable_worker_ids = set()
     invited_worker_ids = set()
+    favorite_worker_ids = set()
+    my_open_jobs = []
+    if request.user.is_authenticated:
+        favorite_worker_ids = set(
+            Favorite.objects.filter(
+                user=request.user, target_id__in=worker_ids, favorite_type="worker"
+            ).values_list("target_id", flat=True)
+        )
+        my_open_jobs = list(
+            Job.objects.filter(employer=request.user, status="open").order_by("date_time")[:50]
+        )
     if worker_ids:
         accepted = Counter(
             Application.objects.filter(
@@ -473,8 +484,13 @@ def workers_list(request):
                     status__in=("pending", "accepted"),
                 ).values_list("worker_id", flat=True)
             )
+    active_filter_count = sum(bool(value) for value in (
+        q, skill_ids, rating_min, payment_from, payment_to,
+        request.GET.get("sort") not in (None, "", "rating"),
+    ))
     return render(request, "core/workers_list.html", {
         "page": page, "q": q,
+        "active_filter_count": active_filter_count,
         "skills": list(Skill.objects.order_by("sort_order", "name")),
         "selected_skills": selected_skills,
         "rating_min": rating_min,
@@ -483,6 +499,8 @@ def workers_list(request):
         "sort": sort,
         "reliable_worker_ids": reliable_worker_ids,
         "invited_worker_ids": invited_worker_ids,
+        "favorite_worker_ids": favorite_worker_ids,
+        "my_open_jobs": my_open_jobs,
     })
 
 

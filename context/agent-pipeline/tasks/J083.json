@@ -1,0 +1,31 @@
+{
+  "id": "J083",
+  "title": "P0: доступ к «Трудникам» на мобильном",
+  "goal": "Ссылка на /workers доступна на мобильном в футере (всем) и в профильном меню (авторизованным), не только в desktop-навигации.",
+  "why": "На мобильном нижняя навигация не содержит «Трудники», а desktop-nav скрыт — пользователь не может попасть в каталог без ручного ввода URL.",
+  "files": [
+    "djadmin/core/templates/core/base.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/urls.py"
+  ],
+  "interfaces": "base.html: в footer nav добавить «Трудники» → core:workers; в profile-menu (desktop/mobile dropdown) добавить пункт «Трудники» с иконкой people. Существующую мобильную нижнюю навигацию не раздувать. Test: анонимный GET /jobs содержит href=/workers и «Трудники»; авторизованный GET /jobs содержит пункт меню.",
+  "acceptance": [
+    "Анонимный мобильный пользователь видит ссылку «Трудники» в футере.",
+    "Авторизованный видит «Трудники» в меню профиля.",
+    "Desktop-навигация не меняется.",
+    "Ссылка ведёт на core:workers."
+  ],
+  "out_of_scope": [
+    "Не менять нижнюю навигацию.",
+    "Не менять страницу /workers."
+  ],
+  "checks": [
+    {
+      "name": "workers_link_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.WorkersNavigationTests.test_workers_mobile_links --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

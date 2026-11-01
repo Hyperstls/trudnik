@@ -1913,3 +1913,131 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review
 
 **Пакет:** context/agent-pipeline/packs/J082.review.prompt.md
+
+## 2026-11-01 23:19:20 — J083: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** test class location
+
+**Переход:** implementing → fixing
+
+## 2026-11-01 23:19:20 — J083: контракт обновлён
+
+**Причина:** test class location
+
+**Проверки до:** ['workers_link_test']
+
+**Проверки после:** ['workers_link_test']
+
+## 2026-11-01 23:19:20 — J083: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 23:19:52 — J084: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 23:20:10 — J084: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 23:21:16 — J085: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** generated tailwind
+
+**Дрейф, который обойдён:** ['static/css/tailwind.min.css']
+
+## 2026-11-01 23:21:30 — J085: контракт обновлён
+
+**Причина:** test class location
+
+**Проверки до:** ['workers_filter_test']
+
+**Проверки после:** ['workers_filter_test']
+
+## 2026-11-01 23:21:30 — J085: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** generated tailwind
+
+**Дрейф, который обойдён:** ['static/css/tailwind.min.css']
+
+## 2026-11-01 23:22:44 — J086: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** baseline after edits
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 23:41:33 — J085: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** review: desktop resize + scope
+
+**Переход:** reviewing → fixing
+
+## 2026-11-01 23:41:33 — J085: контракт обновлён
+
+**Причина:** review: desktop resize handler, J086 scope, dropdown accepted
+
+**Проверки до:** ['workers_filter_test']
+
+**Проверки после:** ['workers_filter_test']
+
+## 2026-11-01 23:41:35 — J085: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** generated tailwind
+
+**Дрейф, который обойдён:** ['static/css/tailwind.min.css']
+
+## 2026-11-01 23:41:59 — J083: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J083.review.prompt.md
+
+## 2026-11-01 23:41:59 — J084: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J084.review.prompt.md
+
+## 2026-11-01 23:41:59 — J086: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J086.review.prompt.md
+
+## 2026-11-01 23:44:00 — J085: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J085.review.prompt.md

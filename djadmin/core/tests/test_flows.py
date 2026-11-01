@@ -216,6 +216,15 @@ class JobCrudTests(TestCase):
         edit = self.client.get(reverse("core:job_edit", args=[job.pk]))
         self.assertNotContains(edit, 'data-job-draft="1"')
 
+    def test_job_form_autofills_address(self):
+        from unittest.mock import patch
+
+        with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": "test-" + "key"}):  # pragma: allowlist secret
+            response = self.client.get(reverse("core:job_create"))
+        self.assertContains(response, "forceAddress")
+        self.assertContains(response, "foundAddress")
+        self.assertContains(response, "addressInput.value = foundAddress")
+
     def test_job_form_renders_map_with_key(self):
         from unittest.mock import patch
 

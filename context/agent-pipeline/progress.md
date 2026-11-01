@@ -754,3 +754,39 @@
 - **2026-11-01 23:06:41** | **J082** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=tailwind unchanged drift=[]
 - **2026-11-01 23:06:43** | **J082** | `verify` | **PASS** | scope=skipped checks=compile=0, step_test=0 attempts=0/3
 - **2026-11-01 23:09:31** | **J082** | `review` | **PASS** | by=independent-review → done
+- **2026-11-01 23:18:42** | **J083** | `add` | **OK** | contract=context/agent-pipeline/tasks/J083.json
+- **2026-11-01 23:18:42** | **J083** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/J083.impl.prompt.md
+- **2026-11-01 23:19:20** | **J083** | `set` | **implementing→fixing** | by=Hyperstls reason=test class location
+- **2026-11-01 23:19:20** | **J083** | `update` | **OK** | revision=1 reason=test class location
+- **2026-11-01 23:19:20** | **J083** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=tailwind unchanged drift=[]
+- **2026-11-01 23:19:22** | **J083** | `verify` | **PASS** | scope=skipped checks=workers_link_test=0 attempts=0/3
+- **2026-11-01 23:19:41** | **J084** | `add` | **OK** | contract=context/agent-pipeline/tasks/J084.json
+- **2026-11-01 23:19:42** | **J084** | `dispatch` | **OK** | status=implementing baseline=6 pack=context/agent-pipeline/packs/J084.impl.prompt.md
+- **2026-11-01 23:19:52** | **J084** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=tailwind unchanged drift=[]
+- **2026-11-01 23:19:53** | **J084** | `verify` | **FAIL** | scope=skipped checks=compile=0, address_test=1 attempts=1/3 → fixing
+- **2026-11-01 23:20:10** | **J084** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=tailwind unchanged drift=[]
+- **2026-11-01 23:20:12** | **J084** | `verify` | **PASS** | scope=skipped checks=compile=0, address_test=0 attempts=1/3
+- **2026-11-01 23:20:32** | **J085** | `add` | **OK** | contract=context/agent-pipeline/tasks/J085.json
+- **2026-11-01 23:20:33** | **J085** | `dispatch` | **OK** | status=implementing baseline=9 pack=context/agent-pipeline/packs/J085.impl.prompt.md
+- **2026-11-01 23:21:16** | **J085** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=generated tailwind drift=['static/css/tailwind.min.css']
+- **2026-11-01 23:21:16** | **J085** | `verify` | **FAIL** | scope=skipped checks=workers_filter_test=1 attempts=1/3 → fixing
+- **2026-11-01 23:21:30** | **J085** | `update` | **OK** | revision=1 reason=test class location
+- **2026-11-01 23:21:30** | **J085** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=generated tailwind drift=['static/css/tailwind.min.css']
+- **2026-11-01 23:21:32** | **J085** | `verify` | **PASS** | scope=skipped checks=workers_filter_test=0 attempts=1/3
+- **2026-11-01 23:22:44** | **J086** | `add` | **OK** | contract=context/agent-pipeline/tasks/J086.json
+- **2026-11-01 23:22:44** | **J086** | `dispatch` | **OK** | status=implementing baseline=13 pack=context/agent-pipeline/packs/J086.impl.prompt.md
+- **2026-11-01 23:22:44** | **J086** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=baseline after edits drift=[]
+- **2026-11-01 23:22:46** | **J086** | `verify` | **PASS** | scope=skipped checks=worker_card_test=0 attempts=0/3
+- **2026-11-01 23:22:54** | **J083** | `review-packet` | **READY** | bytes=8601 new_files=[]
+- **2026-11-01 23:22:54** | **J084** | `review-packet` | **READY** | bytes=6977 new_files=[]
+- **2026-11-01 23:22:54** | **J085** | `review-packet` | **READY** | bytes=17556 new_files=[]
+- **2026-11-01 23:22:54** | **J086** | `review-packet` | **READY** | bytes=2929 new_files=[]
+- **2026-11-01 23:41:33** | **J085** | `set` | **reviewing→fixing** | by=Hyperstls reason=review: desktop resize + scope
+- **2026-11-01 23:41:33** | **J085** | `update` | **OK** | revision=2 reason=review: desktop resize handler, J086 scope, dropdown accepted
+- **2026-11-01 23:41:35** | **J085** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=generated tailwind drift=['static/css/tailwind.min.css']
+- **2026-11-01 23:41:36** | **J085** | `verify` | **PASS** | scope=skipped checks=workers_filter_test=0 attempts=1/3
+- **2026-11-01 23:41:44** | **J085** | `review-packet` | **READY** | bytes=18008 new_files=[]
+- **2026-11-01 23:41:59** | **J083** | `review` | **PASS** | by=independent-review → done
+- **2026-11-01 23:41:59** | **J084** | `review` | **PASS** | by=independent-review → done
+- **2026-11-01 23:41:59** | **J086** | `review` | **PASS** | by=independent-review → done
+- **2026-11-01 23:44:00** | **J085** | `review` | **PASS** | by=independent-review → done

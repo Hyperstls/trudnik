@@ -1,0 +1,34 @@
+{
+  "id": "J085",
+  "title": "P1: мобильные фильтры «Трудников» в bottom-sheet",
+  "goal": "На мобильном фильтры /workers открываются нижним листом с бейджем активных и sticky «Сбросить/Найти»; навыки — чекбоксы, а не нативный multi-select.",
+  "why": "Фильтр из 6 полей и multi-select size=3 занимает несколько экранов и неудобен на телефоне; кнопка «Найти» уезжает, активные фильтры не видны.",
+  "files": [
+    "djadmin/core/templates/core/workers_list.html",
+    "djadmin/core/views.py",
+    "djadmin/core/tests/test_public_views.py",
+    "static/css/app.css"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/jobs_list.html"
+  ],
+  "interfaces": "views.workers_list: active_filter_count (q/skills/rating_min/payment_from/payment_to/не-default sort). workers_list.html: #filters-open sm:hidden с бейджем, #filters-backdrop, form id=filters-form class flex + role=search; sheet header/close; skills заменить на details с checkbox name=skills; sticky actions Сбросить(/workers)/Найти; JS добавляет filters-collapsed, open/close/Escape/backdrop/focus. CSS переиспользует .filters-backdrop/#filters-form.filters-sheet. Test: пустой /workers count=0; с q/rating_min/skills count=3; HTML содержит filters-open.",
+  "acceptance": [
+    "Мобильный фильтр открывается листом, закрывается крестиком/Escape/backdrop.",
+    "Бейдж показывает число активных фильтров.",
+    "Кнопки «Сбросить/Найти» всегда видны.",
+    "Навыки выбираются чекбоксами.",
+    "Desktop-фильтрация сохраняется; навыки на desktop также dropdown-чекбоксы — осознанное улучшение."
+  ],
+  "out_of_scope": [
+    "Не менять фильтрацию по существу.",
+    "Карточки трудников — отдельный контракт J086 (в этом же релизе)."
+  ],
+  "checks": [
+    {
+      "name": "workers_filter_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.WorkersNavigationTests.test_workers_active_filter_count --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

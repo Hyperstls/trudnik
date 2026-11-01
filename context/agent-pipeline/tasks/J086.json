@@ -1,0 +1,35 @@
+{
+  "id": "J086",
+  "title": "P1: информативная карточка трудника с действиями",
+  "goal": "Карточка /workers показывает навыки, желаемую оплату и даёт действия «Профиль», «Пригласить» (выбор своего открытого задания) и «В избранное».",
+  "why": "Сейчас карточка содержит только имя, рейтинг, город и био; из неё нельзя ничего сделать. Пользователь вынужден открывать профиль, чтобы пригласить или сохранить трудника.",
+  "files": [
+    "djadmin/core/templates/core/workers_list.html",
+    "djadmin/core/views.py",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_profile.py",
+    "djadmin/core/templates/core/worker_detail.html"
+  ],
+  "interfaces": "workers_list view: prefetch user_skills__skill; favorite_worker_ids; my_open_jobs (open, <=50). Template: chips навыков (4), desired_payment, actions Профиль (worker_detail), Пригласить details с select job_id и POST invite_worker, В избранном/В избранное (people_favorite_toggle). Test: карточка содержит действия, навык, оплату, избранное.",
+  "acceptance": [
+    "В карточке видны до 4 навыков и оплата.",
+    "«Профиль» ведёт на detail.",
+    "«Пригласить» отправляет POST на выбранное открытое задание; без заданий — CTA создать.",
+    "Избранное отражает текущее состояние.",
+    "Нет N+1 по навыкам."
+  ],
+  "out_of_scope": [
+    "Не менять модалку invite-worker (legacy).",
+    "Не менять профиль трудника.",
+    "Не менять фильтры."
+  ],
+  "checks": [
+    {
+      "name": "worker_card_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.WorkersNavigationTests.test_worker_card_has_actions_and_details --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

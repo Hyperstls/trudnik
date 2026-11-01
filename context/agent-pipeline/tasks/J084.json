@@ -1,0 +1,38 @@
+{
+  "id": "J084",
+  "title": "P0: автозаполнение адреса по метке и геолокации",
+  "goal": "При клике/перетаскивании метки и кнопке «Моё местоположение» адрес и город автоматически обновляются по обратному геокодингу; «Найти по адресу» нормализует адрес из геокодера.",
+  "why": "Сейчас адрес заполняется только если поле пустое. Пользователь ставит точку, но видит старый/пустой адрес и сохраняет неверные данные. Для офлайн-задания адрес должен соответствовать метке.",
+  "files": [
+    "djadmin/core/templates/core/job_form.html",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "docs/parity/GEO_UX_PRIVACY.md"
+  ],
+  "interfaces": "job_form JS: setCoords opts.forceAddress; map click/dragend/locate передают reverse:true, forceAddress:true → reverseGeocode(coords,true) обновляет address/city; reverse button уже force; find button после geocode заполняет addressInput.value=obj.getAddressLine() и city (если пуст), сохраняет setCoords(keepConfirm). Статусы не меняются. Test: рендер формы с ключом содержит forceAddress и getAddressLine-присвоение.",
+  "acceptance": [
+    "Клик по карте обновляет адрес и город.",
+    "Перетаскивание метки обновляет адрес.",
+    "«Моё местоположение» обновляет адрес.",
+    "«Найти по адресу» подставляет нормализованный адрес.",
+    "При ошибке геокодера введённый адрес не стирается."
+  ],
+  "out_of_scope": [
+    "Не менять серверную валидацию.",
+    "Не менять степпер/черновик.",
+    "Не менять карту ленты."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": ".venv\\Scripts\\python.exe -m py_compile djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "address_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_flows.JobCrudTests.test_job_form_autofills_address --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

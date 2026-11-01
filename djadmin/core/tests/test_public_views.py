@@ -1109,3 +1109,44 @@ class GeoSuggestProxyTests(TestCase):
         with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": "test-" + "key"}):  # pragma: allowlist secret
             response = self.client.get(reverse("core:job_create"))
         self.assertNotContains(response, "suggest_apikey")
+
+
+class WorkersNavigationTests(TestCase):
+    def test_workers_active_filter_count(self):
+        self.assertEqual(self.client.get(reverse("core:workers")).context["active_filter_count"], 0)
+        worker = make_profile("filter-worker@example.com", role="worker", city="Москва")
+        skill = Skill.objects.create(name="Фильтр-навык J085", sort_order=1)
+        UserSkill.objects.create(user=worker, skill=skill)
+        response = self.client.get(reverse("core:workers"), {
+            "q": "Москва", "rating_min": "4", "skills": str(skill.pk),
+        })
+        self.assertEqual(response.context["active_filter_count"], 3)
+        self.assertContains(response, 'id="filters-open"')
+
+    def test_worker_card_has_actions_and_details(self):
+        employer = make_profile("worker-card-emp@example.com", email_verified=True)
+        worker = make_profile(
+            "worker-card@example.com", role="worker", city="Москва",
+            desired_payment=1500, bio="Мастер",
+        )
+        skill = Skill.objects.create(name="Карточка-навык", sort_order=1)
+        UserSkill.objects.create(user=worker, skill=skill)
+        Favorite.objects.create(user=employer, target=worker, favorite_type="worker")
+        make_job(employer)
+        self.client.force_login(employer)
+        response = self.client.get(reverse("core:workers"), {"q": "Мастер"})
+        self.assertContains(response, "Пригласить")
+        self.assertContains(response, "Профиль")
+        self.assertContains(response, "В избранном")
+        self.assertContains(response, "Карточка-навык")
+        self.assertContains(response, "1500")
+
+    def test_workers_mobile_links(self):
+        response = self.client.get(reverse("core:jobs"))
+        self.assertContains(response, reverse("core:workers"))
+        self.assertContains(response, "Трудники")
+        user = make_profile("workers-link@example.com")
+        self.client.force_login(user)
+        response = self.client.get(reverse("core:jobs"))
+        self.assertContains(response, 'role="menuitem"')
+        self.assertContains(response, reverse("core:workers"))

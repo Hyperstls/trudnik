@@ -147,12 +147,12 @@
                   if (opts.center !== false) {
                     map.setCenter(currentCoords, opts.zoom || map.getZoom());
                   }
-                  if (opts.reverse) reverseGeocode(currentCoords, false);
+                  if (opts.reverse) reverseGeocode(currentCoords, opts.forceAddress === true);
                 }
 
-                map.events.add('click', function(e){ setCoords(e.get('coords'), {reverse: true}); });
+                map.events.add('click', function(e){ setCoords(e.get('coords'), {reverse: true, forceAddress: true}); });
                 placemark.events.add('dragend', function(){
-                  setCoords(placemark.geometry.getCoordinates(), {center: false, reverse: true});
+                  setCoords(placemark.geometry.getCoordinates(), {center: false, reverse: true, forceAddress: true});
                 });
 
                 var locateBtn = document.getElementById('geo-locate');
@@ -164,7 +164,7 @@
                     }
                     setStatus('Определяем местоположение…');
                     navigator.geolocation.getCurrentPosition(function(pos){
-                      setCoords([pos.coords.latitude, pos.coords.longitude], {zoom: 16, reverse: true});
+                      setCoords([pos.coords.latitude, pos.coords.longitude], {zoom: 16, reverse: true, forceAddress: true});
                       setStatus('Метка поставлена по вашему местоположению. Проверьте адрес.');
                     }, function(err){
                       if (err && err.code === 1) {
@@ -197,9 +197,15 @@
                         setStatus('Адрес не найден. Уточните город и адрес или кликните по карте.');
                         return;
                       }
-                      setCoords(obj.geometry.getCoordinates(), {zoom: 16, keepConfirm: true});
-                      setStatus('Адрес найден: ' + obj.getAddressLine());
-                      showConfirm('Проверьте адрес «' + obj.getAddressLine() + '» и метку на карте.');
+                      var foundAddress = obj.getAddressLine();
+                      if (addressInput && foundAddress) addressInput.value = foundAddress;
+                      setCoords(obj.geometry.getCoordinates(), {zoom: 16, keepConfirm: true, forceAddress: true});
+                      if (cityInput && !cityInput.value.trim()) {
+                        var localities = obj.getLocalities();
+                        if (localities && localities.length) cityInput.value = localities[0];
+                      }
+                      setStatus('Адрес найден: ' + foundAddress);
+                      showConfirm('Проверьте адрес «' + foundAddress + '» и метку на карте.');
                     }).catch(function(){
                       setStatus('Не удалось найти адрес. Кликните по карте вручную.');
                     });
