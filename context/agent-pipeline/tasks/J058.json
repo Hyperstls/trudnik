@@ -1,0 +1,38 @@
+{
+  "id": "J058",
+  "title": "P2: убрать N+1 в списке чатов",
+  "goal": "/chats получает последнее сообщение одним annotate-Subquery, без отдельного запроса на каждый чат.",
+  "why": "views_interact.chats_list в цикле по 50 откликам делает Message.objects.filter(application=a)...first() — до 50 лишних запросов на страницу; при росте переписки это заметно замедляет список.",
+  "files": [
+    "djadmin/core/views_interact.py",
+    "djadmin/core/tests/test_interact.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/templates/core/chats.html"
+  ],
+  "interfaces": "views_interact.chats_list: from django.db.models import OuterRef, Subquery; last_message = Message.objects.filter(application=OuterRef('pk')).order_by('-id').values('content')[:1]; apps = Application.objects.select_related('job','job__employer','worker').filter(Q_apps(request), status=ACCEPTED).annotate(last_message=Subquery(last_message)).order_by('-updated_at'); rows.append({'app':a,'counterpart':..., 'last': (a.last_message or '')[:80]}); убрать запрос внутри цикла. test_interact: test_chats_list_uses_annotated_last_message — два accepted-чата с разными последними сообщениями; GET /chats содержит оба; assertNumQueries не использовать из-за auth/session, вместо этого проверить, что контент корректен и страница 200.",
+  "acceptance": [
+    "Список чатов показывает последнее сообщение каждого чата.",
+    "Запрос последнего сообщения не выполняется в цикле (Subquery).",
+    "Pending/rejected по-прежнему исключены.",
+    "test_interact проходит."
+  ],
+  "out_of_scope": [
+    "Не менять шаблон чатов.",
+    "Не менять WebSocket/poll.",
+    "Не добавлять кэш."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_interact.py djadmin/core/tests/test_interact.py",
+      "cwd": "."
+    },
+    {
+      "name": "chat_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_interact --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

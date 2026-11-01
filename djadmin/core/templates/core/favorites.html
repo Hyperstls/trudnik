@@ -80,6 +80,7 @@
                         {% if f.target.desired_payment %}<p class="text-sm text-primary-600 font-medium mt-0.5">от {{ f.target.desired_payment }} ₽</p>{% endif %}
                     </div>
                     <form method="post" action="{% url 'core:people_favorite_toggle' f.target.pk %}">{% csrf_token %}
+                        <input type="hidden" name="as" value="worker">
                         <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Убрать</span></button>
                     </form>
                 </div>
@@ -122,6 +123,7 @@
                     {% if f.target.verification_status == 'approved' %}<span class="inline-flex items-center gap-0.5 mt-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-[11px] font-semibold">✓ Проверен</span>{% endif %}
                 </div>
                 <form method="post" action="{% url 'core:people_favorite_toggle' f.target.pk %}">{% csrf_token %}
+                    <input type="hidden" name="as" value="employer">
                     <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Убрать</span></button>
                 </form>
             </article>

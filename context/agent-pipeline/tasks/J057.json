@@ -1,0 +1,41 @@
+{
+  "id": "J057",
+  "title": "P2: корректный тип избранного в мультироли",
+  "goal": "Избранное работодателя всегда имеет favorite_type='employer', трудника — 'worker', независимо от role-ориентации профиля; снятие из карточки удаляет правильную запись.",
+  "why": "people_favorite_toggle создаёт Favorite с favorite_type=target.role. Мультирольный пользователь с role='worker' и открытыми заданиями добавляется из каталога работодателей как employer, но job_detail/people_favorite_toggle создаёт/ищет worker — появляется дубль, а «Убрать» не удаляет employer-запись.",
+  "files": [
+    "djadmin/core/views_profile.py",
+    "djadmin/core/templates/core/job_detail.html",
+    "djadmin/core/templates/core/favorites.html",
+    "djadmin/core/tests/test_parity_ext.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/templates/core/employer_detail.html"
+  ],
+  "interfaces": "views_profile.people_favorite_toggle: favorite_type = request.POST.get('as'); если не 'worker'/'employer' — 'employer' if target.role == 'employer' else 'worker'; get_or_create(user=request.user, target=target, favorite_type=favorite_type); при повторном POST удаляется эта запись. job_detail.html: форма people_favorite_toggle для работодателя содержит hidden name='as' value='employer'. favorites.html: у карточки трудника hidden as=worker, у работодателя hidden as=employer. test_parity_ext: мультирольный user role=worker + open job + Favorite(employer); login worker; GET job_detail; POST people_favorite_toggle с as=employer → employer-запись удалена, worker-запись не создана; POST с as=worker для другого профиля создаёт worker.",
+  "acceptance": [
+    "Мультирольный работодатель (role=worker + open job) добавляется/снимается как employer.",
+    "Трудник добавляется/снимается как worker.",
+    "Из карточки избранного снятие удаляет запись правильного типа.",
+    "Существующие favorite-тесты проходят.",
+    "test_parity_ext проходит."
+  ],
+  "out_of_scope": [
+    "Не менять модели Favorite/JobFavorite.",
+    "Не менять employer_favorite_toggle.",
+    "Не менять каталог работодателей."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_profile.py djadmin/core/tests/test_parity_ext.py",
+      "cwd": "."
+    },
+    {
+      "name": "parity_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_parity_ext --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

@@ -80,8 +80,11 @@ def people_favorite_toggle(request, user_id):
     if target is None or target.pk == request.user.pk:
         messages.error(request, "Профиль недоступен.")
         return redirect("core:workers")
+    favorite_type = request.POST.get("as")
+    if favorite_type not in ("worker", "employer"):
+        favorite_type = "employer" if target.role == "employer" else "worker"
     fav, created = Favorite.objects.get_or_create(
-        user=request.user, target=target, favorite_type=target.role,
+        user=request.user, target=target, favorite_type=favorite_type,
     )
     if not created:
         fav.delete()

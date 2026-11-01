@@ -217,3 +217,16 @@ class ChatConsumerLogicTests(TestCase):
 
         # InMemoryChannelLayer в тестах; вызов не должен падать и не обязан доставлять
         notify_new_message(self.app.pk, {"id": 1, "sender_id": str(self.worker.pk), "content": "x", "created_at": ""})
+
+    def test_chats_list_uses_annotated_last_message(self):
+        second = Application.objects.create(
+            job=self.job, worker=make_profile("chat-second@example.com"),
+            status="accepted",
+        )
+        Message.objects.create(sender=self.worker, application=self.app, content="последнее A")
+        Message.objects.create(sender=second.worker, application=second, content="последнее B")
+        self.client.force_login(self.employer)
+        response = self.client.get(reverse("core:chats"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "последнее A")
+        self.assertContains(response, "последнее B")

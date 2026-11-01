@@ -168,16 +168,22 @@ def chat_poll(request, app_id):
 
 @login_required
 def chats_list(request):
+    from django.db.models import OuterRef, Subquery
+
+    last_message = (
+        Message.objects.filter(application=OuterRef("pk"))
+        .order_by("-id").values("content")[:1]
+    )
     apps = (
         Application.objects.select_related("job", "job__employer", "worker")
         .filter(Q_apps(request), status=Application.Status.ACCEPTED)
+        .annotate(last_message=Subquery(last_message))
         .order_by("-updated_at")
     )
     rows = []
     for a in apps[:50]:
-        last = Message.objects.filter(application=a).order_by("-id").values_list("content", flat=True).first()
         counterpart = a.job.employer if request.user.pk == a.worker_id else a.worker
-        rows.append({"app": a, "counterpart": counterpart, "last": (last or "")[:80]})
+        rows.append({"app": a, "counterpart": counterpart, "last": (a.last_message or "")[:80]})
     return render(request, "core/chats.html", {"rows": rows})
 
 

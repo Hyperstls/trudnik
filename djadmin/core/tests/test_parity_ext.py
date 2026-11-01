@@ -594,3 +594,34 @@ class FaqAndExternalLinkTests(TestCase):
     def test_register_privacy_link_is_safe(self):
         response = self.client.get(reverse("core:register"))
         self.assertContains(response, 'rel="noopener noreferrer"')
+
+
+class MultiroleFavoriteTypeTests(TestCase):
+    def test_employer_favorite_removed_with_explicit_type(self):
+        target = make_profile("fav-multi-emp@example.com", role="worker", full_name="Мультирольный Работодатель")
+        job = make_job(target, work_type="Мультироль J057")
+        viewer = make_profile("fav-multi-viewer@example.com")
+        Favorite.objects.create(user=viewer, target=target, favorite_type="employer")
+        self.client.force_login(viewer)
+        response = self.client.get(reverse("core:job_detail", args=[job.pk]))
+        self.assertContains(response, 'name="as" value="employer"')
+        self.client.post(
+            reverse("core:people_favorite_toggle", args=[target.pk]), {"as": "employer"}
+        )
+        self.assertFalse(
+            Favorite.objects.filter(user=viewer, target=target, favorite_type="employer").exists()
+        )
+        self.assertFalse(
+            Favorite.objects.filter(user=viewer, target=target, favorite_type="worker").exists()
+        )
+
+    def test_worker_favorite_uses_worker_type(self):
+        target = make_profile("fav-worker-type@example.com", role="worker")
+        viewer = make_profile("fav-worker-viewer@example.com")
+        self.client.force_login(viewer)
+        self.client.post(
+            reverse("core:people_favorite_toggle", args=[target.pk]), {"as": "worker"}
+        )
+        self.assertTrue(
+            Favorite.objects.filter(user=viewer, target=target, favorite_type="worker").exists()
+        )

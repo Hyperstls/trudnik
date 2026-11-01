@@ -175,6 +175,7 @@
             </form>
             <div class="w-full mt-3 pt-3 border-t border-neutral-100 flex flex-wrap gap-2 items-center" role="group" aria-label="Действия с работодателем">
                 <form method="post" action="{% url 'core:people_favorite_toggle' job.employer_id %}">{% csrf_token %}
+                    <input type="hidden" name="as" value="employer">
                     <button class="px-4 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 text-sm font-medium transition-colors">{{ is_employer_fav|yesno:"В избранном,В избранное" }}</button>
                 </form>
                 <button type="button" id="report-open" class="px-4 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">Пожаловаться</button>
