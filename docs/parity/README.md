@@ -18,7 +18,7 @@ gate OK; процедура и восстановление описаны в [M
 см. [JOBS_RESULTS.md](JOBS_RESULTS.md), [AUDIT_JOBS_APPLICATIONS.md](AUDIT_JOBS_APPLICATIONS.md),
 [DISCREPANCIES_JOBS.md](DISCREPANCIES_JOBS.md),
 [ROUTES_MATRIX_JOBS.md](ROUTES_MATRIX_JOBS.md),
-[UI_INVENTORY_JOBS.md](UI_INVENTORY_JOBS.md). Полный `core` — 356 OK.
+[UI_INVENTORY_JOBS.md](UI_INVENTORY_JOBS.md). Полный `core` — 367 OK.
 
 **Следующая область:** открытых пунктов паритета auth/profile и jobs/applications нет;
 осталась финальная приёмка и наблюдение за прод-логами.
