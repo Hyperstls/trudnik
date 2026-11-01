@@ -1,0 +1,36 @@
+{
+  "id": "J020",
+  "title": "JOB-P2-08: поиск q по object_description",
+  "goal": "Поиск каталога q ищет также по object_description (объект задания), как во Flask.",
+  "why": "Flask jobs.py:173-176 включает object_description в OR-поиск. Django ищет work_type/organization_name/city/detailed_description, но не object_description (JOB-P2-08).",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES_JOBS.md",
+    "djadmin/core/templates/core/jobs_list.html"
+  ],
+  "interfaces": "views.py jobs_list: в OR-фильтр q добавить qs.filter(object_description__icontains=q) перед .distinct(). Тест PublicViewsTests.test_search_matches_object_description: Job объект 'Уникальный объект J020' с object_description, work_type 'Обычное'; GET /jobs?q=Уникальный -> содержит задание; GET ?q=Несуществующий -> нет.",
+  "acceptance": [
+    "q находит задание по тексту object_description.",
+    "Поиск по work_type/city/org/detailed_description продолжает работать.",
+    "PublicViewsTests проходит."
+  ],
+  "out_of_scope": [
+    "Не менять индексы/БД.",
+    "Не менять другие фильтры."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views.PublicViewsTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

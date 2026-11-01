@@ -1,10 +1,10 @@
-# Jobs / applications — результаты паритета (J001–J019)
+# Jobs / applications — результаты паритета (J001–J020)
 
 **Дата:** 2026-11-01
 **Ветка:** `feat/agent-pipeline` (Django `main` не менялся)
 **Метод:** контракт → dispatch → verify (exit-код) → независимый pattern-review → done.
-**Итог:** P0 и P1 закрыты; P2-02/P2-05/P2-06 закрыты; P2-01 — только карта/гео.
-Полный `manage.py test core` — **294 OK**; `pre_deploy_check` — 7/7.
+**Итог:** P0 и P1 закрыты; P2-02/P2-05/P2-06/P2-08 закрыты; P2-01 — только карта/гео.
+Полный `manage.py test core` — **295 OK**; `pre_deploy_check` — 7/7.
 
 ## Контракты
 
@@ -31,6 +31,7 @@
 | **J017** | Bulk duplicate через общий `duplicate_job` (фото/навыки/expires_at) | PASS | PASS |
 | **J018** | P2-02 (verification): бейдж «✓ Подтверждён» у approved-работодателя | PASS | PASS |
 | **J019** | P2-01 (multi-skills): фильтр по нескольким навыкам | PASS | PASS |
+| **J020** | P2-08: поиск q по object_description | PASS | PASS |
 
 ## Ключевая находка контрактной проверки
 
@@ -54,7 +55,7 @@
 
 ## Доказательства
 
-- Контракты: `context/agent-pipeline/tasks/J001.json` … `J019.json`.
+- Контракты: `context/agent-pipeline/tasks/J001.json` … `J020.json`.
 - Логи проверок: `context/agent-pipeline/logs/J00*.verify.log`.
 - Решения/заметки: `context/agent-pipeline/decisions.md`.
 - Матрицы: [ROUTES_MATRIX_JOBS.md](ROUTES_MATRIX_JOBS.md),

@@ -88,7 +88,8 @@ def jobs_list(request):
     q = (request.GET.get("q") or "").strip()[:100]
     if q:
         qs = qs.filter(work_type__icontains=q) | qs.filter(organization_name__icontains=q) | \
-             qs.filter(city__icontains=q) | qs.filter(detailed_description__icontains=q)
+             qs.filter(city__icontains=q) | qs.filter(detailed_description__icontains=q) | \
+             qs.filter(object_description__icontains=q)
         qs = qs.distinct()
     city = (request.GET.get("city") or "").strip()
     if city:

@@ -53,6 +53,18 @@ class PublicViewsTests(TestCase):
         self.assertContains(self.client.get("/jobs?payment_min=1000"), "Уборка территории")
         self.assertNotIn("Уборка территории".encode(), self.client.get("/jobs?payment_min=9999").content)
 
+    def test_search_matches_object_description(self):
+        Job.objects.create(
+            employer=self.employer, work_type="Обычное задание",
+            object_description="Уникальный объект J020", organization_name="Приход",
+            status="open", city="Москва", payment_amount=1000,
+            date_time=timezone.now() + timedelta(days=2),
+        )
+        self.assertContains(self.client.get("/jobs?q=Уникальный"), "Обычное задание")
+        self.assertNotContains(
+            self.client.get("/jobs?q=Несуществующий"), "Обычное задание"
+        )
+
     def test_payment_max_filter(self):
         Job.objects.create(
             employer=self.employer, work_type="Дешёвое задание", organization_name="Приход",

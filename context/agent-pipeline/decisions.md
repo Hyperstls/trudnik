@@ -785,3 +785,17 @@ P2-02 полностью закрыт (count/favorite/report/share/ratings/verif
 **Кто:** Hyperstls
 
 P2-01: мультивыбор навыков закрыт. Остались карта/гео.
+
+## 2026-11-01 09:03:01 — J020: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J020.review.prompt.md
+
+## 2026-11-01 09:03:01 — J020: заметка
+
+**Кто:** Hyperstls
+
+P2-08 закрыт: q ищет по object_description.
