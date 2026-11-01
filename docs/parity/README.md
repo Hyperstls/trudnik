@@ -18,7 +18,7 @@ gate OK; процедура и восстановление описаны в [M
 см. [JOBS_RESULTS.md](JOBS_RESULTS.md), [AUDIT_JOBS_APPLICATIONS.md](AUDIT_JOBS_APPLICATIONS.md),
 [DISCREPANCIES_JOBS.md](DISCREPANCIES_JOBS.md),
 [ROUTES_MATRIX_JOBS.md](ROUTES_MATRIX_JOBS.md),
-[UI_INVENTORY_JOBS.md](UI_INVENTORY_JOBS.md). Полный `core` — 376 OK.
+[UI_INVENTORY_JOBS.md](UI_INVENTORY_JOBS.md). Полный `core` — 384 OK.
 
 **Следующая область:** открытых пунктов паритета auth/profile и jobs/applications нет;
 осталась финальная приёмка и наблюдение за прод-логами.
@@ -48,7 +48,7 @@ gate OK; процедура и восстановление описаны в [M
 | [UI_INVENTORY.md](UI_INVENTORY.md) | кликабельные элементы по страницам |
 | [CONTRACT_CHECKS.md](CONTRACT_CHECKS.md) | факты БД/RPC/RLS и очередь contract-проверок |
 | [152FZ_DATA_FLOWS.md](152FZ_DATA_FLOWS.md) | ПДн, доступы, риски 152-ФЗ |
-| [JOBS_RESULTS.md](JOBS_RESULTS.md) | итоги J001–J053: что закрыто, тесты, остаток |
+| [JOBS_RESULTS.md](JOBS_RESULTS.md) | итоги J001–J058: что закрыто, тесты, остаток |
 | [REMAINING_UX.md](REMAINING_UX.md) | остаточный UX/parity backlog: FAQ, фильтр навыков, модалка жалобы |
 | [GEO_UX_PRIVACY.md](GEO_UX_PRIVACY.md) | логика карт/геолокации и меры 152-ФЗ |
 
