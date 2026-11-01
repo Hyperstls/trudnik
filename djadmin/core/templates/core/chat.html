@@ -12,7 +12,11 @@
             <p class="text-xs text-neutral-500 mt-0.5">{{ app.job.organization_name }}{% if app.job.city %} · {{ app.job.city }}{% endif %}</p>
         </div>
         <div id="chat-log" class="flex-1 space-y-2 overflow-y-auto p-4" data-app="{{ app.pk }}" data-last="{{ last_id }}">
-            {% for m in chat_messages %}
+            {% if chat_messages %}
+            {% regroup chat_messages by created_at|date:"d.m.Y" as message_days %}
+            {% for day in message_days %}
+            <div class="text-center text-[10px] text-neutral-400 my-1">{{ day.grouper }}</div>
+            {% for m in day.list %}
             <div class="flex {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}justify-end{% endif %}">
                 <div class="max-w-[80%]">
                     <span class="inline-block rounded-2xl px-3.5 py-2 text-sm {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}bg-primary-500 text-white{% else %}bg-neutral-100 text-neutral-800{% endif %}">{{ m.content }}</span>
@@ -20,6 +24,16 @@
                 </div>
             </div>
             {% endfor %}
+            {% endfor %}
+            {% else %}
+            <div id="chat-empty" class="h-full flex flex-col items-center justify-center text-center py-10">
+                <div class="w-14 h-14 rounded-full bg-neutral-100 flex items-center justify-center mb-3">
+                    <svg aria-hidden="true" class="h-7 w-7 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </div>
+                <p class="text-sm font-medium text-neutral-600">Сообщений пока нет</p>
+                <p class="text-xs text-neutral-400 mt-1">Напишите первым — обсудите детали задания.</p>
+            </div>
+            {% endif %}
         </div>
         <form method="post" action="{% url 'core:chat_send' app.pk %}" class="border-t border-neutral-100 p-3 flex gap-2">
             {% csrf_token %}
@@ -37,6 +51,8 @@
 
   function appendBubble(m, mine) {
     last = Math.max(last, Number(m.id) || 0);
+    var empty = document.getElementById('chat-empty');
+    if (empty) empty.remove();
     var wrap = document.createElement('div');
     wrap.className = 'flex' + (mine ? ' justify-end' : '');
     var bubble = document.createElement('span');
@@ -74,6 +90,9 @@
     ws.onerror = function () { try { ws.close(); } catch (e) {} startPoll(); };
     setInterval(function () { if (ws.readyState === 1) { ws.send(JSON.stringify({type: 'ping'})); } }, 30000);
   } catch (e) { startPoll(); }
+
+  // Открыть историю на последнем сообщении
+  log.scrollTop = log.scrollHeight;
 
   // Отправка без перезагрузки (идемпотентность через client_message_id)
   var form = log.closest('div').querySelector('form');

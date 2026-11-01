@@ -163,6 +163,18 @@ class ChatTests(TestCase):
                          {"content": "   ", "client_message_id": str(uuid.uuid4())})
         self.assertEqual(Message.objects.filter(application=self.app).count(), 0)
 
+    def test_chat_empty_state_and_autoscroll(self):
+        self.client.force_login(self.worker)
+        response = self.client.get(reverse("core:chat_room", args=[self.app.pk]))
+        self.assertContains(response, "Сообщений пока нет")
+        self.assertContains(response, "log.scrollTop = log.scrollHeight")
+
+    def test_chat_groups_messages_by_date(self):
+        Message.objects.create(sender=self.worker, application=self.app, content="дата")
+        self.client.force_login(self.worker)
+        response = self.client.get(reverse("core:chat_room", args=[self.app.pk]))
+        self.assertContains(response, timezone.localdate().strftime("%d.%m.%Y"))
+
     def test_chats_list_both_sides(self):
         Message.objects.create(sender=self.worker, application=self.app, content="привет")
         self.client.force_login(self.worker)

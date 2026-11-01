@@ -1,0 +1,39 @@
+{
+  "id": "J048",
+  "title": "P3: чат — пустое состояние, автоскролл и даты",
+  "goal": "При открытии чата история прокручена к последнему сообщению, пустой чат показывает подсказку, сообщения сгруппированы разделителями по датам.",
+  "why": "Flask chat.html:32,56-63 и chat.js:501 показывают разделители дат, пустое состояние и скроллят вниз; Django чат оставляет длинную историю наверху, не показывает пустое состояние и не группирует по датам.",
+  "files": [
+    "djadmin/core/templates/core/chat.html",
+    "djadmin/core/tests/test_interact.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_interact.py",
+    "static/js/api.js"
+  ],
+  "interfaces": "chat.html: chat-log — {% if chat_messages %} regroup by created_at|date:'d.m.Y' → заголовок даты + сообщения {% else %} пустое состояние id='chat-empty' с текстом «Сообщений пока нет. Напишите первым.» и иконкой. В JS appendBubble удалять #chat-empty; в конце инициализации log.scrollTop = log.scrollHeight. test_interact: ChatTests test_chat_empty_state_and_autoscroll — accepted app без сообщений, GET chat_room → содержит «Сообщений пока нет» и «log.scrollTop = log.scrollHeight»; test_chat_groups_by_date — создать 2 сообщения, GET → содержит сегодняшнюю дату в формате d.m.Y.",
+  "acceptance": [
+    "Пустой чат показывает «Сообщений пока нет. Напишите первым.»",
+    "История при открытии прокручена вниз (log.scrollTop = log.scrollHeight).",
+    "Сообщения сгруппированы с заголовком даты d.m.Y.",
+    "После первого нового сообщения пустое состояние исчезает.",
+    "test_interact проходит."
+  ],
+  "out_of_scope": [
+    "Не менять WebSocket/poll API.",
+    "Не менять chat_room view.",
+    "Не добавлять удаление чатов."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_interact.py",
+      "cwd": "."
+    },
+    {
+      "name": "chat_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_interact --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}
