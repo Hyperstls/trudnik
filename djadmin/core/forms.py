@@ -54,6 +54,19 @@ class JobForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
 
+        organization_name = cleaned.get("organization_name") or ""
+        if len(organization_name) > 255:
+            self.add_error(
+                "organization_name",
+                "Название слишком длинное (максимум 255 символов).",
+            )
+        detailed_description = cleaned.get("detailed_description") or ""
+        if len(detailed_description) > 5000:
+            self.add_error(
+                "detailed_description",
+                "Описание слишком длинное (максимум 5000 символов).",
+            )
+
         found = find_stop_words(
             cleaned.get("organization_name"), cleaned.get("detailed_description")
         )

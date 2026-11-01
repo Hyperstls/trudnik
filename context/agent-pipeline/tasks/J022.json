@@ -1,0 +1,37 @@
+{
+  "id": "J022",
+  "title": "JOB-P2-03: серверные лимиты длины названия и описания",
+  "goal": "JobForm отклоняет organization_name > 255 и detailed_description > 5000 символов с field-level ошибками; валидные значения сохраняются.",
+  "why": "Flask jobs.py:657-668 ограничивает title 255, description 5000, address 500. Django-модель допускает organization_name 500 и подробное описание без max (JOB-P2-03).",
+  "files": [
+    "djadmin/core/forms.py",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES_JOBS.md",
+    "djadmin/core/validators_jobs.py"
+  ],
+  "interfaces": "forms.JobForm.clean: после super().clean() проверить len(organization_name)>255 -> add_error('organization_name','Название слишком длинное (максимум 255 символов)'); len(detailed_description)>5000 -> add_error('detailed_description','Описание слишком длинное (максимум 5000 символов)'); остальные проверки без изменений. Тесты JobCrudTests: test_create_job_rejects_too_long_name (256 символов -> 200, Job не создан, ошибка в organization_name); test_create_job_rejects_too_long_description (5001 -> 200, Job не создан, ошибка в detailed_description).",
+  "acceptance": [
+    "Название 256 символов отклоняется с ошибкой поля organization_name.",
+    "Описание 5001 символ отклоняется с ошибкой поля detailed_description.",
+    "Валидное задание по-прежнему создаётся.",
+    "JobCrudTests проходит."
+  ],
+  "out_of_scope": [
+    "Не менять модель/БД и шаблоны.",
+    "Не менять лимит address 500 (уже есть в модели)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/forms.py djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "flow_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows.JobCrudTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

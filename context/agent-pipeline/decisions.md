@@ -837,3 +837,17 @@ P2-08 закрыт: q ищет по object_description.
 **Кто:** Hyperstls
 
 P2-12 частично: навыки/рейтинг/оплата/сортировка в каталоге трудников; карта и бейджи invited/reliable остаются.
+
+## 2026-11-01 10:15:49 — J022: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J022.review.prompt.md
+
+## 2026-11-01 10:15:49 — J022: заметка
+
+**Кто:** Hyperstls
+
+P2-03 закрыт. Деплой требует forms.py + validators_jobs.py (J002-зависимость).

@@ -139,6 +139,39 @@ class JobCrudTests(TestCase):
                 self.assertContains(response, "Количество работников должно быть от 1 до 100")
                 self.assertIn("max_workers", response.context["form"].errors)
 
+    def test_create_job_rejects_too_long_name(self):
+        response = self.client.post(
+            reverse("core:job_create"),
+            self._job_payload(organization_name="А" * 256),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Job.objects.filter(employer=self.user).exists())
+        self.assertContains(response, "Название слишком длинное")
+        self.assertIn("organization_name", response.context["form"].errors)
+
+    def test_create_job_rejects_too_long_description(self):
+        response = self.client.post(
+            reverse("core:job_create"),
+            self._job_payload(detailed_description="Б" * 5001),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Job.objects.filter(employer=self.user).exists())
+        self.assertContains(response, "Описание слишком длинное")
+        self.assertIn("detailed_description", response.context["form"].errors)
+
+    def test_create_job_accepts_max_lengths(self):
+        response = self.client.post(
+            reverse("core:job_create"),
+            self._job_payload(
+                organization_name="А" * 255,
+                detailed_description="Б" * 5000,
+            ),
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            Job.objects.filter(employer=self.user, work_type="Уборка").exists()
+        )
+
     def test_preferred_religion_not_in_form_or_admin(self):
         self.assertNotIn("preferred_religion", JobForm().fields)
         admin_fields = []
