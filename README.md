@@ -1,56 +1,102 @@
 # Трудник — платформа разовой подработки
 
 Соединяет исполнителей (трудников) и заказчиков (работодателей) для разовых задач.
+Публичный прод: **трудник.рф** (`trudnik-hyperstls.msk1.amvera.tech`).
 
 ## Стек
-- **Backend:** Python 3.12, Flask 3.1 + FastAPI (WebSocket)
-- **БД:** PostgreSQL 17 + PostGIS, доступ через PostgREST v14
-- **Async:** Celery 5.6 + Redis 8
-- **Frontend:** Jinja2 + Tailwind CSS + Vanilla JS
-- **Деплой:** Amvera (Docker, регион msk0)
+
+- **Backend:** Python 3.12, Django 5.2 (`djadmin/`), ASGI/uvicorn, Channels (WebSocket).
+- **БД:** PostgreSQL + PostGIS; Django ходит напрямую через `djadmin/core/rpc.py` (psycopg2, параметризованные запросы), PostgREST остаётся для legacy Flask/интеграций.
+- **Async:** Celery + Redis (outbox, письма, периодические задачи).
+- **Frontend:** Django templates + Tailwind CSS + vanilla JS/PWA; Yandex Maps и SmartCaptcha (РФ).
+- **Деплой:** Amvera, ветка `master`, Dockerfile `Dockerfile.djadmin`.
+- **Эталон паритета:** архив Flask — `origin/main-flask` (`9b3ed42`), не рабочий прод.
 
 ## Структура
+
 ```
-app/                  # Flask приложение
-  blueprints/         # 21 blueprint (auth, jobs, chat, profile, faq, messenger_verify, ...)
-  services/           # 14 сервисов (auth, notification, push, email, chat_access, favorites, ...)
-  tasks/              # Celery задачи (5 файлов, 8 beat-задач)
-  utils/              # PostgREST клиент, auth, валидаторы
-websocket_server/     # FastAPI WebSocket сервер
-migrations/           # 60 SQL миграций (до #145)
-tests/                # pytest (385+ тестов)
-tests/manual/         # Standalone CLI скрипты (не в pytest)
-docs/                 # Документация
+djadmin/                    # Django-проект (единственный прод)
+  config/                   # settings, urls, asgi/wsgi
+  core/
+    views*.py               # публичные страницы, auth, профиль, jobs/applications, чат
+    forms*.py               # формы и валидаторы
+    models.py               # unmanaged-модели поверх существующей БД
+    templates/core/         # все актуальные шаблоны (корневые templates/ — legacy Flask)
+    tests/                  # 384 теста (manage.py test core)
+  static/                   # собранный Tailwind и JS
+migrations/                 # SQL-миграции 067–150+, ledger 65/65
+scripts/                    # pre_deploy_check, dj_test_clone, миграции, Amvera
+context/agent-pipeline/     # контракты, state, logs, packs (агентный конвейер)
+docs/                       # документация: parity, архитектура, UX/UI, 152-ФЗ
+templates/                  # legacy Flask (не используется Django)
+app/, websocket_server/     # legacy Flask-код (архив)
 ```
 
-## Быстрый старт (локальная разработка)
+## Быстрый старт
+
 ```bash
-# 1. Docker сервисы
-docker-compose up -d redis db postgrest
+# 1. Инфраструктура
+docker compose up -d db redis
 
-# 2. Python venv
+# 2. Python 3.12
 py -3.12 -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 
-# 3. Frontend (Tailwind CSS)
+# 3. Frontend
 npm install
-npm run build:css    # static/css/tailwind.min.css (пересборка после правок templates/ и static/js/)
+npm run build:css
 
-# 4. Тесты
-$env:REDIS_URL='redis://:trudnik-local-dev@localhost:6379/0'
-.venv\Scripts\python.exe -m pytest tests -p no:cacheprovider --tb=no -q
+# 4. Тестовая БД-клон (триггеры/RPC как в dev) и тесты
+.venv\Scripts\python.exe scripts\dj_test_clone.py
+.venv\Scripts\python.exe djadmin\manage.py test core --keepdb -v 1
 
-# 5. Flask dev сервер
-docker-compose up web    # HTTP на :8000
+# 5. Dev-сервер
+.venv\Scripts\python.exe djadmin\manage.py runserver
 ```
 
-## Деплой
-Деплой на Amvera — через MCP или CLI. См. `.kilocode/rules/06_amvera_deploy.md`.
+`DJANGO_DB_NAME`, `DATABASE_URL`, `REDIS_URL`, `SECRET_KEY`, `SMTP_*`,
+`SMARTCAPTCHA_*`, `YANDEX_MAPS_API_KEY`, `VAPID_*` — только из env/`.env`
+(локальный `.env` в `.gitignore`). Никогда не коммитьте значения.
 
-Health: `https://trudnik-hyperstls.amvera.io/health`
+## Обязательные проверки перед коммитом
+
+```bash
+npm run build:css
+.venv\Scripts\python.exe scripts\pre_deploy_check.py     # 7/7
+.venv\Scripts\python.exe -m py_compile <изменённые .py>
+.venv\Scripts\python.exe djadmin\manage.py test core --keepdb -v 1
+```
+
+Дополнительно: `python djadmin/manage.py check --deploy` с `DEPLOYMENT_ENV=production`
+(secure-cookies/HSTS уже настроены; `SECURE_SSL_REDIRECT` — на стороне Amvera).
+
+## Деплой
+
+- Прод собирается из ветки **`master`**; рабочая ветка — `feat/agent-pipeline`, `main` не меняется без релиза.
+- Из этой сети `api.msk0`/`git.msk0` недоступны; рабочий путь — `git push amvera-msk1 HEAD:master`
+  или MCP (`uploadFiles`/`rebuildProject`/`restartProject`).
+- После сборки: `Status: RUNNING`, `/health` 200; при `RUN_PROBLEM` при живом health —
+  `restartProject` без пересборки.
+- Секреты и доступы — только в env Amvera/`.env`, не в документации.
 
 ## Документация
-- `.kilocode/rules/` — правила проекта (00-10 + project.md)
-- `.kilocode/memory/project_patterns.md` — паттерны из 100+ багфиксов
-- `docs/` — архитектура, API, безопасность, e2e сценарии
-- `scripts/pre_deploy_check.py` — обязательная проверка перед push
+
+- **Актуальные правила:** [`AGENTS.md`](AGENTS.md), `.kilocode/rules/00–10`.
+- **Индекс документации:** [`docs/DOCS_INDEX.md`](docs/DOCS_INDEX.md).
+- **Паритет Flask→Django:** [`docs/parity/README.md`](docs/parity/README.md),
+  [`JOBS_RESULTS.md`](docs/parity/JOBS_RESULTS.md),
+  [`GEO_UX_PRIVACY.md`](docs/parity/GEO_UX_PRIVACY.md).
+- **UX/UI-ревью:** [`docs/DESIGN_REVIEW_2026-11.md`](docs/DESIGN_REVIEW_2026-11.md).
+- **Агентный конвейер:** [`docs/AGENT_PIPELINE.md`](docs/AGENT_PIPELINE.md),
+  `context/agent-pipeline/`.
+- **152-ФЗ:** [`docs/rkn_notification_fill.md`](docs/rkn_notification_fill.md),
+  [`docs/parity/152FZ_DATA_FLOWS.md`](docs/parity/152FZ_DATA_FLOWS.md).
+- **Legacy Flask-документация** (`ARCHITECTURE.md`, `BUSINESS_LOGIC.md`, `API_REFERENCE.md`,
+  `FRONTEND.md`, `QA_TEST_CASES.md`, `A11Y_AUDIT.md`, `BUTTON_REGISTRY.md` и др.) —
+  исторический снимок Flask-приложения; не является описанием текущего Django-прода.
+
+## Статус
+
+- Полный `core`: **384 OK**, `pre_deploy_check` — 7/7.
+- Паритет auth/profile и jobs/applications: открытых пунктов нет (J026 — карта трудников n/a).
+- Прод: **RUNNING**, `/health` 200.

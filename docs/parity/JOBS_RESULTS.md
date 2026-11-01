@@ -3,7 +3,7 @@
 **Дата:** 2026-11-01
 **Ветка:** `feat/agent-pipeline` (Django `main` не менялся)
 **Метод:** контракт → dispatch → verify (exit-код) → независимый pattern-review → done.
-**Итог:** P0 и P1 закрыты; P2-01/02/03/05/06/08/10/11/12/13 закрыты; P2-04/P2-07/P2-09 — осознанные решения.
+**Итог:** P0 и P1 закрыты; P2-01/02/03/05/06/08/10/11/12/13 закрыты; P2-04/P2-07/P2-09 — осознанные решения; открытых UX-пунктов нет.
 Полный `manage.py test core` — **384 OK**; `pre_deploy_check` — 7/7.
 
 ## Контракты
@@ -44,6 +44,28 @@
 | **J031** | P2-13: каталог работодателей по open-заданиям, фильтры/сортировки, blacklist, избранное | PASS | PASS |
 | **J032** | P2-13: карточка работодателя — open-only, blacklist 404, избранное, метка отклика | PASS | PASS |
 | **J033** | P2-10: после accepted меняется только описание задания | PASS | PASS |
+| **J034** | SmartCaptcha validate: JSON → form-urlencoded | PASS | PASS |
+| **J035** | SMTP_USER + resend-страница с prefill email | PASS | PASS |
+| **J036** | Service worker v15: не кэширует и не синтезирует 503 | PASS | PASS |
+| **J037** | Мобильный UX: дубли «Создать», табы/кнопки, навыки | PASS | PASS |
+| **J038** | Контакты трудника в полученных откликах | PASS | PASS |
+| **J039** | `/chats` только accepted-отклики | PASS | PASS |
+| **J040** | «Отклонить все ожидающие» приглашения | PASS | PASS |
+| **J041** | «Удалить все» уведомления + настройки | PASS | PASS |
+| **J042** | Панель навыков не выходит за viewport | PASS | PASS |
+| **J043–J044** | Единое `/favorites` с табами, bulk и приглашениями | PASS | PASS |
+| **J045** | Push-уведомления: скрипты, кнопка, CSRF | PASS | PASS |
+| **J046** | «Мои отклики»: received-дефолт, карточки, select-all | PASS | PASS |
+| **J047** | `/search`→`/jobs`, чат accepted, trust-блок | PASS | PASS |
+| **J048** | Чат: пустое состояние, автоскролл, даты | PASS | PASS |
+| **J049–J050** | Гео: автозаполнение формы, адрес/карта/маршрут | PASS | PASS |
+| **J052** | Уведомления: типы и deep-links | PASS | PASS |
+| **J053** | 152-ФЗ: гео POST+сессия, round(3), без координат в URL | PASS | PASS |
+| **J054** | FAQ: 5 групп/14 вопросов, rel=noopener | PASS | PASS |
+| **J055** | Фильтр навыков в «Моих откликах» | PASS | PASS |
+| **J056** | Жалоба в `<dialog>` | PASS | PASS |
+| **J057** | Мультирольное избранное: явный тип | PASS | PASS |
+| **J058** | `/chats`: Subquery вместо N+1 | PASS | PASS |
 
 ## Ключевая находка контрактной проверки
 
@@ -75,7 +97,7 @@
 
 ## Доказательства
 
-- Контракты: `context/agent-pipeline/tasks/J001.json` … `J033.json`.
+- Контракты: `context/agent-pipeline/tasks/J001.json` … `J058.json`.
 - **J026 blocked:** карта трудников — у `Profile` нет lat/lng; потребовала бы миграцию/геокодинг.
 - Логи проверок: `context/agent-pipeline/logs/J00*.verify.log`.
 - Решения/заметки: `context/agent-pipeline/decisions.md`.

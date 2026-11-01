@@ -1,32 +1,37 @@
 # Routes matrix — jobs / applications
 
-Обновлено 2026-10-31 после J001–J010 (см. [JOBS_RESULTS.md](JOBS_RESULTS.md)).
-Статусы: ✅ паритет; ⚠️ есть отличия/упрощения; ❌ отсутствует.
+**Обновлено:** 2026-11-01 после J001–J058.
+**Статус:** паритет закрыт, открытых пунктов нет (см. [JOBS_RESULTS.md](JOBS_RESULTS.md)).
+**Актуальный источник:** `djadmin/core/urls.py`; таблица — карта Flask→Django.
 
 | Flask | Django | Статус | Комментарий |
 |---|---|---|---|
-| `GET /` — `jobs.index` | `GET /jobs` — `views.jobs_list` | ⚠️ | Нет map/geo/skills/payment_max/filter new-applied. cancelled скрыт, blacklist учтён (J004). |
-| `GET/POST /job/new` — `jobs.job_new` | `GET/POST /jobs/new` — `views_flow.job_create` | ✅/⚠️ | Stop-words/date/ranges/expires_at есть (J002/J003), `preferred_religion` удалён (J001); фото — после создания. |
-| `GET /jobs/<id>` — `jobs.job_detail` | `GET /jobs/<uuid>` — `views.job_detail` | ⚠️ | can_withdraw и legacy-фото есть (J003/J007); нет application_count, employer verification, share/report/favorite employer. |
-| `GET/POST /jobs/<id>/edit` — `jobs.job_edit` | `GET/POST /jobs/<uuid>/edit` — `views_flow.job_edit` | ✅/⚠️ | Валидации и expires_at есть; фото через отдельный upload. |
-| `POST /apply/<id>` + `/api/jobs/<id>/apply` | `POST /jobs/<uuid>/apply` | ✅/⚠️ | RPC, error-коды и employer outbox есть (J004/J005); JSON-API маршрута нет. |
-| `POST /unapply/<id>` + API | `POST /jobs/<uuid>/unapply` | ✅ | RPC + withdraw-window для accepted (J003). |
-| `GET /my-applications?tab=sent` | `GET /my-applications?tab=sent` | ✅/⚠️ | Табы, пагинация (J008); фильтра навыков нет. |
-| `GET /my-applications?tab=received` | `GET /my-applications?tab=received` | ✅ | Отклики на свои задания + bulk (J008–J010). |
-| `POST /api/applications/<id>/accept|reject|reopen` | `POST /applications/<uuid>/<action>` | ✅ | reopen делегирует в accept-RPC (J006). |
-| `POST /api/applications/batch` | `POST /my-applications/action` | ✅ | accept/reject/reopen, ≤50 (J009), UI-панель (J010). |
-| `GET /my-jobs` | `GET /my-jobs` | ✅/⚠️ | Табы и application_count есть (J008); duplicate отсутствует. |
-| `POST /my-jobs/action` | `POST /my-jobs/action` | ✅/⚠️ | bulk cancel/restore/delete + UI (J009/J010); duplicate отсутствует. |
-| `POST /cancel-job/<id>` | `POST /jobs/<uuid>/cancel` | ✅ | RPC `cancel_job_atomic`. |
-| `POST /restore-job/<id>` | `POST /jobs/<uuid>/restore` | ✅ | RPC `restore_job_atomic`. |
-| `POST /api/jobs/<id>/force-complete` | `POST /jobs/<uuid>/force_complete` | ✅ | RPC `force_complete_job`. |
-| `POST /delete-job/<id>` | `POST /jobs/<uuid>/delete` | ✅/⚠️ | RPC `delete_job_cascade`; файлы фото при удалении задания не чистятся (P2-06). |
-| `POST /repost-job/<id>` | `POST /jobs/<uuid>/repost` | ✅ | Копирует фото/навыки, expires_at +30d, транзакция (J006). |
-| `POST /jobs/photo` | `POST /jobs/<uuid>/photos` | ✅ | Лимит 3, unified массив, refcount-удаление (J007). |
-| `POST /favorite-job/<id>`, `/unfavorite-job/<id>` | `POST /jobs/<uuid>/favorite` | ✅ | Toggle. |
-| `GET /favorites` | `GET /favorite-jobs` + `/favorite-people` | ⚠️ | Разделено на две страницы. |
-| `GET /workers` | `GET /workers` | ⚠️ | Нет skills/карты/бейджей invited/reliable. |
-| `GET /employers` | `GET /employers` | ⚠️ | Упрощено. |
-| `GET /jobs/<id>/rate-workers` | `GET /jobs/<uuid>/rate-workers` | ⚠️ | Упрощено; нет API ratings. |
-| `GET /ratings/user/<id>` | `GET /ratings/user/<uuid>` | ⚠️ | Упрощено; нет API ratings/completed-jobs/details. |
-| `POST /apply-selected`, `/unapply-selected` | same | ⚠️ | Нет per-job try/except, detailed counts, notifications (P2-05). |
+| `GET /` — `jobs.index` | `GET /jobs` | ✅ | map/geo/skills/payment_max/filter, blacklist, cancelled скрыт (J004/J013/J019/J024/J025/J028/J053) |
+| `GET/POST /job/new` | `GET/POST /jobs/new` | ✅ | валидации, expires_at, preferred_religion удалён, карта + геокодер (J001–J003/J022/J027/J049) |
+| `GET /jobs/<id>` | `GET /jobs/<uuid>` | ✅ | detail, can_withdraw, photos, rating/verification, share/report/favorite, чат, trust, адрес/карта/маршрут (J003/J007/J014/J016/J018/J047/J050) |
+| `GET/POST /jobs/<id>/edit` | `GET/POST /jobs/<uuid>/edit` | ✅ | после accepted — только описание (J033); фото отдельно |
+| `POST /apply/<id>` | `POST /jobs/<uuid>/apply` | ✅ | RPC, русские коды, outbox (J004/J005) |
+| `POST /unapply/<id>` | `POST /jobs/<uuid>/unapply` | ✅ | RPC + 12-часовое окно (J003) |
+| `GET /my-applications?tab=sent|received` | same | ✅ | default received для работодателя, фильтр навыков, контакты, карточки, select-all (J008/J038/J046/J055) |
+| `POST /api/applications/<id>/accept|reject|reopen` | `POST /applications/<uuid>/<action>` | ✅ | reopen через accept-RPC (J006) |
+| `POST /api/applications/batch` | `POST /my-applications/action` | ✅ | ≤50, ownership (J009/J010) |
+| `GET /my-jobs` | `GET /my-jobs` | ✅ | табы, application_count (J008); duplicate (J017) |
+| `POST /my-jobs/action` | `POST /my-jobs/action` | ✅ | bulk cancel/restore/delete/duplicate (J009/J010/J017) |
+| `POST /cancel-job/<id>` | `POST /jobs/<uuid>/cancel` | ✅ | RPC `cancel_job_atomic` |
+| `POST /restore-job/<id>` | `POST /jobs/<uuid>/restore` | ✅ | RPC `restore_job_atomic` |
+| `POST /api/jobs/<id>/force-complete` | `POST /jobs/<uuid>/force_complete` | ✅ | RPC `force_complete_job` |
+| `POST /delete-job/<id>` | `POST /jobs/<uuid>/delete` | ✅ | RPC + удаление файлов (J011) |
+| `POST /repost-job/<id>` | `POST /jobs/<uuid>/repost` | ✅ | фото/навыки/expires_at (J006/J017) |
+| `POST /jobs/photo` | `POST /jobs/<uuid>/photos` | ✅ | лимит 3, unified, refcount (J007) |
+| `POST /favorite-job/<id>` | `POST /jobs/<uuid>/favorite` | ✅ | toggle |
+| `GET /favorites` | `GET /favorites` | ✅ | единая страница: задания/трудники/работодатели, bulk, приглашения (J043/J044) |
+| legacy `/favorite-jobs`, `/favorite-people` | те же URL | ✅ | сохранены для совместимости |
+| `GET /workers` | `GET /workers` | ✅ | skills/rating/payment/sort, badges invited/reliable, без карты (J021/J023/J026 n/a) |
+| `GET /employers` | `GET /employers` | ✅ | open-jobs каталог без role-гейта, фильтры, blacklist, избранное (J031/J032) |
+| `GET /jobs/<id>/rate-workers` | `GET /jobs/<uuid>/rate-workers` | ✅ | уникальность rater/job/rated, prefill (J029/J030) |
+| `GET /ratings/user/<id>` | `GET /ratings/user/<uuid>` | ✅ | отзывы, типы, job-link |
+| `POST /apply-selected`, `/unapply-selected` | same | ✅ | per-job counts, grouped notifications, safe redirect (J012) |
+| `GET /chats` | `GET /chats` | ✅ | только accepted, последнее сообщение Subquery (J039/J058) |
+| `GET /notifications` | `GET /notifications` | ✅ | delete-all кроме приглашений, настройки, типы, deep-links (J041/J052) |
+| `GET /invitations` | `GET /invitations` | ✅ | поштучно + «Отклонить все ожидающие» (J040) |
+| `GET /search` | `GET /search` | ✅ | 302 → `/jobs` с query (J047) |

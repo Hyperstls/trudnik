@@ -31,6 +31,7 @@
 | J056 | Жалоба в `<dialog>` на карточке задания и профиле; inline input убран |
 | J057 | Мультирольное избранное: явный `as=worker/employer`, без дублей и «неудаляемых» записей |
 | J058 | `/chats`: последнее сообщение через Subquery, без N+1 |
+| J059 | A11Y: глобальный focus-visible и aria-labelledby у модалок жалоб |
 
 Подробно о гео-логике и 152-ФЗ: [GEO_UX_PRIVACY.md](GEO_UX_PRIVACY.md).
 

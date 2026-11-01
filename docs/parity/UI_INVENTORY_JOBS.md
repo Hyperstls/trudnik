@@ -1,76 +1,104 @@
 # UI inventory — jobs / applications
 
-Статусы: ✅ есть; ⚠️ есть, но упрощено/отличается; ❌ отсутствует.
-Обновлено 2026-10-31 после J001–J010 (см. [JOBS_RESULTS.md](JOBS_RESULTS.md)).
+**Обновлено:** 2026-11-01 после J001–J058.
+**Статус:** все элементы реализованы; открытых UX-пунктов нет.
+**Шаблоны:** `djadmin/core/templates/core/` (корневые `templates/` — legacy Flask).
 
-## Каталог заданий
+## Каталог заданий (`/jobs`)
 
-| Элемент | Flask | Django | Статус |
-|---|---|---|---|
-| Поиск q | `index.html` | `jobs_list.html` | ✅ |
-| Город | `index.html` | `jobs_list.html` | ✅ |
-| Оплата min/max | `index.html` | только min | ⚠️ JOB-P2-01 |
-| Навыки | `index.html` | — | ❌ JOB-P2-01 |
-| Сортировка | newest/price | newest/price_asc/price_desc | ✅/⚠️ |
-| Фильтр «Новые/Откликнулся» | `index.html` | — | ❌ JOB-P2-01 |
-| Карта/гео | `index.html` | — | ❌ JOB-P2-01 |
-| Откликнуться/отозвать | карточка/деталь | `job_detail.html` | ✅ |
-| Избранное | карточка | `job_detail.html` | ✅ |
-| Пагинация | есть | есть | ✅ |
-| Скрыть cancelled | default open/completed | `PUBLIC_STATUSES` | ✅ J004 |
-| Blacklist-фильтр | есть | `Blacklist` exclude | ✅ J004 |
+| Элемент | Django | Статус |
+|---|---|---|
+| Поиск q (работа/организация/город/описания) | `jobs_list.html` | ✅ J020 |
+| Город | форма фильтров | ✅ |
+| Оплата от/до | `payment_min`/`payment_max` | ✅ J013 |
+| Навыки (multi, чекбоксы) | `<details>`-панель | ✅ J019/J037/J042 |
+| Сортировка | newest/price/distance | ✅ J013/J024 |
+| «Рядом со мной», радиус | POST `/jobs/geo`, сессия | ✅ J024/J053 |
+| Карта заданий (только офлайн) | Yandex Maps | ✅ J025/J028 |
+| Откликнуться/отозвать | карточка/деталь | ✅ |
+| Массовые отклики | чекбоксы + панель | ✅ |
+| Избранное | деталь/карточка | ✅ |
+| Пагинация с сохранением фильтров | есть | ✅ |
+| Скрыть cancelled / blacklist | `PUBLIC_STATUSES`, exclude | ✅ J004 |
 
-## Создание/редактирование задания
+## Создание/редактирование (`/jobs/new`, `/jobs/<id>/edit`)
 
-| Элемент | Flask | Django | Статус |
-|---|---|---|---|
-| Название/описание/адрес/дата/оплата/работники/город | `job_new.html` | `job_form.html` | ✅ |
-| Work type | есть | есть | ✅ |
-| Навыки | есть | есть | ✅ |
-| Фото (≤3) | `/jobs/photo` + `photo_urls[]` | `JobPhoto` после создания, лимит 3 | ✅/⚠️ J007 |
-| Lat/lng/карта | есть | — | ❌ JOB-P2-01 |
-| Stop-words | сервер | `validators_jobs` | ✅ J002 |
-| Дата в прошлом | сервер | `clean_date_time` | ✅ J002 |
-| Оплата 0..1M / работники 1..100 | сервер | `validate_payment/workers` | ✅ J002 |
-| `preferred_religion` | удалён | удалён | ✅ J001 |
-| `expires_at` 30 дней | сервер | create/edit/repost | ✅ J003/J006 |
+| Элемент | Django | Статус |
+|---|---|---|
+| Все поля задания | `job_form.html` | ✅ |
+| Валидации (stop-words, дата, оплата, работники, длины) | формы | ✅ J002/J022 |
+| Карта-пикер | Yandex Maps | ✅ J027 |
+| «Моё местоположение» | `navigator.geolocation` | ✅ J049 |
+| «Найти по адресу» / «Адрес по метке» | Yandex Geocoder | ✅ J049 |
+| «Очистить метку» | JS | ✅ J049 |
+| Блокировка условий после accepted | только описание | ✅ J033 |
+| Фото ≤3 | `JobPhoto` | ✅ J007 |
 
-## Мои задания
+## Карточка задания (`/jobs/<id>`)
 
-| Элемент | Flask | Django | Статус |
-|---|---|---|---|
-| Табы all/open/completed/cancelled | есть | `?status=` | ✅ J008 |
-| Bulk cancel/restore/delete | есть | `/my-jobs/action` + панель | ✅ J009/J010 |
-| Bulk duplicate | есть | — | ❌ (нужен вынос repost-хелпера) |
-| Per-job duplicate | есть | `repost_job` (кнопки в UI нет) | ⚠️ |
-| Per-job cancel/restore/force-complete/delete | есть | есть | ✅ |
-| Application count | есть | `annotation Count` | ✅ J008 |
-| Edit/rate-workers | есть | edit + rate-workers | ✅/⚠️ |
-| Копировать ID | есть | — | ⚠️ |
+| Элемент | Django | Статус |
+|---|---|---|
+| Адрес/город | секция «Адрес» | ✅ J050 |
+| Карта + «Открыть на карте»/«Маршрут» | detail map | ✅ J050 |
+| Отклик/отзыв, 12-часовое окно | detail | ✅ J003 |
+| Чат для accepted | кнопка | ✅ J047 |
+| Жалоба | `<dialog>` | ✅ J056 |
+| Избранное работодателя/задания | формы | ✅ J014/J057 |
+| Отзывы/рейтинг/верификация | detail | ✅ J016/J018 |
+| Trust-блок | detail | ✅ J047 |
 
-## Мои отклики / отклики на задания
+## Мои задания (`/my-jobs`)
 
-| Элемент | Flask | Django | Статус |
-|---|---|---|---|
-| Табы received/sent | есть | `?tab=received|sent` | ✅ J008 |
-| Пагинация | есть | 20/страница | ✅ J008 |
-| Фильтр навыков | есть | — | ❌ JOB-P2-01 |
-| Bulk accept/reject/reopen | есть | `/my-applications/action` + панель | ✅ J009/J010 |
-| Per-app accept/reject/reopen | есть | `job_applicants` + received-таб | ✅ |
-| Чат по отклику | есть | `chat_room` | ✅ |
-| Контакты работника | есть | ? (проверить) | ⚠️ |
+| Элемент | Django | Статус |
+|---|---|---|
+| Табы Все/Открытые/Завершённые/Отменённые | есть | ✅ J008 |
+| Bulk cancel/restore/delete/duplicate | панель | ✅ J009/J010/J017 |
+| application_count, edit/cancel/complete/delete | карточка | ✅ |
+| Мобильные переносы действий | flex-wrap | ✅ J037 |
 
-## Деталь задания
+## Мои отклики (`/my-applications`)
 
-| Элемент | Flask | Django | Статус |
-|---|---|---|---|
-| Поделиться | есть | — | ❌ JOB-P2-02 |
-| Пожаловаться на работодателя | есть | — | ❌ JOB-P2-02 |
-| Избранный работодатель | есть | — | ❌ JOB-P2-02 |
-| Application count (owner) | есть | — | ❌ JOB-P2-02 |
-| Withdraw window | `can_withdraw` | `can_withdraw` (12 ч, accepted) | ✅ J003 |
-| Apply/unapply | есть | есть | ✅ |
-| Edit/cancel/restore/delete/force-complete | есть | есть | ✅ |
-| Rate workers | есть | есть | ✅/⚠️ |
-| Ratings-секция | есть | ? | ⚠️ |
-| Legacy photo_urls | есть | unified `job_photo_urls` | ✅ J007 |
+| Элемент | Django | Статус |
+|---|---|---|
+| Табы received/sent, default received для работодателя | есть | ✅ J008/J046 |
+| Фильтр навыков (трудник/задание) | `<details>` | ✅ J055 |
+| Рейтинг/навыки/оплата | карточка received | ✅ J046 |
+| Контакты трудника | received/applicants | ✅ J038 |
+| Выбрать все | JS | ✅ J046 |
+| Bulk accept/reject/reopen | панель | ✅ J009/J010 |
+
+## Избранное (`/favorites`)
+
+| Элемент | Django | Статус |
+|---|---|---|
+| Задания/трудники/работодатели | секции + табы | ✅ J043 |
+| Массовое удаление | bulk-формы | ✅ J043 |
+| Приглашение трудника | select открытых заданий | ✅ J043 |
+| Корректный тип worker/employer | `as` | ✅ J057 |
+| Навигация в шапке/bottom-nav | `/favorites` | ✅ J044 |
+
+## Работодатели/трудники/оценки
+
+| Элемент | Django | Статус |
+|---|---|---|
+| `/employers`: open-jobs, фильтры, blacklist, избранное | `employers.html` | ✅ J031 |
+| `/employers/<id>`: open-only, 404 blacklist, отклик | detail | ✅ J032 |
+| `/workers`: навыки/рейтинг/оплата/сортировка | `workers_list.html` | ✅ J021 |
+| Бейджи «Надёжный»/«Приглашён» | workers | ✅ J023 |
+| `/jobs/<id>/rate-workers` | prefill/обновление | ✅ J029/J030 |
+| `/ratings/user/<id>` | типы отзывов, job-link | ✅ J030 |
+
+## Уведомления/приглашения/чат
+
+| Элемент | Django | Статус |
+|---|---|---|
+| `/notifications`: read/delete, delete-all, настройки | `notifications.html` | ✅ J041 |
+| Типы и deep-links уведомлений | `notifications.html` | ✅ J052 |
+| `/invitations`: accept/decline, reject-all | `invitations.html` | ✅ J040 |
+| `/chats`: только accepted, последнее сообщение | `chats.html` | ✅ J039/J058 |
+| `/chat/<id>`: empty state, autoscroll, даты | `chat.html` | ✅ J048 |
+
+## Legacy
+
+`/favorite-jobs`, `/favorite-people` сохранены для старых ссылок; основной вход —
+`/favorites`. Корневые `templates/` и `app/` — архив Flask, UI не используется.
