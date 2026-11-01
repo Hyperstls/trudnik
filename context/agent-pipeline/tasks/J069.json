@@ -1,0 +1,42 @@
+{
+  "id": "J069",
+  "title": "P2: push-разрешение после полезного действия",
+  "goal": "После создания задания или отправки отклика на странице задания показывается один раз баннер включения push; отказ запоминается, разрешение запрашивается только по кнопке.",
+  "why": "Запрашивать push при первом входе рано и невежливо. После успешного действия пользователь уже получил ценность и понимает, зачем получать уведомления об откликах/сообщениях.",
+  "files": [
+    "djadmin/core/views_flow.py",
+    "djadmin/core/views.py",
+    "djadmin/core/templates/core/job_detail.html",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "static/js/push-notifications.js",
+    "djadmin/core/templates/core/notification_settings.html"
+  ],
+  "interfaces": "views_flow.job_apply/job_create: при успехе redirect на core:job_detail с ?push=1. views.job_detail: show_push_prompt=request.GET.get('push')=='1'. job_detail.html: баннер #push-prompt (role=region) с #push-prompt-enable и #push-prompt-dismiss; скрыт при localStorage trudnik-push-prompt=dismissed; после успешной подписки удаляется, отказ сохраняется; при отсутствии PushManager/denied — скрыт или пояснение; ссылка на core:notification_prefs. block scripts: api.js + push-notifications.js + inline init. Тест ApplicationFlowTests.test_apply_shows_push_prompt: POST apply -> 302 с push=1; GET location содержит id=push-prompt.",
+  "acceptance": [
+    "Баннер появляется только после успешного создания задания/отклика и только авторизованному.",
+    "Разрешение браузера запрашивается только после нажатия «Включить push».",
+    "«Не сейчас» скрывает баннер навсегда (localStorage), без запроса разрешения.",
+    "При уже выданном разрешении подписка создаётся без повторного prompt.",
+    "Повторный GET с push=1 после отказа не показывает баннер.",
+    "Тест apply/create redirect и страницы проходит."
+  ],
+  "out_of_scope": [
+    "Не менять серверные push endpoints/модель.",
+    "Не менять страницу настроек уведомлений.",
+    "Не добавлять push для анонимных пользователей."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": ".venv\\Scripts\\python.exe -m py_compile djadmin/core/views_flow.py djadmin/core/views.py djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "push_prompt_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_flows.ApplicationFlowTests.test_apply_shows_push_prompt core.tests.test_flows.JobCrudTests.test_create_redirects_with_push_prompt --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

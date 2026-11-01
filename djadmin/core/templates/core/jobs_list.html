@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load l10n %}
 {% block title %}Трудник — Поиск работы{% endblock %}
 {% block content %}
 <div class="px-0 py-4 fade-in">
@@ -7,9 +8,14 @@
         <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">Задания</h2>
     </div>
 
-    {% if yandex_maps_key and map_points %}
-    <div id="jobs-map" style="height:320px" class="w-full rounded-2xl border border-neutral-200 mb-4"></div>
+    {% if yandex_maps_key %}
+    {% if map_points or geo_center %}
+    <div id="jobs-map" style="height:320px" class="w-full rounded-2xl border border-neutral-200 mb-2"></div>
+    {% if geo_center %}
+    <p class="text-xs text-neutral-500 mb-3">Круг — радиус поиска {% localize off %}{{ geo_center.radius|floatformat:"-1" }}{% endlocalize %} км от вашей точки. Точка округлена до ~100 м и хранится в сессии 1 час.</p>
+    {% else %}<div class="mb-2"></div>{% endif %}
     {{ map_points|json_script:"jobs-map-data" }}
+    {% if geo_center %}{{ geo_center|json_script:"jobs-geo-data" }}{% endif %}
     <script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_key|urlencode }}&lang=ru_RU"></script>
     <script>
     (function(){
@@ -17,11 +23,21 @@
       var node = document.getElementById('jobs-map-data');
       if (!node) return;
       var points = JSON.parse(node.textContent);
+      var geoNode = document.getElementById('jobs-geo-data');
+      var geo = geoNode ? JSON.parse(geoNode.textContent) : null;
       ymaps.ready(function(){
         var map = new ymaps.Map('jobs-map', {
           center: [55.7558, 37.6173], zoom: 10,
           controls: ['zoomControl']
         });
+        if (geo) {
+          var circle = new ymaps.Circle(
+            [[geo.lat, geo.lng], geo.radius * 1000],
+            {},
+            {fillColor: '#f59e0b22', strokeColor: '#d97706', strokeWidth: 2, strokeOpacity: 0.75}
+          );
+          map.geoObjects.add(circle);
+        }
         points.forEach(function(p){
           var balloon = document.createElement('div');
           balloon.textContent = p.title;
@@ -33,7 +49,10 @@
           placemark.events.add('click', function(){ window.location.href = p.url; });
           map.geoObjects.add(placemark);
         });
-        if (points.length === 1) {
+        if (geo) {
+          var zoom = geo.radius <= 1 ? 13 : geo.radius <= 5 ? 12 : geo.radius <= 20 ? 11 : geo.radius <= 50 ? 10 : 9;
+          map.setCenter([geo.lat, geo.lng], zoom);
+        } else if (points.length === 1) {
           map.setCenter([points[0].lat, points[0].lng], 12);
         } else if (points.length > 1) {
           map.setBounds(map.geoObjects.getBounds(), {checkZoomRange: true, zoomMargin: 40});
@@ -41,6 +60,7 @@
       });
     })();
     </script>
+    {% endif %}
     {% endif %}
 
     <!-- Фильтр-пилюли статуса (Flask: Все/Новые/Откликнулся — упрощено до публичных статусов) -->
@@ -64,7 +84,19 @@
         <input type="hidden" name="clear" value="1">
         <input type="hidden" name="next" value="{% url 'core:jobs' %}">
     </form>
-    <form id="filters-form" method="get" action="{% url 'core:jobs' %}" class="flex flex-wrap gap-2 mb-4 items-center">
+    <button type="button" id="filters-open" class="sm:hidden inline-flex items-center gap-2 mb-4 px-4 h-10 rounded-xl border border-neutral-200 bg-white text-sm font-semibold text-neutral-700 shadow-sm" aria-haspopup="dialog" aria-controls="filters-form" aria-expanded="false">
+        <svg aria-hidden="true" class="h-4 w-4 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+        Фильтры
+        {% if active_filter_count %}<span id="filters-active-count" class="min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center rounded-full bg-neutral-800 text-white text-[11px] font-bold">{{ active_filter_count }}</span>{% else %}<span id="filters-active-count" class="hidden min-w-[20px] h-5 px-1.5 rounded-full bg-neutral-800 text-white text-[11px] font-bold"></span>{% endif %}
+    </button>
+    <div id="filters-backdrop" class="filters-backdrop hidden" aria-hidden="true"></div>
+    <form id="filters-form" method="get" action="{% url 'core:jobs' %}" role="search" aria-label="Фильтры заданий" class="flex flex-wrap gap-2 mb-4 items-center">
+        <div class="filter-sheet-head sm:hidden flex items-center justify-between w-full">
+            <h3 id="filters-title" class="text-base font-bold text-neutral-900">Фильтры</h3>
+            <button type="button" id="filters-close" class="w-9 h-9 inline-flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-50" aria-label="Закрыть фильтры">
+                <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
         {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
         {% if city %}<input type="hidden" name="city" value="{{ city }}">{% endif %}
         {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
@@ -103,7 +135,15 @@
             <option value="applied" {% if job_filter == 'applied' %}selected{% endif %}>Откликнулся</option>
         </select>
         {% endif %}
-        <button type="submit" class="px-4 h-9 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors">Применить</button>
+        <button type="submit" class="hidden sm:inline-flex items-center px-4 h-9 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors">Применить</button>
+        <div class="filter-sheet-actions sm:hidden sticky bottom-0 -mx-4 mt-2 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white border-t border-neutral-200 flex gap-2">
+            {% if geo_active %}
+            <button type="submit" form="geo-clear-form" class="flex-1 h-11 rounded-xl border border-neutral-200 text-neutral-700 text-sm font-semibold hover:bg-neutral-50">Сбросить</button>
+            {% else %}
+            <a href="{% url 'core:jobs' %}" class="flex-1 h-11 inline-flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-700 text-sm font-semibold hover:bg-neutral-50">Сбросить</a>
+            {% endif %}
+            <button type="submit" class="flex-[2] h-11 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold shadow-sm">Применить{% if active_filter_count %} · {{ active_filter_count }}{% endif %}</button>
+        </div>
     </form>
 
     <!-- Панель сортировки (Flask sort_panel) -->
@@ -186,6 +226,64 @@
           fail('Не удалось получить координаты. Разрешите геолокацию.');
         }, {enableHighAccuracy: true, timeout: 10000, maximumAge: 60000});
       });
+    })();
+    </script>
+    <script>
+    (function(){
+      var form = document.getElementById('filters-form');
+      var openBtn = document.getElementById('filters-open');
+      var closeBtn = document.getElementById('filters-close');
+      var backdrop = document.getElementById('filters-backdrop');
+      if (!form || !openBtn || !backdrop) return;
+      var lastFocus = null;
+      // Hide the inline form only when JS is available; without JS all filters
+      // remain visible and usable on mobile.
+      form.classList.add('filters-collapsed');
+
+      function isMobile(){ return window.matchMedia('(max-width: 639px)').matches; }
+      function setOpen(next){
+        if (next && !isMobile()) return;
+        form.classList.toggle('filters-sheet', next);
+        backdrop.classList.toggle('hidden', !next);
+        openBtn.setAttribute('aria-expanded', next ? 'true' : 'false');
+        form.setAttribute('role', next ? 'dialog' : 'search');
+        if (next) {
+          form.setAttribute('aria-modal', 'true');
+          form.setAttribute('aria-labelledby', 'filters-title');
+        } else {
+          form.removeAttribute('aria-modal');
+          form.removeAttribute('aria-labelledby');
+          form.setAttribute('aria-label', 'Фильтры заданий');
+        }
+        document.body.classList.toggle('overflow-hidden', next);
+        if (next) {
+          lastFocus = openBtn;
+          if (closeBtn) closeBtn.focus();
+        } else {
+          if (lastFocus && lastFocus.focus) lastFocus.focus();
+          lastFocus = null;
+        }
+      }
+
+      openBtn.addEventListener('click', function(){ setOpen(true); });
+      if (closeBtn) closeBtn.addEventListener('click', function(){ setOpen(false); });
+      backdrop.addEventListener('click', function(){ setOpen(false); });
+      document.addEventListener('keydown', function(e){
+        if (e.key === 'Escape' && form.classList.contains('filters-sheet')) setOpen(false);
+      });
+      form.addEventListener('keydown', function(e){
+        if (e.key !== 'Tab' || !form.classList.contains('filters-sheet')) return;
+        var nodes = form.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), summary, [tabindex]:not([tabindex="-1"])');
+        var focusable = Array.prototype.filter.call(nodes, function(n){ return n.offsetParent !== null; });
+        if (!focusable.length) return;
+        var first = focusable[0], last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      });
+      var desktop = window.matchMedia('(min-width: 640px)');
+      var onChange = function(e){ if (e.matches && form.classList.contains('filters-sheet')) setOpen(false); };
+      if (desktop.addEventListener) desktop.addEventListener('change', onChange);
+      else if (desktop.addListener) desktop.addListener(onChange);
     })();
     </script>
 

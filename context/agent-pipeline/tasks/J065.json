@@ -1,0 +1,43 @@
+{
+  "id": "J065",
+  "title": "P1: мобильные фильтры в bottom-sheet",
+  "goal": "На экранах <640px фильтры задания открываются нижним листом с затемнением, счётчиком активных фильтров и закреплёнными кнопками «Сбросить»/«Применить»; desktop-вид не меняется.",
+  "why": "Текущая форма фильтров скрыта на мобильных или занимает несколько экранов, кнопка «Применить» уезжает, а пользователь не видит, что фильтры активны. Это ключевой мобильный сценарий поиска подработки.",
+  "files": [
+    "djadmin/core/templates/core/jobs_list.html",
+    "djadmin/core/views.py",
+    "static/css/app.css",
+    "djadmin/core/tests/test_public_views.py",
+    "static/css/tailwind.min.css"
+  ],
+  "context_files": [
+    "djadmin/core/urls.py",
+    "djadmin/core/templates/core/base.html"
+  ],
+  "interfaces": "views.jobs_list: добавить active_filter_count = число непустых q/city/status/skills/payment_min/payment_max/job_filter/geo_active. jobs_list.html: кнопка #filters-open (sm:hidden) с бейджем #filters-active-count, backdrop #filters-backdrop, форма #filters-form получает hidden sm:flex; внутри sheet-заголовок с #filters-close, существующие поля без дублирования, sticky .filter-sheet-actions с «Сбросить» (ссылка /jobs или POST geo-clear-form при geo_active) и submit «Применить». app.css: media <=639px для #filters-form.filters-sheet — fixed bottom sheet, max-height 85vh, overflow-y auto, safe-area padding, анимация; details-панель навыков внутри sheet — static/полная ширина; .filters-backdrop fixed inset-0 z-60. JS: открыть/закрыть, Escape, клик по backdrop, возврат фокуса на кнопку, при >=640px принудительно закрыть. Тесты: пустой /jobs -> active_filter_count=0; q+payment_max+skill -> 3; страница содержит filters-open и «Применить».",
+  "acceptance": [
+    "На мобильном фильтры не видны до нажатия «Фильтры»; после — открывается bottom-sheet с backdrop.",
+    "Кнопки «Сбросить» и «Применить» всегда видны внизу листа (sticky).",
+    "Бейдж показывает количество активных фильтров и скрыт при 0.",
+    "Escape/backdrop/крестик закрывают лист, фокус возвращается на «Фильтры».",
+    "Существующие фильтры q/city/status/skills/payment/geo работают без изменений.",
+    "Desktop-форма и пагинация не меняются."
+  ],
+  "out_of_scope": [
+    "Не менять логику nearby_jobs/сессии гео.",
+    "Не менять сортировку и пагинацию.",
+    "Не добавлять новые фильтры."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": ".venv\\Scripts\\python.exe -m py_compile djadmin/core/views.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "filter_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.PublicViewsTests.test_active_filter_count --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

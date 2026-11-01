@@ -4,7 +4,7 @@
 **Ветка:** `feat/agent-pipeline` (Django `main` не менялся)
 **Метод:** контракт → dispatch → verify (exit-код) → независимый pattern-review → done.
 **Итог:** P0 и P1 закрыты; P2-01/02/03/05/06/08/10/11/12/13 закрыты; P2-04/P2-07/P2-09 — осознанные решения; открытых UX-пунктов нет.
-Полный `manage.py test core` — **392 OK**; `pre_deploy_check` — 7/7.
+Полный `manage.py test core` — **401 OK**; `pre_deploy_check` — 7/7.
 
 ## Контракты
 

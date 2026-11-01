@@ -637,3 +637,29 @@ class AppDownloadLinksTests(TestCase):
         self.client.force_login(user)
         response = self.client.get(reverse("core:jobs"))
         self.assertContains(response, "Установить приложение")
+
+
+class UxNavigationMenuTests(TestCase):
+    """P1 UX: active navigation and secondary-actions menu."""
+
+    def setUp(self):
+        self.user = make_profile("ux-nav-menu@example.com")
+        self.client.force_login(self.user)
+
+    def test_active_navigation_marks_current_section(self):
+        response = self.client.get(reverse("core:jobs"))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        # Desktop and mobile nav each mark the current item once.
+        self.assertEqual(html.count('aria-current="page"'), 2)
+        self.assertIn("text-primary-700", html)
+
+    def test_my_jobs_has_secondary_actions_menu(self):
+        make_job(self.user, work_type="UX меню")
+        response = self.client.get(reverse("core:my_jobs"))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn("action-menu", html)
+        self.assertIn("Другие действия", html)
+        self.assertIn("Изменить", html)
+        self.assertIn("Удалить", html)

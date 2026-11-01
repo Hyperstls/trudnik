@@ -87,6 +87,12 @@ class JobCrudTests(TestCase):
             list(job.job_skills.values_list("skill_id", flat=True)), [self.skill.pk]
         )
 
+    def test_create_redirects_with_push_prompt(self):
+        response = self.client.post(reverse("core:job_create"), self._job_payload())
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("push=1", response["Location"])
+        self.assertContains(self.client.get(response["Location"]), 'id="push-prompt"')
+
     def test_create_job_sets_expires_at(self):
         response = self.client.post(reverse("core:job_create"), self._job_payload())
         self.assertEqual(response.status_code, 302)
@@ -210,6 +216,9 @@ class JobCrudTests(TestCase):
         self.assertContains(response, 'id="geo-find"')
         self.assertContains(response, 'id="geo-reverse"')
         self.assertContains(response, 'id="geo-clear"')
+        self.assertContains(response, 'id="geo-confirm"')
+        self.assertContains(response, 'id="geo-suggest"')
+        self.assertContains(response, "ymaps.suggest")
         self.assertContains(response, "navigator.geolocation")
         self.assertContains(response, "ymaps.geocode")
         self.assertContains(response, "не сохраняется")
@@ -491,6 +500,14 @@ class ApplicationFlowTests(TestCase):
         self.assertEqual(response.status_code, 302)
         app = Application.objects.get(job=self.job, worker=self.worker)
         self.assertEqual(app.status, "pending")
+
+    def test_apply_shows_push_prompt(self):
+        response = self.client.post(reverse("core:job_apply", args=[self.job.pk]))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("push=1", response["Location"])
+        page = self.client.get(response["Location"])
+        self.assertContains(page, 'id="push-prompt"')
+        self.assertContains(page, 'id="push-prompt-enable"')
 
     def test_apply_enqueues_notification(self):
         self.client.post(reverse("core:job_apply", args=[self.job.pk]))

@@ -3,6 +3,26 @@ from django.conf import settings
 from django.http import HttpResponse, HttpResponseForbidden
 
 
+class CsrfHeaderAliasMiddleware:
+    """Accept the legacy X-CSRF-Token header used by existing JS modules.
+
+    Django checks HTTP_X_CSRFTOKEN (``X-CSRFToken``). The Flask-era client
+    sends ``X-CSRF-Token``; without this alias every fetch-based mutation
+    (push, favorites, invites) was rejected with 403. The cookie/token value
+    is still validated by CsrfViewMiddleware, so security is unchanged.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if "HTTP_X_CSRFTOKEN" not in request.META:
+            legacy = request.META.get("HTTP_X_CSRF_TOKEN")
+            if legacy:
+                request.META["HTTP_X_CSRFTOKEN"] = legacy
+        return self.get_response(request)
+
+
 class CanonicalHostMiddleware:
     """Все публичные запросы — на каноническом домене (трудник.рф)."""
 

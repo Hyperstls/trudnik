@@ -29,7 +29,7 @@ from itsdangerous import URLSafeTimedSerializer
 
 from core import tokens
 from core.models import Profile, Skill, UserSkill
-from core.tests.test_auth import make_profile
+from core.tests.test_auth import CACHE_LOCMEM, make_profile
 
 REG = {
     "email": "New.User@Example.com",
@@ -246,6 +246,7 @@ class RegisterTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertTrue(Profile.objects.filter(email="smart-token@example.com").exists())
 
+    @override_settings(CACHES=CACHE_LOCMEM)
     def test_register_ip_rate_limit(self):
         # AUTH-P1-11: 10 POST с одного IP за час проходят, 11-й блокируется
         ip = "198.51.100.91"

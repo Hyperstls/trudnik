@@ -43,7 +43,7 @@ class SmokeAllPagesTests(TestCase):
 
     def test_service_worker_never_emits_503(self):
         sw = (Path(settings.REPO_ROOT) / "static" / "sw.js").read_text(encoding="utf-8")
-        self.assertIn("trudnik-v15", sw)
+        self.assertIn("trudnik-v16", sw)
         self.assertIn("!response.ok", sw)
         self.assertNotIn("server is reachable but request failed", sw)
 

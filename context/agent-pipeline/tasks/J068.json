@@ -1,0 +1,40 @@
+{
+  "id": "J068",
+  "title": "P2: группировка уведомлений по дням",
+  "goal": "Список уведомлений разбит на группы «Сегодня», «Вчера» и даты с счётчиком; внутри групп сохранены все действия.",
+  "why": "Плоский список из десятков откликов/сообщений трудно сканировать. Дневные группы дают контекст свежести и снижают когнитивную нагрузку, не меняя порядок и пагинацию.",
+  "files": [
+    "djadmin/core/views_notify.py",
+    "djadmin/core/templates/core/notifications.html",
+    "djadmin/core/tests/test_notifications.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/templates/core/notification_settings.html"
+  ],
+  "interfaces": "views.notifications_list: today=timezone.localdate(), yesterday=today-timedelta(days=1) в контекст. notifications.html: {% regroup page.object_list by created_at|date:'Y-m-d' as notification_days %}; для каждой группы section с h3 (Сегодня/Вчера/d.m.Y) и счётчиком day.list|length, sticky-заголовок; карточки и формы без изменений. test_notifications: создать 2 уведомления, GET /notifications содержит «Сегодня», счётчик группы и оба заголовка.",
+  "acceptance": [
+    "Уведомления сгруппированы по календарному дню.",
+    "Заголовок показывает «Сегодня»/«Вчера»/дату и количество.",
+    "Отметка «Прочитано» и «Удалить» работают в каждой группе.",
+    "Пагинация и «Удалить все» не меняются.",
+    "Тесты notifications проходят."
+  ],
+  "out_of_scope": [
+    "Не менять модель Notification/outbox.",
+    "Не добавлять фильтры по типам.",
+    "Не менять WebSocket/push."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": ".venv\\Scripts\\python.exe -m py_compile djadmin/core/views_notify.py djadmin/core/tests/test_notifications.py",
+      "cwd": "."
+    },
+    {
+      "name": "notification_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_notifications.NotificationTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

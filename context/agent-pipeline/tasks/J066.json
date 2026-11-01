@@ -1,0 +1,40 @@
+{
+  "id": "J066",
+  "title": "P2: круг радиуса на карте ленты",
+  "goal": "При активном гео-поиске карта ленты показывает заштрихованный круг радиуса вокруг точки пользователя; координаты в HTML округлены до 3 знаков.",
+  "why": "Пользователь видит расстояние в карточках, но не понимает зону поиска. Круг делает радиус наглядным и помогает не искать задания вне выбранной области. Точные координаты не должны попадать в HTML/URL.",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/templates/core/jobs_list.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/urls.py",
+    "djadmin/core/templates/core/job_detail.html"
+  ],
+  "interfaces": "views.jobs_list: при geo_active добавить geo_center={'lat': round(geo_lat,3), 'lng': round(geo_lng,3), 'radius': round(geo_radius,1)}; иначе None. jobs_list.html: карта рендерится при yandex_maps_key и (map_points или geo_center); geo_center в json_script 'jobs-geo-data'; JS строит ymaps.Circle([[lat,lng],[lat,lng]], {radius: radius*1000}, {fillColor:'#f59e0b22', strokeColor:'#d97706', strokeWidth:2}) и центрирует карту по радиусу; под картой подпись «Круг — радиус поиска N км». Тест: geo-поиск с lat=60.0/lng=30.0/radius=2 -> context geo_center == {'lat':60.0,'lng':30.0,'radius':2.0}.",
+  "acceptance": [
+    "При geo=1 карта показывает круг выбранного радиуса.",
+    "Координаты центра в HTML не точнее 3 знаков после запятой.",
+    "Карта по-прежнему показывает только задания с адресом и координатами; маркеры работников не добавляются.",
+    "Без гео-поиска поведение карты не меняется.",
+    "Тест geo_filter_nearby и новый тест проходят."
+  ],
+  "out_of_scope": [
+    "Не менять nearby_jobs RPC и сессию гео.",
+    "Не добавлять кластеризацию или маркеры пользователей.",
+    "Не менять карту детальной страницы."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": ".venv\\Scripts\\python.exe -m py_compile djadmin/core/views.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "geo_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.PublicViewsTests.test_geo_filter_nearby core.tests.test_public_views.PublicViewsTests.test_geo_map_center_rounded --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

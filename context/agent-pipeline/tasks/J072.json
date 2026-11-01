@@ -1,0 +1,31 @@
+{
+  "id": "J072",
+  "title": "Test isolation: сброс кэша в IP rate-limit тестах",
+  "goal": "Тесты 11-го POST регистрации и 21-го POST логина не зависят от кэша предыдущих тестов и стабильно проходят в полном прогоне.",
+  "why": "Полный core-прогон иногда падал на test_register_ip_rate_limit, в изоляции тест зелёный. Причина — LocMem cache сохраняет счётчики между тестами; тест должен начинать с чистого кэша.",
+  "files": [
+    "djadmin/core/tests/test_auth_flows.py",
+    "djadmin/core/tests/test_auth.py",
+    "djadmin/core/tests/test_parity_final.py"
+  ],
+  "context_files": [
+    "djadmin/core/ratelimit.py"
+  ],
+  "interfaces": "test_auth.CACHE_LOCMEM = locmem CACHES; @override_settings(CACHES=CACHE_LOCMEM) на test_login_rate_limit_per_ip и test_register_ip_rate_limit. cache.clear() из тестов убран, чтобы не чистить общий Redis. Пороги/ассерты не меняются. RateLimitTests в test_parity_final также декорирован override_settings(CACHES=CACHE_LOCMEM); apply-лимит 10/мин проверяется на изолированном кэше.",
+  "acceptance": [
+    "Тест проходит и в изоляции, и в полном прогоне.",
+    "Счётчик 10 разрешённых / 11-й заблокирован сохранён.",
+    "Другие тесты не меняются."
+  ],
+  "out_of_scope": [
+    "Не менять ratelimit.py.",
+    "Не менять порог/окно."
+  ],
+  "checks": [
+    {
+      "name": "rate_limit_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_auth_flows.RegisterTests.test_register_ip_rate_limit core.tests.test_auth.AuthBridgeTests.test_login_rate_limit_per_ip --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

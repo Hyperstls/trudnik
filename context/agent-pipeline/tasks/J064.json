@@ -1,0 +1,42 @@
+{
+  "id": "J064",
+  "title": "P1: активная навигация, контраст метаданных, меню «⋯»",
+  "goal": "Текущий раздел подсвечен и помечен aria-current на десктопе и в мобильной навигации; мелкие метаданные соответствуют WCAG AA; вторичные действия карточки «Мои задания» убраны в доступное меню «⋯».",
+  "why": "Пользователь не видел, в каком разделе находится; text-neutral-400 (#a3a3a3) даёт ~2.5:1 на белом и не читается; пять равноправных кнопок в карточке перегружают мобильный экран и приводят к случайным удалениям.",
+  "files": [
+    "djadmin/core/templates/core/base.html",
+    "djadmin/core/templates/core/my_jobs.html",
+    "static/css/app.css",
+    "djadmin/core/tests/test_parity_ext.py"
+  ],
+  "context_files": [
+    "djadmin/core/urls.py",
+    "djadmin/core/templates/core/my_applications.html"
+  ],
+  "interfaces": "base.html: для desk/mobile nav использовать request.resolver_match.url_name; активный пункт — text-primary-700 bg-primary-50 (desktop) / text-primary-700 (mobile), aria-current='page' на точном разделе; job_detail подсвечивает «Задания», chat — «Чаты», worker_detail — «Трудники». app.css: .text-neutral-400 { color:#737373 } после tailwind, чтобы метаданные были >=4.5:1; .action-menu > summary без маркера, .action-menu-panel — absolute right-0, z-40, белая панель, тень. my_jobs.html: основная кнопка «Отклики», <details class='action-menu'> с summary «⋯» aria-label='Другие действия' и пунктами Изменить/Отменить/Завершить/Восстановить/Удалить; формы CSRF сохранить. Тест: авторизованный GET /jobs содержит aria-current='page'; GET /my-jobs содержит action-menu и «Другие действия».",
+  "acceptance": [
+    "На /jobs ровно один aria-current='page' в основной навигации.",
+    "Мобильная навигация использует text-neutral-600 для неактивных пунктов.",
+    "Метаданные .text-neutral-400 имеют контраст не ниже 4.5:1 на белом.",
+    "Все вторичные действия «Моих заданий» доступны из меню «⋯», включая удаление/отмену/завершение.",
+    "Меню работает без JS (details/summary) и закрывается по повторному клику.",
+    "Существующие тесты core проходят."
+  ],
+  "out_of_scope": [
+    "Не менять бизнес-логику job_action/my_jobs_bulk.",
+    "Не менять другие карточки (applications/favorites) в этой задаче.",
+    "Не менять цвета primary/status."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": ".venv\\Scripts\\python.exe -m py_compile djadmin/core/tests/test_parity_ext.py",
+      "cwd": "."
+    },
+    {
+      "name": "ux_nav_menu_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_parity_ext.UxNavigationMenuTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

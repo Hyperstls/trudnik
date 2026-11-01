@@ -31,10 +31,15 @@
                     <button type="button" id="geo-reverse" class="px-3 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Адрес по метке</button>
                     <button type="button" id="geo-clear" class="px-3 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-500 text-sm font-medium transition-colors">Очистить метку</button>
                 </div>
+                <div id="geo-confirm-box" class="geo-confirm-box hidden mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900" role="status">
+                    <span id="geo-confirm-text">Проверьте адрес и метку на карте.</span>
+                    <button type="button" id="geo-confirm" class="px-3 h-8 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shrink-0">Подтвердить адрес</button>
+                </div>
+                <div id="geo-suggest" class="geo-suggest" role="listbox" aria-label="Подсказки адреса" hidden></div>
                 <p id="geo-status" class="text-xs text-neutral-500 mb-2" role="status" aria-live="polite"></p>
                 <div id="job-map" data-lat="{% localize off %}{{ form.instance.lat|default_if_none:'' }}{% endlocalize %}" data-lng="{% localize off %}{{ form.instance.lng|default_if_none:'' }}{% endlocalize %}" style="height:320px" class="w-full rounded-xl border border-neutral-200"></div>
             </div>
-            <script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_key|urlencode }}&lang=ru_RU"></script>
+            <script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_key|urlencode }}&lang=ru_RU{% if yandex_suggest_key %}&suggest_apikey={{ yandex_suggest_key|urlencode }}{% endif %}"></script>
             <script>
             document.addEventListener('DOMContentLoaded', function(){
               if (!window.ymaps) return;
@@ -44,10 +49,33 @@
               var addressInput = document.getElementById('id_address');
               var cityInput = document.getElementById('id_city');
               var statusEl = document.getElementById('geo-status');
+              var confirmBox = document.getElementById('geo-confirm-box');
+              var confirmText = document.getElementById('geo-confirm-text');
+              var confirmBtn = document.getElementById('geo-confirm');
               if (!el || !latInput || !lngInput) return;
 
               function setStatus(text) {
                 if (statusEl) statusEl.textContent = text || '';
+              }
+
+              function showConfirm(text) {
+                if (!confirmBox) return;
+                if (confirmText && text) confirmText.textContent = text;
+                confirmBox.classList.remove('hidden');
+                el.dataset.addressConfirmed = '';
+              }
+
+              function hideConfirm() {
+                if (confirmBox) confirmBox.classList.add('hidden');
+                el.dataset.addressConfirmed = '';
+              }
+
+              if (confirmBtn) {
+                confirmBtn.addEventListener('click', function(){
+                  hideConfirm();
+                  el.dataset.addressConfirmed = '1';
+                  setStatus('Адрес подтверждён. Метка будет сохранена вместе с заданием.');
+                });
               }
 
               var hasCoords = el.dataset.lat !== '' && el.dataset.lng !== '' &&
@@ -88,6 +116,7 @@
                     setStatus(force
                       ? 'Адрес подставлен по метке.'
                       : 'Координаты сохранены. Адрес подставлен — проверьте.');
+                    showConfirm('Проверьте адрес «' + (addressInput ? addressInput.value.trim() : '') + '» и метку на карте.');
                   }).catch(function(){
                     setStatus('Координаты сохранены. Адрес не подставлен — введите вручную.');
                   });
@@ -95,6 +124,7 @@
 
                 function setCoords(coords, opts) {
                   opts = opts || {};
+                  if (!opts.keepConfirm) hideConfirm();
                   currentCoords = [Number(coords[0]), Number(coords[1])];
                   latInput.value = currentCoords[0].toFixed(6);
                   lngInput.value = currentCoords[1].toFixed(6);
@@ -153,8 +183,9 @@
                         setStatus('Адрес не найден. Уточните город и адрес или кликните по карте.');
                         return;
                       }
-                      setCoords(obj.geometry.getCoordinates(), {zoom: 16});
+                      setCoords(obj.geometry.getCoordinates(), {zoom: 16, keepConfirm: true});
                       setStatus('Адрес найден: ' + obj.getAddressLine());
+                      showConfirm('Проверьте адрес «' + obj.getAddressLine() + '» и метку на карте.');
                     }).catch(function(){
                       setStatus('Не удалось найти адрес. Кликните по карте вручную.');
                     });
@@ -179,7 +210,175 @@
                     latInput.value = '';
                     lngInput.value = '';
                     placemark.options.set('visible', false);
+                    hideConfirm();
                     setStatus('Метка удалена. Для офлайн-задания укажите точку на карте.');
+                  });
+                }
+
+                if (addressInput) {
+                  addressInput.setAttribute('autocomplete', 'off');
+                  addressInput.setAttribute('aria-autocomplete', 'list');
+                  addressInput.setAttribute('aria-expanded', 'false');
+                  addressInput.setAttribute('aria-controls', 'geo-suggest');
+                  addressInput.parentNode.classList.add('relative');
+
+                  var suggestBox = document.getElementById('geo-suggest');
+                  if (!suggestBox) {
+                    suggestBox = document.createElement('div');
+                    suggestBox.id = 'geo-suggest';
+                    suggestBox.className = 'geo-suggest';
+                    suggestBox.setAttribute('role', 'listbox');
+                    suggestBox.setAttribute('aria-label', 'Подсказки адреса');
+                    suggestBox.hidden = true;
+                  }
+                  addressInput.parentNode.appendChild(suggestBox);
+
+                  var suggestTimer = null;
+                  var suggestItems = [];
+                  var activeSuggestion = -1;
+
+                  function closeSuggestions() {
+                    suggestBox.hidden = true;
+                    suggestBox.textContent = '';
+                    suggestItems = [];
+                    activeSuggestion = -1;
+                    addressInput.setAttribute('aria-expanded', 'false');
+                  }
+
+                  function highlightSuggestion() {
+                    Array.prototype.forEach.call(suggestBox.children, function(node, index){
+                      node.classList.toggle('is-active', index === activeSuggestion);
+                    });
+                  }
+
+                  function applySuggestion(label, coords, localities) {
+                    if (cityInput && (!cityInput.value.trim()) && localities && localities.length) {
+                      cityInput.value = localities[0];
+                    }
+                    setCoords(coords, {zoom: 16, keepConfirm: true});
+                    showConfirm('Адрес выбран: ' + label + '. Проверьте метку и подтвердите.');
+                    setStatus('Адрес выбран. Подтвердите точку.');
+                  }
+
+                  function chooseSuggestion(item) {
+                    var label = item.displayName || item.value || '';
+                    var query = item.value || label;
+                    addressInput.value = label;
+                    closeSuggestions();
+                    if (item.coords) {
+                      applySuggestion(label, item.coords, item.localities);
+                      return;
+                    }
+                    if (!query || typeof ymaps.geocode !== 'function') {
+                      setStatus('Адрес выбран. Поставьте метку на карте вручную.');
+                      return;
+                    }
+                    setStatus('Ищем выбранный адрес на карте…');
+                    ymaps.geocode(query, {results: 1}).then(function(res){
+                      var obj = res.geoObjects.get(0);
+                      if (!obj) {
+                        setStatus('Адрес выбран, но координаты не найдены. Поставьте метку вручную.');
+                        return;
+                      }
+                      applySuggestion(label, obj.geometry.getCoordinates(), obj.getLocalities());
+                    }).catch(function(){
+                      setStatus('Адрес выбран, но координаты не найдены. Поставьте метку вручную.');
+                    });
+                  }
+
+                  function geocodeSuggestions(query) {
+                    if (typeof ymaps.geocode !== 'function') return Promise.resolve([]);
+                    return ymaps.geocode(query, {results: 6}).then(function(res){
+                      var items = [];
+                      if (res && res.geoObjects) {
+                        res.geoObjects.each(function(obj){
+                          var address = obj.getAddressLine();
+                          if (address) {
+                            items.push({
+                              displayName: address,
+                              value: address,
+                              coords: obj.geometry.getCoordinates(),
+                              localities: obj.getLocalities()
+                            });
+                          }
+                        });
+                      }
+                      return items;
+                    });
+                  }
+
+                  function loadSuggestions(query) {
+                    var request;
+                    if (typeof ymaps.suggest === 'function') {
+                      request = ymaps.suggest(query).then(function(items){
+                        return items && items.length ? items : geocodeSuggestions(query);
+                      }).catch(function(){ return geocodeSuggestions(query); });
+                    } else {
+                      request = geocodeSuggestions(query);
+                    }
+                    request.then(renderSuggestions).catch(function(){
+                      closeSuggestions();
+                      setStatus('Подсказки недоступны — введите адрес и нажмите «Найти по адресу».');
+                    });
+                  }
+
+                  function renderSuggestions(items) {
+                    suggestBox.textContent = '';
+                    suggestItems = (items || []).slice(0, 6);
+                    activeSuggestion = -1;
+                    if (!suggestItems.length) {
+                      closeSuggestions();
+                      return;
+                    }
+                    suggestItems.forEach(function(item, index){
+                      var option = document.createElement('button');
+                      option.type = 'button';
+                      option.className = 'geo-suggest-item';
+                      option.setAttribute('role', 'option');
+                      option.textContent = item.displayName || item.value || '';
+                      option.addEventListener('click', function(){ chooseSuggestion(item); });
+                      option.addEventListener('mousemove', function(){
+                        activeSuggestion = index;
+                        highlightSuggestion();
+                      });
+                      suggestBox.appendChild(option);
+                    });
+                    suggestBox.hidden = false;
+                    addressInput.setAttribute('aria-expanded', 'true');
+                  }
+
+                  addressInput.addEventListener('input', function(){
+                    hideConfirm();
+                    clearTimeout(suggestTimer);
+                    var query = addressInput.value.trim();
+                    if (query.length < 3) {
+                      closeSuggestions();
+                      return;
+                    }
+                    suggestTimer = setTimeout(function(){ loadSuggestions(query); }, 250);
+                  });
+
+                  addressInput.addEventListener('keydown', function(e){
+                    if (suggestBox.hidden) return;
+                    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                      e.preventDefault();
+                      if (!suggestItems.length) return;
+                      activeSuggestion = e.key === 'ArrowDown'
+                        ? (activeSuggestion + 1) % suggestItems.length
+                        : (activeSuggestion - 1 + suggestItems.length) % suggestItems.length;
+                      highlightSuggestion();
+                    } else if (e.key === 'Enter' && activeSuggestion >= 0) {
+                      e.preventDefault();
+                      chooseSuggestion(suggestItems[activeSuggestion]);
+                    } else if (e.key === 'Escape') {
+                      closeSuggestions();
+                    }
+                  });
+
+                  document.addEventListener('click', function(e){
+                    if (!suggestBox.hidden && !suggestBox.contains(e.target) && e.target !== addressInput) {
+                      closeSuggestions();
+                    }
                   });
                 }
               });

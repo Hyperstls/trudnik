@@ -2,7 +2,7 @@
 import json
 from unittest.mock import patch
 
-from django.test import TestCase, override_settings
+from django.test import Client, TestCase, override_settings
 
 from core.models import PushSubscription
 from core.push import send_web_push
@@ -41,6 +41,24 @@ class PushSubscriptionAPITests(TestCase):
         self.client.post("/push/unsubscribe", data=json.dumps({"endpoint": SUB_DATA["endpoint"]}),
                          content_type="application/json")
         self.assertFalse(PushSubscription.objects.filter(user=self.user).exists())
+
+    def test_subscribe_with_legacy_csrf_header(self):
+        csrf_client = Client(enforce_csrf_checks=True)
+        csrf_client.get("/login")
+        token = csrf_client.cookies["csrftoken"].value
+        csrf_client.force_login(self.user)
+        response = csrf_client.post(
+            "/push/subscription",
+            data=json.dumps(SUB_DATA),
+            content_type="application/json",
+            HTTP_X_CSRF_TOKEN=token,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            PushSubscription.objects.filter(
+                user=self.user, endpoint=SUB_DATA["endpoint"]
+            ).exists()
+        )
 
     def test_bad_json_400(self):
         response = self.client.post("/push/subscription", data="{}", content_type="application/json")

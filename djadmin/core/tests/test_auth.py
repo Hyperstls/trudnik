@@ -3,9 +3,11 @@ from unittest.mock import patch
 
 import bcrypt
 from django.core.cache import cache
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from core.models import Profile
+
+CACHE_LOCMEM = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
 
 
 def make_profile(email="user@example.com", password="Aa1!aaaa", **kw):  # pragma: allowlist secret
@@ -101,6 +103,7 @@ class AuthBridgeTests(TestCase):
         self.assertTrue(cache.get("login_lock:%s" % self.email))
         self.assertFalse(self.client.login(username=self.email, password=self.password))
 
+    @override_settings(CACHES=CACHE_LOCMEM)
     def test_login_rate_limit_per_ip(self):
         ip = "198.51.100.77"  # отдельный IP: счётчик 127.0.0.1 не засоряем
         for i in range(20):

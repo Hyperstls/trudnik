@@ -1,0 +1,33 @@
+{
+  "id": "J071",
+  "title": "P1: инвалидация service worker cache для нового CSS/JS",
+  "goal": "После деплоя UI-изменений клиенты получают новые app.css/tailwind.min.css/JS, а не старые файлы из cache-first service worker.",
+  "why": "Service worker кэширует статику cache-first; без смены CACHE_VERSION пользователи со старым SW продолжают видеть старый фильтр-лист и старые стили, пока вручную не очистят кэш.",
+  "files": [
+    "static/sw.js",
+    "djadmin/core/tests/test_public_views.py",
+    "djadmin/core/tests/test_smoke_pages.py"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/base.html"
+  ],
+  "interfaces": "static/sw.js: CACHE_VERSION и CACHE_NAME = trudnik-v16. test_public_views: чтение static/sw.js и assert \"trudnik-v16\".",
+  "acceptance": [
+    "CACHE_VERSION/CACHE_NAME обновлены до v16.",
+    "activate удаляет кэши, не совпадающие с текущим именем (существующая логика).",
+    "Новый тест фиксирует версию.",
+    "Существующие проверки SW/навигации проходят."
+  ],
+  "out_of_scope": [
+    "Не менять стратегию кэширования навигации.",
+    "Не менять push-обработчики.",
+    "Не добавлять precache всех шаблонов."
+  ],
+  "checks": [
+    {
+      "name": "sw_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.AppDownloadTests.test_service_worker_cache_version --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

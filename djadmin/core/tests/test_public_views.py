@@ -3,6 +3,7 @@ import os
 from datetime import timedelta
 from unittest.mock import patch
 
+from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import Http404
 from django.test import RequestFactory, TestCase, override_settings
@@ -67,6 +68,17 @@ class PublicViewsTests(TestCase):
         self.assertNotContains(
             self.client.get("/jobs?q=Несуществующий"), "Обычное задание"
         )
+
+    def test_active_filter_count(self):
+        self.assertEqual(self.client.get("/jobs").context["active_filter_count"], 0)
+        skill = Skill.objects.create(name="Фильтр-навык J065", sort_order=1)
+        JobSkill.objects.create(job=self.job, skill=skill)
+        response = self.client.get("/jobs", {
+            "q": "уборка", "payment_max": "5000", "skills": str(skill.pk),
+        })
+        self.assertEqual(response.context["active_filter_count"], 3)
+        self.assertContains(response, 'id="filters-open"')
+        self.assertContains(response, "Применить")
 
     def test_payment_max_filter(self):
         Job.objects.create(
@@ -415,6 +427,21 @@ class PublicViewsTests(TestCase):
         rpc.assert_called_once_with("nearby_jobs", 60.0, 30.0, 2000.0)
         self.assertContains(response, near.work_type)
         self.assertNotContains(response, far.work_type)
+
+    def test_geo_map_center_rounded(self):
+        near, _far = self._geo_jobs()
+        with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": "test-" + "map-key"}):  # pragma: allowlist secret
+            with patch("core.views.call_rpc_rows") as rpc:
+                rpc.return_value = [{"id": near.pk, "distance_meters": 100}]
+                response = self.client.get(
+                    "/jobs", {"q": "J024", "lat": "60.012345", "lng": "30.067890", "radius": "2"}
+                )
+        self.assertEqual(
+            response.context["geo_center"],
+            {"lat": 60.012, "lng": 30.068, "radius": 2.0},
+        )
+        self.assertContains(response, 'id="jobs-geo-data"')
+        self.assertNotContains(response, "60.012345")
 
     def test_geo_invalid_coords_ignored(self):
         near, far = self._geo_jobs()
@@ -986,3 +1013,7 @@ class AppDownloadTests(TestCase):
             apk["Content-Type"], "application/vnd.android.package-archive"
         )
         self.assertIn("attachment", apk["Content-Disposition"])
+
+    def test_service_worker_cache_version(self):
+        sw = (settings.BASE_DIR.parent / "static" / "sw.js").read_text(encoding="utf-8")
+        self.assertIn("trudnik-v16", sw)

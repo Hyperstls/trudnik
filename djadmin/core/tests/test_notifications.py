@@ -33,6 +33,15 @@ class NotificationTests(TestCase):
         response = self.client.get("/jobs")
         self.assertContains(response, ">1</output>")  # ровно один непрочитанный
 
+    def test_list_grouped_by_day(self):
+        make_notification(self.user, title="Первое J068")
+        make_notification(self.user, title="Второе J068")
+        response = self.client.get(reverse("core:notifications"))
+        self.assertContains(response, "Сегодня")
+        self.assertContains(response, "Первое J068")
+        self.assertContains(response, "Второе J068")
+        self.assertContains(response, 'aria-labelledby="notif-day-')
+
     def test_mark_read(self):
         n = make_notification(self.user)
         self.client.post(reverse("core:notification_mark_read", args=[n.pk]))

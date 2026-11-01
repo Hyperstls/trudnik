@@ -579,3 +579,101 @@
 - **2026-11-01 17:31:36** | **J063** | `verify` | **PASS** | scope=ok checks=static_checks=0, check=0 attempts=0/3
 - **2026-11-01 17:31:44** | **J063** | `review-packet` | **READY** | bytes=2935 new_files=[]
 - **2026-11-01 17:32:22** | **J063** | `review` | **PASS** | by=independent-reviewer → done
+- **2026-11-01 17:54:44** | **J064** | `add` | **OK** | contract=context/agent-pipeline/tasks/J064.json
+- **2026-11-01 17:54:44** | **J064** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/J064.impl.prompt.md
+- **2026-11-01 17:55:38** | **J064** | `verify` | **FAIL** | scope=ok checks=compile=0, ux_nav_menu_tests=1 attempts=1/3 → fixing
+- **2026-11-01 17:55:52** | **J064** | `update` | **OK** | revision=1 reason=venv python: pipeline {python}=3.14 без Django
+- **2026-11-01 17:55:53** | **J064** | `verify` | **FAIL** | scope=ok checks=compile=1, ux_nav_menu_tests=1 attempts=2/3 → fixing
+- **2026-11-01 17:56:01** | **J064** | `update` | **OK** | revision=2 reason=Windows cmd: backslash path venv
+- **2026-11-01 17:56:04** | **J064** | `verify` | **PASS** | scope=ok checks=compile=0, ux_nav_menu_tests=0 attempts=2/3
+- **2026-11-01 17:56:37** | **J065** | `add` | **OK** | contract=context/agent-pipeline/tasks/J065.json
+- **2026-11-01 17:56:37** | **J065** | `dispatch` | **OK** | status=implementing baseline=8 pack=context/agent-pipeline/packs/J065.impl.prompt.md
+- **2026-11-01 17:57:52** | **J065** | `verify` | **FAIL** | scope=fail checks=skipped(scope) attempts=1/3 → fixing
+- **2026-11-01 17:58:03** | **J065** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=static/css/tailwind.min.css — обязательный generated-артефакт npm run build:css drift=['static/css/tailwind.min.css']
+- **2026-11-01 17:58:05** | **J065** | `verify` | **PASS** | scope=skipped checks=compile=0, filter_tests=0 attempts=1/3
+- **2026-11-01 17:59:48** | **J065** | `set` | **reviewing→fixing** | by=Hyperstls reason=визуальная проверка: fixed-элемент ломался из-за transform у .fade-in
+- **2026-11-01 17:59:51** | **J065** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=static/css/tailwind.min.css — generated npm build:css drift=['static/css/tailwind.min.css']
+- **2026-11-01 17:59:54** | **J065** | `verify` | **PASS** | scope=skipped checks=compile=0, filter_tests=0 attempts=1/3
+- **2026-11-01 18:00:20** | **J066** | `add` | **OK** | contract=context/agent-pipeline/tasks/J066.json
+- **2026-11-01 18:00:21** | **J066** | `dispatch` | **OK** | status=implementing baseline=13 pack=context/agent-pipeline/packs/J066.impl.prompt.md
+- **2026-11-01 18:01:26** | **J066** | `verify` | **PASS** | scope=ok checks=compile=0, geo_tests=0 attempts=0/3
+- **2026-11-01 18:02:02** | **J067** | `add` | **OK** | contract=context/agent-pipeline/tasks/J067.json
+- **2026-11-01 18:02:03** | **J067** | `dispatch` | **OK** | status=implementing baseline=14 pack=context/agent-pipeline/packs/J067.impl.prompt.md
+- **2026-11-01 18:03:22** | **J067** | `verify` | **FAIL** | scope=ok checks=compile=0, map_form_tests=1 attempts=1/3 → fixing
+- **2026-11-01 18:03:47** | **J067** | `verify` | **PASS** | scope=ok checks=compile=0, map_form_tests=0 attempts=1/3
+- **2026-11-01 18:04:30** | **J068** | `add` | **OK** | contract=context/agent-pipeline/tasks/J068.json
+- **2026-11-01 18:04:30** | **J068** | `dispatch` | **OK** | status=implementing baseline=17 pack=context/agent-pipeline/packs/J068.impl.prompt.md
+- **2026-11-01 18:05:48** | **J068** | `verify` | **PASS** | scope=ok checks=compile=0, notification_tests=0 attempts=0/3
+- **2026-11-01 18:06:57** | **J069** | `add` | **OK** | contract=context/agent-pipeline/tasks/J069.json
+- **2026-11-01 18:06:58** | **J069** | `dispatch` | **OK** | status=implementing baseline=21 pack=context/agent-pipeline/packs/J069.impl.prompt.md
+- **2026-11-01 18:08:32** | **J069** | `verify` | **PASS** | scope=ok checks=compile=0, push_prompt_tests=0 attempts=0/3
+- **2026-11-01 18:09:00** | **J064** | `review-packet` | **READY** | bytes=22975 new_files=[]
+- **2026-11-01 18:09:00** | **J065** | `review-packet` | **READY** | bytes=66207 new_files=['static/css/tailwind.min.css']
+- **2026-11-01 18:09:01** | **J066** | `review-packet` | **READY** | bytes=8612 new_files=[]
+- **2026-11-01 18:09:01** | **J067** | `review-packet` | **READY** | bytes=18467 new_files=[]
+- **2026-11-01 18:09:02** | **J068** | `review-packet` | **READY** | bytes=11739 new_files=[]
+- **2026-11-01 18:09:02** | **J069** | `review-packet` | **READY** | bytes=10076 new_files=[]
+- **2026-11-01 18:28:46** | **J070** | `add` | **OK** | contract=context/agent-pipeline/tasks/J070.json
+- **2026-11-01 18:28:47** | **J070** | `dispatch` | **OK** | status=implementing baseline=24 pack=context/agent-pipeline/packs/J070.impl.prompt.md
+- **2026-11-01 18:30:03** | **J070** | `verify` | **PASS** | scope=ok checks=compile=0, csrf_push_tests=0 attempts=0/3
+- **2026-11-01 18:30:39** | **J067** | `set` | **reviewing→fixing** | by=Hyperstls reason=ревью: suggest без suggest_apikey + fallback
+- **2026-11-01 18:30:44** | **J067** | `update` | **OK** | revision=1 reason=suggest_apikey env + geocode fallback; контракт включает views_flow
+- **2026-11-01 18:30:45** | **J067** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=static/css/tailwind.min.css — generated build:css drift=['djadmin/config/settings.py', 'djadmin/core/middleware.py', 'djadmin/core/templates/core/base.html', 'djadmin/core/templates/core/job_detail.html', 'djadmin/core/templates/core/jobs_list.html', 'djadmin/core/templates/core/my_jobs.html', 'djadmin/core/templates/core/notifications.html', 'djadmin/core/tests/test_notifications.py', 'djadmin/core/tests/test_public_views.py', 'djadmin/core/tests/test_push.py', 'djadmin/core/views.py', 'djadmin/core/views_notify.py', 'static/css/tailwind.min.css']
+- **2026-11-01 18:30:48** | **J067** | `verify` | **PASS** | scope=skipped checks=compile=0, map_form_tests=0 attempts=1/3
+- **2026-11-01 18:30:53** | **J064** | `verify` | **FAIL** | scope=fail checks=skipped(scope) attempts=3/3 → blocked
+- **2026-11-01 18:30:54** | **J065** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=generated tailwind; reviewed fixes drift=['djadmin/config/settings.py', 'djadmin/core/middleware.py', 'djadmin/core/templates/core/base.html', 'djadmin/core/templates/core/job_detail.html', 'djadmin/core/templates/core/job_form.html', 'djadmin/core/templates/core/my_jobs.html', 'djadmin/core/templates/core/notifications.html', 'djadmin/core/tests/test_flows.py', 'djadmin/core/tests/test_notifications.py', 'djadmin/core/tests/test_push.py', 'djadmin/core/views_flow.py', 'djadmin/core/views_notify.py', 'static/css/tailwind.min.css']
+- **2026-11-01 18:30:56** | **J065** | `verify` | **PASS** | scope=skipped checks=compile=0, filter_tests=0 attempts=1/3
+- **2026-11-01 18:30:57** | **J066** | `verify` | **FAIL** | scope=fail checks=skipped(scope) attempts=1/3 → fixing
+- **2026-11-01 18:31:04** | **J064** | `set` | **blocked→fixing** | by=Hyperstls reason=generated CSS drift only reset=attempts=0
+- **2026-11-01 18:31:04** | **J064** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=static/css/tailwind.min.css — generated build:css drift=['djadmin/config/settings.py', 'djadmin/core/middleware.py', 'djadmin/core/templates/core/job_detail.html', 'djadmin/core/templates/core/job_form.html', 'djadmin/core/templates/core/jobs_list.html', 'djadmin/core/templates/core/notifications.html', 'djadmin/core/tests/test_flows.py', 'djadmin/core/tests/test_notifications.py', 'djadmin/core/tests/test_public_views.py', 'djadmin/core/tests/test_push.py', 'djadmin/core/views.py', 'djadmin/core/views_flow.py', 'djadmin/core/views_notify.py', 'static/css/tailwind.min.css']
+- **2026-11-01 18:31:07** | **J064** | `verify` | **PASS** | scope=skipped checks=compile=0, ux_nav_menu_tests=0 attempts=0/3
+- **2026-11-01 18:31:07** | **J066** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=static/css/tailwind.min.css — generated build:css drift=['djadmin/config/settings.py', 'djadmin/core/middleware.py', 'djadmin/core/templates/core/base.html', 'djadmin/core/templates/core/job_detail.html', 'djadmin/core/templates/core/job_form.html', 'djadmin/core/templates/core/my_jobs.html', 'djadmin/core/templates/core/notifications.html', 'djadmin/core/tests/test_flows.py', 'djadmin/core/tests/test_notifications.py', 'djadmin/core/tests/test_push.py', 'djadmin/core/views_flow.py', 'djadmin/core/views_notify.py', 'static/css/app.css', 'static/css/tailwind.min.css']
+- **2026-11-01 18:31:10** | **J066** | `verify` | **PASS** | scope=skipped checks=compile=0, geo_tests=0 attempts=1/3
+- **2026-11-01 18:31:11** | **J068** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=static/css/tailwind.min.css — generated build:css drift=['djadmin/config/settings.py', 'djadmin/core/middleware.py', 'djadmin/core/templates/core/base.html', 'djadmin/core/templates/core/job_detail.html', 'djadmin/core/templates/core/job_form.html', 'djadmin/core/templates/core/jobs_list.html', 'djadmin/core/templates/core/my_jobs.html', 'djadmin/core/tests/test_flows.py', 'djadmin/core/tests/test_public_views.py', 'djadmin/core/tests/test_push.py', 'djadmin/core/views.py', 'djadmin/core/views_flow.py', 'static/css/app.css', 'static/css/tailwind.min.css']
+- **2026-11-01 18:31:19** | **J068** | `verify` | **PASS** | scope=skipped checks=compile=0, notification_tests=0 attempts=0/3
+- **2026-11-01 18:31:20** | **J069** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=static/css/tailwind.min.css — generated build:css drift=['djadmin/config/settings.py', 'djadmin/core/middleware.py', 'djadmin/core/templates/core/base.html', 'djadmin/core/templates/core/job_form.html', 'djadmin/core/templates/core/jobs_list.html', 'djadmin/core/templates/core/my_jobs.html', 'djadmin/core/tests/test_public_views.py', 'djadmin/core/tests/test_push.py', 'static/css/app.css', 'static/css/tailwind.min.css']
+- **2026-11-01 18:31:23** | **J069** | `verify` | **PASS** | scope=skipped checks=compile=0, push_prompt_tests=0 attempts=0/3
+- **2026-11-01 18:33:46** | **J071** | `add` | **OK** | contract=context/agent-pipeline/tasks/J071.json
+- **2026-11-01 18:33:47** | **J071** | `dispatch` | **OK** | status=implementing baseline=30 pack=context/agent-pipeline/packs/J071.impl.prompt.md
+- **2026-11-01 18:34:24** | **J071** | `set` | **implementing→fixing** | by=Hyperstls reason=test class location
+- **2026-11-01 18:34:24** | **J071** | `update` | **OK** | revision=1 reason=тест лежит в AppDownloadTests (конец файла)
+- **2026-11-01 18:34:27** | **J071** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=generated tailwind drift=[]
+- **2026-11-01 18:34:30** | **J071** | `verify` | **FAIL** | scope=skipped checks=sw_test=1 attempts=1/3 → fixing
+- **2026-11-01 18:34:46** | **J071** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=generated tailwind drift=[]
+- **2026-11-01 18:34:49** | **J071** | `verify` | **PASS** | scope=skipped checks=sw_test=0 attempts=1/3
+- **2026-11-01 18:35:38** | **J070** | `review-packet` | **READY** | bytes=5756 new_files=[]
+- **2026-11-01 18:35:38** | **J071** | `review-packet` | **READY** | bytes=3692 new_files=[]
+- **2026-11-01 18:44:15** | **J071** | `set` | **reviewing→fixing** | by=Hyperstls reason=ревью: существующий smoke-тест SW
+- **2026-11-01 18:44:16** | **J071** | `update` | **OK** | revision=2 reason=smoke-тест SW также требовал v15
+- **2026-11-01 18:44:22** | **J071** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=generated tailwind drift=[]
+- **2026-11-01 18:44:24** | **J071** | `verify` | **PASS** | scope=skipped checks=sw_test=0 attempts=1/3
+- **2026-11-01 18:44:30** | **J066** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=generated tailwind drift=['djadmin/config/settings.py', 'djadmin/core/middleware.py', 'djadmin/core/templates/core/base.html', 'djadmin/core/templates/core/job_detail.html', 'djadmin/core/templates/core/job_form.html', 'djadmin/core/templates/core/my_jobs.html', 'djadmin/core/templates/core/notifications.html', 'djadmin/core/tests/test_flows.py', 'djadmin/core/tests/test_notifications.py', 'djadmin/core/tests/test_push.py', 'djadmin/core/tests/test_smoke_pages.py', 'djadmin/core/views_flow.py', 'djadmin/core/views_notify.py', 'docs/DESIGN_REVIEW_2026-11.md', 'docs/parity/REMAINING_UX.md', 'static/css/app.css', 'static/css/tailwind.min.css', 'static/sw.js']
+- **2026-11-01 18:44:35** | **J066** | `verify` | **PASS** | scope=skipped checks=compile=0, geo_tests=0 attempts=1/3
+- **2026-11-01 18:45:00** | **J070** | `review` | **PASS** | by=independent-review → done
+- **2026-11-01 18:45:22** | **J071** | `review` | **PASS** | by=independent-review → done
+- **2026-11-01 18:45:27** | **J066** | `review` | **PASS** | by=independent-review → done
+- **2026-11-01 18:47:00** | **J068** | `review` | **PASS** | by=independent-review → done
+- **2026-11-01 18:47:00** | **J069** | `review` | **PASS** | by=independent-review → done
+- **2026-11-01 18:47:06** | **J067** | `review` | **PASS** | by=independent-review → done
+- **2026-11-01 18:51:34** | **J064** | `review` | **PASS** | by=independent-review → done
+- **2026-11-01 18:51:35** | **J065** | `review` | **PASS** | by=independent-review → done
+- **2026-11-01 18:51:40** | **J072** | `add` | **OK** | contract=context/agent-pipeline/tasks/J072.json
+- **2026-11-01 18:51:41** | **J072** | `dispatch` | **OK** | status=implementing baseline=35 pack=context/agent-pipeline/packs/J072.impl.prompt.md
+- **2026-11-01 18:51:46** | **J072** | `verify` | **PASS** | scope=ok checks=rate_limit_test=0 attempts=0/3
+- **2026-11-01 18:58:26** | **J072** | `set` | **reviewing→fixing** | by=Hyperstls reason=тот же класс флейка в login rate-limit
+- **2026-11-01 18:58:27** | **J072** | `update` | **OK** | revision=1 reason=login rate-limit isolation too
+- **2026-11-01 18:58:57** | **J072** | `update` | **OK** | revision=2 reason=check both rate-limit tests
+- **2026-11-01 18:58:58** | **J072** | `verify` | **FAIL** | scope=fail checks=skipped(scope) attempts=1/3 → fixing
+- **2026-11-01 18:59:04** | **J072** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=docs/test counts updated after baseline drift=['README.md', 'docs/DOCS_INDEX.md', 'docs/parity/AUDIT_JOBS_APPLICATIONS.md', 'docs/parity/DISCREPANCIES_JOBS.md', 'docs/parity/JOBS_RESULTS.md', 'docs/parity/README.md']
+- **2026-11-01 18:59:22** | **J072** | `verify` | **PASS** | scope=skipped checks=rate_limit_test=0 attempts=1/3
+- **2026-11-01 19:08:58** | **J072** | `set` | **reviewing→fixing** | by=Hyperstls reason=locmem isolation instead of Redis clear
+- **2026-11-01 19:08:58** | **J072** | `update` | **OK** | revision=3 reason=locmem вместо cache.clear: не трогаем общий Redis
+- **2026-11-01 19:09:16** | **J072** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=docs changed after baseline drift=['README.md', 'docs/DOCS_INDEX.md', 'docs/parity/AUDIT_JOBS_APPLICATIONS.md', 'docs/parity/DISCREPANCIES_JOBS.md', 'docs/parity/JOBS_RESULTS.md', 'docs/parity/README.md']
+- **2026-11-01 19:09:29** | **J072** | `verify` | **PASS** | scope=skipped checks=rate_limit_test=0 attempts=1/3
+- **2026-11-01 19:14:16** | **J072** | `review-packet` | **READY** | bytes=10415 new_files=['djadmin/core/tests/test_auth.py']
+- **2026-11-01 19:14:16** | **J072** | `review` | **PASS** | by=independent-review → done
+- **2026-11-01 19:16:54** | **J072** | `set` | **done→fixing** | by=Hyperstls reason=apply rate-limit test also needs locmem
+- **2026-11-01 19:16:54** | **J072** | `update` | **OK** | revision=4 reason=apply rate-limit test locmem
+- **2026-11-01 19:17:27** | **J072** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=docs drift drift=['README.md', 'docs/DOCS_INDEX.md', 'docs/parity/AUDIT_JOBS_APPLICATIONS.md', 'docs/parity/DISCREPANCIES_JOBS.md', 'docs/parity/JOBS_RESULTS.md', 'docs/parity/README.md']
+- **2026-11-01 19:17:40** | **J072** | `verify` | **PASS** | scope=skipped checks=rate_limit_test=0 attempts=1/3
+- **2026-11-01 19:19:50** | **J072** | `review` | **PASS** | by=independent-review → done

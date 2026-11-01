@@ -52,13 +52,15 @@
                     <input type="text" name="q" placeholder="Задание или город…" aria-label="Поиск" class="w-full pl-9 pr-4 py-2 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
                 </form>
             </div>
+            {% with current=request.resolver_match.url_name %}
             <nav class="hidden md:flex items-center gap-1" aria-label="Основная навигация">
-                <a href="{% url 'core:jobs' %}" class="px-3 py-2 rounded-lg text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100">Задания</a>
-                <a href="{% url 'core:my_applications' %}" class="px-3 py-2 rounded-lg text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100">Отклики</a>
-                <a href="{% url 'core:chats' %}" class="px-3 py-2 rounded-lg text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100">Чаты</a>
-                <a href="{% url 'core:favorites_page' %}" class="px-3 py-2 rounded-lg text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100">Избранное</a>
-                <a href="{% url 'core:workers' %}" class="px-3 py-2 rounded-lg text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100">Трудники</a>
+                <a href="{% url 'core:jobs' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'jobs' or current == 'job_detail' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}"{% if current == 'jobs' %} aria-current="page"{% elif current == 'job_detail' %} aria-current="true"{% endif %}>Задания</a>
+                <a href="{% url 'core:my_applications' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'my_applications' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}"{% if current == 'my_applications' %} aria-current="page"{% endif %}>Отклики</a>
+                <a href="{% url 'core:chats' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'chats' or current == 'chat' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}"{% if current == 'chats' %} aria-current="page"{% elif current == 'chat' %} aria-current="true"{% endif %}>Чаты</a>
+                <a href="{% url 'core:favorites_page' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'favorites_page' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}"{% if current == 'favorites_page' %} aria-current="page"{% endif %}>Избранное</a>
+                <a href="{% url 'core:workers' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'workers' or current == 'worker_detail' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}"{% if current == 'workers' %} aria-current="page"{% elif current == 'worker_detail' %} aria-current="true"{% endif %}>Трудники</a>
             </nav>
+            {% endwith %}
             {% endif %}
 
             <div class="flex items-center gap-2">
@@ -127,23 +129,25 @@
     </footer>
 
     {% if user.is_authenticated %}
+    {% with current=request.resolver_match.url_name %}
     <nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-neutral-200 flex justify-around md:hidden items-center pt-2 pb-1 z-50" role="navigation" aria-label="Мобильная навигация">
-        <a href="{% url 'core:jobs' %}" class="flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px]" aria-label="Задания">
+        <a href="{% url 'core:jobs' %}" class="flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'jobs' or current == 'job_detail' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="Задания"{% if current == 'jobs' %} aria-current="page"{% elif current == 'job_detail' %} aria-current="true"{% endif %}>
             <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Задания</span>
         </a>
-        <a href="{% url 'core:my_jobs' %}" class="flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px]" aria-label="Мои задания">
+        <a href="{% url 'core:my_jobs' %}" class="flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'my_jobs' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="Мои задания"{% if current == 'my_jobs' %} aria-current="page"{% endif %}>
             <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span>Мои</span>
         </a>
-        <a href="{% url 'core:my_applications' %}" class="flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px]" aria-label="Отклики">
+        <a href="{% url 'core:my_applications' %}" class="flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'my_applications' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="Отклики"{% if current == 'my_applications' %} aria-current="page"{% endif %}>
             <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="6" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="18" y2="12"/></svg><span>Отклики</span>
         </a>
-        <a href="{% url 'core:chats' %}" class="flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px]" aria-label="Чаты">
+        <a href="{% url 'core:chats' %}" class="flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'chats' or current == 'chat' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="Чаты"{% if current == 'chats' %} aria-current="page"{% elif current == 'chat' %} aria-current="true"{% endif %}>
             <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Чаты</span>
         </a>
-        <a href="{% url 'core:favorites_page' %}" class="flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px]" aria-label="Избранное">
+        <a href="{% url 'core:favorites_page' %}" class="flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'favorites_page' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="Избранное"{% if current == 'favorites_page' %} aria-current="page"{% endif %}>
             <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span>Избр.</span>
         </a>
     </nav>
+    {% endwith %}
     {% else %}
     <div class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-neutral-200 flex justify-center md:hidden items-center gap-4 pt-3 pb-3 z-50">
         <a href="{% url 'core:login' %}" class="bg-primary-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-primary-600 shadow-md">Войти</a>

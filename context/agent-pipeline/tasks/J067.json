@@ -1,0 +1,41 @@
+{
+  "id": "J067",
+  "title": "P2: подсказки адреса и подтверждение точки",
+  "goal": "На форме создания/редактирования задания адрес получает подсказки Яндекс.Карт; выбранный адрес ставит метку, а пользователь явно подтверждает адрес/точку перед сохранением.",
+  "why": "Ручной ввод адреса и геокодинг по кнопке дают опечатки и неверные метки. Suggest снижает число ошибок, а явное подтверждение защищает от случайно выбранной точки и неверного адреса в задании.",
+  "files": [
+    "djadmin/core/templates/core/job_form.html",
+    "static/css/app.css",
+    "djadmin/core/tests/test_flows.py",
+    "djadmin/core/views_flow.py"
+  ],
+  "context_files": [
+    "djadmin/core/forms.py"
+  ],
+  "interfaces": "job_form.html: после адресного input динамически создаётся #geo-suggest (role=listbox, aria-controls, скрыт), запрос ymaps.suggest(value) с debounce 250 мс при >=3 символах; клик/Enter по подсказке заполняет id_address, геокодирует item.value, ставит метку и показывает подтверждение. Статичный блок #geo-confirm-box (hidden) с #geo-confirm-text и #geo-confirm (type=button): подтверждение скрывает блок и пишет «Адрес подтверждён» в #geo-status. Любое ручное изменение адреса/новая метка/очистка сбрасывает подтверждение. app.css: .geo-suggest (absolute, max-height 14rem, overflow, z-40) и .geo-confirm-box (flex). test_flows.test_job_form_renders_map_with_key: наличие geo-confirm, geo-suggest в JS и ymaps.suggest. views_flow: yandex_suggest_key=os.getenv(YANDEX_SUGGEST_API_KEY); при наличии ключа добавляется suggest_apikey, иначе ymaps.suggest падает в fallback на ymaps.geocode (6 результатов) — подсказки работают с существующим Geocoder-ключом. views_flow: yandex_suggest_key=os.getenv(YANDEX_SUGGEST_API_KEY); при наличии ключа добавляется suggest_apikey, иначе ymaps.suggest падает в fallback на ymaps.geocode (6 результатов) — подсказки работают с существующим Geocoder-ключом.",
+  "acceptance": [
+    "При вводе >=3 символов адреса показываются подсказки; выбор подсказки ставит метку.",
+    "Подсказки/DOM строятся через textContent (без innerHTML из ответа API).",
+    "Явная кнопка «Подтвердить» фиксирует адрес и скрывает подтверждение.",
+    "Ручное изменение адреса или новая метка требуют повторного подтверждения.",
+    "Без YANDEX_MAPS_API_KEY карта, suggest и подтверждение не рендерятся.",
+    "test_flows и test_job_form_renders_map_with_key проходят."
+  ],
+  "out_of_scope": [
+    "Не менять серверную валидацию lat/lng/address.",
+    "Не добавлять обязательность подтверждения на сервере.",
+    "Не менять карту ленты и детальной страницы."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": ".venv\\Scripts\\python.exe -m py_compile djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "map_form_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_flows.JobCrudTests.test_job_form_renders_map_with_key core.tests.test_flows.JobCrudTests.test_job_form_without_key_has_no_map --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

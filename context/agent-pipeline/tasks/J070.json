@@ -1,0 +1,40 @@
+{
+  "id": "J070",
+  "title": "P1: CSRF-совместимость JS-клиентов (X-CSRF-Token)",
+  "goal": "Существующие клиентские запросы с заголовком X-CSRF-Token проходят Django CSRF; push, избранное, приглашения и apiFetch не получают 403.",
+  "why": "Django ожидает X-CSRFToken, а все JS-модули проекта отправляют X-CSRF-Token. Из-за этого push-подписка и другие мутации через apiFetch молча падают с 403 «CSRF token missing», хотя формы работают.",
+  "files": [
+    "djadmin/core/middleware.py",
+    "djadmin/config/settings.py",
+    "djadmin/core/tests/test_push.py"
+  ],
+  "context_files": [
+    "static/js/api.js",
+    "static/js/push-notifications.js"
+  ],
+  "interfaces": "middleware.CsrfHeaderAliasMiddleware: если HTTP_X_CSRFTOKEN отсутствует, скопировать HTTP_X_CSRF_TOKEN в HTTP_X_CSRFTOKEN; подключить в MIDDLEWARE до django.middleware.csrf.CsrfViewMiddleware. test_push: Client(enforce_csrf_checks=True), force_login, GET страницу с meta csrf-token, POST /push/subscription с X-CSRF-Token -> 200 и PushSubscription создан; без заголовка -> 403.",
+  "acceptance": [
+    "POST с X-CSRF-Token и валидным cookie проходит CSRF.",
+    "POST без токена по-прежнему 403.",
+    "Стандартный X-CSRFToken продолжает работать.",
+    "Push-подписка создаётся через существующий клиент.",
+    "Тесты push и CSRF проходят."
+  ],
+  "out_of_scope": [
+    "Не отключать CsrfViewMiddleware.",
+    "Не менять бизнес-endpoints.",
+    "Не переписывать все JS-модули (middleware совместимости достаточно)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": ".venv\\Scripts\\python.exe -m py_compile djadmin/core/middleware.py djadmin/config/settings.py djadmin/core/tests/test_push.py",
+      "cwd": "."
+    },
+    {
+      "name": "csrf_push_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_push.PushSubscriptionAPITests.test_subscribe_with_legacy_csrf_header core.tests.test_push.PushSubscriptionAPITests.test_subscribe_unsubscribe --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

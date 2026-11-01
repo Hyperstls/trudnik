@@ -4,10 +4,13 @@
 Celery); djadmin только читает и отмечает прочтение — вставки не делает
 (RLS в PostgREST разрешает INSERT только service_role).
 """
+from datetime import timedelta
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .models import Notification, PushSubscription
@@ -21,7 +24,12 @@ def notifications_list(request):
     from django.core.paginator import Paginator
 
     page = Paginator(qs, PAGE_SIZE).get_page(request.GET.get("page"))
-    return render(request, "core/notifications.html", {"page": page})
+    today = timezone.localdate()
+    return render(request, "core/notifications.html", {
+        "page": page,
+        "today": today,
+        "yesterday": today - timedelta(days=1),
+    })
 
 
 @login_required

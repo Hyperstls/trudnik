@@ -6,7 +6,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from core.models import Job, Profile, Skill
-from core.tests.test_auth import make_profile
+from core.tests.test_auth import CACHE_LOCMEM, make_profile
 from core.tests.test_flows import make_job
 
 
@@ -100,6 +100,7 @@ class RepostTests(TestCase):
         self.assertEqual(self.client.post(reverse("core:repost_job", args=[job.pk])).status_code, 404)
 
 
+@override_settings(CACHES=CACHE_LOCMEM)
 class RateLimitTests(TestCase):
     def setUp(self):
         cache.clear()

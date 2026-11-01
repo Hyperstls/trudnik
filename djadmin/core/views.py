@@ -297,6 +297,18 @@ def jobs_list(request):
     ]
     if request.GET.get("geo") == "1" and geo_radius is not None:
         radius_raw = "%g" % geo_radius
+    active_filter_count = sum(bool(value) for value in (
+        q, city, status, skill_ids, payment_min, payment_max, job_filter, geo_active,
+    ))
+    geo_center = None
+    if geo_active:
+        # Round before rendering: the map needs a center, but the HTML must not
+        # contain more precise device coordinates than ~100 m (152-FZ).
+        geo_center = {
+            "lat": round(geo_lat, 3),
+            "lng": round(geo_lng, 3),
+            "radius": round(geo_radius, 1),
+        }
     return render(request, "core/jobs_list.html", {
         "page": page, "q": q, "city": city, "status": status,
         "payment_min": payment_min, "payment_max": payment_max, "sort": sort,
@@ -305,10 +317,12 @@ def jobs_list(request):
         "skills": list(Skill.objects.order_by("sort_order", "name")),
         "selected_skills": selected_skills,
         "job_filter": job_filter,
+        "active_filter_count": active_filter_count,
         "applied_ids": applied_ids,
         "lat": lat_raw, "lng": lng_raw, "radius": radius_raw,
         "geo_mode": request.GET.get("geo") == "1",
         "geo_active": geo_active,
+        "geo_center": geo_center,
         "map_points": map_points,
         "yandex_maps_key": os.getenv("YANDEX_MAPS_API_KEY", ""),
         "now": timezone.now(),
@@ -366,6 +380,7 @@ def job_detail(request, job_id):
         "employer": employer,
         "employer_reviews": employer_reviews,
         "is_owner": is_owner,
+        "show_push_prompt": request.GET.get("push") == "1",
         "yandex_maps_key": os.getenv("YANDEX_MAPS_API_KEY", ""),
         "is_fav": (
             request.user.is_authenticated
