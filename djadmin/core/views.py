@@ -9,6 +9,7 @@ from collections import Counter
 from uuid import UUID
 
 from django.conf import settings
+from django.contrib import messages
 from django.db import connection
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
@@ -16,6 +17,7 @@ from django.utils import timezone
 from django.core.paginator import Paginator
 
 from .models import Application, Blacklist, Favorite, Invitation, Job, JobFavorite, Profile, Rating, SitePage, Skill, UserSkill
+from .rpc import call_rpc_rows
 
 PAGE_SIZE = 20
 
@@ -124,6 +126,40 @@ def jobs_list(request):
         qs = qs.filter(payment_amount__lte=Decimal(payment_max))
     except Exception:
         pass
+    lat_raw = request.GET.get("lat") or ""
+    lng_raw = request.GET.get("lng") or ""
+    radius_raw = request.GET.get("radius") or ""
+    geo_distances = {}
+    geo_active = False
+    try:
+        geo_lat = float(lat_raw)
+        geo_lng = float(lng_raw)
+        geo_radius = float(radius_raw)
+    except (TypeError, ValueError):
+        geo_lat = geo_lng = geo_radius = None
+    if (
+        geo_lat is not None
+        and -90 <= geo_lat <= 90
+        and -180 <= geo_lng <= 180
+        and 0.1 <= geo_radius <= 100
+    ):
+        try:
+            nearby = call_rpc_rows("nearby_jobs", geo_lat, geo_lng, geo_radius * 1000)
+        except Exception:
+            messages.warning(request, "Гео-поиск недоступен — показаны все задания.")
+        else:
+            nearby = [row for row in (nearby or []) if row.get("id") is not None]
+            nearby.sort(key=lambda row: row.get("distance_meters") or 0)
+            geo_active = True
+            if nearby:
+                ids = [row["id"] for row in nearby]
+                qs = qs.filter(pk__in=ids)
+                geo_distances = {
+                    str(row["id"]): (row.get("distance_meters") or 0) / 1000
+                    for row in nearby
+                }
+            else:
+                qs = qs.none()
     if job_filter:
         my_jobs = Application.objects.filter(worker=request.user).exclude(
             status__in=("withdrawn", "cancelled")
@@ -143,12 +179,25 @@ def jobs_list(request):
         qs = qs.order_by(F("payment_amount").desc(nulls_last=True))
     elif sort == "date":
         qs = qs.order_by("date_time")
+    elif sort == "distance" and geo_distances:
+        from django.db.models import Case, IntegerField, Value, When
+
+        ordering = Case(
+            *[
+                When(pk=UUID(str(job_id)), then=Value(position))
+                for position, job_id in enumerate(geo_distances)
+            ],
+            output_field=IntegerField(),
+        )
+        qs = qs.order_by(ordering)
     else:
         sort = "newest"
 
     page = Paginator(qs, PAGE_SIZE).get_page(request.GET.get("page"))
     for job in page.object_list:
         job.display_photo_urls = job_photo_urls(job, limit=3)
+        if str(job.pk) in geo_distances:
+            job.distance_km = "%.1f" % geo_distances[str(job.pk)]
     applied_ids = set()
     if request.user.is_authenticated:
         applied_ids = set(
@@ -159,11 +208,14 @@ def jobs_list(request):
     return render(request, "core/jobs_list.html", {
         "page": page, "q": q, "city": city, "status": status,
         "payment_min": payment_min, "payment_max": payment_max, "sort": sort,
-        "sort_options": (("newest", "Новые"), ("price_asc", "Дешевле"), ("price_desc", "Дороже")),
+        "sort_options": (("newest", "Новые"), ("price_asc", "Дешевле"), ("price_desc", "Дороже"))
+        + ((("distance", "Ближе"),) if geo_active else ()),
         "skills": list(Skill.objects.order_by("sort_order", "name")),
         "selected_skills": selected_skills,
         "job_filter": job_filter,
         "applied_ids": applied_ids,
+        "lat": lat_raw, "lng": lng_raw, "radius": radius_raw,
+        "geo_active": geo_active,
         "now": timezone.now(),
     })
 

@@ -1,0 +1,42 @@
+{
+  "id": "J024",
+  "title": "JOB-P2-01 (гео): фильтр каталога по радиусу и сортировка по расстоянию",
+  "goal": "Каталог принимает lat/lng/radius (км), фильтрует через nearby_jobs, показывает расстояние в карточке и поддерживает sort=distance; кнопка «Рядом со мной» берёт координаты браузера.",
+  "why": "Flask index использует nearby_jobs при явных lat/lng/radius и расстояние в карточках. Django гео не имеет (JOB-P2-01). Визуальная карта (Yandex Maps JS) остаётся отдельным шагом — здесь серверная гео-фильтрация и geolocation.",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/templates/core/jobs_list.html",
+    "djadmin/core/templates/core/_job_card.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "migrations/075_audit_remediation.sql",
+    "docs/parity/DISCREPANCIES_JOBS.md"
+  ],
+  "interfaces": "views.py: import messages, call_rpc_rows, Case/When/Value/IntegerField. jobs_list: lat/lng/radius float; валидны lat -90..90, lng -180..180, radius 0.1..100; при валидных: rows=call_rpc_rows('nearby_jobs',lat,lng,radius*1000) (try/except -> messages.warning 'Гео-поиск недоступен — показаны все задания.' и geo_active=False); ids=[row['id']]; qs=qs.filter(pk__in=ids); geo_distances={str(id): distance_meters/1000}; при sort=='distance' order_by(Case(When(pk=id,then=Value(i))...)); после Paginator job.distance_km=round(geo_distances[str(job.pk)],1). Context lat,lng,radius,geo_active. jobs_list.html: id='filters-form'; hidden lat/lng; number radius (0.1..100, default 10); button type=button id='geo-btn' 'Рядом со мной'; JS navigator.geolocation -> fill hidden + form.submit(); сохранять lat/lng/radius в sort/pager ссылках. _job_card.html: в мета-строке после даты {% if job.distance_km %} · {{ job.distance_km }} км{% endif %}. Тесты: test_geo_filter_nearby (near/far jobs с lat/lng, radius 2 -> near есть, far нет); test_geo_invalid_coords_ignored (lat=999 -> 200, оба видны); test_geo_distance_sort (sort=distance -> порядок near,far в context page.object_list).",
+  "acceptance": [
+    "Валидные lat/lng/radius фильтруют задания через nearby_jobs.",
+    "Невалидные координаты/радиус игнорируются, каталог доступен.",
+    "Карточка показывает расстояние в км при гео-поиске.",
+    "sort=distance сортирует по расстоянию.",
+    "Кнопка «Рядом со мной» заполняет координаты и отправляет форму.",
+    "PublicViewsTests проходит."
+  ],
+  "out_of_scope": [
+    "Не подключать Yandex Maps JS/визуальную карту (отдельный шаг).",
+    "Не менять RPC/БД.",
+    "Не менять каталог трудников."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views.PublicViewsTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

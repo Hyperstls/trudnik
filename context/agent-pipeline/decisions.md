@@ -881,3 +881,41 @@ P2-03 закрыт. Деплой требует forms.py + validators_jobs.py (J
 **Кто:** Hyperstls
 
 P2-12: бейджи Надёжный/Приглашён закрыты; остаётся карта.
+
+## 2026-11-01 11:02:39 — J024: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css regenerated after geo form classes; generated artifact
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 11:08:42 — J024: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css generated artifact (unchanged)
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 11:16:21 — J024: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css generated artifact after distance template fix
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 11:20:35 — J024: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J024.review.prompt.md
+
+## 2026-11-01 11:20:35 — J024: заметка
+
+**Кто:** Hyperstls
+
+P2-01 гео: серверная фильтрация/сортировка/geolocation закрыты. Визуальная Yandex-карта остаётся отдельным шагом.

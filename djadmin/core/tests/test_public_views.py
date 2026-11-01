@@ -382,6 +382,87 @@ class PublicViewsTests(TestCase):
         response = self.client.get("/workers", {"q": self.worker.full_name})
         self.assertNotContains(response, "Приглашён")
 
+    def _geo_jobs(self):
+        near = Job.objects.create(
+            employer=self.employer, work_type="Near J024", organization_name="Приход",
+            status="open", city="Санкт-Петербург", payment_amount=1000,
+            lat=60.0, lng=30.0,
+            date_time=timezone.now() + timedelta(days=2),
+        )
+        far = Job.objects.create(
+            employer=self.employer, work_type="Far J024", organization_name="Приход",
+            status="open", city="Санкт-Петербург", payment_amount=1000,
+            lat=60.1, lng=30.0,
+            date_time=timezone.now() + timedelta(days=2),
+        )
+        return near, far
+
+    def test_geo_filter_nearby(self):
+        near, far = self._geo_jobs()
+        from unittest.mock import patch
+
+        with patch("core.views.call_rpc_rows") as rpc:
+            rpc.return_value = [{"id": near.pk, "distance_meters": 100}]
+            response = self.client.get(
+                "/jobs", {"q": "J024", "lat": "60.0", "lng": "30.0", "radius": "2"}
+            )
+        rpc.assert_called_once_with("nearby_jobs", 60.0, 30.0, 2000.0)
+        self.assertContains(response, near.work_type)
+        self.assertNotContains(response, far.work_type)
+
+    def test_geo_invalid_coords_ignored(self):
+        near, far = self._geo_jobs()
+        from unittest.mock import patch
+
+        with patch("core.views.call_rpc_rows") as rpc:
+            response = self.client.get(
+                "/jobs", {"q": "J024", "lat": "999", "lng": "30.0", "radius": "2"}
+            )
+        rpc.assert_not_called()
+        self.assertContains(response, near.work_type)
+        self.assertContains(response, far.work_type)
+
+    def test_geo_distance_sort(self):
+        near, far = self._geo_jobs()
+        from unittest.mock import patch
+
+        with patch("core.views.call_rpc_rows") as rpc:
+            rpc.return_value = [
+                {"id": near.pk, "distance_meters": 100},
+                {"id": far.pk, "distance_meters": 12000},
+            ]
+            response = self.client.get(
+                "/jobs",
+                {"q": "J024", "lat": "60.0", "lng": "30.0", "radius": "20", "sort": "distance"},
+            )
+        names = [job.work_type for job in response.context["page"].object_list]
+        self.assertEqual(names, ["Near J024", "Far J024"])
+
+    def test_geo_rpc_failure_falls_open(self):
+        near, far = self._geo_jobs()
+        from unittest.mock import patch
+
+        with patch("core.views.call_rpc_rows", side_effect=RuntimeError("rpc down")):
+            response = self.client.get(
+                "/jobs",
+                {"q": "J024", "lat": "60.0", "lng": "30.0", "radius": "2"},
+                follow=True,
+            )
+        self.assertContains(response, "Гео-поиск недоступен")
+        self.assertContains(response, near.work_type)
+        self.assertContains(response, far.work_type)
+
+    def test_geo_card_shows_zero_distance(self):
+        near, _ = self._geo_jobs()
+        from unittest.mock import patch
+
+        with patch("core.views.call_rpc_rows") as rpc:
+            rpc.return_value = [{"id": near.pk, "distance_meters": 0}]
+            response = self.client.get(
+                "/jobs", {"q": "J024", "lat": "60.0", "lng": "30.0", "radius": "2"}
+            )
+        self.assertContains(response, "0.0 км")
+
     def test_worker_detail_hides_private_fields(self):
         response = self.client.get(f"/workers/{self.worker.pk}")
         self.assertEqual(response.status_code, 200)

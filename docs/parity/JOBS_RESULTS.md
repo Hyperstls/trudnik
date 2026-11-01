@@ -1,10 +1,10 @@
-# Jobs / applications — результаты паритета (J001–J023)
+# Jobs / applications — результаты паритета (J001–J024)
 
 **Дата:** 2026-11-01
 **Ветка:** `feat/agent-pipeline` (Django `main` не менялся)
 **Метод:** контракт → dispatch → verify (exit-код) → независимый pattern-review → done.
-**Итог:** P0 и P1 закрыты; P2-02/P2-03/P2-05/P2-06/P2-08 закрыты; P2-01/P2-12 — только карта/гео.
-Полный `manage.py test core` — **307 OK**; `pre_deploy_check` — 7/7.
+**Итог:** P0 и P1 закрыты; P2-02/P2-03/P2-05/P2-06/P2-08 закрыты; P2-01/P2-12 — осталась визуальная карта.
+Полный `manage.py test core` — **312 OK**; `pre_deploy_check` — 7/7.
 
 ## Контракты
 
@@ -35,6 +35,7 @@
 | **J021** | P2-12 (часть): навыки/рейтинг/оплата/сортировка в каталоге трудников | PASS | PASS |
 | **J022** | P2-03: лимиты названия 255 / описания 5000 | PASS | PASS |
 | **J023** | P2-12 (badges): Надёжный и Приглашён в каталоге трудников | PASS | PASS |
+| **J024** | P2-01 (гео): radius-фильтр, distance-sort, geolocation, расстояние в карточке | PASS | PASS |
 
 ## Ключевая находка контрактной проверки
 
@@ -52,13 +53,13 @@
 |---|---|
 | Bulk duplicate заданий | ❌ требует выноса repost-хелпера в сервис |
 | Bulk duplicate заданий | ✅ J017 |
-| P2-01 каталог: карта/гео | open (payment_max/навыки/new-applied — J013/J019) |
+| P2-01/P2-12: визуальная карта (Yandex Maps JS) | open (гео-фильтр/геолокация — J024) |
 | P2-02 detail | ✅ J014/J016/J018 |
 | P2-09..P2-13 ratings/employers/workers: карта/бейджи и остаток UI | open (P2-12 фильтры — J021) |
 
 ## Доказательства
 
-- Контракты: `context/agent-pipeline/tasks/J001.json` … `J023.json`.
+- Контракты: `context/agent-pipeline/tasks/J001.json` … `J024.json`.
 - Логи проверок: `context/agent-pipeline/logs/J00*.verify.log`.
 - Решения/заметки: `context/agent-pipeline/decisions.md`.
 - Матрицы: [ROUTES_MATRIX_JOBS.md](ROUTES_MATRIX_JOBS.md),
