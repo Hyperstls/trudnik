@@ -1,0 +1,42 @@
+{
+  "id": "J033",
+  "title": "P2-10: блокировка условий задания после accepted",
+  "goal": "После появления принятого отклика работодатель может изменить только detailed_description; смена оплаты, срока, адреса, типа работы, числа работников и навыков отклоняется, а форма показывает только описание.",
+  "why": "Flask edit_job (jobs.py:1214-1238): при has_accepted разрешены только detailed_description и contact_phone, остальные поля → ошибка 409/redirect; Django job_edit сохраняет любые поля, включая payment_amount/date_time/address/max_workers — это меняет согласованные условия уже принятого работника.",
+  "files": [
+    "djadmin/core/views_flow.py",
+    "djadmin/core/templates/core/job_form.html",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/forms.py",
+    "djadmin/core/models.py",
+    "docs/parity/DISCREPANCIES_JOBS.md"
+  ],
+  "interfaces": "views_flow.job_edit: has_accepted = Application.objects.filter(job=job, status='accepted').exists(). При GET и has_accepted рендерить job_form.html с locked=True и accepted_count, не строить полный JobForm. При POST и has_accepted: forbidden = set(request.POST) ∩ (set(JOB_FIELDS) - {'detailed_description'} | {'skills'}); если forbidden — messages.error('Нельзя редактировать условия задания: есть принятые отклики. Разрешено менять только описание работы.') и redirect('core:job_detail', job_id=job.pk) без сохранения; иначе валидировать только detailed_description (длина ≤5000) и сохранить его вместе с expires_at=now+30d. Без accepted — прежний полный JobForm. job_form.html: при locked показать notice и форму только с полем detailed_description (textarea name=detailed_description), без skills/lat/lng/payment/date; при обычном режиме — прежняя полная форма и карта.",
+  "acceptance": [
+    "GET /jobs/<id>/edit при accepted: 200, есть предупреждение о блокировке и поле detailed_description; нет полей payment_amount, date_time, address, work_type, skills.",
+    "POST с изменением payment_amount/date_time/address при accepted: изменения не сохраняются, показывается ошибка, редирект на detail.",
+    "POST только detailed_description при accepted: описание обновляется, остальные поля задания не меняются.",
+    "Без accepted полная форма редактирования работает как раньше (существующие тесты).",
+    "test_flows проходит."
+  ],
+  "out_of_scope": [
+    "Не добавлять contact_phone (поля нет в модели).",
+    "Не менять создание задания и duplicate/repost.",
+    "Не менять миграции/БД.",
+    "Не менять rate_workers/оценки."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_flow.py djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "flow_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

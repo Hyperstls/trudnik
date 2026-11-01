@@ -275,6 +275,51 @@ class JobCrudTests(TestCase):
         self.assertGreater(delta, timedelta(days=29))
         self.assertLess(delta, timedelta(days=31))
 
+    def test_edit_locked_when_accepted_application(self):
+        job = make_job(self.user, payment_amount=1000)
+        worker = make_profile("edit-accepted-worker@example.com", role="worker")
+        Application.objects.create(job=job, worker=worker, status="accepted")
+        response = self.client.get(reverse("core:job_edit", args=[job.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "есть принятые отклики")
+        self.assertContains(response, 'name="detailed_description"')
+        for locked in ("payment_amount", "work_type", "date_time", "skills", "lat", "lng"):
+            self.assertNotContains(response, 'name="%s"' % locked)
+
+    def test_edit_locked_rejects_locked_fields(self):
+        job = make_job(self.user, payment_amount=1000, work_type="До блокировки")
+        worker = make_profile("edit-locked-worker@example.com", role="worker")
+        Application.objects.create(job=job, worker=worker, status="accepted")
+        response = self.client.post(reverse("core:job_edit", args=[job.pk]), {
+            "detailed_description": "Попытка изменить всё",
+            "payment_amount": "99999",
+            "work_type": "Взлом",
+        })
+        self.assertRedirects(
+            response, reverse("core:job_detail", args=[job.pk])
+        )
+        job.refresh_from_db()
+        self.assertEqual(job.payment_amount, 1000)
+        self.assertEqual(job.work_type, "До блокировки")
+        self.assertNotEqual(job.detailed_description, "Попытка изменить всё")
+
+    def test_edit_locked_allows_description_only(self):
+        job = make_job(self.user, payment_amount=1000, work_type="До описания")
+        worker = make_profile("edit-desc-worker@example.com", role="worker")
+        Application.objects.create(job=job, worker=worker, status="accepted")
+        expires_before = job.expires_at
+        response = self.client.post(reverse("core:job_edit", args=[job.pk]), {
+            "detailed_description": "Только описание работы",
+        })
+        self.assertRedirects(
+            response, reverse("core:job_detail", args=[job.pk])
+        )
+        job.refresh_from_db()
+        self.assertEqual(job.detailed_description, "Только описание работы")
+        self.assertEqual(job.payment_amount, 1000)
+        self.assertEqual(job.work_type, "До описания")
+        self.assertEqual(job.expires_at, expires_before)
+
     def test_edit_by_stranger_404(self):
         stranger = make_profile("stranger@example.com")
         job = make_job(self.user)

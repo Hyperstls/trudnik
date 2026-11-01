@@ -17,6 +17,7 @@ import os
 from uuid import UUID
 
 from django.conf import settings
+from django import forms
 from django.contrib import messages
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
@@ -32,7 +33,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from .auth_backend import LOCKOUT_TEXT, ProfileBackend
-from .forms import JobForm, LoginForm
+from .forms import INPUT_CLS, JOB_FIELDS, JobForm, LoginForm
 from .models import Application, Job, JobFavorite, JobPhoto
 from .notifications import enqueue_notification
 from .ratelimit import RateLimitExceeded, RateLimitUnavailable, enforce_ip_limit, rate_limit_write
@@ -168,10 +169,48 @@ def job_create(request):
     })
 
 
+class JobDescriptionForm(forms.Form):
+    """Ограниченная правка задания после принятого отклика (паритет Flask)."""
+
+    detailed_description = forms.CharField(
+        label="Описание работы", required=False, max_length=5000,
+        widget=forms.Textarea(attrs={"class": INPUT_CLS, "rows": 6}),
+    )
+
+
 @login_required
 def job_edit(request, job_id):
     # свои задания — в любом статусе (draft/expired видны владельцу)
     job = get_object_or_404(Job, pk=job_id, employer=request.user)
+    has_accepted = Application.objects.filter(job=job, status="accepted").exists()
+    if has_accepted:
+        if request.method == "POST":
+            locked_names = (set(JOB_FIELDS) - {"detailed_description"}) | {"skills"}
+            forbidden = sorted(locked_names & set(request.POST))
+            if forbidden:
+                messages.error(
+                    request,
+                    "Нельзя редактировать условия задания: есть принятые отклики. "
+                    "Разрешено менять только описание работы.",
+                )
+                return redirect("core:job_detail", job_id=job.pk)
+            description_form = JobDescriptionForm(request.POST)
+            if description_form.is_valid():
+                job.detailed_description = description_form.cleaned_data["detailed_description"]
+                job.save(update_fields=["detailed_description"])
+                messages.success(request, "Описание задания обновлено.")
+                return redirect("core:job_detail", job_id=job.pk)
+        else:
+            description_form = JobDescriptionForm(
+                initial={"detailed_description": job.detailed_description or ""}
+            )
+        return render(request, "core/job_form.html", {
+            "title": "Редактирование задания", "job": job, "locked": True,
+            "accepted_count": Application.objects.filter(
+                job=job, status="accepted"
+            ).count(),
+            "description_form": description_form,
+        })
     form = JobForm(request.POST or None, instance=job)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
@@ -186,7 +225,8 @@ def job_edit(request, job_id):
         cur.execute("SELECT skill_id::text FROM job_skills WHERE job_id = %s", [job.pk])
         selected = {r[0] for r in cur.fetchall()}
     return render(request, "core/job_form.html", {
-        "form": form, "title": "Редактирование задания", "selected_skills": selected,
+        "form": form, "title": "Редактирование задания", "job": job,
+        "selected_skills": selected,
         "yandex_maps_key": os.getenv("YANDEX_MAPS_API_KEY", ""),
     })
 

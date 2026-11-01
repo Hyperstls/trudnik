@@ -11,6 +11,16 @@
         <h1 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-4">{{ title }}</h1>
         <form method="post" class="space-y-3">
             {% csrf_token %}
+            {% if locked %}
+            <div class="rounded-xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800" role="note">
+                Нельзя редактировать условия задания: есть принятые отклики ({{ accepted_count }}). Разрешено менять только описание работы.
+            </div>
+            <div class="form-field">
+                <label class="form-label" for="{{ description_form.detailed_description.id_for_label }}">{{ description_form.detailed_description.label }}</label>
+                {{ description_form.detailed_description }}
+                {% for error in description_form.detailed_description.errors %}<p class="form-error" role="alert"><span>{{ error }}</span></p>{% endfor %}
+            </div>
+            {% else %}
             {% if yandex_maps_key %}
             <div class="form-field">
                 <span class="form-label">Точка на карте</span>
@@ -81,6 +91,7 @@
                     {% endfor %}
                 </div>
             </fieldset>
+            {% endif %}
             <div class="flex gap-3 pt-3">
                 <button type="submit" class="px-6 h-11 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors shadow-sm">Сохранить</button>
                 <a href="{% url 'core:my_jobs' %}" class="px-6 h-11 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Отмена</a>
@@ -88,14 +99,14 @@
         </form>
     </div>
 
-    {% if form.instance.pk %}
+    {% if job.pk %}
     <section class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 mt-4">
         <h2 class="text-base font-bold text-neutral-800 mb-3">Фотографии задания</h2>
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
-            {% for ph in form.instance.photos.all %}
+            {% for ph in job.photos.all %}
             <div class="relative">
                 <img src="{{ ph.photo_url }}" alt="Фото" loading="lazy" class="rounded-xl border border-neutral-200 w-full aspect-video object-cover">
-                <form method="post" action="{% url 'core:job_photo_delete' form.instance.pk ph.pk %}" class="absolute top-1 right-1">{% csrf_token %}
+                <form method="post" action="{% url 'core:job_photo_delete' job.pk ph.pk %}" class="absolute top-1 right-1">{% csrf_token %}
                     <button class="w-7 h-7 rounded-full bg-white/90 border border-neutral-200 text-red-600 text-xs" aria-label="Удалить фото">✕</button>
                 </form>
             </div>
@@ -103,7 +114,7 @@
             <p class="text-sm text-neutral-500 col-span-full">Фото пока нет.</p>
             {% endfor %}
         </div>
-        <form method="post" action="{% url 'core:job_photo_upload' form.instance.pk %}" enctype="multipart/form-data" class="flex flex-wrap gap-2 items-center">
+        <form method="post" action="{% url 'core:job_photo_upload' job.pk %}" enctype="multipart/form-data" class="flex flex-wrap gap-2 items-center">
             {% csrf_token %}
             <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" required class="text-sm">
             <button type="submit" class="px-4 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Добавить фото</button>
