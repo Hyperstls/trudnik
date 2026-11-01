@@ -43,6 +43,11 @@
 | J068 | Уведомления сгруппированы по дням («Сегодня»/«Вчера»/дата) со счётчиком |
 | J069 | Push-разрешение после создания задания/отклика; отказ запоминается, автоматического prompt нет |
 | J070 | Совместимость CSRF: legacy `X-CSRF-Token` от JS-клиентов → `X-CSRFToken` (push/избранное/приглашения) |
+| J071 | Service Worker cache v16: новые CSS/JS после деплоя |
+| J072 | Изоляция rate-limit тестов через LocMem (без очистки Redis) |
+| J074 | APK 1.2: фирменный логотип launcher/adaptive/splash |
+| J075 | PWA-install баннер (Chromium/iOS), dismiss 30 дней |
+| J076 | OG/Twitter-превью каждого задания (работа, оплата, фото) |
 
 Подробно о гео-логике и 152-ФЗ: [GEO_UX_PRIVACY.md](GEO_UX_PRIVACY.md).
 
