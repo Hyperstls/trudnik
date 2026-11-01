@@ -17,7 +17,10 @@
                 <span class="text-warning text-sm">{% for i in "12345" %}{% if forloop.counter0 < r.rating %}★{% else %}<span class="text-neutral-300">★</span>{% endif %}{% endfor %}</span>
             </div>
             {% if r.comment %}<p class="text-sm text-neutral-600 mt-1">{{ r.comment }}</p>{% endif %}
-            <p class="text-xs text-neutral-400 mt-1">{{ r.created_at|date:"d.m.Y" }}</p>
+            <div class="flex flex-wrap items-center gap-2 mt-1">
+                <p class="text-xs text-neutral-400">{% if r.rating_type == 'employer' %}От работодателя{% else %}От работника{% endif %} · {{ r.created_at|date:"d.m.Y" }}</p>
+                {% if r.job %}<a href="{% url 'core:job_detail' r.job.pk %}" class="text-xs text-primary-600 hover:text-primary-700 underline underline-offset-2">К заданию</a>{% endif %}
+            </div>
         </article>
         {% endfor %}
     </div>

@@ -10,18 +10,27 @@
         <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <a href="{% url 'core:worker_detail' a.worker.pk %}" class="font-medium text-neutral-800 hover:text-primary-600">{{ a.worker.full_name }}</a>
-                {% if job.status == 'completed' %}
-                <form method="post" action="{% url 'core:rate_participant' a.pk %}" class="flex items-center gap-2">{% csrf_token %}
-                    <select name="rating" class="border border-neutral-200 rounded-xl px-2 py-1.5 text-sm bg-white">
-                        <option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option>
-                    </select>
-                    <input type="text" name="comment" placeholder="Комментарий" class="border border-neutral-200 rounded-xl px-2 py-1.5 text-sm w-40">
-                    <button class="action-icon-btn contact-btn"><span class="text-xs font-medium">Оценить</span></button>
-                </form>
+                {% if a.my_rating %}
+                <span class="text-xs font-medium bg-green-50 text-green-700 border border-green-200 rounded-full px-2.5 py-0.5">✓ Оценён · {{ a.my_rating.rating }}★</span>
                 {% else %}
-                <span class="text-xs text-neutral-400">Оценка доступна после завершения задания</span>
+                <span class="text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2.5 py-0.5">Не оценён</span>
                 {% endif %}
             </div>
+            {% if job.status == 'completed' %}
+            <form method="post" action="{% url 'core:rate_participant' a.pk %}" class="mt-3 flex flex-wrap items-center gap-2">{% csrf_token %}
+                <select name="rating" class="border border-neutral-200 rounded-xl px-2 py-1.5 text-sm bg-white" aria-label="Оценка">
+                    <option value="5" {% if a.my_rating.rating == 5 %}selected{% endif %}>5</option>
+                    <option value="4" {% if a.my_rating.rating == 4 %}selected{% endif %}>4</option>
+                    <option value="3" {% if a.my_rating.rating == 3 %}selected{% endif %}>3</option>
+                    <option value="2" {% if a.my_rating.rating == 2 %}selected{% endif %}>2</option>
+                    <option value="1" {% if a.my_rating.rating == 1 %}selected{% endif %}>1</option>
+                </select>
+                <input type="text" name="comment" value="{{ a.my_rating.comment|default:'' }}" placeholder="Комментарий" maxlength="1000" class="border border-neutral-200 rounded-xl px-2 py-1.5 text-sm w-full sm:w-64">
+                <button class="action-icon-btn contact-btn"><span class="text-xs font-medium">{% if a.my_rating %}Обновить оценку{% else %}Оценить{% endif %}</span></button>
+            </form>
+            {% else %}
+            <p class="text-xs text-neutral-400 mt-2">Оценка доступна после завершения задания</p>
+            {% endif %}
         </article>
         {% endfor %}
     </div>

@@ -7,7 +7,7 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 
-from core.models import Application, Favorite, JobPhoto, Profile, UserReport
+from core.models import Application, Favorite, JobPhoto, Profile, Rating, UserReport
 from core.tests.test_auth import make_profile
 from core.tests.test_flows import make_job
 
@@ -354,6 +354,51 @@ class RatingsPagesTests(TestCase):
         stranger = make_profile("rwk-stranger@example.com")
         self.client.force_login(stranger)
         self.assertEqual(self.client.get(reverse("core:rate_workers", args=[job.pk])).status_code, 404)
+
+    def test_rate_workers_prefills_existing_rating(self):
+        owner = make_profile("rwk-prefill-owner@example.com")
+        job = make_job(owner, status="completed")
+        worker = make_profile("rwk-prefill-worker@example.com")
+        Application.objects.create(job=job, worker=worker, status="accepted")
+        Rating.objects.create(
+            rated_user=worker, rater_user=owner, job=job, rating=5,
+            comment="Комментарий J030", rating_type="employer", target_type="worker",
+        )
+        self.client.force_login(owner)
+        response = self.client.get(reverse("core:rate_workers", args=[job.pk]))
+        self.assertContains(response, "Обновить оценку")
+        self.assertContains(response, "Оценён")
+        self.assertContains(response, "Комментарий J030")
+        self.assertContains(response, 'value="5" selected')
+
+    def test_rate_workers_without_rating(self):
+        owner = make_profile("rwk-empty-owner@example.com")
+        job = make_job(owner, status="completed")
+        worker = make_profile("rwk-empty-worker@example.com")
+        Application.objects.create(job=job, worker=worker, status="accepted")
+        self.client.force_login(owner)
+        response = self.client.get(reverse("core:rate_workers", args=[job.pk]))
+        self.assertContains(response, "Не оценён")
+        self.assertContains(response, "Оценить")
+        self.assertNotContains(response, "Обновить оценку")
+
+    def test_user_ratings_labels_and_job_link(self):
+        employer = make_profile("rt-label-emp@example.com", role="employer")
+        worker = make_profile("rt-label-worker@example.com", role="worker")
+        job = make_job(employer, status="completed")
+        Rating.objects.create(
+            rated_user=worker, rater_user=employer, job=job, rating=5,
+            comment="Отзыв работодателя", rating_type="employer", target_type="worker",
+        )
+        Rating.objects.create(
+            rated_user=employer, rater_user=worker, job=job, rating=4,
+            comment="Отзыв работника", rating_type="worker", target_type="employer",
+        )
+        worker_page = self.client.get(reverse("core:user_ratings", args=[worker.pk]))
+        self.assertContains(worker_page, "От работодателя")
+        self.assertContains(worker_page, reverse("core:job_detail", args=[job.pk]))
+        employer_page = self.client.get(reverse("core:user_ratings", args=[employer.pk]))
+        self.assertContains(employer_page, "От работника")
 
 
 class BulkActionsTests(TestCase):

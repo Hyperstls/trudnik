@@ -84,13 +84,17 @@ def rate_workers(request, job_id):
     job = Job.objects.filter(pk=job_id, employer=request.user).first()
     if job is None:
         raise Http404("Задание не найдено")
-    apps = Application.objects.filter(job=job, status="accepted").select_related("worker")
+    apps = list(
+        Application.objects.filter(job=job, status="accepted").select_related("worker")
+    )
     existing = {
-        r.rated_user_id: r.rating
+        r.rated_user_id: r
         for r in Rating.objects.filter(rater_user=request.user, job=job)
     }
+    for app in apps:
+        app.my_rating = existing.get(app.worker_id)
     return render(request, "core/rate_workers.html", {
-        "job": job, "apps": apps, "existing": existing, "now": timezone.now(),
+        "job": job, "apps": apps, "now": timezone.now(),
     })
 
 
