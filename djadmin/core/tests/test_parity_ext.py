@@ -7,7 +7,7 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 
-from core.models import Application, Favorite, JobPhoto, Profile, Rating, UserReport
+from core.models import Application, Favorite, JobPhoto, Notification, Profile, Rating, UserReport
 from core.tests.test_auth import make_profile
 from core.tests.test_flows import make_job
 
@@ -479,3 +479,23 @@ class InvitationsRejectAllButtonTests(TestCase):
         response = self.client.get(reverse("core:invitations"))
         self.assertContains(response, reverse("core:invitations_reject_all"))
         self.assertContains(response, "Отклонить все ожидающие")
+
+
+class NotificationsDeleteAllTests(TestCase):
+    def test_delete_all_keeps_invitations(self):
+        user = make_profile("notif-clear@example.com")
+        Notification.objects.create(
+            user=user, type="application_received", title="Отклик",
+            message="Обычное уведомление",
+        )
+        Notification.objects.create(
+            user=user, type="application_received", title="Приглашение",
+            message="Вас пригласили на задание", data={"type": "invitation"},
+        )
+        self.client.force_login(user)
+        response = self.client.post(reverse("core:notifications_delete_all"))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            list(Notification.objects.filter(user=user).values_list("title", flat=True)),
+            ["Приглашение"],
+        )

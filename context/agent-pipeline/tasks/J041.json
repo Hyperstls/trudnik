@@ -1,0 +1,41 @@
+{
+  "id": "J041",
+  "title": "P2: уведомления — удалить все и настройки",
+  "goal": "В инбоксе уведомлений есть «Удалить все» (кроме приглашений) и ссылка на настройки уведомлений.",
+  "why": "Flask notifications.html:12-17 даёт «Удалить все» и «Настройки»; Flask api_delete_all_notifications удаляет все, кроме приглашений (data->>type='invitation' + legacy message). Django умеет только поштучное удаление и read-all, ссылки на настройки нет.",
+  "files": [
+    "djadmin/core/views_notify.py",
+    "djadmin/core/urls.py",
+    "djadmin/core/templates/core/notifications.html",
+    "djadmin/core/tests/test_parity_ext.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/views_profile_ext.py"
+  ],
+  "interfaces": "views_notify.notifications_delete_all (login_required, require_POST): Notification.objects.filter(user=request.user).exclude(Q(data__type='invitation') | Q(message__icontains='Вас пригласили')).delete(); messages.info('Удалено уведомлений: %d.'); redirect('core:notifications'). urls.py: path('notifications/delete-all', views_notify.notifications_delete_all, name='notifications_delete_all') рядом с read-all. notifications.html: в header рядом с «Прочитать все» добавить ссылку «Настройки» на core:notification_prefs и форму POST delete-all с кнопкой «Удалить все» (показывать при page.object_list). test_parity_ext: создать обычное Notification и invitation-notification (data={'type':'invitation'}), POST delete-all, обычное удалено, приглашение осталось.",
+  "acceptance": [
+    "POST /notifications/delete-all удаляет уведомления пользователя, кроме приглашений (data.type=invitation и legacy message «Вас пригласили»).",
+    "В шапке /notifications есть «Удалить все» и ссылка «Настройки».",
+    "Кнопка удаления показывается только при наличии уведомлений.",
+    "Чужие уведомления не затрагиваются (фильтр user=request.user).",
+    "test_parity_ext проходит."
+  ],
+  "out_of_scope": [
+    "Не менять модель Notification.",
+    "Не трогать read-all и поштучное удаление.",
+    "Не менять страницу настроек."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_notify.py djadmin/core/urls.py djadmin/core/tests/test_parity_ext.py",
+      "cwd": "."
+    },
+    {
+      "name": "parity_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_parity_ext --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

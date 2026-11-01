@@ -53,6 +53,29 @@ def notification_delete(request, notification_id):
 
 
 @login_required
+@require_POST
+def notifications_delete_all(request):
+    """Удалить все уведомления пользователя, кроме приглашений."""
+    from django.db.models import CharField, Q, Value
+    from django.db.models.fields.json import KeyTextTransform
+    from django.db.models.functions import Coalesce
+
+    # data->>'type' у обычных уведомлений NULL: NOT (NULL OR false) не сработает,
+    # поэтому сначала приводим отсутствующий ключ к пустой строке.
+    deleted, _ = (
+        Notification.objects.filter(user=request.user)
+        .annotate(_invitation_type=Coalesce(KeyTextTransform("type", "data"), Value(""), output_field=CharField()))
+        .exclude(
+            Q(_invitation_type="invitation")
+            | Q(message__icontains="Вас пригласили")
+        )
+        .delete()
+    )
+    messages.info(request, "Удалено уведомлений: %d." % deleted)
+    return redirect("core:notifications")
+
+
+@login_required
 def notifications_unread_count(request):
     return JsonResponse({
         "unread_count": Notification.objects.filter(user=request.user, is_read=False).count()

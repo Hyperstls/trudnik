@@ -1155,3 +1155,29 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-reviewer
 
 **Пакет:** context/agent-pipeline/packs/J040.review.prompt.md
+
+## 2026-11-01 14:34:53 — J041: BLOCKED: лимит механических попыток
+
+**Измерение:** attempts=3/3, scope=ok, checks=compile=0, parity_tests=1.
+
+**Решение:** остановка. Третья вариация той же ошибки дороже вопроса человеку.
+
+**Вопрос человеку:** что чинить — код, контракт или проверку? После ответа: `pipeline.py set J041 --status fixing --reason '...' --reset-attempts`.
+
+## 2026-11-01 14:35:07 — J041: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** Coalesce JSON/char type mismatch; explicit Value output_field
+
+**Переход:** blocked → fixing
+
+**Сброс:** attempts=0
+
+## 2026-11-01 14:38:28 — J041: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-reviewer
+
+**Пакет:** context/agent-pipeline/packs/J041.review.prompt.md

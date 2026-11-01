@@ -457,3 +457,13 @@
 - **2026-11-01 14:30:29** | **J040** | `verify` | **PASS** | scope=ok checks=compile=0, parity_tests=0 attempts=0/3
 - **2026-11-01 14:30:36** | **J040** | `review-packet` | **READY** | bytes=4575 new_files=[]
 - **2026-11-01 14:31:14** | **J040** | `review` | **PASS** | by=independent-reviewer → done
+- **2026-11-01 14:31:35** | **J041** | `add` | **OK** | contract=context/agent-pipeline/tasks/J041.json
+- **2026-11-01 14:31:36** | **J041** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/J041.impl.prompt.md
+- **2026-11-01 14:32:30** | **J041** | `verify` | **FAIL** | scope=ok checks=compile=0, parity_tests=1 attempts=1/3 → fixing
+- **2026-11-01 14:34:15** | **J041** | `verify` | **FAIL** | scope=ok checks=compile=0, parity_tests=1 attempts=2/3 → fixing
+- **2026-11-01 14:34:53** | **J041** | `verify` | **FAIL** | scope=ok checks=compile=0, parity_tests=1 attempts=3/3 → blocked
+- **2026-11-01 14:35:07** | **J041** | `set` | **blocked→fixing** | by=Hyperstls reason=Coalesce JSON/char type mismatch; explicit Value output_field reset=attempts=0
+- **2026-11-01 14:35:31** | **J041** | `verify` | **FAIL** | scope=ok checks=compile=0, parity_tests=1 attempts=1/3 → fixing
+- **2026-11-01 14:36:10** | **J041** | `verify` | **PASS** | scope=ok checks=compile=0, parity_tests=0 attempts=1/3
+- **2026-11-01 14:36:16** | **J041** | `review-packet` | **READY** | bytes=8525 new_files=[]
+- **2026-11-01 14:38:28** | **J041** | `review` | **PASS** | by=independent-reviewer → done

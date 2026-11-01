@@ -4,9 +4,17 @@
 <div class="px-0 py-4 fade-in">
     <div class="flex items-center justify-between mb-4">
         <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">Уведомления</h2>
-        <form method="post" action="{% url 'core:notifications_mark_all_read' %}">{% csrf_token %}
-            <button class="px-3.5 h-9 rounded-xl border border-neutral-200 hover:bg-white text-neutral-600 text-sm font-medium transition-colors">Прочитать все</button>
-        </form>
+        <div class="flex flex-wrap items-center justify-end gap-2">
+            <a href="{% url 'core:notification_prefs' %}" class="px-3 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-white text-neutral-600 text-sm font-medium transition-colors">Настройки</a>
+            {% if page.object_list %}
+            <form method="post" action="{% url 'core:notifications_delete_all' %}">{% csrf_token %}
+                <button class="px-3 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">Удалить все</button>
+            </form>
+            {% endif %}
+            <form method="post" action="{% url 'core:notifications_mark_all_read' %}">{% csrf_token %}
+                <button class="px-3.5 h-9 rounded-xl border border-neutral-200 hover:bg-white text-neutral-600 text-sm font-medium transition-colors">Прочитать все</button>
+            </form>
+        </div>
     </div>
     {% if page.object_list %}
     <div class="grid gap-2">
