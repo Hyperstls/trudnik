@@ -54,7 +54,7 @@
 |---|---|
 | Bulk duplicate заданий | ❌ требует выноса repost-хелпера в сервис |
 | Bulk duplicate заданий | ✅ J017 |
-| P2-12: карта трудников | open (кластеры/метки) |
+| P2-12: карта трудников | n/a — у Profile нет lat/lng (J026 blocked); фильтры/бейджи закрыты J021/J023 |
 | P2-01 | ✅ J013/J019/J024/J025 |
 | P2-02 detail | ✅ J014/J016/J018 |
 | P2-09..P2-13 ratings/employers/workers: карта/бейджи и остаток UI | open (P2-12 фильтры — J021) |
@@ -62,6 +62,7 @@
 ## Доказательства
 
 - Контракты: `context/agent-pipeline/tasks/J001.json` … `J025.json`.
+- **J026 blocked:** карта трудников — у `Profile` нет lat/lng; потребовала бы миграцию/геокодинг.
 - Логи проверок: `context/agent-pipeline/logs/J00*.verify.log`.
 - Решения/заметки: `context/agent-pipeline/decisions.md`.
 - Матрицы: [ROUTES_MATRIX_JOBS.md](ROUTES_MATRIX_JOBS.md),

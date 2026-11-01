@@ -965,3 +965,17 @@ P2-01 гео: серверная фильтрация/сортировка/geolo
 **Кто:** Hyperstls
 
 P2-01 карта закрыта. Ключ должен быть JS API с referer-ограничением.
+
+## 2026-11-01 11:46:16 — J026: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** Profile has no lat/lng; worker map would require schema/geocoding, out of scope. P2-12 closed by filters+badges.
+
+**Переход:** implementing → blocked
+
+## 2026-11-01 11:46:17 — J026: заметка
+
+**Кто:** Hyperstls
+
+Карта трудников невыполнима без координат профиля; J025 покрывает карту заданий. P2-12 закрыт фильтрами/бейджами.

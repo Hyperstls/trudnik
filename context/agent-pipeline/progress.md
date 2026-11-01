@@ -363,3 +363,6 @@
 - **2026-11-01 11:37:00** | **J025** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=static/css/tailwind.min.css regenerated after map template; generated artifact drift=[]
 - **2026-11-01 11:37:35** | **J025** | `verify` | **PASS** | scope=skipped checks=compile=0, public_tests=0 attempts=0/3
 - **2026-11-01 11:37:46** | **J025** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-01 11:43:47** | **J026** | `add` | **OK** | contract=context/agent-pipeline/tasks/J026.json
+- **2026-11-01 11:43:48** | **J026** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/J026.impl.prompt.md
+- **2026-11-01 11:46:16** | **J026** | `set` | **implementing→blocked** | by=Hyperstls reason=Profile has no lat/lng; worker map would require schema/geocoding, out of scope. P2-12 closed by filters+badges.

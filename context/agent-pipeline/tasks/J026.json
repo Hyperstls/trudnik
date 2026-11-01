@@ -1,0 +1,40 @@
+{
+  "id": "J026",
+  "title": "JOB-P2-12 (карта): Yandex Maps с метками трудников",
+  "goal": "При наличии YANDEX_MAPS_API_KEY каталог /workers показывает карту с метками трудников страницы (lat/lng); клик ведёт на профиль; без ключа/точек карта не рендерится.",
+  "why": "P2-12 остаётся карта трудников: Flask workers.html показывает карту/метки. Django имеет фильтры и бейджи J021/J023, но не карту.",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/templates/core/workers_list.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/jobs_list.html",
+    "docs/parity/DISCREPANCIES_JOBS.md"
+  ],
+  "interfaces": "views.workers_list: worker_map_points=[{'id':str(w.pk),'name':w.full_name,'url':reverse('core:worker_detail',args=[w.pk]),'lat':float(w.lat),'lng':float(w.lng)} for w in page.object_list if w.lat is not None and w.lng is not None]; yandex_maps_key=os.getenv('YANDEX_MAPS_API_KEY',''); context. workers_list.html: если key и points -> div#workers-map style height 320 + json_script 'workers-map-data' + внешний script api-maps.yandex.ru + init (ymaps.ready, Placemark, balloonContentBody/hintContent DOM textContent, click -> url, setBounds/setCenter). Без ключа блок не рендерится. Тесты: test_workers_map_points_context; test_workers_map_rendered_with_key (patch env test-key); test_workers_map_absent_without_key; test_workers_map_skips_without_coords.",
+  "acceptance": [
+    "При ключе и точках рендерится карта трудников и JSON меток.",
+    "Клик по метке ведёт на профиль трудника.",
+    "Без ключа карта не рендерится.",
+    "Трудники без lat/lng не попадают в точки.",
+    "PublicViewsTests проходит без сети."
+  ],
+  "out_of_scope": [
+    "Не менять фильтры/бейджи трудников.",
+    "Не менять карту заданий.",
+    "Не менять CSP/настройки."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views.PublicViewsTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}
