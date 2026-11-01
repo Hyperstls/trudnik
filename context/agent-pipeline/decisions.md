@@ -1025,3 +1025,25 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** Hyperstls
 
 Карта end-to-end: форма задания сохраняет координаты, лента рисует метки, nearby_jobs видит задания.
+
+## 2026-11-01 12:25:59 — J028: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css generated artifact after map hint
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 12:27:12 — J028: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J028.review.prompt.md
+
+## 2026-11-01 12:27:12 — J028: заметка
+
+**Кто:** Hyperstls
+
+Карта заданий — только офлайн (address+coords); дистанционные без адреса не маркируются.

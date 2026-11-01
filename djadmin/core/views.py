@@ -216,7 +216,7 @@ def jobs_list(request):
             "url": reverse("core:job_detail", args=[job.pk]),
         }
         for job in page.object_list
-        if job.lat is not None and job.lng is not None
+        if job.lat is not None and job.lng is not None and (job.address or "").strip()
     ]
     return render(request, "core/jobs_list.html", {
         "page": page, "q": q, "city": city, "status": status,

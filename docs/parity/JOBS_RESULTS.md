@@ -1,10 +1,10 @@
-# Jobs / applications — результаты паритета (J001–J027)
+# Jobs / applications — результаты паритета (J001–J028)
 
 **Дата:** 2026-11-01
 **Ветка:** `feat/agent-pipeline` (Django `main` не менялся)
 **Метод:** контракт → dispatch → verify (exit-код) → независимый pattern-review → done.
 **Итог:** P0 и P1 закрыты; P2-02/P2-03/P2-05/P2-06/P2-08 закрыты; P2-01 закрыт end-to-end (гео, карта, координаты в форме); P2-12 — карта трудников n/a.
-Полный `manage.py test core` — **321 OK**; `pre_deploy_check` — 7/7.
+Полный `manage.py test core` — **322 OK**; `pre_deploy_check` — 7/7.
 
 ## Контракты
 
@@ -38,6 +38,7 @@
 | **J024** | P2-01 (гео): radius-фильтр, distance-sort, geolocation, расстояние в карточке | PASS | PASS |
 | **J025** | P2-01 (карта): Yandex Maps с метками заданий (опционально по ключу) | PASS | PASS |
 | **J027** | P2-01 (координаты): карта-пикер в форме задания, lat/lng сохраняются | PASS | PASS |
+| **J028** | P2-01: на карте только офлайн-задания (address+coords) | PASS | PASS |
 
 ## Ключевая находка контрактной проверки
 
@@ -56,13 +57,13 @@
 | Bulk duplicate заданий | ❌ требует выноса repost-хелпера в сервис |
 | Bulk duplicate заданий | ✅ J017 |
 | P2-12: карта трудников | n/a — у Profile нет lat/lng (J026 blocked); фильтры/бейджи закрыты J021/J023 |
-| P2-01 | ✅ J013/J019/J024/J025/J027 |
+| P2-01 | ✅ J013/J019/J024/J025/J027/J028 |
 | P2-02 detail | ✅ J014/J016/J018 |
 | P2-09..P2-13 ratings/employers/workers: карта/бейджи и остаток UI | open (P2-12 фильтры — J021) |
 
 ## Доказательства
 
-- Контракты: `context/agent-pipeline/tasks/J001.json` … `J027.json`.
+- Контракты: `context/agent-pipeline/tasks/J001.json` … `J028.json`.
 - **J026 blocked:** карта трудников — у `Profile` нет lat/lng; потребовала бы миграцию/геокодинг.
 - Логи проверок: `context/agent-pipeline/logs/J00*.verify.log`.
 - Решения/заметки: `context/agent-pipeline/decisions.md`.

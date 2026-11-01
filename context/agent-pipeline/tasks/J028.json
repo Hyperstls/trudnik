@@ -1,0 +1,39 @@
+{
+  "id": "J028",
+  "title": "P2-01: карта только для офлайн-заданий (адрес + координаты)",
+  "goal": "Метка задания попадает на карту только если у задания есть непустой address и lat/lng; дистанционные задания без адреса на карту не попадают. Форма подсказывает не заполнять карту для дистанционных.",
+  "why": "Пользователь: трудников на карте не показывать; местоположение задания — только если работа офлайн. В модели нет remote-флага, поэтому дискриминатор — адрес: удалённые задания создаются без адреса/координат.",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/templates/core/job_form.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/jobs_list.html",
+    "docs/parity/DISCREPANCIES_JOBS.md"
+  ],
+  "interfaces": "views.jobs_list map_points: условие `job.lat is not None and job.lng is not None and (job.address or '').strip()`. job_form.html: подсказка у карты 'Для дистанционных заданий карту не заполняйте — метка нужна только для офлайн-работ по адресу.'. Тесты PublicViewsTests: _geo_jobs задаёт address='Санкт-Петербург, Невский 1'; test_jobs_map_skips_remote_without_address (job lat/lng, address='' -> нет в map_points, но есть в выдаче); test_jobs_map_points_context по-прежнему 2 точки.",
+  "acceptance": [
+    "Задание с address+lat/lng попадает в map_points.",
+    "Задание с lat/lng без address на карту не попадает.",
+    "Дистанционное задание без адреса остаётся в ленте, но без метки.",
+    "PublicViewsTests проходит."
+  ],
+  "out_of_scope": [
+    "Не добавлять remote-поле/миграцию.",
+    "Не менять карту трудников (J026 blocked).",
+    "Не менять nearby_jobs."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views.PublicViewsTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

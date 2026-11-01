@@ -386,14 +386,14 @@ class PublicViewsTests(TestCase):
     def _geo_jobs(self):
         near = Job.objects.create(
             employer=self.employer, work_type="Near J024", organization_name="Приход",
-            status="open", city="Санкт-Петербург", payment_amount=1000,
-            lat=60.0, lng=30.0,
+            status="open", city="Санкт-Петербург", address="Невский пр., 1",
+            payment_amount=1000, lat=60.0, lng=30.0,
             date_time=timezone.now() + timedelta(days=2),
         )
         far = Job.objects.create(
             employer=self.employer, work_type="Far J024", organization_name="Приход",
-            status="open", city="Санкт-Петербург", payment_amount=1000,
-            lat=60.1, lng=30.0,
+            status="open", city="Санкт-Петербург", address="Невский пр., 2",
+            payment_amount=1000, lat=60.1, lng=30.0,
             date_time=timezone.now() + timedelta(days=2),
         )
         return near, far
@@ -498,6 +498,17 @@ class PublicViewsTests(TestCase):
         )
         response = self.client.get("/jobs", {"q": "J025"})
         self.assertContains(response, "NoCoord J025")
+        self.assertEqual(response.context["map_points"], [])
+
+    def test_jobs_map_skips_remote_without_address(self):
+        Job.objects.create(
+            employer=self.employer, work_type="Remote J028", organization_name="Приход",
+            status="open", city="Москва", address="", payment_amount=1000,
+            lat=55.75, lng=37.61,
+            date_time=timezone.now() + timedelta(days=2),
+        )
+        response = self.client.get("/jobs", {"q": "J028"})
+        self.assertContains(response, "Remote J028")
         self.assertEqual(response.context["map_points"], [])
 
     def test_worker_detail_hides_private_fields(self):

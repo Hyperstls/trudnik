@@ -14,7 +14,7 @@
             {% if yandex_maps_key %}
             <div class="form-field">
                 <span class="form-label">Точка на карте</span>
-                <p class="form-hint mb-2">Кликните по карте или перетащите метку — координаты сохранятся с заданием.</p>
+                <p class="form-hint mb-2">Кликните по карте или перетащите метку — координаты сохранятся с заданием. Для дистанционных заданий карту не заполняйте: метка нужна только для офлайн-работ по адресу.</p>
                 <div id="job-map" data-lat="{% localize off %}{{ form.instance.lat|default_if_none:'' }}{% endlocalize %}" data-lng="{% localize off %}{{ form.instance.lng|default_if_none:'' }}{% endlocalize %}" style="height:280px" class="w-full rounded-xl border border-neutral-200"></div>
             </div>
             <script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_key|urlencode }}&lang=ru_RU"></script>
