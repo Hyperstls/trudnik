@@ -1,0 +1,40 @@
+{
+  "id": "J023",
+  "title": "JOB-P2-12 (badges): Надёжный и Приглашён в каталоге трудников",
+  "goal": "В карточке трудника показывается «Надёжный» при >=10 accepted и 0 rejected откликов, и «Приглашён» при pending/accepted приглашении от текущего пользователя; запросы без N+1.",
+  "why": "Flask workers() вычисляет invited_worker_ids и reliable_worker_ids двумя агрегатными запросами и показывает бейджи (templates/workers.html). Django каталог их не имеет (JOB-P2-12).",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/templates/core/workers_list.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "docs/parity/DISCREPANCIES_JOBS.md"
+  ],
+  "interfaces": "views.py: import Counter, Invitation. После Paginator: worker_ids=[w.pk for w in page.object_list]; reliable_ids=set(); если worker_ids: accepted=Counter(Application.objects.filter(worker_id__in=worker_ids,status='accepted').values_list('worker_id',flat=True)); rejected=Counter(...status='rejected'); reliable_ids={wid for wid in worker_ids if accepted[wid]>=10 and rejected[wid]==0}; invited_ids=set(); если authenticated и worker_ids: Invitation.objects.filter(employer=request.user, worker_id__in=worker_ids, status__in=('pending','accepted')).values_list('worker_id'); context reliable_worker_ids, invited_worker_ids. workers_list.html: в карточке рядом с именем бейджи: reliable -> 'Надёжный' (bg-green-100 text-green-800), invited -> 'Приглашён' (bg-primary-50 text-primary-700 border-primary-100). Тесты: test_workers_reliable_badge (10 accepted Applications -> 'Надёжный'); test_workers_reliable_requires_zero_rejected (10 accepted + 1 rejected -> нет); test_workers_invited_badge (Invitation pending от залогиненного -> 'Приглашён').",
+  "acceptance": [
+    "10 accepted и 0 rejected дают бейдж «Надёжный».",
+    "Один rejected снимает бейдж.",
+    "Pending/accepted приглашение текущего пользователя даёт «Приглашён»; чужое — нет.",
+    "Нет N+1: не более двух агрегатных запросов на страницу.",
+    "PublicViewsTests проходит."
+  ],
+  "out_of_scope": [
+    "Не добавлять кнопку «Пригласить» (отдельный UI-шаг).",
+    "Не менять порог/семантику рейтинга.",
+    "Не менять карту/гео."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views.PublicViewsTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

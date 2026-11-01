@@ -851,3 +851,33 @@ P2-12 частично: навыки/рейтинг/оплата/сортиро�
 **Кто:** Hyperstls
 
 P2-03 закрыт. Деплой требует forms.py + validators_jobs.py (J002-зависимость).
+
+## 2026-11-01 10:38:09 — J023: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css regenerated after workers badge classes; generated artifact
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 10:40:48 — J023: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css generated artifact (unchanged)
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 10:41:35 — J023: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J023.review.prompt.md
+
+## 2026-11-01 10:41:35 — J023: заметка
+
+**Кто:** Hyperstls
+
+P2-12: бейджи Надёжный/Приглашён закрыты; остаётся карта.

@@ -54,6 +54,10 @@
                     <h3 class="font-semibold text-neutral-900 truncate">
                         <a href="{% url 'core:worker_detail' w.pk %}" class="hover:text-primary-600 transition-colors">{{ w.full_name }}</a>
                     </h3>
+                    <div class="flex flex-wrap gap-1 mt-1">
+                        {% if w.pk in reliable_worker_ids %}<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Надёжный</span>{% endif %}
+                        {% if w.pk in invited_worker_ids %}<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-50 text-primary-700 border border-primary-100">Приглашён</span>{% endif %}
+                    </div>
                     <div class="flex items-center gap-0.5 mt-0.5">
                         {% for i in "12345" %}{% if forloop.counter0 < w.rating|default:0 %}<span class="text-warning text-xs">★</span>{% else %}<span class="text-neutral-300 text-xs">★</span>{% endif %}{% endfor %}
                         <span class="text-xs text-neutral-400 ml-1">({{ w.total_reviews|default:0 }})</span>

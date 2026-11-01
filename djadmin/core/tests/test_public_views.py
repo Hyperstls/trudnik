@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core import views
-from core.models import Application, Blacklist, Favorite, Job, JobPhoto, JobSkill, Rating, Religion, SitePage, Skill, UserSkill
+from core.models import Application, Blacklist, Favorite, Invitation, Job, JobPhoto, JobSkill, Rating, Religion, SitePage, Skill, UserSkill
 from core.storage import resolve_upload_url, save_upload
 from core.tests.test_auth import make_profile
 
@@ -319,6 +319,68 @@ class PublicViewsTests(TestCase):
                     ).status_code,
                     200,
                 )
+
+    def _accepted_apps(self, count):
+        for i in range(count):
+            job = Job.objects.create(
+                employer=self.employer, work_type="Reliable %d" % i,
+                organization_name="Приход", status="open", city="Москва",
+                payment_amount=1000,
+                date_time=timezone.now() + timedelta(days=2),
+            )
+            Application.objects.create(
+                job=job, worker=self.worker, status="accepted"
+            )
+
+    def test_workers_reliable_badge(self):
+        self._accepted_apps(10)
+        response = self.client.get("/workers", {"q": self.worker.full_name})
+        self.assertContains(response, "Надёжный")
+
+    def test_workers_reliable_requires_zero_rejected(self):
+        self._accepted_apps(10)
+        job = Job.objects.create(
+            employer=self.employer, work_type="Rejected", organization_name="Приход",
+            status="open", city="Москва", payment_amount=1000,
+            date_time=timezone.now() + timedelta(days=2),
+        )
+        Application.objects.create(
+            job=job, worker=self.worker, status="rejected"
+        )
+        response = self.client.get("/workers", {"q": self.worker.full_name})
+        self.assertNotContains(response, "Надёжный")
+
+    def test_workers_invited_badge(self):
+        Invitation.objects.create(
+            job=self.job, employer=self.employer, worker=self.worker,
+            status="pending",
+        )
+        self.client.force_login(self.employer)
+        response = self.client.get("/workers", {"q": self.worker.full_name})
+        self.assertContains(response, "Приглашён")
+
+    def test_workers_invited_badge_accepted(self):
+        Invitation.objects.create(
+            job=self.job, employer=self.employer, worker=self.worker,
+            status="accepted",
+        )
+        self.client.force_login(self.employer)
+        response = self.client.get("/workers", {"q": self.worker.full_name})
+        self.assertContains(response, "Приглашён")
+
+    def test_workers_invited_badge_other_employer_ignored(self):
+        other = make_profile("other-emp-j023@example.com", role="employer")
+        job = Job.objects.create(
+            employer=other, work_type="Other invite", organization_name="Приход",
+            status="open", city="Москва", payment_amount=1000,
+            date_time=timezone.now() + timedelta(days=2),
+        )
+        Invitation.objects.create(
+            job=job, employer=other, worker=self.worker, status="pending",
+        )
+        self.client.force_login(self.employer)
+        response = self.client.get("/workers", {"q": self.worker.full_name})
+        self.assertNotContains(response, "Приглашён")
 
     def test_worker_detail_hides_private_fields(self):
         response = self.client.get(f"/workers/{self.worker.pk}")

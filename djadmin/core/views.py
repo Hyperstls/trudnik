@@ -5,6 +5,7 @@ RLS-паритет (спека §1.3): Django ходит в БД напряму�
 Profile.objects.public_workers()/public_visible(). Публичные страницы никогда
 не отображают приватные поля (email/phone/inn) — только колонки из PUBLIC_FIELDS.
 """
+from collections import Counter
 from uuid import UUID
 
 from django.conf import settings
@@ -14,7 +15,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.core.paginator import Paginator
 
-from .models import Application, Blacklist, Favorite, Job, JobFavorite, Profile, Rating, SitePage, Skill, UserSkill
+from .models import Application, Blacklist, Favorite, Invitation, Job, JobFavorite, Profile, Rating, SitePage, Skill, UserSkill
 
 PAGE_SIZE = 20
 
@@ -282,6 +283,32 @@ def workers_list(request):
         sort = "rating"
         qs = qs.order_by("-rating", "-total_reviews")
     page = Paginator(qs, PAGE_SIZE).get_page(request.GET.get("page"))
+    worker_ids = [w.pk for w in page.object_list]
+    reliable_worker_ids = set()
+    invited_worker_ids = set()
+    if worker_ids:
+        accepted = Counter(
+            Application.objects.filter(
+                worker_id__in=worker_ids, status="accepted"
+            ).values_list("worker_id", flat=True)
+        )
+        rejected = Counter(
+            Application.objects.filter(
+                worker_id__in=worker_ids, status="rejected"
+            ).values_list("worker_id", flat=True)
+        )
+        reliable_worker_ids = {
+            wid for wid in worker_ids
+            if accepted.get(wid, 0) >= 10 and rejected.get(wid, 0) == 0
+        }
+        if request.user.is_authenticated:
+            invited_worker_ids = set(
+                Invitation.objects.filter(
+                    employer=request.user,
+                    worker_id__in=worker_ids,
+                    status__in=("pending", "accepted"),
+                ).values_list("worker_id", flat=True)
+            )
     return render(request, "core/workers_list.html", {
         "page": page, "q": q,
         "skills": list(Skill.objects.order_by("sort_order", "name")),
@@ -290,6 +317,8 @@ def workers_list(request):
         "payment_from": payment_from,
         "payment_to": payment_to,
         "sort": sort,
+        "reliable_worker_ids": reliable_worker_ids,
+        "invited_worker_ids": invited_worker_ids,
     })
 
 
