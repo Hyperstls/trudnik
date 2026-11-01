@@ -429,3 +429,11 @@
 - **2026-11-01 14:05:49** | **J035** | `verify` | **PASS** | scope=ok checks=compile=0, auth_flow_tests=0 attempts=1/3
 - **2026-11-01 14:05:50** | **J035** | `review-packet` | **READY** | bytes=13716 new_files=[]
 - **2026-11-01 14:06:53** | **J035** | `review` | **PASS** | by=independent-reviewer → done
+- **2026-11-01 14:08:10** | **J036** | `add` | **OK** | contract=context/agent-pipeline/tasks/J036.json
+- **2026-11-01 14:08:10** | **J036** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/J036.impl.prompt.md
+- **2026-11-01 14:08:51** | **J036** | `verify` | **FAIL** | scope=ok checks=js_syntax=1, smoke_tests=1 attempts=1/3 → fixing
+- **2026-11-01 14:09:20** | **J036** | `verify` | **FAIL** | scope=ok checks=js_syntax=1, smoke_tests=1 attempts=2/3 → fixing
+- **2026-11-01 14:09:35** | **J036** | `set` | **fixing→fixing** | by=Hyperstls reason=contract assertion matched !== 200; use !response.ok reset=attempts=0
+- **2026-11-01 14:09:40** | **J036** | `verify` | **PASS** | scope=ok checks=js_syntax=0, smoke_tests=0 attempts=0/3
+- **2026-11-01 14:09:47** | **J036** | `review-packet` | **READY** | bytes=10862 new_files=[]
+- **2026-11-01 14:10:35** | **J036** | `review` | **PASS** | by=independent-reviewer → done

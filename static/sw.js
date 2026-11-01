@@ -1,5 +1,5 @@
-const CACHE_VERSION = 'trudnik-v14';
-const CACHE_NAME = 'trudnik-v14';
+const CACHE_VERSION = 'trudnik-v15';
+const CACHE_NAME = 'trudnik-v15';
 const PRECACHE_URLS = [
   '/',
   '/offline',
@@ -47,6 +47,44 @@ self.addEventListener('activate', event => {
 });
 
 // ============================================================
+// Navigation helpers
+// ============================================================
+function cacheNavigation(request, response) {
+  // Никогда не кэшируем 3xx/4xx/5xx: иначе транзиентный 503 остаётся
+  // в Cache API и повторно отдаётся после восстановления сети.
+  if (!response.ok || response.status !== 200) return;
+  const cloned = response.clone();
+  const safeHeaders = new Headers(cloned.headers);
+  safeHeaders.delete('Content-Security-Policy');
+  const safeResponse = new Response(cloned.body, {
+    status: cloned.status,
+    statusText: cloned.statusText,
+    headers: safeHeaders
+  });
+  caches.open(CACHE_NAME)
+    .then(cache => cache.put(request, safeResponse))
+    .catch(err => console.warn('SW: navigation cache put failed', err));
+}
+
+function offlineFallback() {
+  return caches.match('/offline').then(cached => {
+    if (cached && cached.ok) return cached;
+    return new Response(
+      '<!doctype html><html lang="ru"><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+      '<title>Нет соединения — Трудник</title>' +
+      '<style>body{font-family:system-ui,sans-serif;margin:0;display:flex;' +
+      'min-height:100vh;align-items:center;justify-content:center;background:#fafafa;' +
+      'color:#262626;text-align:center}p{color:#737373;font-size:14px}</style></head>' +
+      '<body><main><h1>Нет соединения</h1>' +
+      '<p>Не удалось загрузить страницу. Проверьте интернет и обновите страницу.</p>' +
+      '<p><a href="/jobs">Повторить</a></p></main></body></html>',
+      { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+    );
+  });
+}
+
+// ============================================================
 // Fetch: strategy by request type
 // ============================================================
 self.addEventListener('fetch', event => {
@@ -78,8 +116,7 @@ self.addEventListener('fetch', event => {
     // которые превышают таймаут прокси Amvera. Пусть браузер обрабатывает напрямую.
     // Не перехватываем /logout — сервер возвращает 302 (редирект) с очисткой сессии,
     // Service Worker не должен кэшировать этот ответ, иначе браузер показывает
-    // "Navigation error — server is reachable but request failed" из-за конфликта
-    // между SW fetch и Set-Cookie очисткой сессии.
+    // ошибку навигации из-за конфликта между SW fetch и Set-Cookie очисткой сессии.
     if (url.pathname.startsWith('/admin') || url.pathname.startsWith('/logout') || url.pathname.startsWith('/verify-email') || url.pathname.startsWith('/password-reset') || url.pathname.startsWith('/chat') || url.pathname.startsWith('/messenger') || url.pathname.startsWith('/my-applications') || url.pathname.startsWith('/profile') || url.pathname.startsWith('/notifications')
       // Формы с CSRF-токеном: кэшированная копия содержит протухший токен —
       // POST вернёт 400 после рестарта сервера/сессий. Не кэшируем.
@@ -89,43 +126,27 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       fetch(request)
         .then(response => {
-          // Cache the successful navigation response (без CSP)
-          const cloned = response.clone();
-          const safeHeaders = new Headers(cloned.headers);
-          safeHeaders.delete('Content-Security-Policy');
-          const safeResponse = new Response(cloned.body, {
-              status: cloned.status,
-              statusText: cloned.statusText,
-              headers: safeHeaders
-          });
-          caches.open(CACHE_NAME).then(cache =>
-            cache.put(request, safeResponse)
-          );
+          cacheNavigation(request, response);
           return response;
         })
         .catch(() => {
-          // Network error — determine if we're genuinely offline or if this was a transient error
+          // Сначала — валидный кэш (не 503/404 из старых версий).
           return caches.match(request).then(cached => {
-            if (cached) {
+            if (cached && cached.ok) {
               console.log('SW: Serving cached navigation for', request.url);
               return cached;
             }
-            // Not in cache — check if we're actually offline before showing offline page
-            // Use a cache-busting URL to bypass SW cache and hit the real network
-            return fetch('/offline?_sw_ping=' + Date.now(), { method: 'HEAD' })
-              .then(() => {
-                // Network IS available — the original request failed for another reason
-                // (e.g. server error, timeout). Don't swallow the error; let the browser handle it.
-                console.warn('SW: Navigation failed but network is available for', request.url);
-                return new Response('Navigation error — server is reachable but request failed', {
-                  status: 503,
-                  statusText: 'Service Unavailable'
-                });
+            // Повторяем запрос без кэша: транзиентный сбой часто проходит сразу.
+            return fetch(request, { cache: 'no-store' })
+              .then(response => {
+                cacheNavigation(request, response);
+                // Сервер ответил ошибкой (например, 503 во время деплоя) —
+                // показываем дружелюбную офлайн-страницу, а не сырой 503.
+                return response.ok ? response : offlineFallback();
               })
               .catch(() => {
-                // Network is genuinely down — serve the offline page from cache
                 console.log('SW: Network offline, serving offline page for', request.url);
-                return caches.match('/offline');
+                return offlineFallback();
               });
           });
         })

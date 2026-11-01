@@ -1,0 +1,39 @@
+{
+  "id": "J036",
+  "title": "P1: service worker не кэширует и не отдаёт 503",
+  "goal": "Пользователь не видит повторяющийся 503 на / после краткого сетевого сбоя: SW кэширует только успешные 200-навигации, при сбое делает повторный запрос или показывает офлайн-страницу, но не синтетический 503.",
+  "why": "static/sw.js в navigation-стратегии делает cache.put для любого ответа, включая 503, и при fetch-ошибке, если сеть доступна, возвращает new Response(..., {status:503}). В результате транзиентный 503 (деплой/сеть) остаётся в кэше и повторно отдаётся; Ctrl+Shift+R обходит SW — что совпадает с жалобой пользователя 'GET / 503, помогает только ctrl+shift+R'.",
+  "files": [
+    "static/sw.js",
+    "djadmin/core/tests/test_smoke_pages.py"
+  ],
+  "context_files": [
+    "static/js/base.js",
+    "djadmin/core/views_service.py"
+  ],
+  "interfaces": "static/sw.js: CACHE_VERSION = 'trudnik-v15' (старые кэши удаляются в activate). В navigation-стратегии кэшировать только response.ok && response.status === 200; не класть 3xx/4xx/5xx. При fetch-ошибке: сначала caches.match(request) — только если cached.ok; затем один повторный fetch(request, {cache:'no-store'}); если он ok — вернуть и закэшировать; иначе вернуть офлайн-страницу из кэша, а при её отсутствии — сгенерированный HTML 200 с текстом «Нет соединения. Обновите страницу.» (никаких status 503). API/static стратегии не меняются. test_smoke_pages.py: test_service_worker_never_caches_or_returns_503 — читает REPO_ROOT/static/sw.js, проверяет 'trudnik-v15', наличие проверки response.ok в navigation-ветке и отсутствие 'status: 503' в navigation-ветке.",
+  "acceptance": [
+    "SW кэширует navigation только при response.ok (200); 503/404/302 не кэшируются.",
+    "При сетевой ошибке SW сначала отдаёт валидный кэш, затем повторяет запрос, затем офлайн-страницу/HTML 200.",
+    "В navigation-ветке больше нет синтетического Response со status 503.",
+    "CACHE_VERSION изменён, старый кэш v14 удаляется при activate.",
+    "test_smoke_pages проходит."
+  ],
+  "out_of_scope": [
+    "Не менять API-стратегию и static-стратегию, кроме общих успешных проверок.",
+    "Не менять base.js регистрацию SW.",
+    "Не менять server-side health/nginx."
+  ],
+  "checks": [
+    {
+      "name": "js_syntax",
+      "cmd": "{python} -c \"from pathlib import Path; s=Path('static/sw.js').read_text(encoding='utf-8'); assert 'server is reachable but request failed' not in s; assert 'trudnik-v15' in s; assert '!response.ok' in s; print('sw.js ok')\"",
+      "cwd": "."
+    },
+    {
+      "name": "smoke_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_smoke_pages --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

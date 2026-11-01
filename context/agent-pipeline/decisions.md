@@ -1113,3 +1113,21 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-reviewer
 
 **Пакет:** context/agent-pipeline/packs/J035.review.prompt.md
+
+## 2026-11-01 14:09:35 — J036: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** contract assertion matched !== 200; use !response.ok
+
+**Переход:** fixing → fixing
+
+**Сброс:** attempts=0
+
+## 2026-11-01 14:10:35 — J036: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-reviewer
+
+**Пакет:** context/agent-pipeline/packs/J036.review.prompt.md

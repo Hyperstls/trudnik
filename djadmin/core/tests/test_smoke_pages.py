@@ -4,7 +4,9 @@
 что покрыты юнит-тестами. Ловит битые шаблоны/контексты, как ручная приёмка.
 """
 from datetime import timedelta
+from pathlib import Path
 
+from django.conf import settings
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -38,6 +40,12 @@ class SmokeAllPagesTests(TestCase):
         response = self.client.get(url, **kwargs)
         self.assertLess(response.status_code, 500, "%s -> %s" % (name, response.status_code))
         return response
+
+    def test_service_worker_never_emits_503(self):
+        sw = (Path(settings.REPO_ROOT) / "static" / "sw.js").read_text(encoding="utf-8")
+        self.assertIn("trudnik-v15", sw)
+        self.assertIn("!response.ok", sw)
+        self.assertNotIn("server is reachable but request failed", sw)
 
     def test_public_pages(self):
         self.client.logout()
