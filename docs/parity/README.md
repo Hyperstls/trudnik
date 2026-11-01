@@ -16,7 +16,7 @@ gate OK; процедура — [MIGRATION_LEDGER.md](MIGRATION_LEDGER.md).
 см. [JOBS_RESULTS.md](JOBS_RESULTS.md), [AUDIT_JOBS_APPLICATIONS.md](AUDIT_JOBS_APPLICATIONS.md),
 [DISCREPANCIES_JOBS.md](DISCREPANCIES_JOBS.md),
 [ROUTES_MATRIX_JOBS.md](ROUTES_MATRIX_JOBS.md),
-[UI_INVENTORY_JOBS.md](UI_INVENTORY_JOBS.md). Полный `core` — 424 OK.
+[UI_INVENTORY_JOBS.md](UI_INVENTORY_JOBS.md). Полный `core` — 429 OK.
 
 **Следующая область:** открытых пунктов паритета auth/profile и jobs/applications нет;
 дальше — только продуктовые улучшения из [DESIGN_REVIEW_2026-11.md](../DESIGN_REVIEW_2026-11.md).

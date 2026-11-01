@@ -2121,3 +2121,51 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review
 
 **Пакет:** context/agent-pipeline/packs/J090.review.prompt.md
+
+## 2026-11-02 02:12:55 — J091: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 02:20:45 — J091: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** review: daily gate, statuses, per-search limit, test
+
+**Переход:** reviewing → fixing
+
+## 2026-11-02 02:21:00 — J091: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 02:23:56 — J091: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** review: since must be last_digest
+
+**Переход:** reviewing → fixing
+
+## 2026-11-02 02:24:01 — J091: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** ['README.md', 'docs/DOCS_INDEX.md', 'docs/parity/AUDIT_JOBS_APPLICATIONS.md', 'docs/parity/DISCREPANCIES_JOBS.md', 'docs/parity/JOBS_RESULTS.md', 'docs/parity/README.md', 'docs/parity/REMAINING_UX.md']
+
+## 2026-11-02 02:26:56 — J091: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J091.review.prompt.md

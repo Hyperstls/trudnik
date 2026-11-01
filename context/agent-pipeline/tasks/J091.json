@@ -1,0 +1,37 @@
+{
+  "id": "J091",
+  "title": "P1: дневной дайджест по сохранённым поискам",
+  "goal": "Celery раз в 30 минут проверяет сохранённые поиски и не чаще раза в сутки ставит в outbox одно уведомление о новых подходящих заданиях, кроме собственных.",
+  "why": "Сохранённые поиски сейчас только возвращают к фильтрам. Дайджест даёт возврат без спама и использует уже работающие outbox/prefs/push.",
+  "files": [
+    "djadmin/core/tasks.py",
+    "djadmin/core/celery_app.py",
+    "djadmin/core/views_profile_ext.py",
+    "djadmin/core/tests/test_tasks.py"
+  ],
+  "context_files": [
+    "djadmin/core/notifications.py",
+    "djadmin/core/models.py"
+  ],
+  "interfaces": "tasks.notify_saved_searches: users с notification_prefs.saved_searches; since=saved_search_digest_at или now-24h; parse_qs(query), Job open created_at>since, exclude employer, q/city/skills/payment/status/filter; max 3/search, dedupe; enqueue_notification type saved_search title/body/data link; prefs.saved_search_digest_at=now; always update after scan. celery beat 1800s. views_profile_ext TYPE_LABELS + saved_search. tasks TYPE_PREF_KEYS saved_search→saved_search. Tests: match, own excluded, one per day, pref off skipped.",
+  "acceptance": [
+    "Новое подходящее задание создаёт outbox saved_search.",
+    "Своё задание не попадает.",
+    "Повторный запуск в тот же день не дублирует.",
+    "Поиск без совпадений не создаёт уведомление, но сдвигает digest_at.",
+    "Отключённый тип saved_search блокирует доставку.",
+    "Celery beat содержит задачу."
+  ],
+  "out_of_scope": [
+    "Не добавлять таблицы/миграции.",
+    "Не менять сохранение поисков.",
+    "Не делать мгновенные push на каждое задание."
+  ],
+  "checks": [
+    {
+      "name": "digest_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_tasks.SavedSearchDigestTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

@@ -8,13 +8,19 @@ Push-доставка — следующий инкремент (после VAPI
 """
 import logging
 from datetime import timedelta
+from urllib.parse import parse_qs
+from uuid import UUID
 
+from django.conf import settings
 from django.core.mail import send_mail
+from django.db.models import Q
 from django.db import transaction
+from django.urls import reverse
 from django.utils import timezone
 
 from .celery_app import app
 from .models import EmailLog, Notification, NotificationOutbox, Profile
+from .notifications import enqueue_notification
 from .rpc import call_rpc, call_rpc_rows
 
 logger = logging.getLogger(__name__)
@@ -52,6 +58,7 @@ TYPE_PREF_KEYS = {
     "new_rating": "rating",
     "job_completed": "job",
     "job_expired": "job",
+    "saved_search": "saved_search",
 }
 
 
@@ -234,3 +241,97 @@ def cleanup_old_email_logs() -> int:
     if deleted:
         logger.info("cleanup_old_email_logs: removed=%d", deleted)
     return int(deleted)
+
+
+def _saved_search_jobs(user, item, since):
+    from decimal import Decimal
+    from .models import Application, Job
+
+    params = parse_qs(item.get("query") or "")
+    def one(key):
+        return (params.get(key) or [""])[0].strip()
+
+    qs = Job.objects.filter(status="open", created_at__gt=since).exclude(employer=user)
+    q = one("q")
+    if q:
+        qs = qs.filter(
+            Q(work_type__icontains=q) | Q(organization_name__icontains=q)
+            | Q(city__icontains=q) | Q(detailed_description__icontains=q)
+            | Q(object_description__icontains=q)
+        ).distinct()
+    city = one("city")
+    if city:
+        qs = qs.filter(city__icontains=city)
+    skill_ids = []
+    for raw in params.get("skills") or []:
+        try:
+            skill_ids.append(UUID(str(raw)))
+        except (TypeError, ValueError):
+            continue
+    if skill_ids:
+        qs = qs.filter(job_skills__skill_id__in=skill_ids).distinct()
+    try:
+        qs = qs.filter(payment_amount__gte=Decimal(one("payment_min")))
+    except Exception:
+        pass
+    try:
+        qs = qs.filter(payment_amount__lte=Decimal(one("payment_max")))
+    except Exception:
+        pass
+    job_filter = one("filter")
+    from .models import Application
+    active_apps = Application.objects.filter(worker=user).exclude(
+        status__in=("withdrawn", "cancelled")
+    ).values("job_id")
+    if job_filter == "new":
+        qs = qs.exclude(pk__in=active_apps)
+    elif job_filter == "applied":
+        qs = qs.filter(pk__in=active_apps)
+    return list(qs.order_by("-created_at")[:3])
+
+
+@app.task(ignore_result=True)
+def notify_saved_searches() -> str:
+    """Ежедневный (не чаще 24ч) дайджест по сохранённым поискам."""
+    now = timezone.now()
+    users = Profile.objects.filter(notification_prefs__has_key="saved_searches")
+    notified = 0
+    for user in users.iterator():
+        prefs = user.notification_prefs or {}
+        searches = [item for item in (prefs.get("saved_searches") or []) if isinstance(item, dict)]
+        if not searches:
+            continue
+        since = now - timedelta(hours=24)
+        raw_since = prefs.get("saved_search_digest_at")
+        if raw_since:
+            try:
+                last_digest = timezone.datetime.fromisoformat(raw_since)
+                if timezone.is_naive(last_digest):
+                    last_digest = timezone.make_aware(last_digest)
+                if now - last_digest < timedelta(hours=24):
+                    continue
+                since = last_digest
+            except (TypeError, ValueError):
+                pass
+        found = []
+        seen = set()
+        for item in searches[:10]:
+            name = item.get("name") or "Мой поиск"
+            for job in _saved_search_jobs(user, item, since):
+                if job.pk in seen:
+                    continue
+                seen.add(job.pk)
+                found.append((name, job))
+        found = found[:9]
+        if found:
+            titles = "; ".join("%s — %s" % (name, job.work_type or "Задание") for name, job in found)
+            first = found[0][1]
+            link = (getattr(settings, "SITE_URL", "") or "").rstrip("/") + reverse("core:job_detail", args=[first.pk])
+            enqueue_notification(
+                user.pk, "saved_search", "Новые задания по сохранённому поиску",
+                titles, {"link": link, "job_id": str(first.pk)},
+            )
+            notified += 1
+        prefs["saved_search_digest_at"] = now.isoformat()
+        Profile.objects.filter(pk=user.pk).update(notification_prefs=prefs)
+    return "saved_search_digest: users=%d" % notified

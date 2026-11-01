@@ -9,6 +9,7 @@ from django.utils import timezone
 from core.models import EmailLog, Job, Notification, NotificationOutbox, Profile, UserReport
 from core.tasks import (
     auto_freeze_on_complaints,
+    notify_saved_searches,
     cleanup_old_email_logs,
     drain_notification_outbox,
     expire_old_jobs,
@@ -166,3 +167,87 @@ def neutralize_preloaded_expired_jobs():
     Job.objects.filter(
         status=Job.Status.OPEN, expires_at__lt=timezone.now()
     ).update(expires_at=timezone.now() + timedelta(days=365))
+
+
+class SavedSearchDigestTests(TestCase):
+    def setUp(self):
+        self.user = make_profile("digest-user@example.com", email_verified=True)
+        self.user.notification_prefs = {
+            "saved_searches": [{"id": "s1", "name": "Москва", "query": "city=Москва"}],
+        }
+        self.user.save(update_fields=["notification_prefs"])
+
+    def test_digest_matches_and_deduplicates(self):
+        from core.models import NotificationOutbox
+        employer = make_profile("digest-emp@example.com")
+        job = make_job(employer, work_type="Дайджест-задача", city="Москва")
+        notify_saved_searches()
+        row = NotificationOutbox.objects.get(user=self.user, type="saved_search")
+        self.assertIn("Дайджест-задача", row.body)
+        self.assertIn(str(job.pk), row.data["link"])
+        notify_saved_searches()
+        self.assertEqual(
+            NotificationOutbox.objects.filter(user=self.user, type="saved_search").count(), 1
+        )
+
+    def test_two_searches_both_in_digest(self):
+        from core.models import NotificationOutbox
+        self.user.notification_prefs = {
+            "saved_searches": [
+                {"id": "s1", "name": "Москва", "query": "city=Москва"},
+                {"id": "s2", "name": "Казань", "query": "city=Казань"},
+            ],
+        }
+        self.user.save(update_fields=["notification_prefs"])
+        employer = make_profile("digest-two@example.com")
+        make_job(employer, work_type="Москва-работа", city="Москва")
+        make_job(employer, work_type="Казань-работа", city="Казань")
+        notify_saved_searches()
+        row = NotificationOutbox.objects.get(user=self.user, type="saved_search")
+        self.assertIn("Москва", row.body)
+        self.assertIn("Казань", row.body)
+        self.assertIn("Москва-работа", row.body)
+        self.assertIn("Казань-работа", row.body)
+
+    def test_digest_window_starts_at_last_digest(self):
+        from core.models import NotificationOutbox
+        from django.utils import timezone
+        from datetime import timedelta
+        self.user.notification_prefs = {
+            "saved_searches": [{"id": "s1", "name": "Москва", "query": "city=Москва"}],
+            "saved_search_digest_at": (timezone.now() - timedelta(hours=24, minutes=10)).isoformat(),
+        }
+        self.user.save(update_fields=["notification_prefs"])
+        employer = make_profile("digest-boundary@example.com")
+        job = make_job(employer, work_type="Пограничная задача", city="Москва")
+        Job.objects.filter(pk=job.pk).update(created_at=timezone.now() - timedelta(hours=24, minutes=5))
+        notify_saved_searches()
+        self.assertTrue(
+            NotificationOutbox.objects.filter(user=self.user, type="saved_search").exists()
+        )
+
+    def test_own_job_excluded(self):
+        from core.models import NotificationOutbox
+        make_job(self.user, work_type="Своя задача", city="Москва")
+        notify_saved_searches()
+        self.assertFalse(
+            NotificationOutbox.objects.filter(user=self.user, type="saved_search").exists()
+        )
+
+    def test_disabled_type_blocks_delivery(self):
+        from core.models import NotificationOutbox
+        self.user.notification_prefs = {
+            "saved_searches": [{"id": "s1", "name": "Москва", "query": "city=Москва"}],
+            "saved_search": False,
+        }
+        self.user.save(update_fields=["notification_prefs"])
+        make_job(make_profile("digest-emp2@example.com"), city="Москва")
+        notify_saved_searches()
+        drain_notification_outbox()
+        self.assertFalse(
+            Notification.objects.filter(user=self.user, type="saved_search").exists()
+        )
+        self.assertEqual(
+            NotificationOutbox.objects.get(user=self.user, type="saved_search").status,
+            "sent",
+        )

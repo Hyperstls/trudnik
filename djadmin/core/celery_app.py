@@ -30,6 +30,10 @@ app.conf.beat_schedule = {
         "task": "core.tasks.cleanup_old_email_logs",
         "schedule": 86400.0,
     },
+    "notify-saved-searches": {
+        "task": "core.tasks.notify_saved_searches",
+        "schedule": 1800.0,
+    },
 }
 
 app.autodiscover_tasks(["core"])
