@@ -145,12 +145,16 @@ class PushNotificationsManager {
     }
 
     /**
-     * Получение CSRF-токена из кук
+     * CSRF: сначала meta csrf-token (Django), затем legacy cookie.
      */
     _getCSRFToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta && meta.getAttribute('content')) {
+            return meta.getAttribute('content');
+        }
         const cookieValue = document.cookie
             .split('; ')
-            .find(row => row.startsWith('csrf_token='))
+            .find(row => row.startsWith('csrftoken='))
             ?.split('=')[1];
         return cookieValue || '';
     }

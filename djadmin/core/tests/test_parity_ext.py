@@ -1,7 +1,9 @@
 """Паритет-остаток: 152-ФЗ, prefs, загрузки, работодатели, оценки, bulk."""
 import json
+from pathlib import Path
 from unittest.mock import patch
 
+from django.conf import settings
 from django.contrib.messages import get_messages
 from django.core.cache import cache
 from django.test import TestCase
@@ -534,3 +536,20 @@ class FavoritesPageTests(TestCase):
         self.client.force_login(user)
         response = self.client.get(reverse("core:jobs"))
         self.assertContains(response, reverse("core:favorites_page"))
+
+
+class PushSettingsTests(TestCase):
+    def test_settings_page_wires_push(self):
+        user = make_profile("push-settings@example.com")
+        self.client.force_login(user)
+        response = self.client.get(reverse("core:notification_prefs"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "js/api.js")
+        self.assertContains(response, "js/push-notifications.js")
+        self.assertContains(response, "push-toggle")
+
+    def test_push_manager_uses_meta_csrf(self):
+        path = Path(settings.REPO_ROOT) / "static" / "js" / "push-notifications.js"
+        source = path.read_text(encoding="utf-8")
+        self.assertIn('meta[name="csrf-token"]', source)
+        self.assertIn("csrftoken=", source)

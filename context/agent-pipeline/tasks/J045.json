@@ -1,0 +1,42 @@
+{
+  "id": "J045",
+  "title": "P2: подключить push-уведомления",
+  "goal": "На странице настроек уведомлений можно включить/отключить browser push; скрипт api.js и push-notifications.js подключены, CSRF берётся из meta, а не из неверной cookie.",
+  "why": "push-notifications.js и /push/* существуют, но скрипт не подключён ни в одном шаблоне, apiFetch не загружен, а _getCSRFToken читает cookie csrf_token вместо Django csrftoken (хотя apiFetch перекрывает meta — надёжнее исправить). Пользователь видит чекбокс push_enabled, но подписки браузера нет.",
+  "files": [
+    "static/js/push-notifications.js",
+    "djadmin/core/templates/core/notification_settings.html",
+    "djadmin/core/tests/test_parity_ext.py"
+  ],
+  "context_files": [
+    "static/js/api.js",
+    "djadmin/core/views_profile_ext.py",
+    "djadmin/core/urls.py"
+  ],
+  "interfaces": "push-notifications.js: _getCSRFToken() сначала читает meta[name='csrf-token'], затем cookie csrftoken (не csrf_token). notification_settings.html: {% load static %}; после формы блок «Push-уведомления» с кнопкой id='push-toggle' и status id='push-status'; {% block scripts %} подключает static js/api.js, static js/push-notifications.js и inline DOMContentLoaded: PushNotifications.init(); checkSubscription(); кнопка переключает subscribe/unsubscribe, обновляет текст/статус, блокируется на время запроса. test_parity_ext: GET /notifications/settings содержит js/api.js, js/push-notifications.js, push-toggle; static/js/push-notifications.js содержит meta[name=\"csrf-token\"].",
+  "acceptance": [
+    "В настройках уведомлений отображается блок push с кнопкой включения.",
+    "На странице подключены api.js и push-notifications.js.",
+    "Кнопка включает подписку (subscribe) и отключает (unsubscribe), статус обновляется.",
+    "CSRF для push-запросов берётся из meta csrf-token; fallback — cookie csrftoken.",
+    "Если браузер не поддерживает push, кнопка disabled с пояснением.",
+    "test_parity_ext проходит."
+  ],
+  "out_of_scope": [
+    "Не менять серверные /push endpoints и модель PushSubscription.",
+    "Не менять Service Worker.",
+    "Не менять чекбоксы каналов/типов."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_parity_ext.py",
+      "cwd": "."
+    },
+    {
+      "name": "parity_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_parity_ext --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}
