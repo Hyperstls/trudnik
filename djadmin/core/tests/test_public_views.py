@@ -1185,3 +1185,14 @@ class SavedSearchTests(TestCase):
         self.client.logout()
         response = self.client.post(reverse("core:save_search"), {"q": "x"})
         self.assertEqual(response.status_code, 302)
+
+
+class JobsFilterMarkupTests(TestCase):
+    def test_job_type_filter_is_custom_radio_not_select(self):
+        user = make_profile("filter-markup@example.com", email_verified=True)
+        self.client.force_login(user)
+        response = self.client.get(reverse("core:jobs"))
+        self.assertNotContains(response, '<select name="filter"')
+        self.assertContains(response, 'name="filter" value="new"')
+        self.assertContains(response, 'name="filter" value="applied"')
+        self.assertContains(response, "Все задания")

@@ -1,0 +1,32 @@
+{
+  "id": "J089",
+  "title": "P0: выравнивание фильтров и замена нативного select",
+  "goal": "На desktop радиус и «Рядом со мной» выровнены по высоте; тип задания не перекрывает стрелку и не вылезает на мобильном; используется контролируемый dropdown вместо нативного select.",
+  "why": "На скриншотах кнопка геолокации смещена по высоте, текст «Все задания» наезжает на стрелку, а нативный popup select выходит за пределы bottom-sheet на телефоне.",
+  "files": [
+    "djadmin/core/templates/core/jobs_list.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "static/css/app.css"
+  ],
+  "interfaces": "jobs_list.html: радиус+кнопка в flex items-end, оба h-10; select filter заменён на details+radio (Все/Новые/Откликнулся), на mobile панель static через существующий CSS; убрать hidden filter. Test: авторизованный /jobs содержит radio name=filter и не содержит <select name=\"filter\".",
+  "acceptance": [
+    "Радиус и кнопка одной высоты на desktop.",
+    "Тип задания отображается в dropdown без наложения на стрелку.",
+    "На мобильном dropdown раскрывается внутри листа, не выходит за экран.",
+    "Фильтр filter=new/applied работает через radio.",
+    "Native select для filter отсутствует."
+  ],
+  "out_of_scope": [
+    "Не менять навыки/сортировку.",
+    "Не менять backend фильтрации."
+  ],
+  "checks": [
+    {
+      "name": "filter_markup_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.JobsFilterMarkupTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}
