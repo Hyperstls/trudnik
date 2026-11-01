@@ -680,6 +680,8 @@ class BulkActionsUiTests(TestCase):
         self.assertContains(response, 'id="select-all-jobs"')
         self.assertContains(response, "data-bulk-count")
         self.assertContains(response, "bulk-actions.js")
+        self.assertContains(response, "data-job-status")
+        self.assertContains(response, "data-bulk-requires")
 
     def test_received_applications_have_bulk_controls(self):
         response = self.client.get(reverse("core:my_applications") + "?tab=received")

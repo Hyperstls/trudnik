@@ -21,9 +21,18 @@
             var chosen = selected().length;
             if (count) count.textContent = 'Выбрано: ' + chosen;
             actions.forEach(function (btn) {
-                btn.disabled = chosen === 0;
-                btn.classList.toggle('opacity-50', chosen === 0);
-                btn.classList.toggle('pointer-events-none', chosen === 0);
+                var requires = btn.getAttribute('data-bulk-requires');
+                var applicable = chosen;
+                if (requires) {
+                    var allowed = requires.split(',');
+                    applicable = selected().filter(function (box) {
+                        return allowed.indexOf(box.getAttribute('data-job-status')) >= 0;
+                    }).length;
+                }
+                var off = applicable === 0;
+                btn.disabled = off;
+                btn.classList.toggle('opacity-50', off);
+                btn.classList.toggle('pointer-events-none', off);
             });
             if (all) {
                 all.checked = chosen > 0 && chosen === boxes.length;

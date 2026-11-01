@@ -1,0 +1,40 @@
+{
+  "id": "J081",
+  "title": "UX: компактная панель массовых действий и релевантные кнопки",
+  "goal": "На мобильном панель выбора остаётся под шапкой при скролле, а «Отменить»/«Восстановить» активны только когда среди выбранных есть задания соответствующего статуса.",
+  "why": "После появления select-all панель всё ещё уезжает вверх на длинном списке, а кнопки отмены/восстановления доступны для неподходящих заданий и дают ошибку после отправки. Это снижает число ложных операций.",
+  "files": [
+    "djadmin/core/templates/core/my_jobs.html",
+    "static/js/bulk-actions.js",
+    "static/css/app.css",
+    "djadmin/core/tests/test_parity_ext.py"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/my_applications.html"
+  ],
+  "interfaces": "my_jobs: bulk root получает class bulk-toolbar; job checkbox получает data-job-status='{{ job.status }}'; кнопки cancel/restore получают data-bulk-requires='open,active' / 'cancelled'. bulk-actions.js: для кнопки с data-bulk-requires считать выбранные чекбоксы, у которых data-job-status входит в список; disabled/opacity/pointer-events если нет подходящих; без атрибута — как раньше. app.css: @media(max-width:639px) .bulk-toolbar{position:sticky;top:3.5rem;z-index:20;background:#fafafa;} test: data-job-status и data-bulk-requires присутствуют.",
+  "acceptance": [
+    "Панель не уезжает при скролле на мобильном.",
+    "Cancel активен только при выбранном open/active.",
+    "Restore активен только при выбранном cancelled.",
+    "Duplicate/Delete работают для любого выбранного.",
+    "На десктопе панель остаётся обычной (sticky только mobile)."
+  ],
+  "out_of_scope": [
+    "Не менять backend bulk-RPC.",
+    "Не менять applications bulk.",
+    "Не добавлять новые действия."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": ".venv\\Scripts\\python.exe -m py_compile djadmin/core/tests/test_parity_ext.py",
+      "cwd": "."
+    },
+    {
+      "name": "bulk_status_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_parity_ext.BulkActionsUiTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

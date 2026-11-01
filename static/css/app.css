@@ -913,3 +913,14 @@ progress::-moz-progress-bar {
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(2px);
 }
+
+/* Mobile bulk actions stay visible above the bottom nav (J081). */
+@media (max-width: 639px) {
+    .bulk-toolbar {
+        position: sticky;
+        top: 3.5rem;
+        z-index: 20;
+        background: #fafafa;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+    }
+}
