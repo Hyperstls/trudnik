@@ -5,7 +5,7 @@
 """
 import sys
 from datetime import timedelta
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from django.core import mail
 from django.core.cache import cache
@@ -178,6 +178,28 @@ class RegisterTests(TestCase):
         response = self.client.post("/register", {**REG, "email": "DUP-REG@example.com"})
         self.assertEqual(response.status_code, 200)  # форма с ошибкой, не 500
         self.assertContains(response, "уже зарегистрирован")
+
+    @override_settings(SMARTCAPTCHA_SERVER_KEY="test-server-key")
+    @patch("core.captcha.urllib.request.urlopen")
+    def test_captcha_uses_form_urlencoded(self, mock_urlopen):
+        # Yandex принимает только form-urlencoded; JSON → 403 "No secret provided"
+        response = MagicMock()
+        response.__enter__.return_value.read.return_value = b'{"status":"ok"}'
+        mock_urlopen.return_value = response
+        from core.captcha import verify_captcha_token
+
+        self.assertTrue(verify_captcha_token("tok-captcha"))
+        request = mock_urlopen.call_args[0][0]
+        self.assertEqual(
+            request.full_url, "https://smartcaptcha.cloud.yandex.ru/validate"
+        )
+        self.assertEqual(
+            request.get_header("Content-type"),
+            "application/x-www-form-urlencoded",
+        )
+        self.assertEqual(
+            request.data, b"secret=test-server-key&token=tok-captcha"
+        )
 
     @override_settings(SMARTCAPTCHA_SERVER_KEY="test-server-key")
     def test_captcha_fail_closed(self):

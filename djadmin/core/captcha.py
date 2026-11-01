@@ -7,12 +7,13 @@
 import json
 import logging
 import urllib.request
+from urllib.parse import urlencode
 
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-VALIDATE_URL = "https://smartcaptcha.yandexcloud.net/validate"
+VALIDATE_URL = "https://smartcaptcha.cloud.yandex.ru/validate"
 
 
 def captcha_enabled() -> bool:
@@ -33,12 +34,12 @@ def verify_captcha_token(token: str) -> bool:
         return True  # выключена конфигурацией (dev/тесты)
     if not token:
         return False
-    data = json.dumps(
+    data = urlencode(
         {"secret": settings.SMARTCAPTCHA_SERVER_KEY, "token": token}
     ).encode()
     req = urllib.request.Request(
         VALIDATE_URL, data=data,
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
     try:
         with urllib.request.urlopen(req, timeout=5) as resp:

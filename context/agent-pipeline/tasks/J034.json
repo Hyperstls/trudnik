@@ -1,0 +1,39 @@
+{
+  "id": "J034",
+  "title": "P0: SmartCaptcha validate — form-urlencoded",
+  "goal": "Серверная проверка SmartCaptcha отправляет secret и token как application/x-www-form-urlencoded на официальный endpoint; регистрация и сброс пароля проходят капчу.",
+  "why": "Yandex SmartCaptcha validation API принимает application/x-www-form-urlencoded (docs: secret, token, ip). Текущий код отправляет JSON — API отвечает HTTP 403 {\"status\":\"failed\",\"message\":\"Authentication failed. No secret provided.\"}, поэтому при включённых ключах капча всегда fail-closed и регистрация/сброс на проде невозможны. Подтверждено smoke POST /register и /password-reset/request: 200 «Капча не пройдена», в run-логах 403 от Yandex.",
+  "files": [
+    "djadmin/core/captcha.py",
+    "djadmin/core/tests/test_auth_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_auth.py",
+    "djadmin/config/settings.py"
+  ],
+  "interfaces": "captcha.VALIDATE_URL = 'https://smartcaptcha.cloud.yandex.ru/validate'. verify_captcha_token: payload = urllib.parse.urlencode({'secret': settings.SMARTCAPTCHA_SERVER_KEY, 'token': token}).encode('utf-8'); Request(VALIDATE_URL, data=payload, headers={'Content-Type': 'application/x-www-form-urlencoded'}); ответ JSON status == 'ok'. Поведение fail-closed (нет ключа/токена, сеть, не ok → False) сохраняется. Тест в AuthFlowTests: patch core.captcha.urllib.request.urlopen, override_settings(SMARTCAPTCHA_SERVER_KEY='test-secret'), verify_captcha_token('test-token') → True; проверить req.full_url, Content-Type и req.data == b'secret=test-secret&token=test-token'.",
+  "acceptance": [
+    "Запрос к SmartCaptcha идёт на https://smartcaptcha.cloud.yandex.ru/validate методом POST.",
+    "Content-Type ровно application/x-www-form-urlencoded.",
+    "Тело запроса — secret=<key>&token=<token> (urlencoded), без JSON-обёртки.",
+    "При status='ok' функция возвращает True; при ошибке/не-ok — False (fail-closed).",
+    "test_auth_flows проходит."
+  ],
+  "out_of_scope": [
+    "Не менять форму/шаблоны капчи.",
+    "Не добавлять передачу IP (опциональна в API) — отдельная задача.",
+    "Не менять лимиты/cooldown."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/captcha.py djadmin/core/tests/test_auth_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "auth_flow_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_auth_flows --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}
