@@ -1,0 +1,42 @@
+{
+  "id": "J080",
+  "title": "UX: дублирование задания и удобные массовые действия",
+  "goal": "В «Моих заданиях» можно дублировать одно задание из меню «⋯»; в заданиях и полученных откликах есть «Выбрать все», счётчик выбранных, неактивные без выбора действия и подтверждение удаления/отклонения.",
+  "why": "Backend duplicate/repost и bulk-RPC уже были, но single-duplicate не был доступен в UI. Массовые кнопки всегда активны, без счётчика и подтверждения — на мобильном легко случайно удалить/отклонить; в заданиях не было select-all.",
+  "files": [
+    "djadmin/core/templates/core/my_jobs.html",
+    "djadmin/core/templates/core/my_applications.html",
+    "static/js/bulk-actions.js",
+    "djadmin/core/tests/test_parity_ext.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_flow.py",
+    "djadmin/core/views_public_ext.py"
+  ],
+  "interfaces": "my_jobs: в action-menu добавить POST core:repost_job «Дублировать»; bulk-bar data-bulk-root/data-bulk-form=bulk-jobs-form, select-all data-bulk-all, output data-bulk-count, кнопки data-bulk-action + disabled; delete data-confirm. my_applications: тот же контейнер для bulk-apps-form, select-all data-bulk-all, output, disabled, reject data-confirm; удалить старый inline select-all script, подключить static/js/bulk-actions.js. JS: обновляет счётчик «Выбрано: N», all/indeterminate, disabled+opacity-50 на кнопках, confirm по data-confirm. Тест: GET my-jobs содержит Дублировать/repost/bulk-actions/select-all-jobs; GET my-applications received содержит data-bulk-all/bulk-actions; оба содержат data-bulk-count.",
+  "acceptance": [
+    "Одно задание можно дублировать из меню «⋯».",
+    "Select-all выбирает все чекбоксы текущей страницы; счётчик обновляется.",
+    "Кнопки массовых действий неактивны без выбора.",
+    "Удаление заданий и отклонение откликов требуют подтверждения.",
+    "Старый inline select-all удалён, JS общий для обеих страниц.",
+    "Существующие bulk-RPC и тесты не меняются."
+  ],
+  "out_of_scope": [
+    "Не менять backend bulk/repost логику.",
+    "Не добавлять новые массовые действия.",
+    "Не менять пагинацию."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": ".venv\\Scripts\\python.exe -m py_compile djadmin/core/tests/test_parity_ext.py",
+      "cwd": "."
+    },
+    {
+      "name": "bulk_ui_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_parity_ext.BulkActionsUiTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

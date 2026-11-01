@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load static %}
 {% block title %}Мои отклики — Трудник{% endblock %}
 {% block content %}
 <div class="px-0 py-4 fade-in">
@@ -30,20 +31,25 @@
     {% if apps %}
     {% if tab == 'received' %}
     <form id="bulk-apps-form" method="post" action="{% url 'core:my_applications_bulk' %}">{% csrf_token %}</form>
-    <div class="flex flex-wrap gap-2 mb-3 items-center" role="group" aria-label="Массовые действия">
-        <label class="flex items-center gap-2 text-xs text-neutral-600 mr-1 cursor-pointer">
-            <input type="checkbox" id="select-all-apps" class="rounded border-neutral-300 text-primary-500 focus:ring-primary-500"> Выбрать все
-        </label>
-        <button type="submit" form="bulk-apps-form" name="action" value="accept" class="px-3 h-9 rounded-xl border border-green-200 text-green-700 hover:bg-green-50 text-sm font-medium transition-colors">Принять выбранные</button>
-        <button type="submit" form="bulk-apps-form" name="action" value="reject" class="px-3 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">Отклонить выбранные</button>
-        <button type="submit" form="bulk-apps-form" name="action" value="reopen" class="px-3 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Принять повторно</button>
+    <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-2 mb-3" data-bulk-root data-bulk-form="bulk-apps-form">
+        <div class="flex flex-wrap items-center gap-2 mb-2">
+            <label class="flex items-center gap-2 text-xs text-neutral-600 cursor-pointer">
+                <input type="checkbox" id="select-all-apps" data-bulk-all class="rounded border-neutral-300 text-primary-500 focus:ring-primary-500"> Выбрать все на странице
+            </label>
+            <output data-bulk-count class="text-xs font-medium text-neutral-500" aria-live="polite">Выбрано: 0</output>
+        </div>
+        <div class="flex flex-wrap gap-2" role="group" aria-label="Массовые действия">
+            <button type="submit" form="bulk-apps-form" name="action" value="accept" data-bulk-action class="px-3 h-9 rounded-xl border border-green-200 bg-white text-green-700 hover:bg-green-50 text-sm font-medium transition-colors">Принять выбранные</button>
+            <button type="submit" form="bulk-apps-form" name="action" value="reject" data-bulk-action data-confirm="Отклонить выбранные отклики? Трудники получат уведомление." disabled class="px-3 h-9 rounded-xl border border-red-200 bg-white text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">Отклонить выбранные</button>
+            <button type="submit" form="bulk-apps-form" name="action" value="reopen" data-bulk-action class="px-3 h-9 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Принять повторно</button>
+        </div>
     </div>
     {% endif %}
     <div class="grid gap-3">
         {% for a in apps %}
         <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 flex flex-wrap items-start justify-between gap-3">
             {% if tab == 'received' %}
-            <input type="checkbox" name="app_ids" value="{{ a.pk }}" form="bulk-apps-form" class="app-checkbox mt-1 rounded border-neutral-300 text-primary-500 focus:ring-primary-500 shrink-0" aria-label="Выбрать отклик {{ a.worker.full_name|default:a.pk }}">
+            <input type="checkbox" name="app_ids" value="{{ a.pk }}" form="bulk-apps-form" data-bulk-item class="app-checkbox mt-1 rounded border-neutral-300 text-primary-500 focus:ring-primary-500 shrink-0" aria-label="Выбрать отклик {{ a.worker.full_name|default:a.pk }}">
             {% endif %}
             <div class="min-w-0">
                 {% if tab == 'received' %}
@@ -140,13 +146,7 @@
     </div>
     {% endif %}
 </div>
-<script>
-(function(){
-    var all = document.getElementById('select-all-apps');
-    if (!all) return;
-    all.addEventListener('change', function(){
-        document.querySelectorAll('.app-checkbox').forEach(function(cb){ cb.checked = all.checked; });
-    });
-})();
-</script>
+{% endblock %}
+{% block scripts %}
+<script src="{% static 'js/bulk-actions.js' %}" defer></script>
 {% endblock %}

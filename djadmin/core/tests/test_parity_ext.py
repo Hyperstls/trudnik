@@ -663,3 +663,26 @@ class UxNavigationMenuTests(TestCase):
         self.assertIn("Другие действия", html)
         self.assertIn("Изменить", html)
         self.assertIn("Удалить", html)
+
+
+class BulkActionsUiTests(TestCase):
+    def setUp(self):
+        self.user = make_profile("bulk-ui@example.com", email_verified=True)
+        self.client.force_login(self.user)
+        self.job = make_job(self.user, work_type="Bulk UX")
+        self.worker = make_profile("bulk-worker@example.com", email_verified=True)
+        Application.objects.create(job=self.job, worker=self.worker, status="pending")
+
+    def test_my_jobs_has_duplicate_and_bulk_controls(self):
+        response = self.client.get(reverse("core:my_jobs"))
+        self.assertContains(response, "Дублировать")
+        self.assertContains(response, reverse("core:repost_job", args=[self.job.pk]))
+        self.assertContains(response, 'id="select-all-jobs"')
+        self.assertContains(response, "data-bulk-count")
+        self.assertContains(response, "bulk-actions.js")
+
+    def test_received_applications_have_bulk_controls(self):
+        response = self.client.get(reverse("core:my_applications") + "?tab=received")
+        self.assertContains(response, 'data-bulk-all')
+        self.assertContains(response, "data-bulk-count")
+        self.assertContains(response, "bulk-actions.js")
