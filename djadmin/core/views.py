@@ -6,13 +6,15 @@ Profile.objects.public_workers()/public_visible(). Публичные стран
 не отображают приватные поля (email/phone/inn) — только колонки из PUBLIC_FIELDS.
 """
 import os
+import hashlib
 from collections import Counter
+from functools import lru_cache
 from uuid import UUID
 
 from django.conf import settings
 from django.contrib import messages
 from django.db import connection
-from django.http import Http404, HttpResponse, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -64,6 +66,39 @@ def health(request):
         return JsonResponse({"status": "ok", "db": True})
     except Exception:
         return JsonResponse({"status": "degraded", "db": False}, status=503)
+
+
+@lru_cache(maxsize=1)
+def _apk_info():
+    path = settings.REPO_ROOT / "static" / "apk" / "trudnik.apk"
+    if not path.exists():
+        return None
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    return {
+        "version": "1.1",
+        "size_mb": round(path.stat().st_size / (1024 * 1024), 1),
+        "sha256": digest,
+    }
+
+
+def app_download(request):
+    """Как установить приложение: Android APK, iPhone/iPad PWA, ПК PWA."""
+    return render(request, "core/app_download.html", {"apk": _apk_info()})
+
+
+def download_apk(request):
+    """Отдача подписанного APK как файла (не inline)."""
+    path = settings.REPO_ROOT / "static" / "apk" / "trudnik.apk"
+    if not path.exists():
+        raise Http404("APK не найден")
+    response = FileResponse(
+        open(path, "rb"),
+        content_type="application/vnd.android.package-archive",
+        as_attachment=True,
+        filename="trudnik-1.1.apk",
+    )
+    response["Cache-Control"] = "public, max-age=3600"
+    return response
 
 
 def home(request):

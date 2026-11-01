@@ -1,0 +1,42 @@
+{
+  "id": "J063",
+  "title": "P1: статические артефакты APK/TWA/OG",
+  "goal": "В репозитории лежат подписанный APK v1.1, assetlinks с реальным SHA-256 ключа, OG-превью 1200×630 и корректный PWA manifest.",
+  "why": "APK пересобран под канонический host, но без файла в static, отпечатка в assetlinks и OG-картинки TWA/соцпревью не работают. PWA manifest ссылается на несуществующий Play-релиз и shortcut /job/new вместо /jobs/new.",
+  "files": [
+    "static/apk/trudnik.apk",
+    "static/.well-known/assetlinks.json",
+    "static/icons/og-preview.png",
+    "static/manifest.json"
+  ],
+  "context_files": [
+    "twa-project/twa-manifest.json",
+    "djadmin/core/views.py"
+  ],
+  "interfaces": "static/apk/trudnik.apk — подписанный release APK (package ru.trudnik.app, versionCode 2, versionName 1.1, host xn--d1aigknli.xn--p1ai). static/.well-known/assetlinks.json — package_name ru.trudnik.app, sha256_cert_fingerprints ['08:AD:60:85:3B:8A:99:F8:CF:C6:E4:99:3D:A8:CE:F8:62:10:94:C4:6A:BD:2C:95:04:9D:E0:CD:3C:67:C8:8C']. static/icons/og-preview.png — PNG 1200×630. static/manifest.json — prefer_related_applications=false, без related_applications, shortcut «Создать задание» url=/jobs/new.",
+  "acceptance": [
+    "APK существует, >500 КБ, package ru.trudnik.app.",
+    "assetlinks содержит реальный SHA-256 отпечаток ключа.",
+    "OG-превью 1200×630 PNG.",
+    "PWA manifest не ссылается на несуществующий Play-релиз.",
+    "Shortcut «Создать задание» ведёт на /jobs/new.",
+    "manage.py check проходит."
+  ],
+  "out_of_scope": [
+    "Не менять код приложения.",
+    "Не публиковать в Google Play.",
+    "Не менять TWA-проект."
+  ],
+  "checks": [
+    {
+      "name": "static_checks",
+      "cmd": "{python} -c \"from pathlib import Path; import json,hashlib; from PIL import Image; a=Path('static/apk/trudnik.apk'); assert a.stat().st_size>500000; al=json.loads(Path('static/.well-known/assetlinks.json').read_text(encoding='utf-8')); assert al[0]['target']['sha256_cert_fingerprints'][0].startswith('08:AD:60:85'); im=Image.open('static/icons/og-preview.png'); assert im.size==(1200,630); m=json.loads(Path('static/manifest.json').read_text(encoding='utf-8')); assert m.get('prefer_related_applications') is False; assert all(s['url']!='/job/new' for s in m.get('shortcuts',[])); print('static assets ok')\"",
+      "cwd": "."
+    },
+    {
+      "name": "check",
+      "cmd": "{python} djadmin/manage.py check",
+      "cwd": "."
+    }
+  ]
+}

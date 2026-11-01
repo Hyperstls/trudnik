@@ -42,7 +42,7 @@ async function main() {
   const Color = require(colorPath);
 
   console.log('Fetching web manifest...');
-  const manifestUrl = 'https://trudnik.onrender.com/static/manifest.json';
+  const manifestUrl = `https://${twaConfig.host}/static/manifest.json`;
   let m = await core.TwaManifest.fromWebManifest(manifestUrl);
 
   console.log('Manifest loaded:', m.name, '| display:', m.display, '| theme:', m.themeColor);
@@ -64,7 +64,7 @@ async function main() {
   m.fallbackType = twaConfig.fallbackType;
   m.enableNotifications = twaConfig.enableNotifications;
 
-  const baseUrl = 'https://trudnik.onrender.com';
+  const baseUrl = `https://${twaConfig.host}`;
   m.iconUrl = twaConfig.icon.startsWith('http') ? twaConfig.icon : baseUrl + '/' + twaConfig.icon.replace(/^\//, '');
   m.maskableIconUrl = twaConfig.maskableIcon.startsWith('http') ? twaConfig.maskableIcon : baseUrl + '/' + twaConfig.maskableIcon.replace(/^\//, '');
   m.monochromeIconUrl = twaConfig.monochromeIcon.startsWith('http') ? twaConfig.monochromeIcon : baseUrl + '/' + twaConfig.monochromeIcon.replace(/^\//, '');

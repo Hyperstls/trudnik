@@ -1,0 +1,39 @@
+{
+  "id": "J062",
+  "title": "P2/P3: ссылка на приложение и фон «Изменить»",
+  "goal": "В профильном меню и футере есть «Установить приложение» → /app; кнопка «Изменить» в «Моих заданиях» имеет нейтральный фон/рамку, как соседние кнопки.",
+  "why": "Скачивание APK/PWA должно быть доступно без знания URL. В «Моих заданиях» ссылка «Изменить» была текстовой без поверхности, выпадая из ряда action-кнопок.",
+  "files": [
+    "djadmin/core/templates/core/base.html",
+    "djadmin/core/templates/core/my_jobs.html",
+    "djadmin/core/tests/test_parity_ext.py"
+  ],
+  "context_files": [
+    "djadmin/core/urls.py",
+    "djadmin/core/templates/core/app_download.html"
+  ],
+  "interfaces": "base.html: в profile-menu (desktop) добавить ссылку core:app_download «Установить приложение» с иконкой download; в footer nav — ссылку «Приложение» на core:app_download. my_jobs.html: ссылка «Изменить» class='action-icon-btn bg-neutral-50 border border-neutral-200 hover:bg-neutral-100'. test_parity_ext: GET /jobs (публично) содержит reverse('core:app_download'); авторизованный GET /my-jobs содержит «Изменить» и класс bg-neutral-50.",
+  "acceptance": [
+    "Ссылка /app доступна из футера и профильного меню.",
+    "Кнопка «Изменить» визуально имеет фон/рамку и hover.",
+    "Существующая навигация не меняется.",
+    "test_parity_ext проходит."
+  ],
+  "out_of_scope": [
+    "Не менять app_download view/template.",
+    "Не менять нижнюю мобильную навигацию.",
+    "Не менять другие action-кнопки."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_parity_ext.py",
+      "cwd": "."
+    },
+    {
+      "name": "parity_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_parity_ext --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

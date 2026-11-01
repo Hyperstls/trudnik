@@ -9,6 +9,8 @@ app_name = "core"
 
 urlpatterns = [
     path("", views.home, name="home"),
+    path("app", views.app_download, name="app_download"),
+    path("app/download", views.download_apk, name="download_apk"),
     path("jobs", views.jobs_list, name="jobs"),
     path("jobs/geo", views.jobs_geo_set, name="jobs_geo_set"),
     path("search", RedirectView.as_view(pattern_name="core:jobs", permanent=False, query_string=True), name="search"),

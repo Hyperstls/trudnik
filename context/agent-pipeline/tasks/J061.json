@@ -1,0 +1,42 @@
+{
+  "id": "J061",
+  "title": "P1: страница скачивания Android APK и PWA",
+  "goal": "GET /app показывает способы установки на Android/iPhone/ПК, а GET /app/download отдаёт подписанный APK с правильным MIME и Content-Disposition.",
+  "why": "APK/TWA пересобран под канонический домен, но в Django нет страницы/ссылки для скачивания. Нужна удобная установка на мобильные и ПК, а также безопасная отдача файла из static.",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/urls.py",
+    "djadmin/core/templates/core/app_download.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "static/apk/trudnik.apk",
+    "static/.well-known/assetlinks.json",
+    "static/manifest.json"
+  ],
+  "interfaces": "views.py: _apk_info() @lru_cache — path settings.REPO_ROOT/'static'/'apk'/'trudnik.apk', size_mb, sha256; app_download(request) рендерит core/app_download.html с apk (или None); download_apk(request) FileResponse(open(path,'rb'), content_type='application/vnd.android.package-archive', as_attachment=True, filename='trudnik-1.1.apk'), Cache-Control public max-age=3600, 404 если файла нет. urls.py: path('app', views.app_download, name='app_download'); path('app/download', views.download_apk, name='download_apk'). app_download.html: заголовок «Приложение Трудник», карточка Android с кнопкой «Скачать APK» (core:download_apk), версия/размер/SHA-256, пояснение про установку из неизвестного источника; карточка iPhone/iPad — Safari → «Поделиться» → «На экран Домой»; карточка ПК — Chrome/Edge → иконка установки; ссылка «Открыть веб-версию» /jobs. test_public_views: GET /app 200 содержит «Скачать APK», «Android», «iPhone»; GET /app/download 200, Content-Type application/vnd.android.package-archive, Content-Disposition attachment; длина файла > 500000.",
+  "acceptance": [
+    "/app доступен без логина и показывает инструкции для Android/iPhone/ПК.",
+    "Кнопка «Скачать APK» ведёт на /app/download.",
+    "APK отдаётся как attachment с правильным MIME.",
+    "Страница показывает версию, размер и SHA-256.",
+    "test_public_views проходит."
+  ],
+  "out_of_scope": [
+    "Не менять содержимое APK/TWA.",
+    "Не добавлять Google Play.",
+    "Не менять PWA manifest."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views.py djadmin/core/urls.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

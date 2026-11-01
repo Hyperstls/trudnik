@@ -1,0 +1,41 @@
+{
+  "id": "J060",
+  "title": "P1: канонический домен и OG/Twitter превью",
+  "goal": "Любой запрос к trudnik-hyperstls.msk1.amvera.tech перенаправляется на https://xn--d1aigknli.xn--p1ai; страницы содержат canonical/OG/Twitter метаданные с логотипом для мессенджеров.",
+  "why": "Сейчас пользователи и письма могут попадать на amvera.tech, а при отправке ссылки в мессенджере нет og:title/og:description/og:image — превью не подтягивается. Нужен единый канонический домен и соцметаданные.",
+  "files": [
+    "djadmin/core/middleware.py",
+    "djadmin/config/settings.py",
+    "djadmin/core/templates/core/base.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/config/urls.py",
+    "static/icons/og-preview.png"
+  ],
+  "interfaces": "settings: CANONICAL_HOST = os.getenv('CANONICAL_HOST','xn--d1aigknli.xn--p1ai'); SITE_URL = os.getenv('SITE_URL','https://'+CANONICAL_HOST).rstrip('/'); MIDDLEWARE после SecurityMiddleware — core.middleware.CanonicalHostMiddleware. Middleware: при DEBUG пропускать; host = request.get_host().split(':')[0].lower(); canonical = settings.CANONICAL_HOST; пропускать canonical, localhost/127.0.0.1/testserver, /health; иначе 301 для GET/HEAD и 308 для остальных на https://{canonical}{request.get_full_path()}. base.html: link rel=canonical, og:site_name/type/title/description/url/image (static/icons/og-preview.png), og:image:width=1200 height=630, twitter:card=summary_large_image, twitter:title/description/image; блоки og_title/og_description/og_image с дефолтами. tests: noncanonical host GET /jobs?q=x → 301 на canonical; /health с noncanonical host не редиректится; canonical host отдаёт 200; страница содержит og:image и twitter:card.",
+  "acceptance": [
+    "amvera.tech → 301 (GET) / 308 (POST) на xn--d1aigknli.xn--p1ai с сохранением пути и query.",
+    "localhost/testserver/health не редиректятся.",
+    "Канонический домен работает без редиректа.",
+    "Страницы содержат canonical, og:title/description/url/image и twitter:card.",
+    "test_public_views проходит."
+  ],
+  "out_of_scope": [
+    "Не менять DNS/сертификаты Amvera.",
+    "Не менять API/маршруты.",
+    "Не добавлять аналитику."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/middleware.py djadmin/config/settings.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

@@ -120,6 +120,7 @@ PASSWORD_HASHERS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "core.middleware.CanonicalHostMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -197,6 +198,11 @@ DJANGO_ADMIN_ALLOWED_IPS = [
 LOGIN_URL = "/login"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/jobs"
+
+# Канонический домен: все остальные хосты (amvera.tech, старые ссылки) → 301/308.
+# Домен в punycode: HTTP/2 и браузеры передают именно его.
+CANONICAL_HOST = os.getenv("CANONICAL_HOST", "xn--d1aigknli.xn--p1ai")
+SITE_URL = os.getenv("SITE_URL", "https://" + CANONICAL_HOST).rstrip("/")
 
 # ── Email (SMTP из env; без SMTP_HOST — console-бэкенд для dev) ────────────
 def _smtp_username() -> str:

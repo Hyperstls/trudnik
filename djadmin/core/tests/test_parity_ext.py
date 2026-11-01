@@ -625,3 +625,15 @@ class MultiroleFavoriteTypeTests(TestCase):
         self.assertTrue(
             Favorite.objects.filter(user=viewer, target=target, favorite_type="worker").exists()
         )
+
+
+class AppDownloadLinksTests(TestCase):
+    def test_footer_links_to_app_page(self):
+        response = self.client.get(reverse("core:jobs"))
+        self.assertContains(response, reverse("core:app_download"))
+
+    def test_profile_menu_links_to_app_page(self):
+        user = make_profile("app-link@example.com")
+        self.client.force_login(user)
+        response = self.client.get(reverse("core:jobs"))
+        self.assertContains(response, "Установить приложение")

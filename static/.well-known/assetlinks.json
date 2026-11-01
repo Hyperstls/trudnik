@@ -1,10 +1,14 @@
-[{
-  "relation": ["delegate_permission/common.handle_all_urls"],
-  "target": {
-    "namespace": "android_app",
-    "package_name": "ru.trudnik.app",
-    "sha256_cert_fingerprints": [
-      "REPLACE_WITH_RELEASE_KEY_FINGERPRINT"
-    ]
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "ru.trudnik.app",
+      "sha256_cert_fingerprints": [
+        "08:AD:60:85:3B:8A:99:F8:CF:C6:E4:99:3D:A8:CE:F8:62:10:94:C4:6A:BD:2C:95:04:9D:E0:CD:3C:67:C8:8C"
+      ]
+    }
   }
-}]
+]

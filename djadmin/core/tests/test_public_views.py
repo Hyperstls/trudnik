@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import Http404
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -926,3 +926,63 @@ class WorkerReportModalTests(TestCase):
         self.assertContains(response, 'aria-labelledby="report-worker-title"')
         self.assertContains(response, reverse("core:report_user", args=[target.pk]))
         self.assertContains(response, "Отправить жалобу")
+
+
+@override_settings(
+    DEBUG=False,
+    ALLOWED_HOSTS=["testserver", "xn--d1aigknli.xn--p1ai", "trudnik-hyperstls.msk1.amvera.tech"],
+    CANONICAL_HOST="xn--d1aigknli.xn--p1ai",
+)
+class CanonicalHostTests(TestCase):
+    def test_noncanonical_get_redirects_with_query(self):
+        response = self.client.get(
+            "/jobs?q=test", HTTP_HOST="trudnik-hyperstls.msk1.amvera.tech"
+        )
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(
+            response["Location"],
+            "https://xn--d1aigknli.xn--p1ai/jobs?q=test",
+        )
+
+    def test_noncanonical_post_redirects_308(self):
+        response = self.client.post(
+            "/jobs", HTTP_HOST="trudnik-hyperstls.msk1.amvera.tech"
+        )
+        self.assertEqual(response.status_code, 308)
+        self.assertEqual(
+            response["Location"], "https://xn--d1aigknli.xn--p1ai/jobs"
+        )
+
+    def test_health_is_exempt(self):
+        response = self.client.get(
+            "/health", HTTP_HOST="trudnik-hyperstls.msk1.amvera.tech"
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_canonical_host_is_not_redirected(self):
+        response = self.client.get(
+            "/jobs", HTTP_HOST="xn--d1aigknli.xn--p1ai"
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_social_meta_present(self):
+        response = self.client.get("/jobs")
+        self.assertContains(response, 'rel="canonical"')
+        self.assertContains(response, "og:image")
+        self.assertContains(response, "og-preview.png")
+        self.assertContains(response, 'name="twitter:card"')
+
+
+class AppDownloadTests(TestCase):
+    def test_app_page_and_apk(self):
+        page = self.client.get(reverse("core:app_download"))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Скачать APK")
+        self.assertContains(page, "Android")
+        self.assertContains(page, "iPhone")
+        apk = self.client.get(reverse("core:download_apk"))
+        self.assertEqual(apk.status_code, 200)
+        self.assertEqual(
+            apk["Content-Type"], "application/vnd.android.package-archive"
+        )
+        self.assertIn("attachment", apk["Content-Disposition"])

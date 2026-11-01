@@ -1,6 +1,34 @@
 """Мидлвари Django-компаньона."""
 from django.conf import settings
-from django.http import HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden
+
+
+class CanonicalHostMiddleware:
+    """Все публичные запросы — на каноническом домене (трудник.рф)."""
+
+    LOCAL_HOSTS = {"localhost", "127.0.0.1", "testserver", "[::1]"}
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if settings.DEBUG:
+            return self.get_response(request)
+        canonical = getattr(settings, "CANONICAL_HOST", "").strip().lower()
+        if not canonical:
+            return self.get_response(request)
+        host = request.get_host().split(":")[0].strip().lower()
+        if host == canonical or host in self.LOCAL_HOSTS:
+            return self.get_response(request)
+        if request.path.startswith("/health"):
+            return self.get_response(request)
+        target = "https://%s%s" % (canonical, request.get_full_path())
+        if request.method in ("GET", "HEAD"):
+            response = HttpResponse(status=301)
+        else:
+            response = HttpResponse(status=308)
+        response["Location"] = target
+        return response
 
 
 def client_ip(request) -> str:
