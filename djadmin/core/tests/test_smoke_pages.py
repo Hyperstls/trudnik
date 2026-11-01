@@ -55,6 +55,8 @@ class SmokeAllPagesTests(TestCase):
         response = self.client.get(reverse("core:jobs"))
         self.assertContains(response, 'name="skills"')
         self.assertNotContains(response, '<select name="skills"')
+        self.assertContains(response, "absolute right-0 z-30")
+        self.assertNotContains(response, "absolute left-0 z-30")
 
     def test_public_pages(self):
         self.client.logout()

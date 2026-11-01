@@ -1,0 +1,37 @@
+{
+  "id": "J042",
+  "title": "UX: панель навыков не уезжает за экран",
+  "goal": "Выпадающий список навыков на мобильном выровнен по правому краю своей кнопки, не выходит за viewport и не обрезает названия.",
+  "why": "Скриншот 444px: панель absolute left-0 w-64 открывается от кнопки «Навыки» (x≈203) и уходит за правый край (203+256>444), пункты обрезаны. На десктопе right-0 тоже корректен, т.к. панель — overlay.",
+  "files": [
+    "djadmin/core/templates/core/jobs_list.html",
+    "djadmin/core/tests/test_smoke_pages.py"
+  ],
+  "context_files": [
+    "static/css/app.css"
+  ],
+  "interfaces": "jobs_list.html: панель навыков — class 'absolute right-0 z-30 mt-1 w-64 max-h-64 overflow-y-auto rounded-xl border border-neutral-200 bg-white p-2 shadow-lg' (left-0 убрать); label пункта — flex items-center gap-2; span названия — min-w-0 break-words. test_smoke_pages.test_jobs_filter_has_skill_checkboxes дополнительно: assertContains 'absolute right-0 z-30', assertNotContains 'absolute left-0 z-30'.",
+  "acceptance": [
+    "Панель навыков выровнена по правому краю summary и не выходит за viewport на ширине 390–444px.",
+    "Длинные названия навыков переносятся, а не обрезаются.",
+    "Панель прокручивается при большом числе навыков (max-h-64 overflow-y-auto).",
+    "test_smoke_pages проходит."
+  ],
+  "out_of_scope": [
+    "Не менять логику выбранных навыков и форму.",
+    "Не менять другие фильтры.",
+    "Не добавлять новые CSS-утилиты."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_smoke_pages.py",
+      "cwd": "."
+    },
+    {
+      "name": "smoke_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_smoke_pages --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}
