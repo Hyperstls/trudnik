@@ -2,8 +2,8 @@
 
 **Дата:** 2026-10-31
 **Эталон Flask:** `origin/main-flask` @ `9b3ed42` (read-only worktree `../trudnik-flask`)
-**Django:** `feat/agent-pipeline` @ `3d517b0` (`main` @ `3f4aa40` не менялся)
-**Статус:** auth/profile — P0/P1 закрыты; jobs/applications — P0/P1 закрыты (кроме bulk duplicate).
+**Django:** `feat/agent-pipeline` @ J033 (`main` @ `3f4aa40` не менялся)
+**Статус:** auth/profile — P0/P1 закрыты; jobs/applications — P0/P1 и P2 закрыты.
 **Обновление 2026-10-31:** P0-01…P0-04 исправлены контрактами P001–P004
 (verify PASS + functional PASS + pattern PASS), см. [P0_RESULTS.md](P0_RESULTS.md).
 P1-01/02/06 исправлены контрактами P101/P102/P106, P1-03/04/11 — P103/P104,
@@ -12,14 +12,15 @@ P1-10 ORM-путь — P110; P1-05 — P105. См. [P1_RESULTS.md](P1_RESULTS.md
 P1-13 + DB-default P1-10: dev и production — **65/65**, `email_verified default=false`,
 gate OK; процедура и восстановление описаны в [MIGRATION_LEDGER.md](MIGRATION_LEDGER.md).
 
-**Jobs/applications:** аудит и P0/P1 закрыты контрактами J001–J010 —
+**Jobs/applications:** аудит, P0/P1 и P2 закрыты контрактами J001–J033
+(открытых пунктов нет; P2-04/P2-07/P2-09 — осознанные решения, P2-12 карта n/a) —
 см. [JOBS_RESULTS.md](JOBS_RESULTS.md), [AUDIT_JOBS_APPLICATIONS.md](AUDIT_JOBS_APPLICATIONS.md),
 [DISCREPANCIES_JOBS.md](DISCREPANCIES_JOBS.md),
 [ROUTES_MATRIX_JOBS.md](ROUTES_MATRIX_JOBS.md),
-[UI_INVENTORY_JOBS.md](UI_INVENTORY_JOBS.md). Остались P2 и bulk duplicate.
+[UI_INVENTORY_JOBS.md](UI_INVENTORY_JOBS.md). Полный `core` — 344 OK.
 
-**Следующая область:** P2 UX/паритет jobs (каталог, detail, bulk apply, ratings/employers)
-и bulk duplicate; затем финальный e2e-прогон и деплой накопленных J-коммитов.
+**Следующая область:** финальный e2e-smoke и деплой накопленных J-коммитов;
+открытых пунктов паритета jobs/applications нет.
 
 **E2E smoke (Docker):** `/jobs`, `/workers`, `/login`, `/register`, `/faq` → 200;
 `/privacy`, `/terms`, `/safety` были 404 из-за пустого `site_pages` — исправлено L001

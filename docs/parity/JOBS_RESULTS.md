@@ -1,10 +1,10 @@
-# Jobs / applications — результаты паритета (J001–J028)
+# Jobs / applications — результаты паритета (J001–J033)
 
 **Дата:** 2026-11-01
 **Ветка:** `feat/agent-pipeline` (Django `main` не менялся)
 **Метод:** контракт → dispatch → verify (exit-код) → независимый pattern-review → done.
-**Итог:** P0 и P1 закрыты; P2-02/P2-03/P2-05/P2-06/P2-08 закрыты; P2-01 закрыт end-to-end (гео, карта, координаты в форме); P2-12 — карта трудников n/a.
-Полный `manage.py test core` — **322 OK**; `pre_deploy_check` — 7/7.
+**Итог:** P0 и P1 закрыты; P2-01/02/03/05/06/08/10/11/12/13 закрыты; P2-04/P2-07/P2-09 — осознанные решения.
+Полный `manage.py test core` — **344 OK**; `pre_deploy_check` — 7/7.
 
 ## Контракты
 
@@ -39,6 +39,11 @@
 | **J025** | P2-01 (карта): Yandex Maps с метками заданий (опционально по ключу) | PASS | PASS |
 | **J027** | P2-01 (координаты): карта-пикер в форме задания, lat/lng сохраняются | PASS | PASS |
 | **J028** | P2-01: на карте только офлайн-задания (address+coords) | PASS | PASS |
+| **J029** | P2-11: уникальность (rater, job, rated_user), точечный upsert, accepted-гейт, отзывы по target_type | PASS | PASS |
+| **J030** | P2-11 UI: prefill оценки в rate_workers, подписи «От работодателя/работника» | PASS | PASS |
+| **J031** | P2-13: каталог работодателей по open-заданиям, фильтры/сортировки, blacklist, избранное | PASS | PASS |
+| **J032** | P2-13: карточка работодателя — open-only, blacklist 404, избранное, метка отклика | PASS | PASS |
+| **J033** | P2-10: после accepted меняется только описание задания | PASS | PASS |
 
 ## Ключевая находка контрактной проверки
 
@@ -54,16 +59,23 @@
 
 | Пункт | Статус |
 |---|---|
-| Bulk duplicate заданий | ❌ требует выноса repost-хелпера в сервис |
 | Bulk duplicate заданий | ✅ J017 |
-| P2-12: карта трудников | n/a — у Profile нет lat/lng (J026 blocked); фильтры/бейджи закрыты J021/J023 |
-| P2-01 | ✅ J013/J019/J024/J025/J027/J028 |
+| P2-01 каталог/гео/карта | ✅ J013/J019/J024/J025/J027/J028 |
 | P2-02 detail | ✅ J014/J016/J018 |
-| P2-09..P2-13 ratings/employers/workers: карта/бейджи и остаток UI | open (P2-12 фильтры — J021) |
+| P2-03 валидация | ✅ J022 |
+| P2-04 redirect после create | ✅ осознанное UX-улучшение (detail вместо my-jobs) |
+| P2-07 org/object description в форме | ✅ осознанное UX-улучшение (Flask оставлял пустыми) |
+| P2-09 job_applicants для админа | ✅ осознанное админ-исключение (`admin_required` разрешён AGENTS.md) |
+| P2-10 edit после accepted | ✅ J033 |
+| P2-11 ratings/rate_workers | ✅ J029/J030 |
+| P2-12 каталог трудников | ✅ J021/J023; карта n/a — у Profile нет lat/lng (J026 blocked) |
+| P2-13 employers/ratings | ✅ J031/J032 |
+
+Открытых пунктов паритета jobs/applications нет.
 
 ## Доказательства
 
-- Контракты: `context/agent-pipeline/tasks/J001.json` … `J028.json`.
+- Контракты: `context/agent-pipeline/tasks/J001.json` … `J033.json`.
 - **J026 blocked:** карта трудников — у `Profile` нет lat/lng; потребовала бы миграцию/геокодинг.
 - Логи проверок: `context/agent-pipeline/logs/J00*.verify.log`.
 - Решения/заметки: `context/agent-pipeline/decisions.md`.

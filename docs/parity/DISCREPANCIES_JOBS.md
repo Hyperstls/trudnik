@@ -28,8 +28,14 @@ JOB-P2-01 закрыт J013/J019/J024/J025/J027/J028 (фильтры, навык
 JOB-P2-08 закрыт J020 (q ищет по object_description).
 JOB-P2-12 закрыт фильтрами J021 и бейджами J023; карта трудников невыполнима
 без lat/lng профиля (J026 blocked).
-JOB-P2-03 закрыт J022 (название 255 / описание 5000). Полный core-набор — 322 OK.
-Остальные пункты открыты.
+JOB-P2-03 закрыт J022 (название 255 / описание 5000).
+JOB-P2-11 закрыт J029/J030: уникальность (rater, job, rated_user), точечный upsert,
+accepted-гейт, отзывы по target_type, prefill/подписи в UI.
+JOB-P2-13 закрыт J031/J032: каталог по open-заданиям без role-гейта, фильтры,
+blacklist, избранное, open-only detail и метка отклика.
+JOB-P2-10 закрыт J033: после accepted меняется только detailed_description.
+JOB-P2-04/P2-07/P2-09 — осознанные решения (UX-redirect, дополнительные поля формы,
+админ-доступ к откликам). Полный core-набор — 344 OK. Открытых пунктов нет.
 
 ## P0
 
@@ -62,16 +68,16 @@ JOB-P2-03 закрыт J022 (название 255 / описание 5000). По
 | JOB-P2-01 | Каталог без карты/гео/навыков/payment_max/filter new-applied. | Flask `jobs.py:127-389`, `index.html`; Django `views.py:61-109`, `jobs_list.html` 85 строк |
 | JOB-P2-02 | Job detail упрощён: нет application_count, can_withdraw, employer verification, share/report/favorite employer, ratings-секции. | Flask `job_detail.html` 800+; Django 109 строк |
 | JOB-P2-03 | Max lengths: organization_name 500 vs 255; detailed_description без max vs 5000. | Flask `jobs.py:659-668`; Django `models.py:254-257` |
-| JOB-P2-04 | После create Django ведёт на detail; Flask — в my_jobs. | `views_flow.py:147-148`; `jobs.py:745` |
-| JOB-P2-05 | bulk_apply: нет per-job try/except, detailed skipped/error counts, уведомлений. | `views_public_ext.py:88-138`; Flask `applications.py:127-214` |
-| JOB-P2-06 | job_photo_delete не удаляет файл с диска. | `views_public_ext.py:161-168` |
-| JOB-P2-07 | JobForm содержит org_description/object_description, Flask ставит пустые. | `forms.py:8-12`; Flask `jobs.py:715-716` |
-| JOB-P2-08 | q не ищет по object_description. | `views.py:63-66`; Flask `jobs.py:173-176` |
-| JOB-P2-09 | job_applicants разрешён админу; Flask — владельцу. | `views_flow.py:235-239`; `applications.py:518+` |
-| JOB-P2-10 | job_edit разрешён для любых статусов; Flask — проверить ограничения. | `views_flow.py:153-156`; Flask `jobs.py:1198+` |
-| JOB-P2-11 | Ratings/rate_workers упрощены. | Flask `ratings.py` 384; Django `views_public_ext.py:58-86` |
-| JOB-P2-12 | Каталог трудников без skills/карты/бейджей invited/reliable. | Flask `jobs.py:389-508`; Django `views.py:147-154` |
-| JOB-P2-13 | Employers/ratings pages упрощены. | Flask `employers.py`/`ratings.py`; Django `views_public_ext.py` |
+| JOB-P2-04 | После create Django ведёт на detail; Flask — в my_jobs. | `views_flow.py:147-148`; `jobs.py:745` — осознанное UX-улучшение |
+| JOB-P2-05 | bulk_apply: нет per-job try/except, detailed skipped/error counts, уведомлений. | `views_public_ext.py:88-138`; Flask `applications.py:127-214` — закрыто J012 |
+| JOB-P2-06 | job_photo_delete не удаляет файл с диска. | `views_public_ext.py:161-168` — закрыто J011 |
+| JOB-P2-07 | JobForm содержит org_description/object_description, Flask ставит пустые. | `forms.py:8-12`; Flask `jobs.py:715-716` — осознанное UX-улучшение |
+| JOB-P2-08 | q не ищет по object_description. | `views.py:63-66`; Flask `jobs.py:173-176` — закрыто J020 |
+| JOB-P2-09 | job_applicants разрешён админу; Flask — владельцу. | `views_flow.py:235-239`; осознанное админ-исключение (`admin_required` разрешён AGENTS.md) |
+| JOB-P2-10 | job_edit разрешён для любых статусов; Flask — проверить ограничения. | `views_flow.py:153-156`; Flask `jobs.py:1198+` — закрыто J033 (locked после accepted) |
+| JOB-P2-11 | Ratings/rate_workers упрощены. | Flask `ratings.py` 384; Django `views_public_ext.py:58-86` — закрыто J029/J030 |
+| JOB-P2-12 | Каталог трудников без skills/карты/бейджей invited/reliable. | Flask `jobs.py:389-508`; Django `views.py:147-154` — закрыто J021/J023, карта n/a |
+| JOB-P2-13 | Employers/ratings pages упрощены. | Flask `employers.py`/`ratings.py`; Django `views_public_ext.py` — закрыто J031/J032 |
 
 ## Что совпало
 
