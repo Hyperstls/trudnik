@@ -8,12 +8,24 @@
         Все работодатели
     </a>
     <div class="bg-white rounded-2xl border border-neutral-200 shadow-card p-6">
-        <div class="flex items-center gap-3">
-            {% if p.avatar_url %}<img src="{{ p.avatar_url|absurl }}" alt="" class="w-16 h-16 rounded-full object-cover border-2 border-primary-500">{% endif %}
-            <div>
-                <h1 class="text-xl font-bold text-neutral-900">{{ p.full_name }}</h1>
-                <p class="text-sm text-neutral-500">★ {{ p.rating|default:0|floatformat:1 }} ({{ p.total_reviews|default:0 }} отзывов){% if p.city %} · {{ p.city }}{% endif %}</p>
+        <div class="flex items-start justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+                {% if p.avatar_url or p.photo_url %}
+                <img src="{{ p.avatar_url|default:p.photo_url|absurl }}" alt="" class="w-16 h-16 rounded-full object-cover border-2 border-primary-500 shrink-0">
+                {% endif %}
+                <div class="min-w-0">
+                    <h1 class="text-xl font-bold text-neutral-900">{{ p.full_name }}</h1>
+                    <p class="text-sm text-neutral-500">★ {{ p.rating|default:0|floatformat:1 }} ({{ p.total_reviews|default:0 }} отзывов){% if p.city %} · {{ p.city }}{% endif %}</p>
+                    {% if p.verification_status == 'approved' %}
+                    <span class="inline-flex items-center gap-0.5 mt-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-[11px] font-semibold">✓ Подтверждён</span>
+                    {% endif %}
+                </div>
             </div>
+            <form method="post" action="{% url 'core:employer_favorite_toggle' p.pk %}" class="shrink-0">{% csrf_token %}
+                <button class="action-icon-btn {% if is_favorited %}reject-btn{% else %}contact-btn{% endif %}">
+                    <span class="text-xs font-medium">{% if is_favorited %}В избранном{% else %}В избранное{% endif %}</span>
+                </button>
+            </form>
         </div>
         {% if p.organization_name %}<p class="text-sm text-neutral-700 mt-3">{{ p.organization_name }}</p>{% endif %}
         {% if p.bio %}<p class="text-sm text-neutral-700 mt-2 whitespace-pre-line">{{ p.bio }}</p>{% endif %}
@@ -24,8 +36,11 @@
     <div class="grid gap-2">
         {% for job in jobs %}
         <a href="{% url 'core:job_detail' job.pk %}" class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 hover:shadow-md transition-shadow flex justify-between gap-3">
-            <div><p class="font-medium text-neutral-900">{{ job.work_type|default:"Задание" }}</p>
-                 <p class="text-xs text-neutral-500 mt-0.5">{{ job.city }} · {{ job.date_time|date:"d.m.Y H:i" }}</p></div>
+            <div>
+                <p class="font-medium text-neutral-900">{{ job.work_type|default:"Задание" }}</p>
+                <p class="text-xs text-neutral-500 mt-0.5">{{ job.city }} · {{ job.date_time|date:"d.m.Y H:i" }}</p>
+                {% if job.pk in already_applied_job_ids %}<p class="text-xs text-primary-600 mt-1 font-medium">Отклик отправлен</p>{% endif %}
+            </div>
             <span class="text-sm font-bold text-primary-600 shrink-0">{% if job.payment_amount %}{{ job.payment_amount }} ₽{% endif %}</span>
         </a>
         {% endfor %}

@@ -246,7 +246,7 @@ class PublicViewsTests(TestCase):
         Rating.objects.create(
             rated_user=self.employer, rater_user=self.worker, job=self.job,
             rating=5, comment="Отличный работодатель",
-            rating_type="employer", target_type="employer",
+            rating_type="worker", target_type="employer",
         )
         response = self.client.get(f"/jobs/{self.job.pk}")
         self.assertContains(response, "Отличный работодатель")
@@ -725,3 +725,67 @@ class EmployersCatalogTests(TestCase):
         content = response.content.decode()
         self.assertIn("page=2", content)
         self.assertIn("sort=name", content)
+
+
+class EmployerDetailTests(TestCase):
+    """J032/P2-13: карточка работодателя — open-задания, blacklist, отклик."""
+
+    def setUp(self):
+        self.viewer = make_profile("emp-det-viewer@example.com")
+        self.client.force_login(self.viewer)
+
+    def _employer(self, email, name, role="employer"):
+        return make_profile(email, full_name=name, role=role)
+
+    def test_multirole_employer_detail_accessible(self):
+        user = self._employer("emp-det-multi@example.com", "Мультироль-карточка J032", role="worker")
+        make_job(user, work_type="Открытое J032")
+        response = self.client.get(reverse("core:employer_detail", args=[user.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Открытое J032")
+
+    def test_detail_shows_only_open_jobs(self):
+        user = self._employer("emp-det-open@example.com", "Только открытые J032")
+        make_job(user, work_type="Активное J032")
+        make_job(user, work_type="Завершённое J032", status="completed")
+        response = self.client.get(reverse("core:employer_detail", args=[user.pk]))
+        self.assertContains(response, "Активное J032")
+        self.assertNotContains(response, "Завершённое J032")
+
+    def test_detail_marks_applied_job(self):
+        user = self._employer("emp-det-apply@example.com", "Отклик J032")
+        job = make_job(user, work_type="С откликом J032")
+        Application.objects.create(job=job, worker=self.viewer, status="pending")
+        response = self.client.get(reverse("core:employer_detail", args=[user.pk]))
+        self.assertContains(response, "Отклик отправлен")
+
+    def test_detail_blocked_by_employer_returns_404(self):
+        user = self._employer("emp-det-block@example.com", "Блок J032")
+        make_job(user)
+        Blacklist.objects.create(user=user, blocked_user=self.viewer)
+        response = self.client.get(reverse("core:employer_detail", args=[user.pk]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_detail_favorite_state(self):
+        user = self._employer("emp-det-fav@example.com", "Избранный-карточка J032")
+        make_job(user)
+        Favorite.objects.create(user=self.viewer, target=user, favorite_type="employer")
+        response = self.client.get(reverse("core:employer_detail", args=[user.pk]))
+        self.assertContains(response, "В избранном")
+
+    def test_detail_ratings_only_employer_target(self):
+        user = self._employer("emp-det-rate@example.com", "Оценки J032")
+        job = make_job(user, status="completed")
+        Rating.objects.create(
+            rated_user=user, rater_user=self.viewer, job=job, rating=5,
+            comment="Отзыв о работодателе J032",
+            rating_type="worker", target_type="employer",
+        )
+        Rating.objects.create(
+            rated_user=self.viewer, rater_user=user, job=job, rating=4,
+            comment="Оценка работнику J032",
+            rating_type="employer", target_type="worker",
+        )
+        response = self.client.get(reverse("core:employer_detail", args=[user.pk]))
+        self.assertContains(response, "Отзыв о работодателе J032")
+        self.assertNotContains(response, "Оценка работнику J032")

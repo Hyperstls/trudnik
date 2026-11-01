@@ -107,16 +107,29 @@ def employer_favorite_toggle(request, employer_id):
 
 @login_required
 def employer_detail(request, employer_id):
-    profile = Profile.objects.public_visible().filter(pk=employer_id, role="employer").first()
+    profile = Profile.objects.public_visible().filter(pk=employer_id).first()
     if profile is None:
         raise Http404("Работодатель не найден")
-    jobs = Job.objects.public().filter(employer=profile).order_by("-created_at")[:12]
+    if Blacklist.objects.filter(user=profile, blocked_user=request.user).exists():
+        raise Http404("Работодатель не найден")
+    jobs = list(
+        Job.objects.public().filter(employer=profile, status="open").order_by("-created_at")
+    )
     ratings = (
-        Rating.objects.filter(rated_user=profile).select_related("rater_user", "job")
-        .order_by("-created_at")[:10]
+        Rating.objects.filter(rated_user=profile, target_type="employer")
+        .select_related("rater_user", "job").order_by("-created_at")[:10]
+    )
+    is_favorited = Favorite.objects.filter(
+        user=request.user, target=profile, favorite_type="employer"
+    ).exists()
+    already_applied_job_ids = set(
+        Application.objects.filter(worker=request.user, job__in=jobs)
+        .values_list("job_id", flat=True)
     )
     return render(request, "core/employer_detail.html", {
         "p": profile, "jobs": jobs, "ratings": ratings,
+        "is_favorited": is_favorited,
+        "already_applied_job_ids": already_applied_job_ids,
     })
 
 
