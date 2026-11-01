@@ -38,6 +38,18 @@
                     {% elif a.status == 'withdrawn' %}<span class="text-xs bg-neutral-100 text-neutral-500 rounded-full px-2.5 py-0.5 font-medium">Отозван</span>
                     {% else %}<span class="text-xs bg-neutral-100 text-neutral-600 rounded-full px-2.5 py-0.5 font-medium">{{ a.get_status_display }}</span>{% endif %}
                 </p>
+                {% if tab == 'received' %}
+                <div class="mt-2 rounded-xl bg-green-50 border border-green-200 p-2.5">
+                    <p class="text-xs font-semibold text-green-800">Контакты</p>
+                    {% if a.worker.phone or a.worker.email or a.worker.contact %}
+                    <p class="text-xs text-neutral-700 mt-1">Тел.: {{ a.worker.phone|default:"—" }}</p>
+                    <p class="text-xs text-neutral-700">Email: {{ a.worker.email|default:"—" }}</p>
+                    {% if a.worker.contact %}<p class="text-xs text-neutral-700">Связь: {{ a.worker.contact }}</p>{% endif %}
+                    {% else %}
+                    <p class="text-xs text-neutral-500 mt-1">Контакты не указаны</p>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
             <div class="flex flex-wrap gap-2 text-sm shrink-0">
                 {% if tab == 'received' %}

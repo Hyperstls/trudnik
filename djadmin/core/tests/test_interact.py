@@ -170,6 +170,18 @@ class ChatTests(TestCase):
         self.client.force_login(self.employer)
         self.assertContains(self.client.get(reverse("core:chats")), "привет")
 
+    def test_chats_list_excludes_pending(self):
+        pending = Application.objects.create(
+            job=self.job, worker=make_profile("chat-pending@example.com"),
+            status="pending",
+        )
+        Message.objects.create(sender=self.worker, application=self.app, content="принятый чат")
+        Message.objects.create(sender=pending.worker, application=pending, content="ожидающий чат")
+        self.client.force_login(self.employer)
+        response = self.client.get(reverse("core:chats"))
+        self.assertContains(response, "принятый чат")
+        self.assertNotContains(response, "ожидающий чат")
+
 class ChatConsumerLogicTests(TestCase):
     """Логика WS-consumer (participation + безопасный notify) — без транспорта."""
 

@@ -1,0 +1,38 @@
+{
+  "id": "J039",
+  "title": "P3: список чатов — только принятые отклики",
+  "goal": "В /chats попадают только отклики со статусом accepted, а не pending/rejected/withdrawn.",
+  "why": "Flask chat.py:76,83 фильтрует chats по status=accepted; Django chats_list берёт все Application пользователя через Q_apps, поэтому список засоряется чатами, в которые нельзя перейти/писать.",
+  "files": [
+    "djadmin/core/views_interact.py",
+    "djadmin/core/tests/test_interact.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/templates/core/chats.html"
+  ],
+  "interfaces": "views_interact.chats_list: Application.objects...filter(Q_apps(request), status=Application.Status.ACCEPTED).order_by('-updated_at'); остальное без изменений. test_interact.ChatTests: test_chats_list_includes_accepted_and_excludes_pending — создать accepted app с сообщением и pending app с сообщением; у работника /chats содержит сообщение accepted и не содержит сообщение pending.",
+  "acceptance": [
+    "В /chats отображаются только accepted-отклики.",
+    "Pending/rejected/withdrawn в список не попадают.",
+    "Для принятого отклика по-прежнему видны собеседник и последнее сообщение.",
+    "test_interact проходит."
+  ],
+  "out_of_scope": [
+    "Не менять доступ к /chat/<app_id> (участник может открыть и pending).",
+    "Не добавлять удаление чатов.",
+    "Не менять шаблон chats.html."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_interact.py djadmin/core/tests/test_interact.py",
+      "cwd": "."
+    },
+    {
+      "name": "chat_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_interact --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

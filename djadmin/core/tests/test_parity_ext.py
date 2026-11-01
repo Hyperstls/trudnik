@@ -432,3 +432,37 @@ class SeoFaqTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"<urlset", response.content)
 
+
+
+class ApplicationContactsTests(TestCase):
+    def test_received_application_shows_worker_contacts(self):
+        employer = make_profile("contacts-emp@example.com", role="employer")
+        worker = make_profile(
+            "contacts-worker@example.com", role="worker",
+            phone="+79991234567", contact="@contacts_worker",
+        )
+        job = make_job(employer, work_type="Контакты J038")
+        Application.objects.create(job=job, worker=worker, status="pending")
+        self.client.force_login(employer)
+
+        received = self.client.get(reverse("core:my_applications"), {"tab": "received"})
+        self.assertContains(received, "+79991234567")
+        self.assertContains(received, "contacts-worker@example.com")
+        self.assertContains(received, "@contacts_worker")
+
+        applicants = self.client.get(reverse("core:job_applicants", args=[job.pk]))
+        self.assertContains(applicants, "+79991234567")
+        self.assertContains(applicants, "contacts-worker@example.com")
+
+    def test_sent_tab_hides_worker_contacts(self):
+        employer = make_profile("contacts-emp2@example.com", role="employer")
+        worker = make_profile(
+            "contacts-worker2@example.com", role="worker",
+            phone="+79990000001", contact="@hidden_contact",
+        )
+        job = make_job(employer, work_type="Контакты J038 sent")
+        Application.objects.create(job=job, worker=worker, status="pending")
+        self.client.force_login(worker)
+        sent = self.client.get(reverse("core:my_applications"), {"tab": "sent"})
+        self.assertNotContains(sent, "+79990000001")
+        self.assertNotContains(sent, "@hidden_contact")

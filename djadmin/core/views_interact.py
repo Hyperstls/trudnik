@@ -170,7 +170,7 @@ def chat_poll(request, app_id):
 def chats_list(request):
     apps = (
         Application.objects.select_related("job", "job__employer", "worker")
-        .filter(Q_apps(request))
+        .filter(Q_apps(request), status=Application.Status.ACCEPTED)
         .order_by("-updated_at")
     )
     rows = []

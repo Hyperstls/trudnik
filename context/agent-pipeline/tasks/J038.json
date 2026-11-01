@@ -1,0 +1,40 @@
+{
+  "id": "J038",
+  "title": "P1: контакты трудника в полученных откликах",
+  "goal": "Работодатель видит ФИО, телефон, email и контакт трудника в карточке полученного отклика и на странице откликов задания.",
+  "why": "Flask показывает блок «Контакты» в полученных откликах (my_applications.html:224-240; applications.py:485), а Django обещает на профиле «Контакты открываются после отклика», но нигде их не выводит. Работодатель не может связаться с откликнувшимся до принятия.",
+  "files": [
+    "djadmin/core/templates/core/my_applications.html",
+    "djadmin/core/templates/core/job_applicants.html",
+    "djadmin/core/tests/test_parity_ext.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/views_flow.py"
+  ],
+  "interfaces": "my_applications.html, tab == 'received': под статусом отклика блок bg-green-50 border-green-200 rounded-xl p-2.5 с заголовком «Контакты» и строками «Тел.: {{ a.worker.phone|default:'—' }}», «Email: {{ a.worker.email|default:'—' }}», «Связь: {{ a.worker.contact }}» (последняя только если contact непустой). Если phone/email/contact пусты — «Контакты не указаны». job_applicants.html: тот же блок в каждой карточке (страница только для владельца задания). Вкладку sent не менять. Тест в test_parity_ext: работодатель, трудник с phone/email/contact, заявка pending; GET /my-applications?tab=received содержит телефон и email; GET /jobs/<id>/applicants содержит их же.",
+  "acceptance": [
+    "В «Полученных» откликах у карточки видны телефон и email трудника.",
+    "В /jobs/<id>/applicants контакты видны работодателю-владельцу.",
+    "Если контакты не заполнены, показывается «Контакты не указаны» без пустых строк.",
+    "В «Отправленных» контакты не показываются (не раскрываем данные работодателя).",
+    "test_parity_ext проходит."
+  ],
+  "out_of_scope": [
+    "Не менять модель/API профиля.",
+    "Не показывать контакты на публичных страницах /workers и /jobs.",
+    "Не менять права доступа к страницам."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_parity_ext.py",
+      "cwd": "."
+    },
+    {
+      "name": "parity_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_parity_ext --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}
