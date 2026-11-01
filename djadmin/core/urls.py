@@ -56,6 +56,7 @@ urlpatterns = [
     # работодатели / оценки / bulk / FAQ / sitemap
     path("employers", views_public_ext.employers_list, name="employers"),
     path("employers/<uuid:employer_id>", views_public_ext.employer_detail, name="employer_detail"),
+    path("employers/<uuid:employer_id>/favorite", views_public_ext.employer_favorite_toggle, name="employer_favorite_toggle"),
     path("ratings/user/<uuid:user_id>", views_public_ext.user_ratings, name="user_ratings"),
     path("apply-selected", views_public_ext.bulk_apply, name="bulk_apply"),
     path("unapply-selected", views_public_ext.bulk_unapply, name="bulk_unapply"),

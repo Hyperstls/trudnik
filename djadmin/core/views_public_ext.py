@@ -20,7 +20,17 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
-from .models import Application, Invitation, Job, JobPhoto, Profile, Rating, UserReport
+from .models import (
+    Application,
+    Blacklist,
+    Favorite,
+    Invitation,
+    Job,
+    JobPhoto,
+    Profile,
+    Rating,
+    UserReport,
+)
 from .notifications import enqueue_notification
 from .rpc import call_rpc
 from .storage import UploadError, delete_upload_url, save_upload
@@ -38,17 +48,61 @@ SKIPPED_APPLY_CODES = {
 def employers_list(request):
     qs = (
         Profile.objects.public_visible()
-        .filter(role="employer")
         .annotate(open_jobs=Count("jobs", filter=Q(jobs__status="open")))
-        .order_by("-rating", "-total_reviews")
+        .filter(open_jobs__gt=0)
     )
     q = (request.GET.get("q") or "").strip()
     if q:
-        qs = qs.filter(Q(full_name__icontains=q) | Q(city__icontains=q)).distinct()
+        qs = qs.filter(
+            Q(full_name__icontains=q) | Q(city__icontains=q) | Q(bio__icontains=q)
+        ).distinct()
+    city = (request.GET.get("city") or "").strip()
+    if city:
+        qs = qs.filter(city__icontains=city)
+    qs = qs.exclude(
+        pk__in=Blacklist.objects.filter(blocked_user=request.user).values("user_id")
+    )
+    sort = request.GET.get("sort") or "rating"
+    if sort == "name":
+        qs = qs.order_by("full_name")
+    elif sort == "jobs_count":
+        qs = qs.order_by("-open_jobs", "-rating", "-total_reviews")
+    else:
+        sort = "rating"
+        qs = qs.order_by("-rating", "-total_reviews")
     from django.core.paginator import Paginator
 
     page = Paginator(qs, 20).get_page(request.GET.get("page"))
-    return render(request, "core/employers.html", {"page": page, "q": q})
+    favorited_ids = set(
+        Favorite.objects.filter(
+            user=request.user, favorite_type="employer"
+        ).values_list("target_id", flat=True)
+    )
+    return render(request, "core/employers.html", {
+        "page": page, "q": q, "city": city, "sort": sort,
+        "favorited_ids": favorited_ids,
+    })
+
+
+@login_required
+@require_POST
+def employer_favorite_toggle(request, employer_id):
+    employer = Profile.objects.public_visible().filter(pk=employer_id).first()
+    if employer is None or employer.pk == request.user.pk:
+        messages.error(request, "Работодатель недоступен.")
+    else:
+        fav, created = Favorite.objects.get_or_create(
+            user=request.user, target=employer, favorite_type="employer",
+        )
+        if created:
+            messages.success(request, "Работодатель добавлен в избранное.")
+        else:
+            fav.delete()
+            messages.info(request, "Работодатель удалён из избранного.")
+    referer = request.META.get("HTTP_REFERER") or ""
+    if not url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}):
+        referer = reverse("core:employers")
+    return redirect(referer)
 
 
 @login_required

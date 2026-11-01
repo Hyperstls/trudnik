@@ -9,9 +9,10 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core import views
-from core.models import Application, Blacklist, Favorite, Invitation, Job, JobPhoto, JobSkill, Rating, Religion, SitePage, Skill, UserSkill
+from core.models import Application, Blacklist, Favorite, Invitation, Job, JobPhoto, JobSkill, Profile, Rating, Religion, SitePage, Skill, UserSkill
 from core.storage import resolve_upload_url, save_upload
 from core.tests.test_auth import make_profile
+from core.tests.test_flows import make_job
 
 CONTACTS_AFTER_RESPONSE_TEXT = "Контакты открываются после отклика на задание."
 PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"0" * 16
@@ -642,3 +643,85 @@ class AvatarFallbackTests(TestCase):
         own = self.client.get("/profile")
         self.assertContains(own, NEW_AVATAR_URL)
         self.assertNotContains(own, LEGACY_PHOTO_URL)
+
+
+class EmployersCatalogTests(TestCase):
+    """J031/P2-13: каталог работодателей = пользователи с открытыми заданиями."""
+
+    def setUp(self):
+        self.viewer = make_profile("emp-cat-viewer@example.com")
+        self.client.force_login(self.viewer)
+
+    def _employer(self, email, name, city="", role="employer"):
+        return make_profile(email, full_name=name, city=city, role=role)
+
+    def test_multirole_user_with_open_job_visible(self):
+        user = self._employer("emp-cat-multi@example.com", "Мультироль J031", role="worker")
+        make_job(user, work_type="Открытое J031")
+        response = self.client.get(reverse("core:employers"))
+        self.assertContains(response, "Мультироль J031")
+
+    def test_user_without_open_job_hidden(self):
+        user = self._employer("emp-cat-closed@example.com", "Без открытых J031")
+        make_job(user, status="completed")
+        response = self.client.get(reverse("core:employers"))
+        self.assertNotContains(response, "Без открытых J031")
+
+    def test_city_filter_and_name_sort(self):
+        alpha = self._employer("emp-cat-alpha@example.com", "Альфа J031", city="Москва")
+        beta = self._employer("emp-cat-beta@example.com", "Бета J031", city="Казань")
+        make_job(alpha)
+        make_job(beta)
+        city_response = self.client.get(reverse("core:employers"), {"city": "Казань"})
+        self.assertContains(city_response, "Бета J031")
+        self.assertNotContains(city_response, "Альфа J031")
+        sorted_response = self.client.get(reverse("core:employers"), {"sort": "name"})
+        names = [
+            p.full_name for p in sorted_response.context["page"].object_list
+            if p.full_name.endswith("J031")
+        ]
+        self.assertEqual(names, ["Альфа J031", "Бета J031"])
+
+    def test_jobs_count_sort(self):
+        one = self._employer("emp-cat-one@example.com", "Одно J031")
+        many = self._employer("emp-cat-many@example.com", "Много J031")
+        make_job(one, work_type="Одно-1")
+        make_job(many, work_type="Много-1")
+        make_job(many, work_type="Много-2")
+        response = self.client.get(reverse("core:employers"), {"sort": "jobs_count"})
+        names = [p.full_name for p in response.context["page"].object_list]
+        self.assertLess(names.index("Много J031"), names.index("Одно J031"))
+
+    def test_blacklisted_employer_hidden(self):
+        user = self._employer("emp-cat-block@example.com", "Блокировщик J031")
+        make_job(user)
+        Blacklist.objects.create(user=user, blocked_user=self.viewer)
+        response = self.client.get(reverse("core:employers"))
+        self.assertNotContains(response, "Блокировщик J031")
+
+    def test_favorite_toggle_and_state(self):
+        user = self._employer("emp-cat-fav@example.com", "Избранный J031")
+        make_job(user)
+        url = reverse("core:employer_favorite_toggle", args=[user.pk])
+        self.client.post(url)
+        self.assertTrue(Favorite.objects.filter(
+            user=self.viewer, target=user, favorite_type="employer"
+        ).exists())
+        listing = self.client.get(reverse("core:employers"))
+        self.assertContains(listing, "Убрать из избранного")
+        self.client.post(url)
+        self.assertFalse(Favorite.objects.filter(
+            user=self.viewer, target=user, favorite_type="employer"
+        ).exists())
+
+    def test_pagination_preserves_sort(self):
+        for index in range(21):
+            user = Profile.objects.create(
+                email="emp-page-%02d@example.com" % index,
+                password="x", full_name="Страница %02d J031" % index, role="worker",
+            )
+            make_job(user, work_type="Пагинация-%02d" % index)
+        response = self.client.get(reverse("core:employers"), {"sort": "name"})
+        content = response.content.decode()
+        self.assertIn("page=2", content)
+        self.assertIn("sort=name", content)
