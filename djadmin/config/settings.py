@@ -4,6 +4,7 @@
 Секреты — только из окружения; локально подхватывается .env корня репозитория.
 """
 import os
+from email.utils import formataddr
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -198,18 +199,27 @@ LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/jobs"
 
 # ── Email (SMTP из env; без SMTP_HOST — console-бэкенд для dev) ────────────
+def _smtp_username() -> str:
+    """Прод-переменная — SMTP_USER; SMTP_USERNAME оставлен для совместимости."""
+    return os.getenv("SMTP_USER") or os.getenv("SMTP_USERNAME", "")
+
+
 _smtp_host = os.getenv("SMTP_HOST", "")
 if _smtp_host:
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
     EMAIL_HOST = _smtp_host
     EMAIL_PORT = int(os.getenv("SMTP_PORT", "587"))
-    EMAIL_HOST_USER = os.getenv("SMTP_USERNAME", "")
+    EMAIL_HOST_USER = _smtp_username()
     EMAIL_HOST_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-    EMAIL_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
-    EMAIL_USE_SSL = os.getenv("SMTP_USE_SSL", "false").lower() == "true"
+    EMAIL_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() in ("true", "1", "yes")
+    EMAIL_USE_SSL = os.getenv("SMTP_USE_SSL", "false").lower() in ("true", "1", "yes")
+    EMAIL_TIMEOUT = int(os.getenv("SMTP_TIMEOUT", "30"))
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", "notifications@trudnik.ru")
+
+_smtp_from_email = os.getenv("SMTP_FROM_EMAIL", "notifications@trudnik.ru")
+_smtp_from_name = os.getenv("SMTP_FROM_NAME", "")
+DEFAULT_FROM_EMAIL = formataddr((_smtp_from_name, _smtp_from_email)) if _smtp_from_name else _smtp_from_email
 
 # Транзакционные письма (подтверждение email, сброс пароля) — через Celery.
 # false/0 → синхронная отправка (SMTP блокирует request-цикл, но это fallback).

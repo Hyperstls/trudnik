@@ -3,6 +3,7 @@
 Всё гоняется против клона dev-БД: register_user/change_password RPC — настоящие,
 токены — itsdangerous в формате Flask (кросс-совместимость проверена прямым тестом).
 """
+import os
 import sys
 from datetime import timedelta
 from unittest.mock import MagicMock, patch
@@ -41,6 +42,22 @@ REG = {
     "smart_token": "",
 }
 
+class SmtpSettingsTests(TestCase):
+    def test_smtp_user_alias(self):
+        from config.settings import _smtp_username
+
+        with patch.dict(
+            os.environ,
+            {"SMTP_USER": "primary@example.com", "SMTP_USERNAME": "legacy@example.com"},
+        ):
+            self.assertEqual(_smtp_username(), "primary@example.com")
+        with patch.dict(
+            os.environ,
+            {"SMTP_USER": "", "SMTP_USERNAME": "legacy@example.com"},
+        ):
+            self.assertEqual(_smtp_username(), "legacy@example.com")
+
+
 @override_settings(**LOCMEM)
 class RegisterTests(TestCase):
     def setUp(self):
@@ -63,6 +80,14 @@ class RegisterTests(TestCase):
         self.assertIn("/verify-email/", mail.outbox[0].body)
         # до подтверждения вход запрещён
         self.assertFalse(self.client.login(username="new.user@example.com", password=PW_REG))  # pragma: allowlist secret
+
+    @patch("core.views_auth.verify_captcha_token", return_value=True)
+    def test_register_redirects_to_resend_page(self, mock_verify):
+        email = "resend-redirect@example.com"
+        response = self.client.post("/register", {**REG, "email": email})
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/verify-email/resend", response["Location"])
+        self.assertIn("resend-redirect%40example.com", response["Location"])
 
     def test_register_intent_post_jobs_maps_to_employer(self):
         self.client.post("/register", {**REG, "email": "employer-reg@example.com", "intent": "post_jobs"})
@@ -381,6 +406,19 @@ class PasswordResetTests(TestCase):
 class ResendCooldownTests(TestCase):
     def setUp(self):
         cache.clear()  # cooldown ресенда живёт в общем кэше — изолируем тесты
+
+    def test_resend_page_prefills_email(self):
+        response = self.client.get("/verify-email/resend", {"email": "prefill@example.com"})
+        self.assertContains(response, 'value="prefill@example.com"')
+
+    def test_resend_post_stays_on_resend_page(self):
+        make_profile("resend-stay@example.com", email_verified=False)
+        response = self.client.post(
+            "/verify-email/resend", {"email": "resend-stay@example.com"}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/verify-email/resend", response["Location"])
+        self.assertIn("resend-stay%40example.com", response["Location"])
 
     def test_resend_sends_once_per_cooldown(self):
         make_profile("resend@example.com", email_verified=False)

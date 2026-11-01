@@ -1,0 +1,43 @@
+{
+  "id": "J035",
+  "title": "P0: SMTP auth + повторная отправка письма",
+  "goal": "Письма отправляются с прод-env (SMTP_USER), после регистрации пользователь попадает на страницу подтверждения с уже заполненным email и может отправить письмо повторно.",
+  "why": "Прод env: SMTP_USER (ID 70772). Django settings читает только SMTP_USERNAME → EMAIL_HOST_USER пуст, SMTP не делает AUTH, Yandex отвечает 503 '5.5.4 Error: send AUTH command first'. Пользователь видит «письмо отправлено», письмо не приходит. После регистрации редирект на /login, форма resend без prefill — неочевидно, что делать.",
+  "files": [
+    "djadmin/config/settings.py",
+    "djadmin/core/views_auth.py",
+    "djadmin/core/templates/core/verify_email_resend.html",
+    "djadmin/core/tests/test_auth_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/tasks.py",
+    "djadmin/core/urls.py",
+    "static/sw.js"
+  ],
+  "interfaces": "settings.py: _smtp_username() = os.getenv('SMTP_USER') or os.getenv('SMTP_USERNAME', ''); EMAIL_HOST_USER = _smtp_username(); EMAIL_USE_TLS/EMAIL_USE_SSL парсить через .lower() in ('true','1','yes'); EMAIL_TIMEOUT = int(os.getenv('SMTP_TIMEOUT','30')); DEFAULT_FROM_EMAIL = formataddr((SMTP_FROM_NAME, SMTP_FROM_EMAIL)) при непустом name. views_auth.register: после успешной отправки redirect на reverse('core:verify_email_resend') + '?email=' + quote(email), сообщение «Аккаунт создан. Письмо отправлено на <email>. Проверьте почту и папку «Спам»; если письма нет — отправьте его повторно.» verify_email_resend: GET email из request.GET (strip/lower) в context; POST при успешной попытке (cooldown не активен) — messages.success('Письмо отправлено. Проверьте почту и папку «Спам».') и redirect на ту же страницу с email; при активном cooldown — messages.info('Письмо уже отправлялось недавно. Повторить можно через 2 минуты.') и redirect на страницу с email. verify_email_resend.html: value='{{ email|default:'' }}', подсказка про спам и кнопка «Отправить повторно».",
+  "acceptance": [
+    "EMAIL_HOST_USER берётся из SMTP_USER, fallback — SMTP_USERNAME; SMTP_USE_TLS/SSL понимают true/1/yes; задан EMAIL_TIMEOUT.",
+    "После успешной регистрации redirect ведёт на /verify-email/resend?email=<email>, а не на /login.",
+    "Страница resend предзаполняет email из query и после POST остаётся на ней с сообщением об отправке/cooldown.",
+    "При отсутствии SMTP_USER поведение не ломается (пустой пользователь, console/smtp backend как раньше).",
+    "test_auth_flows проходит."
+  ],
+  "out_of_scope": [
+    "Не менять текст/шаблоны самих писем.",
+    "Не добавлять DKIM/SPF (внешняя настройка домена).",
+    "Не менять Celery retry-политику.",
+    "Не менять service worker — отдельный J036."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/config/settings.py djadmin/core/views_auth.py djadmin/core/tests/test_auth_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "auth_flow_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_auth_flows --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}
