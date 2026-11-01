@@ -1881,3 +1881,27 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review
 
 **Пакет:** context/agent-pipeline/packs/J081.review.prompt.md
+
+## 2026-11-01 22:57:24 — J082: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 23:06:41 — J082: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** review: hidden lat/lng errors outside panel
+
+**Переход:** reviewing → fixing
+
+## 2026-11-01 23:06:41 — J082: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** []

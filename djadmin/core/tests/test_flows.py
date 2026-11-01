@@ -211,6 +211,7 @@ class JobCrudTests(TestCase):
         self.assertContains(response, 'data-job-draft="1"')
         self.assertContains(response, 'id="job-draft-banner"')
         self.assertContains(response, "job-draft.js")
+        self.assertContains(response, "job-step.js")
         job = make_job(self.user)
         edit = self.client.get(reverse("core:job_edit", args=[job.pk]))
         self.assertNotContains(edit, 'data-job-draft="1"')

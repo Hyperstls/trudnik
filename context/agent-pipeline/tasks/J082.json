@@ -1,0 +1,41 @@
+{
+  "id": "J082",
+  "title": "P1: степпер формы задания (progressive enhancement)",
+  "goal": "Форма создания задания с JS разбита на 3 шага (Описание → Оплата и срок → Адрес), с прогрессом, «Назад/Далее» и валидацией текущего шага; без JS остаётся одна форма.",
+  "why": "Длинная форма из 10+ полей перегружает первый экран и повышает отказ. Степпер снижает когнитивную нагрузку, а локальный черновик уже сохраняет введённое между шагами.",
+  "files": [
+    "djadmin/core/templates/core/job_form.html",
+    "static/js/job-step.js",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "static/js/job-draft.js",
+    "djadmin/core/forms.py"
+  ],
+  "interfaces": "job_form.html: на create-форме (data-job-draft) подключить static/js/job-step.js после job-draft.js; после var map = new ymaps.Map(...) сохранить window.__trudnikJobMap=map. JS: найти form[data-job-draft]; собрать 3 section[data-job-step-panel] (1 work_type/organization_name/org_description/object_description/detailed_description+skills, 2 payment_amount/max_workers/date_time, 3 address/city/lat/lng+map-field), переместить .form-field/fieldset/#job-map; nav с 3 кнопками aria-current, скрыть панели 2/3, «Далее» валидирует checkValidity/reportValidity, «Назад», ошибки сервера → панель с .form-error, при показе 3 вызвать __trudnikJobMap.container.fitToViewport(); без JS ничего не меняется. Test: GET /jobs/new содержит job-step.js и data-job-draft.",
+  "acceptance": [
+    "С JS видны 3 шага, навигация и прогресс.",
+    "«Далее» не пускает при невалидном обязательном поле текущего шага.",
+    "Карта и адрес в шаге 3; карта не ломается при переключении.",
+    "После server-side ошибки открыт шаг с ошибкой.",
+    "Без JS форма работает как раньше.",
+    "Черновик/восстановление не ломаются."
+  ],
+  "out_of_scope": [
+    "Не менять серверную валидацию.",
+    "Не делать серверный черновик.",
+    "Не менять edit-форму (locked)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": ".venv\\Scripts\\python.exe -m py_compile djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "step_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_flows.JobCrudTests.test_job_form_has_local_draft --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

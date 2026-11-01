@@ -102,6 +102,7 @@
                   center: [initLat, initLng], zoom: hasCoords ? 14 : 10,
                   controls: ['zoomControl', 'searchControl']
                 });
+                window.__trudnikJobMap = map;
                 var placemark = new ymaps.Placemark([initLat, initLng], {}, {
                   draggable: true, visible: !!hasCoords, preset: 'islands#orangeIcon'
                 });
@@ -481,4 +482,5 @@
 
 {% block scripts %}
 <script src="{% static 'js/job-draft.js' %}" defer></script>
+<script src="{% static 'js/job-step.js' %}" defer></script>
 {% endblock %}
