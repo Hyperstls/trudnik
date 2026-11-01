@@ -907,3 +907,9 @@ progress::-moz-progress-bar {
 
 
 .hover\:bg-amber-700:hover { background-color: #b45309; }
+
+/* PWA install help dialog (J075) */
+#install-help::backdrop {
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+}

@@ -1,0 +1,40 @@
+{
+  "id": "J076",
+  "title": "SEO: OG-превью для каждого задания",
+  "goal": "При отправке ссылки на задание мессенджер/соцсеть показывает заголовок задания, оплату, город и фото задания (или общий брендовый превью), а не общий текст сайта.",
+  "why": "Сейчас все задания имеют одинаковый OG-заголовок и картинку. Персональные превью повышают CTR переходов из чатов и соцсетей, особенно для подработки рядом.",
+  "files": [
+    "djadmin/core/templates/core/base.html",
+    "djadmin/core/templates/core/job_detail.html",
+    "djadmin/core/views.py",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/_job_card.html"
+  ],
+  "interfaces": "base.html: og:image/twitter:image block содержит полный URL по умолчанию (https://host + static og-preview), чтобы дочерние шаблоны могли вернуть внешний URL фото. views.job_detail: og_image = photos[0][1] if photos else None. job_detail.html: og_title = work_type + payment + '— Трудник'; og_description = organization/city/date + object_description/truncated; og_image/twitter_image = absolute photo URL или fallback static; meta_description тот же. Test: GET задания содержит og:title с work_type и payment, og:image (fallback), twitter:image.",
+  "acceptance": [
+    "OG-заголовок задания содержит работу и оплату.",
+    "OG-описание содержит город/дату и описание, без HTML.",
+    "При наличии фото og:image — абсолютный URL первого фото; без фото — брендовый og-preview.",
+    "Twitter-теги совпадают с OG.",
+    "Остальные страницы сохраняют общий OG-превью."
+  ],
+  "out_of_scope": [
+    "Не генерировать PNG на сервере.",
+    "Не менять карточки/ленту.",
+    "Не менять canonical."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": ".venv\\Scripts\\python.exe -m py_compile djadmin/core/views.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "og_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.PublicViewsTests.test_job_detail_og_meta --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

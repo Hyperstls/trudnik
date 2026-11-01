@@ -682,3 +682,30 @@
 - **2026-11-01 19:34:14** | **J073** | `verify` | **PASS** | scope=ok checks=auth_modules=0 attempts=0/3
 - **2026-11-01 19:34:20** | **J073** | `review-packet` | **READY** | bytes=4204 new_files=[]
 - **2026-11-01 19:43:18** | **J073** | `review` | **PASS** | by=independent-review → done
+- **2026-11-01 19:51:03** | **J074** | `add` | **OK** | contract=context/agent-pipeline/tasks/J074.json
+- **2026-11-01 19:51:03** | **J074** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/J074.impl.prompt.md
+- **2026-11-01 19:52:44** | **J074** | `verify` | **FAIL** | scope=ok checks=apk_assets=1, views_tests=0 attempts=1/3 → fixing
+- **2026-11-01 19:52:53** | **J074** | `update` | **OK** | revision=1 reason=compiled resources use short names; check APK structure/size
+- **2026-11-01 19:52:55** | **J074** | `verify` | **PASS** | scope=ok checks=apk_assets=0, views_tests=0 attempts=1/3
+- **2026-11-01 19:53:13** | **J075** | `add` | **OK** | contract=context/agent-pipeline/tasks/J075.json
+- **2026-11-01 19:53:14** | **J075** | `dispatch` | **OK** | status=implementing baseline=7 pack=context/agent-pipeline/packs/J075.impl.prompt.md
+- **2026-11-01 19:54:24** | **J075** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=tailwind generated drift=['static/css/tailwind.min.css']
+- **2026-11-01 19:54:26** | **J075** | `verify` | **PASS** | scope=skipped checks=install_assets=0, page_test=0 attempts=0/3
+- **2026-11-01 19:55:04** | **J076** | `add` | **OK** | contract=context/agent-pipeline/tasks/J076.json
+- **2026-11-01 19:55:04** | **J076** | `dispatch` | **OK** | status=implementing baseline=13 pack=context/agent-pipeline/packs/J076.impl.prompt.md
+- **2026-11-01 19:56:12** | **J076** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=tailwind generated drift=[]
+- **2026-11-01 19:56:14** | **J076** | `verify` | **PASS** | scope=skipped checks=compile=0, og_test=0 attempts=0/3
+- **2026-11-01 19:57:24** | **J074** | `review-packet` | **READY** | bytes=5918 new_files=[]
+- **2026-11-01 19:57:25** | **J075** | `review-packet` | **READY** | bytes=14051 new_files=['static/js/install-prompt.js']
+- **2026-11-01 19:57:25** | **J076** | `review-packet` | **READY** | bytes=8114 new_files=[]
+- **2026-11-01 20:17:37** | **J075** | `set` | **reviewing→fixing** | by=Hyperstls reason=review fix
+- **2026-11-01 20:17:38** | **J076** | `set` | **reviewing→fixing** | by=Hyperstls reason=review fix
+- **2026-11-01 20:17:38** | **J075** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=generated tailwind drift=['djadmin/core/templates/core/job_detail.html', 'djadmin/core/views.py', 'docs/APP_RELEASE.md', 'docs/DOCS_INDEX.md', 'docs/UX_ROADMAP_2026Q4.md', 'static/css/tailwind.min.css']
+- **2026-11-01 20:17:40** | **J075** | `verify` | **PASS** | scope=skipped checks=install_assets=0, page_test=0 attempts=0/3
+- **2026-11-01 20:17:40** | **J076** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=generated tailwind drift=['docs/APP_RELEASE.md', 'docs/DOCS_INDEX.md', 'docs/UX_ROADMAP_2026Q4.md', 'static/js/install-prompt.js']
+- **2026-11-01 20:17:43** | **J076** | `verify` | **PASS** | scope=skipped checks=compile=0, og_test=0 attempts=0/3
+- **2026-11-01 20:17:58** | **J075** | `review-packet` | **READY** | bytes=14248 new_files=['static/js/install-prompt.js']
+- **2026-11-01 20:17:58** | **J076** | `review-packet` | **READY** | bytes=8501 new_files=[]
+- **2026-11-01 20:18:14** | **J074** | `review` | **PASS** | by=independent-review → done
+- **2026-11-01 20:25:29** | **J075** | `review` | **PASS** | by=independent-review → done
+- **2026-11-01 20:25:29** | **J076** | `review` | **PASS** | by=independent-review → done

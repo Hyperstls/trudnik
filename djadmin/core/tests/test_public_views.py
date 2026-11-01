@@ -80,6 +80,15 @@ class PublicViewsTests(TestCase):
         self.assertContains(response, 'id="filters-open"')
         self.assertContains(response, "Применить")
 
+    def test_job_detail_og_meta(self):
+        response = self.client.get(reverse("core:job_detail", args=[self.job.pk]))
+        self.assertContains(response, 'property="og:title"')
+        self.assertContains(response, "Уборка территории")
+        self.assertContains(response, "Москва")
+        self.assertContains(response, 'property="og:image"')
+        self.assertContains(response, "og-preview.png")
+        self.assertContains(response, 'name="twitter:image"')
+
     def test_payment_max_filter(self):
         Job.objects.create(
             employer=self.employer, work_type="Дешёвое задание", organization_name="Приход",
@@ -1017,3 +1026,13 @@ class AppDownloadTests(TestCase):
     def test_service_worker_cache_version(self):
         sw = (settings.BASE_DIR.parent / "static" / "sw.js").read_text(encoding="utf-8")
         self.assertIn("trudnik-v16", sw)
+
+    def test_pwa_install_prompt_markup_and_script(self):
+        response = self.client.get(reverse("core:jobs"))
+        self.assertContains(response, 'id="install-prompt"')
+        self.assertContains(response, 'id="install-action"')
+        self.assertContains(response, 'id="install-help"')
+        js = (settings.BASE_DIR.parent / "static" / "js" / "install-prompt.js").read_text(encoding="utf-8")
+        self.assertIn("beforeinstallprompt", js)
+        self.assertIn("trudnik-install-dismissed", js)
+        self.assertIn("trudnik-install-installed", js)

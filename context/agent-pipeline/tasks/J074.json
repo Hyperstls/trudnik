@@ -1,0 +1,40 @@
+{
+  "id": "J074",
+  "title": "APK 1.2: фирменный логотип вместо стандартной иконки",
+  "goal": "У установленного APK на рабочем столе, в списке приложений и на splash-экране используется тот же логотип «Трудник», что на сайте; версия 1.2 (versionCode 3) устанавливается поверх 1.1.",
+  "why": "Сейчас TWA-проект содержит дефолтную градиентную иконку Bubblewrap. Пользователь видит чужой/пустой значок, хотя сайт, PWA и favicon используют фирменный логотип.",
+  "files": [
+    "static/apk/trudnik.apk",
+    "djadmin/core/views.py",
+    "docs/APP_RELEASE.md"
+  ],
+  "context_files": [
+    "static/icons/icon-512x512.png",
+    "twa-project/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml"
+  ],
+  "interfaces": "Сгенерировать из static/icons/icon-512x512.png: mipmap-{mdpi..xxxhdpi}/ic_launcher.png (48/72/96/144/192), ic_maskable.png (82/123/164/246/328, логотип в safe zone 66%), drawable-*/splash.png (белый фон, логотип по центру), shortcut_*.png. Убрать 8.5dp inset в adaptive-icon, чтобы не удваивать поля. versionCode=3, versionName=1.2 в build.gradle и twa-manifest. views._apk_info version '1.2', filename trudnik-1.2.apk. Пересобрать release APK, скопировать в static/apk/trudnik.apk. docs/APP_RELEASE.md обновить на 1.2/versionCode 3.",
+  "acceptance": [
+    "В APK все mipmap-* ic_launcher/ic_maskable — фирменный логотип, не градиент.",
+    "Adaptive icon не обрезает логотип и не имеет двойных полей.",
+    "APK подписан прежним release-ключом; versionCode 3, versionName 1.2.",
+    "Страница /app и /app/download показывают 1.2 и отдают файл trudnik-1.2.apk.",
+    "assetlinks SHA-256 не изменился (ключ тот же)."
+  ],
+  "out_of_scope": [
+    "Не менять packageId/host/assetlinks.",
+    "Не публиковать в Google Play.",
+    "Не менять web-логотип."
+  ],
+  "checks": [
+    {
+      "name": "apk_assets",
+      "cmd": ".venv\\Scripts\\python.exe -c \"import zipfile; z=zipfile.ZipFile('static/apk/trudnik.apk'); names=z.namelist(); assert 'AndroidManifest.xml' in names; assert len([n for n in names if n.startswith('res/')])>100; assert __import__('os').path.getsize('static/apk/trudnik.apk')>1000000; print('apk ok', len(names))\"",
+      "cwd": "."
+    },
+    {
+      "name": "views_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.AppDownloadTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

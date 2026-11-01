@@ -1,0 +1,41 @@
+{
+  "id": "J075",
+  "title": "PWA: установка приложения из браузера (Android/desktop + iOS)",
+  "goal": "Пользователь видит ненавязчивый баннер установки PWA: в Chromium — кнопка «Установить» через beforeinstallprompt, в iOS Safari — инструкция «Поделиться → На экран Домой»; отказ запоминается на 30 дней.",
+  "why": "Сейчас установка доступна только через страницу /app, о которой надо знать. Встроенный install-баннер повышает возврат без затрат на сторы и не требует APK.",
+  "files": [
+    "djadmin/core/templates/core/base.html",
+    "static/js/install-prompt.js",
+    "static/css/app.css",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "static/manifest.json",
+    "djadmin/core/templates/core/app_download.html"
+  ],
+  "interfaces": "base.html: скрытый #install-prompt (role=region) с #install-title/#install-text/#install-action/#install-dismiss и <dialog id=install-help> с шагами iOS; подключить static/js/install-prompt.js. JS: не показывать в standalone/display-mode; localStorage trudnik-install-dismissed хранит timestamp и скрывает на 30 дней; Chromium — beforeinstallprompt.preventDefaut, кнопка вызывает prompt(), appinstalled скрывает; iOS Safari — через 1.5с показать баннер с кнопкой «Как установить», открывающей dialog; Esc/backdrop/кнопка закрытия. CSS: fixed bottom-20 md:bottom-4, max-width, z-40, тёмная/белая поверхность, скрытие через .hidden. Test: GET /jobs содержит install-prompt и install-help; static/js/install-prompt.js существует.",
+  "acceptance": [
+    "В standalone/PWA баннер не показывается.",
+    "В Chromium баннер появляется только после beforeinstallprompt, кнопка вызывает системный prompt.",
+    "В iOS Safari показывается инструкция, dialog закрывается.",
+    "«Не сейчас» скрывает баннер на 30 дней, после appinstalled — навсегда.",
+    "Баннер не перекрывает мобильную навигацию и не показывается без JS."
+  ],
+  "out_of_scope": [
+    "Не менять manifest/APK.",
+    "Не запрашивать push.",
+    "Не добавлять сторонние SDK."
+  ],
+  "checks": [
+    {
+      "name": "install_assets",
+      "cmd": ".venv\\Scripts\\python.exe -c \"from pathlib import Path; assert Path('static/js/install-prompt.js').exists(); assert 'install-prompt' in Path('djadmin/core/templates/core/base.html').read_text(encoding='utf-8'); print('install prompt assets ok')\"",
+      "cwd": "."
+    },
+    {
+      "name": "page_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.AppDownloadTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

@@ -75,7 +75,7 @@ def _apk_info():
         return None
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     return {
-        "version": "1.1",
+        "version": "1.2",
         "size_mb": round(path.stat().st_size / (1024 * 1024), 1),
         "sha256": digest,
     }
@@ -95,7 +95,7 @@ def download_apk(request):
         open(path, "rb"),
         content_type="application/vnd.android.package-archive",
         as_attachment=True,
-        filename="trudnik-1.1.apk",
+        filename="trudnik-1.2.apk",
     )
     response["Cache-Control"] = "public, max-age=3600"
     return response
@@ -372,6 +372,7 @@ def job_detail(request, job_id):
     return render(request, "core/job_detail.html", {
         "job": job,
         "photos": [(i, _abs(url)) for i, url in enumerate(photos)],
+        "og_image": _abs(photos[0]) if photos else None,
         "skills": skills,
         "my_app": my_app,
         "can_withdraw": can_withdraw,

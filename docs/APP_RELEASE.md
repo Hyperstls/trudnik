@@ -1,13 +1,15 @@
 # Android APK / TWA — сборка и релиз
 
-**Версия:** 1.1 (`versionCode 2`)
+**Версия:** 1.2 (`versionCode 3`)
 **Package:** `ru.trudnik.app`
 **Канонический host:** `xn--d1aigknli.xn--p1ai` (трудник.рф)
 **Страница установки:** `/app` → `/app/download`
 
 ## Что уже собрано
 
-- `static/apk/trudnik.apk` — подписанный release APK (TWA, `customtabs` fallback).
+- `static/apk/trudnik.apk` — подписанный release APK 1.2 (TWA, `customtabs` fallback).
+  Launcher/adaptive/splash-иконки сгенерированы из `static/icons/icon-512x512.png`
+  (фирменный логотип); versionCode 3 устанавливается поверх 1.1.
 - `static/icons/og-preview.png` — OG/Twitter превью 1200×630.
 - `static/.well-known/assetlinks.json` — Digital Asset Links для TWA:
   - package `ru.trudnik.app`;
@@ -55,6 +57,14 @@ curl -s https://xn--d1aigknli.xn--p1ai/.well-known/assetlinks.json
 5. APK/AAB в artifacts.
 
 Workflow требует `twa-config.json` в корне (добавлен) и секрет `KEYSTORE_PASSWORD`.
+
+## PWA-install баннер
+
+- На всех страницах, кроме `/app`, подключён `static/js/install-prompt.js`.
+- Chromium: `beforeinstallprompt` → кнопка «Установить» вызывает системный prompt.
+- iOS Safari: через 1.5 с — кнопка «Как установить» с инструкцией «Поделиться → На экран Домой».
+- «Не сейчас» скрывает баннер на 30 дней (`trudnik-install-dismissed`), `appinstalled` — навсегда.
+- В standalone-режиме и без JS баннер не показывается.
 
 ## Страница установки
 

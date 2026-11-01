@@ -1689,3 +1689,83 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review
 
 **Пакет:** context/agent-pipeline/packs/J073.review.prompt.md
+
+## 2026-11-01 19:52:53 — J074: контракт обновлён
+
+**Причина:** compiled resources use short names; check APK structure/size
+
+**Проверки до:** ['apk_assets', 'views_tests']
+
+**Проверки после:** ['apk_assets', 'views_tests']
+
+## 2026-11-01 19:54:24 — J075: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind generated
+
+**Дрейф, который обойдён:** ['static/css/tailwind.min.css']
+
+## 2026-11-01 19:56:12 — J076: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind generated
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 20:17:37 — J075: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** review fix
+
+**Переход:** reviewing → fixing
+
+## 2026-11-01 20:17:38 — J076: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** review fix
+
+**Переход:** reviewing → fixing
+
+## 2026-11-01 20:17:38 — J075: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** generated tailwind
+
+**Дрейф, который обойдён:** ['djadmin/core/templates/core/job_detail.html', 'djadmin/core/views.py', 'docs/APP_RELEASE.md', 'docs/DOCS_INDEX.md', 'docs/UX_ROADMAP_2026Q4.md', 'static/css/tailwind.min.css']
+
+## 2026-11-01 20:17:40 — J076: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** generated tailwind
+
+**Дрейф, который обойдён:** ['docs/APP_RELEASE.md', 'docs/DOCS_INDEX.md', 'docs/UX_ROADMAP_2026Q4.md', 'static/js/install-prompt.js']
+
+## 2026-11-01 20:18:14 — J074: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J074.review.prompt.md
+
+## 2026-11-01 20:25:29 — J075: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J075.review.prompt.md
+
+## 2026-11-01 20:25:29 — J076: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J076.review.prompt.md
