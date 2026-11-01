@@ -741,3 +741,17 @@ P2-02 ratings-секция закрыта. CSS-дрейф skip-scope.
 **Кто:** Hyperstls
 
 Проверено: timezone импортирован на уровне views_public_ext; удаление исходника не ломает копию — J011 refcount видит JobPhoto копии. Follow-up: per-job try/except в bulk duplicate.
+
+## 2026-11-01 08:41:00 — J018: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J018.review.prompt.md
+
+## 2026-11-01 08:41:00 — J018: заметка
+
+**Кто:** Hyperstls
+
+P2-02 полностью закрыт (count/favorite/report/share/ratings/verification).

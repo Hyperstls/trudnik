@@ -210,6 +210,18 @@ class PublicViewsTests(TestCase):
         response = self.client.get(f"/jobs/{self.job.pk}")
         self.assertContains(response, "Отзывов пока нет.")
 
+    def test_detail_shows_verified_employer_badge(self):
+        self.employer.verification_status = "approved"
+        self.employer.save(update_fields=["verification_status"])
+        response = self.client.get(f"/jobs/{self.job.pk}")
+        self.assertContains(response, "✓ Подтверждён")
+
+    def test_detail_hides_unverified_badge(self):
+        self.employer.verification_status = "pending"
+        self.employer.save(update_fields=["verification_status"])
+        response = self.client.get(f"/jobs/{self.job.pk}")
+        self.assertNotContains(response, "Подтверждён")
+
     def test_workers_catalog(self):
         response = self.client.get("/workers")
         self.assertEqual(response.status_code, 200)

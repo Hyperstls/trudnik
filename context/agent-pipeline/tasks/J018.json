@@ -1,0 +1,36 @@
+{
+  "id": "J018",
+  "title": "JOB-P2-02 (verification): бейдж подтверждённого работодателя",
+  "goal": "На странице задания рядом с именем работодателя показывается «✓ Подтверждён», если profiles.verification_status='approved'; иначе бейджа нет.",
+  "why": "Flask job_detail показывает employer verification. Django detail выводит имя/рейтинг, но не статус верификации (JOB-P2-02). Поле уже есть в контексте employer; нужен только шаблон и тест.",
+  "files": [
+    "djadmin/core/templates/core/job_detail.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/templates/core/worker_detail.html"
+  ],
+  "interfaces": "job_detail.html: в секции 'Работодатель' после имени добавить {% if employer.verification_status == 'approved' %}<span class=\"inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800\">✓ Подтверждён</span>{% endif %}. Тесты: test_detail_shows_verified_employer_badge (employer.verification_status='approved' -> 'Подтверждён'); test_detail_hides_unverified_badge (по умолчанию -> нет 'Подтверждён').",
+  "acceptance": [
+    "Approved-работодатель отображается с бейджем «✓ Подтверждён».",
+    "Неверифицированный работодатель бейджа не имеет.",
+    "PublicViewsTests проходит."
+  ],
+  "out_of_scope": [
+    "Не менять модели/верификацию.",
+    "Не добавлять бейдж в ленту/другие страницы."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views.PublicViewsTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}
