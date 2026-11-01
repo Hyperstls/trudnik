@@ -1,9 +1,9 @@
 from django.urls import path
 from django.views.generic import RedirectView
 
-from . import (views, views_auth, views_flow, views_interact, views_messenger,
-               views_notify, views_profile, views_profile_ext, views_public_ext,
-               views_service)
+from . import (views, views_auth, views_flow, views_geo, views_interact,
+               views_messenger, views_notify, views_profile, views_profile_ext,
+               views_public_ext, views_service)
 
 app_name = "core"
 
@@ -13,6 +13,7 @@ urlpatterns = [
     path("app/download", views.download_apk, name="download_apk"),
     path("jobs", views.jobs_list, name="jobs"),
     path("jobs/geo", views.jobs_geo_set, name="jobs_geo_set"),
+    path("api/geo/suggest", views_geo.geo_suggest, name="geo_suggest"),
     path("search", RedirectView.as_view(pattern_name="core:jobs", permanent=False, query_string=True), name="search"),
     path("jobs/new", views_flow.job_create, name="job_create"),
     path("jobs/<uuid:job_id>", views.job_detail, name="job_detail"),

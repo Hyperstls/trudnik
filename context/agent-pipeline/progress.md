@@ -721,3 +721,12 @@
 - **2026-11-01 21:12:55** | **J078** | `review-packet` | **READY** | bytes=5209 new_files=[]
 - **2026-11-01 21:25:33** | **J077** | `review` | **PASS** | by=independent-review → done
 - **2026-11-01 21:25:33** | **J078** | `review` | **PASS** | by=independent-review → done
+- **2026-11-01 21:41:06** | **J079** | `add` | **OK** | contract=context/agent-pipeline/tasks/J079.json
+- **2026-11-01 21:41:07** | **J079** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/J079.impl.prompt.md
+- **2026-11-01 21:41:58** | **J079** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=tailwind unchanged drift=[]
+- **2026-11-01 21:42:00** | **J079** | `verify` | **PASS** | scope=skipped checks=compile=0, suggest_proxy_tests=0 attempts=0/3
+- **2026-11-01 21:42:52** | **J079** | `review-packet` | **READY** | bytes=14193 new_files=['djadmin/core/views_geo.py']
+- **2026-11-01 21:48:12** | **J079** | `set` | **reviewing→fixing** | by=Hyperstls reason=review: non-string q/city -> 500
+- **2026-11-01 21:48:15** | **J079** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=tailwind generated drift=[]
+- **2026-11-01 21:48:17** | **J079** | `verify` | **PASS** | scope=skipped checks=compile=0, suggest_proxy_tests=0 attempts=0/3
+- **2026-11-01 21:48:25** | **J079** | `review` | **PASS** | by=independent-review → done

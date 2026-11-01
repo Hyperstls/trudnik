@@ -1,4 +1,5 @@
 """Публичные read-only страницы + health."""
+import json
 import os
 from datetime import timedelta
 from unittest.mock import patch
@@ -517,7 +518,7 @@ class PublicViewsTests(TestCase):
         self._geo_jobs()
         from unittest.mock import patch
 
-        with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": "test-" + "key"}):  # pragma: allowlist secret
+        with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": "test-" + "key"}):  # pragma: allowlist secret  # pragma: allowlist secret
             response = self.client.get("/jobs", {"q": "J024"})
         self.assertContains(response, 'id="jobs-map"')
         self.assertContains(response, "api-maps.yandex.ru")
@@ -875,7 +876,7 @@ class JobDetailGeoTests(TestCase):
         )
 
     def test_detail_shows_address_map_and_route_with_key(self):
-        with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": "test-" + "key"}):  # pragma: allowlist secret
+        with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": "test-" + "key"}):  # pragma: allowlist secret  # pragma: allowlist secret
             response = self.client.get(reverse("core:job_detail", args=[self.job.pk]))
         self.assertContains(response, "Москва, Тверская 1")
         self.assertContains(response, 'id="job-detail-map"')
@@ -1036,3 +1037,75 @@ class AppDownloadTests(TestCase):
         self.assertIn("beforeinstallprompt", js)
         self.assertIn("trudnik-install-dismissed", js)
         self.assertIn("trudnik-install-installed", js)
+
+
+
+class GeoSuggestProxyTests(TestCase):
+    def setUp(self):
+        self.user = make_profile("geo-suggest@example.com")
+        self.client.force_login(self.user)
+
+    def test_proxy_normalizes_results(self):
+        payload = {
+            "results": [{
+                "title": {"text": "Тверская улица, 1"},
+                "subtitle": {"text": "Москва"},
+                "address": {"formatted_address": "Москва, Тверская улица, 1"},
+            }]
+        }
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self):
+                return json.dumps(payload).encode()
+
+        with patch.dict(os.environ, {"YANDEX_SUGGEST_API_KEY": "test-suggest"}):  # pragma: allowlist secret
+            with patch("core.views_geo.urlopen", return_value=FakeResponse()):
+                response = self.client.post(
+                    reverse("core:geo_suggest"),
+                    data=json.dumps({"q": "Тверская 1", "city": "Москва"}),
+                    content_type="application/json",
+                )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["results"][0]["displayName"], "Москва, Тверская улица, 1")
+        self.assertEqual(data["results"][0]["value"], "Москва, Тверская улица, 1")
+
+    def test_proxy_requires_login_and_post(self):
+        self.client.logout()
+        self.assertEqual(self.client.post(reverse("core:geo_suggest"), data="{}", content_type="application/json").status_code, 302)
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.get(reverse("core:geo_suggest")).status_code, 405)
+
+    def test_proxy_rejects_non_string_query(self):
+        response = self.client.post(
+            reverse("core:geo_suggest"),
+            data=json.dumps({"q": 123}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["results"], [])
+
+    def test_proxy_rejects_bad_json(self):
+        response = self.client.post(
+            reverse("core:geo_suggest"), data="{", content_type="application/json"
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_proxy_without_key_returns_empty(self):
+        with patch.dict(os.environ, {"YANDEX_SUGGEST_API_KEY": ""}):
+            response = self.client.post(
+                reverse("core:geo_suggest"),
+                data=json.dumps({"q": "Москва"}),
+                content_type="application/json",
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["results"], [])
+
+    def test_form_does_not_expose_suggest_key(self):
+        with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": "test-" + "key"}):  # pragma: allowlist secret
+            response = self.client.get(reverse("core:job_create"))
+        self.assertNotContains(response, "suggest_apikey")

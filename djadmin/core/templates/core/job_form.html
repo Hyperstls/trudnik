@@ -52,7 +52,7 @@
                 <p id="geo-status" class="text-xs text-neutral-500 mb-2" role="status" aria-live="polite"></p>
                 <div id="job-map" data-lat="{% localize off %}{{ form.instance.lat|default_if_none:'' }}{% endlocalize %}" data-lng="{% localize off %}{{ form.instance.lng|default_if_none:'' }}{% endlocalize %}" style="height:320px" class="w-full rounded-xl border border-neutral-200"></div>
             </div>
-            <script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_key|urlencode }}&lang=ru_RU{% if yandex_suggest_key %}&suggest_apikey={{ yandex_suggest_key|urlencode }}{% endif %}"></script>
+            <script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_key|urlencode }}&lang=ru_RU"></script>
             <script>
             document.addEventListener('DOMContentLoaded', function(){
               if (!window.ymaps) return;
@@ -320,16 +320,37 @@
                     });
                   }
 
+                  function proxySuggestions(query) {
+                    var meta = document.querySelector('meta[name="csrf-token"]');
+                    var token = meta ? meta.getAttribute('content') : '';
+                    return fetch('/api/geo/suggest', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': token
+                      },
+                      body: JSON.stringify({
+                        q: query,
+                        city: cityInput ? cityInput.value.trim() : ''
+                      })
+                    }).then(function(response){
+                      if (!response.ok) return {results: []};
+                      return response.json();
+                    }).then(function(data){
+                      return (data && data.results) || [];
+                    });
+                  }
+
                   function loadSuggestions(query) {
-                    var request;
-                    if (typeof ymaps.suggest === 'function') {
-                      request = ymaps.suggest(query).then(function(items){
-                        return items && items.length ? items : geocodeSuggestions(query);
-                      }).catch(function(){ return geocodeSuggestions(query); });
-                    } else {
-                      request = geocodeSuggestions(query);
-                    }
-                    request.then(renderSuggestions).catch(function(){
+                    proxySuggestions(query).then(function(items){
+                      if (items && items.length) {
+                        renderSuggestions(items);
+                        return;
+                      }
+                      return geocodeSuggestions(query).then(renderSuggestions);
+                    }).catch(function(){
+                      return geocodeSuggestions(query).then(renderSuggestions);
+                    }).catch(function(){
                       closeSuggestions();
                       setStatus('Подсказки недоступны — введите адрес и нажмите «Найти по адресу».');
                     });

@@ -1,0 +1,42 @@
+{
+  "id": "J079",
+  "title": "Геосаджест: серверный прокси без ключа в HTML",
+  "goal": "Подсказки адреса идут через POST /api/geo/suggest; ключ YANDEX_SUGGEST_API_KEY остаётся на сервере, текст адреса не попадает в URL и access-логи; при ошибке — fallback на ymaps.geocode.",
+  "why": "Прямой вызов Yandex Suggest из браузера раскрывает API-ключ в HTML. Серверный прокси убирает ключ из клиента, позволяет валидировать/лимитировать запросы и сохраняет работу формы при недоступности Suggest.",
+  "files": [
+    "djadmin/core/views_geo.py",
+    "djadmin/core/urls.py",
+    "djadmin/core/templates/core/job_form.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/ratelimit.py",
+    "static/js/install-prompt.js"
+  ],
+  "interfaces": "views_geo.geo_suggest: @login_required+@require_POST, JSON q 3..120/city<=80, enforce_ip_limit('geo_suggest',60,60) fail-open, ключ из env; GET https://suggest-maps.yandex.ru/v1/suggest (text=city+q, results=6, print_address=1, lang=ru_RU, timeout 4s); нормализовать results → [{displayName,value,subtitle}]; ошибки → {'results':[]} 200. urls: /api/geo/suggest name=geo_suggest. job_form.html: убрать suggest_apikey из URL; loadSuggestions сначала POST на прокси с X-CSRFToken и JSON, затем render; при пустом/ошибочном ответе — geocodeSuggestions. Тесты: landmark mocked URLopen → normalized; anon 302; GET 405; bad JSON 400; в HTML нет suggest_apikey.",
+  "acceptance": [
+    "Ключ Suggest отсутствует в HTML/JS клиента.",
+    "Подсказки работают через POST-прокси с CSRF.",
+    "Текст адреса не попадает в query string/access-логи.",
+    "При сбое/пустом ответе Suggest используется Geocoder.",
+    "Прокси не логирует адрес и ограничен по IP.",
+    "Тесты проходят."
+  ],
+  "out_of_scope": [
+    "Не кэшировать адреса на сервере.",
+    "Не менять Geocoder/карту.",
+    "Не менять API-ключ."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": ".venv\\Scripts\\python.exe -m py_compile djadmin/core/views_geo.py djadmin/core/urls.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "suggest_proxy_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.GeoSuggestProxyTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}
