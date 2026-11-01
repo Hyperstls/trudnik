@@ -2,8 +2,9 @@
 
 **Дата:** 2026-10-31
 **Эталон Flask:** `origin/main-flask` @ `9b3ed42` (read-only worktree `../trudnik-flask`)
-**Django:** `feat/agent-pipeline` @ J033 (`main` @ `3f4aa40` не менялся)
-**Статус:** auth/profile — P0/P1 закрыты; jobs/applications — P0/P1 и P2 закрыты.
+**Django:** `feat/agent-pipeline` @ J034 (`main` @ `3f4aa40` не менялся)
+**Статус:** auth/profile — P0/P1 закрыты и задеплоены; jobs/applications — P0/P1 и P2 закрыты и задеплоены.
+**Production (2026-11-01):** `1472a7d` (J029–J033), `68a5363` (auth P001–P114), `47f69f3` (J034 SmartCaptcha form-urlencoded); `/health` 200.
 **Обновление 2026-10-31:** P0-01…P0-04 исправлены контрактами P001–P004
 (verify PASS + functional PASS + pattern PASS), см. [P0_RESULTS.md](P0_RESULTS.md).
 P1-01/02/06 исправлены контрактами P101/P102/P106, P1-03/04/11 — P103/P104,
@@ -17,10 +18,10 @@ gate OK; процедура и восстановление описаны в [M
 см. [JOBS_RESULTS.md](JOBS_RESULTS.md), [AUDIT_JOBS_APPLICATIONS.md](AUDIT_JOBS_APPLICATIONS.md),
 [DISCREPANCIES_JOBS.md](DISCREPANCIES_JOBS.md),
 [ROUTES_MATRIX_JOBS.md](ROUTES_MATRIX_JOBS.md),
-[UI_INVENTORY_JOBS.md](UI_INVENTORY_JOBS.md). Полный `core` — 344 OK.
+[UI_INVENTORY_JOBS.md](UI_INVENTORY_JOBS.md). Полный `core` — 345 OK.
 
-**Следующая область:** финальный e2e-smoke и деплой накопленных J-коммитов;
-открытых пунктов паритета jobs/applications нет.
+**Следующая область:** открытых пунктов паритета auth/profile и jobs/applications нет;
+осталась финальная приёмка и наблюдение за прод-логами.
 
 **E2E smoke (Docker):** `/jobs`, `/workers`, `/login`, `/register`, `/faq` → 200;
 `/privacy`, `/terms`, `/safety` были 404 из-за пустого `site_pages` — исправлено L001
