@@ -1,0 +1,40 @@
+{
+  "id": "J047",
+  "title": "P3: /search, чат принятого отклика и trust-блок",
+  "goal": "/search ведёт в каталог с сохранением query; на карточке задания принятый исполнитель видит «Написать в чат», а все пользователи — блок безопасности со ссылкой /safety.",
+  "why": "Flask core.py:299-303 редиректит /search; job_detail.html:129-140 содержит trust-блок, а для принятого отклика — кнопку чата (:328). В Django /search даёт 404, кнопки чата на detail нет, trust-блока нет.",
+  "files": [
+    "djadmin/core/urls.py",
+    "djadmin/core/templates/core/job_detail.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/views.py",
+    "djadmin/core/templates/core/safety.html"
+  ],
+  "interfaces": "urls.py: from django.views.generic import RedirectView; path('search', RedirectView.as_view(pattern_name='core:jobs', permanent=False, query_string=True), name='search'). job_detail.html: внутри ветки my_app при status == 'accepted' добавить ссылку <a href=\"{% url 'core:chat_room' my_app.id %}\">Написать в чат</a> (стиль primary); после блока действий — заметка bg-primary-50 border-primary-100: «Безопасная сделка. Обсуждайте детали в чате и не переводите предоплату вне платформы.» + ссылка core:safety «Правила безопасности». test_public_views: test_search_redirects_to_jobs — GET /search?q=уборка → 302, Location начинается с /jobs и содержит q=; test_job_detail_accepted_has_chat_and_trust — accepted app, login worker, GET detail → содержит URL chat_room и «Написать в чат», «Правила безопасности» и /safety.",
+  "acceptance": [
+    "GET /search?q=... → 302 на /jobs?q=... (query сохраняется).",
+    "Принятый исполнитель видит кнопку «Написать в чат», ведущую в core:chat_room.",
+    "На карточке задания виден trust-блок со ссылкой на /safety.",
+    "Для pending/гостя кнопки чата нет.",
+    "test_public_views проходит."
+  ],
+  "out_of_scope": [
+    "Не менять chat_room/доступ.",
+    "Не делать модалку жалобы.",
+    "Не менять SEO/robots."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/urls.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

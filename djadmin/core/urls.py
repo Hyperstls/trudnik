@@ -1,4 +1,5 @@
 from django.urls import path
+from django.views.generic import RedirectView
 
 from . import (views, views_auth, views_flow, views_interact, views_messenger,
                views_notify, views_profile, views_profile_ext, views_public_ext,
@@ -9,6 +10,7 @@ app_name = "core"
 urlpatterns = [
     path("", views.home, name="home"),
     path("jobs", views.jobs_list, name="jobs"),
+    path("search", RedirectView.as_view(pattern_name="core:jobs", permanent=False, query_string=True), name="search"),
     path("jobs/new", views_flow.job_create, name="job_create"),
     path("jobs/<uuid:job_id>", views.job_detail, name="job_detail"),
     path("jobs/<uuid:job_id>/edit", views_flow.job_edit, name="job_edit"),

@@ -789,3 +789,36 @@ class EmployerDetailTests(TestCase):
         response = self.client.get(reverse("core:employer_detail", args=[user.pk]))
         self.assertContains(response, "Отзыв о работодателе J032")
         self.assertNotContains(response, "Оценка работнику J032")
+
+
+class JobDetailChatTrustTests(TestCase):
+    def setUp(self):
+        self.employer = make_profile("detail-chat-emp@example.com", role="employer")
+        self.worker = make_profile("detail-chat-worker@example.com", role="worker")
+        self.job = make_job(self.employer, work_type="Чат J047")
+        self.app = Application.objects.create(
+            job=self.job, worker=self.worker, status="accepted"
+        )
+
+    def test_accepted_has_chat_and_trust(self):
+        self.client.force_login(self.worker)
+        response = self.client.get(reverse("core:job_detail", args=[self.job.pk]))
+        self.assertContains(response, reverse("core:chat_room", args=[self.app.pk]))
+        self.assertContains(response, "Написать в чат")
+        self.assertContains(response, "Правила безопасности")
+        self.assertContains(response, reverse("core:safety"))
+
+    def test_pending_has_no_chat_button(self):
+        self.app.status = "pending"
+        self.app.save(update_fields=["status"])
+        self.client.force_login(self.worker)
+        response = self.client.get(reverse("core:job_detail", args=[self.job.pk]))
+        self.assertNotContains(response, "Написать в чат")
+
+
+class LegacySearchTests(TestCase):
+    def test_search_redirects_to_jobs_with_query(self):
+        response = self.client.get(reverse("core:search"), {"q": "уборка"})
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response["Location"].startswith("/jobs"))
+        self.assertIn("q=", response["Location"])

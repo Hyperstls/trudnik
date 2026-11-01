@@ -115,6 +115,9 @@
                 {% if my_app.status == 'accepted' and not can_withdraw %}
                 <p class="text-xs text-neutral-600 mt-2" role="note">Отзыв недоступен: до начала задания осталось менее 12 часов</p>
                 {% endif %}
+                {% if my_app.status == 'accepted' %}
+                <a href="{% url 'core:chat_room' my_app.id %}" class="inline-flex items-center px-4 h-10 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors">Написать в чат</a>
+                {% endif %}
                 {% endif %}
                 {% elif job.status == 'open' %}
                 <form method="post" action="{% url 'core:job_apply' job.pk %}">{% csrf_token %}
@@ -143,6 +146,11 @@
             <a href="{% url 'core:login' %}?next={% url 'core:job_detail' job.pk %}" class="px-5 h-10 inline-flex items-center rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors shadow-sm">Войти, чтобы откликнуться</a>
             {% endif %}
             <span class="text-xs text-neutral-400 ml-auto">Размещено {{ job.created_at|date:"d.m.Y" }}</span>
+        </div>
+        <div class="mt-4 rounded-xl bg-primary-50 border border-primary-100 p-3 text-sm text-neutral-700">
+            <span class="font-semibold text-neutral-800">Безопасная сделка.</span>
+            Обсуждайте детали в чате и не переводите предоплату вне платформы.
+            <a href="{% url 'core:safety' %}" class="text-primary-600 hover:text-primary-700 underline underline-offset-2">Правила безопасности</a>
         </div>
     </article>
 </div>
