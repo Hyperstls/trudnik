@@ -1,0 +1,39 @@
+{
+  "id": "J059",
+  "title": "A11Y: focus-visible и подписи модалок жалоб",
+  "goal": "Клавиатурный фокус заметен на всех интерактивных элементах; диалоги жалоб связаны с заголовками через aria-labelledby.",
+  "why": "В дизайн-ревью выявлены слабые focus-состояния и модалки без aria-labelledby: screen reader не объявляет назначение диалога.",
+  "files": [
+    "static/css/app.css",
+    "djadmin/core/templates/core/job_detail.html",
+    "djadmin/core/templates/core/worker_detail.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/base.html"
+  ],
+  "interfaces": "app.css: :where(a,button,input,select,textarea,summary,[tabindex]):focus-visible { outline: 3px solid rgba(217,119,6,.55); outline-offset: 2px; border-radius: 6px; }. job_detail.html: dialog id=report-dialog aria-labelledby='report-title'; h2 id='report-title'. worker_detail.html: dialog id=report-dialog-worker aria-labelledby='report-worker-title'; h2 id='report-worker-title'. test_public_views: detail report dialog содержит aria-labelledby='report-title'; worker detail — aria-labelledby='report-worker-title'.",
+  "acceptance": [
+    "Все интерактивные элементы имеют заметный focus-visible.",
+    "Оба диалога жалоб имеют aria-labelledby на заголовок.",
+    "Существующие тесты модалок проходят.",
+    "test_public_views проходит."
+  ],
+  "out_of_scope": [
+    "Не менять структуру модалок.",
+    "Не менять backend/report_user.",
+    "Не добавлять новые JS-библиотеки."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

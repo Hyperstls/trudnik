@@ -735,3 +735,10 @@ progress::-moz-progress-bar {
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(2px);
 }
+
+/* Accessible focus ring for keyboard users (J059) */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 3px solid rgba(217, 119, 6, 0.55);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
