@@ -47,6 +47,15 @@ class SmokeAllPagesTests(TestCase):
         self.assertIn("!response.ok", sw)
         self.assertNotIn("server is reachable but request failed", sw)
 
+    def test_jobs_filter_has_skill_checkboxes(self):
+        from core.models import JobSkill, Skill
+
+        skill = Skill.objects.create(name="Навык J037", sort_order=1)
+        JobSkill.objects.create(job=self.job, skill=skill)
+        response = self.client.get(reverse("core:jobs"))
+        self.assertContains(response, 'name="skills"')
+        self.assertNotContains(response, '<select name="skills"')
+
     def test_public_pages(self):
         self.client.logout()
         for name in ("core:jobs", "core:workers", "core:login", "core:register",

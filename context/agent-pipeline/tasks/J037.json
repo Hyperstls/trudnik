@@ -1,0 +1,41 @@
+{
+  "id": "J037",
+  "title": "UX: мобильные переполнения и фильтр навыков",
+  "goal": "Убрать дублирующую кнопку «Создать», переполнение табов/кнопок в «Моих заданиях» на мобильных и заменить нативный multi-select навыков на аккуратный выпадающий список чекбоксов.",
+  "why": "Скриншоты: на /jobs и /my-jobs одновременно видны кнопка «Создать» в шапке страницы и в верхней навигации; на мобильном таб «Отменённые» обрезан, кнопка «Завершить» выходит за карточку, массовые действия занимают весь экран; фильтр навыков — нативный select size=4 с полосой прокрутки, выглядит сломанным.",
+  "files": [
+    "djadmin/core/templates/core/jobs_list.html",
+    "djadmin/core/templates/core/my_jobs.html",
+    "djadmin/core/tests/test_smoke_pages.py"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/base.html",
+    "static/css/app.css"
+  ],
+  "interfaces": "jobs_list.html: удалить page-level ссылку «Создать» из header (остаётся верхняя навигация); заменить <select name='skills' multiple size='4'> на <details> с <summary>Навыки (N)</summary> и чекбоксами name='skills' value=<uuid>, выбранные по selected_skills; панель absolute left-0 z-30 w-64 max-h-64 overflow-y-auto bg-white border rounded-xl p-2 shadow-lg. my_jobs.html: удалить page-level «Создать»; табы — flex flex-wrap gap-2 (без overflow-x-auto); массовые кнопки — grid grid-cols-2 gap-2 sm:flex sm:flex-wrap, текст text-xs sm:text-sm whitespace-nowrap; карточка — внешний flex flex-wrap, действия отдельным блоком w-full sm:w-auto sm:justify-end flex flex-wrap (без shrink-0), чтобы на мобильном переносились. test_smoke_pages.py: проверить, что /jobs и /my-jobs рендерятся 200 и содержат чекбоксы навыков (name='skills') при наличии skills.",
+  "acceptance": [
+    "На /jobs и /my-jobs нет второй кнопки «Создать» в заголовке страницы.",
+    "На мобильном табы «Все/Открытые/Завершённые/Отменённые» переносятся, не обрезаются.",
+    "Кнопки действий в карточке «Мои задания» переносятся внутри карточки и не выходят за её границы.",
+    "Массовые действия на мобильном — сетка 2×2, не вертикальная простыня.",
+    "Фильтр навыков — выпадающий список чекбоксов; выбранные навыки сохраняются и отправляются формой.",
+    "test_smoke_pages проходит."
+  ],
+  "out_of_scope": [
+    "Не менять логику фильтрации/сортировки.",
+    "Не менять верхнюю навигацию base.html.",
+    "Не менять карточки заданий и пагинацию."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_smoke_pages.py",
+      "cwd": "."
+    },
+    {
+      "name": "smoke_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_smoke_pages --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}
