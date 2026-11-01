@@ -1,0 +1,35 @@
+{
+  "id": "J087",
+  "title": "P1: сохранённые поиски на ленте заданий",
+  "goal": "Авторизованный пользователь сохраняет текущие фильтры /jobs, видит чипы сохранённых поисков и может удалить их; повторный переход применяет те же фильтры.",
+  "why": "Пользователь с постоянными фильтрами (город, оплата, навыки) вынужден настраивать их заново. Сохранённые поиски снижают трение и готовят базу для подписки на новые задания.",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/urls.py",
+    "djadmin/core/templates/core/jobs_list.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py"
+  ],
+  "interfaces": "views.py: helpers _saved_searches(user) и build query; save_search POST (q/city/status/payment_min/max/filter/skills), max 10, dedupe, prefixed id uuid hex, name from city/q; delete_search POST by id; context saved_searches [{id,name,url}]. urls: /searches/save, /searches/<id>/delete. jobs_list.html: блок чипов (auth, если есть), кнопка «Сохранить поиск» с hidden-полями текущих фильтров + CSRF, чип-ссылка и ×-форма удаления. Test: POST save → GET /jobs содержит имя/URL; POST delete → исчез; лимит/дедуп.",
+  "acceptance": [
+    "Сохранение текущих фильтров работает и не дублируется.",
+    "Чипы ведут на /jobs с сохранёнными параметрами.",
+    "Удаление убирает чип.",
+    "Не более 10 поисков; мусорные skills игнорируются.",
+    "Анонимный пользователь не видит блок."
+  ],
+  "out_of_scope": [
+    "Не делать автоуведомления/подписку (следующий этап).",
+    "Не менять фильтрацию.",
+    "Не добавлять отдельную страницу."
+  ],
+  "checks": [
+    {
+      "name": "saved_search_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.SavedSearchTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

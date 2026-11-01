@@ -1150,3 +1150,38 @@ class WorkersNavigationTests(TestCase):
         response = self.client.get(reverse("core:jobs"))
         self.assertContains(response, 'role="menuitem"')
         self.assertContains(response, reverse("core:workers"))
+
+
+class SavedSearchTests(TestCase):
+    def setUp(self):
+        self.user = make_profile("saved-search@example.com", email_verified=True)
+        self.client.force_login(self.user)
+
+    def test_save_list_dedupe_delete(self):
+        skill = Skill.objects.create(name="Сохранённый навык", sort_order=1)
+        payload = {"q": "уборка", "city": "Москва", "skills": str(skill.pk)}
+        response = self.client.post(reverse("core:save_search"), payload)
+        self.assertEqual(response.status_code, 302)
+        self.user.refresh_from_db()
+        self.assertEqual(len(self.user.notification_prefs["saved_searches"]), 1)
+        page = self.client.get(reverse("core:jobs"))
+        self.assertContains(page, "Москва")
+        self.assertContains(page, "skills=" + str(skill.pk))
+        # повтор не создаёт дубль
+        self.client.post(reverse("core:save_search"), payload)
+        self.user.refresh_from_db()
+        self.assertEqual(len(self.user.notification_prefs["saved_searches"]), 1)
+        search_id = self.user.notification_prefs["saved_searches"][0]["id"]
+        self.client.post(reverse("core:delete_search", args=[search_id]))
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.notification_prefs["saved_searches"], [])
+
+    def test_empty_search_not_saved(self):
+        self.client.post(reverse("core:save_search"), {})
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.notification_prefs.get("saved_searches", []), [])
+
+    def test_saved_search_requires_login(self):
+        self.client.logout()
+        response = self.client.post(reverse("core:save_search"), {"q": "x"})
+        self.assertEqual(response.status_code, 302)

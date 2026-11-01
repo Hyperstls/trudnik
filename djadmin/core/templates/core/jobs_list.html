@@ -7,6 +7,30 @@
     <div class="mb-4">
         <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">Задания</h2>
     </div>
+    {% if user.is_authenticated %}
+    <div class="flex flex-wrap items-center gap-2 mb-4">
+        {% if active_filter_count %}
+        <form method="post" action="{% url 'core:save_search' %}" class="inline-flex">{% csrf_token %}
+            {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
+            {% if city %}<input type="hidden" name="city" value="{{ city }}">{% endif %}
+            {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
+            {% if payment_min %}<input type="hidden" name="payment_min" value="{{ payment_min }}">{% endif %}
+            {% if payment_max %}<input type="hidden" name="payment_max" value="{{ payment_max }}">{% endif %}
+            {% if job_filter %}<input type="hidden" name="filter" value="{{ job_filter }}">{% endif %}
+            {% for skill in selected_skills %}<input type="hidden" name="skills" value="{{ skill }}">{% endfor %}
+            <button class="px-3 h-8 rounded-full border border-neutral-200 bg-white hover:bg-neutral-50 text-xs font-medium text-neutral-600">＋ Сохранить поиск</button>
+        </form>
+        {% endif %}
+        {% for item in saved_searches %}
+        <span class="inline-flex items-center rounded-full border border-primary-200 bg-primary-50 text-xs overflow-hidden">
+            <a href="{{ item.url }}" class="px-2.5 py-1.5 text-primary-700 hover:text-primary-800 font-medium">{{ item.name }}</a>
+            <form method="post" action="{% url 'core:delete_search' item.id %}" class="inline">{% csrf_token %}
+                <button class="px-1.5 py-1.5 text-primary-600 hover:text-red-600" aria-label="Удалить сохранённый поиск {{ item.name }}">×</button>
+            </form>
+        </span>
+        {% endfor %}
+    </div>
+    {% endif %}
 
     {% if yandex_maps_key %}
     {% if map_points or geo_center %}

@@ -7,12 +7,15 @@ Profile.objects.public_workers()/public_visible(). Публичные стран
 """
 import os
 import hashlib
+import uuid
+from urllib.parse import urlencode
 from collections import Counter
 from functools import lru_cache
 from uuid import UUID
 
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.db import connection
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
@@ -140,6 +143,77 @@ def jobs_geo_set(request):
     request.session["geo_radius"] = radius
     request.session.set_expiry(3600)
     return redirect(nxt)
+
+
+def _saved_searches(user):
+    prefs = user.notification_prefs or {}
+    items = prefs.get("saved_searches") if isinstance(prefs.get("saved_searches"), list) else []
+    result = []
+    for item in items[:10]:
+        if not isinstance(item, dict) or not item.get("id") or not item.get("query"):
+            continue
+        result.append({
+            "id": item["id"],
+            "name": item.get("name") or "Мой поиск",
+            "url": reverse("core:jobs") + "?" + item["query"],
+        })
+    return result
+
+
+def _saved_search_data(post):
+    skills = []
+    for raw in post.getlist("skills"):
+        try:
+            skills.append(str(UUID(str(raw).strip())))
+        except (TypeError, ValueError):
+            continue
+    skills = list(dict.fromkeys(skills))[:20]
+    params = []
+    for key in ("q", "city", "status", "payment_min", "payment_max", "filter"):
+        value = (post.get(key) or "").strip()[:120]
+        if value:
+            params.append((key, value))
+    for skill in skills:
+        params.append(("skills", skill))
+    query = urlencode(params)
+    city = (post.get("city") or "").strip()
+    q = (post.get("q") or "").strip()
+    name = city or q or ("Все задания" if not query else "Мой поиск")
+    return {"query": query, "name": name[:80]}
+
+
+@login_required
+@require_POST
+def save_search(request):
+    data = _saved_search_data(request.POST)
+    if not data["query"]:
+        messages.info(request, "Сначала выберите хотя бы один фильтр.")
+        return redirect("core:jobs")
+    prefs = request.user.notification_prefs or {}
+    items = prefs.get("saved_searches") if isinstance(prefs.get("saved_searches"), list) else []
+    items = [item for item in items if isinstance(item, dict)]
+    if any(item.get("query") == data["query"] for item in items):
+        messages.info(request, "Такой поиск уже сохранён.")
+        return redirect(reverse("core:jobs") + (("?" + data["query"]) if data["query"] else ""))
+    items.insert(0, {"id": uuid.uuid4().hex, "name": data["name"], "query": data["query"]})
+    prefs["saved_searches"] = items[:10]
+    Profile.objects.filter(pk=request.user.pk).update(notification_prefs=prefs)
+    messages.success(request, "Поиск сохранён.")
+    return redirect(reverse("core:jobs") + (("?" + data["query"]) if data["query"] else ""))
+
+
+@login_required
+@require_POST
+def delete_search(request, search_id):
+    prefs = request.user.notification_prefs or {}
+    items = prefs.get("saved_searches") if isinstance(prefs.get("saved_searches"), list) else []
+    prefs["saved_searches"] = [
+        item for item in items
+        if isinstance(item, dict) and item.get("id") != search_id
+    ][:10]
+    Profile.objects.filter(pk=request.user.pk).update(notification_prefs=prefs)
+    messages.info(request, "Сохранённый поиск удалён.")
+    return redirect("core:jobs")
 
 
 def jobs_list(request):
@@ -318,6 +392,7 @@ def jobs_list(request):
         "selected_skills": selected_skills,
         "job_filter": job_filter,
         "active_filter_count": active_filter_count,
+        "saved_searches": _saved_searches(request.user) if request.user.is_authenticated else [],
         "applied_ids": applied_ids,
         "lat": lat_raw, "lng": lng_raw, "radius": radius_raw,
         "geo_mode": request.GET.get("geo") == "1",
