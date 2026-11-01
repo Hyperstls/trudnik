@@ -1,0 +1,41 @@
+{
+  "id": "J017",
+  "title": "JOB-P1-09 (duplicate): массовое дублирование заданий",
+  "goal": "Bulk-действие duplicate создаёт полные копии выбранных заданий (фото, навыки, expires_at) и показывает счётчик; одиночный repost использует тот же helper.",
+  "why": "J009/J010 закрыли bulk cancel/restore/delete, но duplicate отсутствовал. Логика копирования уже есть в repost_job (J006); выносим её в duplicate_job, чтобы не дублировать код и закрыть последний пункт JOB-P1-09.",
+  "files": [
+    "djadmin/core/views_public_ext.py",
+    "djadmin/core/views_flow.py",
+    "djadmin/core/templates/core/my_jobs.html",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES_JOBS.md",
+    "djadmin/core/urls.py"
+  ],
+  "interfaces": "views_public_ext.duplicate_job(job, user) -> Job: transaction.atomic; create copy (поля как repost, expires_at=now+30d, photo_urls=list, date_time future-or-now+1d, max_workers/current_workers); bulk_create JobPhoto для job.photos; INSERT job_skills SELECT; вернуть new_job. repost_job вызывает duplicate_job и редиректит на detail копии. views_flow.my_jobs_bulk: action допускает 'duplicate'; при duplicate для каждого job из выборки duplicate_job(job, request.user), done += 1; file-cleanup только для delete. my_jobs.html: в bulk-панель кнопка name=action value=duplicate 'Дублировать выбранные'. Тесты: BulkJobsTests.test_bulk_duplicate_copies_job (job с photo_urls+JobPhoto+Skill -> POST duplicate -> 2 задания, у копии expires 29..31d, photo_urls/JobPhoto/навыки совпадают); RepostJobTests остаётся зелёным.",
+  "acceptance": [
+    "Bulk duplicate создаёт по копии на каждое выбранное своё задание.",
+    "Копия содержит фото (JobPhoto+legacy), навыки и expires_at=now+30d.",
+    "Чужие задания не дублируются.",
+    "Одиночный repost использует тот же helper и не меняет поведение.",
+    "BulkJobsTests и RepostJobTests проходят."
+  ],
+  "out_of_scope": [
+    "Не менять БД/RPC.",
+    "Не менять лимит 50 и UUID-валидацию.",
+    "Не менять другие bulk-действия."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_public_ext.py djadmin/core/views_flow.py djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "flow_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows.BulkJobsTests core.tests.test_flows.RepostJobTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

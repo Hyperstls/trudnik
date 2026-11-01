@@ -12,7 +12,7 @@ from django.utils import timezone
 
 from core.admin.jobs import JobAdmin
 from core.forms import JobForm
-from core.models import Application, Blacklist, Job, JobFavorite, JobPhoto, NotificationOutbox, Profile, Skill
+from core.models import Application, Blacklist, Job, JobFavorite, JobPhoto, JobSkill, NotificationOutbox, Profile, Skill
 from core.storage import resolve_upload_url, save_upload
 from core.tests.test_auth import make_profile
 
@@ -719,6 +719,36 @@ class BulkJobsTests(TestCase):
         )
         self.assertFalse(Job.objects.filter(pk__in=[first.pk, second.pk]).exists())
         self.assertIsNone(resolve_upload_url(url[len("/uploads/"):]))
+
+    def test_bulk_duplicate_copies_job(self):
+        url = save_upload(
+            SimpleUploadedFile("p.png", TINY_PNG, content_type="image/png"), "jobs"
+        )
+        job = self.jobs[0]
+        job.photo_urls = [url]
+        job.save(update_fields=["photo_urls"])
+        JobPhoto.objects.create(job=job, photo_url=url, order_num=0)
+        skill = Skill.objects.create(name="Bulk duplicate skill", sort_order=1)
+        JobSkill.objects.create(job=job, skill=skill)
+
+        self.client.post(
+            reverse("core:my_jobs_bulk"),
+            {"action": "duplicate", "job_ids": [str(job.pk)]},
+        )
+        self.assertEqual(Job.objects.filter(employer=self.employer).count(), 4)
+        copy = Job.objects.exclude(pk__in=[j.pk for j in self.jobs]).get(
+            employer=self.employer
+        )
+        delta = copy.expires_at - timezone.now()
+        self.assertGreater(delta, timedelta(days=29))
+        self.assertLess(delta, timedelta(days=31))
+        self.assertEqual(copy.photo_urls, job.photo_urls)
+        self.assertEqual(
+            list(copy.photos.values_list("photo_url", flat=True)), [url]
+        )
+        self.assertEqual(
+            list(copy.job_skills.values_list("skill_id", flat=True)), [skill.pk]
+        )
 
 
 class BulkApplicationsTests(TestCase):

@@ -3,8 +3,8 @@
 **Дата:** 2026-11-01
 **Ветка:** `feat/agent-pipeline` (Django `main` не менялся)
 **Метод:** контракт → dispatch → verify (exit-код) → независимый pattern-review → done.
-**Итог:** P0 закрыт, все P1 jobs/applications закрыты, кроме bulk duplicate; P2-01/P2-02 почти закрыты, P2-05/P2-06 закрыты.
-Полный `manage.py test core` — **289 OK**; `pre_deploy_check` — 7/7.
+**Итог:** P0 закрыт, все P1 jobs/applications закрыты; P2-01/P2-02 почти закрыты, P2-05/P2-06 закрыты.
+Полный `manage.py test core` — **290 OK**; `pre_deploy_check` — 7/7.
 
 ## Контракты
 
@@ -28,6 +28,7 @@
 | **J014** | P2-02 (часть): application_count владельцу, избранный работодатель, жалоба, share | PASS | PASS |
 | **J015** | Косметика: label «Принять повторно» + недостающие CSS-утилиты | PASS | PASS |
 | **J016** | P2-02 (ratings): рейтинг, число отзывов и 3 последних отзыва работодателя | PASS | PASS |
+| **J017** | Bulk duplicate через общий `duplicate_job` (фото/навыки/expires_at) | PASS | PASS |
 
 ## Ключевая находка контрактной проверки
 
@@ -44,13 +45,14 @@
 | Пункт | Статус |
 |---|---|
 | Bulk duplicate заданий | ❌ требует выноса repost-хелпера в сервис |
+| Bulk duplicate заданий | ✅ J017 |
 | P2-01 каталог: гео/карта и мультивыбор навыков | open (payment_max/один навык/new-applied — J013) |
 | P2-02 detail: employer verification / остальные блоки | open (count/favorite/report/share/ratings — J014/J016) |
 | P2-09..P2-13 ratings/employers/workers UI | open |
 
 ## Доказательства
 
-- Контракты: `context/agent-pipeline/tasks/J001.json` … `J016.json`.
+- Контракты: `context/agent-pipeline/tasks/J001.json` … `J017.json`.
 - Логи проверок: `context/agent-pipeline/logs/J00*.verify.log`.
 - Решения/заметки: `context/agent-pipeline/decisions.md`.
 - Матрицы: [ROUTES_MATRIX_JOBS.md](ROUTES_MATRIX_JOBS.md),

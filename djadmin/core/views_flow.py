@@ -37,6 +37,7 @@ from .notifications import enqueue_notification
 from .ratelimit import RateLimitExceeded, RateLimitUnavailable, enforce_ip_limit, rate_limit_write
 from .rpc import call_rpc, sync_job_skills_raw
 from .storage import delete_upload_url
+from .views_public_ext import duplicate_job
 
 RPC_ERROR_TEXT = {
     "not_found": "Не найдено или недоступно.",
@@ -380,7 +381,7 @@ def _bulk_ids(values) -> list[UUID]:
 def my_jobs_bulk(request):
     """Массовые cancel/restore/delete своих заданий (≤50, только атомарные RPC)."""
     action = request.POST.get("action")
-    if action not in ("cancel", "restore", "delete"):
+    if action not in ("cancel", "restore", "delete", "duplicate"):
         return HttpResponseNotAllowed(["POST"])
     job_ids = _bulk_ids(request.POST.getlist("job_ids"))
     if not job_ids:
@@ -389,19 +390,24 @@ def my_jobs_bulk(request):
     jobs = list(
         Job.objects.filter(pk__in=job_ids, employer=request.user).prefetch_related("photos")
     )
-    file_urls = {job.pk: _job_file_urls(job) for job in jobs} if action == "delete" else {}
     done = 0
-    for job in jobs:
-        if action == "cancel":
-            result = call_rpc("cancel_job_atomic", job.pk, request.user.pk) or {}
-        elif action == "restore":
-            result = call_rpc("restore_job_atomic", job.pk, request.user.pk) or {}
-        else:
-            result = call_rpc("delete_job_cascade", job.pk) or {}
-        if result.get("success"):
+    if action == "duplicate":
+        for job in jobs:
+            duplicate_job(job, request.user)
             done += 1
-            if action == "delete":
-                _delete_job_files(file_urls[job.pk])
+    else:
+        file_urls = {job.pk: _job_file_urls(job) for job in jobs} if action == "delete" else {}
+        for job in jobs:
+            if action == "cancel":
+                result = call_rpc("cancel_job_atomic", job.pk, request.user.pk) or {}
+            elif action == "restore":
+                result = call_rpc("restore_job_atomic", job.pk, request.user.pk) or {}
+            else:
+                result = call_rpc("delete_job_cascade", job.pk) or {}
+            if result.get("success"):
+                done += 1
+                if action == "delete":
+                    _delete_job_files(file_urls[job.pk])
     if done:
         messages.success(request, "Выполнено: %d." % done)
     failed = len(job_ids) - done

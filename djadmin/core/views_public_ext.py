@@ -251,19 +251,13 @@ def sitemap(request):
     return HttpResponse("\n".join(parts), content_type="application/xml")
 
 # ── Перепубликация (repost-job) ────────────────────────────────────────────
-@login_required
-@require_POST
-def repost_job(request, job_id):
-    """Копия задания (контракт app/utils/business.py copy_job)."""
+def duplicate_job(job, user):
+    """Полная копия задания: фото, навыки, expires_at=now+30d."""
     from django.db import connection as _c
-    from django.utils import timezone
 
-    job = Job.objects.filter(pk=job_id, employer=request.user).first()
-    if job is None:
-        raise Http404("Задание не найдено")
     with transaction.atomic():
         new_job = Job.objects.create(
-            employer=request.user,
+            employer=user,
             organization_name=job.organization_name,
             org_description=job.org_description,
             object_description=job.object_description,
@@ -295,5 +289,16 @@ def repost_job(request, job_id):
                 "SELECT %s, skill_id FROM job_skills WHERE job_id = %s ON CONFLICT DO NOTHING",
                 [new_job.pk, job.pk],
             )
+    return new_job
+
+
+@login_required
+@require_POST
+def repost_job(request, job_id):
+    """Копия задания (контракт app/utils/business.py copy_job)."""
+    job = Job.objects.filter(pk=job_id, employer=request.user).first()
+    if job is None:
+        raise Http404("Задание не найдено")
+    new_job = duplicate_job(job, request.user)
     messages.success(request, "Задание перепубликовано.")
     return redirect("core:job_detail", job_id=new_job.pk)

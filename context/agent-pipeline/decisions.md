@@ -719,3 +719,25 @@ P2-02 частично: count/favorite/report/share. CSS-дрейф skip-scope (
 **Кто:** Hyperstls
 
 P2-02 ratings-секция закрыта. CSS-дрейф skip-scope.
+
+## 2026-11-01 04:08:15 — J017: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css regenerated after my_jobs duplicate button; generated artifact
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 04:09:49 — J017: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J017.review.prompt.md
+
+## 2026-11-01 04:09:49 — J017: заметка
+
+**Кто:** Hyperstls
+
+Проверено: timezone импортирован на уровне views_public_ext; удаление исходника не ломает копию — J011 refcount видит JobPhoto копии. Follow-up: per-job try/except в bulk duplicate.
