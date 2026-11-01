@@ -1,0 +1,43 @@
+{
+  "id": "J043",
+  "title": "P2: единое «Избранное» — backend и страница",
+  "goal": "/favorites показывает задания, трудников и работодателей в одном месте, с табами/счётчиками, удалением по одному и массовым, приглашением трудника на открытое задание.",
+  "why": "Flask favorites.html объединяет три секции; Django раздробил на /favorite-jobs и /favorite-people: в шапке ведёт только на задания, favorite_people смешивает типы и всегда ссылается на worker_detail, нет счётчиков, приглашения и массового удаления.",
+  "files": [
+    "djadmin/core/views_profile.py",
+    "djadmin/core/urls.py",
+    "djadmin/core/templates/core/favorites.html"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/templates/core/base.html",
+    "djadmin/core/templates/core/my_jobs.html"
+  ],
+  "interfaces": "views_profile.favorites_page: job_favs = JobFavorite.objects.filter(user=request.user).select_related('job','job__employer').order_by('-created_at'); person_favs = Favorite.objects.filter(user=request.user).select_related('target').order_by('-created_at'); worker_favs/employer_favs по favorite_type; my_open_jobs = Job.objects.filter(employer=request.user, status=Job.Status.OPEN)[:20]; invited_worker_ids = Invitation pending/accepted для employer=request.user и worker_id in worker ids; tab из request.GET ('all','jobs','workers','employers', default all). views_profile.favorites_bulk_delete (login_required, require_POST): kind ∈ ('jobs','worker','employer'), ids — UUID из getlist('ids'); jobs → JobFavorite.filter(user, job_id__in).delete(); worker/employer → Favorite.filter(user, favorite_type=kind, target_id__in).delete(); messages.info('Удалено: N.'); redirect core:favorites_page. urls.py: path('favorites', views_profile.favorites_page, name='favorites_page'), path('favorites/bulk-delete', views_profile.favorites_bulk_delete, name='favorites_bulk_delete'). favorites.html: заголовок «Избранное», табы Все/Задания/Трудники/Работодатели со счётчиками; секции с карточками; у задания — название/организация/город/дата/оплата/статус, ссылка detail, чекбокс form='favorites-jobs-bulk', per-item remove через job_favorite_toggle; у трудника — имя/рейтинг/город/желаемая оплата, ссылка worker_detail, приглашение формой на invite_worker с select my_open_jobs (или «Создайте задание»), бейдж «Уже приглашён», чекбокс form='favorites-workers-bulk', remove через people_favorite_toggle; у работодателя — имя/рейтинг/город/бейдж «Проверен», ссылка employer_detail, чекбокс form='favorites-employers-bulk', remove через people_favorite_toggle. Кнопки «Удалить выбранные» с form= соответствующей bulk-формы. Пустое состояние с CTA /jobs, /workers, /employers.",
+  "acceptance": [
+    "GET /favorites отдаёт 200 и показывает непустые секции заданий, трудников и работодателей.",
+    "Табы фильтруют секции по tab=jobs|workers|employers, счётчики соответствуют количеству.",
+    "Удаление по одному работает через существующие toggle-endpoint и возвращает на /favorites (referer).",
+    "Массовое удаление удаляет только избранное текущего пользователя и только выбранный kind.",
+    "Трудника можно пригласить на своё открытое задание прямо из избранного; при отсутствии заданий — ссылка на создание.",
+    "Пустое состояние содержит ссылки на задания/трудников/работодателей.",
+    "manage.py check и smoke-страницы проходят."
+  ],
+  "out_of_scope": [
+    "Не удалять старые /favorite-jobs и /favorite-people — они остаются для совместимости.",
+    "Не менять модели Favorite/JobFavorite.",
+    "Не делать JS-фильтрацию без перезагрузки."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_profile.py djadmin/core/urls.py",
+      "cwd": "."
+    },
+    {
+      "name": "check",
+      "cmd": "{python} djadmin/manage.py check",
+      "cwd": "."
+    }
+  ]
+}

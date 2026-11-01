@@ -1,0 +1,39 @@
+{
+  "id": "J044",
+  "title": "P2: «Избранное» — навигация и тесты",
+  "goal": "Пункт «Избранное» в шапке и мобильном меню ведёт на единую страницу /favorites; покрыты рендер, табы и массовое удаление.",
+  "why": "J043 добавил /favorites, но base.html всё ещё ведёт на /favorite-jobs, поэтому пользователь не видит трудников/работодателей. Нужно переключить оба меню и закрепить тестами.",
+  "files": [
+    "djadmin/core/templates/core/base.html",
+    "djadmin/core/tests/test_parity_ext.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_profile.py",
+    "djadmin/core/templates/core/favorites.html"
+  ],
+  "interfaces": "base.html: обе ссылки «Избранное» (desktop nav и mobile bottom nav) — {% url 'core:favorites_page' %}. test_parity_ext: FavoritesPageTests — создать job + JobFavorite, worker/employer + Favorite(worker/employer), GET /favorites 200, содержит имена и счётчики «Задания · 1», «Трудники · 1», «Работодатели · 1», ссылки detail; POST /favorites/bulk-delete kind=jobs ids=[job] удаляет JobFavorite; kind=worker/employer с target id удаляет Favorite; GET /favorite-jobs по-прежнему 200.",
+  "acceptance": [
+    "Обе навигационные ссылки «Избранное» ведут на core:favorites_page.",
+    "GET /favorites рендерит все три непустые секции и счётчики.",
+    "Массовое удаление jobs/worker/employer удаляет только выбранный тип текущего пользователя.",
+    "Старый /favorite-jobs продолжает работать.",
+    "test_parity_ext проходит."
+  ],
+  "out_of_scope": [
+    "Не менять J043 view/template.",
+    "Не удалять старые маршруты.",
+    "Не менять другие пункты навигации."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_parity_ext.py",
+      "cwd": "."
+    },
+    {
+      "name": "parity_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_parity_ext --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

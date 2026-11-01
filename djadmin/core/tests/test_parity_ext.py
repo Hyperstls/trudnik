@@ -7,7 +7,7 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 
-from core.models import Application, Favorite, JobPhoto, Notification, Profile, Rating, UserReport
+from core.models import Application, Favorite, JobFavorite, JobPhoto, Notification, Profile, Rating, UserReport
 from core.tests.test_auth import make_profile
 from core.tests.test_flows import make_job
 
@@ -499,3 +499,38 @@ class NotificationsDeleteAllTests(TestCase):
             list(Notification.objects.filter(user=user).values_list("title", flat=True)),
             ["Приглашение"],
         )
+
+
+class FavoritesPageTests(TestCase):
+    def test_unified_favorites_and_bulk_delete(self):
+        user = make_profile("fav-page@example.com")
+        employer = make_profile("fav-page-emp@example.com", role="employer")
+        worker = make_profile("fav-page-worker@example.com", role="worker")
+        job = make_job(employer, work_type="Избранное J043")
+        JobFavorite.objects.create(user=user, job=job)
+        Favorite.objects.create(user=user, target=worker, favorite_type="worker")
+        Favorite.objects.create(user=user, target=employer, favorite_type="employer")
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("core:favorites_page"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Избранное J043")
+        self.assertContains(response, "Задания · 1")
+        self.assertContains(response, "Трудники · 1")
+        self.assertContains(response, "Работодатели · 1")
+        self.assertContains(response, reverse("core:job_detail", args=[job.pk]))
+        self.assertContains(response, reverse("core:worker_detail", args=[worker.pk]))
+
+        self.client.post(reverse("core:favorites_bulk_delete"), {"kind": "jobs", "ids": [str(job.pk)]})
+        self.assertFalse(JobFavorite.objects.filter(user=user, job=job).exists())
+        self.client.post(reverse("core:favorites_bulk_delete"), {"kind": "worker", "ids": [str(worker.pk)]})
+        self.assertFalse(Favorite.objects.filter(user=user, target=worker).exists())
+        self.client.post(reverse("core:favorites_bulk_delete"), {"kind": "employer", "ids": [str(employer.pk)]})
+        self.assertFalse(Favorite.objects.filter(user=user, target=employer).exists())
+        self.assertEqual(self.client.get(reverse("core:favorite_jobs")).status_code, 200)
+
+    def test_nav_links_to_unified_favorites(self):
+        user = make_profile("fav-nav@example.com")
+        self.client.force_login(user)
+        response = self.client.get(reverse("core:jobs"))
+        self.assertContains(response, reverse("core:favorites_page"))

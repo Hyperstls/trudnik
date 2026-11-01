@@ -12,9 +12,10 @@ from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
+from uuid import UUID
 
 from .forms_profile import PasswordChangeForm, ProfileForm
-from .models import Blacklist, Favorite, Invitation, Job, Profile
+from .models import Blacklist, Favorite, Invitation, Job, JobFavorite, Profile
 from .ratelimit import rate_limit_write
 from .rpc import call_rpc, sync_user_skills_raw
 
@@ -114,6 +115,82 @@ def people_unblock(request, user_id):
 def favorite_people(request):
     favs = Favorite.objects.filter(user=request.user).select_related("target").order_by("-created_at")
     return render(request, "core/favorite_people.html", {"favs": favs})
+
+
+# ── Единое избранное ────────────────────────────────────────────────────────
+def _uuid_values(values) -> list[UUID]:
+    result = []
+    for value in values:
+        try:
+            result.append(UUID(str(value)))
+        except (TypeError, ValueError):
+            continue
+    return list(dict.fromkeys(result))
+
+
+@login_required
+def favorites_page(request):
+    tab = request.GET.get("tab") or "all"
+    if tab not in ("all", "jobs", "workers", "employers"):
+        tab = "all"
+    job_favs = list(
+        JobFavorite.objects.filter(user=request.user)
+        .select_related("job", "job__employer").order_by("-created_at")
+    )
+    person_favs = list(
+        Favorite.objects.filter(user=request.user)
+        .select_related("target").order_by("-created_at")
+    )
+    worker_favs = [f for f in person_favs if f.favorite_type == "worker"]
+    employer_favs = [f for f in person_favs if f.favorite_type == "employer"]
+    my_open_jobs = list(
+        Job.objects.filter(employer=request.user, status=Job.Status.OPEN)
+        .order_by("-created_at")[:20]
+    )
+    invited_worker_ids = set()
+    worker_ids = [f.target_id for f in worker_favs]
+    if worker_ids:
+        invited_worker_ids = set(
+            Invitation.objects.filter(
+                employer=request.user, worker_id__in=worker_ids,
+                status__in=(Invitation.Status.PENDING, Invitation.Status.ACCEPTED),
+            ).values_list("worker_id", flat=True)
+        )
+    return render(request, "core/favorites.html", {
+        "tab": tab,
+        "job_favs": job_favs,
+        "worker_favs": worker_favs,
+        "employer_favs": employer_favs,
+        "jobs_count": len(job_favs),
+        "workers_count": len(worker_favs),
+        "employers_count": len(employer_favs),
+        "total_count": len(job_favs) + len(worker_favs) + len(employer_favs),
+        "my_open_jobs": my_open_jobs,
+        "invited_worker_ids": invited_worker_ids,
+    })
+
+
+@login_required
+@require_POST
+def favorites_bulk_delete(request):
+    kind = request.POST.get("kind")
+    ids = _uuid_values(request.POST.getlist("ids"))
+    if not ids:
+        messages.error(request, "Ничего не выбрано.")
+        return redirect("core:favorites_page")
+    if kind == "jobs":
+        deleted, _ = JobFavorite.objects.filter(
+            user=request.user, job_id__in=ids
+        ).delete()
+    elif kind in ("worker", "employer"):
+        deleted, _ = Favorite.objects.filter(
+            user=request.user, favorite_type=kind, target_id__in=ids
+        ).delete()
+    else:
+        messages.error(request, "Неизвестный тип избранного.")
+        return redirect("core:favorites_page")
+    messages.info(request, "Удалено: %d." % deleted)
+    return redirect("core:favorites_page")
 
 
 @login_required

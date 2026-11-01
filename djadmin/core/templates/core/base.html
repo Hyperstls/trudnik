@@ -42,7 +42,7 @@
                 <a href="{% url 'core:jobs' %}" class="px-3 py-2 rounded-lg text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100">Задания</a>
                 <a href="{% url 'core:my_applications' %}" class="px-3 py-2 rounded-lg text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100">Отклики</a>
                 <a href="{% url 'core:chats' %}" class="px-3 py-2 rounded-lg text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100">Чаты</a>
-                <a href="{% url 'core:favorite_jobs' %}" class="px-3 py-2 rounded-lg text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100">Избранное</a>
+                <a href="{% url 'core:favorites_page' %}" class="px-3 py-2 rounded-lg text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100">Избранное</a>
                 <a href="{% url 'core:workers' %}" class="px-3 py-2 rounded-lg text-sm font-medium text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100">Трудники</a>
             </nav>
             {% endif %}
@@ -124,7 +124,7 @@
         <a href="{% url 'core:chats' %}" class="flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px]" aria-label="Чаты">
             <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Чаты</span>
         </a>
-        <a href="{% url 'core:favorite_jobs' %}" class="flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px]" aria-label="Избранное">
+        <a href="{% url 'core:favorites_page' %}" class="flex flex-col items-center text-[11px] text-neutral-400 py-1 px-2 font-medium min-w-[64px]" aria-label="Избранное">
             <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span>Избр.</span>
         </a>
     </nav>
