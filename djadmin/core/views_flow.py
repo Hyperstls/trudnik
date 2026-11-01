@@ -328,12 +328,15 @@ def job_unapply(request, job_id):
 
 @login_required
 def my_applications(request):
-    tab = request.GET.get("tab") or "sent"
+    tab = request.GET.get("tab")
     if tab not in ("received", "sent"):
-        tab = "sent"
+        # Паритет Flask: у кого есть свои задания — сразу в «Полученные».
+        tab = "received" if Job.objects.filter(employer=request.user).exists() else "sent"
     if tab == "received":
-        qs = Application.objects.filter(job__employer=request.user).select_related(
-            "job", "worker"
+        qs = (
+            Application.objects.filter(job__employer=request.user)
+            .select_related("job", "worker")
+            .prefetch_related("worker__user_skills__skill")
         )
     else:
         qs = Application.objects.filter(worker=request.user).select_related("job")

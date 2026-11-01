@@ -1,0 +1,40 @@
+{
+  "id": "J046",
+  "title": "P2: «Мои отклики» — дефолт, карточки и выбор всех",
+  "goal": "Работодатель без параметра tab попадает в «Полученные»; в карточках видны рейтинг, навыки и желаемая оплата трудника; в полученных есть «Выбрать все».",
+  "why": "Flask applications.py:406-411 открывает received, если у пользователя есть свои задания; карточка показывает рейтинг/навыки/желаемую оплату (my_applications.html:169-187) и «Выбрать все» (:140). Django всегда открывает sent, а карточка содержит только имя/задание/статус.",
+  "files": [
+    "djadmin/core/views_flow.py",
+    "djadmin/core/templates/core/my_applications.html",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/templates/core/job_applicants.html"
+  ],
+  "interfaces": "views_flow.my_applications: tab = request.GET.get('tab'); если tab not in ('received','sent'): tab = 'received' if Job.objects.filter(employer=request.user).exists() else 'sent'. Для received qs = Application.objects.filter(job__employer=request.user).select_related('job','worker').prefetch_related('worker__user_skills__skill'); для sent — select_related('job'). my_applications.html: в received-панели чекбокс id='select-all-apps' + label «Выбрать все»; у app-checkbox class='app-checkbox'; JS onchange toggles все app_ids. В received-карточке под статусом: ★ rating (total_reviews), чипы первых 3 навыков из a.worker.user_skills.all и «от {{ desired_payment }} ₽» при наличии. test_flows: MyApplicationsDefaultTests — employer с job+accepted app, GET /my-applications (без tab) → context['tab']=='received'; worker без заданий → 'sent'; received-карточка содержит навык и рейтинг.",
+  "acceptance": [
+    "Без параметра tab работодатель с заданиями видит «Полученные», остальные — «Отправленные».",
+    "В полученных карточках видны рейтинг, до 3 навыков и желаемая оплата (если заполнены).",
+    "«Выбрать все» отмечает/снимает все чекбоксы откликов.",
+    "Существующие bulk accept/reject/reopen и пагинация работают.",
+    "test_flows проходит."
+  ],
+  "out_of_scope": [
+    "Не добавлять фильтр по навыкам — отдельная задача.",
+    "Не менять sent-карточки, кроме общих стилей.",
+    "Не менять bulk endpoint."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_flow.py djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "flow_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

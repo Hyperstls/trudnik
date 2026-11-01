@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from core.admin.jobs import JobAdmin
 from core.forms import JobForm
-from core.models import Application, Blacklist, Job, JobFavorite, JobPhoto, JobSkill, NotificationOutbox, Profile, Skill
+from core.models import Application, Blacklist, Job, JobFavorite, JobPhoto, JobSkill, NotificationOutbox, Profile, Skill, UserSkill
 from core.storage import resolve_upload_url, save_upload
 from core.tests.test_auth import make_profile
 
@@ -1026,3 +1026,28 @@ class BulkApplyTests(TestCase):
                 follow=True,
             )
         self.assertContains(response, "Выполнено: 1, пропущено: 0, ошибок: 1")
+
+
+class MyApplicationsDefaultTests(TestCase):
+    def test_employer_defaults_to_received(self):
+        employer = make_profile("myapps-default-emp@example.com", role="employer")
+        worker = make_profile(
+            "myapps-default-worker@example.com", role="worker",
+            rating=4.5, desired_payment=1500,
+        )
+        skill = Skill.objects.create(name="Навык J046", sort_order=1)
+        UserSkill.objects.create(user=worker, skill=skill)
+        job = make_job(employer, work_type="Отклики J046")
+        Application.objects.create(job=job, worker=worker, status="accepted")
+        self.client.force_login(employer)
+        response = self.client.get(reverse("core:my_applications"))
+        self.assertEqual(response.context["tab"], "received")
+        self.assertContains(response, "Навык J046")
+        self.assertContains(response, "★ 4,5")
+        self.assertContains(response, "1500")
+
+    def test_worker_without_own_jobs_defaults_to_sent(self):
+        worker = make_profile("myapps-sent-worker@example.com", role="worker")
+        self.client.force_login(worker)
+        response = self.client.get(reverse("core:my_applications"))
+        self.assertEqual(response.context["tab"], "sent")
