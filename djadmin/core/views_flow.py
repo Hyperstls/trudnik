@@ -166,7 +166,6 @@ def job_create(request):
     return render(request, "core/job_form.html", {
         "form": form, "title": "Новое задание", "selected_skills": set(),
         "yandex_maps_key": os.getenv("YANDEX_MAPS_API_KEY", ""),
-        "yandex_suggest_key": os.getenv("YANDEX_SUGGEST_API_KEY", ""),
     })
 
 
@@ -229,7 +228,6 @@ def job_edit(request, job_id):
         "form": form, "title": "Редактирование задания", "job": job,
         "selected_skills": selected,
         "yandex_maps_key": os.getenv("YANDEX_MAPS_API_KEY", ""),
-        "yandex_suggest_key": os.getenv("YANDEX_SUGGEST_API_KEY", ""),
     })
 
 
