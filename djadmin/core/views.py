@@ -5,6 +5,7 @@ RLS-паритет (спека §1.3): Django ходит в БД напряму�
 Profile.objects.public_workers()/public_visible(). Публичные страницы никогда
 не отображают приватные поля (email/phone/inn) — только колонки из PUBLIC_FIELDS.
 """
+import os
 from collections import Counter
 from uuid import UUID
 
@@ -13,6 +14,7 @@ from django.contrib import messages
 from django.db import connection
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.core.paginator import Paginator
 
@@ -205,6 +207,17 @@ def jobs_list(request):
                 worker=request.user, job__in=page.object_list
             ).exclude(status__in=("withdrawn", "cancelled")).values_list("job_id", flat=True)
         )
+    map_points = [
+        {
+            "id": str(job.pk),
+            "lat": float(job.lat),
+            "lng": float(job.lng),
+            "title": job.work_type or "Задание",
+            "url": reverse("core:job_detail", args=[job.pk]),
+        }
+        for job in page.object_list
+        if job.lat is not None and job.lng is not None
+    ]
     return render(request, "core/jobs_list.html", {
         "page": page, "q": q, "city": city, "status": status,
         "payment_min": payment_min, "payment_max": payment_max, "sort": sort,
@@ -216,6 +229,8 @@ def jobs_list(request):
         "applied_ids": applied_ids,
         "lat": lat_raw, "lng": lng_raw, "radius": radius_raw,
         "geo_active": geo_active,
+        "map_points": map_points,
+        "yandex_maps_key": os.getenv("YANDEX_MAPS_API_KEY", ""),
         "now": timezone.now(),
     })
 

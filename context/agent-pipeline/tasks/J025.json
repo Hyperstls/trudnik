@@ -1,0 +1,40 @@
+{
+  "id": "J025",
+  "title": "JOB-P2-01 (карта): Yandex Maps с метками заданий",
+  "goal": "При наличии YANDEX_MAPS_API_KEY лента показывает карту с метками заданий страницы (lat/lng), клик по метке ведёт на detail; без ключа/точек карта не рендерится.",
+  "why": "Flask index подключает Yandex Maps и метки. Django имеет гео-фильтр J024, но не карту (JOB-P2-01). Ключ уже есть в env (Flask использовал его).",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/templates/core/jobs_list.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES_JOBS.md",
+    ".env.example"
+  ],
+  "interfaces": "views.py: import os, reverse. jobs_list: map_points=[{'id':str(job.pk),'lat':job.lat,'lng':job.lng,'title':job.work_type or 'Задание','url':reverse('core:job_detail',args=[job.pk])} for job in page.object_list if job.lat is not None and job.lng is not None]; yandex_maps_key=os.getenv('YANDEX_MAPS_API_KEY',''); context map_points, yandex_maps_key. jobs_list.html: если yandex_maps_key и map_points: <div id='jobs-map' style='height:320px' class='w-full rounded-2xl border border-neutral-200 mb-4'></div> + {{ map_points|json_script:'jobs-map-data' }} + внешний script api-maps.yandex.ru/2.1/?apikey=<urlencoded>&lang=ru_RU + init JS (ymaps.ready, Placemark на каждую точку, click -> url, setBounds). Без ключа блок не рендерится. Тесты: test_jobs_map_points_context (job lat/lng -> context map_points содержит id/url); test_jobs_map_rendered_with_key (patch.dict os.environ YANDEX_MAPS_API_KEY=test-key -> HTML содержит id='jobs-map', 'api-maps.yandex.ru', 'apikey=test-key'); test_jobs_map_absent_without_key (assertNotContains 'jobs-map').",
+  "acceptance": [
+    "При ключе и точках рендерится карта и JSON меток.",
+    "Клик по метке ведёт на detail задания.",
+    "Без ключа карта не рендерится (лента работает).",
+    "Задания без lat/lng не попадают в map_points.",
+    "PublicViewsTests проходит без сетевых вызовов."
+  ],
+  "out_of_scope": [
+    "Не менять nearby_jobs/гео-фильтр.",
+    "Не добавлять карту в каталог трудников.",
+    "Не менять CSP/настройки (Django CSP нет)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views.PublicViewsTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

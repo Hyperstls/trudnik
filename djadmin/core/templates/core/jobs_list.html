@@ -13,6 +13,42 @@
         {% endif %}
     </div>
 
+    {% if yandex_maps_key and map_points %}
+    <div id="jobs-map" style="height:320px" class="w-full rounded-2xl border border-neutral-200 mb-4"></div>
+    {{ map_points|json_script:"jobs-map-data" }}
+    <script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_key|urlencode }}&lang=ru_RU"></script>
+    <script>
+    (function(){
+      if (!window.ymaps) return;
+      var node = document.getElementById('jobs-map-data');
+      if (!node) return;
+      var points = JSON.parse(node.textContent);
+      ymaps.ready(function(){
+        var map = new ymaps.Map('jobs-map', {
+          center: [55.7558, 37.6173], zoom: 10,
+          controls: ['zoomControl', 'geolocationControl']
+        });
+        points.forEach(function(p){
+          var balloon = document.createElement('div');
+          balloon.textContent = p.title;
+          var hint = document.createElement('div');
+          hint.textContent = p.title;
+          var placemark = new ymaps.Placemark([p.lat, p.lng], {
+            balloonContentBody: balloon, hintContent: hint
+          }, {preset: 'islands#orangeIcon'});
+          placemark.events.add('click', function(){ window.location.href = p.url; });
+          map.geoObjects.add(placemark);
+        });
+        if (points.length === 1) {
+          map.setCenter([points[0].lat, points[0].lng], 12);
+        } else if (points.length > 1) {
+          map.setBounds(map.geoObjects.getBounds(), {checkZoomRange: true, zoomMargin: 40});
+        }
+      });
+    })();
+    </script>
+    {% endif %}
+
     <!-- Фильтр-пилюли статуса (Flask: Все/Новые/Откликнулся — упрощено до публичных статусов) -->
     <div class="flex gap-2 mb-4 flex-wrap">
         <a href="{% url 'core:jobs' %}{% if query_string %}?{{ query_string|default:'' }}{% endif %}"

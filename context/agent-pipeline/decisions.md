@@ -919,3 +919,49 @@ P2-12: бейджи Надёжный/Приглашён закрыты; оста
 **Кто:** Hyperstls
 
 P2-01 гео: серверная фильтрация/сортировка/geolocation закрыты. Визуальная Yandex-карта остаётся отдельным шагом.
+
+## 2026-11-01 11:27:23 — J025: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css regenerated after map container; generated artifact
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 11:28:45 — J025: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css generated artifact (unchanged)
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 11:32:44 — J025: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css generated artifact (unchanged)
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 11:37:00 — J025: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css regenerated after map template; generated artifact
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 11:37:46 — J025: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J025.review.prompt.md
+
+## 2026-11-01 11:37:46 — J025: заметка
+
+**Кто:** Hyperstls
+
+P2-01 карта закрыта. Ключ должен быть JS API с referer-ограничением.

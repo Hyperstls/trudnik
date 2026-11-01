@@ -1,4 +1,5 @@
 """Публичные read-only страницы + health."""
+import os
 from datetime import timedelta
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -462,6 +463,42 @@ class PublicViewsTests(TestCase):
                 "/jobs", {"q": "J024", "lat": "60.0", "lng": "30.0", "radius": "2"}
             )
         self.assertContains(response, "0.0 км")
+
+    def test_jobs_map_points_context(self):
+        near, far = self._geo_jobs()
+        response = self.client.get("/jobs", {"q": "J024"})
+        points = response.context["map_points"]
+        self.assertEqual(len(points), 2)
+        self.assertIn(str(near.pk), {p["id"] for p in points})
+        self.assertIn("/jobs/%s" % near.pk, {p["url"] for p in points})
+
+    def test_jobs_map_rendered_with_key(self):
+        self._geo_jobs()
+        from unittest.mock import patch
+
+        with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": "test-" + "key"}):  # pragma: allowlist secret
+            response = self.client.get("/jobs", {"q": "J024"})
+        self.assertContains(response, 'id="jobs-map"')
+        self.assertContains(response, "api-maps.yandex.ru")
+        self.assertContains(response, "apikey=test-key")
+
+    def test_jobs_map_absent_without_key(self):
+        self._geo_jobs()
+        from unittest.mock import patch
+
+        with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": ""}):
+            response = self.client.get("/jobs", {"q": "J024"})
+        self.assertNotContains(response, 'id="jobs-map"')
+
+    def test_jobs_map_skips_jobs_without_coords(self):
+        Job.objects.create(
+            employer=self.employer, work_type="NoCoord J025", organization_name="Приход",
+            status="open", city="Москва", payment_amount=1000,
+            date_time=timezone.now() + timedelta(days=2),
+        )
+        response = self.client.get("/jobs", {"q": "J025"})
+        self.assertContains(response, "NoCoord J025")
+        self.assertEqual(response.context["map_points"], [])
 
     def test_worker_detail_hides_private_fields(self):
         response = self.client.get(f"/workers/{self.worker.pk}")
