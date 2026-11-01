@@ -682,6 +682,8 @@ class BulkActionsUiTests(TestCase):
         self.assertContains(response, "bulk-actions.js")
         self.assertContains(response, "data-job-status")
         self.assertContains(response, "data-bulk-requires")
+        self.assertContains(response, "action-menu-sheet")
+        self.assertContains(response, "Дублировать")
 
     def test_received_applications_have_bulk_controls(self):
         response = self.client.get(reverse("core:my_applications") + "?tab=received")

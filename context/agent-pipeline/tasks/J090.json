@@ -1,0 +1,32 @@
+{
+  "id": "J090",
+  "title": "P0: /my-jobs — мобильные подписи и меню «⋯»",
+  "goal": "На мобильном массовые кнопки не выходят за карточку, а меню «⋯» открывается нижним листом над навигацией и не обрезается футером.",
+  "why": "Длинные подписи «Отменить выбранные» и т.п. не помещаются в 2 колонки, а absolute-меню у нижней карточки уходит за viewport и накладывается на футер.",
+  "files": [
+    "djadmin/core/templates/core/my_jobs.html",
+    "static/js/bulk-actions.js",
+    "static/css/app.css",
+    "djadmin/core/tests/test_parity_ext.py"
+  ],
+  "context_files": [],
+  "interfaces": "my_jobs: кнопки содержат короткий span sm:hidden и полный hidden sm:inline; details name=job-actions; panel class action-menu-panel action-menu-sheet. app.css @media<=639: .action-menu-sheet position:fixed left/right .75rem bottom:4.5rem top:auto width:auto max-height:60vh overflow:auto z-index:60. bulk-actions.js: закрывать открытые .action-menu по клику вне/Escape. test: HTML содержит action-menu-sheet и короткие подписи.",
+  "acceptance": [
+    "Массовые подписи не выходят за пределы панели на 390px.",
+    "Меню «⋯» открывается в видимой области над нижней навигацией.",
+    "Меню прокручивается при нехватке высоты.",
+    "На desktop меню остаётся обычным dropdown.",
+    "Клик вне/Escape закрывает меню."
+  ],
+  "out_of_scope": [
+    "Не менять backend действий.",
+    "Не менять workers invite-меню."
+  ],
+  "checks": [
+    {
+      "name": "my_jobs_markup_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_parity_ext.BulkActionsUiTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

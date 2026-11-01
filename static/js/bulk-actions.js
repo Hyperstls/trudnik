@@ -67,3 +67,13 @@
         refresh();
     });
 })();
+
+// Close native action menus on outside click / Escape (J090).
+document.addEventListener('click', function (event) {
+    if (event.target.closest && event.target.closest('.action-menu')) return;
+    document.querySelectorAll('.action-menu[open]').forEach(function (menu) { menu.open = false; });
+});
+document.addEventListener('keydown', function (event) {
+    if (event.key !== 'Escape') return;
+    document.querySelectorAll('.action-menu[open]').forEach(function (menu) { menu.open = false; });
+});

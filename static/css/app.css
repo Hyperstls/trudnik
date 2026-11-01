@@ -924,3 +924,18 @@ progress::-moz-progress-bar {
         box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
     }
 }
+
+/* Mobile job action menu as a bottom sheet (J090). */
+@media (max-width: 639px) {
+    .action-menu-sheet {
+        position: fixed;
+        left: 0.75rem;
+        right: 0.75rem;
+        bottom: 4.5rem;
+        top: auto;
+        width: auto;
+        max-height: 60vh;
+        overflow-y: auto;
+        z-index: 60;
+    }
+}
