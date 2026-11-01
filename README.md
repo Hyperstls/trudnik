@@ -8,7 +8,7 @@
 - **Backend:** Python 3.12, Django 5.2 (`djadmin/`), ASGI/uvicorn, Channels (WebSocket).
 - **БД:** PostgreSQL + PostGIS; Django ходит напрямую через `djadmin/core/rpc.py` (psycopg2, параметризованные запросы), PostgREST остаётся для legacy Flask/интеграций.
 - **Async:** Celery + Redis (outbox, письма, периодические задачи).
-- **Frontend:** Django templates + Tailwind CSS + vanilla JS/PWA; Yandex Maps и SmartCaptcha (РФ).
+- **Frontend:** Django templates + Tailwind CSS + vanilla JS/PWA; Yandex Maps и SmartCaptcha (РФ); Android TWA/APK.
 - **Деплой:** Amvera, ветка `master`, Dockerfile `Dockerfile.djadmin`.
 - **Эталон паритета:** архив Flask — `origin/main-flask` (`9b3ed42`), не рабочий прод.
 
@@ -22,7 +22,7 @@ djadmin/                    # Django-проект (единственный пр
     forms*.py               # формы и валидаторы
     models.py               # unmanaged-модели поверх существующей БД
     templates/core/         # все актуальные шаблоны (корневые templates/ — legacy Flask)
-    tests/                  # 384 теста (manage.py test core)
+    tests/                  # 392 теста (manage.py test core)
   static/                   # собранный Tailwind и JS
 migrations/                 # SQL-миграции 067–150+, ledger 65/65
 scripts/                    # pre_deploy_check, dj_test_clone, миграции, Amvera
@@ -87,6 +87,7 @@ npm run build:css
   [`JOBS_RESULTS.md`](docs/parity/JOBS_RESULTS.md),
   [`GEO_UX_PRIVACY.md`](docs/parity/GEO_UX_PRIVACY.md).
 - **UX/UI-ревью:** [`docs/DESIGN_REVIEW_2026-11.md`](docs/DESIGN_REVIEW_2026-11.md).
+- **APK/TWA:** [`docs/APP_RELEASE.md`](docs/APP_RELEASE.md).
 - **Агентный конвейер:** [`docs/AGENT_PIPELINE.md`](docs/AGENT_PIPELINE.md),
   `context/agent-pipeline/`.
 - **152-ФЗ:** [`docs/rkn_notification_fill.md`](docs/rkn_notification_fill.md),
@@ -97,6 +98,6 @@ npm run build:css
 
 ## Статус
 
-- Полный `core`: **384 OK**, `pre_deploy_check` — 7/7.
+- Полный `core`: **392 OK**, `pre_deploy_check` — 7/7.
 - Паритет auth/profile и jobs/applications: открытых пунктов нет (J026 — карта трудников n/a).
 - Прод: **RUNNING**, `/health` 200.

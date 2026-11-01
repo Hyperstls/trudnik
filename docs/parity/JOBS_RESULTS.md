@@ -1,10 +1,10 @@
-# Jobs / applications — результаты паритета (J001–J058)
+# Jobs / applications — результаты паритета (J001–J063)
 
 **Дата:** 2026-11-01
 **Ветка:** `feat/agent-pipeline` (Django `main` не менялся)
 **Метод:** контракт → dispatch → verify (exit-код) → независимый pattern-review → done.
 **Итог:** P0 и P1 закрыты; P2-01/02/03/05/06/08/10/11/12/13 закрыты; P2-04/P2-07/P2-09 — осознанные решения; открытых UX-пунктов нет.
-Полный `manage.py test core` — **384 OK**; `pre_deploy_check` — 7/7.
+Полный `manage.py test core` — **392 OK**; `pre_deploy_check` — 7/7.
 
 ## Контракты
 
@@ -66,6 +66,11 @@
 | **J056** | Жалоба в `<dialog>` | PASS | PASS |
 | **J057** | Мультирольное избранное: явный тип | PASS | PASS |
 | **J058** | `/chats`: Subquery вместо N+1 | PASS | PASS |
+| **J059** | A11Y: focus-visible + aria-labelledby модалок | PASS | PASS |
+| **J060** | Канонический домен 301/308 + OG/Twitter | PASS | PASS |
+| **J061** | `/app` и безопасная отдача APK | PASS | PASS |
+| **J062** | Ссылки на приложение, фон «Изменить» | PASS | PASS |
+| **J063** | APK v1.1, assetlinks, OG 1200×630, PWA manifest | PASS | PASS |
 
 ## Ключевая находка контрактной проверки
 
@@ -97,7 +102,7 @@
 
 ## Доказательства
 
-- Контракты: `context/agent-pipeline/tasks/J001.json` … `J058.json`.
+- Контракты: `context/agent-pipeline/tasks/J001.json` … `J063.json`.
 - **J026 blocked:** карта трудников — у `Profile` нет lat/lng; потребовала бы миграцию/геокодинг.
 - Логи проверок: `context/agent-pipeline/logs/J00*.verify.log`.
 - Решения/заметки: `context/agent-pipeline/decisions.md`.

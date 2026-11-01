@@ -32,6 +32,10 @@
 | J057 | Мультирольное избранное: явный `as=worker/employer`, без дублей и «неудаляемых» записей |
 | J058 | `/chats`: последнее сообщение через Subquery, без N+1 |
 | J059 | A11Y: глобальный focus-visible и aria-labelledby у модалок жалоб |
+| J060 | Канонический домен (301/308 с amvera.tech) + OG/Twitter превью |
+| J061 | Страница `/app` и безопасная отдача APK |
+| J062 | Ссылки «Установить приложение», фон кнопки «Изменить» |
+| J063 | APK v1.1, assetlinks fingerprint, OG 1200×630, PWA manifest |
 
 Подробно о гео-логике и 152-ФЗ: [GEO_UX_PRIVACY.md](GEO_UX_PRIVACY.md).
 

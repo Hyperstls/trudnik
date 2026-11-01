@@ -2,9 +2,9 @@
 
 **Дата:** 2026-11-01
 **Эталон Flask:** `origin/main-flask` @ `9b3ed42` (read-only worktree `../trudnik-flask`)
-**Django:** `feat/agent-pipeline` @ J058 (`main` @ `3f4aa40` не менялся)
+**Django:** `feat/agent-pipeline` @ J063 (`main` @ `3f4aa40` не менялся)
 **Статус:** auth/profile — P0/P1 закрыты и задеплоены; jobs/applications — P0/P1/P2 закрыты и задеплоены; открытых UX-пунктов нет.
-**Production (2026-11-01):** `213a1df` (J054–J056), `6f39530` (J057–J058); ранее — auth P001–P114, J029–J053. `/health` 200, Status RUNNING.
+**Production (2026-11-01):** `e98ba24` (J060–J063), `a10dfb8` (APK/OG assets), `213a1df` (J054–J056), `6f39530` (J057–J058); ранее — auth P001–P114, J029–J053. `/health` 200, Status RUNNING.
 **Исторический срез аудита (все пункты закрыты):** P0-01…P0-04 (P001–P004);
 P1-01/02/06 — P101/P102/P106; P1-03/04/11 — P103/P104; P1-07/08/14 — P107/P108/P114;
 BUILD-01 — B001; TASKS-01 — T001; P1-12 — P112; P1-10 ORM — P110; P1-05 — P105.
@@ -16,7 +16,7 @@ gate OK; процедура — [MIGRATION_LEDGER.md](MIGRATION_LEDGER.md).
 см. [JOBS_RESULTS.md](JOBS_RESULTS.md), [AUDIT_JOBS_APPLICATIONS.md](AUDIT_JOBS_APPLICATIONS.md),
 [DISCREPANCIES_JOBS.md](DISCREPANCIES_JOBS.md),
 [ROUTES_MATRIX_JOBS.md](ROUTES_MATRIX_JOBS.md),
-[UI_INVENTORY_JOBS.md](UI_INVENTORY_JOBS.md). Полный `core` — 384 OK.
+[UI_INVENTORY_JOBS.md](UI_INVENTORY_JOBS.md). Полный `core` — 392 OK.
 
 **Следующая область:** открытых пунктов паритета auth/profile и jobs/applications нет;
 дальше — только продуктовые улучшения из [DESIGN_REVIEW_2026-11.md](../DESIGN_REVIEW_2026-11.md).
