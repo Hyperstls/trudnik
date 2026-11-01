@@ -14,7 +14,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.core.paginator import Paginator
 
-from .models import Application, Blacklist, Favorite, Job, JobFavorite, Profile, Rating, SitePage, Skill
+from .models import Application, Blacklist, Favorite, Job, JobFavorite, Profile, Rating, SitePage, Skill, UserSkill
 
 PAGE_SIZE = 20
 
@@ -226,13 +226,71 @@ def job_detail(request, job_id):
 
 
 def workers_list(request):
-    qs = Profile.objects.public_workers().order_by("-rating", "-total_reviews")
+    qs = Profile.objects.public_workers()
     q = (request.GET.get("q") or "").strip()
     if q:
         qs = (qs.filter(full_name__icontains=q) | qs.filter(city__icontains=q)
               | qs.filter(bio__icontains=q)).distinct()
+    selected_skills = []
+    raw_skills = []
+    for value in request.GET.getlist("skills"):
+        raw_skills.extend(value.split(","))
+    skill_ids = []
+    for raw in raw_skills:
+        try:
+            skill_ids.append(UUID(raw.strip()))
+        except (TypeError, ValueError):
+            continue
+    skill_ids = list(dict.fromkeys(skill_ids))
+    if skill_ids:
+        selected_skills = [str(skill_id) for skill_id in skill_ids]
+        qs = qs.filter(user_skills__skill_id__in=skill_ids).distinct()
+    rating_min = request.GET.get("rating_min") or ""
+    try:
+        rating_value = float(rating_min)
+    except (TypeError, ValueError):
+        rating_value = None
+    if rating_value is not None and 0 <= rating_value <= 5:
+        qs = qs.filter(rating__gte=rating_value)
+    payment_from = request.GET.get("payment_from") or ""
+    payment_to = request.GET.get("payment_to") or ""
+    from decimal import Decimal
+
+    max_amount = Decimal("1000000000")
+    try:
+        payment_from_value = Decimal(payment_from)
+    except Exception:
+        payment_from_value = None
+    if payment_from_value is not None and payment_from_value.is_finite() and 0 <= payment_from_value <= max_amount:
+        qs = qs.filter(desired_payment__gte=payment_from_value)
+    try:
+        payment_to_value = Decimal(payment_to)
+    except Exception:
+        payment_to_value = None
+    if payment_to_value is not None and payment_to_value.is_finite() and 0 <= payment_to_value <= max_amount:
+        qs = qs.filter(desired_payment__lte=payment_to_value)
+    sort = request.GET.get("sort") or "rating"
+    from django.db.models import F
+
+    if sort == "name":
+        qs = qs.order_by("full_name")
+    elif sort == "price_asc":
+        qs = qs.order_by(F("desired_payment").asc(nulls_last=True))
+    elif sort == "price_desc":
+        qs = qs.order_by(F("desired_payment").desc(nulls_last=True))
+    else:
+        sort = "rating"
+        qs = qs.order_by("-rating", "-total_reviews")
     page = Paginator(qs, PAGE_SIZE).get_page(request.GET.get("page"))
-    return render(request, "core/workers_list.html", {"page": page, "q": q})
+    return render(request, "core/workers_list.html", {
+        "page": page, "q": q,
+        "skills": list(Skill.objects.order_by("sort_order", "name")),
+        "selected_skills": selected_skills,
+        "rating_min": rating_min,
+        "payment_from": payment_from,
+        "payment_to": payment_to,
+        "sort": sort,
+    })
 
 
 def worker_detail(request, user_id):

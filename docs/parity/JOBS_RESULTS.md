@@ -1,10 +1,10 @@
-# Jobs / applications — результаты паритета (J001–J020)
+# Jobs / applications — результаты паритета (J001–J021)
 
 **Дата:** 2026-11-01
 **Ветка:** `feat/agent-pipeline` (Django `main` не менялся)
 **Метод:** контракт → dispatch → verify (exit-код) → независимый pattern-review → done.
-**Итог:** P0 и P1 закрыты; P2-02/P2-05/P2-06/P2-08 закрыты; P2-01 — только карта/гео.
-Полный `manage.py test core` — **295 OK**; `pre_deploy_check` — 7/7.
+**Итог:** P0 и P1 закрыты; P2-02/P2-05/P2-06/P2-08 закрыты; P2-01 — карта/гео, P2-12 — карта/бейджи.
+Полный `manage.py test core` — **299 OK**; `pre_deploy_check` — 7/7.
 
 ## Контракты
 
@@ -32,6 +32,7 @@
 | **J018** | P2-02 (verification): бейдж «✓ Подтверждён» у approved-работодателя | PASS | PASS |
 | **J019** | P2-01 (multi-skills): фильтр по нескольким навыкам | PASS | PASS |
 | **J020** | P2-08: поиск q по object_description | PASS | PASS |
+| **J021** | P2-12 (часть): навыки/рейтинг/оплата/сортировка в каталоге трудников | PASS | PASS |
 
 ## Ключевая находка контрактной проверки
 
@@ -51,7 +52,7 @@
 | Bulk duplicate заданий | ✅ J017 |
 | P2-01 каталог: карта/гео | open (payment_max/навыки/new-applied — J013/J019) |
 | P2-02 detail | ✅ J014/J016/J018 |
-| P2-09..P2-13 ratings/employers/workers UI | open |
+| P2-09..P2-13 ratings/employers/workers: карта/бейджи и остаток UI | open (P2-12 фильтры — J021) |
 
 ## Доказательства
 

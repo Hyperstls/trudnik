@@ -799,3 +799,41 @@ P2-01: мультивыбор навыков закрыт. Остались ка
 **Кто:** Hyperstls
 
 P2-08 закрыт: q ищет по object_description.
+
+## 2026-11-01 09:25:57 — J021: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css regenerated after workers filter form classes; generated artifact
+
+**Дрейф, который обойдён:** ['static/css/tailwind.min.css']
+
+## 2026-11-01 09:29:39 — J021: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css generated artifact (unchanged)
+
+**Дрейф, который обойдён:** ['static/css/tailwind.min.css']
+
+## 2026-11-01 09:35:09 — J021: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css generated artifact (unchanged)
+
+**Дрейф, который обойдён:** ['static/css/tailwind.min.css']
+
+## 2026-11-01 09:39:46 — J021: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J021.review.prompt.md
+
+## 2026-11-01 09:39:46 — J021: заметка
+
+**Кто:** Hyperstls
+
+P2-12 частично: навыки/рейтинг/оплата/сортировка в каталоге трудников; карта и бейджи invited/reliable остаются.

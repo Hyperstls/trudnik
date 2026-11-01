@@ -1,0 +1,40 @@
+{
+  "id": "J021",
+  "title": "JOB-P2-12 (часть): фильтры каталога трудников",
+  "goal": "/workers поддерживает навыки (multi), rating_min, desired_payment from/to и сортировку rating/name/price; фильтры сохраняются в пагинации.",
+  "why": "Flask workers() принимает city/experience/payment/rating/skills/sort. Django workers_list имеет только q (JOB-P2-12). Гео/карта остаются вне контракта.",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/templates/core/workers_list.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "docs/parity/DISCREPANCIES_JOBS.md"
+  ],
+  "interfaces": "views.py workers_list: qs=Profile.objects.public_workers(); q по full_name/city/bio; selected_skills из getlist('skills') + split(','), UUID-валидация/dedupe, qs.filter(user_skills__skill_id__in=ids).distinct(); rating_min -> qs.filter(rating__gte=float) (мусор игнор); payment_from/to -> desired_payment gte/lte (Decimal, мусор игнор); sort in ('rating','name','price_asc','price_desc'), order: rating=-rating,-total_reviews; name=full_name; price asc/desc nulls_last. Context: q, skills=Skill.objects.order_by(sort_order,name), selected_skills, rating_min, payment_from, payment_to, sort. workers_list.html: форма с q, multi-select skills, rating_min (number 0..5 step .1), payment_from/to, sort select; пагинация сохраняет q/skills/rating_min/payment/sort. Тесты: test_workers_skill_filter; test_workers_rating_and_payment_filters; test_workers_sort_by_name (context page.object_list[0].full_name).",
+  "acceptance": [
+    "Фильтр навыков возвращает только трудников с выбранным навыком.",
+    "rating_min и desired_payment from/to фильтруют профили.",
+    "Сортировка name/price меняет порядок; rating — дефолт.",
+    "Пагинация сохраняет фильтры.",
+    "PublicViewsTests проходит."
+  ],
+  "out_of_scope": [
+    "Не делать карту/гео и distance-sort.",
+    "Не менять worker_detail.",
+    "Не менять профиль/навыки."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views.PublicViewsTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

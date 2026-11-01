@@ -7,9 +7,33 @@
         <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">Трудники</h2>
     </div>
 
-    <form method="get" class="bg-white rounded-2xl border border-neutral-200 p-4 mb-5 shadow-card flex gap-3 items-end">
-        <label class="text-xs font-medium text-neutral-500 flex-1">Поиск
+    <form method="get" class="bg-white rounded-2xl border border-neutral-200 p-4 mb-5 shadow-card flex flex-wrap gap-3 items-end">
+        <label class="text-xs font-medium text-neutral-500 flex-1 min-w-[180px]">Поиск
             <input type="search" name="q" value="{{ q }}" placeholder="Имя или город…" class="mt-1 w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+        </label>
+        <label class="text-xs font-medium text-neutral-500">Навыки
+            <select name="skills" multiple size="3" class="mt-1 block min-w-[160px] border border-neutral-200 rounded-xl px-2 py-1 text-sm bg-neutral-50">
+                {% for s in skills %}
+                <option value="{{ s.pk }}" {% if s.pk|stringformat:"s" in selected_skills %}selected{% endif %}>{{ s.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="text-xs font-medium text-neutral-500">Рейтинг от
+            <input type="number" name="rating_min" min="0" max="5" step="0.1" value="{{ rating_min }}" class="mt-1 block w-24 border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50">
+        </label>
+        <label class="text-xs font-medium text-neutral-500">Оплата от
+            <input type="number" name="payment_from" min="0" value="{{ payment_from }}" class="mt-1 block w-28 border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50">
+        </label>
+        <label class="text-xs font-medium text-neutral-500">до
+            <input type="number" name="payment_to" min="0" value="{{ payment_to }}" class="mt-1 block w-28 border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50">
+        </label>
+        <label class="text-xs font-medium text-neutral-500">Сортировка
+            <select name="sort" class="mt-1 block border border-neutral-200 rounded-xl px-2 py-2 text-sm bg-neutral-50">
+                <option value="rating" {% if sort == 'rating' %}selected{% endif %}>По рейтингу</option>
+                <option value="name" {% if sort == 'name' %}selected{% endif %}>По имени</option>
+                <option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>Оплата ↑</option>
+                <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>Оплата ↓</option>
+            </select>
         </label>
         <button type="submit" class="h-10 px-5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors">Найти</button>
     </form>
@@ -44,11 +68,11 @@
 
     <nav class="mt-6 flex gap-2 items-center justify-center text-sm" aria-label="Пагинация">
         {% if page.has_previous %}
-        <a href="?page={{ page.previous_page_number }}{% if q %}&q={{ q }}{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600">← Назад</a>
+        <a href="?page={{ page.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if rating_min %}&rating_min={{ rating_min }}{% endif %}{% if payment_from %}&payment_from={{ payment_from }}{% endif %}{% if payment_to %}&payment_to={{ payment_to }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600">← Назад</a>
         {% endif %}
         <span class="text-neutral-400 px-2">{{ page.number }} из {{ page.paginator.num_pages }}</span>
         {% if page.has_next %}
-        <a href="?page={{ page.next_page_number }}{% if q %}&q={{ q }}{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600">Вперёд →</a>
+        <a href="?page={{ page.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if rating_min %}&rating_min={{ rating_min }}{% endif %}{% if payment_from %}&payment_from={{ payment_from }}{% endif %}{% if payment_to %}&payment_to={{ payment_to }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600">Вперёд →</a>
         {% endif %}
     </nav>
     {% else %}

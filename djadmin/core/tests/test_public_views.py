@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core import views
-from core.models import Application, Blacklist, Favorite, Job, JobPhoto, JobSkill, Rating, Religion, SitePage, Skill
+from core.models import Application, Blacklist, Favorite, Job, JobPhoto, JobSkill, Rating, Religion, SitePage, Skill, UserSkill
 from core.storage import resolve_upload_url, save_upload
 from core.tests.test_auth import make_profile
 
@@ -273,6 +273,52 @@ class PublicViewsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         # новый профиль (rating=0) может быть не на 1-й странице среди данных клона — ищем поиском
         self.assertContains(self.client.get("/workers?q=Иван"), self.worker.full_name)
+
+    def test_workers_skill_filter(self):
+        skill = Skill.objects.create(name="Навык трудника J021", sort_order=1)
+        UserSkill.objects.create(user=self.worker, skill=skill)
+        other = make_profile("worker-other-j021@example.com", role="worker")
+        other.full_name = "Другой трудник J021"
+        other.save(update_fields=["full_name"])
+        response = self.client.get("/workers", {"skills": str(skill.pk)})
+        self.assertContains(response, self.worker.full_name)
+        self.assertNotContains(response, other.full_name)
+
+    def test_workers_rating_and_payment_filters(self):
+        self.worker.rating = 4.5
+        self.worker.desired_payment = 2000
+        self.worker.save(update_fields=["rating", "desired_payment"])
+        other = make_profile("worker-cheap-j021@example.com", role="worker")
+        other.full_name = "Дешёвый трудник J021"
+        other.rating = 1
+        other.desired_payment = 100
+        other.save(update_fields=["full_name", "rating", "desired_payment"])
+        rated = self.client.get("/workers", {"rating_min": "4"})
+        self.assertContains(rated, self.worker.full_name)
+        self.assertNotContains(rated, other.full_name)
+        paid = self.client.get("/workers", {"payment_from": "1500"})
+        self.assertContains(paid, self.worker.full_name)
+        self.assertNotContains(paid, other.full_name)
+
+    def test_workers_sort_by_name(self):
+        self.worker.full_name = "Aaa J021sort"
+        self.worker.save(update_fields=["full_name"])
+        second = make_profile("worker-bbb-j021@example.com", role="worker")
+        second.full_name = "Bbb J021sort"
+        second.save(update_fields=["full_name"])
+        response = self.client.get("/workers", {"q": "J021sort", "sort": "name"})
+        names = [w.full_name for w in response.context["page"].object_list]
+        self.assertEqual(names, ["Aaa J021sort", "Bbb J021sort"])
+
+    def test_workers_nonfinite_payment_ignored(self):
+        for value in ("NaN", "sNaN", "Infinity", "1e999"):
+            with self.subTest(value=value):
+                self.assertEqual(
+                    self.client.get(
+                        "/workers", {"payment_from": value, "payment_to": value}
+                    ).status_code,
+                    200,
+                )
 
     def test_worker_detail_hides_private_fields(self):
         response = self.client.get(f"/workers/{self.worker.pk}")
