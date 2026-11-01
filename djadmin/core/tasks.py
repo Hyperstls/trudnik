@@ -23,9 +23,41 @@ OUTBOX_BATCH = 50
 MAX_ATTEMPTS = 3
 
 
+def _pref_on(prefs: dict | None, key: str, default: bool = True) -> bool:
+    value = (prefs or {}).get(key, default)
+    return value not in (False, "false", "off", 0)
+
+
 def _email_allowed(profile_prefs: dict | None) -> bool:
     prefs = profile_prefs or {}
-    return prefs.get("email", True) not in (False, "false", "off", 0)
+    if "email_enabled" in prefs:
+        return _pref_on(prefs, "email_enabled")
+    return _pref_on(prefs, "email", True)  # backward compatibility
+
+
+def _push_allowed(profile_prefs: dict | None) -> bool:
+    return _pref_on(profile_prefs, "push_enabled")
+
+
+def _in_app_allowed(profile_prefs: dict | None) -> bool:
+    return _pref_on(profile_prefs, "in_app_enabled")
+
+
+TYPE_PREF_KEYS = {
+    "application_received": "application",
+    "application_accepted": "application",
+    "application_rejected": "application",
+    "invitation": "invitation",
+    "new_message": "chat",
+    "new_rating": "rating",
+    "job_completed": "job",
+    "job_expired": "job",
+}
+
+
+def _type_allowed(profile_prefs: dict | None, notification_type: str) -> bool:
+    key = TYPE_PREF_KEYS.get(notification_type)
+    return True if key is None else _pref_on(profile_prefs, key)
 
 
 @app.task(bind=True, max_retries=3, default_retry_delay=60, ignore_result=True)
@@ -47,43 +79,56 @@ def drain_notification_outbox() -> str:
     )
     processed = failed = skipped = 0
     for row in rows:
-        with transaction.atomic():
-            notif = Notification.objects.create(
-                user=row.user, type=row.type[:50], title=row.title,
-                message=row.body, data=row.data or {},
-            )
-        from .consumers_notify import notify_user
-
-        notify_user(row.user_id, {
-            "id": str(notif.pk), "type": notif.type, "title": notif.title,
-            "message": notif.message or "", "unread": True,
-        })
         prefs = getattr(row.user, "notification_prefs", None) or {}
-        email_ok = True
-        if _email_allowed(prefs) and row.user.email:
-            email_ok = _send_email(row)
-            if email_ok:
-                processed += 1
-            else:
-                failed += 1
-        else:
-            skipped += 1
-        # Web Push (VAPID): уведомляем активные подписки
-        _send_pushes(row)
-        if (email_ok and _email_allowed(prefs)) or not _email_allowed(prefs):
-            processed_or_failed = "sent"
-        elif email_ok:
-            processed_or_failed = "skipped"
-        else:
-            processed_or_failed = None
-        row.attempts += 1
-        if processed_or_failed == "sent" or processed_or_failed == "skipped":
+        if not _type_allowed(prefs, row.type):
             row.status = "sent"
             row.processed_at = timezone.now()
-        elif row.attempts >= MAX_ATTEMPTS:
+            row.save(update_fields=["status", "processed_at"])
+            skipped += 1
+            continue
+
+        delivered = False
+        if _in_app_allowed(prefs):
+            with transaction.atomic():
+                notif = Notification.objects.create(
+                    user=row.user, type=row.type[:50], title=row.title,
+                    message=row.body, data=row.data or {},
+                )
+            from .consumers_notify import notify_user
+
+            notify_user(row.user_id, {
+                "id": str(notif.pk), "type": notif.type, "title": notif.title,
+                "message": notif.message or "", "unread": True,
+            })
+            delivered = True
+
+        email_failed = False
+        if _email_allowed(prefs) and row.user.email:
+            if _send_email(row):
+                processed += 1
+                delivered = True
+            else:
+                failed += 1
+                email_failed = True
+        else:
+            skipped += 1
+
+        if _push_allowed(prefs) and _send_pushes(row):
+            delivered = True
+
+        row.attempts += 1
+        if email_failed and row.attempts < MAX_ATTEMPTS:
+            row.save(update_fields=["attempts"])
+            continue
+        if email_failed:
             row.status = "failed"
-            row.processed_at = timezone.now()
+        else:
+            row.status = "sent"
+        row.processed_at = timezone.now()
         row.save(update_fields=["status", "attempts", "processed_at"])
+        if not delivered and not email_failed:
+            # channel disabled / no recipient — already counted in skipped
+            pass
     summary = "drain: processed=%d failed=%d skipped=%d" % (processed, failed, skipped)
     if processed or failed or skipped:
         logger.info(summary)

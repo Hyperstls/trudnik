@@ -59,6 +59,8 @@ class PushSubscriptionAPITests(TestCase):
                 user=self.user, endpoint=SUB_DATA["endpoint"]
             ).exists()
         )
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.notification_prefs.get("push_enabled"))
 
     def test_bad_json_400(self):
         response = self.client.post("/push/subscription", data="{}", content_type="application/json")

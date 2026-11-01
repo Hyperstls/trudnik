@@ -2073,3 +2073,19 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review
 
 **Пакет:** context/agent-pipeline/packs/J087.review.prompt.md
+
+## 2026-11-02 01:15:24 — J088: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** ['djadmin/core/tests/test_push.py']
+
+## 2026-11-02 01:25:05 — J088: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J088.review.prompt.md

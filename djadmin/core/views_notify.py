@@ -13,7 +13,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .models import Notification, PushSubscription
+from .models import Notification, Profile, PushSubscription
 
 PAGE_SIZE = 30
 
@@ -115,6 +115,10 @@ def push_subscribe(request):
     sub, _ = PushSubscription.objects.get_or_create(
         user=request.user, endpoint=endpoint, defaults={"p256dh": p256dh, "auth": auth}
     )
+    prefs = dict(request.user.notification_prefs or {})
+    if not prefs.get("push_enabled"):
+        prefs["push_enabled"] = True
+        Profile.objects.filter(pk=request.user.pk).update(notification_prefs=prefs)
     return JsonResponse({"success": True, "id": sub.pk})
 
 

@@ -1,0 +1,36 @@
+{
+  "id": "J088",
+  "title": "P0: уведомления реально учитывают настройки каналов и типов",
+  "goal": "drain_notification_outbox соблюдает email_enabled/push_enabled/in_app_enabled и типы (application/invitation/chat/rating/job); push-подписка включает push_enabled.",
+  "why": "Сейчас email проверяет устаревший ключ email, push и in-app отправляются всегда, типы игнорируются. Пользователь отключает каналы, но продолжает получать уведомления.",
+  "files": [
+    "djadmin/core/tasks.py",
+    "djadmin/core/views_notify.py",
+    "djadmin/core/tests/test_tasks.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_profile_ext.py",
+    "djadmin/core/models.py"
+  ],
+  "interfaces": "tasks: _pref_on(prefs,key,default=True); _type_allowed(prefs,type) mapping application_received/accepted/rejected→application, invitation→invitation, new_message→chat, new_rating→rating, job_completed/job_expired→job; drain: type off → sent/skipped; in_app off → no Notification/WS; email_enabled (fallback email) → email; push_enabled → _send_pushes; email failure retries; success/skip status. views_notify.push_subscribe: update prefs push_enabled=True. Tests: channels off/on, type off, push mock not called, push subscribe enables pref.",
+  "acceptance": [
+    "email_enabled=False → письма нет, in-app остаётся.",
+    "push_enabled=False → push не отправляется.",
+    "in_app_enabled=False → Notification не создаётся, email/push работают.",
+    "Тип off → ни один канал не срабатывает, outbox закрыт.",
+    "push_subscribe ставит push_enabled=True.",
+    "Старый ключ email=False продолжает работать."
+  ],
+  "out_of_scope": [
+    "Не менять шаблон настроек.",
+    "Не менять VAPID.",
+    "Не добавлять новые типы."
+  ],
+  "checks": [
+    {
+      "name": "notification_pref_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_tasks.DrainTests core.tests.test_push.PushSubscriptionAPITests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

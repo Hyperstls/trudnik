@@ -51,6 +51,40 @@ class DrainTests(TestCase):
         self.assertEqual(Notification.objects.filter(user=self.user, title="Без email").count(), 1)
         self.assertEqual(NotificationOutbox.objects.get(user=self.user).status, "sent")
 
+    def test_email_enabled_off_keeps_in_app(self):
+        self.user.notification_prefs = {"email_enabled": False, "in_app_enabled": True}
+        self.user.save(update_fields=["notification_prefs"])
+        make_outbox(self.user, title="Без email J088")
+        drain_notification_outbox()
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertTrue(Notification.objects.filter(user=self.user, title="Без email J088").exists())
+
+    def test_in_app_off_keeps_email(self):
+        self.user.notification_prefs = {"email_enabled": True, "in_app_enabled": False}
+        self.user.save(update_fields=["notification_prefs"])
+        make_outbox(self.user, title="Только email J088")
+        drain_notification_outbox()
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertFalse(Notification.objects.filter(user=self.user, title="Только email J088").exists())
+
+    def test_type_pref_off_skips_all_channels(self):
+        self.user.notification_prefs = {"chat": False}
+        self.user.save(update_fields=["notification_prefs"])
+        NotificationOutbox.objects.create(
+            user=self.user, type="new_message", title="Чат off J088", body="x"
+        )
+        drain_notification_outbox()
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertFalse(Notification.objects.filter(user=self.user, title="Чат off J088").exists())
+
+    def test_push_pref_off_skips_push(self):
+        self.user.notification_prefs = {"push_enabled": False}
+        self.user.save(update_fields=["notification_prefs"])
+        make_outbox(self.user, title="Push off J088")
+        with patch("core.tasks._send_pushes") as pushes:
+            drain_notification_outbox()
+        pushes.assert_not_called()
+
     def test_failed_email_retries_then_fails_after_max(self):
         make_outbox(self.user, title="Три попытки")
         with override_settings(EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend"):
