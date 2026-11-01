@@ -867,3 +867,47 @@ class JobDetailGeoTests(TestCase):
         response = self.client.get(reverse("core:job_detail", args=[self.job.pk]))
         self.assertContains(response, "Найти адрес")
         self.assertNotContains(response, 'id="job-detail-map"')
+
+
+class GeoPrivacyTests(TestCase):
+    def test_geo_set_rounds_and_stores_in_session_not_url(self):
+        from unittest.mock import patch
+
+        with patch("core.views.call_rpc_rows") as rpc:
+            rpc.return_value = []
+            response = self.client.post(
+                reverse("core:jobs_geo_set"),
+                {"lat": "60.12345", "lng": "30.54321", "radius": "2",
+                 "next": "/jobs?geo=1&radius=2"},
+            )
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(self.client.session["geo_lat"], 60.123)
+            self.assertEqual(self.client.session["geo_lng"], 30.543)
+            self.assertEqual(self.client.session["geo_radius"], 2.0)
+            listing = self.client.get("/jobs", {"geo": "1", "radius": "2"})
+        rpc.assert_called_once_with("nearby_jobs", 60.123, 30.543, 2000.0)
+        content = listing.content.decode()
+        self.assertNotIn("lat=60.123", content)
+        self.assertNotIn("lng=30.543", content)
+        self.assertIn("geo=1", content)
+        self.assertNotIn("geolocationControl", content)
+
+    def test_geo_clear_removes_session(self):
+        self.client.post(
+            reverse("core:jobs_geo_set"),
+            {"lat": "60.0", "lng": "30.0", "radius": "2", "next": "/jobs"},
+        )
+        self.assertIn("geo_lat", self.client.session)
+        self.client.post(
+            reverse("core:jobs_geo_set"), {"clear": "1", "next": "/jobs"}
+        )
+        self.assertNotIn("geo_lat", self.client.session)
+        self.assertNotIn("geo_lng", self.client.session)
+
+    def test_geo_forms_are_not_nested(self):
+        response = self.client.get(reverse("core:jobs"))
+        content = response.content.decode()
+        start = content.index('id="filters-form"')
+        end = content.index("</form>", start)
+        self.assertNotIn('id="geo-form"', content[start:end])
+        self.assertIn('id="geo-clear-form"', content)

@@ -10,6 +10,7 @@ app_name = "core"
 urlpatterns = [
     path("", views.home, name="home"),
     path("jobs", views.jobs_list, name="jobs"),
+    path("jobs/geo", views.jobs_geo_set, name="jobs_geo_set"),
     path("search", RedirectView.as_view(pattern_name="core:jobs", permanent=False, query_string=True), name="search"),
     path("jobs/new", views_flow.job_create, name="job_create"),
     path("jobs/<uuid:job_id>", views.job_detail, name="job_detail"),

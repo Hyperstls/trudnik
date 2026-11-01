@@ -1,0 +1,42 @@
+{
+  "id": "J053",
+  "title": "152-ФЗ: гео-поиск без координат в URL",
+  "goal": "Координаты пользователя для «Рядом со мной» передаются POST-ом, округляются до 3 знаков и хранятся в сессии 1 час; в URL/логах остаются только geo=1 и radius.",
+  "why": "Сейчас JS подставляет lat/lng в GET-форму, координаты попадают в URL, историю браузера и access-логи. Точная геопозиция — персональные данные; по 152-ФЗ нужно минимизировать точность, не хранить в URL и ограничить срок хранения. Nearby_jobs RPC не сохраняет координаты.",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/urls.py",
+    "djadmin/core/templates/core/jobs_list.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/config/settings.py",
+    "djadmin/core/templates/core/job_form.html"
+  ],
+  "interfaces": "views.jobs_geo_set (POST, без login_required, CSRF): clear=1 → session.pop geo_lat/geo_lng/geo_radius, redirect next; иначе float lat/lng/radius, диапазоны (-90..90/-180..180/0.1..100), округление round(...,3), session['geo_lat'/'geo_lng']/'geo_radius', request.session.set_expiry(3600), redirect next (same-origin через url_has_allowed_host_and_scheme, fallback /jobs). views.jobs_list: если GET geo=1 — брать координаты/радиус из сессии; иначе сохранить обратную совместимость GET lat/lng/radius; geo_active как сейчас. jobs_list.html: убрать hidden lat/lng; добавить POST-форму id='geo-form' на core:jobs_geo_set с hidden lat/lng/radius/next; geo-btn по клику заполняет geo-lat/geo-lng/geo-radius и next (URLSearchParams без lat/lng/geo + geo=1&radius), затем submit; убрать lat/lng из sort/pagination, заменить на geo=1&radius; добавить ссылку «Сбросить гео» на /jobs при geo_active; убрать geolocationControl с карты ленты (не отдавать геолокацию третьей стороне); подпись «Геопозиция используется только для поиска рядом, округляется и хранится в сессии 1 час; в ссылку не попадает». urls.py: path('jobs/geo', views.jobs_geo_set, name='jobs_geo_set'). tests: POST geo_set 60.12345/30.54321/2 → session 60.123/30.543/2.0, GET /jobs?geo=1&radius=2 → RPC nearby_jobs(60.123,30.543,2000.0), в HTML нет '60.123'/'30.543' в ссылках; clear=1 очищает session и RPC не вызывается.",
+  "acceptance": [
+    "Координаты не появляются в URL после «Рядом со мной»; в ссылках только geo=1 и radius.",
+    "В сессии хранятся округлённые до 3 знаков координаты, срок 1 час.",
+    "GET /jobs?geo=1&radius=... использует сессию; старые GET lat/lng ещё работают.",
+    "Сброс гео очищает сессию.",
+    "Карта ленты не использует geolocationControl Яндекса.",
+    "test_public_views проходит."
+  ],
+  "out_of_scope": [
+    "Не менять RPC nearby_jobs.",
+    "Не менять форму задания.",
+    "Не добавлять серверное хранение истории геопозиции."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views.py djadmin/core/urls.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

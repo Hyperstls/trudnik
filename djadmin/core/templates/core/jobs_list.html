@@ -20,7 +20,7 @@
       ymaps.ready(function(){
         var map = new ymaps.Map('jobs-map', {
           center: [55.7558, 37.6173], zoom: 10,
-          controls: ['zoomControl', 'geolocationControl']
+          controls: ['zoomControl']
         });
         points.forEach(function(p){
           var balloon = document.createElement('div');
@@ -54,18 +54,29 @@
     </div>
 
     <!-- Дополнительные фильтры: оплата до, навык, Новые/Откликнулся -->
+    <form id="geo-form" method="post" action="{% url 'core:jobs_geo_set' %}" class="hidden">{% csrf_token %}
+        <input type="hidden" name="lat" id="geo-lat">
+        <input type="hidden" name="lng" id="geo-lng">
+        <input type="hidden" name="radius" id="geo-radius">
+        <input type="hidden" name="next" id="geo-next">
+    </form>
+    <form id="geo-clear-form" method="post" action="{% url 'core:jobs_geo_set' %}" class="hidden">{% csrf_token %}
+        <input type="hidden" name="clear" value="1">
+        <input type="hidden" name="next" value="{% url 'core:jobs' %}">
+    </form>
     <form id="filters-form" method="get" action="{% url 'core:jobs' %}" class="flex flex-wrap gap-2 mb-4 items-center">
         {% if q %}<input type="hidden" name="q" value="{{ q }}">{% endif %}
         {% if city %}<input type="hidden" name="city" value="{{ city }}">{% endif %}
         {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
         {% if sort %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
         {% if payment_min %}<input type="hidden" name="payment_min" value="{{ payment_min }}">{% endif %}
-        <input type="hidden" name="lat" id="geo-lat" value="{{ lat }}">
-        <input type="hidden" name="lng" id="geo-lng" value="{{ lng }}">
         <label class="text-xs font-medium text-neutral-500">Радиус, км
-            <input type="number" name="radius" min="0.1" max="100" step="0.1" value="{{ radius|default:'10' }}" class="mt-1 block w-24 px-3 h-9 rounded-xl border border-neutral-200 bg-white text-sm">
+            <input type="number" name="radius" id="radius-input" min="0.1" max="100" step="0.1" value="{{ radius|default:'10' }}" class="mt-1 block w-24 px-3 h-9 rounded-xl border border-neutral-200 bg-white text-sm">
         </label>
         <button type="button" id="geo-btn" class="px-3 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Рядом со мной</button>
+        {% if geo_active %}<button type="submit" form="geo-clear-form" class="px-3 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 text-sm font-medium transition-colors">Сбросить гео</button>{% endif %}
+        <p class="basis-full text-xs text-neutral-400">Геопозиция используется только для поиска рядом, округляется и хранится в сессии 1 час; в ссылку не попадает.</p>
+        <p id="geo-msg" class="basis-full text-xs text-red-600 hidden" role="alert"></p>
         <input type="number" name="payment_max" min="0" value="{{ payment_max }}" placeholder="Оплата до, ₽"
                class="w-36 px-3 h-9 rounded-xl border border-neutral-200 bg-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent">
         <details class="relative">
@@ -99,7 +110,7 @@
     <div class="flex flex-wrap gap-2 mb-4 items-center">
         <span class="text-sm text-neutral-500 self-center mr-1">Сортировка:</span>
         {% for value, label in sort_options %}
-        <a href="?sort={{ value }}{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if payment_max %}&payment_max={{ payment_max }}{% endif %}{% if payment_min %}&payment_min={{ payment_min }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if job_filter %}&filter={{ job_filter }}{% endif %}{% if lat %}&lat={{ lat }}&lng={{ lng }}&radius={{ radius }}{% endif %}"
+        <a href="?sort={{ value }}{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if payment_max %}&payment_max={{ payment_max }}{% endif %}{% if payment_min %}&payment_min={{ payment_min }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if job_filter %}&filter={{ job_filter }}{% endif %}{% if geo_active %}&geo=1&radius={{ radius }}{% endif %}"
            class="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 {% if sort == value %}bg-primary-500 text-white shadow-sm{% else %}bg-neutral-100 text-neutral-600 hover:bg-neutral-200{% endif %}">{{ label }}</a>
         {% endfor %}
     </div>
@@ -145,18 +156,35 @@
     <script>
     (function(){
       var btn = document.getElementById('geo-btn');
+      var msg = document.getElementById('geo-msg');
       if (!btn) return;
+      function fail(text) {
+        if (msg) { msg.textContent = text; msg.classList.remove('hidden'); }
+        btn.disabled = false;
+      }
       btn.addEventListener('click', function(){
-        if (!navigator.geolocation) { alert('Геолокация недоступна в браузере.'); return; }
+        if (!navigator.geolocation) {
+          fail('Геолокация недоступна в браузере.');
+          return;
+        }
         btn.disabled = true;
+        if (msg) msg.classList.add('hidden');
         navigator.geolocation.getCurrentPosition(function(pos){
+          var radius = (document.getElementById('radius-input') || {}).value || '10';
+          var params = new URLSearchParams(window.location.search);
+          params.delete('lat');
+          params.delete('lng');
+          params.delete('geo');
+          params.set('geo', '1');
+          params.set('radius', radius);
           document.getElementById('geo-lat').value = pos.coords.latitude.toFixed(6);
           document.getElementById('geo-lng').value = pos.coords.longitude.toFixed(6);
-          document.getElementById('filters-form').submit();
+          document.getElementById('geo-radius').value = radius;
+          document.getElementById('geo-next').value = window.location.pathname + '?' + params.toString();
+          document.getElementById('geo-form').submit();
         }, function(){
-          btn.disabled = false;
-          alert('Не удалось получить координаты. Разрешите геолокацию.');
-        }, {timeout: 10000});
+          fail('Не удалось получить координаты. Разрешите геолокацию.');
+        }, {enableHighAccuracy: true, timeout: 10000, maximumAge: 60000});
       });
     })();
     </script>
@@ -164,11 +192,11 @@
     {% if page.paginator.num_pages > 1 %}
     <nav class="mt-6 flex gap-2 items-center justify-center text-sm" aria-label="Пагинация">
         {% if page.has_previous %}
-        <a href="?page={{ page.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if payment_max %}&payment_max={{ payment_max }}{% endif %}{% if payment_min %}&payment_min={{ payment_min }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if job_filter %}&filter={{ job_filter }}{% endif %}{% if lat %}&lat={{ lat }}&lng={{ lng }}&radius={{ radius }}{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 transition-colors">← Назад</a>
+        <a href="?page={{ page.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if payment_max %}&payment_max={{ payment_max }}{% endif %}{% if payment_min %}&payment_min={{ payment_min }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if job_filter %}&filter={{ job_filter }}{% endif %}{% if geo_active %}&geo=1&radius={{ radius }}{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 transition-colors">← Назад</a>
         {% endif %}
         <span class="text-neutral-400 px-2">{{ page.number }} из {{ page.paginator.num_pages }}</span>
         {% if page.has_next %}
-        <a href="?page={{ page.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if payment_max %}&payment_max={{ payment_max }}{% endif %}{% if payment_min %}&payment_min={{ payment_min }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if job_filter %}&filter={{ job_filter }}{% endif %}{% if lat %}&lat={{ lat }}&lng={{ lng }}&radius={{ radius }}{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 transition-colors">Вперёд →</a>
+        <a href="?page={{ page.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if payment_max %}&payment_max={{ payment_max }}{% endif %}{% if payment_min %}&payment_min={{ payment_min }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if job_filter %}&filter={{ job_filter }}{% endif %}{% if geo_active %}&geo=1&radius={{ radius }}{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 transition-colors">Вперёд →</a>
         {% endif %}
     </nav>
     {% endif %}

@@ -16,6 +16,8 @@ from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 
 from .models import Application, Blacklist, Favorite, Invitation, Job, JobFavorite, Profile, Rating, SitePage, Skill, UserSkill
@@ -76,6 +78,35 @@ def _promoted_first():
     return F("is_promoted").desc(nulls_last=True)
 
 
+@require_POST
+def jobs_geo_set(request):
+    """Сохранить гео-фильтр в сессии, не вынося координаты в URL."""
+    nxt = request.POST.get("next") or reverse("core:jobs")
+    if not url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}):
+        nxt = reverse("core:jobs")
+    if request.POST.get("clear") == "1":
+        for key in ("geo_lat", "geo_lng", "geo_radius"):
+            request.session.pop(key, None)
+        messages.info(request, "Гео-поиск отключён.")
+        return redirect(nxt)
+    try:
+        lat = float(request.POST.get("lat") or "")
+        lng = float(request.POST.get("lng") or "")
+        radius = float(request.POST.get("radius") or 10)
+    except (TypeError, ValueError):
+        messages.error(request, "Не удалось получить координаты. Попробуйте ещё раз.")
+        return redirect(nxt)
+    if not (-90 <= lat <= 90 and -180 <= lng <= 180 and 0.1 <= radius <= 100):
+        messages.error(request, "Некорректные координаты или радиус.")
+        return redirect(nxt)
+    # 152-ФЗ: минимальная точность для поиска (≈110 м) и короткий срок жизни.
+    request.session["geo_lat"] = round(lat, 3)
+    request.session["geo_lng"] = round(lng, 3)
+    request.session["geo_radius"] = radius
+    request.session.set_expiry(3600)
+    return redirect(nxt)
+
+
 def jobs_list(request):
     job_filter = request.GET.get("filter") or ""
     if job_filter not in ("new", "applied") or not request.user.is_authenticated:
@@ -133,12 +164,23 @@ def jobs_list(request):
     radius_raw = request.GET.get("radius") or ""
     geo_distances = {}
     geo_active = False
-    try:
-        geo_lat = float(lat_raw)
-        geo_lng = float(lng_raw)
-        geo_radius = float(radius_raw)
-    except (TypeError, ValueError):
-        geo_lat = geo_lng = geo_radius = None
+    geo_lat = geo_lng = geo_radius = None
+    if request.GET.get("geo") == "1":
+        # Координаты из серверной сессии: не попадают в URL/access-логи.
+        try:
+            geo_lat = float(request.session.get("geo_lat"))
+            geo_lng = float(request.session.get("geo_lng"))
+            geo_radius = float(request.session.get("geo_radius") or radius_raw or 10)
+        except (TypeError, ValueError):
+            geo_lat = geo_lng = geo_radius = None
+    else:
+        # Обратная совместимость со старыми ссылками до перехода на POST.
+        try:
+            geo_lat = float(lat_raw)
+            geo_lng = float(lng_raw)
+            geo_radius = float(radius_raw)
+        except (TypeError, ValueError):
+            geo_lat = geo_lng = geo_radius = None
     if (
         geo_lat is not None
         and -90 <= geo_lat <= 90
@@ -218,6 +260,8 @@ def jobs_list(request):
         for job in page.object_list
         if job.lat is not None and job.lng is not None and (job.address or "").strip()
     ]
+    if request.GET.get("geo") == "1" and geo_radius is not None:
+        radius_raw = "%g" % geo_radius
     return render(request, "core/jobs_list.html", {
         "page": page, "q": q, "city": city, "status": status,
         "payment_min": payment_min, "payment_max": payment_max, "sort": sort,
@@ -228,6 +272,7 @@ def jobs_list(request):
         "job_filter": job_filter,
         "applied_ids": applied_ids,
         "lat": lat_raw, "lng": lng_raw, "radius": radius_raw,
+        "geo_mode": request.GET.get("geo") == "1",
         "geo_active": geo_active,
         "map_points": map_points,
         "yandex_maps_key": os.getenv("YANDEX_MAPS_API_KEY", ""),
