@@ -34,7 +34,7 @@ from django.views.decorators.http import require_POST
 
 from .auth_backend import LOCKOUT_TEXT, ProfileBackend
 from .forms import INPUT_CLS, JOB_FIELDS, JobForm, LoginForm
-from .models import Application, Job, JobFavorite, JobPhoto
+from .models import Application, Job, JobFavorite, JobPhoto, Skill
 from .notifications import enqueue_notification
 from .ratelimit import RateLimitExceeded, RateLimitUnavailable, enforce_ip_limit, rate_limit_write
 from .rpc import call_rpc, sync_job_skills_raw
@@ -332,19 +332,33 @@ def my_applications(request):
     if tab not in ("received", "sent"):
         # Паритет Flask: у кого есть свои задания — сразу в «Полученные».
         tab = "received" if Job.objects.filter(employer=request.user).exists() else "sent"
+    skill_ids = []
+    for raw in request.GET.getlist("skills"):
+        for part in raw.split(","):
+            try:
+                skill_ids.append(UUID(part.strip()))
+            except (TypeError, ValueError):
+                continue
+    skill_ids = list(dict.fromkeys(skill_ids))
     if tab == "received":
         qs = (
             Application.objects.filter(job__employer=request.user)
             .select_related("job", "worker")
             .prefetch_related("worker__user_skills__skill")
         )
+        if skill_ids:
+            qs = qs.filter(worker__user_skills__skill_id__in=skill_ids).distinct()
     else:
         qs = Application.objects.filter(worker=request.user).select_related("job")
+        if skill_ids:
+            qs = qs.filter(job__job_skills__skill_id__in=skill_ids).distinct()
     page = Paginator(qs.order_by("-created_at"), 20).get_page(request.GET.get("page"))
     return render(request, "core/my_applications.html", {
         "page": page,
         "apps": page.object_list,
         "tab": tab,
+        "skills": list(Skill.objects.order_by("sort_order", "name")),
+        "selected_skills": [str(skill_id) for skill_id in skill_ids],
     })
 
 

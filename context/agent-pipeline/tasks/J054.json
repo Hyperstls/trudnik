@@ -1,0 +1,40 @@
+{
+  "id": "J054",
+  "title": "P3: полноценный FAQ и безопасная внешняя ссылка",
+  "goal": "FAQ содержит тематические группы и ключевые вопросы (регистрация, задания, отклики/чат, безопасность, оплата); ссылка на политику в регистрации открывается с rel=noopener noreferrer.",
+  "why": "Django FAQ — 6 несгруппированных вопросов против 13 в Flask. На регистрации внешняя ссылка target=_blank без rel — audited security-замечание.",
+  "files": [
+    "djadmin/core/templates/core/faq.html",
+    "djadmin/core/templates/core/register.html",
+    "djadmin/core/tests/test_parity_ext.py"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/_faq_items.html",
+    "djadmin/core/templates/core/privacy.html"
+  ],
+  "interfaces": "faq.html: 5 групп (Регистрация и возможности; Создание заданий; Отклики и чат; Безопасность и верификация; Оплата) с details-аккордеонами, всего ≥12 вопросов; тексты актуальны для единой модели (любой аккаунт может и работать, и размещать задания), только MAX-верификация (Telegram отключён), бесплатная платформа, оплата напрямую; в конце ссылки на /terms, /privacy, /safety без выдуманной поддержки. register.html: privacy link target=_blank rel=noopener noreferrer. test_parity_ext: GET /faq содержит группы «Регистрация и возможности», «Отклики и чат», «Оплата» и ≥12 <details>; GET /register содержит rel=\"noopener noreferrer\" для privacy.",
+  "acceptance": [
+    "FAQ содержит 5 тематических групп и не менее 12 вопросов.",
+    "Тексты не обещают Telegram-верификацию и платные функции.",
+    "В FAQ есть ссылки на условия, политику и безопасность.",
+    "Ссылка на политику на регистрации имеет rel=noopener noreferrer.",
+    "test_parity_ext проходит."
+  ],
+  "out_of_scope": [
+    "Не менять backend/маршруты.",
+    "Не добавлять форму поддержки.",
+    "Не менять юридические тексты."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_parity_ext.py",
+      "cwd": "."
+    },
+    {
+      "name": "parity_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_parity_ext --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

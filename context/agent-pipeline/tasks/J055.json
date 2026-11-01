@@ -1,0 +1,40 @@
+{
+  "id": "J055",
+  "title": "P3: фильтр по навыкам в «Моих откликах»",
+  "goal": "Оба таба «Моих откликов» фильтруются по одному/нескольким навыкам: полученные — по навыкам трудника, отправленные — по навыкам задания; фильтр сохраняется в пагинации.",
+  "why": "Flask my_applications.html:36,86 поддерживает selected_skills в обоих табах, Django не имеет фильтра — работодатель не может быстро отобрать отклики по компетенциям.",
+  "files": [
+    "djadmin/core/views_flow.py",
+    "djadmin/core/templates/core/my_applications.html",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/jobs_list.html",
+    "djadmin/core/models.py"
+  ],
+  "interfaces": "views_flow.my_applications: selected_skills = UUID из getlist('skills') + split(','), dedupe; для received после select_related/prefetch: qs.filter(worker__user_skills__skill_id__in=ids).distinct(); для sent: qs.filter(job__job_skills__skill_id__in=ids).distinct(); context skills=list(Skill.objects.order_by('sort_order','name')), selected_skills. my_applications.html: под табами form method=get с hidden tab, details-панель «Навыки · N» и чекбоксы name=skills (checked по selected_skills), кнопка «Применить», ссылка «Сбросить». Пагинация — ?tab=...&page=... и skills=... для каждого выбранного. test_flows: received-фильтр оставляет отклик трудника с навыком и убирает без; sent-фильтр по навыку задания; пагинация/контекст selected_skills.",
+  "acceptance": [
+    "В «Полученных» фильтр по навыку показывает только отклики трудников с этим навыком.",
+    "В «Отправленных» фильтр по навыку показывает только отклики на задания с этим навыком.",
+    "Несколько навыков объединяются по OR, дубликаты/мусор игнорируются.",
+    "Фильтр сохраняется в пагинации и табах.",
+    "test_flows проходит."
+  ],
+  "out_of_scope": [
+    "Не менять bulk accept/reject/reopen.",
+    "Не менять дефолтную вкладку.",
+    "Не добавлять сортировку."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_flow.py djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "flow_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

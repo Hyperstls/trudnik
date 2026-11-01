@@ -1,0 +1,40 @@
+{
+  "id": "J056",
+  "title": "UX: жалоба в модальном окне",
+  "goal": "Жалоба на работодателя/пользователя открывается в модальном <dialog>, а не постоянным input в строке действий; форма отправляется на report_user с CSRF, закрывается кнопкой/по клику на фон/Escape.",
+  "why": "Сейчас на job_detail и worker_detail причина жалобы — всегда видимый input, занимающий место и выглядящий как основное действие. Flask использует модалку (job_detail.html:26,35).",
+  "files": [
+    "djadmin/core/templates/core/job_detail.html",
+    "djadmin/core/templates/core/worker_detail.html",
+    "static/css/app.css",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_profile_ext.py"
+  ],
+  "interfaces": "job_detail.html: вместо inline form — button type=button id='report-open' «Пожаловаться»; после article — <dialog id='report-dialog' class='report-dialog ...'> с form method=post action=report_user job.employer_id, textarea name=reason maxlength=500 required, кнопка Отмена type=button data-close-report и submit «Отправить жалобу». worker_detail.html: button id='report-open-worker', dialog id='report-dialog-worker', action=report_user p.id, кнопка «Жалоба». JS в каждом шаблоне: open → showModal, data-close-report → close, click по backdrop → close; без inline handlers. static/css/app.css: .report-dialog::backdrop { background: rgba(0,0,0,.5); backdrop-filter: blur(2px); }. tests: job detail для worker содержит id='report-dialog', action report_user и «Отправить жалобу»; worker detail для авторизованного viewer содержит id='report-dialog-worker'.",
+  "acceptance": [
+    "Кнопка «Пожаловаться» открывает модальное окно.",
+    "Модалка содержит textarea причины и CSRF-форму на report_user.",
+    "Отмена/клик по фону/Escape закрывают модалку.",
+    "На страницах больше нет постоянно видимого input причины в строке действий.",
+    "test_public_views проходит."
+  ],
+  "out_of_scope": [
+    "Не менять report_user backend.",
+    "Не добавлять жалобы на задания (только пользователи).",
+    "Не менять другие модалки."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

@@ -580,3 +580,17 @@ class NotificationDeepLinksTests(TestCase):
         response = self.client.get(reverse("core:notifications"))
         self.assertContains(response, reverse("core:invitations"))
         self.assertContains(response, "Открыть приглашение")
+
+
+class FaqAndExternalLinkTests(TestCase):
+    def test_faq_has_groups_and_questions(self):
+        response = self.client.get(reverse("core:faq"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Регистрация и возможности")
+        self.assertContains(response, "Отклики и чат")
+        self.assertContains(response, "Оплата")
+        self.assertGreaterEqual(response.content.decode().count("<details"), 12)
+
+    def test_register_privacy_link_is_safe(self):
+        response = self.client.get(reverse("core:register"))
+        self.assertContains(response, 'rel="noopener noreferrer"')

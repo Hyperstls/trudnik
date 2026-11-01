@@ -1060,3 +1060,43 @@ class MyApplicationsDefaultTests(TestCase):
         self.client.force_login(worker)
         response = self.client.get(reverse("core:my_applications"))
         self.assertEqual(response.context["tab"], "sent")
+
+
+class MyApplicationsSkillFilterTests(TestCase):
+    def test_received_filters_by_worker_skill(self):
+        employer = make_profile("myapps-skill-emp@example.com", role="employer")
+        worker_a = make_profile("myapps-skill-a@example.com", role="worker", full_name="Анна Навыкова")
+        worker_b = make_profile("myapps-skill-b@example.com", role="worker", full_name="Борис Безруков")
+        skill_a = Skill.objects.create(name="Навык откликов A", sort_order=1)
+        skill_b = Skill.objects.create(name="Навык откликов B", sort_order=2)
+        UserSkill.objects.create(user=worker_a, skill=skill_a)
+        UserSkill.objects.create(user=worker_b, skill=skill_b)
+        job = make_job(employer, work_type="Фильтр J055")
+        Application.objects.create(job=job, worker=worker_a, status="pending")
+        Application.objects.create(job=job, worker=worker_b, status="pending")
+        self.client.force_login(employer)
+        response = self.client.get(
+            reverse("core:my_applications"),
+            {"tab": "received", "skills": str(skill_a.pk)},
+        )
+        self.assertContains(response, "Анна Навыкова")
+        self.assertNotContains(response, "Борис Безруков")
+
+    def test_sent_filters_by_job_skill(self):
+        employer = make_profile("myapps-sent-emp@example.com", role="employer")
+        worker = make_profile("myapps-sent-skill@example.com", role="worker")
+        skill_a = Skill.objects.create(name="Навык задания A", sort_order=3)
+        skill_b = Skill.objects.create(name="Навык задания B", sort_order=4)
+        job_a = make_job(employer, work_type="Задание с навыком A")
+        job_b = make_job(employer, work_type="Задание с навыком B")
+        JobSkill.objects.create(job=job_a, skill=skill_a)
+        JobSkill.objects.create(job=job_b, skill=skill_b)
+        Application.objects.create(job=job_a, worker=worker, status="pending")
+        Application.objects.create(job=job_b, worker=worker, status="pending")
+        self.client.force_login(worker)
+        response = self.client.get(
+            reverse("core:my_applications"),
+            {"tab": "sent", "skills": str(skill_a.pk)},
+        )
+        self.assertContains(response, "Задание с навыком A")
+        self.assertNotContains(response, "Задание с навыком B")

@@ -2,9 +2,100 @@
 {% block title %}Вопросы и ответы — Трудник{% endblock %}
 {% block content %}
 <div class="max-w-2xl mx-auto px-0 py-4 fade-in">
-    <h1 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-4">Частые вопросы</h1>
-    <div class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 space-y-2">
-        {% include "core/_faq_items.html" %}
-    </div>
+    <h1 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-1">Вопросы и ответы</h1>
+    <p class="text-sm text-neutral-500 mb-5">Как работает платформа разовой подработки «Трудник»</p>
+
+    <section aria-labelledby="faq-registration" class="mb-6">
+        <h2 id="faq-registration" class="text-base font-semibold text-neutral-800 mb-2">Регистрация и возможности</h2>
+        <div class="space-y-2">
+            <details class="bg-white rounded-2xl border border-neutral-200 px-4">
+                <summary class="py-3 text-sm font-medium text-neutral-800 cursor-pointer select-none">Как зарегистрироваться?</summary>
+                <p class="pb-3 text-sm text-neutral-600 leading-relaxed">Нажмите «Регистрация», укажите имя, email и пароль. После регистрации подтвердите email по ссылке из письма — без подтверждения вход и часть функций недоступны. Если письмо не пришло, на странице входа есть «Не пришло письмо подтверждения?».</p>
+            </details>
+            <details class="bg-white rounded-2xl border border-neutral-200 px-4">
+                <summary class="py-3 text-sm font-medium text-neutral-800 cursor-pointer select-none">Можно ли и работать, и размещать задания?</summary>
+                <p class="pb-3 text-sm text-neutral-600 leading-relaxed">Да. Любой аккаунт может откликаться на задания и создавать свои. При регистрации вы выбираете цель — «Искать подработку», «Размещать задания» или «И то, и другое»; это влияет только на стартовый экран, а не на доступ к функциям.</p>
+            </details>
+            <details class="bg-white rounded-2xl border border-neutral-200 px-4">
+                <summary class="py-3 text-sm font-medium text-neutral-800 cursor-pointer select-none">Какие данные нужны для профиля?</summary>
+                <p class="pb-3 text-sm text-neutral-600 leading-relaxed">Обязательно — имя и email. Дополнительно можно указать город, навыки, опыт, желаемую оплату и портфолио. ИНН указывается добровольно. Контакты не показываются публично: работодатель видит их после отклика. Экспорт и удаление данных — в «Профиле» (152-ФЗ).</p>
+            </details>
+        </div>
+    </section>
+
+    <section aria-labelledby="faq-jobs" class="mb-6">
+        <h2 id="faq-jobs" class="text-base font-semibold text-neutral-800 mb-2">Создание заданий</h2>
+        <div class="space-y-2">
+            <details class="bg-white rounded-2xl border border-neutral-200 px-4">
+                <summary class="py-3 text-sm font-medium text-neutral-800 cursor-pointer select-none">Как создать задание?</summary>
+                <p class="pb-3 text-sm text-neutral-600 leading-relaxed">Нажмите «Создать» в шапке. Укажите вид работы, описание, адрес и город, дату и время, оплату и число работников. Для офлайн-задания поставьте точку на карте или найдите адрес — координаты нужны только для метки. Дистанционные задания можно создавать без карты.</p>
+            </details>
+            <details class="bg-white rounded-2xl border border-neutral-200 px-4">
+                <summary class="py-3 text-sm font-medium text-neutral-800 cursor-pointer select-none">Сколько человек можно принять?</summary>
+                <p class="pb-3 text-sm text-neutral-600 leading-relaxed">Число мест задаётся при создании. Когда все места заняты, приём откликов закрывается, а непринятые отклики отклоняются. Набор можно завершить досрочно кнопкой «Завершить».</p>
+            </details>
+            <details class="bg-white rounded-2xl border border-neutral-200 px-4">
+                <summary class="py-3 text-sm font-medium text-neutral-800 cursor-pointer select-none">Можно ли изменить или отменить задание?</summary>
+                <p class="pb-3 text-sm text-neutral-600 leading-relaxed">Пока нет принятых откликов, доступно полное редактирование. После принятия работника можно менять только описание работы. «Отменить» снимает задание с публикации; отменённое задание можно восстановить, но прежние отклики при этом сбрасываются.</p>
+            </details>
+        </div>
+    </section>
+
+    <section aria-labelledby="faq-applications" class="mb-6">
+        <h2 id="faq-applications" class="text-base font-semibold text-neutral-800 mb-2">Отклики и чат</h2>
+        <div class="space-y-2">
+            <details class="bg-white rounded-2xl border border-neutral-200 px-4">
+                <summary class="py-3 text-sm font-medium text-neutral-800 cursor-pointer select-none">Как откликнуться на задание?</summary>
+                <p class="pb-3 text-sm text-neutral-600 leading-relaxed">Откройте задание и нажмите «Откликнуться». Работодатель увидит отклик в «Полученных» и сможет принять или отклонить его. Можно откликаться сразу на несколько заданий из ленты через чекбоксы.</p>
+            </details>
+            <details class="bg-white rounded-2xl border border-neutral-200 px-4">
+                <summary class="py-3 text-sm font-medium text-neutral-800 cursor-pointer select-none">Когда открывается чат?</summary>
+                <p class="pb-3 text-sm text-neutral-600 leading-relaxed">Чат доступен после принятия отклика. Работодатель может пригласить вас на задание — приглашение придёт в «Приглашения», где его можно принять или отклонить. Список «Чаты» показывает только принятые отклики.</p>
+            </details>
+            <details class="bg-white rounded-2xl border border-neutral-200 px-4">
+                <summary class="py-3 text-sm font-medium text-neutral-800 cursor-pointer select-none">Можно ли отозвать отклик?</summary>
+                <p class="pb-3 text-sm text-neutral-600 leading-relaxed">Да, кнопкой «Отозвать». Если до начала задания осталось менее 12 часов, отзыв недоступен — это защищает работодателя от срыва смены в последний момент.</p>
+            </details>
+        </div>
+    </section>
+
+    <section aria-labelledby="faq-security" class="mb-6">
+        <h2 id="faq-security" class="text-base font-semibold text-neutral-800 mb-2">Безопасность и верификация</h2>
+        <div class="space-y-2">
+            <details class="bg-white rounded-2xl border border-neutral-200 px-4">
+                <summary class="py-3 text-sm font-medium text-neutral-800 cursor-pointer select-none">Как подтвердить профиль?</summary>
+                <p class="pb-3 text-sm text-neutral-600 leading-relaxed">В профиле доступна верификация через MAX: перейдите по ссылке в чат с ботом и отправьте /start. Также можно загрузить документ в разделе «Верификация». Подтверждённые профили получают значок «Проверен».</p>
+            </details>
+            <details class="bg-white rounded-2xl border border-neutral-200 px-4">
+                <summary class="py-3 text-sm font-medium text-neutral-800 cursor-pointer select-none">Как пожаловаться на пользователя?</summary>
+                <p class="pb-3 text-sm text-neutral-600 leading-relaxed">На странице профиля или задания нажмите «Пожаловаться» и опишите причину. Жалобы рассматривает администратор; при множественных жалобах аккаунт может быть приостановлен до разбирательства.</p>
+            </details>
+            <details class="bg-white rounded-2xl border border-neutral-200 px-4">
+                <summary class="py-3 text-sm font-medium text-neutral-800 cursor-pointer select-none">Что делает чёрный список?</summary>
+                <p class="pb-3 text-sm text-neutral-600 leading-relaxed">Заблокированный пользователь не сможет откликаться на ваши задания и не увидит их в ленте. Блокировку можно снять в разделе «Чёрный список».</p>
+            </details>
+        </div>
+    </section>
+
+    <section aria-labelledby="faq-payment" class="mb-6">
+        <h2 id="faq-payment" class="text-base font-semibold text-neutral-800 mb-2">Оплата</h2>
+        <div class="space-y-2">
+            <details class="bg-white rounded-2xl border border-neutral-200 px-4">
+                <summary class="py-3 text-sm font-medium text-neutral-800 cursor-pointer select-none">Сколько стоит платформа?</summary>
+                <p class="pb-3 text-sm text-neutral-600 leading-relaxed">Сейчас все функции бесплатны: публикация заданий, отклики, чат, уведомления и поиск исполнителей. Платная монетизация отключена.</p>
+            </details>
+            <details class="bg-white rounded-2xl border border-neutral-200 px-4">
+                <summary class="py-3 text-sm font-medium text-neutral-800 cursor-pointer select-none">Как происходит расчёт?</summary>
+                <p class="pb-3 text-sm text-neutral-600 leading-relaxed">Оплата указывается в задании и происходит напрямую между работодателем и исполнителем. Платформа не выступает платёжным посредником и не удерживает комиссию. После завершения стороны могут оценить друг друга.</p>
+            </details>
+        </div>
+    </section>
+
+    <p class="text-sm text-neutral-500 text-center mt-8">
+        Не нашли ответ? Посмотрите
+        <a href="{% url 'core:terms' %}" class="text-primary-600 hover:underline">условия</a>,
+        <a href="{% url 'core:privacy' %}" class="text-primary-600 hover:underline">политику конфиденциальности</a>
+        и <a href="{% url 'core:safety' %}" class="text-primary-600 hover:underline">правила безопасности</a>.
+    </p>
 </div>
 {% endblock %}

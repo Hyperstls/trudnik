@@ -177,10 +177,7 @@
                 <form method="post" action="{% url 'core:people_favorite_toggle' job.employer_id %}">{% csrf_token %}
                     <button class="px-4 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 text-sm font-medium transition-colors">{{ is_employer_fav|yesno:"В избранном,В избранное" }}</button>
                 </form>
-                <form method="post" action="{% url 'core:report_user' job.employer_id %}" class="flex flex-wrap gap-2 items-center">{% csrf_token %}
-                    <input type="text" name="reason" maxlength="500" required placeholder="Причина жалобы" class="px-3 h-9 rounded-xl border border-neutral-200 text-sm w-44">
-                    <button class="px-4 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">Пожаловаться</button>
-                </form>
+                <button type="button" id="report-open" class="px-4 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">Пожаловаться</button>
                 <span class="text-sm text-neutral-500 ml-auto">Поделиться:</span>
                 <a href="https://t.me/share/url?url={{ request.build_absolute_uri|urlencode }}" target="_blank" rel="noopener noreferrer" class="text-sm text-primary-600 hover:text-primary-700 underline underline-offset-2">Telegram</a>
                 <a href="https://wa.me/?text={{ request.build_absolute_uri|urlencode }}" target="_blank" rel="noopener noreferrer" class="text-sm text-primary-600 hover:text-primary-700 underline underline-offset-2">WhatsApp</a>
@@ -196,5 +193,28 @@
             <a href="{% url 'core:safety' %}" class="text-primary-600 hover:text-primary-700 underline underline-offset-2">Правила безопасности</a>
         </div>
     </article>
+    {% if user.is_authenticated and not is_owner %}
+    <dialog id="report-dialog" class="report-dialog rounded-2xl border border-neutral-200 bg-white p-0 shadow-xl" style="width:min(28rem, calc(100vw - 2rem))">
+        <form method="post" action="{% url 'core:report_user' job.employer_id %}" class="p-5 space-y-3">{% csrf_token %}
+            <h2 class="text-lg font-bold text-neutral-800">Пожаловаться на работодателя</h2>
+            <p class="text-sm text-neutral-500">Опишите нарушение: мошенничество, спам, некорректное поведение. Жалобу рассмотрит модерация.</p>
+            <textarea name="reason" maxlength="500" required rows="4" placeholder="Причина жалобы" class="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent"></textarea>
+            <div class="flex justify-end gap-2">
+                <button type="button" data-close-report class="px-4 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">Отмена</button>
+                <button type="submit" class="px-4 h-9 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold">Отправить жалобу</button>
+            </div>
+        </form>
+    </dialog>
+    <script>
+    (function(){
+        var open = document.getElementById('report-open');
+        var dialog = document.getElementById('report-dialog');
+        if (!open || !dialog) return;
+        open.addEventListener('click', function(){ if (dialog.showModal) dialog.showModal(); else dialog.setAttribute('open', ''); });
+        dialog.querySelectorAll('[data-close-report]').forEach(function(btn){ btn.addEventListener('click', function(){ dialog.close(); }); });
+        dialog.addEventListener('click', function(e){ if (e.target === dialog) dialog.close(); });
+    })();
+    </script>
+    {% endif %}
 </div>
 {% endblock %}

@@ -234,6 +234,8 @@ class PublicViewsTests(TestCase):
         self.assertContains(
             response, reverse("core:report_user", args=[self.employer.pk])
         )
+        self.assertContains(response, 'id="report-dialog"')
+        self.assertContains(response, "Отправить жалобу")
         content = response.content.decode()
         self.assertIn("t.me/share/url?url=http%3A", content)
         self.assertIn("wa.me/?text=http%3A", content)
@@ -911,3 +913,14 @@ class GeoPrivacyTests(TestCase):
         end = content.index("</form>", start)
         self.assertNotIn('id="geo-form"', content[start:end])
         self.assertIn('id="geo-clear-form"', content)
+
+
+class WorkerReportModalTests(TestCase):
+    def test_worker_detail_has_report_modal(self):
+        viewer = make_profile("report-modal-viewer@example.com")
+        target = make_profile("report-modal-target@example.com", role="worker")
+        self.client.force_login(viewer)
+        response = self.client.get(reverse("core:worker_detail", args=[target.pk]))
+        self.assertContains(response, 'id="report-dialog-worker"')
+        self.assertContains(response, reverse("core:report_user", args=[target.pk]))
+        self.assertContains(response, "Отправить жалобу")

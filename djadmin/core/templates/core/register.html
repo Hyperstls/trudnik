@@ -108,7 +108,7 @@
 
             <label class="flex items-start gap-2.5 text-sm text-neutral-700 cursor-pointer">
                 <input type="checkbox" name="consent" required class="mt-0.5 rounded border-neutral-300 text-primary-500 focus:ring-primary-500">
-                <span>Согласен с <a href="{% url 'core:privacy' %}" class="text-primary-600 hover:underline" target="_blank">политикой конфиденциальности</a> и обработкой персональных данных (152-ФЗ) <span class="text-danger">*</span></span>
+                <span>Согласен с <a href="{% url 'core:privacy' %}" class="text-primary-600 hover:underline" target="_blank" rel="noopener noreferrer">политикой конфиденциальности</a> и обработкой персональных данных (152-ФЗ) <span class="text-danger">*</span></span>
             </label>
             {% if form.consent.errors %}<p class="form-error" role="alert"><span>{{ form.consent.errors.0 }}</span></p>{% endif %}
             <input type="hidden" name="website" value="">
