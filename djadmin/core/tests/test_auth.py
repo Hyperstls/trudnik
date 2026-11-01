@@ -7,7 +7,7 @@ from django.test import TestCase, override_settings
 
 from core.models import Profile
 
-CACHE_LOCMEM = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+CACHE_LOCMEM = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": "trudnik-tests"}}
 
 
 def make_profile(email="user@example.com", password="Aa1!aaaa", **kw):  # pragma: allowlist secret
@@ -17,6 +17,7 @@ def make_profile(email="user@example.com", password="Aa1!aaaa", **kw):  # pragma
     return Profile.objects.create_user(email=email, password=password, **kw)
 
 
+@override_settings(CACHES=CACHE_LOCMEM)
 class AuthBridgeTests(TestCase):
     def setUp(self):
         cache.clear()  # lockout/rate-limit живут в общем кэше — изолируем тесты

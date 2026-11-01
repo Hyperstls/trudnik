@@ -1,0 +1,31 @@
+{
+  "id": "J073",
+  "title": "Test infra: LocMem для всех cache-зависимых auth-классов",
+  "goal": "Auth/rate-limit тесты не очищают общий Redis и получают изолированный LocMem-кэш на класс.",
+  "why": "Ревью J072 выявило: setUp-ы четырёх auth-классов вызывают cache.clear() на дефолтном Redis; это может влиять на dev-среду и делает полный прогон нестабильным. Локальный LocMem с LOCATION убирает внешний побочный эффект.",
+  "files": [
+    "djadmin/core/tests/test_auth.py",
+    "djadmin/core/tests/test_auth_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/tests/test_parity_final.py"
+  ],
+  "interfaces": "CACHE_LOCMEM получает LOCATION='trudnik-tests'; @override_settings(CACHES=CACHE_LOCMEM) ставится на классы AuthBridgeTests (test_auth) и RegisterTests/VerifyEmailTests/PasswordResetTests/ResendCooldownTests (test_auth_flows). Методные декораторы можно оставить. Логика тестов не меняется.",
+  "acceptance": [
+    "В этих классах cache.clear() в setUp чистит LocMem, а не Redis.",
+    "Все auth-модули проходят.",
+    "Полный core-прогон остаётся зелёным."
+  ],
+  "out_of_scope": [
+    "Не менять ratelimit.py/views.",
+    "Не менять пороги.",
+    "Не менять production settings."
+  ],
+  "checks": [
+    {
+      "name": "auth_modules",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_auth core.tests.test_auth_flows --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

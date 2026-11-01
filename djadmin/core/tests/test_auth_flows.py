@@ -59,6 +59,7 @@ class SmtpSettingsTests(TestCase):
 
 
 @override_settings(**LOCMEM)
+@override_settings(CACHES=CACHE_LOCMEM)
 class RegisterTests(TestCase):
     def setUp(self):
         mail.outbox.clear()
@@ -293,6 +294,7 @@ class RegisterTests(TestCase):
 
 
 @override_settings(**LOCMEM)
+@override_settings(CACHES=CACHE_LOCMEM)
 class VerifyEmailTests(TestCase):
     def test_django_token_roundtrip(self):
         user = make_profile("verify-dj@example.com", email_verified=False)
@@ -319,6 +321,7 @@ class VerifyEmailTests(TestCase):
 
 
 @override_settings(**LOCMEM)
+@override_settings(CACHES=CACHE_LOCMEM)
 class PasswordResetTests(TestCase):
     def setUp(self):
         mail.outbox.clear()
@@ -404,6 +407,7 @@ class PasswordResetTests(TestCase):
 
 
 @override_settings(**LOCMEM)
+@override_settings(CACHES=CACHE_LOCMEM)
 class ResendCooldownTests(TestCase):
     def setUp(self):
         cache.clear()  # cooldown ресенда живёт в общем кэше — изолируем тесты
