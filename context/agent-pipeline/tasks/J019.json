@@ -1,0 +1,40 @@
+{
+  "id": "J019",
+  "title": "JOB-P2-01 (multi-skills): фильтр каталога по нескольким навыкам",
+  "goal": "Каталог принимает несколько навыков (?skills=id1,id2 или repeated skills=) и показывает задания, у которых есть хотя бы один из них; шаблон — multi-select.",
+  "why": "Flask index поддерживает список навыков. Django J013 умеет только один (JOB-P2-01). Гео/карта остаются вне контракта.",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/templates/core/jobs_list.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "docs/parity/DISCREPANCIES_JOBS.md",
+    "djadmin/core/templates/core/_job_card.html"
+  ],
+  "interfaces": "views.py: selected_skills=[]; raw=[]; для value in request.GET.getlist('skills'): raw += value.split(','); UUID-парсинг с игнором мусора; dedupe; если ids: selected_skills=[str(x)]; qs=qs.filter(job_skills__skill_id__in=ids).distinct(); context selected_skills (вместо selected_skill). jobs_list.html: <select name=\"skills\" multiple size=6> без пустой опции; selected если s.pk|stringformat:'s' in selected_skills; все ссылки сортировки/пагинации: {% for s in selected_skills %}&skills={{ s }}{% endfor %}. Тесты: test_skill_filter (один) остаётся; test_multi_skill_filter: job1-skillA, job2-skillB, третий без навыка; ?skills=A,B показывает job1+job2, не третий; ?skills=A показывает только job1.",
+  "acceptance": [
+    "Один навык фильтрует как раньше.",
+    "Несколько навыков (comma или repeated) дают OR-выборку.",
+    "Мусорные UUID игнорируются, дубликаты схлопываются.",
+    "Multi-select сохраняет выбранные навыки после submit.",
+    "PublicViewsTests проходит."
+  ],
+  "out_of_scope": [
+    "Не делать карту/гео.",
+    "Не менять навыки задания/формы.",
+    "Не менять _job_card."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views.PublicViewsTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

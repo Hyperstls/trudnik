@@ -32,11 +32,10 @@
         {% if payment_min %}<input type="hidden" name="payment_min" value="{{ payment_min }}">{% endif %}
         <input type="number" name="payment_max" min="0" value="{{ payment_max }}" placeholder="Оплата до, ₽"
                class="w-36 px-3 h-9 rounded-xl border border-neutral-200 bg-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-        <select name="skills" aria-label="Навык"
-                class="px-3 h-9 rounded-xl border border-neutral-200 bg-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-            <option value="">Все навыки</option>
+        <select name="skills" multiple size="4" aria-label="Навыки"
+                class="px-3 py-1 rounded-xl border border-neutral-200 bg-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent">
             {% for s in skills %}
-            <option value="{{ s.pk }}" {% if selected_skill == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
+            <option value="{{ s.pk }}" {% if s.pk|stringformat:"s" in selected_skills %}selected{% endif %}>{{ s.name }}</option>
             {% endfor %}
         </select>
         {% if user.is_authenticated %}
@@ -54,7 +53,7 @@
     <div class="flex flex-wrap gap-2 mb-4 items-center">
         <span class="text-sm text-neutral-500 self-center mr-1">Сортировка:</span>
         {% for value, label in sort_options %}
-        <a href="?sort={{ value }}{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if payment_max %}&payment_max={{ payment_max }}{% endif %}{% if payment_min %}&payment_min={{ payment_min }}{% endif %}{% if selected_skill %}&skills={{ selected_skill }}{% endif %}{% if job_filter %}&filter={{ job_filter }}{% endif %}"
+        <a href="?sort={{ value }}{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if payment_max %}&payment_max={{ payment_max }}{% endif %}{% if payment_min %}&payment_min={{ payment_min }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if job_filter %}&filter={{ job_filter }}{% endif %}"
            class="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 {% if sort == value %}bg-primary-500 text-white shadow-sm{% else %}bg-neutral-100 text-neutral-600 hover:bg-neutral-200{% endif %}">{{ label }}</a>
         {% endfor %}
     </div>
@@ -100,11 +99,11 @@
     {% if page.paginator.num_pages > 1 %}
     <nav class="mt-6 flex gap-2 items-center justify-center text-sm" aria-label="Пагинация">
         {% if page.has_previous %}
-        <a href="?page={{ page.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if payment_max %}&payment_max={{ payment_max }}{% endif %}{% if payment_min %}&payment_min={{ payment_min }}{% endif %}{% if selected_skill %}&skills={{ selected_skill }}{% endif %}{% if job_filter %}&filter={{ job_filter }}{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 transition-colors">← Назад</a>
+        <a href="?page={{ page.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if payment_max %}&payment_max={{ payment_max }}{% endif %}{% if payment_min %}&payment_min={{ payment_min }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if job_filter %}&filter={{ job_filter }}{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 transition-colors">← Назад</a>
         {% endif %}
         <span class="text-neutral-400 px-2">{{ page.number }} из {{ page.paginator.num_pages }}</span>
         {% if page.has_next %}
-        <a href="?page={{ page.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if payment_max %}&payment_max={{ payment_max }}{% endif %}{% if payment_min %}&payment_min={{ payment_min }}{% endif %}{% if selected_skill %}&skills={{ selected_skill }}{% endif %}{% if job_filter %}&filter={{ job_filter }}{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 transition-colors">Вперёд →</a>
+        <a href="?page={{ page.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if payment_max %}&payment_max={{ payment_max }}{% endif %}{% if payment_min %}&payment_min={{ payment_min }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if job_filter %}&filter={{ job_filter }}{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 transition-colors">Вперёд →</a>
         {% endif %}
     </nav>
     {% endif %}

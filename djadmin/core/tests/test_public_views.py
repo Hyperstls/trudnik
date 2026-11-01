@@ -75,6 +75,40 @@ class PublicViewsTests(TestCase):
         self.assertContains(response, "Уборка территории")
         self.assertNotContains(response, other.work_type)
 
+    def test_multi_skill_filter(self):
+        skill_a = Skill.objects.create(name="Навык A J019", sort_order=1)
+        skill_b = Skill.objects.create(name="Навык B J019", sort_order=2)
+        job_b = Job.objects.create(
+            employer=self.employer, work_type="Задание B", organization_name="Приход",
+            status="open", city="Москва", payment_amount=1500,
+            date_time=timezone.now() + timedelta(days=2),
+        )
+        self.job.job_skills.create(skill=skill_a)
+        job_b.job_skills.create(skill=skill_b)
+        plain = Job.objects.create(
+            employer=self.employer, work_type="Без навыков", organization_name="Приход",
+            status="open", city="Москва", payment_amount=1500,
+            date_time=timezone.now() + timedelta(days=2),
+        )
+        both = self.client.get(
+            "/jobs", {"skills": "%s,%s" % (skill_a.pk, skill_b.pk)}
+        )
+        self.assertContains(both, "Уборка территории")
+        self.assertContains(both, "Задание B")
+        self.assertNotContains(both, plain.work_type)
+        single = self.client.get("/jobs", {"skills": str(skill_a.pk)})
+        self.assertContains(single, "Уборка территории")
+        self.assertNotContains(single, "Задание B")
+
+    def test_skill_filter_ignores_garbage_and_duplicates(self):
+        skill = Skill.objects.create(name="Навык J019 dup", sort_order=1)
+        self.job.job_skills.create(skill=skill)
+        response = self.client.get(
+            "/jobs", {"skills": "garbage,%s,%s" % (skill.pk, skill.pk)}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Уборка территории")
+
     def test_filter_new_and_applied(self):
         other = Job.objects.create(
             employer=self.employer, work_type="Без отклика", organization_name="Приход",

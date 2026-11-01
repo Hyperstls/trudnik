@@ -755,3 +755,33 @@ P2-02 ratings-секция закрыта. CSS-дрейф skip-scope.
 **Кто:** Hyperstls
 
 P2-02 полностью закрыт (count/favorite/report/share/ratings/verification).
+
+## 2026-11-01 08:49:34 — J019: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css regenerated after multi-select classes; generated artifact
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 08:51:54 — J019: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css generated artifact (unchanged)
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 08:52:27 — J019: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J019.review.prompt.md
+
+## 2026-11-01 08:52:27 — J019: заметка
+
+**Кто:** Hyperstls
+
+P2-01: мультивыбор навыков закрыт. Остались карта/гео.

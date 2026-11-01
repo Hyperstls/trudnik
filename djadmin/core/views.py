@@ -96,16 +96,20 @@ def jobs_list(request):
     status = request.GET.get("status") or ""
     if status in PUBLIC_STATUSES:
         qs = qs.filter(status=status)
-    selected_skill = ""
-    skill_raw = request.GET.get("skills") or ""
-    if skill_raw:
+    selected_skills = []
+    raw_skills = []
+    for value in request.GET.getlist("skills"):
+        raw_skills.extend(value.split(","))
+    skill_ids = []
+    for raw in raw_skills:
         try:
-            skill_id = UUID(skill_raw)
+            skill_ids.append(UUID(raw.strip()))
         except (TypeError, ValueError):
-            skill_id = None
-        if skill_id is not None:
-            selected_skill = str(skill_id)
-            qs = qs.filter(job_skills__skill_id=skill_id).distinct()
+            continue
+    skill_ids = list(dict.fromkeys(skill_ids))
+    if skill_ids:
+        selected_skills = [str(skill_id) for skill_id in skill_ids]
+        qs = qs.filter(job_skills__skill_id__in=skill_ids).distinct()
     payment_min = request.GET.get("payment_min") or ""
     payment_max = request.GET.get("payment_max") or ""
     from decimal import Decimal
@@ -155,7 +159,7 @@ def jobs_list(request):
         "payment_min": payment_min, "payment_max": payment_max, "sort": sort,
         "sort_options": (("newest", "Новые"), ("price_asc", "Дешевле"), ("price_desc", "Дороже")),
         "skills": list(Skill.objects.order_by("sort_order", "name")),
-        "selected_skill": selected_skill,
+        "selected_skills": selected_skills,
         "job_filter": job_filter,
         "applied_ids": applied_ids,
         "now": timezone.now(),
