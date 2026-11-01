@@ -13,6 +13,7 @@ NB (из ревью B2-7): restore_job_atomic внутри БД сверяет �
 view-проверки владения.
 """
 from datetime import timedelta
+import os
 from uuid import UUID
 
 from django.conf import settings
@@ -161,7 +162,10 @@ def job_create(request):
             sync_job_skills_raw(job.pk, [s.pk for s in form.cleaned_data["skills"]])
         messages.success(request, "Задание создано.")
         return redirect("core:job_detail", job_id=job.pk)
-    return render(request, "core/job_form.html", {"form": form, "title": "Новое задание", "selected_skills": set()})
+    return render(request, "core/job_form.html", {
+        "form": form, "title": "Новое задание", "selected_skills": set(),
+        "yandex_maps_key": os.getenv("YANDEX_MAPS_API_KEY", ""),
+    })
 
 
 @login_required
@@ -181,7 +185,10 @@ def job_edit(request, job_id):
     with _c.cursor() as cur:
         cur.execute("SELECT skill_id::text FROM job_skills WHERE job_id = %s", [job.pk])
         selected = {r[0] for r in cur.fetchall()}
-    return render(request, "core/job_form.html", {"form": form, "title": "Редактирование задания", "selected_skills": selected})
+    return render(request, "core/job_form.html", {
+        "form": form, "title": "Редактирование задания", "selected_skills": selected,
+        "yandex_maps_key": os.getenv("YANDEX_MAPS_API_KEY", ""),
+    })
 
 
 @login_required

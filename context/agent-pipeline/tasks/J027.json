@@ -1,0 +1,41 @@
+{
+  "id": "J027",
+  "title": "P2-01 (карта/гео): выбор координат задания на карте",
+  "goal": "Форма создания/редактирования задания сохраняет lat/lng; при наличии YANDEX_MAPS_API_KEY показывается карта с кликом/перетаскиванием метки, координаты попадают в скрытые поля. Новые задания видны на карте ленты и в nearby_jobs.",
+  "why": "J025 рисует карту заданий, но JobForm не содержит lat/lng, поэтому все Django-задания создаются без координат: карта пуста, nearby_jobs их не видит. Нужен ввод координат (карта-пикер) и серверная валидация диапазонов.",
+  "files": [
+    "djadmin/core/forms.py",
+    "djadmin/core/views_flow.py",
+    "djadmin/core/templates/core/job_form.html",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/views.py",
+    "docs/parity/DISCREPANCIES_JOBS.md"
+  ],
+  "interfaces": "forms.py: JOB_FIELDS += ('lat','lng'); widgets HiddenInput; clean: lat not None и не -90..90 -> add_error('lat','Некорректная широта (должна быть от -90 до 90)'); lng -180..180 -> add_error('lng','Некорректная долгота (должна быть от -180 до 180)'). views_flow: import os; job_create/job_edit context += yandex_maps_key=os.getenv('YANDEX_MAPS_API_KEY',''). job_form.html: скрытые поля рендерятся без label (field.is_hidden); перед полями — div#job-map data-lat/data-lng (form.instance.lat/lng) + внешний script api-maps.yandex.ru + init: клик по карте и dragend метки заполняют id_lat/id_lng (toFixed(6)); при наличии координат метка видима и map.setCenter; без ключа карта не рендерится, hidden-поля остаются. Тесты JobCrudTests: test_create_job_saves_coordinates (payload lat=55.75,lng=37.61 -> Job.lat/lng); test_create_job_rejects_invalid_coordinates (lat=999/lng=181 -> 200, field errors); test_job_form_renders_map_with_key (patch env -> 'id=\"job-map\"', 'api-maps.yandex.ru', 'id_lat', 'id_lng').",
+  "acceptance": [
+    "Созданное задание сохраняет lat/lng.",
+    "lat вне -90..90 и lng вне -180..180 отклоняются с field-level ошибками.",
+    "При ключе форма показывает карту-пикер и hidden lat/lng; клик/перетаскивание заполняют координаты.",
+    "Без ключа форма работает, координаты можно не задавать.",
+    "JobCrudTests проходит."
+  ],
+  "out_of_scope": [
+    "Не менять nearby_jobs/БД.",
+    "Не добавлять серверный геокодер (ключ не требуется).",
+    "Не менять карту ленты J025."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/forms.py djadmin/core/views_flow.py djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "flow_tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows.JobCrudTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

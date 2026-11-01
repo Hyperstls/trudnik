@@ -366,3 +366,16 @@
 - **2026-11-01 11:43:47** | **J026** | `add` | **OK** | contract=context/agent-pipeline/tasks/J026.json
 - **2026-11-01 11:43:48** | **J026** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/J026.impl.prompt.md
 - **2026-11-01 11:46:16** | **J026** | `set` | **implementing→blocked** | by=Hyperstls reason=Profile has no lat/lng; worker map would require schema/geocoding, out of scope. P2-12 closed by filters+badges.
+- **2026-11-01 11:57:01** | **J027** | `add` | **OK** | contract=context/agent-pipeline/tasks/J027.json
+- **2026-11-01 11:57:01** | **J027** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/J027.impl.prompt.md
+- **2026-11-01 11:58:06** | **J027** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=static/css/tailwind.min.css regenerated after job map picker; generated artifact drift=[]
+- **2026-11-01 11:58:16** | **J027** | `verify` | **PASS** | scope=skipped checks=compile=0, flow_tests=0 attempts=0/3
+- **2026-11-01 11:58:16** | **J027** | `review-packet` | **READY** | bytes=12223 new_files=[]
+- **2026-11-01 12:00:23** | **J027** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=static/css/tailwind.min.css generated artifact after form error rendering drift=[]
+- **2026-11-01 12:00:34** | **J027** | `verify` | **FAIL** | scope=skipped checks=compile=0, flow_tests=1 attempts=1/3 → fixing
+- **2026-11-01 12:01:38** | **J027** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=static/css/tailwind.min.css generated artifact after localization fix drift=[]
+- **2026-11-01 12:01:49** | **J027** | `verify` | **PASS** | scope=skipped checks=compile=0, flow_tests=0 attempts=1/3
+- **2026-11-01 12:01:57** | **J027** | `review-packet` | **READY** | bytes=13502 new_files=[]
+- **2026-11-01 12:06:01** | **J027** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=static/css/tailwind.min.css generated artifact after zero-coordinate fix drift=[]
+- **2026-11-01 12:06:12** | **J027** | `verify` | **PASS** | scope=skipped checks=compile=0, flow_tests=0 attempts=1/3
+- **2026-11-01 12:06:22** | **J027** | `review` | **PASS** | by=Hyperstls → done

@@ -4,6 +4,7 @@
 против клона dev-БД (триггеры и инварианты живые).
 """
 from datetime import timedelta
+import os
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
@@ -171,6 +172,58 @@ class JobCrudTests(TestCase):
         self.assertTrue(
             Job.objects.filter(employer=self.user, work_type="Уборка").exists()
         )
+
+    def test_create_job_saves_coordinates(self):
+        response = self.client.post(
+            reverse("core:job_create"),
+            self._job_payload(lat="55.75", lng="37.61"),
+        )
+        self.assertEqual(response.status_code, 302)
+        job = Job.objects.get(employer=self.user, work_type="Уборка")
+        self.assertAlmostEqual(job.lat, 55.75)
+        self.assertAlmostEqual(job.lng, 37.61)
+
+    def test_create_job_rejects_invalid_coordinates(self):
+        cases = ({"lat": "999", "lng": "37.61"}, {"lat": "55.75", "lng": "181"})
+        for overrides in cases:
+            with self.subTest(overrides=overrides):
+                response = self.client.post(
+                    reverse("core:job_create"), self._job_payload(**overrides)
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertFalse(Job.objects.filter(employer=self.user).exists())
+                self.assertIn(
+                    "lat" if "lat" in overrides and overrides["lat"] == "999" else "lng",
+                    response.context["form"].errors,
+                )
+
+    def test_job_form_renders_map_with_key(self):
+        from unittest.mock import patch
+
+        with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": "test-" + "key"}):  # pragma: allowlist secret
+            response = self.client.get(reverse("core:job_create"))
+        self.assertContains(response, 'id="job-map"')
+        self.assertContains(response, "api-maps.yandex.ru")
+        self.assertContains(response, 'id="id_lat"')
+        self.assertContains(response, 'id="id_lng"')
+
+    def test_job_form_without_key_has_no_map(self):
+        from unittest.mock import patch
+
+        with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": ""}):
+            response = self.client.get(reverse("core:job_create"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'id="job-map"')
+        self.assertContains(response, 'id="id_lat"')
+
+    def test_job_edit_form_prefills_map_coordinates(self):
+        from unittest.mock import patch
+
+        job = make_job(self.user, lat=55.75, lng=37.61)
+        with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": "test-" + "key"}):  # pragma: allowlist secret
+            response = self.client.get(reverse("core:job_edit", args=[job.pk]))
+        self.assertContains(response, 'data-lat="55.75"')
+        self.assertContains(response, 'data-lng="37.61"')
 
     def test_preferred_religion_not_in_form_or_admin(self):
         self.assertNotIn("preferred_religion", JobForm().fields)

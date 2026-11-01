@@ -979,3 +979,49 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** Hyperstls
 
 Карта трудников невыполнима без координат профиля; J025 покрывает карту заданий. P2-12 закрыт фильтрами/бейджами.
+
+## 2026-11-01 11:58:06 — J027: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css regenerated after job map picker; generated artifact
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 12:00:23 — J027: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css generated artifact after form error rendering
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 12:01:38 — J027: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css generated artifact after localization fix
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 12:06:01 — J027: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** static/css/tailwind.min.css generated artifact after zero-coordinate fix
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-01 12:06:22 — J027: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/J027.review.prompt.md
+
+## 2026-11-01 12:06:23 — J027: заметка
+
+**Кто:** Hyperstls
+
+Карта end-to-end: форма задания сохраняет координаты, лента рисует метки, nearby_jobs видит задания.

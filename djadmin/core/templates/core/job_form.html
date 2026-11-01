@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load l10n %}
 {% block title %}{{ title }} — Трудник{% endblock %}
 {% block content %}
 <div class="max-w-2xl mx-auto px-0 py-4 fade-in">
@@ -10,13 +11,61 @@
         <h1 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-4">{{ title }}</h1>
         <form method="post" class="space-y-3">
             {% csrf_token %}
+            {% if yandex_maps_key %}
+            <div class="form-field">
+                <span class="form-label">Точка на карте</span>
+                <p class="form-hint mb-2">Кликните по карте или перетащите метку — координаты сохранятся с заданием.</p>
+                <div id="job-map" data-lat="{% localize off %}{{ form.instance.lat|default_if_none:'' }}{% endlocalize %}" data-lng="{% localize off %}{{ form.instance.lng|default_if_none:'' }}{% endlocalize %}" style="height:280px" class="w-full rounded-xl border border-neutral-200"></div>
+            </div>
+            <script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_key|urlencode }}&lang=ru_RU"></script>
+            <script>
+            document.addEventListener('DOMContentLoaded', function(){
+              if (!window.ymaps) return;
+              var el = document.getElementById('job-map');
+              var latInput = document.getElementById('id_lat');
+              var lngInput = document.getElementById('id_lng');
+              if (!el || !latInput || !lngInput) return;
+              var hasCoords = el.dataset.lat !== '' && el.dataset.lng !== '' &&
+                              !isNaN(parseFloat(el.dataset.lat)) && !isNaN(parseFloat(el.dataset.lng));
+              var initLat = hasCoords ? parseFloat(el.dataset.lat) : 55.7558;
+              var initLng = hasCoords ? parseFloat(el.dataset.lng) : 37.6173;
+              ymaps.ready(function(){
+                var map = new ymaps.Map('job-map', {
+                  center: [initLat, initLng], zoom: hasCoords ? 14 : 10,
+                  controls: ['zoomControl', 'geolocationControl']
+                });
+                var placemark = new ymaps.Placemark([initLat, initLng], {}, {
+                  draggable: true, visible: !!hasCoords, preset: 'islands#orangeIcon'
+                });
+                function setCoords(coords){
+                  latInput.value = Number(coords[0]).toFixed(6);
+                  lngInput.value = Number(coords[1]).toFixed(6);
+                  placemark.geometry.setCoordinates(coords);
+                  placemark.options.set('visible', true);
+                }
+                map.events.add('click', function(e){ setCoords(e.get('coords')); });
+                placemark.events.add('dragend', function(){
+                  var coords = placemark.geometry.getCoordinates();
+                  latInput.value = Number(coords[0]).toFixed(6);
+                  lngInput.value = Number(coords[1]).toFixed(6);
+                });
+                map.geoObjects.add(placemark);
+              });
+            });
+            </script>
+            {% endif %}
             {% for field in form %}
               {% if field.name != "skills" %}
-              <div class="form-field">
-                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
-                {{ field }}
-                {% for error in field.errors %}<p class="form-error" role="alert"><span>{{ error }}</span></p>{% endfor %}
-              </div>
+                {% if field.is_hidden %}
+                  {{ field }}
+                  {% for error in field.errors %}<p class="form-error" role="alert"><span>{{ error }}</span></p>{% endfor %}
+                {% else %}
+                <div class="form-field">
+                  <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+                  {{ field }}
+                  {% for error in field.errors %}<p class="form-error" role="alert"><span>{{ error }}</span></p>{% endfor %}
+                </div>
+                {% endif %}
               {% endif %}
             {% endfor %}
             <fieldset class="pt-1">
