@@ -2307,3 +2307,51 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review
 
 **Пакет:** context/agent-pipeline/packs/J096.review.prompt.md
+
+## 2026-11-02 14:12:05 — J097: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** generated tailwind
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 14:24:35 — J098: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** baseline after edits
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 14:24:44 — J097: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** review: WS frame type/badge fixed in J098
+
+**Переход:** reviewing → fixing
+
+## 2026-11-02 14:24:45 — J097: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** joint review with J098
+
+**Дрейф, который обойдён:** ['djadmin/core/consumers_notify.py']
+
+## 2026-11-02 14:27:39 — J097: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J097.review.prompt.md
+
+## 2026-11-02 14:27:39 — J098: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J098.review.prompt.md

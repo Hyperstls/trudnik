@@ -16,7 +16,7 @@ app.conf.timezone = "Europe/Moscow"
 app.conf.beat_schedule = {
     "drain-notification-outbox": {
         "task": "core.tasks.drain_notification_outbox",
-        "schedule": 10.0,
+        "schedule": 5.0,
     },
     "expire-old-jobs": {
         "task": "core.tasks.expire_old_jobs",

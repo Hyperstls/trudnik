@@ -1,0 +1,35 @@
+{
+  "id": "J097",
+  "title": "P0: live-обновление списка уведомлений и WS reconnect",
+  "goal": "Новое in-app уведомление появляется в списке без ручного обновления страницы; WS переподключается, при недоступности — polling; drain ускорен до 5 секунд.",
+  "why": "Сейчас WS показывает только toast/бейдж, а список обновляется лишь после F5. Пользователь считает, что уведомление не пришло. При разрыве WS нет reconnect.",
+  "files": [
+    "djadmin/core/templates/core/base.html",
+    "djadmin/core/templates/core/notifications.html",
+    "djadmin/core/celery_app.py",
+    "djadmin/core/tests/test_notifications.py"
+  ],
+  "context_files": [
+    "djadmin/core/consumers_notify.py",
+    "static/js/notifications-ws.js"
+  ],
+  "interfaces": "base.html: WS reconnect exponential 1→30s, stop polling on open, poll unread every 30s on close; on notification dispatch window CustomEvent 'trudnik:notification'. notifications.html: outer id=notifications-page; script refresh fetch(current URL), DOMParser, replace innerHTML; listen event + setInterval 30s + visibilitychange. celery beat drain 5.0s. Test: notifications page contains id and event listener string.",
+  "acceptance": [
+    "Новое in-app уведомление появляется в списке без F5.",
+    "WS переподключается после разрыва; polling обновляет бейдж.",
+    "При открытой странице уведомлений fallback-refresh раз в 30с.",
+    "Drain выполняется каждые 5с.",
+    "Нет дублей интервалов/бесконечного reconnect-шторма."
+  ],
+  "out_of_scope": [
+    "Не менять формат уведомлений.",
+    "Не менять push/email."
+  ],
+  "checks": [
+    {
+      "name": "live_markup_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_notifications.NotificationTests.test_notifications_page_live_refresh --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

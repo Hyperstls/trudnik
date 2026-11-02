@@ -1,0 +1,33 @@
+{
+  "id": "J098",
+  "title": "P0: исправить тип WS-кадра и бейдж при 0",
+  "goal": "WS-уведомление приходит с type=notification (не перекрывается типом уведомления), а бейдж существует при нуле и появляется при новом уведомлении.",
+  "why": "Payload содержит свой type (application_received/new_message/test), который перекрывал служебный type=notification, поэтому live-событие, toast и обновление бейджа не срабатывали. Бейдж рендерился только при unread_count>0, поэтому polling не мог его показать.",
+  "files": [
+    "djadmin/core/consumers_notify.py",
+    "djadmin/core/templates/core/base.html",
+    "djadmin/core/tests/test_notifications.py"
+  ],
+  "context_files": [
+    "djadmin/core/tasks.py"
+  ],
+  "interfaces": "consumers_notify: helper notification_frame(payload) копирует payload и ставит type='notification'; notify() использует его. base.html: output#unread-badge рендерится всегда, hidden при 0, текст 0/99+. test: frame type notification + сохранён notif type/title; /notifications markup live.",
+  "acceptance": [
+    "WS кадр имеет type=notification.",
+    "Тип уведомления доступен отдельно (например notif_type).",
+    "Бейдж существует при 0 и скрыт; bumpBadge его показывает.",
+    "Существующие счётчики >0 не меняются.",
+    "Live-refresh получает событие."
+  ],
+  "out_of_scope": [
+    "Не менять формат БД.",
+    "Не менять toast."
+  ],
+  "checks": [
+    {
+      "name": "ws_frame_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_notifications.NotificationTests.test_ws_frame_type_not_overridden --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 {% extends "core/base.html" %}
 {% block title %}Уведомления — Трудник{% endblock %}
 {% block content %}
-<div class="px-0 py-4 fade-in">
+<div id="notifications-page" class="px-0 py-4 fade-in">
     <div class="flex items-center justify-between mb-4">
         <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">Уведомления</h2>
         <div class="flex flex-wrap items-center justify-end gap-2">
@@ -78,4 +78,32 @@
     </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  var page = document.getElementById('notifications-page');
+  if (!page) return;
+  var refreshing = false;
+  function refresh(){
+    if (refreshing || document.visibilityState === 'hidden') return;
+    refreshing = true;
+    fetch(window.location.href, {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+      .then(function(response){ return response.text(); })
+      .then(function(html){
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var fresh = doc.getElementById('notifications-page');
+        if (fresh) page.innerHTML = fresh.innerHTML;
+      })
+      .catch(function(){})
+      .finally(function(){ refreshing = false; });
+  }
+  window.addEventListener('trudnik:notification', refresh);
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'visible') refresh();
+  });
+  setInterval(refresh, 30000);
+})();
+</script>
 {% endblock %}

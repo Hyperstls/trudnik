@@ -89,3 +89,20 @@ class NotificationTests(TestCase):
         self.assertEqual(
             NotificationOutbox.objects.filter(user=self.user, type="test").count(), 1
         )
+
+
+    def test_notifications_page_live_refresh(self):
+        response = self.client.get(reverse("core:notifications"))
+        self.assertContains(response, 'id="notifications-page"')
+        self.assertContains(response, "trudnik:notification")
+        self.assertContains(response, "setInterval(refresh, 30000)")
+
+
+    def test_ws_frame_type_not_overridden(self):
+        from core.consumers_notify import notification_frame
+        frame = notification_frame({
+            "id": "1", "type": "application_received", "title": "Новый отклик",
+        })
+        self.assertEqual(frame["type"], "notification")
+        self.assertEqual(frame["notif_type"], "application_received")
+        self.assertEqual(frame["title"], "Новый отклик")

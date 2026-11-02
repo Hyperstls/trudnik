@@ -32,7 +32,15 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps({"type": "pong"}))
 
     async def notify(self, event):
-        await self.send(text_data=__import__("json").dumps({"type": "notification", **event["payload"]}))
+        payload = notification_frame(event.get("payload") or {})
+        await self.send(text_data=__import__("json").dumps(payload))
+
+
+def notification_frame(payload: dict) -> dict:
+    frame = dict(payload)
+    frame["notif_type"] = frame.get("type", "")
+    frame["type"] = "notification"
+    return frame
 
 
 def notify_user(user_id, payload: dict) -> None:

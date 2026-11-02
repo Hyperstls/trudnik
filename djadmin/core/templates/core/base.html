@@ -74,7 +74,7 @@
                 </a>
                 <a href="{% url 'core:notifications' %}" class="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors" aria-label="Уведомления">
                     <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                    {% if unread_count > 0 %}<output id="unread-badge" class="absolute -top-0.5 -right-0.5 bg-danger text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border-2 border-white">{% if unread_count > 99 %}99+{% else %}{{ unread_count }}{% endif %}</output>{% endif %}
+                    <output id="unread-badge" class="{% if not unread_count %}hidden {% endif %}absolute -top-0.5 -right-0.5 bg-danger text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border-2 border-white">{% if unread_count > 99 %}99+{% else %}{{ unread_count|default:0 }}{% endif %}</output>
                 </a>
                 <div class="relative">
                     <button id="profile-menu-btn" type="button" class="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors" aria-label="Меню профиля" aria-haspopup="true" aria-expanded="false">
@@ -195,8 +195,10 @@
         navigator.serviceWorker.register('/sw.js').catch(function(){});
       }
       {% if user.is_authenticated %}
-      // WS-уведомления: toast + бейдж; fallback — poll раз в 60с
+      // WS-уведомления: toast + бейдж + live-событие; reconnect + polling fallback.
       var badge = document.getElementById('unread-badge');
+      var pollTimer = null;
+      var wsRetry = 1000;
       function bumpBadge(){
         fetch('/api/notifications/unread-count').then(function(r){return r.json();}).then(function(d){
           if (!badge) return;
@@ -204,19 +206,41 @@
           badge.classList.toggle('hidden', !d.unread_count);
         }).catch(function(){});
       }
-      try {
-        var ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/user/');
+      function startPoll(){
+        if (!pollTimer) pollTimer = setInterval(bumpBadge, 30000);
+      }
+      function stopPoll(){
+        if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+      }
+      function connectNotify(){
+        var ws;
+        try {
+          ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/user/');
+        } catch(e) {
+          startPoll();
+          setTimeout(connectNotify, 5000);
+          return;
+        }
+        ws.onopen = function(){ wsRetry = 1000; stopPoll(); };
         ws.onmessage = function(ev){
           try {
             var d = JSON.parse(ev.data);
             if (d && d.type === 'notification') {
               showToast((d.title || '') + (d.message ? ': ' + d.message : ''), 'info');
               bumpBadge();
+              window.dispatchEvent(new CustomEvent('trudnik:notification', {detail: d}));
             }
           } catch(e) {}
         };
-        ws.onclose = function(){ setInterval(bumpBadge, 60000); };
-      } catch(e) { setInterval(bumpBadge, 60000); }
+        ws.onclose = function(){
+          startPoll();
+          setTimeout(connectNotify, wsRetry);
+          wsRetry = Math.min(wsRetry * 2, 30000);
+        };
+        ws.onerror = function(){ try { ws.close(); } catch(e) {} };
+      }
+      connectNotify();
+      bumpBadge();
       {% endif %}
     })();
     function showToast(text, kind){
