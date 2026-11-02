@@ -100,7 +100,7 @@
               ymaps.ready(function(){
                 var map = new ymaps.Map('job-map', {
                   center: [initLat, initLng], zoom: hasCoords ? 14 : 10,
-                  controls: ['zoomControl', 'searchControl']
+                  controls: ['zoomControl']
                 });
                 window.__trudnikJobMap = map;
                 var placemark = new ymaps.Placemark([initLat, initLng], {}, {
@@ -108,7 +108,34 @@
                 });
                 map.geoObjects.add(placemark);
 
-                function reverseGeocode(coords, force) {
+                function serverGeocode(payload) {
+                  var meta = document.querySelector('meta[name="csrf-token"]');
+                  var token = meta ? meta.getAttribute('content') : '';
+                  return fetch('/api/geo/geocode', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'X-CSRFToken': token
+                    },
+                    body: JSON.stringify(payload || {})
+                  }).then(function(response){
+                    if (!response.ok) return {results: []};
+                    return response.json();
+                  }).catch(function(){ return {results: []}; });
+                }
+
+                function fillAddress(item, force) {
+                  if (addressInput && (force || !addressInput.value.trim()) && item.displayName) {
+                    addressInput.value = item.displayName;
+                  }
+                  if (cityInput && (force || !cityInput.value.trim()) && item.city) {
+                    cityInput.value = item.city;
+                  }
+                  setStatus('Адрес подставлен по метке. Проверьте и подтвердите.');
+                  showConfirm('Проверьте адрес «' + (addressInput ? addressInput.value.trim() : '') + '» и метку на карте.');
+                }
+
+                function reverseGeocodeClient(coords, force, geocoderDisabled) {
                   if (typeof ymaps.geocode !== 'function') {
                     setStatus('Координаты сохранены. Адрес можно ввести вручную.');
                     return;
@@ -119,20 +146,54 @@
                       setStatus('Координаты сохранены. Адрес не найден — введите вручную.');
                       return;
                     }
-                    var address = obj.getAddressLine();
                     var localities = obj.getLocalities();
-                    if (addressInput && (force || !addressInput.value.trim())) {
-                      addressInput.value = address;
-                    }
-                    if (cityInput && (force || !cityInput.value.trim()) && localities && localities.length) {
-                      cityInput.value = localities[0];
-                    }
-                    setStatus(force
-                      ? 'Адрес подставлен по метке.'
-                      : 'Координаты сохранены. Адрес подставлен — проверьте.');
-                    showConfirm('Проверьте адрес «' + (addressInput ? addressInput.value.trim() : '') + '» и метку на карте.');
+                    fillAddress({
+                      displayName: obj.getAddressLine(),
+                      city: localities && localities.length ? localities[0] : ''
+                    }, force);
                   }).catch(function(){
-                    setStatus('Координаты сохранены. Адрес не подставлен — введите вручную.');
+                    setStatus(geocoderDisabled
+                      ? 'Автоподстановка адреса недоступна. Введите адрес вручную — метка сохранена.'
+                      : 'Не удалось определить адрес. Введите адрес вручную — метка сохранена.');
+                  });
+                }
+
+                function reverseGeocode(coords, force) {
+                  serverGeocode({mode: 'reverse', lat: coords[0], lng: coords[1]}).then(function(data){
+                    var items = (data && data.results) || [];
+                    if (items.length) {
+                      fillAddress(items[0], force);
+                      return;
+                    }
+                    reverseGeocodeClient(coords, force, data && data.enabled === false);
+                  });
+                }
+
+                function forwardGeocodeClient(text) {
+                  if (typeof ymaps.geocode !== 'function') return Promise.resolve(null);
+                  return ymaps.geocode(text, {results: 1}).then(function(res){
+                    var obj = res.geoObjects.get(0);
+                    if (!obj) return null;
+                    var localities = obj.getLocalities();
+                    return {
+                      displayName: obj.getAddressLine(),
+                      coords: obj.geometry.getCoordinates(),
+                      city: localities && localities.length ? localities[0] : ''
+                    };
+                  }).catch(function(){ return null; });
+                }
+
+                function forwardGeocode(text) {
+                  return serverGeocode({mode: 'forward', text: text}).then(function(data){
+                    var items = (data && data.results) || [];
+                    if (items.length) {
+                      return {
+                        displayName: items[0].displayName,
+                        coords: [items[0].lat, items[0].lng],
+                        city: items[0].city || ''
+                      };
+                    }
+                    return forwardGeocodeClient(text);
                   });
                 }
 
@@ -186,28 +247,17 @@
                       setStatus('Введите город или адрес, чтобы найти точку на карте.');
                       return;
                     }
-                    if (typeof ymaps.geocode !== 'function') {
-                      setStatus('Поиск по адресу недоступен. Кликните по карте.');
-                      return;
-                    }
                     setStatus('Ищем адрес…');
-                    ymaps.geocode(parts.join(', '), {results: 1}).then(function(res){
-                      var obj = res.geoObjects.get(0);
-                      if (!obj) {
-                        setStatus('Адрес не найден. Уточните город и адрес или кликните по карте.');
+                    forwardGeocode(parts.join(', ')).then(function(found){
+                      if (!found) {
+                        setStatus('Адрес не найден. Проверьте написание или поставьте метку на карте.');
                         return;
                       }
-                      var foundAddress = obj.getAddressLine();
-                      if (addressInput && foundAddress) addressInput.value = foundAddress;
-                      setCoords(obj.geometry.getCoordinates(), {zoom: 16, keepConfirm: true, forceAddress: true});
-                      if (cityInput && !cityInput.value.trim()) {
-                        var localities = obj.getLocalities();
-                        if (localities && localities.length) cityInput.value = localities[0];
-                      }
-                      setStatus('Адрес найден: ' + foundAddress);
-                      showConfirm('Проверьте адрес «' + foundAddress + '» и метку на карте.');
-                    }).catch(function(){
-                      setStatus('Не удалось найти адрес. Кликните по карте вручную.');
+                      if (addressInput && found.displayName) addressInput.value = found.displayName;
+                      if (cityInput && !cityInput.value.trim() && found.city) cityInput.value = found.city;
+                      setCoords(found.coords, {zoom: 16, keepConfirm: true});
+                      setStatus('Адрес найден: ' + found.displayName);
+                      showConfirm('Проверьте адрес «' + found.displayName + '» и метку на карте.');
                     });
                   });
                 }
@@ -289,20 +339,13 @@
                       applySuggestion(label, item.coords, item.localities);
                       return;
                     }
-                    if (!query || typeof ymaps.geocode !== 'function') {
-                      setStatus('Адрес выбран. Поставьте метку на карте вручную.');
-                      return;
-                    }
                     setStatus('Ищем выбранный адрес на карте…');
-                    ymaps.geocode(query, {results: 1}).then(function(res){
-                      var obj = res.geoObjects.get(0);
-                      if (!obj) {
+                    forwardGeocode(query).then(function(found){
+                      if (!found) {
                         setStatus('Адрес выбран, но координаты не найдены. Поставьте метку вручную.');
                         return;
                       }
-                      applySuggestion(label, obj.geometry.getCoordinates(), obj.getLocalities());
-                    }).catch(function(){
-                      setStatus('Адрес выбран, но координаты не найдены. Поставьте метку вручную.');
+                      applySuggestion(label, found.coords, found.city ? [found.city] : []);
                     });
                   }
 

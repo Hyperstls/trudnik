@@ -222,8 +222,9 @@ class JobCrudTests(TestCase):
         with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": "test-" + "key"}):  # pragma: allowlist secret
             response = self.client.get(reverse("core:job_create"))
         self.assertContains(response, "forceAddress")
-        self.assertContains(response, "foundAddress")
-        self.assertContains(response, "addressInput.value = foundAddress")
+        self.assertContains(response, "/api/geo/geocode")
+        self.assertContains(response, "serverGeocode")
+        self.assertContains(response, "addressInput.value = item.displayName")
 
     def test_job_form_renders_map_with_key(self):
         from unittest.mock import patch

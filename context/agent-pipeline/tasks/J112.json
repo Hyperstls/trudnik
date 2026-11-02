@@ -1,0 +1,42 @@
+{
+  "id": "J112",
+  "title": "P0: форма задания использует серверный геокодер и не показывает ошибку searchControl",
+  "goal": "Клик/перетаскивание/геолокация/«Найти по адресу»/выбор подсказки сначала идут в /api/geo/geocode, затем в ymaps.geocode; встроенный searchControl убран, понятные сообщения при недоступности геокодера.",
+  "why": "Клиентский ymaps.geocode падал из-за прав ключа, а встроенный поиск карты показывал пользователю «Сервер не смог обработать запрос». Серверный geocoder делает автоподстановку независимой от JS-ключа.",
+  "files": [
+    "djadmin/core/templates/core/job_form.html",
+    "djadmin/core/tests/test_flows.py",
+    "docs/parity/GEO_UX_PRIVACY.md",
+    "docs/UX_ROADMAP_2026Q4.md"
+  ],
+  "context_files": [
+    "djadmin/core/views_geo.py",
+    "static/js/job-step.js"
+  ],
+  "interfaces": "job_form.html: controls ['zoomControl'] без searchControl; serverGeocode(payload) → POST /api/geo/geocode с X-CSRFToken; reverseGeocode: server → fillAddress(item, force) → fallback reverseGeocodeClient; forwardGeocode: server → forwardGeocodeClient; find/chooseSuggestion используют forwardGeocode; при enabled=false и сбое — текст «Автоподстановка адреса недоступна. Введите адрес вручную». test_flows.test_job_form_autofills_address: /api/geo/geocode, serverGeocode, addressInput.value = item.displayName.",
+  "acceptance": [
+    "Клик по карте подставляет адрес через серверный прокси.",
+    "Кнопка «Найти по адресу» ставит метку через серверный прокси.",
+    "Выбор подсказки получает координаты через серверный прокси.",
+    "При сбое работает fallback на ymaps.geocode.",
+    "Встроенный searchControl отсутствует.",
+    "Тесты проходят."
+  ],
+  "out_of_scope": [
+    "Не менять поля формы/валидацию.",
+    "Не менять шаги формы.",
+    "Не менять Geocoder-прокси."
+  ],
+  "checks": [
+    {
+      "name": "job_form_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_flows.JobCrudTests --keepdb -v 1",
+      "cwd": "."
+    },
+    {
+      "name": "js_syntax",
+      "cmd": "node --check static/js/job-step.js",
+      "cwd": "."
+    }
+  ]
+}

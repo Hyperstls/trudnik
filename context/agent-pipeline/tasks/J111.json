@@ -1,0 +1,42 @@
+{
+  "id": "J111",
+  "title": "P0: серверный Geocoder-прокси (адрес по метке и поиск адреса)",
+  "goal": "Клик по карте, перетаскивание метки, «Моё местоположение», «Найти по адресу» и «Адрес по метке» получают адрес/координаты через POST /api/geo/geocode с серверным ключом YANDEX_GEOCODER_KEY, не завися от прав JavaScript-ключа.",
+  "why": "В проекте были только ключи JavaScript API и Suggest API. ymaps.geocode при таком ключе отвечает «Сервер не смог обработать запрос», поэтому адрес не подставлялся ни по клику, ни кнопками. Серверный прокси с отдельным Geocoder-ключом решает это и убирает ключ из клиента.",
+  "files": [
+    "djadmin/core/views_geo.py",
+    "djadmin/core/urls.py",
+    "djadmin/core/tests/test_public_views.py",
+    ".env.example"
+  ],
+  "context_files": [
+    "djadmin/core/ratelimit.py",
+    "docs/parity/GEO_UX_PRIVACY.md"
+  ],
+  "interfaces": "views_geo.geo_geocode: @login_required+@require_POST, JSON mode forward|reverse; forward text 3..160, reverse lat/lng с диапазонами; enforce_ip_limit('geo_geocode',60,60) fail-open; ключ YANDEX_GEOCODER_KEY (fallback YANDEX_MAPS_API_KEY); GET https://geocode-maps.yandex.ru/1.x/ (format=json, results=1 reverse / 5 forward, timeout 5s); ответ {results:[{displayName,value,lat,lng,city,precision}],enabled:bool}; кэш 600с; без ключа enabled=false; ошибка upstream → results=[] + error=upstream. urls: /api/geo/geocode name=geo_geocode. Тесты GeoGeocodeProxyTests: нормализация, порядок lng,lat, anon 302, GET 405, без ключа, bad coords, soft-fail.",
+  "acceptance": [
+    "Прокси возвращает координаты для адреса и адрес для координат.",
+    "Ключ Geocoder не отдаётся в HTML/JS.",
+    "Запросы ограничены по IP и кэшируются.",
+    "Без ключа API отвечает enabled=false без 500.",
+    "Сбой Яндекса не ломает форму.",
+    "Тесты проходят."
+  ],
+  "out_of_scope": [
+    "Не менять Suggest-прокси.",
+    "Не менять карту ленты.",
+    "Не выдавать новый ключ в Yandex Cloud (действие владельца)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": ".venv\\Scripts\\python.exe -m py_compile djadmin/core/views_geo.py djadmin/core/urls.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "geocode_proxy_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.GeoGeocodeProxyTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

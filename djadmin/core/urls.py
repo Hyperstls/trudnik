@@ -14,6 +14,7 @@ urlpatterns = [
     path("jobs", views.jobs_list, name="jobs"),
     path("jobs/geo", views.jobs_geo_set, name="jobs_geo_set"),
     path("api/geo/suggest", views_geo.geo_suggest, name="geo_suggest"),
+    path("api/geo/geocode", views_geo.geo_geocode, name="geo_geocode"),
     path("api/jobs/draft", views_drafts.job_draft, name="job_draft_api"),
     path("searches/save", views.save_search, name="save_search"),
     path("searches/<str:search_id>/delete", views.delete_search, name="delete_search"),

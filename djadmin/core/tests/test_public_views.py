@@ -14,7 +14,7 @@ from django.utils import timezone
 from core import views
 from core.models import Application, Blacklist, Favorite, Invitation, Job, JobPhoto, JobSkill, Profile, Rating, Religion, SitePage, Skill, UserSkill
 from core.storage import resolve_upload_url, save_upload
-from core.tests.test_auth import make_profile
+from core.tests.test_auth import CACHE_LOCMEM, make_profile
 from core.tests.test_flows import make_job
 
 CONTACTS_AFTER_RESPONSE_TEXT = "Контакты открываются после отклика на задание."
@@ -1109,6 +1109,131 @@ class GeoSuggestProxyTests(TestCase):
         with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": "test-" + "key"}):  # pragma: allowlist secret
             response = self.client.get(reverse("core:job_create"))
         self.assertNotContains(response, "suggest_apikey")
+
+
+@override_settings(CACHES=CACHE_LOCMEM)
+class GeoGeocodeProxyTests(TestCase):
+    """Серверный Geocoder API: не зависит от прав JavaScript-ключа."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.user = make_profile("geo-geocode@example.com")
+        self.client.force_login(self.user)
+
+    def _fake_response(self, payload):
+        class FakeResponse:
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self):
+                return json.dumps(payload).encode()
+        return FakeResponse()
+
+    def _payload(self):
+        return {"response": {"GeoObjectCollection": {"featureMember": [{
+            "GeoObject": {
+                "metaDataProperty": {"GeocoderMetaData": {
+                    "precision": "exact",
+                    "text": "Россия, Москва, Тверская улица, 7",
+                    "Address": {
+                        "formatted": "Россия, Москва, Тверская улица, 7",
+                        "components": [
+                            {"kind": "country", "name": "Россия"},
+                            {"kind": "locality", "name": "Москва"},
+                        ],
+                    },
+                }},
+                "Point": {"pos": "37.609429 55.765252"},
+            }
+        }]}}}
+
+    def test_forward_geocode_normalizes_result(self):
+        with patch.dict(os.environ, {"YANDEX_GEOCODER_KEY": "test-geo", "YANDEX_MAPS_API_KEY": ""}):  # pragma: allowlist secret
+            with patch("core.views_geo.urlopen", return_value=self._fake_response(self._payload())):
+                response = self.client.post(
+                    reverse("core:geo_geocode"),
+                    data=json.dumps({"mode": "forward", "text": "Тверская 7"}),
+                    content_type="application/json",
+                    REMOTE_ADDR="10.11.0.1",
+                )
+        self.assertEqual(response.status_code, 200)
+        item = response.json()["results"][0]
+        self.assertEqual(item["displayName"], "Россия, Москва, Тверская улица, 7")
+        self.assertEqual(item["city"], "Москва")
+        self.assertAlmostEqual(item["lat"], 55.765252)
+        self.assertAlmostEqual(item["lng"], 37.609429)
+
+    def test_reverse_geocode_sends_longitude_latitude(self):
+        from urllib.parse import parse_qs, urlparse
+        captured = {}
+
+        def fake_urlopen(request, timeout=0):
+            captured["url"] = request.full_url
+            return self._fake_response(self._payload())
+
+        with patch.dict(os.environ, {"YANDEX_GEOCODER_KEY": "test-geo", "YANDEX_MAPS_API_KEY": ""}):  # pragma: allowlist secret
+            with patch("core.views_geo.urlopen", side_effect=fake_urlopen):
+                response = self.client.post(
+                    reverse("core:geo_geocode"),
+                    data=json.dumps({"mode": "reverse", "lat": 55.75, "lng": 37.6}),
+                    content_type="application/json",
+                    REMOTE_ADDR="10.11.0.2",
+                )
+        self.assertEqual(response.status_code, 200)
+        query = parse_qs(urlparse(captured["url"]).query)
+        self.assertEqual(query["geocode"], ["37.600000,55.750000"])
+        self.assertAlmostEqual(response.json()["results"][0]["lat"], 55.765252)
+
+    def test_geocode_requires_login_and_post(self):
+        self.client.logout()
+        self.assertEqual(
+            self.client.post(reverse("core:geo_geocode"), data="{}", content_type="application/json").status_code,
+            302,
+        )
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.get(reverse("core:geo_geocode")).status_code, 405)
+
+    def test_geocode_without_key_reports_disabled(self):
+        with patch.dict(os.environ, {"YANDEX_GEOCODER_KEY": "", "YANDEX_MAPS_API_KEY": ""}):
+            response = self.client.post(
+                reverse("core:geo_geocode"),
+                data=json.dumps({"mode": "forward", "text": "Москва Тверская"}),
+                content_type="application/json",
+                REMOTE_ADDR="10.11.0.3",
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()["enabled"])
+        self.assertEqual(response.json()["results"], [])
+
+    def test_geocode_rejects_bad_coords(self):
+        response = self.client.post(
+            reverse("core:geo_geocode"),
+            data=json.dumps({"mode": "reverse", "lat": 999, "lng": 37.6}),
+            content_type="application/json",
+            REMOTE_ADDR="10.11.0.4",
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_geocode_upstream_failure_is_soft(self):
+        with patch.dict(os.environ, {"YANDEX_GEOCODER_KEY": "test-geo", "YANDEX_MAPS_API_KEY": ""}):  # pragma: allowlist secret
+            with patch("core.views_geo.urlopen", side_effect=OSError("boom")):
+                response = self.client.post(
+                    reverse("core:geo_geocode"),
+                    data=json.dumps({"mode": "forward", "text": "Москва Ленина"}),
+                    content_type="application/json",
+                    REMOTE_ADDR="10.11.0.5",
+                )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["results"], [])
+        self.assertEqual(response.json()["error"], "upstream")
+
+    def test_job_form_uses_server_geocoder(self):
+        with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": "test-" + "key"}):  # pragma: allowlist secret
+            response = self.client.get(reverse("core:job_create"))
+        self.assertContains(response, "/api/geo/geocode")
+        self.assertNotContains(response, "searchControl")
 
 
 class WorkersNavigationTests(TestCase):
