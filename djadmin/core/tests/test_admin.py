@@ -79,7 +79,7 @@ class AdminAccessTests(TestCase):
         for text in (
             "Дашборд", "Аналитика", "Переменные окружения",
             "Профили", "Задания", "Платежи и подписки",
-            "Уведомления и поддержка", "Контентные страницы",
+            "Уведомления и поддержка", "Контентные страницы", "Оценки",
         ):
             self.assertContains(response, text)
         self.assertContains(response, "/admin/env/")
