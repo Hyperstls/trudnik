@@ -72,6 +72,19 @@ class AdminAccessTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Дашборд")
 
+    def test_admin_index_has_grouped_links(self):
+        self.client.force_login(self.admin)
+        response = self.client.get("/admin/")
+        self.assertEqual(response.status_code, 200)
+        for text in (
+            "Дашборд", "Аналитика", "Переменные окружения",
+            "Профили", "Задания", "Платежи и подписки",
+            "Уведомления и поддержка", "Контентные страницы",
+        ):
+            self.assertContains(response, text)
+        self.assertContains(response, "/admin/env/")
+        self.assertContains(response, "/admin/analytics/")
+
     def test_profile_skills_editor(self):
         worker = make_profile("skills@example.com")
         self.client.force_login(self.admin)

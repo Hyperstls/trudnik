@@ -1,0 +1,66 @@
+{% extends "admin/index.html" %}
+{% block content %}
+<div id="content-main">
+  <div class="module" style="margin-bottom:1rem">
+    <h2>Платформа</h2>
+    <table style="width:100%">
+      <tr><th scope="row"><a href="{% url 'admin:dashboard' %}">Дашборд</a></th><td>Сводка дня и быстрые ссылки</td></tr>
+      <tr><th scope="row"><a href="{% url 'admin:analytics' %}">Аналитика</a></th><td>Воронка просмотров, откликов, публикаций и установок за 7/30 дней</td></tr>
+      <tr><th scope="row"><a href="{% url 'admin:env' %}">Переменные окружения</a></th><td>Env прод-процесса; секретные значения маскируются</td></tr>
+    </table>
+  </div>
+
+  <div class="module" style="margin-bottom:1rem">
+    <h2>Пользователи</h2>
+    <table style="width:100%">
+      <tr><th scope="row"><a href="{% url 'admin:core_profile_changelist' %}">Профили</a></th><td>Аккаунты, роли, верификация, видимость</td></tr>
+      <tr><th scope="row"><a href="{% url 'admin:core_skill_changelist' %}">Навыки</a></th><td>Справочник навыков</td></tr>
+      <tr><th scope="row"><a href="{% url 'admin:core_religion_changelist' %}">Вероисповедания</a></th><td>Справочник</td></tr>
+    </table>
+  </div>
+
+  <div class="module" style="margin-bottom:1rem">
+    <h2>Задания и отклики</h2>
+    <table style="width:100%">
+      <tr><th scope="row"><a href="{% url 'admin:core_job_changelist' %}">Задания</a></th><td>Публикации, статусы, модерация</td></tr>
+      <tr><th scope="row"><a href="{% url 'admin:core_application_changelist' %}">Отклики</a></th><td>Заявки на задания</td></tr>
+      <tr><th scope="row"><a href="{% url 'admin:core_invitation_changelist' %}">Приглашения</a></th><td>Приглашения трудников</td></tr>
+      <tr><th scope="row"><a href="{% url 'admin:core_jobfavorite_changelist' %}">Избранное (задания)</a></th><td>Сохранённые задания</td></tr>
+      <tr><th scope="row"><a href="{% url 'admin:core_favorite_changelist' %}">Избранное (люди)</a></th><td>Сохранённые профили</td></tr>
+      <tr><th scope="row"><a href="{% url 'admin:core_blacklist_changelist' %}">Чёрные списки</a></th><td>Блокировки пользователей</td></tr>
+    </table>
+  </div>
+
+  <div class="module" style="margin-bottom:1rem">
+    <h2>Платежи и подписки</h2>
+    <table style="width:100%">
+      <tr><th scope="row"><a href="{% url 'admin:core_receipt_changelist' %}">Квитанции</a></th><td>Поступления от храмов</td></tr>
+      <tr><th scope="row"><a href="{% url 'admin:core_jobpayment_changelist' %}">Платежи за задания</a></th><td>Оплата публикаций</td></tr>
+      <tr><th scope="row"><a href="{% url 'admin:core_employersubscription_changelist' %}">Подписки работодателей</a></th><td>Тарифы и сроки</td></tr>
+      <tr><th scope="row"><a href="{% url 'admin:core_monetizationsetting_changelist' %}">Параметры монетизации</a></th><td>Флаги и лимиты</td></tr>
+      <tr><th scope="row"><a href="{% url 'admin:core_tariffsetting_changelist' %}">Тарифы</a></th><td>Цены и длительность</td></tr>
+      <tr><th scope="row"><a href="{% url 'admin:core_archivecontactpayment_changelist' %}">Архив оплат контактов</a></th><td>Исторические платежи</td></tr>
+    </table>
+  </div>
+
+  <div class="module" style="margin-bottom:1rem">
+    <h2>Уведомления и поддержка</h2>
+    <table style="width:100%">
+      <tr><th scope="row"><a href="{% url 'admin:core_notification_changelist' %}">Уведомления</a></th><td>In-app уведомления</td></tr>
+      <tr><th scope="row"><a href="{% url 'admin:core_notificationoutbox_changelist' %}">Outbox уведомлений</a></th><td>Очередь email/push</td></tr>
+      <tr><th scope="row"><a href="{% url 'admin:core_pushsubscription_changelist' %}">Push-подписки</a></th><td>Браузерные подписки</td></tr>
+      <tr><th scope="row"><a href="{% url 'admin:core_message_changelist' %}">Сообщения чата</a></th><td>Переписка по откликам</td></tr>
+      <tr><th scope="row"><a href="{% url 'admin:core_userreport_changelist' %}">Жалобы</a></th><td>Очередь модерации</td></tr>
+      <tr><th scope="row"><a href="{% url 'admin:core_emaillog_changelist' %}">Лог писем</a></th><td>Транзакционная почта</td></tr>
+      <tr><th scope="row"><a href="{% url 'admin:core_auditlog_changelist' %}">Аудит действий</a></th><td>Журнал админки</td></tr>
+    </table>
+  </div>
+
+  <div class="module">
+    <h2>Контент</h2>
+    <table style="width:100%">
+      <tr><th scope="row"><a href="{% url 'admin:core_sitepage_changelist' %}">Контентные страницы</a></th><td>Политика, условия, безопасность, FAQ</td></tr>
+    </table>
+  </div>
+</div>
+{% endblock %}

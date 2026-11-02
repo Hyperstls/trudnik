@@ -43,6 +43,7 @@ class TrudnikAdminSite(AdminSite):
     site_header = "Трудник — админка (Django)"
     site_title = "Трудник"
     index_title = "Управление платформой"
+    index_template = "admin/trudnik_index.html"
 
     def get_urls(self):
         from django.urls import path

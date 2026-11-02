@@ -2,6 +2,8 @@ name: UX quality
 
 on:
   workflow_dispatch:
+  push:
+    branches: [feat/agent-pipeline]
   schedule:
     - cron: "0 6 * * 1"
 

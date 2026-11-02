@@ -1,0 +1,35 @@
+{
+  "id": "J128",
+  "title": "Админка: главная со всеми разделами по блокам",
+  "goal": "/admin показывает Дашборд, Аналитику, Переменные окружения и все модели, сгруппированные по разделам; всё доступно с главной.",
+  "why": "Кастомные страницы (/admin/env/, /admin/analytics/, /admin/dashboard/) не были видны с /admin, а модели шли одним общим списком.",
+  "files": [
+    "djadmin/core/templates/admin/trudnik_index.html",
+    "djadmin/core/admin/__init__.py",
+    "djadmin/core/tests/test_admin.py",
+    ".github/workflows/ux-quality.yml"
+  ],
+  "context_files": [
+    "djadmin/core/admin/support.py",
+    "djadmin/core/admin/users.py",
+    "djadmin/core/admin/jobs.py"
+  ],
+  "interfaces": "AdminSite.index_template=admin/trudnik_index.html; блоки: Платформа (Дашборд/Аналитика/Env), Пользователи, Задания и отклики, Платежи и подписки, Уведомления и поддержка, Контент; ссылки на все core_*_changelist. UX workflow: push в feat/agent-pipeline тоже запускает аудит.",
+  "acceptance": [
+    "С /admin доступны dashboard/analytics/env.",
+    "Модели распределены по блокам.",
+    "Ни одна зарегистрированная модель не потеряна.",
+    "Тест главной проходит."
+  ],
+  "out_of_scope": [
+    "Не менять права доступа.",
+    "Не менять модели."
+  ],
+  "checks": [
+    {
+      "name": "admin_index_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_admin.AdminAccessTests.test_admin_index_has_grouped_links --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}
