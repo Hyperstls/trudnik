@@ -1,0 +1,40 @@
+{
+  "id": "J117",
+  "title": "P2: генерация per-job OG-картинки",
+  "goal": "Карточка задания отдаёт OG/Twitter-картинку 1200×630 с названием работы, оплатой, городом и датой; изображение генерируется на сервере и кэшируется.",
+  "why": "Превью в соцсетях/мессенджерах сейчас брендовое или фото; текст с оплатой повышает кликабельность и информативность.",
+  "files": [
+    "djadmin/core/og_image.py",
+    "djadmin/core/views.py",
+    "djadmin/core/urls.py",
+    "djadmin/core/templates/core/job_detail.html"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "static/icons/og-preview.png"
+  ],
+  "interfaces": "og_image.render_job_og(job)->PNG bytes (1200×630, primary #d97706, DejaVuSans/Bold из static/fonts, заголовок ≤3 строк, оплата или «по договорённости», город · дата, трудник.рф). views.job_og_image: public job или 404, cache key og:job:<id>:<updated_at> 3600с, Content-Type image/png, Cache-Control public max-age=3600; fallback на static/icons/og-preview.png при ошибке Pillow. urls: jobs/<uuid>/og.png name=job_og_image. job_detail: og:image и twitter:image → абсолютный URL генератора.",
+  "acceptance": [
+    "GET /jobs/<id>/og.png → PNG 1200×630.",
+    "Приватные/несуществующие задания → 404.",
+    "OG/Twitter meta содержат URL генератора.",
+    "Изображение кэшируется на час.",
+    "Тесты проходят."
+  ],
+  "out_of_scope": [
+    "Не менять другие OG-страницы.",
+    "Не добавлять фото в генератор."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": ".venv\\Scripts\\python.exe -m py_compile djadmin/core/og_image.py djadmin/core/views.py djadmin/core/urls.py",
+      "cwd": "."
+    },
+    {
+      "name": "og_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.JobOgImageTests core.tests.test_public_views.PublicViewsTests.test_job_detail_og_meta --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

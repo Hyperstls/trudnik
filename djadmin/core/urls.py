@@ -22,6 +22,7 @@ urlpatterns = [
     path("search", RedirectView.as_view(pattern_name="core:jobs", permanent=False, query_string=True), name="search"),
     path("jobs/new", views_flow.job_create, name="job_create"),
     path("jobs/<uuid:job_id>", views.job_detail, name="job_detail"),
+    path("jobs/<uuid:job_id>/og.png", views.job_og_image, name="job_og_image"),
     path("jobs/<uuid:job_id>/edit", views_flow.job_edit, name="job_edit"),
     path("jobs/<uuid:job_id>/apply", views_flow.job_apply, name="job_apply"),
     path("jobs/<uuid:job_id>/unapply", views_flow.job_unapply, name="job_unapply"),

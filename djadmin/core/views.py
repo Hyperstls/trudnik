@@ -16,6 +16,8 @@ from uuid import UUID
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
+from django.core.paginator import Paginator
 from django.db import connection
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
@@ -26,6 +28,7 @@ from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 
 from .models import Application, Blacklist, Favorite, Invitation, Job, JobFavorite, Profile, Rating, SitePage, Skill, UserSkill
+from .og_image import render_job_og
 from .ratelimit import rate_limit_write
 from .rpc import call_rpc_rows
 
@@ -482,7 +485,6 @@ def job_detail(request, job_id):
     return render(request, "core/job_detail.html", {
         "job": job,
         "photos": [(i, _abs(url)) for i, url in enumerate(photos)],
-        "og_image": _abs(photos[0]) if photos else None,
         "skills": skills,
         "my_app": my_app,
         "can_withdraw": can_withdraw,
@@ -498,6 +500,30 @@ def job_detail(request, job_id):
             and JobFavorite.objects.filter(user=request.user, job=job).exists()
         ),
     })
+
+
+def job_og_image(request, job_id):
+    """Сгенерированное OG-превью задания (1200×630, только публичные поля)."""
+    job = Job.objects.public().filter(pk=job_id).first()
+    if job is None:
+        raise Http404("Задание не найдено")
+    cache_key = "og:job:%s:%s" % (
+        job.pk,
+        job.updated_at.isoformat() if job.updated_at else "",
+    )
+    png = cache.get(cache_key)
+    if png is None:
+        try:
+            png = render_job_og(job)
+        except Exception:
+            fallback = settings.REPO_ROOT / "static" / "icons" / "og-preview.png"
+            if fallback.exists():
+                return FileResponse(fallback.open("rb"), content_type="image/png")
+            raise Http404("OG-превью недоступно")
+        cache.set(cache_key, png, 3600)
+    response = HttpResponse(png, content_type="image/png")
+    response["Cache-Control"] = "public, max-age=3600"
+    return response
 
 
 def workers_list(request):
@@ -572,16 +598,13 @@ def workers_list(request):
             Job.objects.filter(employer=request.user, status="open").order_by("date_time")[:50]
         )
     if worker_ids:
-        accepted = Counter(
+        status_rows = list(
             Application.objects.filter(
-                worker_id__in=worker_ids, status="accepted"
-            ).values_list("worker_id", flat=True)
+                worker_id__in=worker_ids, status__in=("accepted", "rejected")
+            ).values_list("worker_id", "status")
         )
-        rejected = Counter(
-            Application.objects.filter(
-                worker_id__in=worker_ids, status="rejected"
-            ).values_list("worker_id", flat=True)
-        )
+        accepted = Counter(wid for wid, status in status_rows if status == "accepted")
+        rejected = Counter(wid for wid, status in status_rows if status == "rejected")
         reliable_worker_ids = {
             wid for wid in worker_ids
             if accepted.get(wid, 0) >= 10 and rejected.get(wid, 0) == 0
