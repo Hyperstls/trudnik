@@ -14,6 +14,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .models import Notification, Profile, PushSubscription
+from .notifications import enqueue_notification
+from .ratelimit import rate_limit_write
 
 PAGE_SIZE = 30
 
@@ -81,6 +83,22 @@ def notifications_delete_all(request):
     )
     messages.info(request, "Удалено уведомлений: %d." % deleted)
     return redirect("core:notifications")
+
+
+@login_required
+@require_POST
+@rate_limit_write(limit=3, window=60, redirect_to="/notifications/settings")
+def notification_test(request):
+    ok = enqueue_notification(
+        request.user.pk, "test", "Тестовое уведомление",
+        "Если вы видите это — уведомления работают.",
+        {"link": "/notifications"},
+    )
+    if ok:
+        messages.success(request, "Тестовое уведомление поставлено в очередь. Доставка — до 10 секунд.")
+    else:
+        messages.error(request, "Не удалось поставить уведомление в очередь.")
+    return redirect("core:notification_prefs")
 
 
 @login_required

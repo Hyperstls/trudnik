@@ -11,6 +11,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from .models import Profile
+from .ratelimit import rate_limit_write
 
 TTL_SECONDS = 30 * 24 * 60 * 60
 ALLOWED_FIELDS = {
@@ -48,6 +49,7 @@ def _clean_fields(raw):
 
 @login_required
 @require_http_methods(["GET", "POST", "DELETE"])
+@rate_limit_write(limit=60, window=60)
 def job_draft(request):
     prefs = dict(request.user.notification_prefs or {})
     stored = prefs.get("job_draft") if isinstance(prefs.get("job_draft"), dict) else None

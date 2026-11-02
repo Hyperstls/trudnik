@@ -859,3 +859,7 @@
 - **2026-11-02 12:21:26** | **J094** | `verify` | **PASS** | scope=skipped checks=draft_api_tests=0 attempts=0/3
 - **2026-11-02 12:21:40** | **J094** | `review-packet` | **READY** | bytes=14538 new_files=['djadmin/core/views_drafts.py']
 - **2026-11-02 12:30:15** | **J094** | `review` | **PASS** | by=independent-review → done
+- **2026-11-02 12:56:43** | **J095** | `add` | **OK** | contract=context/agent-pipeline/tasks/J095.json
+- **2026-11-02 12:56:43** | **J095** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/J095.impl.prompt.md
+- **2026-11-02 12:57:23** | **J096** | `add` | **OK** | contract=context/agent-pipeline/tasks/J096.json
+- **2026-11-02 12:57:24** | **J096** | `dispatch` | **OK** | status=implementing baseline=7 pack=context/agent-pipeline/packs/J096.impl.prompt.md

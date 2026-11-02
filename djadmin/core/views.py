@@ -26,6 +26,7 @@ from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 
 from .models import Application, Blacklist, Favorite, Invitation, Job, JobFavorite, Profile, Rating, SitePage, Skill, UserSkill
+from .ratelimit import rate_limit_write
 from .rpc import call_rpc_rows
 
 PAGE_SIZE = 20
@@ -185,6 +186,7 @@ def _saved_search_data(post):
 
 @login_required
 @require_POST
+@rate_limit_write(limit=20, window=60, redirect_to="/jobs")
 def save_search(request):
     data = _saved_search_data(request.POST)
     if not data["query"]:
@@ -208,6 +210,7 @@ def save_search(request):
 
 @login_required
 @require_POST
+@rate_limit_write(limit=20, window=60, redirect_to="/jobs")
 def toggle_search(request, search_id):
     prefs = request.user.notification_prefs or {}
     items = prefs.get("saved_searches") if isinstance(prefs.get("saved_searches"), list) else []
@@ -230,6 +233,7 @@ def toggle_search(request, search_id):
 
 @login_required
 @require_POST
+@rate_limit_write(limit=20, window=60, redirect_to="/jobs")
 def delete_search(request, search_id):
     prefs = request.user.notification_prefs or {}
     items = prefs.get("saved_searches") if isinstance(prefs.get("saved_searches"), list) else []

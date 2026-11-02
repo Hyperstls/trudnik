@@ -1250,6 +1250,20 @@ class ServerJobDraftTests(TestCase):
         Profile.objects.filter(pk=self.user.pk).update(notification_prefs=prefs)
         self.assertIsNone(self.client.get(reverse("core:job_draft_api")).json()["draft"])
 
+    def test_draft_rate_limited(self):
+        payload = json.dumps({"fields": {"work_type": ["x"]}, "saved_at": 1})
+        for _ in range(60):
+            response = self.client.post(
+                reverse("core:job_draft_api"), data=payload,
+                content_type="application/json",
+            )
+            self.assertEqual(response.status_code, 200)
+        response = self.client.post(
+            reverse("core:job_draft_api"), data=payload,
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 429)
+
     def test_requires_login(self):
         self.client.logout()
         self.assertEqual(self.client.get(reverse("core:job_draft_api")).status_code, 302)

@@ -1,0 +1,34 @@
+{
+  "id": "J095",
+  "title": "P0: тестовое уведомление и диагностика push",
+  "goal": "В настройках уведомлений есть кнопка «Отправить тестовое уведомление»; она ставит в outbox тестовое событие, чтобы проверить email/push/in-app на реальном устройстве.",
+  "why": "После исправления VAPID нужно подтвердить полный путь доставки на телефоне/в браузере. Без тестовой кнопки пользователь не понимает, работает ли подписка.",
+  "files": [
+    "djadmin/core/views_notify.py",
+    "djadmin/core/urls.py",
+    "djadmin/core/templates/core/notification_settings.html",
+    "djadmin/core/tests/test_notifications.py"
+  ],
+  "context_files": [
+    "djadmin/core/tasks.py",
+    "static/js/push-notifications.js"
+  ],
+  "interfaces": "views_notify.notification_test: login+POST+rate_limit_write(3/60, redirect settings), enqueue_notification(user.pk, 'test', 'Тестовое уведомление', 'Если вы видите это — уведомления работают.', {'link': '/notifications'}), message success. urls /notifications/test. settings: форма с CSRF и кнопкой, пояснение что учитываются каналы и push требует подписки. Test: POST создаёт outbox type=test; anon 302.",
+  "acceptance": [
+    "Кнопка создаёт ровно одну outbox-запись type=test.",
+    "Сообщение объясняет, что доставка до 10 секунд и учитывает настройки.",
+    "Анонимный POST не создаёт запись.",
+    "Повторные нажатия ограничены 3/мин."
+  ],
+  "out_of_scope": [
+    "Не менять drain/каналы.",
+    "Не отправлять тест напрямую в обход outbox."
+  ],
+  "checks": [
+    {
+      "name": "test_notification",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_notifications.NotificationTests.test_test_notification_queues_outbox --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

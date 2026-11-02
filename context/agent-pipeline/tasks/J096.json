@@ -1,0 +1,32 @@
+{
+  "id": "J096",
+  "title": "P0: rate-limit для черновика и сохранённых поисков",
+  "goal": "Новые POST-эндпоинты черновика и сохранённых поисков ограничены по пользователю, чтобы нельзя было заспамить prefs/Redis.",
+  "why": "Draft сохраняется каждые 5 секунд, поиски — формами. Без лимита возможны злоупотребления записью в profiles.notification_prefs.",
+  "files": [
+    "djadmin/core/views_drafts.py",
+    "djadmin/core/views.py",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/ratelimit.py"
+  ],
+  "interfaces": "views_drafts.job_draft: @rate_limit_write(limit=60,window=60) → 429 JSON. views.save_search/delete_search/toggle_search: @rate_limit_write(limit=20,window=60, redirect_to='/jobs'). Тесты: 61-й draft POST → 429; 21-й save → redirect с warning (или просто статус 302).",
+  "acceptance": [
+    "Draft POST ограничен 60/мин на пользователя.",
+    "Search mutations ограничены 20/мин.",
+    "Обычные запросы не блокируются.",
+    "Лимит не влияет на других пользователей."
+  ],
+  "out_of_scope": [
+    "Не менять содержимое/валидацию.",
+    "Не менять глобальный middleware."
+  ],
+  "checks": [
+    {
+      "name": "rate_limit_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.ServerJobDraftTests.test_draft_rate_limited --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

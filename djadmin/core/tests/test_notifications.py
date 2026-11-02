@@ -80,3 +80,12 @@ class NotificationTests(TestCase):
     def test_requires_login(self):
         self.client.logout()
         self.assertEqual(self.client.get(reverse("core:notifications")).status_code, 302)
+
+
+    def test_test_notification_queues_outbox(self):
+        from core.models import NotificationOutbox
+        response = self.client.post(reverse("core:notification_test"))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            NotificationOutbox.objects.filter(user=self.user, type="test").count(), 1
+        )
