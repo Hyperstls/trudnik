@@ -15,9 +15,9 @@
                 {% endif %}
                 <div class="min-w-0">
                     <h1 class="text-xl font-bold text-neutral-900">{{ p.full_name }}</h1>
-                    <p class="text-sm text-neutral-500">★ {{ p.rating|default:0|floatformat:1 }} ({{ p.total_reviews|default:0 }} отзывов){% if p.city %} · {{ p.city }}{% endif %}</p>
+                    <p class="text-sm text-neutral-500">{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline text-warning" %} {{ p.rating|default:0|floatformat:1 }} ({{ p.total_reviews|default:0 }} отзывов){% if p.city %} · {{ p.city }}{% endif %}</p>
                     {% if p.verification_status == 'approved' %}
-                    <span class="inline-flex items-center gap-0.5 mt-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-[11px] font-semibold">✓ Подтверждён</span>
+                    <span class="inline-flex items-center gap-0.5 mt-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-[11px] font-semibold">{% include "core/_ui_icon.html" with name="check" class_name="h-3 w-3" %} Подтверждён</span>
                     {% endif %}
                 </div>
             </div>
@@ -54,7 +54,7 @@
         <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4">
             <div class="flex justify-between gap-2">
                 <a href="{% url 'core:worker_detail' r.rater_user.pk %}" class="text-sm font-medium text-neutral-800 hover:text-primary-600">{{ r.rater_user.full_name }}</a>
-                <span class="text-warning text-sm">{% for i in "12345" %}{% if forloop.counter0 < r.rating %}★{% else %}<span class="text-neutral-300">★</span>{% endif %}{% endfor %}</span>
+                <span class="inline-flex items-center gap-0.5">{% for i in "12345" %}{% if forloop.counter0 < r.rating %}{% include "core/_ui_icon.html" with name="star" class_name="h-4 w-4 text-warning" %}{% else %}{% include "core/_ui_icon.html" with name="star-outline" class_name="h-4 w-4 text-neutral-300" %}{% endif %}{% endfor %}</span>
             </div>
             {% if r.comment %}<p class="text-sm text-neutral-600 mt-1">{{ r.comment }}</p>{% endif %}
             <p class="text-xs text-neutral-400 mt-1">{{ r.created_at|date:"d.m.Y" }}</p>

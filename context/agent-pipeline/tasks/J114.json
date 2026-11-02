@@ -1,0 +1,36 @@
+{
+  "id": "J114",
+  "title": "P1.5: SVG вместо ★/✓ в откликах",
+  "goal": "Страницы откликов и оценки трудников используют SVG sprite вместо ★/✓.",
+  "why": "Единый набор иконок и требование SVG в приоритете над emoji.",
+  "files": [
+    "djadmin/core/templates/core/job_applicants.html",
+    "djadmin/core/templates/core/my_applications.html",
+    "djadmin/core/templates/core/rate_workers.html",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/_ui_icon.html"
+  ],
+  "interfaces": "job_applicants/my_applications: ★ summary → star icon; rate_workers: ✓/★ badge → check+star; test_flows assertion '★ 4,5' → '#star' + '4,5'.",
+  "acceptance": [
+    "В трёх шаблонах нет emoji ★/✓.",
+    "Иконки рендерятся через _ui_icon.html.",
+    "Тест MyApplicationsDefaultTests проходит."
+  ],
+  "out_of_scope": [
+    "Не менять логику откликов."
+  ],
+  "checks": [
+    {
+      "name": "no_emoji",
+      "cmd": ".venv\\Scripts\\python.exe -c \"from pathlib import Path; root=Path('djadmin/core/templates/core'); files=['job_applicants.html','my_applications.html','rate_workers.html']; assert all('_ui_icon.html' in (root/f).read_text(encoding='utf-8') for f in files); assert all(not any(c in (root/f).read_text(encoding='utf-8') for c in '★✓') for f in files); print('svg ok')\"",
+      "cwd": "."
+    },
+    {
+      "name": "my_apps_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_flows.MyApplicationsDefaultTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

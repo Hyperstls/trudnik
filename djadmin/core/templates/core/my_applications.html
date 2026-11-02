@@ -67,7 +67,7 @@
                     {% else %}<span class="text-xs bg-neutral-100 text-neutral-600 rounded-full px-2.5 py-0.5 font-medium">{{ a.get_status_display }}</span>{% endif %}
                 </p>
                 {% if tab == 'received' %}
-                <p class="text-sm text-neutral-600 mt-1">★ {{ a.worker.rating|default:0|floatformat:1 }} ({{ a.worker.total_reviews|default:0 }}){% if a.worker.desired_payment %} · от {{ a.worker.desired_payment }} ₽{% endif %}</p>
+                <p class="text-sm text-neutral-600 mt-1">{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline text-warning" %} {{ a.worker.rating|default:0|floatformat:1 }} ({{ a.worker.total_reviews|default:0 }}){% if a.worker.desired_payment %} · от {{ a.worker.desired_payment }} ₽{% endif %}</p>
                 {% with worker_skills=a.worker.user_skills.all|slice:":3" %}
                 {% if worker_skills %}
                 <div class="flex flex-wrap gap-1 mt-1.5">

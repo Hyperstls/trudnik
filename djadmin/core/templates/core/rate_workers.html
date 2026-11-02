@@ -11,7 +11,7 @@
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <a href="{% url 'core:worker_detail' a.worker.pk %}" class="font-medium text-neutral-800 hover:text-primary-600">{{ a.worker.full_name }}</a>
                 {% if a.my_rating %}
-                <span class="text-xs font-medium bg-green-50 text-green-700 border border-green-200 rounded-full px-2.5 py-0.5">✓ Оценён · {{ a.my_rating.rating }}★</span>
+                <span class="inline-flex items-center gap-0.5 text-xs font-medium bg-green-50 text-green-700 border border-green-200 rounded-full px-2.5 py-0.5">{% include "core/_ui_icon.html" with name="check" class_name="h-3 w-3" %} Оценён · {{ a.my_rating.rating }}{% include "core/_ui_icon.html" with name="star" class_name="h-3 w-3" %}</span>
                 {% else %}
                 <span class="text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2.5 py-0.5">Не оценён</span>
                 {% endif %}

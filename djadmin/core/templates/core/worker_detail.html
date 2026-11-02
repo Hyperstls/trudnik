@@ -19,10 +19,10 @@
             {% endif %}
             <h1 class="text-xl font-bold text-neutral-900 mt-3">
                 {{ p.full_name }}
-                {% if p.verification_status == 'approved' %}<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">✓ Подтверждён</span>{% endif %}
+                {% if p.verification_status == 'approved' %}<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{% include "core/_ui_icon.html" with name="check" class_name="h-3 w-3" %} Подтверждён</span>{% endif %}
             </h1>
             <div class="flex items-center gap-1.5 mt-1">
-                {% for i in "12345" %}{% if forloop.counter0 < p.rating|default:0 %}<span class="text-warning text-sm">★</span>{% else %}<span class="text-neutral-300 text-sm">★</span>{% endif %}{% endfor %}
+                {% for i in "12345" %}{% if forloop.counter0 < p.rating|default:0 %}{% include "core/_ui_icon.html" with name="star" class_name="h-4 w-4 text-warning" %}{% else %}{% include "core/_ui_icon.html" with name="star-outline" class_name="h-4 w-4 text-neutral-300" %}{% endif %}{% endfor %}
                 <span class="text-sm font-medium text-neutral-700">{{ p.rating|default:0|floatformat:1 }}</span>
                 <span class="text-xs text-neutral-400">({{ p.total_reviews|default:0 }} отзывов)</span>
             </div>

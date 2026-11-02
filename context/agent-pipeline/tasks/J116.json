@@ -1,0 +1,34 @@
+{
+  "id": "J116",
+  "title": "P1.5: SVG для удаления фото и текст без emoji",
+  "goal": "Кнопка удаления фото использует SVG x, в legal-тексте нет emoji-галочки.",
+  "why": "Последние emoji вне основного набора; SVG-иконка единообразна.",
+  "files": [
+    "djadmin/core/templates/core/job_form.html",
+    "djadmin/core/templates/core/legal_fallback.html"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/_ui_icon.html"
+  ],
+  "interfaces": "job_form: ✕ → _ui_icon x h-3.5 w-3.5 в кнопке удаления фото. legal_fallback: «✓ Подтверждён» → «Подтверждён».",
+  "acceptance": [
+    "В job_form и legal_fallback нет emoji ✕/✓.",
+    "Кнопка удаления фото сохраняет aria-label и размеры.",
+    "Тесты формы задания проходят."
+  ],
+  "out_of_scope": [
+    "Не менять загрузку фото."
+  ],
+  "checks": [
+    {
+      "name": "no_emoji",
+      "cmd": ".venv\\Scripts\\python.exe -c \"from pathlib import Path; root=Path('djadmin/core/templates/core'); files=['job_form.html','legal_fallback.html']; assert all(not any(c in (root/f).read_text(encoding='utf-8') for c in '✕✓') for f in files); print('ok')\"",
+      "cwd": "."
+    },
+    {
+      "name": "job_crud",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_flows.JobCrudTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

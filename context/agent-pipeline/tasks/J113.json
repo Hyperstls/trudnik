@@ -1,0 +1,39 @@
+{
+  "id": "J113",
+  "title": "P1.5: SVG вместо ★/✓ на профилях и в избранном",
+  "goal": "Рейтинги и бейджи подтверждения на страницах работодателя, трудника, отзывов и избранного используют SVG sprite, emoji отсутствуют.",
+  "why": "Пользователь требует SVG в приоритете над emoji; ★/✓ зависят от шрифта ОС и выглядят по-разному.",
+  "files": [
+    "djadmin/core/templates/core/employer_detail.html",
+    "djadmin/core/templates/core/user_ratings.html",
+    "djadmin/core/templates/core/favorites.html",
+    "djadmin/core/templates/core/worker_detail.html"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/_ui_icon.html",
+    "static/icons/sprite.svg"
+  ],
+  "interfaces": "Replace ★ summary with star icon (h-3.5 w-3.5 inline text-warning); 5-star loops with star/star-outline; ✓ badges with check icon; keep sizes/colors and aria-hidden from _ui_icon.",
+  "acceptance": [
+    "В четырёх шаблонах нет emoji ★/✓.",
+    "Рейтинг и бейджи рендерятся через _ui_icon.html.",
+    "Визуальные размеры/цвета сохранены.",
+    "Тесты проходят."
+  ],
+  "out_of_scope": [
+    "Не менять логику рейтинга.",
+    "Не менять остальные страницы."
+  ],
+  "checks": [
+    {
+      "name": "no_emoji_svg",
+      "cmd": ".venv\\Scripts\\python.exe -c \"from pathlib import Path; root=Path('djadmin/core/templates/core'); files=['employer_detail.html','user_ratings.html','favorites.html','worker_detail.html']; assert all('_ui_icon.html' in (root/f).read_text(encoding='utf-8') for f in files); assert all(not any(c in (root/f).read_text(encoding='utf-8') for c in '★✓') for f in files); print('svg ok')\"",
+      "cwd": "."
+    },
+    {
+      "name": "public_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.PublicViewsTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

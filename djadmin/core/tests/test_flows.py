@@ -1093,7 +1093,8 @@ class MyApplicationsDefaultTests(TestCase):
         response = self.client.get(reverse("core:my_applications"))
         self.assertEqual(response.context["tab"], "received")
         self.assertContains(response, "Навык J046")
-        self.assertContains(response, "★ 4,5")
+        self.assertContains(response, "#star")
+        self.assertContains(response, "4,5")
         self.assertContains(response, "1500")
 
     def test_worker_without_own_jobs_defaults_to_sent(self):
