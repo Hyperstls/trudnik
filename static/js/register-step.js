@@ -40,6 +40,22 @@
         });
     }
 
+    var captchaTries = 0;
+
+    function renderCaptcha() {
+        var container = document.getElementById('register-captcha');
+        if (!container || container.dataset.rendered) return;
+        if (!window.smartCaptcha) {
+            if (captchaTries < 20) {
+                captchaTries += 1;
+                window.setTimeout(renderCaptcha, 300);
+            }
+            return;
+        }
+        window.smartCaptcha.render(container, { sitekey: container.getAttribute('data-sitekey') });
+        container.dataset.rendered = '1';
+    }
+
     function show(step, focus) {
         current = Math.min(total, Math.max(1, step));
         steps.forEach(function (panel) {
@@ -52,6 +68,7 @@
         if (submitWrap) submitWrap.classList.toggle('hidden', current !== total);
         setIndicators(current);
         if (status) status.textContent = 'Шаг ' + current + ' из ' + total;
+        if (current === total) renderCaptcha();
         if (!focus) return;
         var first = steps[current - 1].querySelector('input:not([type="hidden"]), select, textarea');
         if (first) first.focus({ preventScroll: true });

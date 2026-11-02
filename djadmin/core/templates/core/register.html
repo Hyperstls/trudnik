@@ -128,7 +128,7 @@
 
             {% if captcha_client_key %}
             <script src="https://smartcaptcha.yandexcloud.net/captcha.js" defer></script>
-            <div class="smart-captcha" data-sitekey="{{ captcha_client_key }}"></div>
+            <div id="register-captcha" data-sitekey="{{ captcha_client_key }}"></div>
             {% endif %}
             </div>
 

@@ -13,7 +13,7 @@
     "static/js/job-step.js",
     "static/css/app.css"
   ],
-  "interfaces": "register.html: form[data-register-stepper], 3 [data-register-step], #register-progress с data-register-indicator, #register-nav/#register-back/#register-next/#register-submit-wrap, noscript submit; intent checked по form.intent.value; skills в шаге 2. register-step.js: показ шага, checkValidity/reportValidity, :invalid → шаг с ошибкой, aria-current, aria-live статус, sessionStorage trudnik-register-draft-v1 (только intent/skills, TTL 7 дней), prefers-reduced-motion. login.html: при ?email= удаляет черновик. Тесты: разметка степпера, сохранение intent при ошибке.",
+  "interfaces": "register.html: form[data-register-stepper], 3 [data-register-step], #register-progress с data-register-indicator, #register-nav/#register-back/#register-next/#register-submit-wrap, #register-captcha (data-sitekey, без auto-init class), noscript submit; intent checked по form.intent.value; skills в шаге 2. register-step.js: показ шага, checkValidity/reportValidity, :invalid → шаг с ошибкой, aria-current, aria-live статус, ручной smartCaptcha.render при показе шага 3 (иначе hidden-контейнер даёт iframe 0×0), sessionStorage trudnik-register-draft-v1 (только intent/skills, TTL 7 дней), prefers-reduced-motion. login.html: при ?email= удаляет черновик. Тесты: разметка степпера, сохранение intent при ошибке.",
   "acceptance": [
     "Три шага, прогресс и aria-current.",
     "Без JS все поля и submit доступны.",
