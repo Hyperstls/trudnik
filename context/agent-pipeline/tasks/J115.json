@@ -1,0 +1,42 @@
+{
+  "id": "J115",
+  "title": "P2: степпер регистрации с черновиком intent/навыков",
+  "goal": "Регистрация разбита на 3 шага (Аккаунт → О себе → Контакты); без JS остаётся одна длинная форма; intent и навыки сохраняются в sessionStorage и восстанавливаются.",
+  "why": "Длинная форма регистрации теряет пользователя; степпер снижает когнитивную нагрузку, а черновик не даёт потерять выбор при случайном уходе.",
+  "files": [
+    "djadmin/core/templates/core/register.html",
+    "static/js/register-step.js",
+    "djadmin/core/templates/core/login.html",
+    "djadmin/core/tests/test_auth_flows.py"
+  ],
+  "context_files": [
+    "static/js/job-step.js",
+    "static/css/app.css"
+  ],
+  "interfaces": "register.html: form[data-register-stepper], 3 [data-register-step], #register-progress с data-register-indicator, #register-nav/#register-back/#register-next/#register-submit-wrap, noscript submit; intent checked по form.intent.value; skills в шаге 2. register-step.js: показ шага, checkValidity/reportValidity, :invalid → шаг с ошибкой, aria-current, aria-live статус, sessionStorage trudnik-register-draft-v1 (только intent/skills, TTL 7 дней), prefers-reduced-motion. login.html: при ?email= удаляет черновик. Тесты: разметка степпера, сохранение intent при ошибке.",
+  "acceptance": [
+    "Три шага, прогресс и aria-current.",
+    "Без JS все поля и submit доступны.",
+    "Next валидирует только текущий шаг; submit открывает шаг с ошибкой.",
+    "Intent/навыки восстанавливаются после перезагрузки.",
+    "Черновик очищается после успешной регистрации.",
+    "Тесты проходят."
+  ],
+  "out_of_scope": [
+    "Не менять RegisterForm/RPC.",
+    "Не менять капчу.",
+    "Не хранить пароль/email/имя в черновике."
+  ],
+  "checks": [
+    {
+      "name": "js_syntax",
+      "cmd": "node --check static/js/register-step.js",
+      "cwd": "."
+    },
+    {
+      "name": "register_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_auth_flows.RegisterTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

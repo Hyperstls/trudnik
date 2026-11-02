@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load static %}
 {% block title %}Регистрация — Трудник{% endblock %}
 {% block content %}
 <div class="min-h-[calc(100vh-3.5rem)] flex items-start justify-center px-4 py-8">
@@ -13,8 +14,15 @@
 
         {% if form.non_field_errors %}{% for e in form.non_field_errors %}<p class="form-error mb-3" role="alert"><span>{{ e }}</span></p>{% endfor %}{% endif %}
 
-        <form method="post" class="space-y-4" novalidate>
+        <form method="post" class="space-y-4" novalidate data-register-stepper>
             {% csrf_token %}
+            <ol id="register-progress" class="hidden grid grid-cols-3 gap-2 text-center text-xs" aria-label="Этапы регистрации">
+                <li data-register-indicator="1" class="rounded-xl border border-primary-500 bg-primary-50 px-2 py-1.5 font-semibold text-primary-700" aria-current="step">1. Аккаунт</li>
+                <li data-register-indicator="2" class="rounded-xl border border-neutral-200 px-2 py-1.5 text-neutral-500">2. О себе</li>
+                <li data-register-indicator="3" class="rounded-xl border border-neutral-200 px-2 py-1.5 text-neutral-500">3. Контакты</li>
+            </ol>
+            <p id="register-step-status" class="sr-only" aria-live="polite"></p>
+            <div class="space-y-4" data-register-step="1">
             <div class="form-field">
                 <label for="full_name" class="form-label">Полное имя <span class="text-danger">*</span></label>
                 <input type="text" name="full_name" id="full_name" maxlength="150" value="{{ form.full_name.value|default:'' }}" class="form-input" placeholder="Иван Иванов" required>
@@ -31,23 +39,25 @@
                 <p class="text-xs text-neutral-500 mt-1">Заглавная, строчная, цифра и спецсимвол обязательны</p>
                 {% if form.password.errors %}<p class="form-error" role="alert"><span>{{ form.password.errors.0 }}</span></p>{% endif %}
             </div>
+            </div>
 
+            <div class="space-y-4" data-register-step="2">
             <fieldset>
                 <legend class="block text-sm font-semibold text-neutral-700 mb-2">Что вы хотите делать? <span class="text-danger">*</span></legend>
                 <div class="space-y-2.5">
                     <label class="role-card group cursor-pointer border-2 border-neutral-200 rounded-xl p-3.5 flex items-center gap-3 hover:border-primary-300 transition-all duration-200 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 has-[:checked]:shadow-sm" tabindex="0">
-                        <input type="radio" name="intent" value="both" class="sr-only" checked aria-required="true">
+                        <input type="radio" name="intent" value="both" class="sr-only" {% if not form.intent.value or form.intent.value == 'both' %}checked{% endif %} aria-required="true">
                         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-neutral-400 group-has-[:checked]:text-primary-500" aria-hidden="true"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
                         <span class="flex-1 min-w-0"><span class="block text-sm font-semibold text-neutral-700">И то, и другое</span><span class="block text-xs text-neutral-500 mt-0.5">Подрабатывать и размещать задания</span></span>
                         <span class="text-[10px] font-bold uppercase tracking-wide bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full shrink-0">Рекомендуем</span>
                     </label>
                     <label class="role-card group cursor-pointer border-2 border-neutral-200 rounded-xl p-3.5 flex items-center gap-3 hover:border-primary-300 transition-all duration-200 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 has-[:checked]:shadow-sm" tabindex="0">
-                        <input type="radio" name="intent" value="find_work" class="sr-only">
+                        <input type="radio" name="intent" value="find_work" class="sr-only" {% if form.intent.value == 'find_work' %}checked{% endif %}>
                         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-neutral-400 group-has-[:checked]:text-primary-500" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                         <span class="flex-1 min-w-0"><span class="block text-sm font-semibold text-neutral-700">Искать подработку</span><span class="block text-xs text-neutral-500 mt-0.5">Откликаться на задания</span></span>
                     </label>
                     <label class="role-card group cursor-pointer border-2 border-neutral-200 rounded-xl p-3.5 flex items-center gap-3 hover:border-primary-300 transition-all duration-200 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 has-[:checked]:shadow-sm" tabindex="0">
-                        <input type="radio" name="intent" value="post_jobs" class="sr-only">
+                        <input type="radio" name="intent" value="post_jobs" class="sr-only" {% if form.intent.value == 'post_jobs' %}checked{% endif %}>
                         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 text-neutral-400 group-has-[:checked]:text-primary-500" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
                         <span class="flex-1 min-w-0"><span class="block text-sm font-semibold text-neutral-700">Только размещать задания</span><span class="block text-xs text-neutral-500 mt-0.5">Нанимать; меня не видно в каталоге исполнителей</span></span>
                     </label>
@@ -62,6 +72,21 @@
                 {% if form.city.errors %}<p class="form-error" role="alert"><span>{{ form.city.errors.0 }}</span></p>{% endif %}
             </div>
 
+            <fieldset>
+                <legend class="block text-sm font-semibold text-neutral-700 mb-2">Навыки</legend>
+                <div class="grid grid-cols-2 gap-1.5 text-sm">
+                    {% for checkbox in form.skills %}
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        {{ checkbox.tag }}
+                        {{ checkbox.choice_label }}
+                    </label>
+                    {% endfor %}
+                </div>
+                {% if form.skills.errors %}<p class="form-error" role="alert"><span>{{ form.skills.errors.0 }}</span></p>{% endif %}
+            </fieldset>
+            </div>
+
+            <div class="space-y-4" data-register-step="3">
             <div class="form-field">
                 <label for="portfolio_link" class="form-label">Портфолио (ссылка)</label>
                 <input type="url" name="portfolio_link" id="portfolio_link" value="{{ form.portfolio_link.value|default:'' }}" class="form-input" placeholder="https://example.com/portfolio">
@@ -93,19 +118,6 @@
             </label>
             {% if form.is_self_employed.errors %}<p class="form-error" role="alert"><span>{{ form.is_self_employed.errors.0 }}</span></p>{% endif %}
 
-            <fieldset>
-                <legend class="block text-sm font-semibold text-neutral-700 mb-2">Навыки</legend>
-                <div class="grid grid-cols-2 gap-1.5 text-sm">
-                    {% for checkbox in form.skills %}
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        {{ checkbox.tag }}
-                        {{ checkbox.choice_label }}
-                    </label>
-                    {% endfor %}
-                </div>
-                {% if form.skills.errors %}<p class="form-error" role="alert"><span>{{ form.skills.errors.0 }}</span></p>{% endif %}
-            </fieldset>
-
             <label class="flex items-start gap-2.5 text-sm text-neutral-700 cursor-pointer">
                 <input type="checkbox" name="consent" required class="mt-0.5 rounded border-neutral-300 text-primary-500 focus:ring-primary-500">
                 <span>Согласен с <a href="{% url 'core:privacy' %}" class="text-primary-600 hover:underline" target="_blank" rel="noopener noreferrer">политикой конфиденциальности</a> и обработкой персональных данных (152-ФЗ) <span class="text-danger">*</span></span>
@@ -118,8 +130,16 @@
             <script src="https://smartcaptcha.yandexcloud.net/captcha.js" defer></script>
             <div class="smart-captcha" data-sitekey="{{ captcha_client_key }}"></div>
             {% endif %}
+            </div>
 
-            <button type="submit" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors shadow-sm">Зарегистрироваться</button>
+            <div id="register-nav" class="hidden flex flex-wrap gap-2 pt-1">
+                <button type="button" id="register-back" class="px-4 h-10 rounded-xl border border-neutral-200 bg-white text-sm font-medium text-neutral-700">← Назад</button>
+                <button type="button" id="register-next" class="px-4 h-10 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold">Далее →</button>
+                <div id="register-submit-wrap" class="hidden w-full">
+                    <button type="submit" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors shadow-sm">Зарегистрироваться</button>
+                </div>
+            </div>
+            <noscript><button type="submit" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors shadow-sm">Зарегистрироваться</button></noscript>
         </form>
 
         <p class="mt-6 text-center text-sm text-neutral-500">
@@ -128,4 +148,7 @@
         </p>
     </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script src="{% static 'js/register-step.js' %}" defer></script>
 {% endblock %}

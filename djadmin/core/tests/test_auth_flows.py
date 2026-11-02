@@ -82,6 +82,30 @@ class RegisterTests(TestCase):
         # до подтверждения вход запрещён
         self.assertFalse(self.client.login(username="new.user@example.com", password=PW_REG))  # pragma: allowlist secret
 
+    def test_register_stepper_markup(self):
+        response = self.client.get("/register")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "data-register-stepper")
+        for step in (1, 2, 3):
+            self.assertContains(response, 'data-register-step="%d"' % step)
+        self.assertContains(response, 'data-register-indicator="1"')
+        self.assertContains(response, 'id="register-next"')
+        self.assertContains(response, 'id="register-submit-wrap"')
+        self.assertContains(response, "js/register-step.js")
+        self.assertContains(response, "<noscript>")
+
+    def test_register_preserves_intent_on_validation_error(self):
+        data = {
+            **REG,
+            "email": "bad-email",
+            "password": "short",  # pragma: allowlist secret
+            "full_name": "",
+            "intent": "find_work",
+        }
+        response = self.client.post("/register", data, REMOTE_ADDR="10.22.0.1")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'value="find_work" class="sr-only" checked')
+
     @patch("core.views_auth.verify_captcha_token", return_value=True)
     def test_register_redirects_to_resend_page(self, mock_verify):
         email = "resend-redirect@example.com"

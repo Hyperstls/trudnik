@@ -40,6 +40,13 @@
 **Критерии:** draft restore rate, completion rate, ошибки валидации по шагам;
 не хранить ПДн сверх текущей политики.
 
+**J115 (2026-11-02) — степпер регистрации СДЕЛАНО:**
+- шаги «Аккаунт» → «О себе» → «Контакты»; прогресс, aria-current, aria-live;
+- Next валидирует только текущий шаг, submit открывает шаг с ошибкой;
+- без JS — одна длинная форма + `<noscript>` submit;
+- sessionStorage-черновик только `intent` и навыков (TTL 7 дней), очищается на `/login?email=`;
+- `intent` сохраняется при серверной ошибке формы.
+
 ## P2 — Дизайн-система (P3 из ревью)
 
 **Порядок, чтобы не рефакторить всё сразу:**
@@ -47,6 +54,8 @@
    duration/easing; заменить только новые компоненты, затем карточки.
 2. **Иконки:** один набор (Lucide-подобные SVG) + `icon` template tag/include;
    размеры 16/20/24; постепенно заменить emoji/разнородные SVG.
+   - J109–J110: sprite (`static/icons/sprite.svg`) + `_ui_icon.html`, звёзды/галочки на ключевых страницах;
+   - J113–J116 (2026-11-02): emoji ★/✓/✕ заменены на sprite во всех шаблонах (`employer_detail`, `user_ratings`, `favorites`, `worker_detail`, `job_applicants`, `my_applications`, `rate_workers`, `job_form`, `legal_fallback`); emoji в шаблонах не осталось.
 3. **Компоненты:** Django includes (не Jinja-макросы):
    `_button.html`, `_badge.html`, `_card.html`, `_field.html`,
    `_empty_state.html`, `_modal.html`, `_sheet.html`.
