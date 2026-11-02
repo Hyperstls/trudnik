@@ -67,6 +67,9 @@
 | J095 | Тестовое уведомление из настроек; 3/мин |
 | J096 | Rate-limit черновика (60/мин) и сохранённых поисков (20/мин) |
 | J097–J098 | Live-refresh уведомлений, WS reconnect/poll, исправлен type кадра и бейдж при 0 |
+| J099 | Отзывы: 404 для admin/employer, target-filter, accepted-only |
+| J100 | Навигация к /employers и CTA «Задания» |
+| J101 | Мобильные действия на /notifications, desktop сохранён |
 
 Подробно о гео-логике и 152-ФЗ: [GEO_UX_PRIVACY.md](GEO_UX_PRIVACY.md).
 

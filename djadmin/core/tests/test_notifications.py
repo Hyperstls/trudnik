@@ -106,3 +106,11 @@ class NotificationTests(TestCase):
         self.assertEqual(frame["type"], "notification")
         self.assertEqual(frame["notif_type"], "application_received")
         self.assertEqual(frame["title"], "Новый отклик")
+
+
+    def test_notifications_mobile_actions_markup(self):
+        make_notification(self.user, title="Mobile markup")
+        response = self.client.get(reverse("core:notifications"))
+        self.assertContains(response, "hidden sm:flex items-center gap-2")
+        self.assertContains(response, "sm:hidden px-3 h-9")
+        self.assertContains(response, "w-full px-3 h-9")

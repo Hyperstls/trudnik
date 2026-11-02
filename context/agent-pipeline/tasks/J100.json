@@ -1,0 +1,34 @@
+{
+  "id": "J100",
+  "title": "P1: навигация к работодателям и их заданиям",
+  "goal": "Ссылки на /employers доступны из desktop-nav, профильного меню, футера и страницы трудников; из карточки работодателя можно перейти к его заданиям.",
+  "why": "Страница /employers и карточки с заданиями уже существуют, но на них нет ни одной ссылки из навигации. Пользователь находит работодателей только через избранное.",
+  "files": [
+    "djadmin/core/templates/core/base.html",
+    "djadmin/core/templates/core/workers_list.html",
+    "djadmin/core/templates/core/employers.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_public_ext.py"
+  ],
+  "interfaces": "base: desktop-nav + profile-menu + footer «Работодатели» → core:employers, active для employers/employer_detail. workers_list: header button «Работодатели». employers: header button «Трудники»; в card footer ссылка «Задания» на employer_detail. Test: /jobs содержит /employers; /workers содержит /employers; /employers содержит /workers.",
+  "acceptance": [
+    "Работодатели доступны с desktop и mobile (футер/профиль).",
+    "Активный раздел подсвечивается.",
+    "Из карточки работодателя явно виден переход к заданиям.",
+    "Взаимные ссылки Трудники ↔ Работодатели.",
+    "Тесты проходят."
+  ],
+  "out_of_scope": [
+    "Не менять логику каталога/фильтров.",
+    "Не менять карточки заданий."
+  ],
+  "checks": [
+    {
+      "name": "employers_nav_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.EmployersNavigationTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

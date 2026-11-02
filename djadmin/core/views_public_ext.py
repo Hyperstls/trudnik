@@ -135,13 +135,15 @@ def employer_detail(request, employer_id):
 
 # ── Оценки ─────────────────────────────────────────────────────────────────
 def user_ratings(request, user_id):
-    profile = Profile.objects.public_visible().filter(pk=user_id).first()
+    profile = Profile.objects.filter(pk=user_id).first()
     if profile is None:
         raise Http404("Профиль не найден")
-    ratings = (
-        Rating.objects.filter(rated_user=profile).select_related("rater_user", "job")
-        .order_by("-created_at")[:50]
-    )
+    ratings_qs = Rating.objects.filter(rated_user=profile)
+    if profile.role == Profile.Role.EMPLOYER:
+        ratings_qs = ratings_qs.filter(target_type="employer")
+    elif profile.role == Profile.Role.WORKER:
+        ratings_qs = ratings_qs.filter(target_type="worker")
+    ratings = ratings_qs.select_related("rater_user", "job").order_by("-created_at")[:50]
     return render(request, "core/user_ratings.html", {"p": profile, "ratings": ratings})
 
 

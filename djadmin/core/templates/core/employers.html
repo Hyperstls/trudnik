@@ -3,7 +3,10 @@
 {% block title %}Работодатели — Трудник{% endblock %}
 {% block content %}
 <div class="px-0 py-4 fade-in">
-    <h2 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-4">Работодатели</h2>
+    <div class="flex items-center justify-between gap-2 mb-4">
+        <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">Работодатели</h2>
+        <a href="{% url 'core:workers' %}" class="px-3 h-9 inline-flex items-center rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-medium">Трудники</a>
+    </div>
 
     <form method="get" class="bg-white rounded-2xl border border-neutral-200 p-4 mb-5 shadow-card flex flex-wrap gap-3 items-end">
         <label class="text-xs font-medium text-neutral-500 flex-1 min-w-[180px]">Поиск
@@ -50,7 +53,8 @@
                 {% if w.bio %}<p class="text-sm text-neutral-600 mt-1 line-clamp-2 leading-relaxed">{{ w.bio }}</p>{% endif %}
                 <p class="text-xs text-primary-600 mt-2 font-medium">Открытых заданий: {{ w.open_jobs }}</p>
             </a>
-            <div class="mt-3 pt-3 border-t border-neutral-100">
+            <div class="mt-3 pt-3 border-t border-neutral-100 flex flex-wrap gap-2">
+                <a href="{% url 'core:employer_detail' w.pk %}" class="action-icon-btn contact-btn"><span class="text-xs font-medium">Задания</span></a>
                 <form method="post" action="{% url 'core:employer_favorite_toggle' w.pk %}">{% csrf_token %}
                     <button class="action-icon-btn {% if w.pk in favorited_ids %}reject-btn{% else %}contact-btn{% endif %}">
                         <span class="text-xs font-medium">{% if w.pk in favorited_ids %}Убрать из избранного{% else %}В избранное{% endif %}</span>

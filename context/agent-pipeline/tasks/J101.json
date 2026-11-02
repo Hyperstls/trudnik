@@ -1,0 +1,28 @@
+{
+  "id": "J101",
+  "title": "P2: компактные действия на мобильной странице уведомлений",
+  "goal": "На мобильном заголовок и «Настройки» в одной строке, «Удалить все/Прочитать все» — ровной сеткой, действия карточек — отдельной строкой справа.",
+  "why": "На скриншоте кнопки сгруппированы в высокий правый столбец и перекрывают заголовок; карточки выглядят громоздко.",
+  "files": [
+    "djadmin/core/templates/core/notifications.html",
+    "djadmin/core/tests/test_notifications.py"
+  ],
+  "context_files": [],
+  "interfaces": "notifications.html: header h2+Настройки row; grid-cols-2 sm:flex для массовых кнопок; card actions w-full sm:w-auto justify-end mt-2. Test markup.",
+  "acceptance": [
+    "Заголовок и Настройки не конфликтуют на 390px.",
+    "Массовые кнопки ровно в 2 колонки/ряд.",
+    "Действия карточки на своей строке.",
+    "Desktop не меняется."
+  ],
+  "out_of_scope": [
+    "Не менять действия/логику."
+  ],
+  "checks": [
+    {
+      "name": "mobile_markup",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_notifications.NotificationTests.test_notifications_mobile_actions_markup --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

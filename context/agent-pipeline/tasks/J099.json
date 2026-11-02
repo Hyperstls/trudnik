@@ -1,0 +1,34 @@
+{
+  "id": "J099",
+  "title": "P0: отзывы и рейтинг — 404 и accepted-only",
+  "goal": "Страница «Все отзывы» открывается для работодателей и админов, показывает релевантные отзывы; оценивать можно только принятый отклик завершённого задания.",
+  "why": "Ссылка «Все отзывы» ведёт на 404 для работодателя-админа, потому что страница фильтрует public_visible. Требование: рейтинг/отзыв только после accepted.",
+  "files": [
+    "djadmin/core/views_public_ext.py",
+    "djadmin/core/templates/core/user_ratings.html",
+    "djadmin/core/templates/core/job_detail.html",
+    "djadmin/core/tests/test_interact.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_interact.py"
+  ],
+  "interfaces": "user_ratings: Profile.objects.filter(pk) вместо public_visible; для employer фильтровать target_type=employer, для worker=worker; back-link по роли. job_detail: admin employer без ссылки на worker_detail. Tests: pending app нельзя оценить ни employer, ни worker; admin ratings 200.",
+  "acceptance": [
+    "«Все отзывы» не даёт 404 для employer/admin.",
+    "На странице отзывов только отзывы соответствующей стороны.",
+    "Pending-отклик нельзя оценить ни одной стороне.",
+    "Ссылка назад ведёт в корректный раздел.",
+    "Тесты проходят."
+  ],
+  "out_of_scope": [
+    "Не менять RPC/rating trigger.",
+    "Не менять UI форм оценок."
+  ],
+  "checks": [
+    {
+      "name": "rating_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_interact.RatingTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

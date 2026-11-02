@@ -146,7 +146,11 @@
                 <a href="{% url 'core:user_ratings' employer.pk %}" class="text-sm text-primary-600 hover:text-primary-700 underline underline-offset-2">Все отзывы</a>
             </div>
             <p class="text-sm text-neutral-700">
+                {% if employer.role == 'admin' %}
+                <span class="font-medium">{{ employer.full_name|default:"Работодатель" }}</span>
+                {% else %}
                 <a href="{% url 'core:worker_detail' employer.pk %}" class="font-medium hover:text-primary-600 transition-colors">{{ employer.full_name|default:"Работодатель" }}</a>
+                {% endif %}
                 {% if employer.verification_status == 'approved' %}<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">✓ Подтверждён</span>{% endif %}
                 <span class="text-neutral-500"> · ★ {{ employer.rating|default:0|floatformat:1 }} ({{ employer.total_reviews|default:0 }})</span>
             </p>

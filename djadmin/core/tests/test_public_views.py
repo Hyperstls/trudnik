@@ -1275,3 +1275,18 @@ class ServerJobDraftTests(TestCase):
     def test_requires_login(self):
         self.client.logout()
         self.assertEqual(self.client.get(reverse("core:job_draft_api")).status_code, 302)
+
+
+class EmployersNavigationTests(TestCase):
+    def test_employer_links_are_visible(self):
+        jobs = self.client.get(reverse("core:jobs"))
+        self.assertContains(jobs, reverse("core:employers"))
+        workers = self.client.get(reverse("core:workers"))
+        self.assertContains(workers, reverse("core:employers"))
+        user = make_profile("employers-nav@example.com", email_verified=True)
+        employer = make_profile("employers-card@example.com", role="employer", email_verified=True)
+        make_job(employer)
+        self.client.force_login(user)
+        employers = self.client.get(reverse("core:employers"))
+        self.assertContains(employers, reverse("core:workers"))
+        self.assertContains(employers, "Задания")

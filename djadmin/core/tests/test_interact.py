@@ -60,6 +60,23 @@ class RatingTests(TestCase):
         self.client.post(reverse("core:rate_participant", args=[app.pk]), {"rating": "5"})
         self.assertFalse(Rating.objects.exists())
 
+    def test_pending_application_cannot_rate(self):
+        job = make_job(self.employer, status="completed")
+        app = Application.objects.create(job=job, worker=self.worker, status="pending")
+        self.client.force_login(self.employer)
+        self.client.post(reverse("core:rate_participant", args=[app.pk]), {"rating": "5"})
+        self.client.force_login(self.worker)
+        self.client.post(reverse("core:rate_participant", args=[app.pk]), {"rating": "5"})
+        self.assertFalse(Rating.objects.filter(job=job).exists())
+
+    def test_ratings_page_works_for_admin_employer(self):
+        admin = make_profile("admin-ratings@example.com", role="admin")
+        job = make_job(admin, status="open")
+        response = self.client.get(reverse("core:user_ratings", args=[admin.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Отзывы о")
+        self.assertContains(response, reverse("core:jobs"))
+
     def test_stranger_cannot_rate(self):
         stranger = make_profile("rate-stranger@example.com")
         self.client.force_login(stranger)

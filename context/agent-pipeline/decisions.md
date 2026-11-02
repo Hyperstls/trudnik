@@ -2355,3 +2355,91 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review
 
 **Пакет:** context/agent-pipeline/packs/J098.review.prompt.md
+
+## 2026-11-02 14:37:40 — J099: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** baseline rebuilt after edits
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 14:39:50 — J101: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** baseline rebuilt
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 14:40:08 — J101: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** generated tailwind
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 14:40:30 — J100: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** baseline after edits
+
+**Дрейф, который обойдён:** ['djadmin/core/templates/core/notifications.html', 'djadmin/core/tests/test_notifications.py', 'static/css/tailwind.min.css']
+
+## 2026-11-02 14:58:27 — J101: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** review: desktop one-row regression
+
+**Переход:** reviewing → fixing
+
+## 2026-11-02 14:58:36 — J101: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind classes unchanged
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 14:58:57 — J101: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 14:59:14 — J099: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J099.review.prompt.md
+
+## 2026-11-02 14:59:14 — J100: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J100.review.prompt.md
+
+## 2026-11-02 15:03:59 — J101: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** ['README.md', 'docs/DOCS_INDEX.md', 'docs/parity/AUDIT_JOBS_APPLICATIONS.md', 'docs/parity/DISCREPANCIES_JOBS.md', 'docs/parity/JOBS_RESULTS.md', 'docs/parity/README.md', 'docs/parity/REMAINING_UX.md', 'static/css/tailwind.min.css']
+
+## 2026-11-02 15:06:17 — J101: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J101.review.prompt.md

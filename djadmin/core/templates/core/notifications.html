@@ -2,17 +2,30 @@
 {% block title %}Уведомления — Трудник{% endblock %}
 {% block content %}
 <div id="notifications-page" class="px-0 py-4 fade-in">
-    <div class="flex items-center justify-between mb-4">
-        <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">Уведомления</h2>
-        <div class="flex flex-wrap items-center justify-end gap-2">
-            <a href="{% url 'core:notification_prefs' %}" class="px-3 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-white text-neutral-600 text-sm font-medium transition-colors">Настройки</a>
+    <div class="mb-4">
+        <div class="flex items-center justify-between gap-2 mb-3 sm:mb-0">
+            <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">Уведомления</h2>
+            <a href="{% url 'core:notification_prefs' %}" class="sm:hidden px-3 h-9 inline-flex items-center rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600 text-sm font-medium transition-colors whitespace-nowrap">Настройки</a>
+            <div class="hidden sm:flex items-center gap-2">
+                <a href="{% url 'core:notification_prefs' %}" class="px-3 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-white text-neutral-600 text-sm font-medium transition-colors whitespace-nowrap">Настройки</a>
+                {% if page.object_list %}
+                <form method="post" action="{% url 'core:notifications_delete_all' %}">{% csrf_token %}
+                    <button class="px-3 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors whitespace-nowrap">Удалить все</button>
+                </form>
+                {% endif %}
+                <form method="post" action="{% url 'core:notifications_mark_all_read' %}">{% csrf_token %}
+                    <button class="px-3.5 h-9 rounded-xl border border-neutral-200 hover:bg-white text-neutral-600 text-sm font-medium transition-colors whitespace-nowrap">Прочитать все</button>
+                </form>
+            </div>
+        </div>
+        <div class="{% if page.object_list %}grid-cols-2{% else %}grid-cols-1{% endif %} grid gap-2 sm:hidden">
             {% if page.object_list %}
             <form method="post" action="{% url 'core:notifications_delete_all' %}">{% csrf_token %}
-                <button class="px-3 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">Удалить все</button>
+                <button class="w-full px-3 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors whitespace-nowrap">Удалить все</button>
             </form>
             {% endif %}
             <form method="post" action="{% url 'core:notifications_mark_all_read' %}">{% csrf_token %}
-                <button class="px-3.5 h-9 rounded-xl border border-neutral-200 hover:bg-white text-neutral-600 text-sm font-medium transition-colors">Прочитать все</button>
+                <button class="w-full px-3.5 h-9 rounded-xl border border-neutral-200 hover:bg-white text-neutral-600 text-sm font-medium transition-colors whitespace-nowrap">Прочитать все</button>
             </form>
         </div>
     </div>
@@ -47,7 +60,7 @@
                             {% endif %}
                         </div>
                     </div>
-                    <div class="flex gap-2 text-xs shrink-0">
+                    <div class="flex gap-2 text-xs shrink-0 w-full sm:w-auto justify-end mt-2 sm:mt-0">
                         {% if not n.is_read %}
                         <form method="post" action="{% url 'core:notification_mark_read' n.pk %}">{% csrf_token %}
                             <button class="action-icon-btn contact-btn"><span class="text-xs ml-1 font-medium">Прочитано</span></button>

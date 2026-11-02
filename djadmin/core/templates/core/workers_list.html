@@ -3,8 +3,9 @@
 {% block title %}Трудники — Трудник{% endblock %}
 {% block content %}
 <div class="px-0 py-4 fade-in">
-    <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center justify-between gap-2 mb-4">
         <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">Трудники</h2>
+        <a href="{% url 'core:employers' %}" class="px-3 h-9 inline-flex items-center rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-medium">Работодатели</a>
     </div>
 
     <button type="button" id="filters-open" class="sm:hidden inline-flex items-center gap-2 mb-4 px-4 h-10 rounded-xl border border-neutral-200 bg-white text-sm font-semibold text-neutral-700 shadow-sm" aria-haspopup="dialog" aria-controls="filters-form" aria-expanded="false">
