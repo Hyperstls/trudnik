@@ -21,7 +21,7 @@ ENV PIP_CACHE_DIR=/data/pip-cache \
 # Системные + Python-зависимости
 COPY djadmin/requirements.txt /app/djadmin/requirements.txt
 RUN apt-get update && apt-get install -y --no-install-recommends libpq5 supervisor && \
-    pip install -r /app/djadmin/requirements.txt && \
+    pip install --prefer-binary --retries 10 --timeout 60 -r /app/djadmin/requirements.txt && \
     rm -rf /var/lib/apt/lists/*
 
 # Код (корневой .dockerignore урезает контекст)
