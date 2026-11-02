@@ -9,7 +9,9 @@ Geocoder access). On any failure the form falls back to client-side
 """
 import hashlib
 import json
+import logging
 import os
+from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -20,8 +22,13 @@ from django.views.decorators.http import require_POST
 
 from .ratelimit import RateLimitExceeded, RateLimitUnavailable, enforce_ip_limit
 
+logger = logging.getLogger(__name__)
+
 SUGGEST_URL = "https://suggest-maps.yandex.ru/v1/suggest"
-GEOCODER_URL = "https://geocode-maps.yandex.ru/1.x/"
+GEOCODER_URLS = (
+    "https://geocode-maps.yandex.ru/v1",
+    "https://geocode-maps.yandex.ru/1.x/",
+)
 GEOCODE_CACHE_TTL = 600
 
 
@@ -133,7 +140,8 @@ def _geocode_results(data):
         if not (-90 <= lat <= 90 and -180 <= lng <= 180):
             continue
         city = ""
-        for component in address.get("components") or []:
+        components = address.get("components") or address.get("Components") or []
+        for component in components:
             if isinstance(component, dict) and component.get("kind") == "locality":
                 city = (component.get("name") or "").strip()
                 if city:
@@ -150,6 +158,31 @@ def _geocode_results(data):
             "precision": meta.get("precision") or "",
         })
     return results
+
+
+def _fetch_geocode(params):
+    """Call Geocoder v1, falling back to the legacy 1.x endpoint.
+
+    Returns None on failure. Never logs the request URL: it contains the key
+    and the user's address.
+    """
+    for index, endpoint in enumerate(GEOCODER_URLS):
+        upstream_request = Request(
+            endpoint + "?" + urlencode(params),
+            headers={"User-Agent": "Trudnik/1.0", "Accept": "application/json"},
+        )
+        try:
+            with urlopen(upstream_request, timeout=5) as upstream:
+                return json.loads(upstream.read().decode("utf-8", "replace"))
+        except HTTPError as exc:
+            if exc.code in (403, 404) and index < len(GEOCODER_URLS) - 1:
+                continue  # key may be scoped to the other endpoint version
+            logger.warning("geo_geocode upstream HTTP %s", exc.code)
+            return None
+        except Exception as exc:
+            logger.warning("geo_geocode upstream error: %s", type(exc).__name__)
+            return None
+    return None
 
 
 @login_required
@@ -213,14 +246,8 @@ def geo_geocode(request):
         "lang": "ru_RU",
         "results": limit,
     }
-    try:
-        upstream_request = Request(
-            GEOCODER_URL + "?" + urlencode(params),
-            headers={"User-Agent": "Trudnik/1.0", "Accept": "application/json"},
-        )
-        with urlopen(upstream_request, timeout=5) as upstream:
-            data = json.loads(upstream.read().decode("utf-8", "replace"))
-    except Exception:
+    data = _fetch_geocode(params)
+    if data is None:
         # Never echo upstream details or the key; client will use ymaps.geocode.
         return JsonResponse(
             {"results": [], "enabled": True, "error": "upstream"},

@@ -13,7 +13,7 @@
     "djadmin/core/ratelimit.py",
     "docs/parity/GEO_UX_PRIVACY.md"
   ],
-  "interfaces": "views_geo.geo_geocode: @login_required+@require_POST, JSON mode forward|reverse; forward text 3..160, reverse lat/lng с диапазонами; enforce_ip_limit('geo_geocode',60,60) fail-open; ключ YANDEX_GEOCODER_KEY (fallback YANDEX_MAPS_API_KEY); GET https://geocode-maps.yandex.ru/1.x/ (format=json, results=1 reverse / 5 forward, timeout 5s); ответ {results:[{displayName,value,lat,lng,city,precision}],enabled:bool}; кэш 600с; без ключа enabled=false; ошибка upstream → results=[] + error=upstream. urls: /api/geo/geocode name=geo_geocode. Тесты GeoGeocodeProxyTests: нормализация, порядок lng,lat, anon 302, GET 405, без ключа, bad coords, soft-fail.",
+  "interfaces": "views_geo.geo_geocode: @login_required+@require_POST, JSON mode forward|reverse; forward text 3..160, reverse lat/lng с диапазонами; enforce_ip_limit('geo_geocode',60,60) fail-open; ключ YANDEX_GEOCODER_KEY (fallback YANDEX_MAPS_API_KEY); GET https://geocode-maps.yandex.ru/v1 с fallback на /1.x/ (format=json, results=1 reverse / 5 forward, timeout 5s), формат v1 Components и 1.x components; ответ {results:[{displayName,value,lat,lng,city,precision}],enabled:bool}; кэш 600с; без ключа enabled=false; ошибка upstream → results=[] + error=upstream + лог только HTTP-статуса (без URL/ключа/адреса). urls: /api/geo/geocode name=geo_geocode. Тесты GeoGeocodeProxyTests: нормализация, порядок lng,lat, anon 302, GET 405, без ключа, bad coords, soft-fail, fallback v1→1.x, Components.",
   "acceptance": [
     "Прокси возвращает координаты для адреса и адрес для координат.",
     "Ключ Geocoder не отдаётся в HTML/JS.",
