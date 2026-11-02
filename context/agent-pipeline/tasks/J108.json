@@ -1,0 +1,34 @@
+{
+  "id": "J108",
+  "title": "P1.7: Lighthouse + axe-core CI",
+  "goal": "Ручной/недельный CI-аудит публичных страниц: Lighthouse бюджеты LCP/CLS/a11y и Playwright+axe critical violations; отчёты в artifacts.",
+  "why": "Сейчас UX/производительность/доступность проверяются вручную. Нужен воспроизводимый гейт до релиза.",
+  "files": [
+    ".github/workflows/ux-quality.yml",
+    "scripts/axe_audit.mjs",
+    ".lighthouserc.json",
+    "docs/UX_ROADMAP_2026Q4.md"
+  ],
+  "context_files": [
+    ".github/workflows/test.yml"
+  ],
+  "interfaces": "workflow_dispatch+weekly schedule; lighthouse action configPath .lighthouserc.json urls /jobs,/login,/workers, uploadArtifacts; axe job npm ci + no-save playwright/@axe-core/playwright + chromium, node scripts/axe_audit.mjs; script BASE_URL default canonical, fails on critical axe or HTTP>=400; docs status.",
+  "acceptance": [
+    "CI запускается вручную/по расписанию.",
+    "Lighthouse проверяет LCP/CLS/a11y.",
+    "axe падает при critical.",
+    "Отчёты доступны artifacts.",
+    "node --check и JSON valid."
+  ],
+  "out_of_scope": [
+    "Не блокировать каждый PR.",
+    "Не менять приложение."
+  ],
+  "checks": [
+    {
+      "name": "syntax",
+      "cmd": ".venv\\Scripts\\python.exe -c \"import json,pathlib; json.loads(pathlib.Path('.lighthouserc.json').read_text(encoding='utf-8')); assert pathlib.Path('scripts/axe_audit.mjs').exists(); print('ci config ok')\"",
+      "cwd": "."
+    }
+  ]
+}

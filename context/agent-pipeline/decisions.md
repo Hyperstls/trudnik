@@ -2589,3 +2589,11 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review
 
 **Пакет:** context/agent-pipeline/packs/J107.review.prompt.md
+
+## 2026-11-02 16:20:39 — J108: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** no tailwind changes
+
+**Дрейф, который обойдён:** []

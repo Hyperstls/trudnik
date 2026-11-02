@@ -64,11 +64,12 @@
 - RLS: только владелец; удаление/отключение подписки.
 - риск: стоимость запроса по навыкам/гео; использовать индексы и лимит 50 поисков.
 
-## P3 — Core Web Vitals + axe-core в CI
+## P3 — Core Web Vitals + axe-core в CI — КАРКАС ГОТОВ (J108)
 
 - Playwright + `@axe-core/playwright` на публичных страницах (`/jobs`, `/jobs/<id>`, `/login`);
 - Lighthouse CI (mobile) на preview/prod: LCP/CLS/INP, бюджет;
 - запуск по расписанию/вручную, не блокировать каждый PR до стабилизации;
+- реализовано: `.github/workflows/ux-quality.yml`, `.lighthouserc.json`, `scripts/axe_audit.mjs` (desktop+mobile, critical axe).
 - публиковать отчёт в artifacts; порог: 0 critical axe, LCP < 2.5s.
 
 ## P3 — Прочее
