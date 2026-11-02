@@ -2475,3 +2475,51 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review
 
 **Пакет:** context/agent-pipeline/packs/J103.review.prompt.md
+
+## 2026-11-02 15:45:48 — J104: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** baseline after edits
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 15:46:18 — J105: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 15:46:32 — J105: контракт обновлён
+
+**Причина:** test class name
+
+**Проверки до:** ['frequency_task_tests']
+
+**Проверки после:** ['frequency_task_tests']
+
+## 2026-11-02 15:46:32 — J105: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 15:49:23 — J104: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J104.review.prompt.md
+
+## 2026-11-02 15:49:23 — J105: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J105.review.prompt.md

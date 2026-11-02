@@ -131,6 +131,14 @@ class NotificationSettingsDiagnosticsTests(TestCase):
         self.assertContains(response, "Инструкция для iPhone/iPad")
         self.assertContains(response, reverse("core:toggle_search", args=["abc"]))
 
+    def test_digest_frequency_saved(self):
+        response = self.client.post(
+            reverse("core:notification_prefs"), {"digest_frequency": "off"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.notification_prefs["digest_frequency"], "off")
+
     def test_toggle_from_settings_returns_to_settings(self):
         response = self.client.post(
             reverse("core:toggle_search", args=["abc"]),

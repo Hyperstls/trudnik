@@ -1,0 +1,31 @@
+{
+  "id": "J104",
+  "title": "P1: выбор частоты дайджеста",
+  "goal": "В настройках можно выбрать «сразу / раз в день / выключено»; значение сохраняется в prefs.",
+  "why": "Сейчас дайджест всегда раз в 24 часа; пользователю нужен контроль частоты.",
+  "files": [
+    "djadmin/core/views_profile_ext.py",
+    "djadmin/core/templates/core/notification_settings.html",
+    "djadmin/core/tests/test_notifications.py"
+  ],
+  "context_files": [
+    "djadmin/core/tasks.py"
+  ],
+  "interfaces": "notification_prefs POST: digest_frequency ∈ instant/daily/off (default daily), сохраняется; context digest_frequency. Template: select после типов. Test: POST off сохраняет off; default daily.",
+  "acceptance": [
+    "Три варианта частоты.",
+    "Значение сохраняется.",
+    "Старые пользователи получают daily.",
+    "Тест проходит."
+  ],
+  "out_of_scope": [
+    "Не менять Celery в этом контракте."
+  ],
+  "checks": [
+    {
+      "name": "frequency_ui_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_notifications.NotificationSettingsDiagnosticsTests.test_digest_frequency_saved --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

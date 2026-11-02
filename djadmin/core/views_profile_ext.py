@@ -187,6 +187,8 @@ def notification_prefs(request):
         updated = dict(prefs)
         for key, _ in CHANNEL_LABELS + TYPE_LABELS:
             updated[key] = key in request.POST
+        frequency = request.POST.get("digest_frequency")
+        updated["digest_frequency"] = frequency if frequency in ("instant", "daily", "off") else "daily"
         Profile.objects.filter(pk=request.user.pk).update(notification_prefs=updated)
         messages.success(request, "Настройки уведомлений сохранены.")
         return redirect("core:notification_prefs")
@@ -201,6 +203,7 @@ def notification_prefs(request):
         "channels": [(k, label, prefs.get(k, True)) for k, label in CHANNEL_LABELS],
         "types": [(k, label, prefs.get(k, True)) for k, label in TYPE_LABELS],
         "saved_searches": searches,
+        "digest_frequency": prefs.get("digest_frequency", "daily"),
     }
     return render(request, "core/notification_settings.html", context)
 

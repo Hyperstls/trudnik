@@ -32,7 +32,7 @@ app.conf.beat_schedule = {
     },
     "notify-saved-searches": {
         "task": "core.tasks.notify_saved_searches",
-        "schedule": 1800.0,
+        "schedule": 300.0,
     },
 }
 

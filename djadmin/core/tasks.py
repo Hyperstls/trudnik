@@ -301,14 +301,18 @@ def notify_saved_searches() -> str:
         searches = [item for item in (prefs.get("saved_searches") or []) if isinstance(item, dict)]
         if not searches:
             continue
-        since = now - timedelta(hours=24)
+        frequency = prefs.get("digest_frequency", "daily")
+        if frequency == "off":
+            continue
+        instant = frequency == "instant"
+        since = now - (timedelta(minutes=5) if instant else timedelta(hours=24))
         raw_since = prefs.get("saved_search_digest_at")
         if raw_since:
             try:
                 last_digest = timezone.datetime.fromisoformat(raw_since)
                 if timezone.is_naive(last_digest):
                     last_digest = timezone.make_aware(last_digest)
-                if now - last_digest < timedelta(hours=24):
+                if not instant and now - last_digest < timedelta(hours=24):
                     continue
                 since = last_digest
             except (TypeError, ValueError):

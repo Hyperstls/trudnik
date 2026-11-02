@@ -265,3 +265,39 @@ class SavedSearchDigestTests(TestCase):
             NotificationOutbox.objects.get(user=self.user, type="saved_search").status,
             "sent",
         )
+
+
+class SavedSearchFrequencyTests(TestCase):
+    def setUp(self):
+        self.user = make_profile("digest-freq@example.com", email_verified=True)
+
+    def _prefs(self, frequency, digest_at=None):
+        prefs = {
+            "saved_searches": [{"id": "s1", "name": "Москва", "query": "city=Москва"}],
+            "digest_frequency": frequency,
+        }
+        if digest_at:
+            prefs["saved_search_digest_at"] = digest_at.isoformat()
+        self.user.notification_prefs = prefs
+        self.user.save(update_fields=["notification_prefs"])
+
+    def test_frequency_off_skips(self):
+        from core.models import NotificationOutbox
+        from django.utils import timezone
+        self._prefs("off", timezone.now() - timedelta(hours=30))
+        make_job(make_profile("digest-freq-emp@example.com"), city="Москва")
+        notify_saved_searches()
+        self.assertFalse(
+            NotificationOutbox.objects.filter(user=self.user, type="saved_search").exists()
+        )
+
+    def test_frequency_instant_bypasses_daily_gate(self):
+        from core.models import NotificationOutbox
+        from django.utils import timezone
+        self._prefs("instant", timezone.now() - timedelta(minutes=1))
+        employer = make_profile("digest-freq-emp2@example.com")
+        make_job(employer, work_type="Instant job", city="Москва")
+        notify_saved_searches()
+        self.assertTrue(
+            NotificationOutbox.objects.filter(user=self.user, type="saved_search").exists()
+        )

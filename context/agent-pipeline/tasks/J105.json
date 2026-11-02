@@ -1,0 +1,33 @@
+{
+  "id": "J105",
+  "title": "P1: Celery учитывает частоту дайджеста",
+  "goal": "notify_saved_searches соблюдает instant/daily/off: instant проверяется раз в 5 минут, daily — раз в 24 часа, off — пропускает.",
+  "why": "Настройка частоты должна реально влиять на Celery, иначе UI вводит в заблуждение.",
+  "files": [
+    "djadmin/core/tasks.py",
+    "djadmin/core/celery_app.py",
+    "djadmin/core/tests/test_tasks.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_profile_ext.py"
+  ],
+  "interfaces": "tasks: frequency=prefs.get('digest_frequency','daily'); off→continue; instant→window 5min/no 24h gate; daily→24h gate; since=last_digest. beat 300s. Tests: instant with recent digest and new job → outbox; off → none; daily recent → none.",
+  "acceptance": [
+    "off не создаёт уведомлений.",
+    "instant срабатывает при недавнем digest.",
+    "daily сохраняет 24h gate.",
+    "Beat 5 минут.",
+    "Тесты проходят."
+  ],
+  "out_of_scope": [
+    "Не менять UI.",
+    "Не менять фильтры поиска."
+  ],
+  "checks": [
+    {
+      "name": "frequency_task_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_tasks.SavedSearchFrequencyTests.test_frequency_off_skips core.tests.test_tasks.SavedSearchFrequencyTests.test_frequency_instant_bypasses_daily_gate --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

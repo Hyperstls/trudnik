@@ -29,6 +29,13 @@
                 </label>
                 {% endfor %}
             </div>
+            <label class="block text-sm font-medium text-neutral-700 mb-2">Частота дайджеста сохранённых поисков
+                <select name="digest_frequency" class="mt-1 w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50">
+                    <option value="instant" {% if digest_frequency == 'instant' %}selected{% endif %}>Сразу (проверка раз в 5 минут)</option>
+                    <option value="daily" {% if digest_frequency == 'daily' %}selected{% endif %}>Раз в день</option>
+                    <option value="off" {% if digest_frequency == 'off' %}selected{% endif %}>Выключено</option>
+                </select>
+            </label>
             <button type="submit" class="w-full px-4 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors shadow-sm">Сохранить</button>
         </form>
     </div>
