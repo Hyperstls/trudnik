@@ -149,7 +149,7 @@
     {% endif %}
 </div>
 
-<script>
+<script nonce="{{ request.csp_nonce }}">
 (function(){
   var form=document.getElementById('filters-form'), openBtn=document.getElementById('filters-open');
   var closeBtn=document.getElementById('filters-close'), backdrop=document.getElementById('filters-backdrop');

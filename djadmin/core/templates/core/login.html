@@ -56,7 +56,7 @@
         </p>
     </div>
 </div>
-<script>
+<script nonce="{{ request.csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
     // Успешная регистрация возвращает сюда с ?email= — черновик больше не нужен.
     try {

@@ -44,8 +44,8 @@
     {% else %}<div class="mb-2"></div>{% endif %}
     {{ map_points|json_script:"jobs-map-data" }}
     {% if geo_center %}{{ geo_center|json_script:"jobs-geo-data" }}{% endif %}
-    <script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_key|urlencode }}&lang=ru_RU"></script>
-    <script>
+    <script nonce="{{ request.csp_nonce }}" src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_key|urlencode }}&lang=ru_RU"></script>
+    <script nonce="{{ request.csp_nonce }}">
     (function(){
       if (!window.ymaps) return;
       var node = document.getElementById('jobs-map-data');
@@ -223,7 +223,7 @@
         <button type="submit" class="action-icon-btn accept-btn"><span class="text-xs font-medium">Откликнуться</span></button>
         <button type="submit" formaction="{% url 'core:bulk_unapply' %}" class="action-icon-btn reject-btn"><span class="text-xs font-medium">Отозвать</span></button>
     </form>
-    <script>
+    <script nonce="{{ request.csp_nonce }}">
     (function(){
       var bar = document.getElementById('bulk-form');
       if (!bar) return;
@@ -237,7 +237,7 @@
     </script>
     {% endif %}
 
-    <script>
+    <script nonce="{{ request.csp_nonce }}">
     (function(){
       var btn = document.getElementById('geo-btn');
       var msg = document.getElementById('geo-msg');
@@ -272,7 +272,7 @@
       });
     })();
     </script>
-    <script>
+    <script nonce="{{ request.csp_nonce }}">
     (function(){
       var form = document.getElementById('filters-form');
       var openBtn = document.getElementById('filters-open');

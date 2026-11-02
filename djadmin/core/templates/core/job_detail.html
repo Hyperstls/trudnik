@@ -89,8 +89,8 @@
             <div id="job-detail-map" data-lat="{% localize off %}{{ job.lat }}{% endlocalize %}" data-lng="{% localize off %}{{ job.lng }}{% endlocalize %}" style="height:280px" class="w-full rounded-xl border border-neutral-200"></div>
             <p class="text-xs text-neutral-400 mt-1">Карта показывает адрес задания.</p>
         </section>
-        <script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_key|urlencode }}&lang=ru_RU"></script>
-        <script>
+        <script nonce="{{ request.csp_nonce }}" src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_key|urlencode }}&lang=ru_RU"></script>
+        <script nonce="{{ request.csp_nonce }}">
         document.addEventListener('DOMContentLoaded', function(){
           if (!window.ymaps) return;
           var el = document.getElementById('job-detail-map');
@@ -240,7 +240,7 @@
             </div>
         </form>
     </dialog>
-    <script>
+    <script nonce="{{ request.csp_nonce }}">
     (function(){
         var open = document.getElementById('report-open');
         var dialog = document.getElementById('report-dialog');
@@ -254,10 +254,10 @@
 </div>
 {% endblock %}
 {% block scripts %}
-{% if request.GET.created == '1' %}<script src="{% static 'js/job-draft.js' %}"></script>{% endif %}
-<script src="{% static 'js/api.js' %}"></script>
-<script src="{% static 'js/push-notifications.js' %}"></script>
-<script>
+{% if request.GET.created == '1' %}<script nonce="{{ request.csp_nonce }}" src="{% static 'js/job-draft.js' %}"></script>{% endif %}
+<script nonce="{{ request.csp_nonce }}" src="{% static 'js/api.js' %}"></script>
+<script nonce="{{ request.csp_nonce }}" src="{% static 'js/push-notifications.js' %}"></script>
+<script nonce="{{ request.csp_nonce }}">
 (function(){
   var box = document.getElementById('push-prompt');
   var enable = document.getElementById('push-prompt-enable');

@@ -43,7 +43,7 @@
         </form>
         <p id="chat-send-status" class="px-3 pb-2 text-xs text-neutral-500" role="status" aria-live="polite"></p>
     </div>
-    <script>
+    <script nonce="{{ request.csp_nonce }}">
 (function () {
   var log = document.getElementById('chat-log');
   if (!log) return;

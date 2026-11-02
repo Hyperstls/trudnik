@@ -58,7 +58,7 @@ def check_py_compile():
 def check_csp_nonce():
     """2. Все <script> в шаблонах должны иметь nonce."""
     print("\n[2/7] CSP nonce check...")
-    tpl_dir = ROOT / "templates"
+    tpl_dir = ROOT / "djadmin" / "core" / "templates"
     for f in tpl_dir.rglob("*.html"):
         content = f.read_text(encoding="utf-8")
         for m in re.finditer(r'<script(?![^>]*nonce=)[^>]*>', content):
@@ -75,7 +75,7 @@ def check_inline_handlers():
     Тег <img> может стоять на несколько строк выше onerror (многострочные атрибуты).
     """
     print("\n[3/7] Inline event handlers (CSP strict-dynamic)...")
-    tpl_dir = ROOT / "templates"
+    tpl_dir = ROOT / "djadmin" / "core" / "templates"
     found = False
     for f in tpl_dir.rglob("*.html"):
         content = f.read_text(encoding="utf-8")
@@ -216,12 +216,12 @@ def check_current_app_in_tasks():
 def check_duplicate_attributes():
     """6. Нет дублирующихся атрибутов (например, два class= на одном элементе)."""
     print("\n[6/7] Duplicate HTML attributes...")
-    tpl_dir = ROOT / "templates"
+    tpl_dir = ROOT / "djadmin" / "core" / "templates"
     found = False
     for f in tpl_dir.rglob("*.html"):
         content = f.read_text(encoding="utf-8")
         for m in re.finditer(r'<\w+[^>]*>', content):
-            tag = m.group(0)
+            tag = re.sub(r'{%.*?%}', '', m.group(0), flags=re.S)
             attrs = re.findall(r'\s(\w[\w-]*)=', tag)
             seen = set()
             for a in attrs:

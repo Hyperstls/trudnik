@@ -94,7 +94,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ request.csp_nonce }}">
 (function(){
   var page = document.getElementById('notifications-page');
   if (!page) return;

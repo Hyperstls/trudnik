@@ -86,7 +86,7 @@
             <a href="{% url 'core:notification_prefs' %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Настройки уведомлений</a>
             <a href="{% url 'core:verify_employer' %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Загрузить документ</a>
         </div>
-        <form method="post" action="{% url 'core:delete_account' %}" onsubmit="return confirm('Удалить аккаунт безвозвратно? Это действие необратимо.');">
+        <form method="post" action="{% url 'core:delete_account' %}" data-confirm="Удалить аккаунт безвозвратно? Это действие необратимо.">
             {% csrf_token %}
             <button type="submit" class="px-4 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">Удалить аккаунт</button>
         </form>

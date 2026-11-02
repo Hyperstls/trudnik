@@ -80,9 +80,9 @@
 </div>
 {% endblock %}
 {% block scripts %}
-<script src="{% static 'js/api.js' %}"></script>
-<script src="{% static 'js/push-notifications.js' %}"></script>
-<script>
+<script nonce="{{ request.csp_nonce }}" src="{% static 'js/api.js' %}"></script>
+<script nonce="{{ request.csp_nonce }}" src="{% static 'js/push-notifications.js' %}"></script>
+<script nonce="{{ request.csp_nonce }}">
 (function(){
   var btn = document.getElementById('push-toggle');
   var status = document.getElementById('push-status');

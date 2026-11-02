@@ -52,8 +52,8 @@
                 <p id="geo-status" class="text-xs text-neutral-500 mb-2" role="status" aria-live="polite"></p>
                 <div id="job-map" data-lat="{% localize off %}{{ form.instance.lat|default_if_none:'' }}{% endlocalize %}" data-lng="{% localize off %}{{ form.instance.lng|default_if_none:'' }}{% endlocalize %}" style="height:320px" class="w-full rounded-xl border border-neutral-200"></div>
             </div>
-            <script src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_key|urlencode }}&lang=ru_RU"></script>
-            <script>
+            <script nonce="{{ request.csp_nonce }}" src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_key|urlencode }}&lang=ru_RU"></script>
+            <script nonce="{{ request.csp_nonce }}">
             document.addEventListener('DOMContentLoaded', function(){
               if (!window.ymaps) return;
               var el = document.getElementById('job-map');
@@ -539,6 +539,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{% static 'js/job-draft.js' %}" defer></script>
-<script src="{% static 'js/job-step.js' %}" defer></script>
+<script nonce="{{ request.csp_nonce }}" src="{% static 'js/job-draft.js' %}" defer></script>
+<script nonce="{{ request.csp_nonce }}" src="{% static 'js/job-step.js' %}" defer></script>
 {% endblock %}

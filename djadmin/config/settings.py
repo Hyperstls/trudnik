@@ -120,6 +120,7 @@ PASSWORD_HASHERS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "core.middleware.CspMiddleware",
     "core.middleware.CanonicalHostMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",

@@ -97,5 +97,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{% static 'js/bulk-actions.js' %}" defer></script>
+<script nonce="{{ request.csp_nonce }}" src="{% static 'js/bulk-actions.js' %}" defer></script>
 {% endblock %}

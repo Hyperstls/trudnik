@@ -127,7 +127,7 @@
             <input type="hidden" name="smart_token" value="">
 
             {% if captcha_client_key %}
-            <script src="https://smartcaptcha.yandexcloud.net/captcha.js" defer></script>
+            <script nonce="{{ request.csp_nonce }}" src="https://smartcaptcha.yandexcloud.net/captcha.js" defer></script>
             <div id="register-captcha" data-sitekey="{{ captcha_client_key }}"></div>
             {% endif %}
             </div>
@@ -150,5 +150,5 @@
 </div>
 {% endblock %}
 {% block scripts %}
-<script src="{% static 'js/register-step.js' %}" defer></script>
+<script nonce="{{ request.csp_nonce }}" src="{% static 'js/register-step.js' %}" defer></script>
 {% endblock %}

@@ -1,0 +1,43 @@
+{
+  "id": "J129",
+  "title": "Security: CSP nonce + Permissions-Policy + честный pre_deploy",
+  "goal": "Публичные страницы получают строгий Content-Security-Policy с per-request nonce, админка — рабочий relaxed CSP; добавлен Permissions-Policy; pre_deploy_check реально проверяет nonce/inline-обработчики.",
+  "why": "CSP отсутствовал, 33 script-тега были без nonce, inline onsubmit в profile.html; проверки 2–3 смотрели несуществующую папку templates и давали ложный зелёный.",
+  "files": [
+    "djadmin/core/middleware.py",
+    "djadmin/config/settings.py",
+    "djadmin/core/templates/core/base.html",
+    "djadmin/core/templates/core/profile.html",
+    "scripts/pre_deploy_check.py",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/job_form.html",
+    "djadmin/core/templates/core/chat.html"
+  ],
+  "interfaces": "CspMiddleware: nonce=secrets.token_urlsafe(16), request.csp_nonce, public CSP (script-src 'self' nonce strict-dynamic + Yandex/SmartCaptcha; style unsafe-inline; img https:; connect Yandex/wss; frame SmartCaptcha; object none; frame-ancestors none; upgrade-insecure-requests только secure+не DEBUG), admin relaxed (unsafe-inline/eval, staff-only), Permissions-Policy. Все 33 <script> получили nonce; inline onsubmit заменён data-confirm + обработчик в base. pre_deploy: пути djadmin/core/templates; duplicate-атрибуты игнорируют {% %}. Тесты: CSP nonce=HTML, admin relaxed, все шаблоны с nonce.",
+  "acceptance": [
+    "Публичный CSP содержит nonce и совпадает с HTML.",
+    "Permissions-Policy выставлен.",
+    "Админка работает с relaxed CSP.",
+    "Яндекс.Карты и SmartCaptcha работают.",
+    "pre_deploy 7/7 честно сканирует шаблоны.",
+    "486 тестов OK."
+  ],
+  "out_of_scope": [
+    "Не внедрять CSP-report-only/отчёты.",
+    "Не менять сторонние скрипты."
+  ],
+  "checks": [
+    {
+      "name": "security_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.SecurityHeadersTests --keepdb -v 1",
+      "cwd": "."
+    },
+    {
+      "name": "pre_deploy",
+      "cmd": ".venv\\Scripts\\python.exe scripts/pre_deploy_check.py",
+      "cwd": "."
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 """Публичные read-only страницы + health."""
 import json
 import os
+import re
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -602,6 +603,35 @@ class PublicViewsTests(TestCase):
 
 LEGACY_PHOTO_URL = "https://cdn.example.com/legacy/photo.jpg"
 NEW_AVATAR_URL = "https://cdn.example.com/new/avatar.jpg"
+
+
+class SecurityHeadersTests(TestCase):
+    def test_public_csp_nonce(self):
+        response = self.client.get(reverse("core:jobs"))
+        csp = response["Content-Security-Policy"]
+        self.assertIn("default-src 'self'", csp)
+        self.assertIn("'strict-dynamic'", csp)
+        self.assertIn("object-src 'none'", csp)
+        self.assertIn("frame-ancestors 'none'", csp)
+        nonce = re.search(r"'nonce-([^']+)'", csp).group(1)
+        self.assertContains(response, 'nonce="%s"' % nonce)
+        self.assertIn("geolocation=(self)", response["Permissions-Policy"])
+
+    def test_admin_csp_relaxed(self):
+        admin = make_profile("csp-admin@example.com", role="admin")
+        self.client.force_login(admin)
+        response = self.client.get("/admin/")
+        csp = response["Content-Security-Policy"]
+        self.assertIn("script-src 'self' 'unsafe-inline'", csp)
+        self.assertIn("frame-ancestors 'none'", csp)
+
+    def test_all_templates_have_script_nonce(self):
+        root = settings.BASE_DIR / "core" / "templates"
+        for path in root.rglob("*.html"):
+            content = path.read_text(encoding="utf-8")
+            self.assertNotRegex(
+                content, r"<script(?![^>]*\bnonce=)[^>]*>", str(path)
+            )
 
 
 class LegalFallbackTests(TestCase):

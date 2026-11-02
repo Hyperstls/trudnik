@@ -82,7 +82,7 @@
             </div>
         </form>
     </dialog>
-    <script>
+    <script nonce="{{ request.csp_nonce }}">
     (function(){
         var open = document.getElementById('report-open-worker');
         var dialog = document.getElementById('report-dialog-worker');

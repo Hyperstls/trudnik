@@ -1,6 +1,68 @@
 """Мидлвари Django-компаньона."""
+import secrets
+
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseForbidden
+
+
+def _public_csp(nonce: str, secure: bool = False) -> str:
+    policy = (
+        "default-src 'self'; "
+        "script-src 'self' 'nonce-%s' 'strict-dynamic' "
+        "https://api-maps.yandex.ru https://yastatic.net "
+        "https://smartcaptcha.yandexcloud.net; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: blob: https:; "
+        "font-src 'self' data:; "
+        "connect-src 'self' https://*.yandex.ru https://*.maps.yandex.net "
+        "https://geocode-maps.yandex.ru https://suggest-maps.yandex.ru "
+        "https://api-maps.yandex.ru https://yastatic.net wss:; "
+        "frame-src https://smartcaptcha.yandexcloud.net https://*.yandex.ru; "
+        "media-src 'self' https:; object-src 'none'; base-uri 'self'; "
+        "form-action 'self'; frame-ancestors 'none'; manifest-src 'self'; "
+        "worker-src 'self' blob:"
+    ) % nonce
+    if secure and not settings.DEBUG:
+        policy += "; upgrade-insecure-requests"
+    return policy
+
+
+def _admin_csp() -> str:
+    # Django admin uses inline JSON constants and inline handlers; it is staff-only.
+    return (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: blob: https:; font-src 'self' data:; "
+        "connect-src 'self' wss:; frame-src 'self' https:; "
+        "object-src 'none'; base-uri 'self'; form-action 'self'; "
+        "frame-ancestors 'none'"
+    )
+
+
+class CspMiddleware:
+    """Per-request CSP nonce + security headers (public pages and admin)."""
+
+    PERMISSIONS = (
+        "camera=(), microphone=(), geolocation=(self), payment=(), usb=(), "
+        "interest-cohort=()"
+    )
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        nonce = secrets.token_urlsafe(16)
+        request.csp_nonce = nonce
+        response = self.get_response(request)
+        if not response.has_header("Content-Security-Policy"):
+            is_admin = request.path == "/admin" or request.path.startswith("/admin/")
+            response["Content-Security-Policy"] = (
+                _admin_csp() if is_admin else _public_csp(nonce, request.is_secure())
+            )
+        if not response.has_header("Permissions-Policy"):
+            response["Permissions-Policy"] = self.PERMISSIONS
+        return response
 
 
 class CsrfHeaderAliasMiddleware:
