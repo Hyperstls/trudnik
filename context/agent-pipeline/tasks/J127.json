@@ -1,0 +1,32 @@
+{
+  "id": "J127",
+  "title": "Админка: аудит строковых primary key (SitePage/настройки)",
+  "goal": "Создание/редактирование SitePage (slug=pk) и других строковых ключей в админке не падает с 500; ключ сохраняется в JSON аудита.",
+  "why": "AuditLog.record_id — UUIDField, а SitePage.slug/настройки — строки; log_admin_action падал, транзакция откатывала создание страницы.",
+  "files": [
+    "djadmin/core/audit.py",
+    "djadmin/core/tests/test_admin.py"
+  ],
+  "context_files": [
+    "djadmin/core/admin/support.py",
+    "djadmin/core/models.py"
+  ],
+  "interfaces": "audit._record_uuid: UUID(str(value)) или None + data['record_id']=str(value)[:100]; log_admin_action использует его; тест admin: POST /admin/core/sitepage/add/ с slug/title/content → 302 и запись существует.",
+  "acceptance": [
+    "SitePage создаётся через админку.",
+    "Строковый pk не ломает audit_log.",
+    "UUID-модели аудируются как раньше.",
+    "Тесты проходят."
+  ],
+  "out_of_scope": [
+    "Не менять схему audit_log.",
+    "Не менять другие админки."
+  ],
+  "checks": [
+    {
+      "name": "admin_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_admin --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

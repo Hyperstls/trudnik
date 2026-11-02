@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
+from core.models import SitePage
 from core.tests.test_auth import make_profile
 
 User = get_user_model()
@@ -55,6 +56,15 @@ class AdminAccessTests(TestCase):
             with self.subTest(url=url_name):
                 response = self.client.get(reverse(url_name))
                 self.assertEqual(response.status_code, 200, url_name)
+
+    def test_sitepage_add_with_string_pk(self):
+        self.client.force_login(self.admin)
+        response = self.client.post(
+            reverse("admin:core_sitepage_add"),
+            {"slug": "faq-admin-test", "title": "FAQ", "content": "<p>ok</p>", "_save": "Сохранить"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(SitePage.objects.filter(pk="faq-admin-test").exists())
 
     def test_dashboard_ok(self):
         self.client.force_login(self.admin)
