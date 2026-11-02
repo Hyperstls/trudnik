@@ -51,8 +51,13 @@ class TrudnikAdminSite(AdminSite):
         urls = [
             path("dashboard/", self.admin_view(self.dashboard_view), name="dashboard"),
             path("env/", self.admin_view(self.env_view), name="env"),
+            path("analytics/", self.admin_view(self.analytics_view), name="analytics"),
         ] + super().get_urls()
         return urls
+
+    def analytics_view(self, request):
+        from core.views_analytics import render_dashboard
+        return render_dashboard(request, self)
 
     def env_view(self, request):
         """Инвентарь переменных окружения прод-процесса. ТОЛЬКО staff;
@@ -101,6 +106,7 @@ class TrudnikAdminSite(AdminSite):
             ("Навыки", reverse("admin:core_skill_changelist")),
             ("Страницы", reverse("admin:core_sitepage_changelist")),
             ("Аудит", reverse("admin:core_auditlog_changelist")),
+            ("Аналитика", reverse("admin:analytics")),
         ]
         context = dict(
             self.each_context(request),

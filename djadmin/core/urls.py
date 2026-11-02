@@ -2,7 +2,7 @@ from django.urls import path
 
 from . import (views, views_auth, views_drafts, views_flow, views_geo, views_interact,
                views_messenger, views_notify, views_profile, views_profile_ext,
-               views_public_ext, views_search, views_service)
+               views_public_ext, views_search, views_service, views_analytics)
 
 app_name = "core"
 
@@ -15,6 +15,7 @@ urlpatterns = [
     path("api/geo/suggest", views_geo.geo_suggest, name="geo_suggest"),
     path("api/geo/geocode", views_geo.geo_geocode, name="geo_geocode"),
     path("api/jobs/draft", views_drafts.job_draft, name="job_draft_api"),
+    path("api/analytics/event", views_analytics.track_event, name="analytics_event"),
     path("searches/save", views.save_search, name="save_search"),
     path("searches/<str:search_id>/delete", views.delete_search, name="delete_search"),
     path("searches/<str:search_id>/toggle", views.toggle_search, name="toggle_search"),

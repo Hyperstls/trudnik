@@ -18,6 +18,21 @@
     var MONTH = 30 * 24 * 60 * 60 * 1000;
     var deferredPrompt = null;
 
+    function trackInstall() {
+        try {
+            var meta = document.querySelector('meta[name="csrf-token"]');
+            fetch('/api/analytics/event', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': meta ? meta.getAttribute('content') : ''
+                },
+                body: JSON.stringify({event: 'install'}),
+                keepalive: true
+            }).catch(function () {});
+        } catch (e) { /* analytics must not break install */ }
+    }
+
     if (window.location.pathname.indexOf('/app') === 0) return;
 
     function isStandalone() {
@@ -106,6 +121,7 @@
         try { localStorage.setItem(INSTALLED_KEY, '1'); } catch (e) {}
         deferredPrompt = null;
         hide();
+        trackInstall();
     });
 
     if (isIOS()) {

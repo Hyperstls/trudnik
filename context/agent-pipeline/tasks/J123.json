@@ -1,0 +1,47 @@
+{
+  "id": "J123",
+  "title": "P3: first-party аналитика воронки без cookies",
+  "goal": "Считать обезличенные агрегаты просмотров заданий, откликов, публикаций и установок в Redis; показывать воронку за 7/30 дней на /admin/analytics/.",
+  "why": "Нужно видеть, где теряются пользователи, без внешних провайдеров и cookies; данные не должны позволять выделить человека.",
+  "files": [
+    "djadmin/core/analytics.py",
+    "djadmin/core/views_analytics.py",
+    "djadmin/core/admin/__init__.py",
+    "djadmin/core/templates/admin/analytics.html",
+    "djadmin/core/urls.py",
+    "djadmin/core/views.py",
+    "djadmin/core/views_flow.py",
+    "static/js/install-prompt.js",
+    "djadmin/core/tests/test_analytics.py"
+  ],
+  "context_files": [
+    "djadmin/core/ratelimit.py",
+    "djadmin/config/settings.py"
+  ],
+  "interfaces": "analytics.py: EVENTS=(job_view, application_sent, job_created, install), ключи analytics:<event>:<date>, TTL 90 дней, cache.add/incr, series/totals, track_job_view (auth: один раз на session/job/день; anon: каждый просмотр). views_analytics: render_dashboard (7/30 дней, totals, conversion), staff dashboard, track_event POST только install + IP-лимит 20/мин. admin site: /admin/analytics/ + ссылка на дашборде. views: job_detail track, apply/create incr. install-prompt.js: appinstalled → POST /api/analytics/event. Тесты: dedupe, counters, endpoint, staff-only, totals.",
+  "acceptance": [
+    "Счётчики не содержат cookies/IP/идентификаторов.",
+    "Просмотр задания для авторизованного считается один раз за день.",
+    "Отклик и публикация увеличивают свои счётчики.",
+    "Установка считается через appinstalled.",
+    "Dashboard только для staff, 7/30 дней и конверсия.",
+    "Тесты проходят."
+  ],
+  "out_of_scope": [
+    "Не подключать внешние аналитические сервисы.",
+    "Не хранить события по пользователям.",
+    "Не добавлять миграции."
+  ],
+  "checks": [
+    {
+      "name": "analytics_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_analytics --keepdb -v 1",
+      "cwd": "."
+    },
+    {
+      "name": "full_core",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

@@ -28,6 +28,7 @@ from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 
 from .models import Application, Blacklist, Favorite, Invitation, Job, JobFavorite, Profile, Rating, SitePage, Skill, UserSkill
+from .analytics import track_job_view
 from .og_image import render_job_og
 from .ratelimit import rate_limit_write
 from .rpc import call_rpc_rows
@@ -453,6 +454,7 @@ def job_detail(request, job_id):
         is_owner = job.employer_id == request.user.pk
     if job is None:
         raise Http404("Задание не найдено или недоступно")
+    track_job_view(request, job.pk)
     photos = job_photo_urls(job, limit=3)
     skills = list(job.job_skills.select_related("skill").values_list("skill__name", flat=True))
     my_app = None

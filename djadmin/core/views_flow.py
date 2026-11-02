@@ -33,6 +33,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from .auth_backend import LOCKOUT_TEXT, ProfileBackend
+from .analytics import incr
 from .forms import INPUT_CLS, JOB_FIELDS, JobForm, LoginForm
 from .models import Application, Job, JobFavorite, JobPhoto, Skill
 from .notifications import enqueue_notification
@@ -161,6 +162,7 @@ def job_create(request):
             job.expires_at = timezone.now() + timedelta(days=30)
             job.save()
             sync_job_skills_raw(job.pk, [s.pk for s in form.cleaned_data["skills"]])
+        incr("job_created")
         messages.success(request, "Задание создано.")
         return redirect(reverse("core:job_detail", args=[job.pk]) + "?created=1&push=1")
     return render(request, "core/job_form.html", {
@@ -299,6 +301,7 @@ def job_apply(request, job_id):
     result = call_rpc("apply_job_atomic", job.pk, request.user.pk) or {}
     ok = _rpc_message(request, result, "Отклик отправлен.")
     if ok:
+        incr("application_sent")
         enqueue_notification(
             job.employer_id, "application_received", "Новый отклик",
             "На ваше задание поступил новый отклик",

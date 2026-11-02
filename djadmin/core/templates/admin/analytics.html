@@ -1,0 +1,43 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<div id="content-main">
+  <p class="help">Обезличенные агрегированные счётчики: без cookies, IP и идентификаторов. Хранение — 90 дней.</p>
+  <p>
+    <a class="button" href="?days=7"{% if days == 7 %} style="font-weight:bold"{% endif %}>7 дней</a>
+    <a class="button" href="?days=30"{% if days == 30 %} style="font-weight:bold"{% endif %}>30 дней</a>
+  </p>
+
+  <div class="module" style="margin-top:1rem">
+    <table style="width:100%">
+      <caption style="text-align:left;font-weight:bold;padding:.5rem 0">Итого за {{ days }} дней</caption>
+      <tr><th>Просмотры заданий</th><td><strong>{{ totals.job_view }}</strong></td></tr>
+      <tr><th>Отклики</th><td><strong>{{ totals.application_sent }}</strong></td></tr>
+      <tr><th>Опубликованные задания</th><td><strong>{{ totals.job_created }}</strong></td></tr>
+      <tr><th>Установки приложения</th><td><strong>{{ totals.install }}</strong></td></tr>
+      <tr><th>Просмотр → отклик</th><td><strong>{{ conversion }}%</strong></td></tr>
+    </table>
+  </div>
+
+  <div class="module" style="margin-top:1rem">
+    <table style="width:100%">
+      <caption style="text-align:left;font-weight:bold;padding:.5rem 0">По дням</caption>
+      <tr>
+        <th>Дата</th>
+        <th>Просмотры</th>
+        <th>Отклики</th>
+        <th>Задания</th>
+        <th>Установки</th>
+      </tr>
+      {% for row in rows %}
+      <tr>
+        <td>{{ row.date|date:"d.m.Y" }}</td>
+        <td>{{ row.job_view }}</td>
+        <td>{{ row.application_sent }}</td>
+        <td>{{ row.job_created }}</td>
+        <td>{{ row.install }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+{% endblock %}
