@@ -1,0 +1,38 @@
+{
+  "id": "J122",
+  "title": "UX: понятная настройка уведомлений по сохранённым поискам",
+  "goal": "На /notifications/settings вместо жаргона «Частота дайджеста сохранённых поисков» — понятный блок про новые задания по сохранённым поискам с объяснением, вариантами и зависимостью от типа уведомлений.",
+  "why": "Владелец и пользователи не понимали, что такое «дайджест» и как он связан с сохранёнными поисками и колокольчиками.",
+  "files": [
+    "djadmin/core/templates/core/notification_settings.html",
+    "djadmin/core/tests/test_notifications.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_profile_ext.py",
+    "djadmin/core/tasks.py"
+  ],
+  "interfaces": "notification_settings.html: заголовки «Куда присылать»/«Какие уведомления»; блок «Новые задания по сохранённым поискам» с пояснением «Сохранённый поиск — это фильтр…», select id=digest_frequency, варианты «Сразу — проверяем раз в 5 минут»/«Раз в день — одна сводка»/«Не присылать», подсказка про каналы и обязательный тип saved_search; карточка сохранённых поисков ссылается на частоту выше, пустое состояние ведёт на /jobs; aria-label колокольчика с именем поиска. Тест: новые формулировки, отсутствие «Частота дайджеста».",
+  "acceptance": [
+    "Нет слова «дайджест» в интерфейсе.",
+    "Понятно, что такое сохранённый поиск.",
+    "Понятна разница «сразу» / «раз в день» / «не присылать».",
+    "Понятно, что частота работает при включённом типе.",
+    "Тесты проходят."
+  ],
+  "out_of_scope": [
+    "Не менять логику задач/digest.",
+    "Не менять prefs API."
+  ],
+  "checks": [
+    {
+      "name": "settings_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_notifications.NotificationSettingsDiagnosticsTests --keepdb -v 1",
+      "cwd": "."
+    },
+    {
+      "name": "full_core",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

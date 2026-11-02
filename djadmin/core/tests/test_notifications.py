@@ -131,6 +131,14 @@ class NotificationSettingsDiagnosticsTests(TestCase):
         self.assertContains(response, "Инструкция для iPhone/iPad")
         self.assertContains(response, reverse("core:toggle_search", args=["abc"]))
 
+    def test_digest_wording_is_plain(self):
+        response = self.client.get(reverse("core:notification_prefs"))
+        self.assertContains(response, "Новые задания по сохранённым поискам")
+        self.assertContains(response, "Раз в день — одна сводка")
+        self.assertContains(response, "Сразу — проверяем раз в 5 минут")
+        self.assertContains(response, "Сохранённый поиск — это фильтр заданий")
+        self.assertNotContains(response, "Частота дайджеста")
+
     def test_digest_frequency_saved(self):
         response = self.client.post(
             reverse("core:notification_prefs"), {"digest_frequency": "off"},
