@@ -17,7 +17,6 @@ original_app.py
 # Android / TWA
 *.keystore
 *.jks
-twa-project/
 app-release*.apk
 app-release*.aab
 *.apk
@@ -82,7 +81,6 @@ mcp.json
 *.jks
 *.apk
 *.aab
-twa-project/app/
 scripts/screenshots/
 archive/
 trash/
@@ -111,7 +109,6 @@ Trudnik backup/
 in
 *.png
 trash/
-twa-project/
 archive/
 certs/
 uploads/
@@ -129,3 +126,14 @@ archive/env_*.env
 context/agent-pipeline/state.json
 context/agent-pipeline/logs/
 context/agent-pipeline/packs/
+
+# TWA source is tracked selectively; build outputs and signing secrets are not.
+twa-project/app/build/
+twa-project/build/
+twa-project/.gradle/
+twa-project/local.properties
+twa-project/*.keystore
+twa-project/keystore.properties
+twa-project/app-release-signed.apk
+!twa-project/app/src/main/res/**/*.png
+!twa-project/store_icon.png

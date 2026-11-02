@@ -1,0 +1,71 @@
+{
+  "packageId": "ru.trudnik.app",
+  "host": "xn--d1aigknli.xn--p1ai",
+  "name": "Трудник",
+  "launcherName": "Трудник",
+  "display": "standalone",
+  "themeColor": "#D97706",
+  "themeColorDark": "#000000",
+  "navigationColor": "#FFFFFF",
+  "navigationColorDark": "#171717",
+  "navigationDividerColor": "#E5E5E5",
+  "navigationDividerColorDark": "#262626",
+  "backgroundColor": "#FFFFFF",
+  "enableNotifications": true,
+  "startUrl": "/?utm_source=twa",
+  "iconUrl": "https://xn--d1aigknli.xn--p1ai/static/icons/icon-512x512.png",
+  "maskableIconUrl": "https://xn--d1aigknli.xn--p1ai/static/icons/icon-512x512.png",
+  "monochromeIconUrl": "https://xn--d1aigknli.xn--p1ai/static/icons/icon-192x192.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "trudnik-release.keystore",
+    "alias": "trudnik"
+  },
+  "appVersionName": "1.2",
+  "appVersionCode": 3,
+  "shortcuts": [
+    {
+      "name": "Создать задание",
+      "shortName": "Задание",
+      "url": "https://xn--d1aigknli.xn--p1ai/jobs/new",
+      "chosenIconUrl": "https://xn--d1aigknli.xn--p1ai/static/icons/icon-96x96.png"
+    },
+    {
+      "name": "Избранное",
+      "shortName": "Избранное",
+      "url": "https://xn--d1aigknli.xn--p1ai/favorites",
+      "chosenIconUrl": "https://xn--d1aigknli.xn--p1ai/static/icons/icon-96x96.png"
+    },
+    {
+      "name": "Чаты",
+      "shortName": "Чаты",
+      "url": "https://xn--d1aigknli.xn--p1ai/chats",
+      "chosenIconUrl": "https://xn--d1aigknli.xn--p1ai/static/icons/icon-96x96.png"
+    }
+  ],
+  "generatorApp": "unknown",
+  "webManifestUrl": "https://xn--d1aigknli.xn--p1ai/static/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": {
+      "enabled": true
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://xn--d1aigknli.xn--p1ai/",
+  "minSdkVersion": 21,
+  "orientation": "any",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "protocolHandlers": [],
+  "fileHandlers": [],
+  "launchHandlerClientMode": "",
+  "displayOverride": [],
+  "appVersion": "1.2"
+}
