@@ -27,13 +27,42 @@ cd twa-project
 cp app/build/outputs/apk/release/app-release.apk ../static/apk/trudnik.apk
 ```
 
-APK подписывается `twa-project/trudnik-release.keystore` (alias `trudnik`);
-пароль хранится только в окружении/CI (`KEYSTORE_PASSWORD`), не в git.
+APK подписывается `twa-project/trudnik-release.keystore` (alias `trudnik`).
+Пароли не хранятся в git: локально — `twa-project/keystore.properties`
+(gitignored), в CI — GitHub Secrets. Пример `keystore.properties`:
+
+```properties
+storeFile=../trudnik-release.keystore
+storePassword=<пароль>
+keyAlias=trudnik
+keyPassword=<пароль>
+```
+
+Либо переменные окружения `ANDROID_KEYSTORE_PATH`,
+`ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
 Проверка подписи:
 
 ```bash
 keytool -printcert -jarfile static/apk/trudnik.apk | grep SHA256
 ```
+
+## CI
+
+`.github/workflows/apk-release.yml` (manual dispatch; также запускается
+при изменении самого workflow):
+
+1. JDK 17 + Android SDK 36 на preinstalled SDK раннера;
+2. keystore из `ANDROID_KEYSTORE_BASE64`;
+3. `./gradlew assembleRelease` с `ANDROID_KEYSTORE_PASSWORD`,
+   `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`;
+4. подписанный `app-release.apk` в artifact `trudnik-apk`.
+
+Секреты GitHub: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
+`ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. Значения в чат/репозиторий не
+добавлять.
+
+Исходники TWA (`twa-project/`) теперь в git без keystore, `keystore.properties`
+и build-артефактов; `.dockerignore` по-прежнему исключает каталог из образа.
 
 ## Обновление assetlinks
 

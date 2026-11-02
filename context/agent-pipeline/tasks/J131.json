@@ -1,0 +1,41 @@
+{
+  "id": "J131",
+  "title": "APK: исходники TWA в git + CI-подпись",
+  "goal": "GitHub Actions собирает и подписывает release APK тем же ключом, что и прод; пароли не в git, keystore не в образе.",
+  "why": "Раньше TWA-проект был полностью gitignored, CI не мог собрать APK; в build.gradle был захардкожен пароль keystore.",
+  "files": [
+    "twa-project/app/build.gradle",
+    "twa-project (source: app/src, gradle wrapper, manifest)",
+    ".gitignore",
+    ".github/workflows/apk-release.yml",
+    "docs/APP_RELEASE.md"
+  ],
+  "context_files": [
+    ".dockerignore",
+    "twa-project/twa-manifest.json"
+  ],
+  "interfaces": "build.gradle: signing storeFile/password/alias из env ANDROID_* или gitignored keystore.properties; .gitignore: исходники twa-project tracked, keystore/properties/build/APK ignored; workflow: JDK17 + sdkmanager platform 36/build-tools 35, decode ANDROID_KEYSTORE_BASE64, ./gradlew assembleRelease, upload app-release.apk. Secrets: ANDROID_KEYSTORE_BASE64/PASSWORD/ALIAS/KEY_PASSWORD.",
+  "acceptance": [
+    "CI workflow собирает APK.",
+    "APK подписан SHA256 08:AD:60… (тот же ключ).",
+    "Пароль отсутствует в git.",
+    "Keystore не попадает в Docker-образ.",
+    "Локальная сборка через keystore.properties работает."
+  ],
+  "out_of_scope": [
+    "Не публиковать APK автоматически в /app.",
+    "Не менять versionCode/versionName."
+  ],
+  "checks": [
+    {
+      "name": "no_hardcoded_password",
+      "cmd": "git grep -n trudnik123 -- twa-project || echo ok",
+      "cwd": "."
+    },
+    {
+      "name": "apk_workflow",
+      "cmd": ".venv\\Scripts\\python.exe -c \"from pathlib import Path; t=Path('.github/workflows/apk-release.yml').read_text(encoding='utf-8'); assert 'ANDROID_KEYSTORE_BASE64' in t and 'assembleRelease' in t; print('apk workflow ok')\"",
+      "cwd": "."
+    }
+  ]
+}
