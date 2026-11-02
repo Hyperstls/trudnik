@@ -1,0 +1,40 @@
+{
+  "id": "J120",
+  "title": "P3: надёжная отправка чата и offline-очередь",
+  "goal": "Каждое сообщение получает новый client_message_id; отправка не перезагружает страницу; при отсутствии сети сообщение сохраняется в sessionStorage и уходит при появлении сети/WS; свои сообщения в poll не дублируются и выравниваются вправо.",
+  "why": "Инлайн-JS чата не находил форму (`log.closest('div')` → null), поэтому отправка шла обычным POST с перезагрузкой; client_message_id был один на страницу, а offline-сценария не было.",
+  "files": [
+    "djadmin/core/templates/core/chat.html",
+    "djadmin/core/tests/test_interact.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_interact.py",
+    "djadmin/core/models.py"
+  ],
+  "interfaces": "chat.html: форма в card → log.parentElement.querySelector('form'); makeCmid() на каждое сообщение; fetch form.action с FormData (csrf, client_message_id, content); sessionStorage trudnik-chat-queue-v1:<app> ≤20 сообщений/TTL 1ч; flushQueue на online/WS open/15с; статус #chat-send-status; appendBubble с seen[id], poll выравнивает mine по data-user-id; auth-redirect на /login → ошибка и очистка очереди. Сервер уже идемпотентен по client_message_id (partial UNIQUE), изменений нет.",
+  "acceptance": [
+    "Два разных сообщения подряд сохраняются (не дедупятся).",
+    "Свои сообщения из poll отображаются справа.",
+    "WS и poll не дают дублей.",
+    "При offline текст не теряется; после online уходит.",
+    "При истёкшей сессии показывается ошибка, очередь очищается.",
+    "Тесты проходят."
+  ],
+  "out_of_scope": [
+    "Не менять RPC/схему БД.",
+    "Не хранить текст сообщений в localStorage.",
+    "Не менять WS-consumer."
+  ],
+  "checks": [
+    {
+      "name": "js_syntax",
+      "cmd": ".venv\\Scripts\\python.exe -c \"from pathlib import Path; h=Path('djadmin/core/templates/core/chat.html').read_text(encoding='utf-8'); s=h.rfind('<script>'); e=h.find('</script>',s); Path('_chat-inline.js').write_text(h[s+8:e],encoding='utf-8')\" && node --check _chat-inline.js && del _chat-inline.js",
+      "cwd": "."
+    },
+    {
+      "name": "chat_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_interact.ChatTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

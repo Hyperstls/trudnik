@@ -41,16 +41,30 @@
             <input type="text" name="content" maxlength="4000" required class="flex-1 border border-neutral-200 rounded-xl px-3 py-2.5 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="Сообщение…">
             <button class="px-5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors">Отправить</button>
         </form>
+        <p id="chat-send-status" class="px-3 pb-2 text-xs text-neutral-500" role="status" aria-live="polite"></p>
     </div>
     <script>
 (function () {
   var log = document.getElementById('chat-log');
+  if (!log) return;
   var appId = log.dataset.app;
   var last = parseInt(log.dataset.last || '0', 10);
+  var me = document.body.getAttribute('data-user-id') || '';
   var pollTimer = null;
+  var form = log.parentElement.querySelector('form');
+  var input = form ? form.querySelector('input[name="content"]') : null;
+  var csrf = form ? form.querySelector('input[name="csrfmiddlewaretoken"]') : null;
+  var statusEl = document.getElementById('chat-send-status');
+  var queueKey = 'trudnik-chat-queue-v1:' + appId;
+  var seen = {};
+  var flushing = false;
+
+  function setStatus(text) { if (statusEl) statusEl.textContent = text || ''; }
 
   function appendBubble(m, mine) {
-    last = Math.max(last, Number(m.id) || 0);
+    var mid = Number(m.id) || 0;
+    if (mid && seen[mid]) return;
+    if (mid) seen[mid] = true;
     var empty = document.getElementById('chat-empty');
     if (empty) empty.remove();
     var wrap = document.createElement('div');
@@ -67,23 +81,28 @@
   function pollOnce() {
     fetch('/api/messages/' + appId + '/poll?after=' + last)
       .then(function (r) { return r.json(); })
-      .then(function (data) { (data.messages || []).forEach(function (m) { appendBubble(m, false); }); })
+      .then(function (data) {
+        var maxId = last;
+        (data.messages || []).forEach(function (m) {
+          appendBubble(m, String(m.sender_id) === me);
+          maxId = Math.max(maxId, Number(m.id) || 0);
+        });
+        last = maxId;
+      })
       .catch(function () {});
   }
 
   function startPoll() { if (!pollTimer) { pollOnce(); pollTimer = setInterval(pollOnce, 5000); } }
   function stopPoll() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
 
-  // WebSocket — основной канал; при недоступности — poll-fallback
-  var me = document.body.getAttribute('data-user-id') || '';
   try {
     var wsUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/chat/' + appId + '/';
     var ws = new WebSocket(wsUrl);
-    ws.onopen = function () { stopPoll(); };
+    ws.onopen = function () { stopPoll(); flushQueue(); };
     ws.onmessage = function (ev) {
       try {
         var d = JSON.parse(ev.data);
-        if (d && d.type === 'message') { appendBubble(d, String(d.sender_id) === me); }
+        if (d && d.type === 'message') appendBubble(d, String(d.sender_id) === me);
       } catch (e) {}
     };
     ws.onclose = function () { startPoll(); };
@@ -91,20 +110,113 @@
     setInterval(function () { if (ws.readyState === 1) { ws.send(JSON.stringify({type: 'ping'})); } }, 30000);
   } catch (e) { startPoll(); }
 
-  // Открыть историю на последнем сообщении
   log.scrollTop = log.scrollHeight;
 
-  // Отправка без перезагрузки (идемпотентность через client_message_id)
-  var form = log.closest('div').querySelector('form');
+  function makeCmid() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      var r = Math.random() * 16 | 0;
+      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+  }
+
+  function readQueue() {
+    try {
+      var q = JSON.parse(sessionStorage.getItem(queueKey) || '[]');
+      var cutoff = Date.now() - 60 * 60 * 1000;
+      return (Array.isArray(q) ? q : []).filter(function (item) { return item && item.ts > cutoff; });
+    } catch (e) { return []; }
+  }
+  function writeQueue(q) { try { sessionStorage.setItem(queueKey, JSON.stringify(q.slice(-20))); } catch (e) {} }
+  function enqueue(content, cmid) {
+    var q = readQueue();
+    q.push({ content: content, cmid: cmid, ts: Date.now() });
+    writeQueue(q);
+  }
+
+  function isAuthRedirect(r) {
+    return r.redirected && r.url.indexOf('/login') !== -1;
+  }
+
+  function postMessage(content, cmid) {
+    var fd = new FormData();
+    fd.append('csrfmiddlewaretoken', csrf ? csrf.value : '');
+    fd.append('client_message_id', cmid);
+    fd.append('content', content);
+    return fetch(form.action, {
+      method: 'POST',
+      body: fd,
+      headers: { 'X-CSRFToken': csrf ? csrf.value : '' }
+    });
+  }
+
+  function deliverOne(item) {
+    return postMessage(item.content, item.cmid).then(function (r) {
+      if (isAuthRedirect(r)) return 'auth';
+      if (r.ok) return 'ok';
+      if (r.status === 429 || r.status >= 500) return 'retry';
+      return 'fail';
+    }).catch(function () { return 'retry'; });
+  }
+
+  function flushQueue() {
+    if (flushing || !form || !navigator.onLine) return;
+    var queue = readQueue();
+    if (!queue.length) { setStatus(''); return; }
+    flushing = true;
+    var remaining = [];
+    var failed = false;
+    var chain = Promise.resolve();
+    queue.forEach(function (item) {
+      chain = chain.then(function () {
+        return deliverOne(item).then(function (result) {
+          if (result === 'retry') remaining.push(item);
+          else if (result === 'auth') { failed = true; }
+          else if (result === 'fail') { failed = true; }
+        });
+      });
+    });
+    chain.then(function () {
+      writeQueue(failed ? [] : remaining);
+      flushing = false;
+      if (failed) setStatus('Не удалось отправить сообщение. Проверьте соединение.');
+      else if (remaining.length) setStatus('Нет сети — сообщения отправятся, когда связь появится.');
+      else { setStatus(''); pollOnce(); }
+    });
+  }
+
   if (form) {
     form.addEventListener('submit', function (ev) {
       ev.preventDefault();
-      var fd = new FormData(form);
-      fetch(form.action, { method: 'POST', body: fd, headers: {'X-CSRFToken': fd.get('csrfmiddlewaretoken')} })
-        .then(function () { form.querySelector('input[name="content"]').value = ''; })
-        .catch(function () { form.submit(); });
+      var content = input.value.trim();
+      if (!content) return;
+      var cmid = makeCmid();
+      input.value = '';
+      input.style.height = 'auto';
+      if (!navigator.onLine || readQueue().length) {
+        enqueue(content, cmid);
+        setStatus('Нет сети — сообщение отправится, когда связь появится.');
+        flushQueue();
+        return;
+      }
+      setStatus('Отправляем…');
+      deliverOne({ content: content, cmid: cmid }).then(function (result) {
+        if (result === 'ok') {
+          setStatus('');
+          pollOnce();
+        } else if (result === 'retry') {
+          enqueue(content, cmid);
+          setStatus('Нет сети — сообщение отправится, когда связь появится.');
+        } else {
+          setStatus('Не удалось отправить сообщение. Обновите страницу и попробуйте снова.');
+        }
+      });
     });
   }
+
+  window.addEventListener('online', flushQueue);
+  setInterval(function () { if (navigator.onLine) flushQueue(); }, 15000);
+  flushQueue();
 })();
 </script>
 </div>

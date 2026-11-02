@@ -174,6 +174,20 @@ class ChatTests(TestCase):
                              {"content": "Только один раз", "client_message_id": cmid})
         self.assertEqual(Message.objects.filter(application=self.app).count(), 1)
 
+    def test_send_two_distinct_messages_not_deduped(self):
+        self.client.force_login(self.worker)
+        for text in ("Первое", "Второе"):
+            self.client.post(reverse("core:chat_send", args=[self.app.pk]),
+                             {"content": text, "client_message_id": str(uuid.uuid4())})
+        self.assertEqual(Message.objects.filter(application=self.app).count(), 2)
+
+    def test_chat_room_has_offline_queue_markup(self):
+        self.client.force_login(self.worker)
+        response = self.client.get(reverse("core:chat_room", args=[self.app.pk]))
+        self.assertContains(response, 'id="chat-send-status"')
+        self.assertContains(response, "trudnik-chat-queue-v1")
+        self.assertContains(response, "navigator.onLine")
+
     def test_empty_message_ignored(self):
         self.client.force_login(self.worker)
         self.client.post(reverse("core:chat_send", args=[self.app.pk]),
