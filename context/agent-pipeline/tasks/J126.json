@@ -1,0 +1,35 @@
+{
+  "id": "J126",
+  "title": "Docs из админки: SitePage для политики, условий, безопасности и FAQ",
+  "goal": "Все публичные документы (privacy/terms/safety/faq) можно редактировать в админке через SitePage; при наличии записи приложение рендерит её, без записи остаётся прежний fallback.",
+  "why": "Сейчас SitePage пуст, документы живут в шаблонах и правятся только деплоем; владельцу нужна простая правка из админки.",
+  "files": [
+    "djadmin/core/templates/core/legal_page.html",
+    "djadmin/core/views_public_ext.py",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/admin/support.py",
+    "djadmin/core/templates/core/legal_fallback.html",
+    "djadmin/core/templates/core/faq.html"
+  ],
+  "interfaces": "legal_page.html: карточка max-w-2xl + space-y-4, page.title + page.content|safe. views_public_ext.faq: SitePage(pk='faq') → legal_page.html, иначе faq.html. Тесты: FAQ DB override, legal fallback/override; сиды privacy/terms/safety/faq создаются в проде через SitePage admin.",
+  "acceptance": [
+    "Запись SitePage переопределяет страницу.",
+    "Без записи страницы работают как раньше.",
+    "FAQ тоже редактируется из админки.",
+    "Тесты проходят."
+  ],
+  "out_of_scope": [
+    "Не менять текст документов.",
+    "Не менять модели/миграции."
+  ],
+  "checks": [
+    {
+      "name": "legal_faq_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.LegalFallbackTests core.tests.test_parity_ext.SeoFaqTests core.tests.test_parity_ext.FaqAndExternalLinkTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

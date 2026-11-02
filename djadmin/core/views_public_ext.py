@@ -305,6 +305,11 @@ def job_photo_delete(request, job_id, photo_id):
 
 # ── FAQ / sitemap ─────────────────────────────────────────────────────────
 def faq(request):
+    from .models import SitePage
+
+    page = SitePage.objects.filter(pk="faq").first()
+    if page is not None:
+        return render(request, "core/legal_page.html", {"page": page})
     return render(request, "core/faq.html")
 
 

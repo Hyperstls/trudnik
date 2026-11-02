@@ -608,7 +608,7 @@ class LegalFallbackTests(TestCase):
     """LEGAL-P0-01: пустой site_pages -> legacy-фолбэк, SitePage -> override."""
 
     def setUp(self):
-        SitePage.objects.filter(pk__in=("privacy", "terms", "safety")).delete()
+        SitePage.objects.filter(pk__in=("privacy", "terms", "safety", "faq")).delete()
 
     def test_privacy_fallback_without_site_page(self):
         response = self.client.get(reverse("core:privacy"))
@@ -640,6 +640,16 @@ class LegalFallbackTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "DB-OVERRIDE")
         self.assertNotContains(response, "1. Общие положения")
+
+    def test_faq_site_page_overrides_template(self):
+        fallback = self.client.get(reverse("core:faq"))
+        self.assertContains(fallback, "Вопросы и ответы")
+        SitePage.objects.create(
+            slug="faq", title="FAQ из БД", content="<p>FAQ-DB</p>"
+        )
+        response = self.client.get(reverse("core:faq"))
+        self.assertContains(response, "FAQ из БД")
+        self.assertContains(response, "FAQ-DB")
 
     def test_unknown_slug_404(self):
         request = RequestFactory().get("/unknown")
