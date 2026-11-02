@@ -1,0 +1,42 @@
+{
+  "id": "J119",
+  "title": "P3: глобальный поиск по заданиям, трудникам и работодателям",
+  "goal": "Страница /search ищет одновременно задания, трудников и работодателей; шапка ведёт на неё с десктопа и мобильного, у гостя поиск тоже доступен.",
+  "why": "Раньше поиск в шапке фильтровал только задания и был скрыт от гостей; пользователь не мог найти трудника/работодателя из шапки.",
+  "files": [
+    "djadmin/core/views_search.py",
+    "djadmin/core/urls.py",
+    "djadmin/core/templates/core/search.html",
+    "djadmin/core/templates/core/base.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/_ui_empty_state.html",
+    "djadmin/core/templates/core/_ui_icon.html"
+  ],
+  "interfaces": "views_search.global_search: q 2..100; Job.objects.public() по work_type/organization_name/city/описаниям (≤8); Profile.objects.public_workers() по full_name/city/bio + prefetch skills (≤6); работодатели только auth: public_visible + open_jobs>0 + employer_detail.name, blacklist исключается (≤6). urls: /search → global_search (вместо redirect). search.html: форма, группы, EmptyState, ссылки «все …» с q. base.html: форма шапки action=core:search видна всем (md+), мобильная иконка поиска. Тесты: группы, пустой/короткий запрос, работодатели только auth, шапка ведёт на /search.",
+  "acceptance": [
+    "Гость видит поиск заданий и трудников.",
+    "Авторизованный видит ещё и работодателей.",
+    "Пустой и короткий запрос дают понятный экран.",
+    "Приватные поля (email/phone/inn) не попадают в выдачу.",
+    "Ссылки «все результаты» сохраняют q.",
+    "Тесты проходят."
+  ],
+  "out_of_scope": [
+    "Не менять фильтры /jobs, /workers, /employers.",
+    "Не добавлять полнотекстовый поиск по БД."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": ".venv\\Scripts\\python.exe -m py_compile djadmin/core/views_search.py djadmin/core/urls.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "search_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.GlobalSearchTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

@@ -45,13 +45,14 @@
                 <span class="text-lg font-bold tracking-tight text-neutral-800">Трудник</span>
             </a>
 
-            {% if user.is_authenticated %}
             <div class="hidden md:flex flex-1 max-w-md mx-4">
-                <form action="{% url 'core:jobs' %}" method="get" class="relative w-full" aria-label="Поиск заданий">
+                <form action="{% url 'core:search' %}" method="get" class="relative w-full" aria-label="Поиск по сайту">
                     <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input type="text" name="q" placeholder="Задание или город…" aria-label="Поиск" class="w-full pl-9 pr-4 py-2 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                    <input type="text" name="q" placeholder="Задания, трудники…" aria-label="Поиск по сайту" class="w-full pl-9 pr-4 py-2 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
                 </form>
             </div>
+
+            {% if user.is_authenticated %}
             {% with current=request.resolver_match.url_name %}
             <nav class="hidden md:flex items-center gap-1" aria-label="Основная навигация">
                 <a href="{% url 'core:jobs' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'jobs' or current == 'job_detail' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}"{% if current == 'jobs' %} aria-current="page"{% elif current == 'job_detail' %} aria-current="true"{% endif %}>Задания</a>
@@ -65,6 +66,9 @@
             {% endif %}
 
             <div class="flex items-center gap-2">
+                <a href="{% url 'core:search' %}" class="md:hidden w-10 h-10 flex items-center justify-center rounded-xl text-neutral-600 hover:bg-neutral-100" aria-label="Поиск по сайту">
+                    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </a>
                 {% if user.is_authenticated %}
                 <a href="{% url 'core:job_create' %}" class="hidden sm:inline-flex items-center gap-1.5 px-3.5 h-9 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors shadow-sm" aria-label="Создать задание">
                     <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>

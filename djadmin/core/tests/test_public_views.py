@@ -857,12 +857,46 @@ class JobDetailChatTrustTests(TestCase):
         self.assertNotContains(response, "Написать в чат")
 
 
-class LegacySearchTests(TestCase):
-    def test_search_redirects_to_jobs_with_query(self):
-        response = self.client.get(reverse("core:search"), {"q": "уборка"})
-        self.assertEqual(response.status_code, 302)
-        self.assertTrue(response["Location"].startswith("/jobs"))
-        self.assertIn("q=", response["Location"])
+class GlobalSearchTests(TestCase):
+    def test_search_page_groups_results(self):
+        employer = make_profile("search-emp@example.com", role="employer")
+        worker = make_profile(
+            "search-worker@example.com", role="worker",
+            full_name="Уборщица Поискова", city="Москва",
+        )
+        make_job(employer, work_type="Поиск уборки", city="Москва")
+        response = self.client.get(reverse("core:search"), {"q": "убор"})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Поиск уборки")
+        self.assertContains(response, worker.full_name)
+        self.assertContains(response, "Найдено:")
+
+    def test_empty_query_shows_prompt(self):
+        response = self.client.get(reverse("core:search"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ищите задания")
+
+    def test_short_query_shows_hint(self):
+        response = self.client.get(reverse("core:search"), {"q": "у"})
+        self.assertContains(response, "минимум 2 символа")
+
+    def test_employers_are_shown_only_to_authenticated(self):
+        employer = make_profile(
+            "search-employer-private@example.com", role="employer",
+            full_name="Работодатель Поиска",
+        )
+        make_job(employer)
+        anon = self.client.get(reverse("core:search"), {"q": "Работодатель"})
+        self.assertNotContains(anon, employer.full_name)
+        user = make_profile("search-viewer@example.com")
+        self.client.force_login(user)
+        auth = self.client.get(reverse("core:search"), {"q": "Работодатель"})
+        self.assertContains(auth, employer.full_name)
+        self.assertContains(auth, "Работодатели")
+
+    def test_header_search_points_to_global_page(self):
+        response = self.client.get(reverse("core:jobs"))
+        self.assertContains(response, reverse("core:search"))
 
 
 class JobDetailGeoTests(TestCase):

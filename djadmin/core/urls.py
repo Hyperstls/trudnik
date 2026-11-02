@@ -1,9 +1,8 @@
 from django.urls import path
-from django.views.generic import RedirectView
 
 from . import (views, views_auth, views_drafts, views_flow, views_geo, views_interact,
                views_messenger, views_notify, views_profile, views_profile_ext,
-               views_public_ext, views_service)
+               views_public_ext, views_search, views_service)
 
 app_name = "core"
 
@@ -19,7 +18,7 @@ urlpatterns = [
     path("searches/save", views.save_search, name="save_search"),
     path("searches/<str:search_id>/delete", views.delete_search, name="delete_search"),
     path("searches/<str:search_id>/toggle", views.toggle_search, name="toggle_search"),
-    path("search", RedirectView.as_view(pattern_name="core:jobs", permanent=False, query_string=True), name="search"),
+    path("search", views_search.global_search, name="search"),
     path("jobs/new", views_flow.job_create, name="job_create"),
     path("jobs/<uuid:job_id>", views.job_detail, name="job_detail"),
     path("jobs/<uuid:job_id>/og.png", views.job_og_image, name="job_og_image"),
