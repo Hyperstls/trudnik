@@ -251,8 +251,21 @@ VAPID_CLAIMS_EMAIL = os.getenv("VAPID_CLAIMS_EMAIL", "notifications@trudnik.ru")
 
 # ── Channels (WebSocket-чат; Redis channel layer при REDIS_URL) ─────────────
 if _redis_url:
-    CHANNEL_LAYERS = {"default": {"BACKEND": "channels_redis.core.RedisChannelLayer",
-                                  "CONFIG": {"hosts": [_redis_url]}}}
+    # socket_timeout должен быть больше brpop_timeout (5s), иначе BRPOP ловит
+    # ложный Timeout reading; health_check_interval не даёт Redis закрыть idle.
+    CHANNEL_LAYERS = {"default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [{
+                "address": _redis_url,
+                "socket_timeout": 30,
+                "socket_connect_timeout": 10,
+                "socket_keepalive": True,
+                "health_check_interval": 30,
+            }],
+            "expiry": 60,
+        },
+    }}
 else:
     CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 
