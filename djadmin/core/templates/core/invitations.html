@@ -12,7 +12,7 @@
         {% for inv in incoming %}
         <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 flex flex-wrap justify-between gap-3">
             <div class="min-w-0">
-                <a href="{% url 'core:job_detail' inv.job.pk %}" class="font-semibold text-neutral-900 hover:text-primary-600 transition-colors">{{ inv.job.work_type|default:"Задание" }}</a>
+                <a href="{% url 'core:job_detail' inv.job.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ inv.job.work_type|default:"Задание" }}</a>
                 <p class="text-sm text-neutral-500 mt-0.5">{{ inv.job.organization_name }} · {{ inv.job.date_time|date:"d.m.Y H:i" }}</p>
                 {% if inv.message %}<p class="text-sm text-neutral-700 mt-1">{{ inv.message }}</p>{% endif %}
                 <p class="text-sm mt-1">

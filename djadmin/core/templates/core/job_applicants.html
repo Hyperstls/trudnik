@@ -13,7 +13,7 @@
         {% for a in apps %}
         <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 flex flex-wrap items-start justify-between gap-3">
             <div class="min-w-0">
-                <a href="{% url 'core:worker_detail' a.worker.pk %}" class="font-semibold text-neutral-900 hover:text-primary-600 transition-colors">{{ a.worker.full_name }}</a>
+                <a href="{% url 'core:worker_detail' a.worker.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ a.worker.full_name }}</a>
                 <p class="text-sm text-neutral-500 mt-0.5">{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline text-warning" %} {{ a.worker.rating|default:0|floatformat:1 }} ({{ a.worker.total_reviews|default:0 }}){% if a.worker.city %} · {{ a.worker.city }}{% endif %}</p>
                 <p class="text-sm mt-1">
                     {% if a.status == 'pending' %}<span class="text-xs bg-neutral-100 text-neutral-600 rounded-full px-2.5 py-0.5 font-medium">Ожидает</span>

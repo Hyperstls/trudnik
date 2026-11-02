@@ -79,6 +79,7 @@
 - Lighthouse CI (mobile) на preview/prod: LCP/CLS/INP, бюджет;
 - запуск по расписанию/вручную, не блокировать каждый PR до стабилизации;
 - реализовано: `.github/workflows/ux-quality.yml`, `.lighthouserc.json`, `scripts/axe_audit.mjs` (desktop+mobile, critical axe).
+- J121 (2026-11-02): axe-аудит 5 страниц (`/jobs`, `/login`, `/workers`, `/register`, `/search`) desktop+mobile — **0 critical/serious**; `primary-600` для кнопок/ссылок, доступные имена логотипа и ссылки Яндекса; в отчёт добавлены serious-warnings.
 - публиковать отчёт в artifacts; порог: 0 critical axe, LCP < 2.5s.
 
 ## P3 — Прочее

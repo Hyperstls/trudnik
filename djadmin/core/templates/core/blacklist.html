@@ -7,7 +7,7 @@
     <div class="grid gap-2">
         {% for b in rows %}
         <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 flex items-center justify-between gap-3">
-            <a href="{% url 'core:worker_detail' b.blocked_user.pk %}" class="font-semibold text-neutral-900 hover:text-primary-600 transition-colors">{{ b.blocked_user.full_name }}</a>
+            <a href="{% url 'core:worker_detail' b.blocked_user.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ b.blocked_user.full_name }}</a>
             <form method="post" action="{% url 'core:people_unblock' b.blocked_user.pk %}">{% csrf_token %}
                 <button class="action-icon-btn contact-btn"><span class="text-xs font-medium">Разблокировать</span></button>
             </form>

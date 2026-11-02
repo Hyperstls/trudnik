@@ -23,7 +23,7 @@
             <p id="push-prompt-status" class="text-xs text-neutral-600 mt-0.5">Включите push — сообщим об откликах и сообщениях, даже если вкладка закрыта.</p>
         </div>
         <div class="flex items-center gap-2 shrink-0">
-            <button type="button" id="push-prompt-enable" class="px-3.5 h-9 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold">Включить push</button>
+            <button type="button" id="push-prompt-enable" class="px-3.5 h-9 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold">Включить push</button>
             <button type="button" id="push-prompt-dismiss" class="px-3 h-9 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600 text-sm font-medium">Не сейчас</button>
         </div>
     </div>
@@ -74,7 +74,7 @@
             <div class="flex flex-wrap gap-2 mt-2">
                 {% if job.address and job.lat is not None and job.lng is not None %}
                 <a href="https://yandex.ru/maps/?pt={% localize off %}{{ job.lng }},{{ job.lat }}{% endlocalize %}&z=16&l=map" target="_blank" rel="noopener noreferrer" class="px-3 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">Открыть на карте</a>
-                <a href="https://yandex.ru/maps/?rtext=~{% localize off %}{{ job.lat }},{{ job.lng }}{% endlocalize %}&rtt=auto" target="_blank" rel="noopener noreferrer" class="px-3 h-9 inline-flex items-center rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold">Маршрут</a>
+                <a href="https://yandex.ru/maps/?rtext=~{% localize off %}{{ job.lat }},{{ job.lng }}{% endlocalize %}&rtt=auto" target="_blank" rel="noopener noreferrer" class="px-3 h-9 inline-flex items-center rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold">Маршрут</a>
                 {% elif job.address %}
                 <a href="https://yandex.ru/maps/?text={{ job.address|urlencode }}" target="_blank" rel="noopener noreferrer" class="px-3 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">Найти адрес</a>
                 {% elif job.city %}
@@ -101,6 +101,15 @@
             var map = new ymaps.Map('job-detail-map', {
               center: [lat, lng], zoom: 15, controls: ['zoomControl']
             });
+            // Логотип Яндекса — ссылка без доступного имени (axe link-name).
+            (function labelYandexLogo(tries) {
+                  var logo = document.querySelector('a[class*="copyright__logo"]');
+                  if (logo) {
+                    if (!logo.getAttribute('aria-label')) logo.setAttribute('aria-label', 'Яндекс Карты');
+                    return;
+                  }
+                  if (tries > 0) window.setTimeout(function () { labelYandexLogo(tries - 1); }, 300);
+                })(20);
             map.geoObjects.add(new ymaps.Placemark([lat, lng], {}, {preset: 'islands#orangeIcon'}));
           });
         });
@@ -149,7 +158,7 @@
                 {% if employer.role == 'admin' %}
                 <span class="font-medium">{{ employer.full_name|default:"Работодатель" }}</span>
                 {% else %}
-                <a href="{% url 'core:worker_detail' employer.pk %}" class="font-medium hover:text-primary-600 transition-colors">{{ employer.full_name|default:"Работодатель" }}</a>
+                <a href="{% url 'core:worker_detail' employer.pk %}" class="font-medium hover:text-primary-700 transition-colors">{{ employer.full_name|default:"Работодатель" }}</a>
                 {% endif %}
                 {% if employer.verification_status == 'approved' %}<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{% include "core/_ui_icon.html" with name="check" class_name="h-3 w-3" %} Подтверждён</span>{% endif %}
                 <span class="text-neutral-500"> · {% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline" %} {{ employer.rating|default:0|floatformat:1 }} ({{ employer.total_reviews|default:0 }})</span>
@@ -170,7 +179,7 @@
 
         <div class="flex flex-wrap gap-2 items-center border-t border-neutral-100 pt-4">
             {% if is_owner %}
-            <a href="{% url 'core:job_applicants' job.pk %}" class="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors">Отклики ({{ application_count }})</a>
+            <a href="{% url 'core:job_applicants' job.pk %}" class="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">Отклики ({{ application_count }})</a>
             <a href="{% url 'core:job_edit' job.pk %}" class="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Изменить</a>
             {% elif user.is_authenticated %}
                 {% if my_app %}
@@ -184,17 +193,17 @@
                 <p class="text-xs text-neutral-600 mt-2" role="note">Отзыв недоступен: до начала задания осталось менее 12 часов</p>
                 {% endif %}
                 {% if my_app.status == 'accepted' %}
-                <a href="{% url 'core:chat_room' my_app.id %}" class="inline-flex items-center px-4 h-10 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors">Написать в чат</a>
+                <a href="{% url 'core:chat_room' my_app.id %}" class="inline-flex items-center px-4 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">Написать в чат</a>
                 {% endif %}
                 {% endif %}
                 {% elif job.status == 'open' %}
                 <form method="post" action="{% url 'core:job_apply' job.pk %}">{% csrf_token %}
-                    <button class="px-5 h-10 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors shadow-sm">Откликнуться</button>
+                    <button class="px-5 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm">Откликнуться</button>
                 </form>
                 {% endif %}
             <form method="post" action="{% url 'core:job_favorite_toggle' job.pk %}">{% csrf_token %}
                 <button class="px-4 h-10 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-500 text-sm font-medium transition-colors" aria-label="{{ is_fav|yesno:'В избранном,В избранное' }}">
-                    <svg aria-hidden="true" class="inline h-4 w-4 {% if is_fav %}text-primary-500 fill-current{% else %}text-neutral-400{% endif %}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg aria-hidden="true" class="inline h-4 w-4 {% if is_fav %}text-primary-600 fill-current{% else %}text-neutral-400{% endif %}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                     {{ is_fav|yesno:"В избранном,В избранное" }}
                 </button>
             </form>
@@ -209,7 +218,7 @@
                 <a href="https://wa.me/?text={{ request.build_absolute_uri|urlencode }}" target="_blank" rel="noopener noreferrer" class="text-sm text-primary-600 hover:text-primary-700 underline underline-offset-2">WhatsApp</a>
             </div>
             {% else %}
-            <a href="{% url 'core:login' %}?next={% url 'core:job_detail' job.pk %}" class="px-5 h-10 inline-flex items-center rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors shadow-sm">Войти, чтобы откликнуться</a>
+            <a href="{% url 'core:login' %}?next={% url 'core:job_detail' job.pk %}" class="px-5 h-10 inline-flex items-center rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm">Войти, чтобы откликнуться</a>
             {% endif %}
             <span class="text-xs text-neutral-400 ml-auto">Размещено {{ job.created_at|date:"d.m.Y" }}</span>
         </div>

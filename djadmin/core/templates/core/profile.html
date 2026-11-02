@@ -58,13 +58,13 @@
                 <div class="grid grid-cols-2 gap-1.5 text-sm">
                     {% for choice in form.skills.field.queryset %}
                     <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" name="skills" value="{{ choice.pk }}" {% if choice.pk in skills_selected %}checked{% endif %} class="rounded border-neutral-300 text-primary-500 focus:ring-primary-500">
+                        <input type="checkbox" name="skills" value="{{ choice.pk }}" {% if choice.pk in skills_selected %}checked{% endif %} class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
                         {{ choice.name }}
                     </label>
                     {% endfor %}
                 </div>
             </div>
-            <button type="submit" class="mt-4 w-full px-4 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors shadow-sm">Сохранить профиль</button>
+            <button type="submit" class="mt-4 w-full px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm">Сохранить профиль</button>
         </form>
     </section>
 

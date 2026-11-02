@@ -8,7 +8,7 @@
         {% for f in favs %}
         <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 flex flex-wrap items-start justify-between gap-3">
             <div class="min-w-0">
-                <a href="{% url 'core:job_detail' f.job.pk %}" class="font-semibold text-neutral-900 hover:text-primary-600 transition-colors">{{ f.job.work_type|default:"Задание" }}</a>
+                <a href="{% url 'core:job_detail' f.job.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ f.job.work_type|default:"Задание" }}</a>
                 <p class="text-sm text-neutral-500 mt-0.5">{{ f.job.organization_name }}{% if f.job.city %} · {{ f.job.city }}{% endif %} · {{ f.job.date_time|date:"d.m.Y" }}</p>
             </div>
             <form method="post" action="{% url 'core:job_favorite_toggle' f.job.pk %}">{% csrf_token %}

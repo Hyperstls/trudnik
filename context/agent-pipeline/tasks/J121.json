@@ -1,0 +1,43 @@
+{
+  "id": "J121",
+  "title": "P2: доступность — контраст primary, имена ссылок, полный axe-аудит",
+  "goal": "Кнопки и ссылки бренда проходят WCAG AA по контрасту; логотип и ссылка Яндекса имеют доступные имена; axe на 5 страницах (desktop+mobile) не находит critical/serious.",
+  "why": "axe нашёл serious color-contrast на bg-primary-500 (#d97706) с белым текстом (3.19:1) и label-content-name-mismatch у логотипа; CI проверял только critical и 3 страницы.",
+  "files": [
+    "static/css/app.css",
+    "djadmin/core/templates/core/_ui_button.html",
+    "djadmin/core/templates/core/base.html",
+    "djadmin/core/templates/core/jobs_list.html",
+    "djadmin/core/templates/core/job_detail.html",
+    "djadmin/core/templates/core/job_form.html",
+    "scripts/axe_audit.mjs",
+    "docs/UX_ROADMAP_2026Q4.md"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/_ui_icon.html"
+  ],
+  "interfaces": "Templates: bg-primary-500→600, hover:bg-primary-600→700, text-primary-500→600, hover:text-primary-600→700 (механически по всем шаблонам). app.css: accept/reject/reopen/chat/act/contact и бейджи на #047857/#b91c1c/#b45309/#6d28d9. base: aria-label «Трудник — на главную». maps (jobs_list/job_detail/job_form): retry-цикл ставит aria-label «Яндекс Карты» только на a[class*=copyright__logo]. axe_audit.mjs: +/register и /search?q=test, serious в warnings, critical в failures.",
+  "acceptance": [
+    "Нет serious color-contrast на 5 страницах.",
+    "Логотип имеет доступное имя, совпадающее с видимым текстом.",
+    "Ссылка Яндекса получает aria-label, без aria-prohibited-attr.",
+    "axe: 0 critical/serious desktop+mobile.",
+    "471 тест OK, pre_deploy 7/7."
+  ],
+  "out_of_scope": [
+    "Не менять бренд-палитру 50–400 (декоративные акценты).",
+    "Не менять сторонние виджеты кроме aria-label."
+  ],
+  "checks": [
+    {
+      "name": "axe_local",
+      "cmd": "BASE_URL=http://127.0.0.1:8799 node scripts/axe_audit.mjs",
+      "cwd": "."
+    },
+    {
+      "name": "full_core",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

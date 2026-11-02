@@ -58,6 +58,15 @@
           center: [55.7558, 37.6173], zoom: 10,
           controls: ['zoomControl']
         });
+        // Логотип Яндекса — ссылка без доступного имени (axe link-name).
+        (function labelYandexLogo(tries) {
+                  var logo = document.querySelector('a[class*="copyright__logo"]');
+                  if (logo) {
+                    if (!logo.getAttribute('aria-label')) logo.setAttribute('aria-label', 'Яндекс Карты');
+                    return;
+                  }
+                  if (tries > 0) window.setTimeout(function () { labelYandexLogo(tries - 1); }, 300);
+                })(20);
         if (geo) {
           var circle = new ymaps.Circle(
             [[geo.lat, geo.lng], geo.radius * 1000],
@@ -94,11 +103,11 @@
     <!-- Фильтр-пилюли статуса (Flask: Все/Новые/Откликнулся — упрощено до публичных статусов) -->
     <div class="flex gap-2 mb-4 flex-wrap">
         <a href="{% url 'core:jobs' %}{% if query_string %}?{{ query_string|default:'' }}{% endif %}"
-           class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if not status %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Все</a>
+           class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if not status %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Все</a>
         <a href="?status=open{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}"
-           class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if status == 'open' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Открытые</a>
+           class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if status == 'open' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Открытые</a>
         <a href="?status=completed{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}"
-           class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if status == 'completed' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Завершённые</a>
+           class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if status == 'completed' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Завершённые</a>
     </div>
 
     <!-- Дополнительные фильтры: оплата до, навык, Новые/Откликнулся -->
@@ -149,7 +158,7 @@
             <div class="absolute right-0 z-30 mt-1 w-64 max-h-64 overflow-y-auto rounded-xl border border-neutral-200 bg-white p-2 shadow-lg">
                 {% for s in skills %}
                 <label class="flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-neutral-50 text-sm text-neutral-700 cursor-pointer">
-                    <input type="checkbox" name="skills" value="{{ s.pk }}" {% if s.pk|stringformat:"s" in selected_skills %}checked{% endif %} class="mt-0.5 rounded border-neutral-300 text-primary-500 focus:ring-primary-500">
+                    <input type="checkbox" name="skills" value="{{ s.pk }}" {% if s.pk|stringformat:"s" in selected_skills %}checked{% endif %} class="mt-0.5 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
                     <span class="min-w-0 break-words">{{ s.name }}</span>
                 </label>
                 {% empty %}
@@ -164,20 +173,20 @@
                 <svg aria-hidden="true" class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
             </summary>
             <div class="absolute left-0 z-30 mt-1 w-full sm:w-56 rounded-xl border border-neutral-200 bg-white p-2 shadow-lg">
-                <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-neutral-50 text-sm text-neutral-700 cursor-pointer"><input type="radio" name="filter" value="" {% if not job_filter %}checked{% endif %} class="border-neutral-300 text-primary-500 focus:ring-primary-500"> Все задания</label>
-                <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-neutral-50 text-sm text-neutral-700 cursor-pointer"><input type="radio" name="filter" value="new" {% if job_filter == 'new' %}checked{% endif %} class="border-neutral-300 text-primary-500 focus:ring-primary-500"> Новые</label>
-                <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-neutral-50 text-sm text-neutral-700 cursor-pointer"><input type="radio" name="filter" value="applied" {% if job_filter == 'applied' %}checked{% endif %} class="border-neutral-300 text-primary-500 focus:ring-primary-500"> Откликнулся</label>
+                <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-neutral-50 text-sm text-neutral-700 cursor-pointer"><input type="radio" name="filter" value="" {% if not job_filter %}checked{% endif %} class="border-neutral-300 text-primary-600 focus:ring-primary-500"> Все задания</label>
+                <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-neutral-50 text-sm text-neutral-700 cursor-pointer"><input type="radio" name="filter" value="new" {% if job_filter == 'new' %}checked{% endif %} class="border-neutral-300 text-primary-600 focus:ring-primary-500"> Новые</label>
+                <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-neutral-50 text-sm text-neutral-700 cursor-pointer"><input type="radio" name="filter" value="applied" {% if job_filter == 'applied' %}checked{% endif %} class="border-neutral-300 text-primary-600 focus:ring-primary-500"> Откликнулся</label>
             </div>
         </details>
         {% endif %}
-        <button type="submit" class="hidden sm:inline-flex items-center px-4 h-9 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors">Применить</button>
+        <button type="submit" class="hidden sm:inline-flex items-center px-4 h-9 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">Применить</button>
         <div class="filter-sheet-actions sm:hidden sticky bottom-0 -mx-4 mt-2 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white border-t border-neutral-200 flex gap-2">
             {% if geo_active %}
             <button type="submit" form="geo-clear-form" class="flex-1 h-11 rounded-xl border border-neutral-200 text-neutral-700 text-sm font-semibold hover:bg-neutral-50">Сбросить</button>
             {% else %}
             <a href="{% url 'core:jobs' %}" class="flex-1 h-11 inline-flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-700 text-sm font-semibold hover:bg-neutral-50">Сбросить</a>
             {% endif %}
-            <button type="submit" class="flex-[2] h-11 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold shadow-sm">Применить{% if active_filter_count %} · {{ active_filter_count }}{% endif %}</button>
+            <button type="submit" class="flex-[2] h-11 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold shadow-sm">Применить{% if active_filter_count %} · {{ active_filter_count }}{% endif %}</button>
         </div>
     </form>
 
@@ -186,7 +195,7 @@
         <span class="text-sm text-neutral-500 self-center mr-1">Сортировка:</span>
         {% for value, label in sort_options %}
         <a href="?sort={{ value }}{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if payment_max %}&payment_max={{ payment_max }}{% endif %}{% if payment_min %}&payment_min={{ payment_min }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if job_filter %}&filter={{ job_filter }}{% endif %}{% if geo_active %}&geo=1&radius={{ radius }}{% endif %}"
-           class="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 {% if sort == value %}bg-primary-500 text-white shadow-sm{% else %}bg-neutral-100 text-neutral-600 hover:bg-neutral-200{% endif %}">{{ label }}</a>
+           class="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 {% if sort == value %}bg-primary-600 text-white shadow-sm{% else %}bg-neutral-100 text-neutral-600 hover:bg-neutral-200{% endif %}">{{ label }}</a>
         {% endfor %}
     </div>
 

@@ -25,7 +25,7 @@
         {% for r in ratings %}
         <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4">
             <div class="flex justify-between gap-2">
-                <a href="{% url 'core:worker_detail' r.rater_user.pk %}" class="text-sm font-medium text-neutral-800 hover:text-primary-600">{{ r.rater_user.full_name }}</a>
+                <a href="{% url 'core:worker_detail' r.rater_user.pk %}" class="text-sm font-medium text-neutral-800 hover:text-primary-700">{{ r.rater_user.full_name }}</a>
                 <span class="inline-flex items-center gap-0.5">{% for i in "12345" %}{% if forloop.counter0 < r.rating %}{% include "core/_ui_icon.html" with name="star" class_name="h-4 w-4 text-warning" %}{% else %}{% include "core/_ui_icon.html" with name="star-outline" class_name="h-4 w-4 text-neutral-300" %}{% endif %}{% endfor %}</span>
             </div>
             {% if r.comment %}<p class="text-sm text-neutral-600 mt-1">{{ r.comment }}</p>{% endif %}

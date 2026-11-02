@@ -7,7 +7,7 @@
     <div class="grid gap-2">
         {% for f in favs %}
         <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 flex items-center justify-between gap-3">
-            <a href="{% url 'core:worker_detail' f.target.pk %}" class="font-semibold text-neutral-900 hover:text-primary-600 transition-colors">{{ f.target.full_name }}</a>
+            <a href="{% url 'core:worker_detail' f.target.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ f.target.full_name }}</a>
             <form method="post" action="{% url 'core:people_favorite_toggle' f.target.pk %}">{% csrf_token %}
                 <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Убрать</span></button>
             </form>

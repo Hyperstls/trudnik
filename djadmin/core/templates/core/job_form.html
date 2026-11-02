@@ -17,7 +17,7 @@
                 <p id="job-draft-meta" class="text-xs text-neutral-600 mt-0.5"></p>
             </div>
             <div class="flex gap-2">
-                <button type="button" id="job-draft-restore" class="px-3 h-9 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold">Продолжить</button>
+                <button type="button" id="job-draft-restore" class="px-3 h-9 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold">Продолжить</button>
                 <button type="button" id="job-draft-discard" class="px-3 h-9 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600 text-sm font-medium">Удалить</button>
             </div>
         </div>
@@ -103,6 +103,15 @@
                   controls: ['zoomControl']
                 });
                 window.__trudnikJobMap = map;
+                // Логотип Яндекса — ссылка без доступного имени (axe link-name).
+                (function labelYandexLogo(tries) {
+                  var logo = document.querySelector('a[class*="copyright__logo"]');
+                  if (logo) {
+                    if (!logo.getAttribute('aria-label')) logo.setAttribute('aria-label', 'Яндекс Карты');
+                    return;
+                  }
+                  if (tries > 0) window.setTimeout(function () { labelYandexLogo(tries - 1); }, 300);
+                })(20);
                 var placemark = new ymaps.Placemark([initLat, initLng], {}, {
                   draggable: true, visible: !!hasCoords, preset: 'islands#orangeIcon'
                 });
@@ -490,7 +499,7 @@
                     <label class="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" name="skills" value="{{ choice.pk }}"
                                {% if choice.pk|stringformat:"s" in selected_skills %}checked{% endif %}
-                               class="rounded border-neutral-300 text-primary-500 focus:ring-primary-500">
+                               class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
                         {{ choice.name }}
                     </label>
                     {% endfor %}
@@ -498,7 +507,7 @@
             </fieldset>
             {% endif %}
             <div class="flex gap-3 pt-3">
-                <button type="submit" class="px-6 h-11 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors shadow-sm">Сохранить</button>
+                <button type="submit" class="px-6 h-11 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm">Сохранить</button>
                 <a href="{% url 'core:my_jobs' %}" class="px-6 h-11 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Отмена</a>
             </div>
         </form>

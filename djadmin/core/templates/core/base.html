@@ -40,7 +40,7 @@
 
     <header class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-neutral-200 shadow-sm">
         <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-            <a href="/" class="flex items-center gap-2.5 shrink-0" aria-label="На главную">
+            <a href="/" class="flex items-center gap-2.5 shrink-0" aria-label="Трудник — на главную">
                 {% include "core/_logo.html" with size=36 id_suffix="hdr" %}
                 <span class="text-lg font-bold tracking-tight text-neutral-800">Трудник</span>
             </a>
@@ -70,11 +70,11 @@
                     <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 </a>
                 {% if user.is_authenticated %}
-                <a href="{% url 'core:job_create' %}" class="hidden sm:inline-flex items-center gap-1.5 px-3.5 h-9 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors shadow-sm" aria-label="Создать задание">
+                <a href="{% url 'core:job_create' %}" class="hidden sm:inline-flex items-center gap-1.5 px-3.5 h-9 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm" aria-label="Создать задание">
                     <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     <span class="hidden lg:inline">Создать</span>
                 </a>
-                <a href="{% url 'core:job_create' %}" class="sm:hidden w-10 h-10 flex items-center justify-center rounded-xl bg-primary-500 hover:bg-primary-600 text-white transition-colors" aria-label="Создать задание">
+                <a href="{% url 'core:job_create' %}" class="sm:hidden w-10 h-10 flex items-center justify-center rounded-xl bg-primary-600 hover:bg-primary-700 text-white transition-colors" aria-label="Создать задание">
                     <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 </a>
                 <a href="{% url 'core:notifications' %}" class="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors" aria-label="Уведомления">
@@ -103,7 +103,7 @@
                 </div>
                 {% else %}
                 <a href="{% url 'core:login' %}" class="hidden md:inline-flex px-4 py-2 rounded-xl text-sm font-semibold text-neutral-700 hover:bg-neutral-100">Войти</a>
-                <a href="{% url 'core:register' %}" class="hidden md:inline-flex px-4 py-2 rounded-xl text-sm font-semibold bg-primary-500 hover:bg-primary-600 text-white">Регистрация</a>
+                <a href="{% url 'core:register' %}" class="hidden md:inline-flex px-4 py-2 rounded-xl text-sm font-semibold bg-primary-600 hover:bg-primary-700 text-white">Регистрация</a>
                 {% endif %}
             </div>
         </div>
@@ -148,7 +148,7 @@
                 <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
         </div>
-        <button type="button" id="install-action" class="mt-2 w-full h-9 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold">Установить</button>
+        <button type="button" id="install-action" class="mt-2 w-full h-9 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold">Установить</button>
     </div>
     <dialog id="install-help" class="rounded-2xl border border-neutral-200 bg-white p-0 shadow-xl" style="width:min(26rem, calc(100vw - 2rem))" aria-labelledby="install-help-title">
         <div class="p-5">
@@ -187,7 +187,7 @@
     {% endwith %}
     {% else %}
     <div class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-neutral-200 flex justify-center md:hidden items-center gap-4 pt-3 pb-3 z-50">
-        <a href="{% url 'core:login' %}" class="bg-primary-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-primary-600 shadow-md">Войти</a>
+        <a href="{% url 'core:login' %}" class="bg-primary-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-primary-700 shadow-md">Войти</a>
         <a href="{% url 'core:register' %}" class="bg-neutral-800 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-neutral-900 shadow-sm">Регистрация</a>
     </div>
     {% endif %}

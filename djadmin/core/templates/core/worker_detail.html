@@ -55,7 +55,7 @@
                         {% for j in my_open_jobs %}<option value="{{ j.id }}">{{ j.work_type|default:"Задание" }} · {{ j.date_time|date:"d.m" }}</option>{% endfor %}
                     </select>
                 </label>
-                <button class="px-4 h-10 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors shadow-sm">Пригласить</button>
+                <button class="px-4 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm">Пригласить</button>
             </form>
             {% endif %}
             <div class="flex gap-2 text-sm">

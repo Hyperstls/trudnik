@@ -18,13 +18,13 @@
             <div class="absolute left-0 z-30 mt-1 w-64 max-h-64 overflow-y-auto rounded-xl border border-neutral-200 bg-white p-2 shadow-lg">
                 {% for s in skills %}
                 <label class="flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-neutral-50 text-sm text-neutral-700 cursor-pointer">
-                    <input type="checkbox" name="skills" value="{{ s.pk }}" {% if s.pk|stringformat:"s" in selected_skills %}checked{% endif %} class="mt-0.5 rounded border-neutral-300 text-primary-500 focus:ring-primary-500">
+                    <input type="checkbox" name="skills" value="{{ s.pk }}" {% if s.pk|stringformat:"s" in selected_skills %}checked{% endif %} class="mt-0.5 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
                     <span class="min-w-0 break-words">{{ s.name }}</span>
                 </label>
                 {% empty %}<p class="px-2 py-1.5 text-sm text-neutral-500">Навыков пока нет</p>{% endfor %}
             </div>
         </details>
-        <button type="submit" class="px-4 h-9 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors">Применить</button>
+        <button type="submit" class="px-4 h-9 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">Применить</button>
         {% if selected_skills %}<a href="?tab={{ tab }}" class="text-sm text-neutral-500 hover:text-neutral-700 underline underline-offset-2">Сбросить</a>{% endif %}
     </form>
 
@@ -34,7 +34,7 @@
     <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-2 mb-3" data-bulk-root data-bulk-form="bulk-apps-form">
         <div class="flex flex-wrap items-center gap-2 mb-2">
             <label class="flex items-center gap-2 text-xs text-neutral-600 cursor-pointer">
-                <input type="checkbox" id="select-all-apps" data-bulk-all class="rounded border-neutral-300 text-primary-500 focus:ring-primary-500"> Выбрать все на странице
+                <input type="checkbox" id="select-all-apps" data-bulk-all class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"> Выбрать все на странице
             </label>
             <output data-bulk-count class="text-xs font-medium text-neutral-500" aria-live="polite">Выбрано: 0</output>
         </div>
@@ -49,14 +49,14 @@
         {% for a in apps %}
         <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 flex flex-wrap items-start justify-between gap-3">
             {% if tab == 'received' %}
-            <input type="checkbox" name="app_ids" value="{{ a.pk }}" form="bulk-apps-form" data-bulk-item class="app-checkbox mt-1 rounded border-neutral-300 text-primary-500 focus:ring-primary-500 shrink-0" aria-label="Выбрать отклик {{ a.worker.full_name|default:a.pk }}">
+            <input type="checkbox" name="app_ids" value="{{ a.pk }}" form="bulk-apps-form" data-bulk-item class="app-checkbox mt-1 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 shrink-0" aria-label="Выбрать отклик {{ a.worker.full_name|default:a.pk }}">
             {% endif %}
             <div class="min-w-0">
                 {% if tab == 'received' %}
-                <a href="{% url 'core:worker_detail' a.worker.pk %}" class="font-semibold text-neutral-900 hover:text-primary-600 transition-colors">{{ a.worker.full_name|default:"Трудник" }}</a>
+                <a href="{% url 'core:worker_detail' a.worker.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ a.worker.full_name|default:"Трудник" }}</a>
                 <p class="text-sm text-neutral-500 mt-0.5">{{ a.job.work_type|default:"Задание" }} · {{ a.job.organization_name }} · {{ a.job.date_time|date:"d.m.Y H:i" }}</p>
                 {% else %}
-                <a href="{% url 'core:job_detail' a.job.pk %}" class="font-semibold text-neutral-900 hover:text-primary-600 transition-colors">{{ a.job.work_type|default:"Задание" }}</a>
+                <a href="{% url 'core:job_detail' a.job.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ a.job.work_type|default:"Задание" }}</a>
                 <p class="text-sm text-neutral-500 mt-0.5">{{ a.job.organization_name }} · {{ a.job.date_time|date:"d.m.Y H:i" }}</p>
                 {% endif %}
                 <p class="text-sm mt-1">
@@ -138,10 +138,10 @@
         </div>
         {% if tab == 'received' %}
         <p class="text-neutral-600 text-lg font-medium">Откликов на ваши задания пока нет</p>
-        <a href="{% url 'core:jobs' %}" class="mt-4 px-5 h-10 inline-flex items-center rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold shadow-sm">Смотреть задания</a>
+        <a href="{% url 'core:jobs' %}" class="mt-4 px-5 h-10 inline-flex items-center rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold shadow-sm">Смотреть задания</a>
         {% else %}
         <p class="text-neutral-600 text-lg font-medium">Откликов пока нет</p>
-        <a href="{% url 'core:jobs' %}" class="mt-4 px-5 h-10 inline-flex items-center rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold shadow-sm">Найти задание</a>
+        <a href="{% url 'core:jobs' %}" class="mt-4 px-5 h-10 inline-flex items-center rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold shadow-sm">Найти задание</a>
         {% endif %}
     </div>
     {% endif %}

@@ -17,9 +17,9 @@
                 <input type="email" name="email" id="email" value="{{ email|default:'' }}" required class="form-input" placeholder="you@example.com" autocomplete="email" autofocus>
             </div>
             <p class="text-xs text-neutral-500">Проверьте папки «Спам» и «Промоакции»: письмо могло попасть туда.</p>
-            <button type="submit" class="w-full px-4 py-2.5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors shadow-sm">Отправить повторно</button>
+            <button type="submit" class="w-full px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm">Отправить повторно</button>
         </form>
-        <p class="mt-4 text-center text-sm"><a href="{% url 'core:login' %}" class="text-neutral-500 hover:text-primary-500 transition-colors">← Ко входу</a></p>
+        <p class="mt-4 text-center text-sm"><a href="{% url 'core:login' %}" class="text-neutral-500 hover:text-primary-600 transition-colors">← Ко входу</a></p>
     </div>
 </div>
 {% endblock %}

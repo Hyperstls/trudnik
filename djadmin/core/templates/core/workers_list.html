@@ -30,7 +30,7 @@
             <div class="absolute right-0 z-30 mt-1 w-64 max-h-64 overflow-y-auto rounded-xl border border-neutral-200 bg-white p-2 shadow-lg">
                 {% for s in skills %}
                 <label class="flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-neutral-50 text-sm text-neutral-700 cursor-pointer">
-                    <input type="checkbox" name="skills" value="{{ s.pk }}" {% if s.pk|stringformat:"s" in selected_skills %}checked{% endif %} class="mt-0.5 rounded border-neutral-300 text-primary-500 focus:ring-primary-500">
+                    <input type="checkbox" name="skills" value="{{ s.pk }}" {% if s.pk|stringformat:"s" in selected_skills %}checked{% endif %} class="mt-0.5 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
                     <span class="min-w-0 break-words">{{ s.name }}</span>
                 </label>
                 {% empty %}<p class="px-2 py-1.5 text-sm text-neutral-500">Навыков нет</p>{% endfor %}
@@ -53,10 +53,10 @@
                 <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>Оплата ↓</option>
             </select>
         </label>
-        <button type="submit" class="hidden sm:inline-flex items-center h-10 px-5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors">Найти</button>
+        <button type="submit" class="hidden sm:inline-flex items-center h-10 px-5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">Найти</button>
         <div class="filter-sheet-actions sm:hidden sticky bottom-0 -mx-4 mt-2 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white border-t border-neutral-200 flex gap-2">
             <a href="{% url 'core:workers' %}" class="flex-1 h-11 inline-flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-700 text-sm font-semibold hover:bg-neutral-50">Сбросить</a>
-            <button type="submit" class="flex-[2] h-11 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold shadow-sm">Найти{% if active_filter_count %} · {{ active_filter_count }}{% endif %}</button>
+            <button type="submit" class="flex-[2] h-11 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold shadow-sm">Найти{% if active_filter_count %} · {{ active_filter_count }}{% endif %}</button>
         </div>
     </form>
 
@@ -74,7 +74,7 @@
                 {% endif %}
                 <div class="flex-1 min-w-0">
                     <h3 class="font-semibold text-neutral-900 truncate">
-                        <a href="{% url 'core:worker_detail' w.pk %}" class="hover:text-primary-600 transition-colors">{{ w.full_name }}</a>
+                        <a href="{% url 'core:worker_detail' w.pk %}" class="hover:text-primary-700 transition-colors">{{ w.full_name }}</a>
                     </h3>
                     <div class="flex flex-wrap gap-1 mt-1">
                         {% if w.pk in reliable_worker_ids %}<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Надёжный</span>{% endif %}
@@ -111,11 +111,11 @@
                                         {% for j in my_open_jobs %}<option value="{{ j.pk }}">{{ j.work_type|default:"Задание" }} · {{ j.date_time|date:"d.m" }}</option>{% endfor %}
                                     </select>
                                 </label>
-                                <button type="submit" class="w-full h-8 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-xs font-semibold">Отправить</button>
+                                <button type="submit" class="w-full h-8 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold">Отправить</button>
                             </form>
                             {% else %}
                             <p class="text-xs text-neutral-600 mb-2">Сначала создайте открытое задание.</p>
-                            <a href="{% url 'core:job_create' %}" class="block text-center h-8 leading-8 rounded-lg bg-primary-500 hover:bg-primary-600 text-white text-xs font-semibold">Создать задание</a>
+                            <a href="{% url 'core:job_create' %}" class="block text-center h-8 leading-8 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold">Создать задание</a>
                             {% endif %}
                         </div>
                     </details>

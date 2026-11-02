@@ -19,7 +19,7 @@
             {% for m in day.list %}
             <div class="flex {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}justify-end{% endif %}">
                 <div class="max-w-[80%]">
-                    <span class="inline-block rounded-2xl px-3.5 py-2 text-sm {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}bg-primary-500 text-white{% else %}bg-neutral-100 text-neutral-800{% endif %}">{{ m.content }}</span>
+                    <span class="inline-block rounded-2xl px-3.5 py-2 text-sm {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}bg-primary-600 text-white{% else %}bg-neutral-100 text-neutral-800{% endif %}">{{ m.content }}</span>
                     <p class="text-[10px] text-neutral-400 mt-0.5 {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}text-right{% endif %}">{{ m.created_at|date:"d.m H:i" }}</p>
                 </div>
             </div>
@@ -39,7 +39,7 @@
             {% csrf_token %}
             <input type="hidden" name="client_message_id" value="{{ client_message_id }}">
             <input type="text" name="content" maxlength="4000" required class="flex-1 border border-neutral-200 rounded-xl px-3 py-2.5 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="Сообщение…">
-            <button class="px-5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors">Отправить</button>
+            <button class="px-5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">Отправить</button>
         </form>
         <p id="chat-send-status" class="px-3 pb-2 text-xs text-neutral-500" role="status" aria-live="polite"></p>
     </div>
@@ -71,7 +71,7 @@
     wrap.className = 'flex' + (mine ? ' justify-end' : '');
     var bubble = document.createElement('span');
     bubble.className = 'inline-block rounded-2xl px-3.5 py-2 text-sm ' +
-      (mine ? 'bg-primary-500 text-white' : 'bg-neutral-100 text-neutral-800');
+      (mine ? 'bg-primary-600 text-white' : 'bg-neutral-100 text-neutral-800');
     bubble.textContent = m.content;
     wrap.appendChild(bubble);
     log.appendChild(wrap);

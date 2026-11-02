@@ -7,17 +7,17 @@
         <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">Мои задания</h2>
     </div>
     <div class="flex flex-wrap gap-2 mb-4" role="tablist" aria-label="Фильтр заданий">
-        <a href="{% url 'core:my_jobs' %}" role="tab" aria-selected="{% if not status %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if not status %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Все</a>
-        <a href="?status=open" role="tab" aria-selected="{% if status == 'open' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if status == 'open' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Открытые</a>
-        <a href="?status=completed" role="tab" aria-selected="{% if status == 'completed' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if status == 'completed' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Завершённые</a>
-        <a href="?status=cancelled" role="tab" aria-selected="{% if status == 'cancelled' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if status == 'cancelled' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Отменённые</a>
+        <a href="{% url 'core:my_jobs' %}" role="tab" aria-selected="{% if not status %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if not status %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Все</a>
+        <a href="?status=open" role="tab" aria-selected="{% if status == 'open' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if status == 'open' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Открытые</a>
+        <a href="?status=completed" role="tab" aria-selected="{% if status == 'completed' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if status == 'completed' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Завершённые</a>
+        <a href="?status=cancelled" role="tab" aria-selected="{% if status == 'cancelled' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if status == 'cancelled' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Отменённые</a>
     </div>
     {% if jobs %}
     <form id="bulk-jobs-form" method="post" action="{% url 'core:my_jobs_bulk' %}">{% csrf_token %}</form>
     <div class="bulk-toolbar rounded-xl border border-neutral-200 bg-neutral-50 p-2 mb-3" data-bulk-root data-bulk-form="bulk-jobs-form">
         <div class="flex flex-wrap items-center gap-2 mb-2">
             <label class="flex items-center gap-2 text-xs text-neutral-600 cursor-pointer">
-                <input type="checkbox" id="select-all-jobs" data-bulk-all class="rounded border-neutral-300 text-primary-500 focus:ring-primary-500"> Выбрать все на странице
+                <input type="checkbox" id="select-all-jobs" data-bulk-all class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"> Выбрать все на странице
             </label>
             <output data-bulk-count class="text-xs font-medium text-neutral-500" aria-live="polite">Выбрано: 0</output>
         </div>
@@ -32,9 +32,9 @@
         {% for job in jobs %}
         <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4">
             <div class="flex flex-wrap items-start justify-between gap-3">
-                <input type="checkbox" name="job_ids" value="{{ job.pk }}" form="bulk-jobs-form" data-bulk-item data-job-status="{{ job.status }}" class="mt-1 rounded border-neutral-300 text-primary-500 focus:ring-primary-500 shrink-0" aria-label="Выбрать задание {{ job.work_type|default:job.pk }}">
+                <input type="checkbox" name="job_ids" value="{{ job.pk }}" form="bulk-jobs-form" data-bulk-item data-job-status="{{ job.status }}" class="mt-1 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 shrink-0" aria-label="Выбрать задание {{ job.work_type|default:job.pk }}">
                 <div class="min-w-0 flex-1">
-                    <a href="{% url 'core:job_detail' job.pk %}" class="font-semibold text-neutral-900 hover:text-primary-600 transition-colors">{{ job.work_type|default:"Задание" }}</a>
+                    <a href="{% url 'core:job_detail' job.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ job.work_type|default:"Задание" }}</a>
                     <p class="text-sm text-neutral-500 mt-0.5">{{ job.organization_name|default:"Частное лицо" }} · {{ job.get_status_display }} · {{ job.date_time|date:"d.m.Y H:i" }}</p>
                 </div>
                 <div class="flex flex-wrap gap-2 text-sm w-full sm:w-auto sm:justify-end">

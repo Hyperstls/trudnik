@@ -6,10 +6,10 @@
     <h2 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-4">Избранное</h2>
 
     <div class="flex flex-wrap gap-2 mb-4" role="tablist" aria-label="Разделы избранного">
-        <a href="?tab=all" role="tab" aria-selected="{% if tab == 'all' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if tab == 'all' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Все · {{ total_count }}</a>
-        <a href="?tab=jobs" role="tab" aria-selected="{% if tab == 'jobs' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if tab == 'jobs' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Задания · {{ jobs_count }}</a>
-        <a href="?tab=workers" role="tab" aria-selected="{% if tab == 'workers' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if tab == 'workers' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Трудники · {{ workers_count }}</a>
-        <a href="?tab=employers" role="tab" aria-selected="{% if tab == 'employers' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if tab == 'employers' %}bg-primary-500 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Работодатели · {{ employers_count }}</a>
+        <a href="?tab=all" role="tab" aria-selected="{% if tab == 'all' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if tab == 'all' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Все · {{ total_count }}</a>
+        <a href="?tab=jobs" role="tab" aria-selected="{% if tab == 'jobs' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if tab == 'jobs' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Задания · {{ jobs_count }}</a>
+        <a href="?tab=workers" role="tab" aria-selected="{% if tab == 'workers' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if tab == 'workers' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Трудники · {{ workers_count }}</a>
+        <a href="?tab=employers" role="tab" aria-selected="{% if tab == 'employers' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if tab == 'employers' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Работодатели · {{ employers_count }}</a>
     </div>
 
     {% if total_count == 0 %}
@@ -20,7 +20,7 @@
         <p class="text-neutral-600 text-lg font-medium">В избранном пока пусто</p>
         <p class="text-sm text-neutral-500 mt-1">Сохраняйте задания, трудников и работодателей, чтобы быстро возвращаться к ним.</p>
         <div class="mt-5 flex flex-wrap justify-center gap-2">
-            <a href="{% url 'core:jobs' %}" class="px-4 h-10 inline-flex items-center rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold shadow-sm">Найти задание</a>
+            <a href="{% url 'core:jobs' %}" class="px-4 h-10 inline-flex items-center rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold shadow-sm">Найти задание</a>
             <a href="{% url 'core:workers' %}" class="px-4 h-10 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">Найти трудника</a>
             <a href="{% url 'core:employers' %}" class="px-4 h-10 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">Работодатели</a>
         </div>
@@ -37,9 +37,9 @@
         <div class="grid gap-3">
             {% for f in job_favs %}
             <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 flex flex-wrap items-start justify-between gap-3">
-                <input type="checkbox" name="ids" value="{{ f.job.pk }}" form="favorites-jobs-bulk" class="mt-1 rounded border-neutral-300 text-primary-500 focus:ring-primary-500 shrink-0" aria-label="Выбрать задание {{ f.job.work_type|default:f.job.pk }}">
+                <input type="checkbox" name="ids" value="{{ f.job.pk }}" form="favorites-jobs-bulk" class="mt-1 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 shrink-0" aria-label="Выбрать задание {{ f.job.work_type|default:f.job.pk }}">
                 <div class="min-w-0 flex-1">
-                    <a href="{% url 'core:job_detail' f.job.pk %}" class="font-semibold text-neutral-900 hover:text-primary-600 transition-colors">{{ f.job.work_type|default:"Задание" }}</a>
+                    <a href="{% url 'core:job_detail' f.job.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ f.job.work_type|default:"Задание" }}</a>
                     <p class="text-sm text-neutral-500 mt-0.5">{{ f.job.organization_name|default:"Частное лицо" }}{% if f.job.city %} · {{ f.job.city }}{% endif %} · {{ f.job.date_time|date:"d.m.Y H:i" }}</p>
                     <div class="flex flex-wrap items-center gap-2 mt-1">
                         <span class="text-xs text-neutral-500">{{ f.job.get_status_display }}</span>
@@ -68,14 +68,14 @@
             {% for f in worker_favs %}
             <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4">
                 <div class="flex flex-wrap items-start gap-3">
-                    <input type="checkbox" name="ids" value="{{ f.target.pk }}" form="favorites-workers-bulk" class="mt-1 rounded border-neutral-300 text-primary-500 focus:ring-primary-500 shrink-0" aria-label="Выбрать трудника {{ f.target.full_name }}">
+                    <input type="checkbox" name="ids" value="{{ f.target.pk }}" form="favorites-workers-bulk" class="mt-1 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 shrink-0" aria-label="Выбрать трудника {{ f.target.full_name }}">
                     {% if f.target.avatar_url or f.target.photo_url %}
                     <img src="{{ f.target.avatar_url|default:f.target.photo_url|absurl }}" alt="{{ f.target.full_name }}" loading="lazy" class="w-12 h-12 rounded-full object-cover border border-neutral-200 shrink-0">
                     {% else %}
                     <div class="w-12 h-12 rounded-full bg-primary-50 border border-neutral-200 flex items-center justify-center text-primary-600 font-semibold shrink-0">{{ f.target.full_name|slice:":1" }}</div>
                     {% endif %}
                     <div class="min-w-0 flex-1">
-                        <a href="{% url 'core:worker_detail' f.target.pk %}" class="font-semibold text-neutral-900 hover:text-primary-600 transition-colors">{{ f.target.full_name|default:"Трудник" }}</a>
+                        <a href="{% url 'core:worker_detail' f.target.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ f.target.full_name|default:"Трудник" }}</a>
                         <p class="text-sm text-neutral-500 mt-0.5">{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline text-warning" %} {{ f.target.rating|default:0|floatformat:1 }} ({{ f.target.total_reviews|default:0 }}){% if f.target.city %} · {{ f.target.city }}{% endif %}</p>
                         {% if f.target.desired_payment %}<p class="text-sm text-primary-600 font-medium mt-0.5">от {{ f.target.desired_payment }} ₽</p>{% endif %}
                     </div>
@@ -116,9 +116,9 @@
         <div class="grid gap-3">
             {% for f in employer_favs %}
             <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 flex flex-wrap items-start justify-between gap-3">
-                <input type="checkbox" name="ids" value="{{ f.target.pk }}" form="favorites-employers-bulk" class="mt-1 rounded border-neutral-300 text-primary-500 focus:ring-primary-500 shrink-0" aria-label="Выбрать работодателя {{ f.target.full_name }}">
+                <input type="checkbox" name="ids" value="{{ f.target.pk }}" form="favorites-employers-bulk" class="mt-1 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 shrink-0" aria-label="Выбрать работодателя {{ f.target.full_name }}">
                 <div class="min-w-0 flex-1">
-                    <a href="{% url 'core:employer_detail' f.target.pk %}" class="font-semibold text-neutral-900 hover:text-primary-600 transition-colors">{{ f.target.full_name|default:"Работодатель" }}</a>
+                    <a href="{% url 'core:employer_detail' f.target.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ f.target.full_name|default:"Работодатель" }}</a>
                     <p class="text-sm text-neutral-500 mt-0.5">{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline text-warning" %} {{ f.target.rating|default:0|floatformat:1 }} ({{ f.target.total_reviews|default:0 }}){% if f.target.city %} · {{ f.target.city }}{% endif %}</p>
                     {% if f.target.verification_status == 'approved' %}<span class="inline-flex items-center gap-0.5 mt-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-[11px] font-semibold">{% include "core/_ui_icon.html" with name="check" class_name="h-3 w-3" %} Проверен</span>{% endif %}
                 </div>

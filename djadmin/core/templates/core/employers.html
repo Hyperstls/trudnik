@@ -22,7 +22,7 @@
                 <option value="jobs_count" {% if sort == 'jobs_count' %}selected{% endif %}>По заданиям</option>
             </select>
         </label>
-        <button type="submit" class="h-10 px-5 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold transition-colors">Найти</button>
+        <button type="submit" class="h-10 px-5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">Найти</button>
     </form>
 
     {% if page.object_list %}
@@ -39,7 +39,7 @@
                     </div>
                     {% endif %}
                     <div class="min-w-0 flex-1">
-                        <h3 class="font-semibold text-neutral-900 truncate hover:text-primary-600 transition-colors">{{ w.full_name }}</h3>
+                        <h3 class="font-semibold text-neutral-900 truncate hover:text-primary-700 transition-colors">{{ w.full_name }}</h3>
                         <div class="flex items-center gap-0.5 mt-0.5">
                             {% for i in "12345" %}{% if forloop.counter0 < w.rating|default:0 %}{% include "core/_ui_icon.html" with name="star" class_name="h-3 w-3 text-warning" %}{% else %}{% include "core/_ui_icon.html" with name="star-outline" class_name="h-3 w-3 text-neutral-300" %}{% endif %}{% endfor %}
                             <span class="text-xs text-neutral-400 ml-1">({{ w.total_reviews|default:0 }})</span>
