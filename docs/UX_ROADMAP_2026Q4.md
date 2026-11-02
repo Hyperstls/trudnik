@@ -80,7 +80,7 @@
 - запуск по расписанию/вручную, не блокировать каждый PR до стабилизации;
 - реализовано: `.github/workflows/ux-quality.yml`, `.lighthouserc.json`, `scripts/axe_audit.mjs` (desktop+mobile, critical axe).
 - J121 (2026-11-02): axe-аудит 5 страниц (`/jobs`, `/login`, `/workers`, `/register`, `/search`) desktop+mobile — **0 critical/serious**; `primary-600` для кнопок/ссылок, доступные имена логотипа и ссылки Яндекса; в отчёт добавлены serious-warnings.
-- J125 (2026-11-03): Inter self-hosted (cyrillic/latin), Google Fonts удалён — меньше render-blocking и нет трансграничной передачи в Google;
+- J125 (2026-11-03): Inter self-hosted (cyrillic/latin), Google Fonts удалён — Lighthouse mobile: performance 70→**96**, LCP 4.5→**1.9 s**, FCP 4.5→**1.4 s**, CLS 0; нет трансграничной передачи в Google;
 - публиковать отчёт в artifacts; порог: 0 critical axe, LCP < 2.5s.
 
 ## P3 — Прочее
