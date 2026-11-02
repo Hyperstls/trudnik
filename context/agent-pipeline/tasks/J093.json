@@ -1,0 +1,31 @@
+{
+  "id": "J093",
+  "title": "P1: дайджест учитывает per-search notify",
+  "goal": "notify_saved_searches пропускает сохранённые поиски с notify=False; покрыто тестом.",
+  "why": "UI-переключатель J092 должен реально влиять на дайджест. Фильтр и тест выделены в отдельный контракт, чтобы попасть в review-пакет.",
+  "files": [
+    "djadmin/core/tasks.py",
+    "djadmin/core/tests/test_tasks.py"
+  ],
+  "context_files": [
+    "djadmin/core/views.py"
+  ],
+  "interfaces": "tasks.notify_saved_searches: перед обработкой item if item.get('notify', True) is False: continue; старые поиски без notify считаются подписанными. test_notify_off_skips_digest: notify=False + подходящее задание → нет outbox saved_search.",
+  "acceptance": [
+    "notify=False исключает поиск из дайджеста.",
+    "Старые поиски без notify включены.",
+    "notify=True работает как раньше.",
+    "Тест проходит."
+  ],
+  "out_of_scope": [
+    "Не менять UI/сохранение поисков.",
+    "Не менять частоту дайджеста."
+  ],
+  "checks": [
+    {
+      "name": "digest_notify_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_tasks.SavedSearchDigestTests.test_notify_off_skips_digest --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

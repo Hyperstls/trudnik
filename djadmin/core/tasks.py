@@ -316,6 +316,8 @@ def notify_saved_searches() -> str:
         found = []
         seen = set()
         for item in searches[:10]:
+            if item.get("notify", True) is False:
+                continue
             name = item.get("name") or "Мой поиск"
             for job in _saved_search_jobs(user, item, since):
                 if job.pk in seen:

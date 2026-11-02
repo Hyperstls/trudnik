@@ -23,6 +23,11 @@
         {% for item in saved_searches %}
         <span class="inline-flex items-center rounded-full border border-primary-200 bg-primary-50 text-xs overflow-hidden">
             <a href="{{ item.url }}" class="px-2.5 py-1.5 text-primary-700 hover:text-primary-800 font-medium">{{ item.name }}</a>
+            <form method="post" action="{% url 'core:toggle_search' item.id %}" class="inline">{% csrf_token %}
+                <button class="px-1.5 py-1.5 {% if item.notify %}text-primary-600{% else %}text-neutral-400{% endif %} hover:text-primary-800" title="{% if item.notify %}Уведомления включены{% else %}Уведомления выключены{% endif %}" aria-label="{% if item.notify %}Выключить уведомления{% else %}Включить уведомления{% endif %} для поиска {{ item.name }}">
+                    {% if item.notify %}🔔{% else %}🔕{% endif %}
+                </button>
+            </form>
             <form method="post" action="{% url 'core:delete_search' item.id %}" class="inline">{% csrf_token %}
                 <button class="px-1.5 py-1.5 text-primary-600 hover:text-red-600" aria-label="Удалить сохранённый поиск {{ item.name }}">×</button>
             </form>

@@ -62,6 +62,7 @@
 | J089 | Выравнивание радиуса, кастомный dropdown типа задания без overflow на mobile |
 | J090 | /my-jobs mobile: короткие подписи массовых кнопок, меню «⋯» как bottom sheet |
 | J091 | Дневной дайджест по сохранённым поискам через outbox/Celery |
+| J092–J093 | Per-search колокольчик уведомлений; дайджест пропускает notify=False |
 
 Подробно о гео-логике и 152-ФЗ: [GEO_UX_PRIVACY.md](GEO_UX_PRIVACY.md).
 

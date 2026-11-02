@@ -1,0 +1,33 @@
+{
+  "id": "J092",
+  "title": "P1: подписка на уведомления для каждого сохранённого поиска",
+  "goal": "В чипе сохранённого поиска можно включить/выключить уведомления; флаг notify сохраняется и переключается.",
+  "why": "Пользователю нужен контроль: один поиск — срочный, другой — только для ручного просмотра.",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/urls.py",
+    "djadmin/core/templates/core/jobs_list.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/tasks.py"
+  ],
+  "interfaces": "views: _saved_searches отдаёт notify default true; save_search сохраняет notify True; toggle_search POST id инвертирует notify, redirect jobs. urls: /searches/<id>/toggle. jobs_list: в чипе форма toggle с колокольчиком (aria-label/ title), delete остаётся. tasks.notify_saved_searches пропускает item notify=False. Tests: default true; toggle false; digest не создаёт уведомление при notify=False; повторный toggle true.",
+  "acceptance": [
+    "Новый поиск подписан на уведомления.",
+    "Колокольчик в чипе переключает notify.",
+    "Повторное включение возвращает подписку.",
+    "Удаление/toggle защищены CSRF и владением prefs."
+  ],
+  "out_of_scope": [
+    "Не менять частоту дайджеста.",
+    "Не добавлять per-search instant push."
+  ],
+  "checks": [
+    {
+      "name": "toggle_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.SavedSearchTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

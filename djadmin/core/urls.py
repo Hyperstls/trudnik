@@ -16,6 +16,7 @@ urlpatterns = [
     path("api/geo/suggest", views_geo.geo_suggest, name="geo_suggest"),
     path("searches/save", views.save_search, name="save_search"),
     path("searches/<str:search_id>/delete", views.delete_search, name="delete_search"),
+    path("searches/<str:search_id>/toggle", views.toggle_search, name="toggle_search"),
     path("search", RedirectView.as_view(pattern_name="core:jobs", permanent=False, query_string=True), name="search"),
     path("jobs/new", views_flow.job_create, name="job_create"),
     path("jobs/<uuid:job_id>", views.job_detail, name="job_detail"),

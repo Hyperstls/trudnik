@@ -226,6 +226,20 @@ class SavedSearchDigestTests(TestCase):
             NotificationOutbox.objects.filter(user=self.user, type="saved_search").exists()
         )
 
+    def test_notify_off_skips_digest(self):
+        from core.models import NotificationOutbox
+        self.user.notification_prefs = {
+            "saved_searches": [{
+                "id": "s1", "name": "Москва", "query": "city=Москва", "notify": False,
+            }],
+        }
+        self.user.save(update_fields=["notification_prefs"])
+        make_job(make_profile("digest-off@example.com"), city="Москва")
+        notify_saved_searches()
+        self.assertFalse(
+            NotificationOutbox.objects.filter(user=self.user, type="saved_search").exists()
+        )
+
     def test_own_job_excluded(self):
         from core.models import NotificationOutbox
         make_job(self.user, work_type="Своя задача", city="Москва")

@@ -156,6 +156,7 @@ def _saved_searches(user):
             "id": item["id"],
             "name": item.get("name") or "Мой поиск",
             "url": reverse("core:jobs") + "?" + item["query"],
+            "notify": item.get("notify", True) is not False,
         })
     return result
 
@@ -195,11 +196,36 @@ def save_search(request):
     if any(item.get("query") == data["query"] for item in items):
         messages.info(request, "Такой поиск уже сохранён.")
         return redirect(reverse("core:jobs") + (("?" + data["query"]) if data["query"] else ""))
-    items.insert(0, {"id": uuid.uuid4().hex, "name": data["name"], "query": data["query"]})
+    items.insert(0, {
+        "id": uuid.uuid4().hex, "name": data["name"], "query": data["query"],
+        "notify": True,
+    })
     prefs["saved_searches"] = items[:10]
     Profile.objects.filter(pk=request.user.pk).update(notification_prefs=prefs)
     messages.success(request, "Поиск сохранён.")
     return redirect(reverse("core:jobs") + (("?" + data["query"]) if data["query"] else ""))
+
+
+@login_required
+@require_POST
+def toggle_search(request, search_id):
+    prefs = request.user.notification_prefs or {}
+    items = prefs.get("saved_searches") if isinstance(prefs.get("saved_searches"), list) else []
+    found = False
+    updated = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        if item.get("id") == search_id:
+            item = dict(item)
+            item["notify"] = item.get("notify", True) is False
+            found = True
+        updated.append(item)
+    if found:
+        prefs["saved_searches"] = updated[:10]
+        Profile.objects.filter(pk=request.user.pk).update(notification_prefs=prefs)
+        messages.info(request, "Настройка уведомлений поиска обновлена.")
+    return redirect("core:jobs")
 
 
 @login_required

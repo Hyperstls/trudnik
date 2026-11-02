@@ -2169,3 +2169,77 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review
 
 **Пакет:** context/agent-pipeline/packs/J091.review.prompt.md
+
+## 2026-11-02 12:00:13 — J092: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** baseline after edits
+
+**Дрейф, который обойдён:** ['djadmin/core/tasks.py', 'djadmin/core/tests/test_tasks.py']
+
+## 2026-11-02 12:09:24 — J092: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** split digest filter into J093 for review scope
+
+**Переход:** reviewing → fixing
+
+## 2026-11-02 12:09:24 — J092: контракт обновлён
+
+**Причина:** UI-only contract; digest filter split to J093
+
+**Проверки до:** ['toggle_test']
+
+**Проверки после:** ['toggle_test']
+
+## 2026-11-02 12:09:36 — J093: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** baseline after edit
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 12:09:38 — J092: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** UI split
+
+**Дрейф, который обойдён:** ['djadmin/core/tasks.py', 'djadmin/core/tests/test_tasks.py']
+
+## 2026-11-02 12:12:41 — J093: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** rebuild baseline before notify edits
+
+**Переход:** reviewing → planned
+
+**Сброс:** attempts=0, review_rounds=0
+
+## 2026-11-02 12:12:42 — J093: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** baseline rebuilt
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 12:12:50 — J092: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J092.review.prompt.md
+
+## 2026-11-02 12:14:17 — J093: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J093.review.prompt.md

@@ -1176,6 +1176,19 @@ class SavedSearchTests(TestCase):
         self.user.refresh_from_db()
         self.assertEqual(self.user.notification_prefs["saved_searches"], [])
 
+    def test_saved_search_notify_toggle(self):
+        skill = Skill.objects.create(name="Toggle навык", sort_order=1)
+        self.client.post(reverse("core:save_search"), {"q": "toggle", "skills": str(skill.pk)})
+        self.user.refresh_from_db()
+        item = self.user.notification_prefs["saved_searches"][0]
+        self.assertTrue(item["notify"])
+        self.client.post(reverse("core:toggle_search", args=[item["id"]]))
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.notification_prefs["saved_searches"][0]["notify"])
+        self.client.post(reverse("core:toggle_search", args=[item["id"]]))
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.notification_prefs["saved_searches"][0]["notify"])
+
     def test_empty_search_not_saved(self):
         self.client.post(reverse("core:save_search"), {})
         self.user.refresh_from_db()
