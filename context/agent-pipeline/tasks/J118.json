@@ -1,0 +1,40 @@
+{
+  "id": "J118",
+  "title": "P2: зависимости и шрифты для OG + консолидация запроса /workers",
+  "goal": "Pillow и кириллические DejaVu-шрифты доступны в проде; тесты OG; /workers считает accepted/rejected одним запросом.",
+  "why": "Без Pillow и шрифтов генератор OG не работает; два отдельных COUNT-запроса по applications избыточны.",
+  "files": [
+    "djadmin/requirements.txt",
+    "djadmin/core/tests/test_public_views.py",
+    "static/fonts/DejaVuSans.ttf",
+    "static/fonts/DejaVuSans-Bold.ttf"
+  ],
+  "context_files": [
+    "djadmin/core/views.py",
+    "docs/UX_ROADMAP_2026Q4.md"
+  ],
+  "interfaces": "requirements: pillow==12.2.0. fonts: DejaVuSans.ttf/DejaVuSans-Bold.ttf (кириллица, свободная лицензия). views.workers_list: Application.objects.filter(worker_id__in, status__in=(accepted,rejected)).values_list(worker_id,status) → Counter. tests: JobOgImageTests (PNG, 404 private, meta URL).",
+  "acceptance": [
+    "Pillow закреплён в requirements.",
+    "Шрифты лежат в static/fonts и попадают в образ.",
+    "OG-тесты проходят.",
+    "/workers отдаёт те же reliable/invited данные.",
+    "Полный core зелёный."
+  ],
+  "out_of_scope": [
+    "Не менять UI /workers.",
+    "Не менять логику надёжности."
+  ],
+  "checks": [
+    {
+      "name": "og_and_workers",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.JobOgImageTests --keepdb -v 1",
+      "cwd": "."
+    },
+    {
+      "name": "full_core",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

@@ -85,7 +85,7 @@
 
 - `YANDEX_SUGGEST_API_KEY` добавлен в env Amvera (2026-11-01); J079: серверный POST-прокси `/api/geo/suggest`, ключ не в HTML; fallback Geocoder;
 - J111 (2026-11-02): серверный Geocoder-прокси `/api/geo/geocode` (`YANDEX_GEOCODER_KEY`), клик по карте/поиск адреса не зависят от прав JavaScript-ключа; встроенный `searchControl` убран;
-- per-job OG-картинка с текстом (сейчас фото/брендовый fallback + OG title/description);
+- J117–J118 (2026-11-02): per-job OG-картинка 1200×630 генерируется на сервере (Pillow + DejaVu, заголовок/оплата/город/дата), кэш 1 час, `/jobs/<id>/og.png`; фото и брендовый fallback больше не нужны;
 - PWA-install баннер на `/app` не показывается (страница сама установочная);
 - offline-очередь чата и «отправить при появлении сети»;
 - метрики воронки: просмотр → отклик, создание → публикация, install → return.

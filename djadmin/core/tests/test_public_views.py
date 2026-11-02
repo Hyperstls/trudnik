@@ -87,7 +87,7 @@ class PublicViewsTests(TestCase):
         self.assertContains(response, "Уборка территории")
         self.assertContains(response, "Москва")
         self.assertContains(response, 'property="og:image"')
-        self.assertContains(response, "og-preview.png")
+        self.assertContains(response, "/og.png")
         self.assertContains(response, 'name="twitter:image"')
 
     def test_payment_max_filter(self):
@@ -1461,3 +1461,30 @@ class EmployersNavigationTests(TestCase):
         employers = self.client.get(reverse("core:employers"))
         self.assertContains(employers, reverse("core:workers"))
         self.assertContains(employers, "Задания")
+
+
+class JobOgImageTests(TestCase):
+    def test_generated_og_image(self):
+        employer = make_profile("og-employer@example.com", role="employer")
+        job = make_job(
+            employer, work_type="Покраска забора", city="Москва",
+            payment_amount=2500, address="ул. Ленина, 1",
+        )
+        response = self.client.get(reverse("core:job_og_image", args=[job.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "image/png")
+        self.assertTrue(response.content.startswith(b"\x89PNG\r\n\x1a\n"))
+        self.assertGreater(len(response.content), 5000)
+        self.assertIn("max-age=3600", response["Cache-Control"])
+
+    def test_private_job_og_is_hidden(self):
+        employer = make_profile("og-private@example.com", role="employer")
+        job = make_job(employer, status="draft")
+        response = self.client.get(reverse("core:job_og_image", args=[job.pk]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_detail_page_uses_generated_og(self):
+        employer = make_profile("og-detail@example.com", role="employer")
+        job = make_job(employer, work_type="OG detail")
+        response = self.client.get(reverse("core:job_detail", args=[job.pk]))
+        self.assertContains(response, "/jobs/%s/og.png" % job.pk)
