@@ -615,6 +615,10 @@ class LegalFallbackTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Политика конфиденциальности")
         self.assertContains(response, "1. Общие положения")
+        self.assertContains(response, "версия 1.2")
+        self.assertContains(response, "10.5. Черновик задания")
+        self.assertContains(response, "14.5. Обезличенная статистика")
+        self.assertContains(response, "Яндекс.Карты")
 
     def test_terms_fallback_without_site_page(self):
         response = self.client.get(reverse("core:terms"))
