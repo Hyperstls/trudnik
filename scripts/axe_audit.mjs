@@ -3,6 +3,7 @@
  * Run after: npm install --no-save playwright @axe-core/playwright
  *            npx playwright install --with-deps chromium
  */
+import { writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 import AxeBuilder from '@axe-core/playwright';
 
@@ -45,6 +46,7 @@ for (const viewport of viewports) {
   await context.close();
 }
 await browser.close();
+writeFileSync('axe-report.json', JSON.stringify({base, generated_at: new Date().toISOString(), failures}, null, 2));
 if (failures.length) {
   console.error('axe critical violations:\n' + failures.join('\n'));
   process.exit(1);

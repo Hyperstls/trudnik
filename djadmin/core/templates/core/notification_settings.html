@@ -67,7 +67,7 @@
             <a href="{% url 'core:jobs' %}" class="text-sm text-neutral-700 truncate">{{ item.name }}</a>
             <form method="post" action="{% url 'core:toggle_search' item.id %}" class="inline-flex items-center gap-1">{% csrf_token %}
                 <input type="hidden" name="next" value="{% url 'core:notification_prefs' %}">
-                <button class="px-2 h-8 rounded-lg border border-neutral-200 text-sm" title="{% if item.notify %}Выключить уведомления{% else %}Включить уведомления{% endif %}">{% if item.notify %}🔔{% else %}🔕{% endif %}</button>
+                <button class="px-2 h-8 rounded-lg border border-neutral-200 text-sm" title="{% if item.notify %}Выключить уведомления{% else %}Включить уведомления{% endif %}">{% if item.notify %}{% include "core/_ui_icon.html" with name="bell" class_name="h-4 w-4" %}{% else %}{% include "core/_ui_icon.html" with name="bell-off" class_name="h-4 w-4" %}{% endif %}</button>
             </form>
         </div>
         {% empty %}

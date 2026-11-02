@@ -41,11 +41,11 @@
                     <div class="min-w-0 flex-1">
                         <h3 class="font-semibold text-neutral-900 truncate hover:text-primary-600 transition-colors">{{ w.full_name }}</h3>
                         <div class="flex items-center gap-0.5 mt-0.5">
-                            {% for i in "12345" %}{% if forloop.counter0 < w.rating|default:0 %}<span class="text-warning text-xs">★</span>{% else %}<span class="text-neutral-300 text-xs">★</span>{% endif %}{% endfor %}
+                            {% for i in "12345" %}{% if forloop.counter0 < w.rating|default:0 %}{% include "core/_ui_icon.html" with name="star" class_name="h-3 w-3 text-warning" %}{% else %}{% include "core/_ui_icon.html" with name="star-outline" class_name="h-3 w-3 text-neutral-300" %}{% endif %}{% endfor %}
                             <span class="text-xs text-neutral-400 ml-1">({{ w.total_reviews|default:0 }})</span>
                         </div>
                         {% if w.verification_status == 'approved' %}
-                        <span class="inline-flex items-center gap-0.5 mt-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-[11px] font-semibold">✓ Проверен</span>
+                        <span class="inline-flex items-center gap-0.5 mt-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-[11px] font-semibold">{% include "core/_ui_icon.html" with name="check" class_name="h-3 w-3" %} Проверен</span>
                         {% endif %}
                     </div>
                 </div>

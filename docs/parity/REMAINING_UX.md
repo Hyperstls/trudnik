@@ -75,6 +75,8 @@
 | J104–J105 | Частота дайджеста: сразу (5 мин) / раз в день / выключено |
 | J106 | CSS design tokens foundation |
 | J107 | UI EmptyState/Button includes + adoption в /my-jobs |
+| J108 | Lighthouse + axe-core CI (manual/weekly, artifacts) |
+| J109–J110 | SVG sprite: колокольчики, plus, звёзды, галочки |
 
 Подробно о гео-логике и 152-ФЗ: [GEO_UX_PRIVACY.md](GEO_UX_PRIVACY.md).
 

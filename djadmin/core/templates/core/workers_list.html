@@ -81,7 +81,7 @@
                         {% if w.pk in invited_worker_ids %}<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-50 text-primary-700 border border-primary-100">Приглашён</span>{% endif %}
                     </div>
                     <div class="flex items-center gap-0.5 mt-0.5">
-                        {% for i in "12345" %}{% if forloop.counter0 < w.rating|default:0 %}<span class="text-warning text-xs">★</span>{% else %}<span class="text-neutral-300 text-xs">★</span>{% endif %}{% endfor %}
+                        {% for i in "12345" %}{% if forloop.counter0 < w.rating|default:0 %}{% include "core/_ui_icon.html" with name="star" class_name="h-3 w-3 text-warning" %}{% else %}{% include "core/_ui_icon.html" with name="star-outline" class_name="h-3 w-3 text-neutral-300" %}{% endif %}{% endfor %}
                         <span class="text-xs text-neutral-400 ml-1">({{ w.total_reviews|default:0 }})</span>
                     </div>
                     {% if w.city %}<p class="text-xs text-neutral-500 mt-0.5">{{ w.city }}</p>{% endif %}

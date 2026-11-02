@@ -151,14 +151,14 @@
                 {% else %}
                 <a href="{% url 'core:worker_detail' employer.pk %}" class="font-medium hover:text-primary-600 transition-colors">{{ employer.full_name|default:"Работодатель" }}</a>
                 {% endif %}
-                {% if employer.verification_status == 'approved' %}<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">✓ Подтверждён</span>{% endif %}
-                <span class="text-neutral-500"> · ★ {{ employer.rating|default:0|floatformat:1 }} ({{ employer.total_reviews|default:0 }})</span>
+                {% if employer.verification_status == 'approved' %}<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{% include "core/_ui_icon.html" with name="check" class_name="h-3 w-3" %} Подтверждён</span>{% endif %}
+                <span class="text-neutral-500"> · {% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline" %} {{ employer.rating|default:0|floatformat:1 }} ({{ employer.total_reviews|default:0 }})</span>
             </p>
             {% if employer_reviews %}
             <ul class="mt-2 space-y-2">
                 {% for r in employer_reviews %}
                 <li class="text-sm text-neutral-600">
-                    <span class="font-medium text-neutral-800">{{ r.rating }}★</span>
+                    <span class="font-medium text-neutral-800">{{ r.rating }}{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline" %}</span>
                     {{ r.comment|default:"без комментария" }}
                 </li>
                 {% endfor %}

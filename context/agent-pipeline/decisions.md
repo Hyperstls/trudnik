@@ -2597,3 +2597,75 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Почему:** no tailwind changes
 
 **Дрейф, который обойдён:** []
+
+## 2026-11-02 16:21:26 — J109: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 16:22:04 — J110: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 16:35:43 — J109: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J109.review.prompt.md
+
+## 2026-11-02 16:35:43 — J110: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** review: axe artifact + SVG sizes/color/test
+
+**Переход:** reviewing → fixing
+
+## 2026-11-02 16:35:43 — J110: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** ['.github/workflows/ux-quality.yml', 'djadmin/core/tests/test_public_views.py', 'scripts/axe_audit.mjs']
+
+## 2026-11-02 16:35:44 — J108: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** review: axe report artifact
+
+**Переход:** reviewing → fixing
+
+## 2026-11-02 16:35:44 — J108: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** no tailwind changes
+
+**Дрейф, который обойдён:** ['djadmin/core/templates/core/_ui_icon.html', 'djadmin/core/templates/core/employers.html', 'djadmin/core/templates/core/job_detail.html', 'djadmin/core/templates/core/jobs_list.html', 'djadmin/core/templates/core/notification_settings.html', 'djadmin/core/templates/core/profile.html', 'djadmin/core/templates/core/workers_list.html', 'djadmin/core/tests/test_public_views.py', 'static/icons/sprite.svg']
+
+## 2026-11-02 16:43:16 — J108: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J108.review.prompt.md
+
+## 2026-11-02 16:43:16 — J110: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J110.review.prompt.md

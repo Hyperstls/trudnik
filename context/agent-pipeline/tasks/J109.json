@@ -1,0 +1,34 @@
+{
+  "id": "J109",
+  "title": "P1.5: SVG-иконки вместо emoji (bells/plus/check)",
+  "goal": "Добавлен SVG sprite и include; колокольчики сохранённых поисков и «＋ Сохранить поиск» используют SVG, не emoji.",
+  "why": "Пользователь требует SVG в приоритете над emoji: emoji зависят от шрифта/ОС и выглядят разнородно.",
+  "files": [
+    "static/icons/sprite.svg",
+    "djadmin/core/templates/core/_ui_icon.html",
+    "djadmin/core/templates/core/jobs_list.html",
+    "djadmin/core/templates/core/notification_settings.html"
+  ],
+  "context_files": [
+    "static/css/app.css"
+  ],
+  "interfaces": "sprite symbols bell/bell-off/plus/check/star/star-outline/arrow-left/arrow-right/x/search; include _ui_icon name/class_name with aria-hidden; jobs_list uses plus and bell/bell-off; settings uses bell/bell-off.",
+  "acceptance": [
+    "SVG sprite доступен.",
+    "Колокольчики — SVG.",
+    "Plus в сохранении поиска — SVG.",
+    "Include переиспользуем.",
+    "Нет визуальных регрессий."
+  ],
+  "out_of_scope": [
+    "Не заменять все emoji за один коммит.",
+    "Не менять логику."
+  ],
+  "checks": [
+    {
+      "name": "svg_markup",
+      "cmd": ".venv\\Scripts\\python.exe -c \"from pathlib import Path; assert Path('static/icons/sprite.svg').exists(); s=Path('djadmin/core/templates/core/jobs_list.html').read_text(encoding='utf-8'); assert '_ui_icon.html' in s and '🔔' not in s; print('svg icons ok')\"",
+      "cwd": "."
+    }
+  ]
+}

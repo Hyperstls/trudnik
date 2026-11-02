@@ -17,7 +17,7 @@
             {% if payment_min %}<input type="hidden" name="payment_min" value="{{ payment_min }}">{% endif %}
             {% if payment_max %}<input type="hidden" name="payment_max" value="{{ payment_max }}">{% endif %}
             {% for skill in selected_skills %}<input type="hidden" name="skills" value="{{ skill }}">{% endfor %}
-            <button class="px-3 h-8 rounded-full border border-neutral-200 bg-white hover:bg-neutral-50 text-xs font-medium text-neutral-600">＋ Сохранить поиск</button>
+            <button class="px-3 h-8 rounded-full border border-neutral-200 bg-white hover:bg-neutral-50 text-xs font-medium text-neutral-600">{% include "core/_ui_icon.html" with name="plus" class_name="h-3.5 w-3.5" %} Сохранить поиск</button>
         </form>
         {% endif %}
         {% for item in saved_searches %}
@@ -25,7 +25,7 @@
             <a href="{{ item.url }}" class="px-2.5 py-1.5 text-primary-700 hover:text-primary-800 font-medium">{{ item.name }}</a>
             <form method="post" action="{% url 'core:toggle_search' item.id %}" class="inline">{% csrf_token %}
                 <button class="px-1.5 py-1.5 {% if item.notify %}text-primary-600{% else %}text-neutral-400{% endif %} hover:text-primary-800" title="{% if item.notify %}Уведомления включены{% else %}Уведомления выключены{% endif %}" aria-label="{% if item.notify %}Выключить уведомления{% else %}Включить уведомления{% endif %} для поиска {{ item.name }}">
-                    {% if item.notify %}🔔{% else %}🔕{% endif %}
+                    {% if item.notify %}{% include "core/_ui_icon.html" with name="bell" class_name="h-4 w-4" %}{% else %}{% include "core/_ui_icon.html" with name="bell-off" class_name="h-4 w-4" %}{% endif %}
                 </button>
             </form>
             <form method="post" action="{% url 'core:delete_search' item.id %}" class="inline">{% csrf_token %}

@@ -1,0 +1,33 @@
+{
+  "id": "J110",
+  "title": "P1.5: SVG для звёзд и подтверждений",
+  "goal": "На ключевых страницах рейтинг и бейджи подтверждения используют SVG sprite вместо ★/✓.",
+  "why": "SVG-иконки не зависят от шрифта ОС и едино выглядят; пользователь требует SVG в приоритете.",
+  "files": [
+    "djadmin/core/templates/core/workers_list.html",
+    "djadmin/core/templates/core/employers.html",
+    "djadmin/core/templates/core/job_detail.html",
+    "djadmin/core/templates/core/profile.html"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/_ui_icon.html"
+  ],
+  "interfaces": "Replace rating loops with _ui_icon star/star-outline; ✓ badges with check icon + text. Keep sizes/colors and aria-hidden.",
+  "acceptance": [
+    "Звёзды и галочки — SVG.",
+    "Визуальный размер/цвет сохранён.",
+    "Нет emoji ★/✓ в этих файлах.",
+    "Страницы рендерятся."
+  ],
+  "out_of_scope": [
+    "Не менять логику рейтинга.",
+    "Не заменять остальные страницы."
+  ],
+  "checks": [
+    {
+      "name": "svg_stars",
+      "cmd": ".venv\\Scripts\\python.exe -c \"from pathlib import Path; files=['workers_list.html','employers.html','job_detail.html','profile.html']; root=Path('djadmin/core/templates/core'); assert all('_ui_icon.html' in (root/f).read_text(encoding='utf-8') for f in files); print('stars svg ok')\"",
+      "cwd": "."
+    }
+  ]
+}

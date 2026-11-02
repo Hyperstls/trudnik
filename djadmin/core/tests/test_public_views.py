@@ -288,7 +288,7 @@ class PublicViewsTests(TestCase):
         self.employer.verification_status = "approved"
         self.employer.save(update_fields=["verification_status"])
         response = self.client.get(f"/jobs/{self.job.pk}")
-        self.assertContains(response, "✓ Подтверждён")
+        self.assertContains(response, "Подтверждён")
 
     def test_detail_hides_unverified_badge(self):
         self.employer.verification_status = "pending"
