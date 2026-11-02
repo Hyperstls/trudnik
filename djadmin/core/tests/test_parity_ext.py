@@ -690,3 +690,13 @@ class BulkActionsUiTests(TestCase):
         self.assertContains(response, 'data-bulk-all')
         self.assertContains(response, "data-bulk-count")
         self.assertContains(response, "bulk-actions.js")
+
+
+class UiComponentsTests(TestCase):
+    def test_empty_state_component_used(self):
+        user = make_profile("ui-empty@example.com", email_verified=True)
+        self.client.force_login(user)
+        response = self.client.get(reverse("core:my_jobs"))
+        self.assertContains(response, "Пока нет заданий")
+        self.assertContains(response, "Создайте первое задание")
+        self.assertContains(response, "Создать задание")

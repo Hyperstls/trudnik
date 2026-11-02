@@ -73,6 +73,8 @@
 | J102 | Отзыв ожидающего приглашения работодателем |
 | J103 | Push-диагностика, iOS-инструкция, сохранённые поиски в настройках |
 | J104–J105 | Частота дайджеста: сразу (5 мин) / раз в день / выключено |
+| J106 | CSS design tokens foundation |
+| J107 | UI EmptyState/Button includes + adoption в /my-jobs |
 
 Подробно о гео-логике и 152-ФЗ: [GEO_UX_PRIVACY.md](GEO_UX_PRIVACY.md).
 

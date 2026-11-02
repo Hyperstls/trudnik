@@ -2523,3 +2523,69 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review
 
 **Пакет:** context/agent-pipeline/packs/J105.review.prompt.md
+
+## 2026-11-02 16:02:56 — J106: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 16:03:24 — J107: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** baseline after edits
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 16:07:07 — J106: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** review: token values exact
+
+**Переход:** reviewing → fixing
+
+## 2026-11-02 16:07:08 — J106: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** ['djadmin/core/templates/core/_ui_button.html', 'djadmin/core/templates/core/_ui_empty_state.html', 'djadmin/core/templates/core/my_jobs.html', 'djadmin/core/tests/test_parity_ext.py']
+
+## 2026-11-02 16:07:19 — J107: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** rebuild baseline for new includes
+
+**Переход:** reviewing → planned
+
+**Сброс:** attempts=0, review_rounds=0
+
+## 2026-11-02 16:07:20 — J107: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** baseline rebuilt
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 16:14:10 — J106: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J106.review.prompt.md
+
+## 2026-11-02 16:14:10 — J107: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J107.review.prompt.md

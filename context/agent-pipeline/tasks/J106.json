@@ -1,0 +1,29 @@
+{
+  "id": "J106",
+  "title": "P1: дизайн-токены foundation",
+  "goal": "В app.css добавлены семантические токены цвета/радиуса/тени/duration/easing; карточки, меню и sheet используют их без визуальных изменений.",
+  "why": "Значения цветов/радиусов/теней/анимаций размазаны по CSS и шаблонам; без токенов нельзя системно менять UI.",
+  "files": [
+    "static/css/app.css",
+    "docs/DESIGN_REVIEW_2026-11.md"
+  ],
+  "context_files": [],
+  "interfaces": ":root --ui-color-primary/hover/text/muted/border/surface/bg, --ui-radius-control/card/sheet/pill, --ui-shadow-card/popover/elevated, --ui-duration-fast/base/slow, --ui-ease-standard/out. .card/.action-menu-panel/.geo-suggest/.filter-sheet use vars; values совпадают с текущими. Docs status.",
+  "acceptance": [
+    "Токены объявлены один раз.",
+    "Новые компоненты используют vars.",
+    "Визуальных регрессий нет.",
+    "pre_deploy 7/7."
+  ],
+  "out_of_scope": [
+    "Не менять Tailwind-палитру.",
+    "Не рефакторить все шаблоны."
+  ],
+  "checks": [
+    {
+      "name": "tokens_check",
+      "cmd": ".venv\\Scripts\\python.exe -c \"from pathlib import Path; s=Path('static/css/app.css').read_text(encoding='utf-8'); assert '--ui-color-primary' in s and '--ui-duration-base' in s and 'var(--ui-radius-card)' in s; print('tokens ok')\"",
+      "cwd": "."
+    }
+  ]
+}

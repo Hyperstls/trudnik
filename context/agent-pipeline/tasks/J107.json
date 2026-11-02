@@ -1,0 +1,33 @@
+{
+  "id": "J107",
+  "title": "P1: UI EmptyState + Button component foundation",
+  "goal": "Добавлены includes Button/EmptyState; EmptyState используется в «Моих заданиях» без визуальной регрессии.",
+  "why": "Дублирование пустых состояний и кнопок мешает единому стилю; нужен первый компонентный слой.",
+  "files": [
+    "djadmin/core/templates/core/_ui_button.html",
+    "djadmin/core/templates/core/_ui_empty_state.html",
+    "djadmin/core/templates/core/my_jobs.html",
+    "djadmin/core/tests/test_parity_ext.py"
+  ],
+  "context_files": [
+    "static/css/app.css"
+  ],
+  "interfaces": "_ui_button: label/variant/href/type/extra_class. _ui_empty_state: title/description/action_url/action_label/icon, uses button. my_jobs empty uses include. Test text.",
+  "acceptance": [
+    "Includes доступны.",
+    "EmptyState используется в my_jobs.",
+    "Кнопка CTA сохраняет стиль.",
+    "Тест проходит."
+  ],
+  "out_of_scope": [
+    "Не заменять все кнопки/пустые состояния сразу.",
+    "Не менять CSS-токены."
+  ],
+  "checks": [
+    {
+      "name": "component_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_parity_ext.UiComponentsTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}
