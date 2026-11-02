@@ -1,0 +1,35 @@
+{
+  "id": "J094",
+  "title": "P1: серверный черновик задания между устройствами",
+  "goal": "Черновик формы задания синхронизируется на сервер (TTL 30 дней) и восстанавливается на другом устройстве; координаты, CSRF, файлы не сохраняются.",
+  "why": "Локальный черновик теряется при смене устройства/очистке браузера. Серверный черновик в prefs JSON даёт кросс-девайс восстановление без новой таблицы и миграции.",
+  "files": [
+    "djadmin/core/views_drafts.py",
+    "djadmin/core/urls.py",
+    "static/js/job-draft.js",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py"
+  ],
+  "interfaces": "views_drafts.job_draft: GET/POST/DELETE, login, whitelist fields (работа/описание/оплата/дата/город/адрес/skills), reject lat/lng/csrf/file, values<=5000, total<=20000; prefs.job_draft={saved_at ms,fields}; TTL 30d; no-store. urls /api/jobs/draft. job-draft.js: local remains primary; server GET if no local or newer; POST debounce 5s + pagehide keepalive with X-CSRFToken; DELETE on discard/created=1. Tests: post/get/delete, sensitive stripped, expired, anon.",
+  "acceptance": [
+    "Черновик сохраняется на сервере и возвращается на другом устройстве.",
+    "lat/lng/csrf/file не сохраняются.",
+    "Локальный черновик имеет приоритет, если он новее.",
+    "Discard и успешная публикация удаляют серверный черновик.",
+    "TTL 30 дней; анонимный доступ запрещён."
+  ],
+  "out_of_scope": [
+    "Не добавлять миграции/таблицы.",
+    "Не хранить фото/координаты.",
+    "Не синхронизировать edit-форму."
+  ],
+  "checks": [
+    {
+      "name": "draft_api_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_public_views.ServerJobDraftTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

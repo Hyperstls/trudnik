@@ -9,7 +9,7 @@
 колонка dormant). JOB-P1-01/02/03 исправлены J002: stop-words, дата в прошлом,
 оплата 0..1 000 000, работники 1..100 — серверные field-level ошибки; JobCrudTests 11/11,
 test_flows 26/26. Остальные JOB-пункты закрыты контрактами J004–J033
-(см. [JOBS_RESULTS.md](JOBS_RESULTS.md)); открытых пунктов нет, полный `core` — 431 OK.
+(см. [JOBS_RESULTS.md](JOBS_RESULTS.md)); открытых пунктов нет, полный `core` — 434 OK.
 
 ## Главное
 

@@ -7,13 +7,16 @@
     'use strict';
 
     var KEY = 'trudnik-job-draft-v1';
+    var created = false;
     try {
-        if (new URLSearchParams(window.location.search).get('created') === '1') {
-            localStorage.removeItem(KEY);
-        }
+        created = new URLSearchParams(window.location.search).get('created') === '1';
+        if (created) localStorage.removeItem(KEY);
     } catch (e) {}
     var form = document.querySelector('form[data-job-draft="1"]');
-    if (!form) return;
+    if (!form) {
+        if (created) serverClear();
+        return;
+    }
 
     var TTL = 7 * 24 * 60 * 60 * 1000;
     var banner = document.getElementById('job-draft-banner');
@@ -21,6 +24,56 @@
     var restoreBtn = document.getElementById('job-draft-restore');
     var discardBtn = document.getElementById('job-draft-discard');
     var timer = null;
+    var serverTimer = null;
+    var pendingDraft = null;
+
+    function csrfToken() {
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute('content') : '';
+    }
+
+    function serverClear() {
+        try {
+            fetch('/api/jobs/draft', {
+                method: 'DELETE',
+                headers: { 'X-CSRFToken': csrfToken() },
+                keepalive: true
+            }).catch(function () {});
+        } catch (e) {}
+    }
+
+    function serverSave(draft, keepalive) {
+        try {
+            fetch('/api/jobs/draft', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken()
+                },
+                body: JSON.stringify(draft),
+                keepalive: !!keepalive
+            }).catch(function () {});
+        } catch (e) {}
+    }
+
+    function serverGet() {
+        return fetch('/api/jobs/draft', {
+            headers: { 'Accept': 'application/json' }
+        }).then(function (response) {
+            if (!response.ok) return null;
+            return response.json();
+        }).then(function (data) {
+            return data && data.draft ? data.draft : null;
+        }).catch(function () { return null; });
+    }
+
+    function queueServerSave() {
+        clearTimeout(serverTimer);
+        serverTimer = setTimeout(function () {
+            var current = storageGet();
+            if (current) serverSave(current, false);
+        }, 5000);
+    }
 
     function storageGet() {
         try {
@@ -72,8 +125,13 @@
     function saveNow() {
         if (!touched) return;
         var draft = collect();
-        if (draft) storageSet(draft);
-        else storageRemove();
+        if (draft) {
+            storageSet(draft);
+            queueServerSave();
+        } else {
+            storageRemove();
+            serverClear();
+        }
     }
 
     function scheduleSave() {
@@ -89,6 +147,7 @@
     }
 
     function applyDraft(draft) {
+        pendingDraft = draft;
         Object.keys(draft.fields).forEach(function (name) {
             var values = draft.fields[name] || [];
             elementsByName(name).forEach(function (el) {
@@ -121,24 +180,40 @@
     }
 
     var draft = storageGet();
-    if (draft) showBanner(draft);
+    if (draft) {
+        pendingDraft = draft;
+        showBanner(draft);
+    }
+    serverGet().then(function (remote) {
+        if (!remote || !remote.fields) return;
+        if (!draft || Number(remote.saved_at || 0) > Number(draft.saved_at || 0)) {
+            pendingDraft = remote;
+            storageSet(remote);
+            showBanner(remote);
+        }
+    });
 
     form.addEventListener('input', scheduleSave);
     form.addEventListener('change', scheduleSave);
-    window.addEventListener('pagehide', saveNow);
+    window.addEventListener('pagehide', function () {
+        saveNow();
+        var current = storageGet();
+        if (current) serverSave(current, true);
+    });
     document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'hidden') saveNow();
     });
 
     if (restoreBtn) {
         restoreBtn.addEventListener('click', function () {
-            var current = storageGet();
+            var current = pendingDraft || storageGet();
             if (current) applyDraft(current);
         });
     }
     if (discardBtn) {
         discardBtn.addEventListener('click', function () {
             storageRemove();
+            serverClear();
             if (banner) banner.classList.add('hidden');
         });
     }

@@ -1209,3 +1209,47 @@ class JobsFilterMarkupTests(TestCase):
         self.assertContains(response, 'name="filter" value="new"')
         self.assertContains(response, 'name="filter" value="applied"')
         self.assertContains(response, "Все задания")
+
+
+class ServerJobDraftTests(TestCase):
+    def setUp(self):
+        self.user = make_profile("server-draft@example.com", email_verified=True)
+        self.client.force_login(self.user)
+
+    def test_save_get_delete_and_sanitize(self):
+        payload = {
+            "saved_at": int(timezone.now().timestamp() * 1000),
+            "fields": {
+                "work_type": ["Уборка"],
+                "address": ["Москва"],
+                "lat": ["55.7"],
+                "csrfmiddlewaretoken": ["secret"],
+                "skills": ["a", "b"],
+            },
+        }
+        response = self.client.post(
+            reverse("core:job_draft_api"), data=json.dumps(payload),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        stored = self.user.notification_prefs["job_draft"]
+        self.assertEqual(stored["fields"]["work_type"], ["Уборка"])
+        self.assertNotIn("lat", stored["fields"])
+        self.assertNotIn("csrfmiddlewaretoken", stored["fields"])
+        got = self.client.get(reverse("core:job_draft_api")).json()["draft"]
+        self.assertEqual(got["fields"]["address"], ["Москва"])
+        self.client.delete(reverse("core:job_draft_api"))
+        self.user.refresh_from_db()
+        self.assertNotIn("job_draft", self.user.notification_prefs)
+
+    def test_expired_draft_removed(self):
+        old = int((timezone.now().timestamp() - 31 * 86400) * 1000)
+        prefs = dict(self.user.notification_prefs or {})
+        prefs["job_draft"] = {"saved_at": old, "fields": {"work_type": ["Old"]}}
+        Profile.objects.filter(pk=self.user.pk).update(notification_prefs=prefs)
+        self.assertIsNone(self.client.get(reverse("core:job_draft_api")).json()["draft"])
+
+    def test_requires_login(self):
+        self.client.logout()
+        self.assertEqual(self.client.get(reverse("core:job_draft_api")).status_code, 302)

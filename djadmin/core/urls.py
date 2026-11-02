@@ -1,7 +1,7 @@
 from django.urls import path
 from django.views.generic import RedirectView
 
-from . import (views, views_auth, views_flow, views_geo, views_interact,
+from . import (views, views_auth, views_drafts, views_flow, views_geo, views_interact,
                views_messenger, views_notify, views_profile, views_profile_ext,
                views_public_ext, views_service)
 
@@ -14,6 +14,7 @@ urlpatterns = [
     path("jobs", views.jobs_list, name="jobs"),
     path("jobs/geo", views.jobs_geo_set, name="jobs_geo_set"),
     path("api/geo/suggest", views_geo.geo_suggest, name="geo_suggest"),
+    path("api/jobs/draft", views_drafts.job_draft, name="job_draft_api"),
     path("searches/save", views.save_search, name="save_search"),
     path("searches/<str:search_id>/delete", views.delete_search, name="delete_search"),
     path("searches/<str:search_id>/toggle", views.toggle_search, name="toggle_search"),
