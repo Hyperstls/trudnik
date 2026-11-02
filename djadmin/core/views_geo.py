@@ -119,6 +119,22 @@ def _geocoder_key():
     )
 
 
+def _geocoder_referer():
+    """Referer for server-side Geocoder calls.
+
+    Yandex applies the key's HTTP Referer allow-list to server requests too and
+    rejects requests without a matching header. Default is the canonical site.
+    """
+    referer = (
+        os.getenv("YANDEX_GEOCODER_REFERER", "").strip()
+        or os.getenv("WORKER_SITE_URL", "").strip()
+        or "https://xn--d1aigknli.xn--p1ai"
+    )
+    if "://" not in referer:
+        referer = "https://" + referer
+    return referer.rstrip("/") + "/"
+
+
 def _geocode_results(data):
     """Normalize Yandex Geocoder JSON into the client result shape."""
     response = data.get("response") if isinstance(data, dict) else None
@@ -169,7 +185,11 @@ def _fetch_geocode(params):
     for index, endpoint in enumerate(GEOCODER_URLS):
         upstream_request = Request(
             endpoint + "?" + urlencode(params),
-            headers={"User-Agent": "Trudnik/1.0", "Accept": "application/json"},
+            headers={
+                "User-Agent": "Trudnik/1.0",
+                "Accept": "application/json",
+                "Referer": _geocoder_referer(),
+            },
         )
         try:
             with urlopen(upstream_request, timeout=5) as upstream:

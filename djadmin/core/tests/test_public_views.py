@@ -1171,9 +1171,14 @@ class GeoGeocodeProxyTests(TestCase):
 
         def fake_urlopen(request, timeout=0):
             captured["url"] = request.full_url
+            captured["referer"] = request.get_header("Referer")
             return self._fake_response(self._payload())
 
-        with patch.dict(os.environ, {"YANDEX_GEOCODER_KEY": "test-geo", "YANDEX_MAPS_API_KEY": ""}):  # pragma: allowlist secret
+        with patch.dict(os.environ, {
+            "YANDEX_GEOCODER_KEY": "test-geo",
+            "YANDEX_MAPS_API_KEY": "",
+            "WORKER_SITE_URL": "https://example.test",
+        }):  # pragma: allowlist secret
             with patch("core.views_geo.urlopen", side_effect=fake_urlopen):
                 response = self.client.post(
                     reverse("core:geo_geocode"),
@@ -1184,6 +1189,7 @@ class GeoGeocodeProxyTests(TestCase):
         self.assertEqual(response.status_code, 200)
         query = parse_qs(urlparse(captured["url"]).query)
         self.assertEqual(query["geocode"], ["37.600000,55.750000"])
+        self.assertEqual(captured["referer"], "https://example.test/")
         self.assertAlmostEqual(response.json()["results"][0]["lat"], 55.765252)
 
     def test_geocode_requires_login_and_post(self):
