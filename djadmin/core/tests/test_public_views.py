@@ -1194,6 +1194,14 @@ class SavedSearchTests(TestCase):
         self.user.refresh_from_db()
         self.assertEqual(self.user.notification_prefs.get("saved_searches", []), [])
 
+    def test_save_search_rate_limited(self):
+        from django.core.cache import cache
+        cache.clear()
+        for _ in range(20):
+            self.client.post(reverse("core:save_search"), {"q": "rate-limit"})
+        response = self.client.post(reverse("core:save_search"), {"q": "rate-limit"})
+        self.assertEqual(response.status_code, 302)
+
     def test_saved_search_requires_login(self):
         self.client.logout()
         response = self.client.post(reverse("core:save_search"), {"q": "x"})

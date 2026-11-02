@@ -2259,3 +2259,51 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review
 
 **Пакет:** context/agent-pipeline/packs/J094.review.prompt.md
+
+## 2026-11-02 12:59:20 — J095: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** generated tailwind
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 12:59:22 — J096: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 13:16:11 — J096: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** review: missing save rate test
+
+**Переход:** reviewing → fixing
+
+## 2026-11-02 13:16:11 — J096: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** tailwind unchanged
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 13:16:21 — J095: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J095.review.prompt.md
+
+## 2026-11-02 13:19:55 — J096: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J096.review.prompt.md
