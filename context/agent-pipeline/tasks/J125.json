@@ -1,0 +1,41 @@
+{
+  "id": "J125",
+  "title": "P2: self-host Inter вместо Google Fonts (LCP + 152-ФЗ)",
+  "goal": "Шрифт Inter отдаётся с нашего домена (cyrillic/latin subsets), внешние fonts.googleapis.com/fonts.gstatic.com удалены; LCP/FCP не ждут сторонний CSS.",
+  "why": "Lighthouse: render-blocking Google Fonts CSS ≈1с, LCP 4.5с при бюджете 2.5с; передача IP/браузера в Google — лишний трансграничный поток.",
+  "files": [
+    "static/css/app.css",
+    "djadmin/core/templates/core/base.html",
+    "static/fonts/inter/UcCo3FwrK3iLTcvmYwYL8g.woff2",
+    "static/fonts/inter/UcCo3FwrK3iLTcviYwY.woff2",
+    "static/fonts/inter/UcCo3FwrK3iLTcvsYwYL8g.woff2",
+    "static/fonts/inter/UcCo3FwrK3iLTcvvYwYL8g.woff2"
+  ],
+  "context_files": [
+    "docs/UX_ROADMAP_2026Q4.md"
+  ],
+  "interfaces": "app.css: @font-face Inter 400..700 с local /static/fonts/inter/*.woff2, font-display:swap, unicode-range cyrillic-ext/cyrillic/latin-ext/latin; base.html: удалены preconnect и stylesheet Google Fonts, добавлены preload двух основных woff2 (cyrillic+latin), crossorigin; body font-family 'Inter' уже был.",
+  "acceptance": [
+    "В HTML нет fonts.googleapis.com/fonts.gstatic.com.",
+    "Inter грузится с /static/fonts/inter/.",
+    "Кириллица и латиница отображаются.",
+    "Lighthouse LCP улучшается (измерить после деплоя).",
+    "axe 0 critical/serious сохраняется."
+  ],
+  "out_of_scope": [
+    "Не менять типографику/размеры.",
+    "Не добавлять другие шрифты."
+  ],
+  "checks": [
+    {
+      "name": "no_google_fonts",
+      "cmd": ".venv\\Scripts\\python.exe -c \"from pathlib import Path; h=Path('djadmin/core/templates/core/base.html').read_text(encoding='utf-8'); assert 'fonts.googleapis.com' not in h and 'fonts.gstatic.com' not in h; assert 'fonts/inter/' in Path('static/css/app.css').read_text(encoding='utf-8'); print('fonts ok')\"",
+      "cwd": "."
+    },
+    {
+      "name": "full_core",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

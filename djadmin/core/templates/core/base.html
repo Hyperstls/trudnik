@@ -28,10 +28,9 @@
     <meta name="twitter:description" content="{% block twitter_description %}Задания рядом, отклики, чат и оценки. трудник.рф{% endblock %}">
     <meta name="twitter:image" content="{% block twitter_image %}https://{{ request.get_host }}{% static 'icons/og-preview.png' %}{% endblock %}">
     <meta name="csrf-token" content="{{ csrf_token }}">
+    <link rel="preload" href="{% static 'fonts/inter/UcCo3FwrK3iLTcvmYwYL8g.woff2' %}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{% static 'fonts/inter/UcCo3FwrK3iLTcviYwY.woff2' %}" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="{% static 'css/tailwind.min.css' %}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
 <body class="bg-neutral-50 text-neutral-800 min-h-screen flex flex-col"{% if user.is_authenticated %} data-user-id="{{ user.pk }}"{% endif %}>
