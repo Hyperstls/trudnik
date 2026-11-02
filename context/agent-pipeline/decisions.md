@@ -2443,3 +2443,35 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review
 
 **Пакет:** context/agent-pipeline/packs/J101.review.prompt.md
+
+## 2026-11-02 15:21:35 — J102: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** baseline rebuilt
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 15:23:04 — J103: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** baseline after edits
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-02 15:39:31 — J102: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J102.review.prompt.md
+
+## 2026-11-02 15:39:31 — J103: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review
+
+**Пакет:** context/agent-pipeline/packs/J103.review.prompt.md

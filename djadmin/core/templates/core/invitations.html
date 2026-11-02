@@ -44,9 +44,16 @@
         {% for inv in outgoing %}
         <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4">
             <p class="font-semibold text-neutral-900">{{ inv.worker.full_name }}</p>
-            <p class="text-sm text-neutral-500 mt-0.5">{{ inv.job.work_type|default:"Задание" }} ·
-                {% if inv.status == 'pending' %}ожидает{% elif inv.status == 'accepted' %}принято{% else %}отклонено{% endif %}
-            </p>
+            <div class="flex flex-wrap items-center justify-between gap-2 mt-1">
+                <p class="text-sm text-neutral-500">{{ inv.job.work_type|default:"Задание" }} ·
+                    {% if inv.status == 'pending' %}ожидает{% elif inv.status == 'accepted' %}принято{% else %}отклонено{% endif %}
+                </p>
+                {% if inv.status == 'pending' %}
+                <form method="post" action="{% url 'core:invitation_revoke' inv.pk %}">{% csrf_token %}
+                    <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Отозвать</span></button>
+                </form>
+                {% endif %}
+            </div>
         </article>
         {% endfor %}
     </div>

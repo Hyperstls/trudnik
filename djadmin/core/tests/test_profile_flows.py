@@ -209,6 +209,20 @@ class InvitationTests(TestCase):
         self.client.post(reverse("core:invite_worker", args=[self.worker.pk]), {"job_id": ""})
         self.assertFalse(Invitation.objects.exists())
 
+    def test_employer_revokes_pending_invitation(self):
+        self._invite()
+        inv = Invitation.objects.get(job=self.job, worker=self.worker)
+        self.client.force_login(self.employer)
+        self.client.post(reverse("core:invitation_revoke", args=[inv.pk]))
+        self.assertFalse(Invitation.objects.filter(pk=inv.pk).exists())
+
+    def test_non_owner_cannot_revoke(self):
+        self._invite()
+        inv = Invitation.objects.get(job=self.job, worker=self.worker)
+        self.client.force_login(make_profile("revoke-stranger@example.com"))
+        self.client.post(reverse("core:invitation_revoke", args=[inv.pk]))
+        self.assertTrue(Invitation.objects.filter(pk=inv.pk).exists())
+
     def test_accept_via_rpc_creates_application(self):
         self._invite()
         inv = Invitation.objects.get(job=self.job, worker=self.worker)

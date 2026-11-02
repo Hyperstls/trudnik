@@ -1,0 +1,34 @@
+{
+  "id": "J103",
+  "title": "P0: диагностика push и сохранённые поиски в настройках",
+  "goal": "Пользователь видит разрешение браузера, локальную и серверную подписку, получает iOS-инструкцию и управляет сохранёнными поисками из настроек.",
+  "why": "Сейчас статус «Push включены» не объясняет, почему push не приходит; сохранённые поиски видны только на /jobs.",
+  "files": [
+    "djadmin/core/views_profile_ext.py",
+    "djadmin/core/templates/core/notification_settings.html",
+    "djadmin/core/views.py",
+    "djadmin/core/tests/test_notifications.py"
+  ],
+  "context_files": [
+    "static/js/push-notifications.js"
+  ],
+  "interfaces": "notification_prefs view: saved_searches [{id,name,notify}], digest_frequency. toggle_search accepts safe next. Template: permission/subscription status in #push-status, iOS details, saved searches block with bell forms + hidden next. JS: show Notification.permission, fetch /push/list, explicit states. Test: settings contains saved search name and iOS text.",
+  "acceptance": [
+    "Push-статус показывает разрешение браузера и наличие серверной подписки.",
+    "iOS-инструкция доступна.",
+    "Сохранённые поиски видны и переключаются из настроек.",
+    "Toggle из настроек возвращает в настройки.",
+    "Тесты проходят."
+  ],
+  "out_of_scope": [
+    "Не менять VAPID.",
+    "Не менять digest."
+  ],
+  "checks": [
+    {
+      "name": "settings_diag_test",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_notifications.NotificationSettingsDiagnosticsTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

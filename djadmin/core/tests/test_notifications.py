@@ -114,3 +114,28 @@ class NotificationTests(TestCase):
         self.assertContains(response, "hidden sm:flex items-center gap-2")
         self.assertContains(response, "sm:hidden px-3 h-9")
         self.assertContains(response, "w-full px-3 h-9")
+
+
+class NotificationSettingsDiagnosticsTests(TestCase):
+    def setUp(self):
+        self.user = make_profile("settings-diag@example.com", email_verified=True)
+        self.user.notification_prefs = {
+            "saved_searches": [{"id": "abc", "name": "Москва удалёнка", "query": "city=Москва", "notify": True}],
+        }
+        self.user.save(update_fields=["notification_prefs"])
+        self.client.force_login(self.user)
+
+    def test_saved_search_and_ios_help_visible(self):
+        response = self.client.get(reverse("core:notification_prefs"))
+        self.assertContains(response, "Москва удалёнка")
+        self.assertContains(response, "Инструкция для iPhone/iPad")
+        self.assertContains(response, reverse("core:toggle_search", args=["abc"]))
+
+    def test_toggle_from_settings_returns_to_settings(self):
+        response = self.client.post(
+            reverse("core:toggle_search", args=["abc"]),
+            {"next": reverse("core:notification_prefs")},
+        )
+        self.assertRedirects(response, reverse("core:notification_prefs"))
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.notification_prefs["saved_searches"][0]["notify"])

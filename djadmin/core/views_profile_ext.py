@@ -190,9 +190,17 @@ def notification_prefs(request):
         Profile.objects.filter(pk=request.user.pk).update(notification_prefs=updated)
         messages.success(request, "Настройки уведомлений сохранены.")
         return redirect("core:notification_prefs")
+    searches = []
+    for item in (prefs.get("saved_searches") or [])[:10]:
+        if isinstance(item, dict) and item.get("id"):
+            searches.append({
+                "id": item["id"], "name": item.get("name") or "Мой поиск",
+                "notify": item.get("notify", True) is not False,
+            })
     context = {
         "channels": [(k, label, prefs.get(k, True)) for k, label in CHANNEL_LABELS],
         "types": [(k, label, prefs.get(k, True)) for k, label in TYPE_LABELS],
+        "saved_searches": searches,
     }
     return render(request, "core/notification_settings.html", context)
 

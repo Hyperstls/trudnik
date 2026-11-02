@@ -1,0 +1,33 @@
+{
+  "id": "J102",
+  "title": "P0: отзыв ожидающего приглашения",
+  "goal": "Работодатель может отозвать pending-приглашение; accepted/rejected и чужие приглашения не затрагиваются.",
+  "why": "Сейчас отправленное приглашение нельзя отменить, хотя оно блокирует повторное приглашение (unique job+worker) и висит у трудника.",
+  "files": [
+    "djadmin/core/views_profile.py",
+    "djadmin/core/urls.py",
+    "djadmin/core/templates/core/invitations.html",
+    "djadmin/core/tests/test_profile_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py"
+  ],
+  "interfaces": "invitation_revoke POST: filter pk+employer=user+status=pending, delete, messages; url /invitations/<id>/revoke before generic action; outgoing card кнопка «Отозвать» только pending; rate_limit 20/min. Tests: owner delete; stranger cannot.",
+  "acceptance": [
+    "Pending приглашение удаляется владельцем.",
+    "Чужое/принятое/отклонённое не удаляется.",
+    "Кнопка только для pending.",
+    "Тесты проходят."
+  ],
+  "out_of_scope": [
+    "Не менять accept/decline.",
+    "Не добавлять уведомление об отзыве."
+  ],
+  "checks": [
+    {
+      "name": "revoke_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_profile_flows.InvitationTests.test_employer_revokes_pending_invitation core.tests.test_profile_flows.InvitationTests.test_non_owner_cannot_revoke --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

@@ -231,6 +231,21 @@ def invite_worker(request, user_id):
 
 
 @login_required
+@require_POST
+@rate_limit_write(limit=20, window=60, redirect_to="/invitations")
+def invitation_revoke(request, invitation_id):
+    invitation = Invitation.objects.filter(
+        pk=invitation_id, employer=request.user, status=Invitation.Status.PENDING,
+    ).first()
+    if invitation is None:
+        messages.error(request, "Приглашение не найдено или уже обработано.")
+    else:
+        invitation.delete()
+        messages.success(request, "Приглашение отозвано.")
+    return redirect("core:invitations")
+
+
+@login_required
 def invitations(request):
     incoming = Invitation.objects.filter(worker=request.user).select_related("job", "job__employer").order_by("-created_at")
     my_job_ids = list(Job.objects.filter(employer=request.user).values_list("id", flat=True))

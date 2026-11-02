@@ -228,6 +228,11 @@ def toggle_search(request, search_id):
         prefs["saved_searches"] = updated[:10]
         Profile.objects.filter(pk=request.user.pk).update(notification_prefs=prefs)
         messages.info(request, "Настройка уведомлений поиска обновлена.")
+    next_url = request.POST.get("next") or ""
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        return redirect(next_url)
     return redirect("core:jobs")
 
 

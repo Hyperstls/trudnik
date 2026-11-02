@@ -70,6 +70,8 @@
 | J099 | Отзывы: 404 для admin/employer, target-filter, accepted-only |
 | J100 | Навигация к /employers и CTA «Задания» |
 | J101 | Мобильные действия на /notifications, desktop сохранён |
+| J102 | Отзыв ожидающего приглашения работодателем |
+| J103 | Push-диагностика, iOS-инструкция, сохранённые поиски в настройках |
 
 Подробно о гео-логике и 152-ФЗ: [GEO_UX_PRIVACY.md](GEO_UX_PRIVACY.md).
 

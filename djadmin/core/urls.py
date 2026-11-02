@@ -49,6 +49,7 @@ urlpatterns = [
     path("workers/<uuid:user_id>/favorite", views_profile.people_favorite_toggle, name="people_favorite_toggle"),
     path("workers/<uuid:user_id>/block", views_profile.people_block, name="people_block"),
     path("workers/<uuid:user_id>/unblock", views_profile.people_unblock, name="people_unblock"),
+    path("invitations/<uuid:invitation_id>/revoke", views_profile.invitation_revoke, name="invitation_revoke"),
     path("invitations/<uuid:invitation_id>/<str:action>", views_profile.invitation_respond, name="invitation_respond"),
     path("chats", views_interact.chats_list, name="chats"),
     path("chat/<uuid:app_id>", views_interact.chat_room, name="chat_room"),
