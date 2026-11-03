@@ -1107,7 +1107,7 @@ class AppDownloadTests(TestCase):
 
     def test_service_worker_cache_version(self):
         sw = (settings.BASE_DIR.parent / "static" / "sw.js").read_text(encoding="utf-8")
-        self.assertIn("trudnik-v16", sw)
+        self.assertIn("trudnik-v17", sw)
 
     def test_pwa_install_prompt_markup_and_script(self):
         response = self.client.get(reverse("core:jobs"))
