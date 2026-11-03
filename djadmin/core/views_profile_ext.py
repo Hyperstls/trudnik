@@ -322,6 +322,18 @@ def upload_avatar(request):
 
 @login_required
 @require_POST
+def delete_avatar(request):
+    urls = [request.user.avatar_url, request.user.photo_url]
+    Profile.objects.filter(pk=request.user.pk).update(avatar_url=None, photo_url=None)
+    for url in urls:
+        if url:
+            delete_upload_url(url)
+    messages.success(request, "Фото профиля удалено.")
+    return redirect("core:profile")
+
+
+@login_required
+@require_POST
 def upload_verification_doc(request):
     file = request.FILES.get("document")
     if file is None:

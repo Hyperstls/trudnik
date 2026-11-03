@@ -101,6 +101,12 @@
             <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" required class="text-sm">
             <button type="submit" class="px-4 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Загрузить</button>
         </form>
+        {% if user.avatar_url or user.photo_url %}
+        <form method="post" action="{% url 'core:delete_avatar' %}" class="mt-2" data-confirm="Удалить фото профиля?">
+            {% csrf_token %}
+            <button type="submit" class="px-4 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">Удалить фото</button>
+        </form>
+        {% endif %}
     </section>
 
     <!-- Данные и аккаунт (152-ФЗ) -->

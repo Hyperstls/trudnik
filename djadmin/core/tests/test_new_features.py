@@ -5,7 +5,7 @@ from django.template.loader import render_to_string
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
-from core.models import EmployerDetail, Rating, Profile
+from core.models import Application, EmployerDetail, Rating, Profile
 from core.tests.test_auth import make_profile
 from core.tests.test_flows import make_job
 from core.tokens import generate_email_change_token
@@ -112,6 +112,37 @@ class WorkerProfileExtrasTests(TestCase):
         })
         invitation = worker.invitations_received.get(job=job)
         self.assertEqual(invitation.message, "Здравствуйте, есть опыт?")
+
+
+class JobStatsTests(TestCase):
+    def test_owner_sees_application_breakdown(self):
+        employer = make_profile("stats-employer@example.com", role="employer")
+        workers = [make_profile("stats-%d@example.com" % i, role="worker") for i in range(3)]
+        job = make_job(employer, work_type="Статистика")
+        Application.objects.create(job=job, worker=workers[0], status="pending")
+        Application.objects.create(job=job, worker=workers[1], status="accepted")
+        Application.objects.create(job=job, worker=workers[2], status="rejected")
+        self.client.force_login(employer)
+        response = self.client.get(reverse("core:job_detail", args=[job.pk]))
+        self.assertEqual(response.context["job_stats"], {
+            "total": 3, "pending": 1, "accepted": 1, "rejected": 1,
+        })
+        self.assertContains(response, "Всего откликов")
+
+
+class AvatarDeleteTests(TestCase):
+    def test_avatar_fields_are_cleared(self):
+        user = make_profile("avatar-delete@example.com")
+        Profile.objects.filter(pk=user.pk).update(
+            avatar_url="/uploads/avatars/missing.jpg",
+            photo_url="https://example.com/legacy.jpg",
+        )
+        self.client.force_login(user)
+        response = self.client.post(reverse("core:delete_avatar"))
+        self.assertRedirects(response, reverse("core:profile"))
+        user.refresh_from_db()
+        self.assertIsNone(user.avatar_url)
+        self.assertIsNone(user.photo_url)
 
 
 class SupportTests(TestCase):

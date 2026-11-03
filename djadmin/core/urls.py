@@ -66,6 +66,7 @@ urlpatterns = [
     path("profile/email/confirm/<str:token>", views_profile_ext.email_change_confirm, name="email_change_confirm"),
     path("profile/<uuid:user_id>/report", views_profile_ext.report_user, name="report_user"),
     path("profile/avatar", views_profile_ext.upload_avatar, name="upload_avatar"),
+    path("profile/avatar/delete", views_profile_ext.delete_avatar, name="delete_avatar"),
     path("profile/verification-doc", views_profile_ext.upload_verification_doc, name="upload_verification_doc"),
     path("verify-employer", views_profile_ext.verify_employer, name="verify_employer"),
     path("notifications/settings", views_profile_ext.notification_prefs, name="notification_prefs"),

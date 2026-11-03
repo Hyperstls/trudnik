@@ -483,9 +483,19 @@ def job_detail(request, job_id):
         # Паритет Flask check_withdraw_window: <12 ч до начала — отзыв недоступен.
         can_withdraw = (job.date_time - timezone.now()).total_seconds() > 12 * 3600
     application_count = 0
+    job_stats = {"total": 0, "pending": 0, "accepted": 0, "rejected": 0}
     is_employer_fav = False
     if is_owner:
-        application_count = Application.objects.filter(job=job).count()
+        stats = Counter(
+            Application.objects.filter(job=job).values_list("status", flat=True)
+        )
+        job_stats = {
+            "total": sum(stats.values()),
+            "pending": stats.get("pending", 0),
+            "accepted": stats.get("accepted", 0),
+            "rejected": stats.get("rejected", 0),
+        }
+        application_count = job_stats["total"]
     elif request.user.is_authenticated:
         is_employer_fav = Favorite.objects.filter(
             user=request.user, target_id=job.employer_id, favorite_type="employer"
@@ -503,6 +513,7 @@ def job_detail(request, job_id):
         "my_app": my_app,
         "can_withdraw": can_withdraw,
         "application_count": application_count,
+        "job_stats": job_stats,
         "is_employer_fav": is_employer_fav,
         "employer": employer,
         "employer_reviews": employer_reviews,
