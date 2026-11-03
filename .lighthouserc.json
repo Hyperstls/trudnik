@@ -1,7 +1,7 @@
 {
   "ci": {
     "collect": {
-      "numberOfRuns": 1,
+      "numberOfRuns": 3,
       "url": [
         "https://xn--d1aigknli.xn--p1ai/jobs",
         "https://xn--d1aigknli.xn--p1ai/login",
