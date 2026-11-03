@@ -116,6 +116,30 @@ async function createJob(browser) {
   return jobPath;
 }
 
+async function anonymousView(browser, jobPath) {
+  const { context, page } = await newPage(browser);
+  const events = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" && request.url().includes("/api/analytics/event")) {
+      try {
+        events.push(request.postDataJSON());
+      } catch (e) { /* ignore malformed */ }
+    }
+  });
+  await page.goto(BASE + jobPath, { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1500);
+  if (!events.some((event) => event.event === "job_view")) {
+    throw new Error("anonymous job_view beacon was not sent");
+  }
+  const before = events.length;
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1500);
+  if (events.length !== before) {
+    throw new Error("anonymous view was counted twice within 24h");
+  }
+  await context.close();
+}
+
 async function apply(browser, jobPath) {
   const { context, page } = await login(browser, WORKER);
   await page.goto(BASE + jobPath, { waitUntil: "domcontentloaded" });
@@ -180,6 +204,12 @@ async function main() {
     if (jobPath) ok("работодатель создал задание: " + jobPath);
 
     if (jobPath) {
+      console.log("▶ Анонимный просмотр");
+      await anonymousView(browser, jobPath).catch((error) => fail("anonymous view", error));
+      if (!failures.some((f) => f.name === "anonymous view")) {
+        ok("анонимный просмотр учтён один раз за 24 часа");
+      }
+
       console.log("▶ Отклик");
       await apply(browser, jobPath).catch((error) => fail("apply", error));
       if (!failures.some((f) => f.name === "apply")) ok("трудник откликнулся");
