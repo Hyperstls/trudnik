@@ -1,0 +1,34 @@
+{
+  "id": "J132",
+  "title": "Поиск: FTS по search_vector вместо icontains для кириллицы",
+  "goal": "/jobs, /workers и /search используют GIN-индекс search_vector для русских запросов; латиница/цифры/короткие запросы остаются на icontains.",
+  "why": "icontains по 5 полям не использует idx_jobs_search/idx_profiles_search и деградирует на росте данных.",
+  "files": [
+    "djadmin/core/search.py",
+    "djadmin/core/views.py",
+    "djadmin/core/views_search.py",
+    "djadmin/core/tests/test_search.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "scripts/check_schema.py"
+  ],
+  "interfaces": "search.ts_query: len>=3, только кириллица, до 8 слов, последнее с :*; иначе '' → fallback. views.jobs_list: extra(where=['jobs.search_vector @@ to_tsquery(\\'russian\\', %s)']); workers_list: profiles.search_vector; views_search global jobs/workers то же, employers остаются ORM. Тесты: helper + существующие поисковые тесты.",
+  "acceptance": [
+    "Русский запрос использует search_vector.",
+    "Латиница/цифры/короткие — прежний icontains.",
+    "Инъекция кавычек невозможна.",
+    "491 тест OK."
+  ],
+  "out_of_scope": [
+    "Не менять триггеры/векторы.",
+    "Не добавлять trigram-индексы."
+  ],
+  "checks": [
+    {
+      "name": "search_tests",
+      "cmd": ".venv\\Scripts\\python.exe djadmin/manage.py test core.tests.test_search core.tests.test_public_views.GlobalSearchTests --keepdb -v 1",
+      "cwd": "."
+    }
+  ]
+}

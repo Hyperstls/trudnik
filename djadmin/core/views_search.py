@@ -3,6 +3,7 @@ from django.db.models import Count, Q
 from django.shortcuts import render
 
 from .models import Blacklist, Job, Profile
+from .search import ts_query
 
 
 def global_search(request):
@@ -12,18 +13,29 @@ def global_search(request):
     workers = []
     employers = []
     if len(query) >= 2:
-        jobs_qs = Job.objects.public().filter(
-            Q(work_type__icontains=query)
-            | Q(organization_name__icontains=query)
-            | Q(city__icontains=query)
-            | Q(detailed_description__icontains=query)
-            | Q(object_description__icontains=query)
-        ).order_by("-created_at")
-        workers_qs = Profile.objects.public_workers().filter(
-            Q(full_name__icontains=query)
-            | Q(city__icontains=query)
-            | Q(bio__icontains=query)
-        ).prefetch_related("user_skills__skill").order_by("-rating", "-total_reviews")
+        ts = ts_query(query)
+        if ts:
+            jobs_qs = Job.objects.public().extra(
+                where=["jobs.search_vector @@ to_tsquery('russian', %s)"],
+                params=[ts],
+            ).order_by("-created_at")
+            workers_qs = Profile.objects.public_workers().extra(
+                where=["profiles.search_vector @@ to_tsquery('russian', %s)"],
+                params=[ts],
+            ).prefetch_related("user_skills__skill").order_by("-rating", "-total_reviews")
+        else:
+            jobs_qs = Job.objects.public().filter(
+                Q(work_type__icontains=query)
+                | Q(organization_name__icontains=query)
+                | Q(city__icontains=query)
+                | Q(detailed_description__icontains=query)
+                | Q(object_description__icontains=query)
+            ).order_by("-created_at")
+            workers_qs = Profile.objects.public_workers().filter(
+                Q(full_name__icontains=query)
+                | Q(city__icontains=query)
+                | Q(bio__icontains=query)
+            ).prefetch_related("user_skills__skill").order_by("-rating", "-total_reviews")
         employers_qs = None
         if request.user.is_authenticated:
             employers_qs = (

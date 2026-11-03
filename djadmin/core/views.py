@@ -19,6 +19,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db import connection
+from django.db.models import Q
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -30,6 +31,7 @@ from django.core.paginator import Paginator
 from .models import Application, Blacklist, Favorite, Invitation, Job, JobFavorite, Profile, Rating, SitePage, Skill, UserSkill
 from .analytics import track_job_view
 from .og_image import render_job_og
+from .search import ts_query
 from .ratelimit import rate_limit_write
 from .rpc import call_rpc_rows
 
@@ -271,10 +273,20 @@ def jobs_list(request):
         qs = qs.exclude(employer_id__in=blocked_employer_ids)
     q = (request.GET.get("q") or "").strip()[:100]
     if q:
-        qs = qs.filter(work_type__icontains=q) | qs.filter(organization_name__icontains=q) | \
-             qs.filter(city__icontains=q) | qs.filter(detailed_description__icontains=q) | \
-             qs.filter(object_description__icontains=q)
-        qs = qs.distinct()
+        ts = ts_query(q)
+        if ts:
+            qs = qs.extra(
+                where=["jobs.search_vector @@ to_tsquery('russian', %s)"],
+                params=[ts],
+            )
+        else:
+            qs = qs.filter(
+                Q(work_type__icontains=q)
+                | Q(organization_name__icontains=q)
+                | Q(city__icontains=q)
+                | Q(detailed_description__icontains=q)
+                | Q(object_description__icontains=q)
+            ).distinct()
     city = (request.GET.get("city") or "").strip()
     if city:
         qs = qs.filter(city__icontains=city)
@@ -532,8 +544,18 @@ def workers_list(request):
     qs = Profile.objects.public_workers().prefetch_related("user_skills__skill")
     q = (request.GET.get("q") or "").strip()
     if q:
-        qs = (qs.filter(full_name__icontains=q) | qs.filter(city__icontains=q)
-              | qs.filter(bio__icontains=q)).distinct()
+        ts = ts_query(q)
+        if ts:
+            qs = qs.extra(
+                where=["profiles.search_vector @@ to_tsquery('russian', %s)"],
+                params=[ts],
+            )
+        else:
+            qs = qs.filter(
+                Q(full_name__icontains=q)
+                | Q(city__icontains=q)
+                | Q(bio__icontains=q)
+            ).distinct()
     selected_skills = []
     raw_skills = []
     for value in request.GET.getlist("skills"):
