@@ -21,6 +21,7 @@
 | [DESIGN_REVIEW_2026-11.md](DESIGN_REVIEW_2026-11.md) | UX/UI-оценка, сильные/слабые места, roadmap |
 | [UX_ROADMAP_2026Q4.md](UX_ROADMAP_2026Q4.md) | приоритеты: черновик/степпер, дизайн-система, сохранённые поиски, CWV/axe |
 | [APP_RELEASE.md](APP_RELEASE.md) | APK/TWA: сборка, подпись, assetlinks, страница установки |
+| [E2E_TESTING.md](E2E_TESTING.md) | Playwright: регистрация → задание → отклик → принятие → чат |
 | [rkn_notification_fill.md](rkn_notification_fill.md) | уведомление Роскомнадзора (152-ФЗ) |
 | [SECRETS_ROTATION_STATUS.md](SECRETS_ROTATION_STATUS.md) | статус утёкших в историю секретов |
 
