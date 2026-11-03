@@ -23,6 +23,7 @@ from django.views.decorators.http import require_POST
 from .models import (
     Application,
     Blacklist,
+    EmployerDetail,
     Favorite,
     Invitation,
     Job,
@@ -128,6 +129,7 @@ def employer_detail(request, employer_id):
     )
     return render(request, "core/employer_detail.html", {
         "p": profile, "jobs": jobs, "ratings": ratings,
+        "employer_card": EmployerDetail.objects.filter(user=profile).first(),
         "is_favorited": is_favorited,
         "already_applied_job_ids": already_applied_job_ids,
     })

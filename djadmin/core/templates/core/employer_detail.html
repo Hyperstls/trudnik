@@ -27,7 +27,12 @@
                 </button>
             </form>
         </div>
-        {% if p.organization_name %}<p class="text-sm text-neutral-700 mt-3">{{ p.organization_name }}</p>{% endif %}
+        {% if employer_card.name %}<p class="text-base font-semibold text-neutral-800 mt-3">{{ employer_card.name }}</p>{% endif %}
+        {% if employer_card.company_name %}<p class="text-sm text-neutral-500 mt-0.5">{{ employer_card.company_name }}</p>{% endif %}
+        {% if employer_card.description %}<p class="text-sm text-neutral-700 mt-2 whitespace-pre-line">{{ employer_card.description }}</p>{% endif %}
+        {% if employer_card.city or employer_card.address %}
+        <p class="text-sm text-neutral-500 mt-2">{{ employer_card.city }}{% if employer_card.city and employer_card.address %} · {% endif %}{{ employer_card.address }}</p>
+        {% endif %}
         {% if p.bio %}<p class="text-sm text-neutral-700 mt-2 whitespace-pre-line">{{ p.bio }}</p>{% endif %}
     </div>
 

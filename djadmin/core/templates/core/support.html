@@ -1,0 +1,35 @@
+{% extends "core/base.html" %}
+{% block title %}Поддержка — Трудник{% endblock %}
+{% block meta_description %}Свяжитесь с поддержкой «Трудник»: вопросы, проблемы, идеи и жалобы.{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto py-4 fade-in">
+    <h1 class="text-2xl font-bold text-neutral-900 mb-1">Поддержка</h1>
+    <p class="text-sm text-neutral-500 mb-5">Ответим на email, обычно в течение рабочего дня.</p>
+
+    {% if messages %}{% for message in messages %}
+    <div class="{% if message.tags == 'error' %}bg-red-50 border-red-200 text-red-700{% elif message.tags == 'success' %}bg-green-50 border-green-200 text-green-700{% else %}bg-neutral-50 border-neutral-200 text-neutral-700{% endif %} border rounded-xl px-4 py-2.5 text-sm mb-3" role="status">{{ message }}</div>
+    {% endfor %}{% endif %}
+
+    <div class="ui-card p-5 sm:p-6">
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="ui-field">
+                <label class="ui-field__label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="ui-field__required" aria-hidden="true">*</span>{% endif %}</label>
+                {{ field }}
+                {% if field.help_text %}<p class="ui-field__hint">{{ field.help_text }}</p>{% endif %}
+                {% for error in field.errors %}<p class="ui-field__error" role="alert">{{ error }}</p>{% endfor %}
+            </div>
+            {% endfor %}
+            <button type="submit" class="ui-btn ui-btn--primary">Отправить</button>
+            <p class="ui-field__hint">Отправляя форму, вы соглашаетесь с <a href="{% url 'core:privacy' %}" class="text-primary-600 hover:underline">политикой конфиденциальности</a>.</p>
+        </form>
+    </div>
+
+    <div class="ui-card p-5 mt-4">
+        <h2 class="text-base font-bold text-neutral-800 mb-2">Можно и напрямую</h2>
+        <p class="text-sm text-neutral-600">Email: <a href="mailto:{{ support_email }}" class="text-primary-600 hover:underline">{{ support_email }}</a></p>
+        <p class="text-sm text-neutral-500 mt-2">Перед обращением, возможно, ответ уже есть в <a href="{% url 'core:faq' %}" class="text-primary-600 hover:underline">частых вопросах</a>.</p>
+    </div>
+</div>
+{% endblock %}

@@ -228,6 +228,7 @@ else:
 _smtp_from_email = os.getenv("SMTP_FROM_EMAIL", "notifications@trudnik.ru")
 _smtp_from_name = os.getenv("SMTP_FROM_NAME", "")
 DEFAULT_FROM_EMAIL = formataddr((_smtp_from_name, _smtp_from_email)) if _smtp_from_name else _smtp_from_email
+SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL", "trudnik-app@yandex.ru")
 
 # Транзакционные письма (подтверждение email, сброс пароля) — через Celery.
 # false/0 → синхронная отправка (SMTP блокирует request-цикл, но это fallback).

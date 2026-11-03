@@ -11,6 +11,8 @@ PASSWORD_RESET_SALT = "password-reset"  # pragma: allowlist secret (соль, н
 PASSWORD_RESET_MAX_AGE = 3600  # 1 час
 EMAIL_VERIFICATION_SALT = "email-verify"  # pragma: allowlist secret (соль, не секрет)
 EMAIL_VERIFICATION_MAX_AGE = 86400  # 24 часа
+EMAIL_CHANGE_SALT = "email-change"  # pragma: allowlist secret (соль, не секрет)
+EMAIL_CHANGE_MAX_AGE = 3600  # 1 час
 
 
 def _serializer(salt: str) -> URLSafeTimedSerializer:
@@ -44,3 +46,20 @@ def verify_email_verification_token(token: str, max_age: int = EMAIL_VERIFICATIO
     except (BadSignature, SignatureExpired):
         return None
     return result if isinstance(result, str) else None
+
+
+# ── Смена email ─────────────────────────────────────────────────────────────
+def generate_email_change_token(user_id, email: str) -> str:
+    return _serializer(EMAIL_CHANGE_SALT).dumps({"user_id": str(user_id), "email": email})
+
+
+def verify_email_change_token(token: str, max_age: int = EMAIL_CHANGE_MAX_AGE) -> dict | None:
+    try:
+        result = _serializer(EMAIL_CHANGE_SALT).loads(token, max_age=max_age)
+    except (BadSignature, SignatureExpired):
+        return None
+    if not isinstance(result, dict):
+        return None
+    if not result.get("user_id") or not result.get("email"):
+        return None
+    return result

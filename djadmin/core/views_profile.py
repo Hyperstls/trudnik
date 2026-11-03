@@ -14,8 +14,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from uuid import UUID
 
-from .forms_profile import PasswordChangeForm, ProfileForm
-from .models import Blacklist, Favorite, Invitation, Job, JobFavorite, Profile
+from .forms_profile import EmployerDetailForm, PasswordChangeForm, ProfileForm
+from .models import Blacklist, EmployerDetail, Favorite, Invitation, Job, JobFavorite, Profile
 from .ratelimit import rate_limit_write
 from .rpc import call_rpc, sync_user_skills_raw
 
@@ -24,7 +24,9 @@ from .rpc import call_rpc, sync_user_skills_raw
 @login_required
 def profile_edit(request):
     user = request.user
+    employer_detail = EmployerDetail.objects.filter(user=user).first()
     form = ProfileForm(request.POST or None, instance=user)
+    employer_form = EmployerDetailForm(request.POST or None, instance=employer_detail)
     change_form = PasswordChangeForm(request.POST or None) if request.method == "POST" and \
         request.POST.get("action") == "password" else PasswordChangeForm()
     skills_form_active = request.method == "POST" and request.POST.get("action") == "skills"
@@ -49,6 +51,13 @@ def profile_edit(request):
                     messages.success(request, "Пароль изменён.")
                     return redirect("core:profile")
                 change_form.add_error(None, "Текущий пароль неверен или операция не выполнена.")
+        elif action == "employer":
+            if employer_form.is_valid():
+                card = employer_form.save(commit=False)
+                card.user = user
+                card.save()
+                messages.success(request, "Карточка работодателя сохранена.")
+                return redirect("core:profile")
         elif action == "skills":
             posted = set(request.POST.getlist("skills"))
             chosen = [s.pk for s in form.fields["skills"].queryset if str(s.pk) in posted]
@@ -67,7 +76,7 @@ def profile_edit(request):
     from .models import UserSkill
 
     return render(request, "core/profile.html", {
-        "form": form, "change_form": change_form,
+        "form": form, "change_form": change_form, "employer_form": employer_form,
         "skills_selected": set(UserSkill.objects.filter(user=user).values_list("skill_id", flat=True)),
     })
 

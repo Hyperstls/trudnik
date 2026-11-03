@@ -23,8 +23,11 @@ from django.contrib import messages
 from django.contrib.auth import logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -34,6 +37,7 @@ from .models import (
 from .ratelimit import rate_limit_write
 from .rpc import call_rpc, call_rpc_as_user
 from .storage import UploadError, delete_upload_url, save_upload
+from .tokens import generate_email_change_token, verify_email_change_token
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +149,87 @@ def delete_account(request):
     auth_logout(request)
     messages.success(request, "Ваш аккаунт полностью удалён.")
     return redirect("core:login")
+
+
+@login_required
+@require_POST
+@rate_limit_write(limit=5, window=3600, redirect_to="/profile")
+def email_change_request(request):
+    """Start email change: password confirmation + signed link to the new address."""
+    new_email = (request.POST.get("new_email") or "").strip().lower()
+    current_password = request.POST.get("current_password") or ""
+    if not request.user.check_password(current_password):
+        messages.error(request, "Текущий пароль указан неверно.")
+        return redirect("core:profile")
+    try:
+        validate_email(new_email)
+    except ValidationError:
+        messages.error(request, "Укажите корректный email.")
+        return redirect("core:profile")
+    if new_email == (request.user.email or "").lower():
+        messages.info(request, "Этот email уже привязан к аккаунту.")
+        return redirect("core:profile")
+    if Profile.objects.filter(email=new_email).exclude(pk=request.user.pk).exists():
+        messages.error(request, "Этот email уже используется другим аккаунтом.")
+        return redirect("core:profile")
+
+    token = generate_email_change_token(request.user.pk, new_email)
+    link = request.build_absolute_uri(
+        reverse("core:email_change_confirm", args=[token])
+    )
+    from .views_auth import _send_mail
+
+    _send_mail(
+        "Трудник: подтвердите новый email",
+        "Здравствуйте!\n\nПодтвердите смену email в «Труднике» (ссылка действует 1 час):\n%s\n\n"
+        "Если вы не запрашивали смену — просто игнорируйте письмо." % link,
+        new_email,
+    )
+    _send_mail(
+        "Трудник: запрос на смену email",
+        "На вашем аккаунте запрошена смена email на %s.\n"
+        "Если это были не вы — смените пароль." % new_email,
+        request.user.email,
+    )
+    messages.success(
+        request,
+        "Письмо для подтверждения отправлено на %s. Проверьте почту и папку «Спам»." % new_email,
+    )
+    return redirect("core:profile")
+
+
+@login_required
+def email_change_confirm(request, token):
+    payload = verify_email_change_token(token)
+    if not payload or str(request.user.pk) != payload.get("user_id"):
+        messages.error(request, "Ссылка недействительна или истекла. Запросите смену email снова.")
+        return redirect("core:profile")
+    new_email = (payload.get("email") or "").strip().lower()
+    try:
+        validate_email(new_email)
+    except ValidationError:
+        messages.error(request, "Некорректный email в ссылке.")
+        return redirect("core:profile")
+    if Profile.objects.filter(email=new_email).exclude(pk=request.user.pk).exists():
+        messages.error(request, "Этот email уже используется другим аккаунтом.")
+        return redirect("core:profile")
+
+    old_email = request.user.email
+    Profile.objects.filter(pk=request.user.pk).update(
+        email=new_email, email_verified=True,
+    )
+    request.user.refresh_from_db()
+    messages.success(request, "Email изменён и подтверждён.")
+    if old_email and old_email.lower() != new_email:
+        from .views_auth import _send_mail
+
+        _send_mail(
+            "Трудник: email изменён",
+            "Email вашего аккаунта изменён на %s.\n"
+            "Если это были не вы — немедленно смените пароль и свяжитесь с поддержкой." % new_email,
+            old_email,
+        )
+    return redirect("core:profile")
 
 
 @login_required

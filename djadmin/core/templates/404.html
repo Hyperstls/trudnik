@@ -1,0 +1,23 @@
+{% load static %}<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <title>Страница не найдена — Трудник</title>
+    <link rel="stylesheet" href="{% static 'css/tailwind.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="bg-neutral-50 text-neutral-800 min-h-screen flex items-center justify-center p-4">
+    <main class="ui-card w-full max-w-md p-6 text-center">
+        <p class="text-5xl font-bold text-primary-600">404</p>
+        <h1 class="text-xl font-bold text-neutral-900 mt-2">Страница не найдена</h1>
+        <p class="text-sm text-neutral-500 mt-2">Возможно, ссылка устарела или страница была удалена.</p>
+        {% if request_path %}<p class="text-xs text-neutral-400 mt-2 break-all">{{ request_path }}</p>{% endif %}
+        <div class="flex flex-wrap justify-center gap-2 mt-5">
+            <a href="/jobs" class="ui-btn ui-btn--primary">К заданиям</a>
+            <a href="/" class="ui-btn ui-btn--secondary">На главную</a>
+        </div>
+    </main>
+</body>
+</html>

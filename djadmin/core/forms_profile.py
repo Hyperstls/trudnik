@@ -2,7 +2,7 @@
 from django import forms
 
 from .forms_auth import INPUT_CLS, is_valid_contact, validate_inn_checksum, validate_password
-from .models import Profile, Skill
+from .models import EmployerDetail, Profile, Skill
 
 
 class ProfileForm(forms.ModelForm):
@@ -60,6 +60,26 @@ class ProfileForm(forms.ModelForm):
         if not is_valid_contact(contact):
             raise forms.ValidationError("Введите корректный контакт: email, телефон или никнейм.")
         return contact
+
+
+class EmployerDetailForm(forms.ModelForm):
+    class Meta:
+        model = EmployerDetail
+        fields = ("name", "company_name", "city", "address", "description", "inn")
+        widgets = {
+            "name": forms.TextInput(attrs={"class": INPUT_CLS}),
+            "company_name": forms.TextInput(attrs={"class": INPUT_CLS}),
+            "city": forms.TextInput(attrs={"class": INPUT_CLS}),
+            "address": forms.TextInput(attrs={"class": INPUT_CLS}),
+            "description": forms.Textarea(attrs={"class": INPUT_CLS, "rows": 4}),
+            "inn": forms.TextInput(attrs={"class": INPUT_CLS}),
+        }
+
+    def clean_inn(self):
+        inn = (self.cleaned_data.get("inn") or "").strip()
+        if inn and (not inn.isdigit() or len(inn) not in (10, 12)):
+            raise forms.ValidationError("ИНН должен содержать 10 или 12 цифр.")
+        return inn
 
 
 class PasswordChangeForm(forms.Form):

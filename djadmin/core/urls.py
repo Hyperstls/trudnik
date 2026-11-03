@@ -2,7 +2,7 @@ from django.urls import path
 
 from . import (views, views_auth, views_drafts, views_flow, views_geo, views_interact,
                views_messenger, views_notify, views_profile, views_profile_ext,
-               views_public_ext, views_search, views_service, views_analytics)
+               views_public_ext, views_search, views_service, views_support, views_analytics)
 
 app_name = "core"
 
@@ -62,6 +62,8 @@ urlpatterns = [
     # 152-ФЗ / профиль
     path("profile/export-data", views_profile_ext.export_data, name="export_data"),
     path("profile/delete-account", views_profile_ext.delete_account, name="delete_account"),
+    path("profile/email/change", views_profile_ext.email_change_request, name="email_change_request"),
+    path("profile/email/confirm/<str:token>", views_profile_ext.email_change_confirm, name="email_change_confirm"),
     path("profile/<uuid:user_id>/report", views_profile_ext.report_user, name="report_user"),
     path("profile/avatar", views_profile_ext.upload_avatar, name="upload_avatar"),
     path("profile/verification-doc", views_profile_ext.upload_verification_doc, name="upload_verification_doc"),
@@ -78,6 +80,7 @@ urlpatterns = [
     path("unapply-selected", views_public_ext.bulk_unapply, name="bulk_unapply"),
     path("invitations/reject-all", views_public_ext.invitations_reject_all, name="invitations_reject_all"),
     path("faq", views_public_ext.faq, name="faq"),
+    path("support", views_support.support, name="support"),
     path("sitemap.xml", views_public_ext.sitemap, name="sitemap"),
 
     path("messenger/start/<str:platform>", views_messenger.start, name="messenger_start"),

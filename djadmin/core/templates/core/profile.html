@@ -68,6 +68,24 @@
         </form>
     </section>
 
+    <!-- Карточка работодателя -->
+    <section class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 mb-4">
+        <h2 class="text-base font-bold text-neutral-800 mb-1">Карточка работодателя</h2>
+        <p class="text-sm text-neutral-500 mb-4">Необязательно. Показывается на вашей публичной странице работодателя.</p>
+        <form method="post" class="space-y-3">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="employer">
+            {% for field in employer_form %}
+            <div class="form-field">
+                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% for error in field.errors %}<p class="form-error" role="alert"><span>{{ error }}</span></p>{% endfor %}
+            </div>
+            {% endfor %}
+            <button type="submit" class="w-full px-4 py-2.5 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-semibold transition-colors">Сохранить карточку</button>
+        </form>
+    </section>
+
     <!-- Аватар -->
     <section class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 mb-4">
         <h2 class="text-base font-bold text-neutral-800 mb-3">Фото профиля</h2>
@@ -89,6 +107,25 @@
         <form method="post" action="{% url 'core:delete_account' %}" data-confirm="Удалить аккаунт безвозвратно? Это действие необратимо.">
             {% csrf_token %}
             <button type="submit" class="px-4 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">Удалить аккаунт</button>
+        </form>
+    </section>
+
+    <!-- Email -->
+    <section class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 mb-4">
+        <h2 class="text-base font-bold text-neutral-800 mb-1">Email</h2>
+        <p class="text-sm text-neutral-500 mb-3">Сейчас: <span class="font-medium text-neutral-700">{{ user.email }}</span></p>
+        <form method="post" action="{% url 'core:email_change_request' %}" class="space-y-3">
+            {% csrf_token %}
+            <div class="form-field">
+                <label class="form-label" for="new-email">Новый email</label>
+                <input id="new-email" name="new_email" type="email" required autocomplete="email" class="form-input" placeholder="new@example.com">
+            </div>
+            <div class="form-field">
+                <label class="form-label" for="email-current-password">Текущий пароль</label>
+                <input id="email-current-password" name="current_password" type="password" required autocomplete="current-password" class="form-input" placeholder="Подтвердите паролем">
+            </div>
+            <button type="submit" class="w-full sm:w-auto px-4 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">Изменить email</button>
+            <p class="form-hint">На новый адрес придёт ссылка подтверждения (1 час). Текущий email продолжит работать до подтверждения.</p>
         </form>
     </section>
 
