@@ -1,3 +1,4 @@
 # Shell/Node scripts must keep LF for Linux CI and bash.
 *.sh text eol=lf
 *.mjs text eol=lf
+tests/fixtures/schema.sql text eol=lf

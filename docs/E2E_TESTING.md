@@ -36,11 +36,23 @@ Python 3.12 venv, Node 20+, Chromium Playwright.
 Все 6 шагов печатают `✓`, итог — `6 passed, 0 failed`. При падении Playwright
 печатает шаг и ошибку; лог Django лежит в `$TMPDIR/trudnik-e2e-server.log`.
 
+## CI
+
+`.github/workflows/e2e.yml` поднимает `postgis/postgis:15-3.4`, загружает
+`tests/fixtures/schema.sql` (схема без данных) и запускает тот же скрипт на
+каждый push в `feat/agent-pipeline`/`main` и pull request в `main`.
+
+Схема живёт в SQL-миграциях, поэтому после изменения БД пересоберите fixture:
+
+```bash
+.venv\Scripts\python.exe scripts/dump_schema.py
+git add tests/fixtures/schema.sql
+```
+
 ## Ограничения
 
-- Набор локальный: CI не поднимает схему из SQL-миграций (она живёт вне Django
-  migrations, см. `docs/django_migration_prompt.md`, ADR-8).
 - `runserver` не обслуживает WebSocket (`/ws/user/` → 404); чат в E2E проверяется
   через HTTP-отправку и серверный рендер. WebSocket-доставка покрыта
   `core.tests.test_ws_notifications` и прод-мониторингом.
 - Данные одноразовые: префикс `e2e-`; не используйте его для реальных аккаунтов.
+- Fixture — схема, не данные; после миграций его нужно обновлять (см. выше).
