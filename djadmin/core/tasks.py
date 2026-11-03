@@ -251,7 +251,9 @@ def _saved_search_jobs(user, item, since):
     def one(key):
         return (params.get(key) or [""])[0].strip()
 
-    qs = Job.objects.filter(status="open", created_at__gt=since).exclude(employer=user)
+    qs = Job.objects.filter(
+        status="open", moderation_status="ok", created_at__gt=since
+    ).exclude(employer=user)
     q = one("q")
     if q:
         qs = qs.filter(

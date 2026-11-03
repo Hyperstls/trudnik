@@ -84,7 +84,7 @@ def metrics(request):
         "trudnik_profiles_total %d" % Profile.objects.count(),
         "# HELP trudnik_jobs_total Jobs count by status open",
         "# TYPE trudnik_jobs_total gauge",
-        "trudnik_jobs_total %d" % Job.objects.filter(status="open").count(),
+        "trudnik_jobs_total %d" % Job.objects.filter(status="open", moderation_status="ok").count(),
         "# HELP trudnik_applications_total Applications count",
         "# TYPE trudnik_applications_total gauge",
         "trudnik_applications_total %d" % Application.objects.count(),

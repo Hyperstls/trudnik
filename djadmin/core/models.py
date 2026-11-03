@@ -232,8 +232,11 @@ class UserSkill(models.Model):
 
 class JobManager(models.Manager):
     def public(self):
-        """RLS-паритет: анонимный каталог показывает только open/completed/cancelled."""
-        return self.filter(status__in=("open", "completed", "cancelled"))
+        """RLS-паритет: каталог — только опубликованные и прошедшие модерацию."""
+        return self.filter(
+            status__in=("open", "completed", "cancelled"),
+            moderation_status="ok",
+        )
 
 
 class Job(models.Model):
@@ -246,6 +249,11 @@ class Job(models.Model):
         CANCELLED = "cancelled", "Отменена"
         PAID = "paid", "Оплачена"
         EXPIRED = "expired", "Истекла"
+
+    class ModerationStatus(models.TextChoices):
+        OK = "ok", "Опубликовано"
+        REVIEW = "review", "На проверке"
+        REJECTED = "rejected", "Отклонено"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     employer = models.ForeignKey(
@@ -265,6 +273,11 @@ class Job(models.Model):
     date_time = models.DateTimeField("дата/время работ")
     payment_amount = models.DecimalField("оплата", max_digits=12, decimal_places=2, null=True, blank=True)
     status = models.CharField("статус", max_length=20, choices=Status.choices, default=Status.OPEN)
+    moderation_status = models.CharField(
+        "модерация", max_length=20, choices=ModerationStatus.choices,
+        default=ModerationStatus.OK,
+    )
+    moderation_reason = models.TextField("причина модерации", null=True, blank=True)
     max_workers = models.PositiveIntegerField("нужно работников", default=1, null=True, blank=True)
     current_workers = models.PositiveSmallIntegerField("принято", default=0, null=True, blank=True)
     tariff = models.CharField("тариф", max_length=20, default="standard", null=True, blank=True)

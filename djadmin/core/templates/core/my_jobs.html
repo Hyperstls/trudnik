@@ -35,7 +35,10 @@
                 <input type="checkbox" name="job_ids" value="{{ job.pk }}" form="bulk-jobs-form" data-bulk-item data-job-status="{{ job.status }}" class="mt-1 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 shrink-0" aria-label="Выбрать задание {{ job.work_type|default:job.pk }}">
                 <div class="min-w-0 flex-1">
                     <a href="{% url 'core:job_detail' job.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ job.work_type|default:"Задание" }}</a>
-                    <p class="text-sm text-neutral-500 mt-0.5">{{ job.organization_name|default:"Частное лицо" }} · {{ job.get_status_display }} · {{ job.date_time|date:"d.m.Y H:i" }}</p>
+                    <p class="text-sm text-neutral-500 mt-0.5">
+                        {{ job.organization_name|default:"Частное лицо" }} · {{ job.get_status_display }} · {{ job.date_time|date:"d.m.Y H:i" }}
+                        {% if job.moderation_status == 'review' %}<span class="ml-1 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">На проверке</span>{% elif job.moderation_status == 'rejected' %}<span class="ml-1 inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">Отклонено</span>{% endif %}
+                    </p>
                 </div>
                 <div class="flex flex-wrap gap-2 text-sm w-full sm:w-auto sm:justify-end">
                     <a href="{% url 'core:job_applicants' job.pk %}" class="action-icon-btn contact-btn"><span class="text-xs font-medium">Отклики{% if job.application_count %} · {{ job.application_count }}{% endif %}</span></a>

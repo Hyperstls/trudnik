@@ -346,6 +346,13 @@ class ChatTests(TestCase):
                              {"content": text, "client_message_id": str(uuid.uuid4())})
         self.assertEqual(Message.objects.filter(application=self.app).count(), 2)
 
+    def test_duplicate_message_ignored(self):
+        self.client.force_login(self.worker)
+        for _ in range(2):
+            self.client.post(reverse("core:chat_send", args=[self.app.pk]),
+                             {"content": "Одинаковый текст", "client_message_id": str(uuid.uuid4())})
+        self.assertEqual(Message.objects.filter(application=self.app).count(), 1)
+
     def test_chat_room_has_offline_queue_markup(self):
         self.client.force_login(self.worker)
         response = self.client.get(reverse("core:chat_room", args=[self.app.pk]))

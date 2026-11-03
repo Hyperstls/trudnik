@@ -5,14 +5,18 @@
 - запрет completed → open при существующих оценках (RLS/RPC-инвариант);
 - cancel/restore — RPC cancel_job_atomic / restore_job_atomic.
 """
+from datetime import timedelta
+
 from django.contrib import messages
 from django.contrib.admin import ModelAdmin, TabularInline
+from django.utils import timezone
 
 from core.audit import AuditAdminMixin, log_admin_action
 from core.models import (
     Application, ArchiveContactPayment, EmployerSubscription, Invitation,
     Job, JobFavorite, JobPayment, JobPhoto, JobSkill, Rating,
 )
+from core.notifications import enqueue_notification
 from core.rpc import call_rpc
 
 BULK_DELETE_LIMIT = 50
@@ -29,15 +33,20 @@ class JobPhotoInline(AuditAdminMixin, TabularInline):
 class JobAdmin(AuditAdminMixin, ModelAdmin):
     list_display = (
         "work_type", "organization_name", "employer", "city", "status",
-        "payment_amount", "date_time", "workers_progress", "is_promoted", "created_at",
+        "moderation_status", "payment_amount", "date_time", "workers_progress",
+        "is_promoted", "created_at",
     )
-    list_filter = ("status", "is_promoted", "tariff", "city", "created_at")
+    list_filter = ("status", "moderation_status", "is_promoted", "tariff", "city", "created_at")
     search_fields = ("organization_name", "work_type", "city", "address", "detailed_description")
     list_select_related = ("employer",)
     raw_id_fields = ("employer",)
     date_hierarchy = "created_at"
     list_per_page = 50
-    actions = ("action_cancel", "action_restore", "action_delete_cascade", "action_set_status_open")
+    actions = (
+        "action_moderation_approve", "action_moderation_reject",
+        "action_cancel", "action_restore", "action_delete_cascade",
+        "action_set_status_open",
+    )
     inlines = (JobPhotoInline,)
 
     fieldsets = (
@@ -50,6 +59,7 @@ class JobAdmin(AuditAdminMixin, ModelAdmin):
             "payment_amount", "max_workers", "current_workers", "photo_urls",
         )}),
         ("Продвижение/оплата", {"fields": ("tariff", "is_paid", "paid_at", "expires_at", "is_promoted", "promoted_until")}),
+        ("Модерация", {"fields": ("moderation_status", "moderation_reason")}),
         ("Служебное (RO)", {"fields": ("id", "created_at", "updated_at", "skills_display")}),
     )
     readonly_fields = ("id", "created_at", "updated_at", "current_workers", "skills_display")
@@ -79,6 +89,55 @@ class JobAdmin(AuditAdminMixin, ModelAdmin):
                     )
                     return
         super().save_model(request, obj, form, change)
+
+    def action_moderation_approve(self, request, queryset):
+        approved = 0
+        for job in queryset.filter(moderation_status=Job.ModerationStatus.REVIEW):
+            Job.objects.filter(pk=job.pk).update(
+                moderation_status=Job.ModerationStatus.OK, moderation_reason=None,
+            )
+            enqueue_notification(
+                job.employer_id, "job_moderation", "Задание одобрено",
+                "Ваше задание «%s» опубликовано в каталоге." % (job.work_type or "Задание"),
+                {"job_id": str(job.pk), "link": "/jobs/%s" % job.pk},
+            )
+            log_admin_action(request, "moderation_approve", "jobs", job.pk)
+            approved += 1
+        messages.info(request, "Одобрено заданий: %d." % approved)
+
+    action_moderation_approve.short_description = "Модерация: одобрить"
+
+    def action_moderation_reject(self, request, queryset):
+        rejected = 0
+        for job in queryset.exclude(moderation_status=Job.ModerationStatus.REJECTED):
+            reason = "Отклонено модератором"
+            Job.objects.filter(pk=job.pk).update(
+                moderation_status=Job.ModerationStatus.REJECTED,
+                moderation_reason=reason,
+            )
+            enqueue_notification(
+                job.employer_id, "job_moderation", "Задание отклонено",
+                "Задание «%s» не прошло модерацию. Исправьте описание и сохраните его."
+                % (job.work_type or "Задание"),
+                {"job_id": str(job.pk), "link": "/jobs/%s" % job.pk},
+            )
+            log_admin_action(request, "moderation_reject", "jobs", job.pk)
+            rejected += 1
+            recent_rejected = Job.objects.filter(
+                employer_id=job.employer_id,
+                moderation_status=Job.ModerationStatus.REJECTED,
+                created_at__gte=timezone.now() - timedelta(hours=24),
+            ).count()
+            if recent_rejected >= 5:
+                is_admin = job.employer.role == "admin"
+                if not is_admin:
+                    call_rpc(
+                        "suspend_user", job.employer_id,
+                        "Авто-модерация: %d отклонённых заданий за 24ч" % recent_rejected,
+                    )
+        messages.info(request, "Отклонено заданий: %d." % rejected)
+
+    action_moderation_reject.short_description = "Модерация: отклонить"
 
     def action_cancel(self, request, queryset):
         for job in queryset:

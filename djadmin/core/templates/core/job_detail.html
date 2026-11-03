@@ -16,6 +16,20 @@
         Все задания
     </a>
 
+    {% if is_owner and job.moderation_status == 'review' %}
+    <div class="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4" role="status">
+        <p class="text-sm font-semibold text-amber-900">Задание на проверке</p>
+        <p class="text-sm text-amber-800 mt-1">Оно станет видно в каталоге после одобрения модератором. Пока доступно только вам.</p>
+        {% if job.moderation_reason %}<p class="text-xs text-amber-700 mt-1">{{ job.moderation_reason }}</p>{% endif %}
+    </div>
+    {% elif is_owner and job.moderation_status == 'rejected' %}
+    <div class="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4" role="alert">
+        <p class="text-sm font-semibold text-red-900">Задание отклонено модератором</p>
+        <p class="text-sm text-red-800 mt-1">Исправьте описание и сохраните изменения — задание вернётся на проверку.</p>
+        {% if job.moderation_reason %}<p class="text-xs text-red-700 mt-1">{{ job.moderation_reason }}</p>{% endif %}
+    </div>
+    {% endif %}
+
     {% if show_push_prompt and user.is_authenticated %}
     <div id="push-prompt" class="hidden mb-4 rounded-2xl border border-primary-200 bg-primary-50 p-4 flex flex-wrap items-center justify-between gap-3" role="region" aria-label="Уведомления о задании">
         <div class="min-w-0">

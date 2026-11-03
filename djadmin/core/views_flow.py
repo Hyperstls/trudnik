@@ -34,6 +34,9 @@ from django.views.decorators.http import require_POST
 
 from .auth_backend import LOCKOUT_TEXT, ProfileBackend
 from .analytics import incr
+from .anti_fraud import (
+    allow_application, allow_job_post, assess_job,
+)
 from .forms import INPUT_CLS, JOB_FIELDS, JobForm, LoginForm
 from .models import Application, Job, JobFavorite, JobPhoto, Skill
 from .notifications import enqueue_notification
@@ -155,16 +158,43 @@ def logout_view(request):
 def job_create(request):
     form = JobForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        with transaction.atomic():
-            job = form.save(commit=False)
-            job.employer = request.user
-            job.status = Job.Status.OPEN
-            job.expires_at = timezone.now() + timedelta(days=30)
-            job.save()
-            sync_job_skills_raw(job.pk, [s.pk for s in form.cleaned_data["skills"]])
-        incr("job_created")
-        messages.success(request, "Задание создано.")
-        return redirect(reverse("core:job_detail", args=[job.pk]) + "?created=1&push=1")
+        if not allow_job_post(request.user.pk):
+            messages.error(
+                request,
+                "Слишком много новых заданий за последний час. "
+                "Подождите немного и попробуйте снова.",
+            )
+        else:
+            assessment = assess_job(
+                request.user,
+                work_type=form.cleaned_data.get("work_type") or "",
+                city=form.cleaned_data.get("city") or "",
+                texts=(
+                    form.cleaned_data.get("organization_name"),
+                    form.cleaned_data.get("org_description"),
+                    form.cleaned_data.get("object_description"),
+                    form.cleaned_data.get("detailed_description"),
+                ),
+            )
+            with transaction.atomic():
+                job = form.save(commit=False)
+                job.employer = request.user
+                job.status = Job.Status.OPEN
+                job.expires_at = timezone.now() + timedelta(days=30)
+                job.moderation_status = assessment["status"]
+                job.moderation_reason = assessment["reason"] or None
+                job.save()
+                sync_job_skills_raw(job.pk, [s.pk for s in form.cleaned_data["skills"]])
+            incr("job_created")
+            if assessment["status"] == Job.ModerationStatus.REVIEW:
+                messages.warning(
+                    request,
+                    "Задание создано и отправлено на проверку. "
+                    "Оно появится в каталоге после одобрения модератором.",
+                )
+            else:
+                messages.success(request, "Задание создано.")
+            return redirect(reverse("core:job_detail", args=[job.pk]) + "?created=1&push=1")
     return render(request, "core/job_form.html", {
         "form": form, "title": "Новое задание", "selected_skills": set(),
         "yandex_maps_key": os.getenv("YANDEX_MAPS_API_KEY", ""),
@@ -215,12 +245,34 @@ def job_edit(request, job_id):
         })
     form = JobForm(request.POST or None, instance=job)
     if request.method == "POST" and form.is_valid():
+        assessment = assess_job(
+            request.user,
+            work_type=form.cleaned_data.get("work_type") or "",
+            city=form.cleaned_data.get("city") or "",
+            texts=(
+                form.cleaned_data.get("organization_name"),
+                form.cleaned_data.get("org_description"),
+                form.cleaned_data.get("object_description"),
+                form.cleaned_data.get("detailed_description"),
+            ),
+            exclude_job_id=job.pk,
+        )
         with transaction.atomic():
             job = form.save(commit=False)
             job.expires_at = timezone.now() + timedelta(days=30)
+            if job.moderation_status == Job.ModerationStatus.REJECTED:
+                # Правка отклонённого задания возвращает его в очередь.
+                job.moderation_status = Job.ModerationStatus.REVIEW
+                job.moderation_reason = "Повторная проверка после правки"
+            elif assessment["status"] == Job.ModerationStatus.REVIEW:
+                job.moderation_status = Job.ModerationStatus.REVIEW
+                job.moderation_reason = assessment["reason"] or None
             job.save()
             sync_job_skills_raw(job.pk, [s.pk for s in form.cleaned_data["skills"]])
-        messages.success(request, "Задание обновлено.")
+        if job.moderation_status == Job.ModerationStatus.REVIEW:
+            messages.warning(request, "Задание обновлено и отправлено на проверку.")
+        else:
+            messages.success(request, "Задание обновлено.")
         return redirect("core:job_detail", job_id=job.pk)
     from django.db import connection as _c
     with _c.cursor() as cur:
@@ -298,6 +350,12 @@ def job_apply(request, job_id):
     if job is None or job.employer_id == request.user.pk:
         messages.error(request, "Задание не найдено или отклик невозможен.")
         return redirect("core:jobs")
+    if not allow_application(request.user.pk):
+        messages.error(
+            request,
+            "Дневной лимит откликов исчерпан. Попробуйте снова завтра.",
+        )
+        return redirect("core:job_detail", job_id=job.pk)
     result = call_rpc("apply_job_atomic", job.pk, request.user.pk) or {}
     ok = _rpc_message(request, result, "Отклик отправлен.")
     if ok:

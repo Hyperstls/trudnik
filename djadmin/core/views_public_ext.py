@@ -350,6 +350,9 @@ def duplicate_job(job, user):
             lat=job.lat,
             lng=job.lng,
             status="open",
+            moderation_status=(
+                "ok" if job.moderation_status == "ok" else "review"
+            ),
             is_paid=False,
             tariff=job.tariff or "Базовый",
             max_workers=job.max_workers or 1,

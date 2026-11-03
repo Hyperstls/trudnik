@@ -97,6 +97,7 @@ class TrudnikAdminSite(AdminSite):
             "Новые задания (сегодня)": Job.objects.filter(created_at__date=today).count(),
             "Отклики (сегодня)": Application.objects.filter(created_at__date=today).count(),
             "Жалобы в очереди": UserReport.objects.exclude(status="reviewed").count(),
+            "Задания на модерации": Job.objects.filter(moderation_status="review").count(),
             "Верификация на проверке": Profile.objects.filter(verification_status="pending").count(),
         }
         links = [

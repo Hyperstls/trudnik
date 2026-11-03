@@ -262,9 +262,9 @@ def jobs_list(request):
     if job_filter not in ("new", "applied") or not request.user.is_authenticated:
         job_filter = ""
     statuses = PUBLIC_STATUSES + (("cancelled",) if job_filter == "applied" else ())
-    qs = Job.objects.filter(status__in=statuses).select_related("employer").prefetch_related(
-        "photos"
-    )
+    qs = Job.objects.filter(
+        status__in=statuses, moderation_status=Job.ModerationStatus.OK
+    ).select_related("employer").prefetch_related("photos")
     from django.db.models import Count
     qs = qs.annotate(
         applicant_count=Count(

@@ -2203,8 +2203,11 @@ CREATE TABLE public.jobs (
     photo_urls text[] DEFAULT '{}'::text[] NOT NULL,
     geom public.geometry(Point,4326),
     is_remote boolean DEFAULT false NOT NULL,
+    moderation_status text DEFAULT 'ok'::text NOT NULL,
+    moderation_reason text,
     CONSTRAINT jobs_current_workers_check CHECK (((current_workers >= 0) AND (current_workers <= max_workers))),
     CONSTRAINT jobs_max_workers_check CHECK ((max_workers >= 1)),
+    CONSTRAINT jobs_moderation_status_check CHECK ((moderation_status = ANY (ARRAY['ok'::text, 'review'::text, 'rejected'::text]))),
     CONSTRAINT jobs_payment_amount_check CHECK ((payment_amount >= (0)::numeric)),
     CONSTRAINT jobs_status_check CHECK (((status)::text = ANY ((ARRAY['draft'::character varying, 'open'::character varying, 'active'::character varying, 'in_progress'::character varying, 'completed'::character varying, 'cancelled'::character varying, 'paid'::character varying, 'expired'::character varying])::text[])))
 );
@@ -3474,6 +3477,13 @@ CREATE INDEX idx_user_reports_status ON public.user_reports USING btree (status)
 --
 
 CREATE INDEX idx_user_skills_skill_id ON public.user_skills USING btree (skill_id);
+
+
+--
+-- Name: jobs_moderation_status_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX jobs_moderation_status_idx ON public.jobs USING btree (moderation_status);
 
 
 --

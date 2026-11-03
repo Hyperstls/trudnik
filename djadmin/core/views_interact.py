@@ -23,6 +23,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from .anti_fraud import is_duplicate_message
 from .models import Application, Job, Message, Profile, Rating
 from .notifications import enqueue_notification
 from .ratelimit import rate_limit_write
@@ -161,6 +162,9 @@ def chat_send(request, app_id):
     content = (request.POST.get("content") or "").strip()[:4000]
     attachment = request.FILES.get("attachment")
     if not content and not attachment:
+        return redirect("core:chat_room", app_id=app.pk)
+    if not attachment and is_duplicate_message(request.user.pk, app.pk, content):
+        messages.info(request, "Такое сообщение уже отправлено.")
         return redirect("core:chat_room", app_id=app.pk)
 
     attachment_url = attachment_name = attachment_mime = None
