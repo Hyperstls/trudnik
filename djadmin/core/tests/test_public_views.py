@@ -598,7 +598,10 @@ class PublicViewsTests(TestCase):
         self.assertContains(response, "Текст правил")
 
     def test_robots(self):
-        self.assertEqual(self.client.get("/robots.txt").status_code, 200)
+        response = self.client.get("/robots.txt")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Disallow: /admin/")
+        self.assertContains(response, "Sitemap: https://xn--d1aigknli.xn--p1ai/sitemap.xml")
 
 
 LEGACY_PHOTO_URL = "https://cdn.example.com/legacy/photo.jpg"

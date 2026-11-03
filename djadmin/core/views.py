@@ -709,4 +709,10 @@ def legal_page(request, slug):
 
 
 def robots(request):
-    return HttpResponse("User-agent: *\nAllow: /\n", content_type="text/plain")
+    lines = (
+        "User-agent: *",
+        "Allow: /",
+        "Disallow: /admin/",
+        "Sitemap: %s/sitemap.xml" % settings.SITE_URL.rstrip("/"),
+    )
+    return HttpResponse("\n".join(lines) + "\n", content_type="text/plain")

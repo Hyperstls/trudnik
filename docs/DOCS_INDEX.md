@@ -24,6 +24,7 @@
 | [E2E_TESTING.md](E2E_TESTING.md) | Playwright: регистрация → задание → отклик → принятие → чат |
 | [MONITORING.md](MONITORING.md) | `/health`, uptime-workflow, алерты, деплой-порядок, staging/restore |
 | [RESTORE_DRILL.md](RESTORE_DRILL.md) | проверенное восстановление БД, safety-правила, prod-процедура |
+| [LAUNCH_CHECKLIST.md](LAUNCH_CHECKLIST.md) | preflight прода, почтовый DNS, бэкапы, юр. статус, алерты |
 | [rkn_notification_fill.md](rkn_notification_fill.md) | уведомление Роскомнадзора (152-ФЗ) |
 | [SECRETS_ROTATION_STATUS.md](SECRETS_ROTATION_STATUS.md) | статус утёкших в историю секретов |
 
