@@ -8,7 +8,7 @@ import { chromium } from 'playwright';
 import AxeBuilder from '@axe-core/playwright';
 
 const base = (process.env.BASE_URL || 'https://xn--d1aigknli.xn--p1ai').replace(/\/$/, '');
-const paths = ['/jobs', '/login', '/workers', '/register', '/search?q=test'];
+const paths = ['/jobs', '/login', '/workers', '/register', '/search?q=test', '/support'];
 const viewports = [
   { name: 'desktop', width: 1280, height: 800 },
   { name: 'mobile', width: 390, height: 844 },
