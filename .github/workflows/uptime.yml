@@ -2,6 +2,10 @@ name: Uptime
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - "scripts/uptime_check.py"
+      - ".github/workflows/uptime.yml"
   schedule:
     - cron: "*/30 * * * *"
 
