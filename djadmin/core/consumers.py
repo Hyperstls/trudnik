@@ -47,6 +47,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             "type": "read", "read_ids": event.get("read_ids", []),
         }))
 
+    async def chat_message_changed(self, event):
+        await self.send(text_data=json.dumps({"type": "changed", **event["payload"]}))
+
     # ── синхронные хелперы (database_sync_to_async) ────────────────────
     @staticmethod
     def _is_participant(app_id, user_id) -> bool:
@@ -99,3 +102,22 @@ def notify_read_receipts(application_id, read_ids) -> None:
         import logging
 
         logging.getLogger(__name__).warning("chat read notify failed", exc_info=True)
+
+
+def notify_message_changed(application_id, payload: dict) -> None:
+    """Broadcast message edit/delete to the room (poll fallback also covers it)."""
+    try:
+        from asgiref.sync import async_to_sync
+        from channels.layers import get_channel_layer
+
+        layer = get_channel_layer()
+        if layer is None:
+            return
+        async_to_sync(layer.group_send)(
+            "chat_%s" % application_id,
+            {"type": "chat_message_changed", "payload": payload},
+        )
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).warning("chat change notify failed", exc_info=True)

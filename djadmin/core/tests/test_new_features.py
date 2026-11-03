@@ -186,6 +186,21 @@ class WorkerCompletionTests(TestCase):
         self.assertIsNone(self.app.worker_completed_at)
 
 
+class ApplicantCountTests(TestCase):
+    def test_public_job_shows_applicant_count_for_multiple_workers(self):
+        employer = make_profile("count-employer@example.com", role="employer")
+        job = make_job(employer, work_type="Count ZZZ", max_workers=2)
+        for i in range(2):
+            worker = make_profile("count-%d@example.com" % i, role="worker")
+            Application.objects.create(job=job, worker=worker, status="pending")
+        response = self.client.get(reverse("core:job_detail", args=[job.pk]))
+        self.assertContains(response, "Откликнулось")
+        self.assertContains(response, ">2<", html=False)
+        response = self.client.get(reverse("core:jobs") + "?q=Count")
+        self.assertContains(response, "Откликнулось:")
+        self.assertContains(response, ">2<", html=False)
+
+
 class RemoteJobTests(TestCase):
     def setUp(self):
         self.employer = make_profile("remote-employer@example.com", role="employer")

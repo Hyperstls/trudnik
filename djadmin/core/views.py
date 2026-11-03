@@ -264,6 +264,14 @@ def jobs_list(request):
     statuses = PUBLIC_STATUSES + (("cancelled",) if job_filter == "applied" else ())
     qs = Job.objects.filter(status__in=statuses).select_related("employer").prefetch_related(
         "photos"
+    )
+    from django.db.models import Count
+    qs = qs.annotate(
+        applicant_count=Count(
+            "applications",
+            filter=~Q(applications__status__in=("withdrawn", "cancelled")),
+            distinct=True,
+        )
     ).order_by(_promoted_first(), "-created_at")
     if request.user.is_authenticated:
         # Blacklist до пагинации: задания работодателей, заблокировавших пользователя.
@@ -486,7 +494,9 @@ def job_detail(request, job_id):
     if my_app and job.date_time is not None:
         # Паритет Flask check_withdraw_window: <12 ч до начала — отзыв недоступен.
         can_withdraw = (job.date_time - timezone.now()).total_seconds() > 12 * 3600
-    application_count = 0
+    application_count = Application.objects.filter(job=job).exclude(
+        status__in=("withdrawn", "cancelled")
+    ).count()
     job_stats = {"total": 0, "pending": 0, "accepted": 0, "rejected": 0, "views": 0}
     is_employer_fav = False
     if is_owner:

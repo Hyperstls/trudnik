@@ -2225,7 +2225,9 @@ CREATE TABLE public.messages (
     attachment_name text,
     attachment_mime text,
     attachment_size integer,
-    read_at timestamp with time zone
+    read_at timestamp with time zone,
+    edited_at timestamp with time zone,
+    deleted_at timestamp with time zone
 );
 
 

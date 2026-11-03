@@ -56,6 +56,10 @@
                 <dt class="text-neutral-400 text-xs">Работников</dt>
                 <dd class="font-medium text-neutral-700">{{ job.current_workers|default:0 }} из {{ job.max_workers|default:"—" }}</dd>
             </div>
+            <div>
+                <dt class="text-neutral-400 text-xs">Откликнулось</dt>
+                <dd class="font-medium text-neutral-700">{{ application_count }}</dd>
+            </div>
             {% if job.city %}
             <div>
                 <dt class="text-neutral-400 text-xs">Город</dt>

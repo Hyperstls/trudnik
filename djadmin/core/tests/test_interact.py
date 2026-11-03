@@ -259,6 +259,77 @@ class ChatTests(TestCase):
         self.assertContains(response, "Изображение")
         self.assertEqual(response.context["rows"][0]["last"], "Изображение")
 
+    def test_edit_own_message(self):
+        msg = Message.objects.create(
+            sender=self.worker, application=self.app, content="Старый текст",
+        )
+        self.client.force_login(self.worker)
+        response = self.client.post(
+            reverse("core:chat_edit_message", args=[self.app.pk, msg.pk]),
+            {"content": "Новый текст"},
+        )
+        self.assertEqual(response.status_code, 302)
+        msg.refresh_from_db()
+        self.assertEqual(msg.content, "Новый текст")
+        self.assertIsNotNone(msg.edited_at)
+
+    def test_cannot_edit_foreign_message(self):
+        msg = Message.objects.create(
+            sender=self.worker, application=self.app, content="Чужое",
+        )
+        self.client.force_login(self.employer)
+        self.client.post(
+            reverse("core:chat_edit_message", args=[self.app.pk, msg.pk]),
+            {"content": "Взлом"},
+        )
+        msg.refresh_from_db()
+        self.assertEqual(msg.content, "Чужое")
+
+    def test_delete_own_message_is_soft(self):
+        msg = Message.objects.create(
+            sender=self.worker, application=self.app, content="Удалить",
+        )
+        self.client.force_login(self.worker)
+        response = self.client.post(
+            reverse("core:chat_delete_message", args=[self.app.pk, msg.pk])
+        )
+        self.assertEqual(response.status_code, 302)
+        msg.refresh_from_db()
+        self.assertIsNotNone(msg.deleted_at)
+        self.assertEqual(msg.content, "")
+        response = self.client.get(reverse("core:chat_room", args=[self.app.pk]))
+        self.assertContains(response, "Сообщение удалено")
+
+    def test_cannot_delete_foreign_message(self):
+        msg = Message.objects.create(
+            sender=self.worker, application=self.app, content="Чужое",
+        )
+        self.client.force_login(self.employer)
+        self.client.post(reverse("core:chat_delete_message", args=[self.app.pk, msg.pk]))
+        msg.refresh_from_db()
+        self.assertIsNone(msg.deleted_at)
+        self.assertEqual(msg.content, "Чужое")
+
+    def test_poll_returns_edits_and_deletions(self):
+        msg = Message.objects.create(
+            sender=self.worker, application=self.app, content="Было",
+        )
+        msg.content = "Стало"
+        msg.edited_at = timezone.now()
+        msg.save(update_fields=["content", "edited_at"])
+        deleted = Message.objects.create(
+            sender=self.worker, application=self.app, content="Удалить",
+        )
+        deleted.deleted_at = timezone.now()
+        deleted.save(update_fields=["deleted_at"])
+        self.client.force_login(self.employer)
+        data = self.client.get(
+            reverse("core:chat_poll", args=[self.app.pk]), {"after": 0}
+        ).json()
+        by_id = {item["id"]: item for item in data["changes"]}
+        self.assertEqual(by_id[msg.pk]["content"], "Стало")
+        self.assertIsNotNone(by_id[deleted.pk]["deleted_at"])
+
     def test_send_idempotent_by_client_message_id(self):
         self.client.force_login(self.worker)
         cmid = str(uuid.uuid4())

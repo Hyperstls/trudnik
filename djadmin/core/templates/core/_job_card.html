@@ -39,6 +39,9 @@
                     <time datetime="{{ job.date_time|date:'c' }}">{{ job.date_time|date:"d.m.y H:i" }}</time>{% if job.distance_km %} · {{ job.distance_km }} км{% endif %}
                 </span>
             </p>
+            {% if job.max_workers|default:1 > 1 %}
+            <p class="text-xs text-neutral-500 mt-1">Откликнулось: <span class="font-semibold text-neutral-700">{{ job.applicant_count|default:0 }}</span> · нужно {{ job.max_workers }}</p>
+            {% endif %}
             {% if job.object_description %}
             <p class="mt-2 text-sm text-neutral-600 line-clamp-2 leading-relaxed">{{ job.object_description }}</p>
             {% endif %}

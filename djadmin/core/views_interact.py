@@ -18,6 +18,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -128,7 +129,7 @@ def chat_room(request, app_id):
         .values(
             "id", "sender_id", "content", "created_at",
             "attachment_url", "attachment_name", "attachment_mime", "attachment_size",
-            "read_at",
+            "read_at", "edited_at", "deleted_at",
         )
     )
     return render(request, "core/chat.html", {
@@ -198,6 +199,69 @@ def chat_send(request, app_id):
 
 
 @login_required
+@require_POST
+@rate_limit_write(limit=20, window=60)
+def chat_edit_message(request, app_id, message_id):
+    app = _chat_app_or_none(request, app_id)
+    if app is None:
+        raise Http404("Чат не найден")
+    msg = Message.objects.filter(
+        pk=message_id, application=app, sender=request.user,
+        deleted_at__isnull=True,
+    ).first()
+    if msg is None:
+        messages.error(request, "Сообщение не найдено или уже удалено.")
+        return redirect("core:chat_room", app_id=app.pk)
+    content = (request.POST.get("content") or "").strip()[:4000]
+    if not content and not msg.attachment_url:
+        messages.error(request, "Сообщение не может быть пустым.")
+        return redirect("core:chat_room", app_id=app.pk)
+    msg.content = content
+    msg.edited_at = timezone.now()
+    msg.save(update_fields=["content", "edited_at"])
+    from .consumers import notify_message_changed
+    notify_message_changed(app.pk, {
+        "action": "edited",
+        "id": msg.pk,
+        "content": msg.content,
+        "edited_at": msg.edited_at.isoformat(),
+    })
+    return redirect(reverse("core:chat_room", args=[app.pk]) + "#message-%s" % msg.pk)
+
+
+@login_required
+@require_POST
+@rate_limit_write(limit=20, window=60)
+def chat_delete_message(request, app_id, message_id):
+    app = _chat_app_or_none(request, app_id)
+    if app is None:
+        raise Http404("Чат не найден")
+    msg = Message.objects.filter(
+        pk=message_id, application=app, sender=request.user,
+        deleted_at__isnull=True,
+    ).first()
+    if msg is None:
+        messages.error(request, "Сообщение не найдено или уже удалено.")
+        return redirect("core:chat_room", app_id=app.pk)
+    attachment_url = msg.attachment_url
+    msg.content = ""
+    msg.attachment_url = None
+    msg.attachment_name = None
+    msg.attachment_mime = None
+    msg.attachment_size = None
+    msg.deleted_at = timezone.now()
+    msg.save(update_fields=[
+        "content", "attachment_url", "attachment_name", "attachment_mime",
+        "attachment_size", "deleted_at",
+    ])
+    if attachment_url:
+        delete_upload_url(attachment_url)
+    from .consumers import notify_message_changed
+    notify_message_changed(app.pk, {"action": "deleted", "id": msg.pk})
+    return redirect("core:chat_room", app_id=app.pk)
+
+
+@login_required
 def chat_poll(request, app_id):
     app = _chat_app_or_none(request, app_id)
     if app is None:
@@ -216,8 +280,19 @@ def chat_poll(request, app_id):
         .values(
             "id", "sender_id", "content", "created_at",
             "attachment_url", "attachment_name", "attachment_mime", "attachment_size",
-            "read_at",
+            "read_at", "edited_at", "deleted_at",
         )
+    )
+    from django.db.models import Q
+
+    changed = list(
+        Message.objects.filter(
+            Q(edited_at__isnull=False) | Q(deleted_at__isnull=False),
+            application=app,
+        ).order_by("-id").values(
+            "id", "content", "edited_at", "deleted_at",
+            "attachment_url", "attachment_name", "attachment_mime", "attachment_size",
+        )[:200]
     )
     own_read_ids = list(
         Message.objects.filter(
@@ -232,8 +307,19 @@ def chat_poll(request, app_id):
              "attachment_name": r["attachment_name"],
              "attachment_mime": r["attachment_mime"],
              "attachment_size": r["attachment_size"],
-             "read_at": r["read_at"].isoformat() if r["read_at"] else None}
+             "read_at": r["read_at"].isoformat() if r["read_at"] else None,
+             "edited_at": r["edited_at"].isoformat() if r["edited_at"] else None,
+             "deleted_at": r["deleted_at"].isoformat() if r["deleted_at"] else None}
             for r in rows
+        ],
+        "changes": [
+            {"id": r["id"], "content": r["content"],
+             "edited_at": r["edited_at"].isoformat() if r["edited_at"] else None,
+             "deleted_at": r["deleted_at"].isoformat() if r["deleted_at"] else None,
+             "attachment_url": r["attachment_url"],
+             "attachment_name": r["attachment_name"],
+             "attachment_mime": r["attachment_mime"]}
+            for r in changed
         ],
         "read_ids": own_read_ids,
     })

@@ -368,6 +368,8 @@ class Message(models.Model):
     attachment_mime = models.TextField("MIME вложения", null=True, blank=True)
     attachment_size = models.PositiveIntegerField("размер вложения", null=True, blank=True)
     read_at = models.DateTimeField("прочитано", null=True, blank=True)
+    edited_at = models.DateTimeField("изменено", null=True, blank=True)
+    deleted_at = models.DateTimeField("удалено", null=True, blank=True)
     client_message_id = models.UUIDField("идемпотентность (client)", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
 

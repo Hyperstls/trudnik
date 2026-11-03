@@ -19,19 +19,33 @@
             {% for m in day.list %}
             <div class="flex {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}justify-end{% endif %}" data-message-id="{{ m.id }}">
                 <div class="max-w-[80%]">
+                    <div class="message-body">
+                    {% if m.deleted_at %}
+                    <span class="message-deleted inline-block rounded-2xl px-3.5 py-2 text-sm italic text-neutral-400 bg-neutral-100">Сообщение удалено</span>
+                    {% else %}
                     {% if m.attachment_url %}
                     {% if m.attachment_mime|slice:":6" == "image/" %}
-                    <a href="{{ m.attachment_url }}" target="_blank" rel="noopener noreferrer" class="block mb-1">
+                    <a href="{{ m.attachment_url }}" target="_blank" rel="noopener noreferrer" class="message-attachment block mb-1">
                         <img src="{{ m.attachment_url }}" alt="{{ m.attachment_name|default:'Вложение' }}" loading="lazy" class="rounded-xl max-h-64 w-auto border border-neutral-200">
                     </a>
                     {% else %}
-                    <a href="{{ m.attachment_url }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-primary-700 hover:bg-neutral-50 mb-1">
+                    <a href="{{ m.attachment_url }}" target="_blank" rel="noopener noreferrer" class="message-attachment inline-flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-primary-700 hover:bg-neutral-50 mb-1">
                         {% include "core/_ui_icon.html" with name="plus" class_name="h-4 w-4" %} {{ m.attachment_name|default:"Файл" }}
                     </a>
                     {% endif %}
                     {% endif %}
-                    {% if m.content %}<span class="inline-block rounded-2xl px-3.5 py-2 text-sm {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}bg-primary-600 text-white{% else %}bg-neutral-100 text-neutral-800{% endif %}">{{ m.content }}</span>{% endif %}
-                    <p class="text-[10px] text-neutral-400 mt-0.5 {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}text-right{% endif %}">{{ m.created_at|date:"d.m H:i" }}</p>
+                    {% if m.content %}<span class="message-text inline-block rounded-2xl px-3.5 py-2 text-sm {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}bg-primary-600 text-white{% else %}bg-neutral-100 text-neutral-800{% endif %}">{{ m.content }}</span>{% endif %}
+                    {% endif %}
+                    </div>
+                    <p class="message-meta text-[10px] text-neutral-400 mt-0.5 {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}text-right{% endif %}">
+                        {{ m.created_at|date:"d.m H:i" }}{% if m.edited_at %} · <span class="message-edited">изменено</span>{% endif %}
+                    </p>
+                    {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' and not m.deleted_at %}
+                    <div class="message-actions flex gap-2 justify-end mt-0.5">
+                        <button type="button" class="js-edit-message text-[10px] text-neutral-400 hover:text-primary-600" data-message-id="{{ m.id }}" data-content="{{ m.content|escape }}">Изменить</button>
+                        <button type="button" class="js-delete-message text-[10px] text-neutral-400 hover:text-red-600" data-message-id="{{ m.id }}">Удалить</button>
+                    </div>
+                    {% endif %}
                     {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}
                     <span class="message-status block text-[10px] text-neutral-400 text-right">{% if m.read_at %}Прочитано{% else %}Отправлено{% endif %}</span>
                     {% endif %}
@@ -61,6 +75,14 @@
         </form>
         <p id="chat-send-status" class="px-3 pb-2 text-xs text-neutral-500" role="status" aria-live="polite"></p>
     </div>
+    <dialog id="chat-edit-dialog" class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-xl" style="width:min(28rem, calc(100vw - 2rem))" aria-labelledby="chat-edit-title">
+        <h2 id="chat-edit-title" class="text-base font-bold text-neutral-800 mb-2">Редактировать сообщение</h2>
+        <textarea id="chat-edit-text" rows="4" maxlength="4000" class="form-input" placeholder="Текст сообщения"></textarea>
+        <div class="flex justify-end gap-2 mt-3">
+            <button type="button" id="chat-edit-cancel" class="ui-btn ui-btn--secondary ui-btn--sm">Отмена</button>
+            <button type="button" id="chat-edit-save" class="ui-btn ui-btn--primary ui-btn--sm">Сохранить</button>
+        </div>
+    </dialog>
     <script nonce="{{ request.csp_nonce }}">
 (function () {
   var log = document.getElementById('chat-log');
@@ -73,11 +95,97 @@
   var input = form ? form.querySelector('input[name="content"]') : null;
   var csrf = form ? form.querySelector('input[name="csrfmiddlewaretoken"]') : null;
   var statusEl = document.getElementById('chat-send-status');
+  var editDialog = document.getElementById('chat-edit-dialog');
+  var editText = document.getElementById('chat-edit-text');
+  var editSave = document.getElementById('chat-edit-save');
+  var editCancel = document.getElementById('chat-edit-cancel');
+  var editingId = null;
   var queueKey = 'trudnik-chat-queue-v1:' + appId;
   var seen = {};
   var flushing = false;
 
   function setStatus(text) { if (statusEl) statusEl.textContent = text || ''; }
+
+  function makeBody(m, mine) {
+    var body = document.createElement('div');
+    body.className = 'message-body';
+    if (m.deleted_at) {
+      var deleted = document.createElement('span');
+      deleted.className = 'message-deleted inline-block rounded-2xl px-3.5 py-2 text-sm italic text-neutral-400 bg-neutral-100';
+      deleted.textContent = 'Сообщение удалено';
+      body.appendChild(deleted);
+      return body;
+    }
+    if (m.attachment_url) {
+      var link = document.createElement('a');
+      link.href = m.attachment_url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      if ((m.attachment_mime || '').indexOf('image/') === 0) {
+        link.className = 'message-attachment block mb-1';
+        var img = document.createElement('img');
+        img.src = m.attachment_url;
+        img.alt = m.attachment_name || 'Вложение';
+        img.loading = 'lazy';
+        img.className = 'rounded-xl max-h-64 w-auto border border-neutral-200';
+        link.appendChild(img);
+      } else {
+        link.className = 'message-attachment inline-flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-primary-700 hover:bg-neutral-50 mb-1';
+        link.textContent = '📎 ' + (m.attachment_name || 'Файл');
+      }
+      body.appendChild(link);
+    }
+    if (m.content) {
+      var bubble = document.createElement('span');
+      bubble.className = 'message-text inline-block rounded-2xl px-3.5 py-2 text-sm ' +
+        (mine ? 'bg-primary-600 text-white' : 'bg-neutral-100 text-neutral-800');
+      bubble.textContent = m.content;
+      body.appendChild(bubble);
+    }
+    return body;
+  }
+
+  function makeMeta(m) {
+    var meta = document.createElement('p');
+    meta.className = 'message-meta text-[10px] text-neutral-400 mt-0.5';
+    var stamp = new Date(m.created_at || Date.now());
+    meta.textContent = isNaN(stamp.getTime()) ? '' :
+      stamp.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    if (m.edited_at) {
+      meta.appendChild(document.createTextNode(' · '));
+      var edited = document.createElement('span');
+      edited.className = 'message-edited';
+      edited.textContent = 'изменено';
+      meta.appendChild(edited);
+    }
+    return meta;
+  }
+
+  function bindActions(row) {
+    var edit = row.querySelector('.js-edit-message');
+    var del = row.querySelector('.js-delete-message');
+    if (edit) edit.addEventListener('click', function () { openEdit(row, edit.dataset.content || ''); });
+    if (del) del.addEventListener('click', function () { deleteMessage(row); });
+  }
+
+  function makeActions(m, mine) {
+    if (!mine || m.deleted_at) return null;
+    var actions = document.createElement('div');
+    actions.className = 'message-actions flex gap-2 justify-end mt-0.5';
+    var edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'js-edit-message text-[10px] text-neutral-400 hover:text-primary-600';
+    edit.textContent = 'Изменить';
+    edit.dataset.content = m.content || '';
+    var del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'js-delete-message text-[10px] text-neutral-400 hover:text-red-600';
+    del.textContent = 'Удалить';
+    actions.appendChild(edit);
+    actions.appendChild(del);
+    bindActions(actions);
+    return actions;
+  }
 
   function appendBubble(m, mine) {
     var mid = Number(m.id) || 0;
@@ -89,33 +197,11 @@
     wrap.className = 'flex' + (mine ? ' justify-end' : '');
     wrap.dataset.messageId = String(mid || '');
     var content = document.createElement('div');
-    content.className = 'max-w-[80%]';
-    if (m.attachment_url) {
-      var link = document.createElement('a');
-      link.href = m.attachment_url;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      if ((m.attachment_mime || '').indexOf('image/') === 0) {
-        link.className = 'block mb-1';
-        var img = document.createElement('img');
-        img.src = m.attachment_url;
-        img.alt = m.attachment_name || 'Вложение';
-        img.loading = 'lazy';
-        img.className = 'rounded-xl max-h-64 w-auto border border-neutral-200';
-        link.appendChild(img);
-      } else {
-        link.className = 'inline-flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-primary-700 hover:bg-neutral-50 mb-1';
-        link.textContent = '📎 ' + (m.attachment_name || 'Файл');
-      }
-      content.appendChild(link);
-    }
-    if (m.content) {
-      var bubble = document.createElement('span');
-      bubble.className = 'inline-block rounded-2xl px-3.5 py-2 text-sm ' +
-        (mine ? 'bg-primary-600 text-white' : 'bg-neutral-100 text-neutral-800');
-      bubble.textContent = m.content;
-      content.appendChild(bubble);
-    }
+    content.className = 'max-w-[80%]' + (mine ? ' text-right' : '');
+    content.appendChild(makeBody(m, mine));
+    content.appendChild(makeMeta(m));
+    var actions = makeActions(m, mine);
+    if (actions) content.appendChild(actions);
     if (mine) {
       var receipt = document.createElement('span');
       receipt.className = 'message-status block text-[10px] text-neutral-400 text-right';
@@ -126,6 +212,85 @@
     log.appendChild(wrap);
     log.scrollTop = log.scrollHeight;
   }
+
+  function applyChange(change) {
+    var row = log.querySelector('[data-message-id="' + change.id + '"]');
+    if (!row) return;
+    var body = row.querySelector('.message-body');
+    if (change.deleted_at) {
+      if (body) {
+        body.innerHTML = '';
+        var deleted = document.createElement('span');
+        deleted.className = 'message-deleted inline-block rounded-2xl px-3.5 py-2 text-sm italic text-neutral-400 bg-neutral-100';
+        deleted.textContent = 'Сообщение удалено';
+        body.appendChild(deleted);
+      }
+      var actions = row.querySelector('.message-actions');
+      if (actions) actions.remove();
+      return;
+    }
+    var text = body ? body.querySelector('.message-text') : null;
+    if (change.content) {
+      if (!text && body) {
+        text = document.createElement('span');
+        text.className = 'message-text inline-block rounded-2xl px-3.5 py-2 text-sm bg-primary-600 text-white';
+        body.appendChild(text);
+      }
+      if (text) text.textContent = change.content;
+    } else if (text) {
+      text.remove();
+    }
+    var meta = row.querySelector('.message-meta');
+    if (meta && !meta.querySelector('.message-edited')) {
+      meta.appendChild(document.createTextNode(' · '));
+      var edited = document.createElement('span');
+      edited.className = 'message-edited';
+      edited.textContent = 'изменено';
+      meta.appendChild(edited);
+    }
+  }
+
+  function openEdit(row, content) {
+    editingId = row.dataset.messageId;
+    editText.value = content;
+    editDialog.showModal();
+    editText.focus();
+  }
+
+  function saveEdit() {
+    if (!editingId) return;
+    var content = editText.value.trim();
+    if (!content) { setStatus('Текст сообщения не может быть пустым.'); return; }
+    fetch('/chat/' + appId + '/message/' + editingId + '/edit', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrf ? csrf.value : '' },
+      body: new URLSearchParams({ content: content })
+    }).then(function (r) {
+      if (!r.ok) throw new Error('edit failed');
+      applyChange({ id: editingId, content: content, edited_at: new Date().toISOString() });
+      editDialog.close();
+    }).catch(function () {
+      setStatus('Не удалось изменить сообщение.');
+    });
+  }
+
+  function deleteMessage(row) {
+    if (!window.confirm('Удалить сообщение?')) return;
+    var id = row.dataset.messageId;
+    fetch('/chat/' + appId + '/message/' + id + '/delete', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrf ? csrf.value : '' }
+    }).then(function (r) {
+      if (!r.ok) throw new Error('delete failed');
+      applyChange({ id: id, deleted_at: new Date().toISOString() });
+    }).catch(function () {
+      setStatus('Не удалось удалить сообщение.');
+    });
+  }
+
+  log.querySelectorAll('[data-message-id]').forEach(bindActions);
+  if (editCancel) editCancel.addEventListener('click', function () { editDialog.close(); });
+  if (editSave) editSave.addEventListener('click', saveEdit);
 
   function updateReadStatus(ids) {
     (ids || []).forEach(function (id) {
@@ -154,6 +319,7 @@
           maxId = Math.max(maxId, Number(m.id) || 0);
         });
         last = maxId;
+        (data.changes || []).forEach(applyChange);
         updateReadStatus(data.read_ids);
       })
       .catch(function () {});
@@ -174,6 +340,8 @@
           if (String(d.sender_id) !== me) markRead();
         } else if (d && d.type === 'read') {
           updateReadStatus(d.read_ids);
+        } else if (d && d.type === 'changed') {
+          applyChange(d);
         }
       } catch (e) {}
     };
