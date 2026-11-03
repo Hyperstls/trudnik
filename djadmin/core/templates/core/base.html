@@ -66,7 +66,7 @@
             <nav class="hidden md:flex items-center gap-1" aria-label="Основная навигация">
                 <a href="{% url 'core:jobs' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'jobs' or current == 'job_detail' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}" aria-current="{% if current == 'jobs' %}page{% elif current == 'job_detail' %}true{% else %}false{% endif %}">Задания</a>
                 <a href="{% url 'core:my_applications' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'my_applications' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}" aria-current="{% if current == 'my_applications' %}page{% else %}false{% endif %}">Отклики</a>
-                <a href="{% url 'core:chats' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'chats' or current == 'chat' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}" aria-current="{% if current == 'chats' %}page{% elif current == 'chat' %}true{% else %}false{% endif %}">Чаты</a>
+                <a href="{% url 'core:chats' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'chats' or current == 'chat' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}" aria-current="{% if current == 'chats' %}page{% elif current == 'chat' %}true{% else %}false{% endif %}">Чаты<span class="js-chat-unread-badge {% if not unread_chats_count %}hidden{% endif %} ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-[10px] font-bold">{{ unread_chats_count|default:0 }}</span></a>
                 <a href="{% url 'core:favorites_page' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'favorites_page' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}" aria-current="{% if current == 'favorites_page' %}page{% else %}false{% endif %}">Избранное</a>
                 <a href="{% url 'core:workers' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'workers' or current == 'worker_detail' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}" aria-current="{% if current == 'workers' %}page{% elif current == 'worker_detail' %}true{% else %}false{% endif %}">Трудники</a>
                 <a href="{% url 'core:employers' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'employers' or current == 'employer_detail' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}" aria-current="{% if current == 'employers' %}page{% elif current == 'employer_detail' %}true{% else %}false{% endif %}">Работодатели</a>
@@ -192,8 +192,9 @@
         <a href="{% url 'core:my_applications' %}" class="flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'my_applications' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="Отклики" aria-current="{% if current == 'my_applications' %}page{% else %}false{% endif %}">
             <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="6" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="18" y2="12"/></svg><span>Отклики</span>
         </a>
-        <a href="{% url 'core:chats' %}" class="flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'chats' or current == 'chat' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="Чаты" aria-current="{% if current == 'chats' %}page{% elif current == 'chat' %}true{% else %}false{% endif %}">
+        <a href="{% url 'core:chats' %}" class="relative flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'chats' or current == 'chat' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="Чаты" aria-current="{% if current == 'chats' %}page{% elif current == 'chat' %}true{% else %}false{% endif %}">
             <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Чаты</span>
+            <span class="js-chat-unread-badge {% if not unread_chats_count %}hidden{% endif %} absolute top-0 right-1 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-danger text-white text-[9px] font-bold">{{ unread_chats_count|default:0 }}</span>
         </a>
         <a href="{% url 'core:favorites_page' %}" class="flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'favorites_page' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="Избранное" aria-current="{% if current == 'favorites_page' %}page{% else %}false{% endif %}">
             <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span>Избр.</span>
@@ -228,8 +229,18 @@
           badge.classList.toggle('hidden', !d.unread_count);
         }).catch(function(){});
       }
+      function bumpChatBadge(){
+        fetch('/api/chats/unread-count').then(function(r){return r.json();}).then(function(d){
+          document.querySelectorAll('.js-chat-unread-badge').forEach(function(el){
+            el.textContent = d.unread_count > 99 ? '99+' : d.unread_count;
+            el.classList.toggle('hidden', !d.unread_count);
+          });
+        }).catch(function(){});
+      }
+      window.bumpChatBadge = bumpChatBadge;
+      bumpChatBadge();
       function startPoll(){
-        if (!pollTimer) pollTimer = setInterval(bumpBadge, 30000);
+        if (!pollTimer) pollTimer = setInterval(function(){ bumpBadge(); bumpChatBadge(); }, 30000);
       }
       function stopPoll(){
         if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }

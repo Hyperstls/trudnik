@@ -233,6 +233,32 @@ class ChatTests(TestCase):
         msg.refresh_from_db()
         self.assertIsNotNone(msg.read_at)
 
+    def test_chats_list_preview_and_unread_badge(self):
+        Message.objects.create(
+            sender=self.worker, application=self.app,
+            content="Последнее сообщение",
+        )
+        self.client.force_login(self.employer)
+        response = self.client.get(reverse("core:chats"))
+        self.assertContains(response, "Последнее сообщение")
+        self.assertContains(response, "Непрочитанных: 1")
+        row = response.context["rows"][0]
+        self.assertEqual(row["unread_count"], 1)
+        self.assertEqual(row["last"], "Последнее сообщение")
+        count = self.client.get(reverse("core:chats_unread_count")).json()
+        self.assertEqual(count["unread_count"], 1)
+
+    def test_chats_list_attachment_preview(self):
+        Message.objects.create(
+            sender=self.worker, application=self.app,
+            content="", attachment_url="/uploads/chat/x.png",
+            attachment_name="photo.png", attachment_mime="image/png",
+        )
+        self.client.force_login(self.employer)
+        response = self.client.get(reverse("core:chats"))
+        self.assertContains(response, "Изображение")
+        self.assertEqual(response.context["rows"][0]["last"], "Изображение")
+
     def test_send_idempotent_by_client_message_id(self):
         self.client.force_login(self.worker)
         cmid = str(uuid.uuid4())

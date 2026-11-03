@@ -254,23 +254,61 @@ def chat_mark_read(request, app_id):
 
 @login_required
 def chats_list(request):
-    from django.db.models import OuterRef, Subquery
+    from django.db.models import Count, F, OuterRef, Q, Subquery
 
-    last_message = (
-        Message.objects.filter(application=OuterRef("pk"))
-        .order_by("-id").values("content")[:1]
-    )
+    last_rows = Message.objects.filter(application=OuterRef("pk")).order_by("-id")
     apps = (
         Application.objects.select_related("job", "job__employer", "worker")
         .filter(Q_apps(request), status=Application.Status.ACCEPTED)
-        .annotate(last_message=Subquery(last_message))
-        .order_by("-updated_at")
+        .annotate(
+            last_content=Subquery(last_rows.values("content")[:1]),
+            last_attachment_name=Subquery(last_rows.values("attachment_name")[:1]),
+            last_attachment_mime=Subquery(last_rows.values("attachment_mime")[:1]),
+            last_created_at=Subquery(last_rows.values("created_at")[:1]),
+            unread_count=Count(
+                "messages",
+                filter=Q(messages__read_at__isnull=True) & ~Q(messages__sender=request.user),
+                distinct=True,
+            ),
+        )
+        .order_by(F("last_created_at").desc(nulls_last=True), "-updated_at")
     )
     rows = []
     for a in apps[:50]:
         counterpart = a.job.employer if request.user.pk == a.worker_id else a.worker
-        rows.append({"app": a, "counterpart": counterpart, "last": (a.last_message or "")[:80]})
+        if a.last_content:
+            last = a.last_content[:80]
+        elif a.last_attachment_mime and a.last_attachment_mime.startswith("image/"):
+            last = "Изображение"
+        elif a.last_attachment_name:
+            last = "Файл: " + a.last_attachment_name[:70]
+        else:
+            last = ""
+        rows.append({
+            "app": a,
+            "counterpart": counterpart,
+            "last": last,
+            "last_at": a.last_created_at or a.updated_at,
+            "unread_count": a.unread_count,
+            "has_attachment": bool(a.last_attachment_name),
+        })
     return render(request, "core/chats.html", {"rows": rows})
+
+
+@login_required
+def chats_unread_count(request):
+    from django.db.models import Q
+
+    count = (
+        Message.objects.filter(
+            Q(application__worker=request.user) | Q(application__job__employer=request.user),
+            application__status=Application.Status.ACCEPTED,
+            read_at__isnull=True,
+        )
+        .exclude(sender=request.user)
+        .count()
+    )
+    return JsonResponse({"unread_count": count})
 
 
 def Q_apps(request):

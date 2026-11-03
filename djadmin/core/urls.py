@@ -60,6 +60,7 @@ urlpatterns = [
     path("chat/<uuid:app_id>/send", views_interact.chat_send, name="chat_send"),
     path("chat/<uuid:app_id>/read", views_interact.chat_mark_read, name="chat_mark_read"),
     path("api/messages/<uuid:app_id>/poll", views_interact.chat_poll, name="chat_poll"),
+    path("api/chats/unread-count", views_interact.chats_unread_count, name="chats_unread_count"),
     path("rate/<uuid:app_id>", views_interact.rate_participant, name="rate_participant"),
     # 152-ФЗ / профиль
     path("profile/export-data", views_profile_ext.export_data, name="export_data"),

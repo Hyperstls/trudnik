@@ -139,6 +139,8 @@
     fetch('/chat/' + appId + '/read', {
       method: 'POST',
       headers: { 'X-CSRFToken': csrf ? csrf.value : '' }
+    }).then(function () {
+      if (window.bumpChatBadge) window.bumpChatBadge();
     }).catch(function () {});
   }
 

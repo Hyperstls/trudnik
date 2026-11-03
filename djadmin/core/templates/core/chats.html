@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load core_extras %}
 {% block title %}Чаты — Трудник{% endblock %}
 {% block content %}
 <div class="px-0 py-4 fade-in">
@@ -6,13 +7,30 @@
     {% if rows %}
     <div class="grid gap-2">
         {% for r in rows %}
-        <a href="{% url 'core:chat_room' r.app.pk %}" class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 hover:shadow-md transition-shadow flex justify-between gap-3">
-            <div class="min-w-0">
-                <p class="font-semibold text-neutral-900">{{ r.counterpart.full_name }}</p>
-                <p class="text-sm text-neutral-500 mt-0.5">{{ r.app.job.work_type|default:"Задание" }} · {{ r.app.get_status_display }}</p>
-                {% if r.last %}<p class="text-sm text-neutral-500 mt-1 truncate">{{ r.last }}</p>{% endif %}
+        <a href="{% url 'core:chat_room' r.app.pk %}" class="card rounded-2xl border p-3 sm:p-4 hover:shadow-md transition-shadow flex items-center gap-3 {% if r.unread_count %}border-primary-200 bg-primary-50{% else %}border-neutral-200 bg-white{% endif %}">
+            {% if r.counterpart.avatar_url or r.counterpart.photo_url %}
+            <img src="{{ r.counterpart.avatar_url|default:r.counterpart.photo_url|absurl }}" alt="" loading="lazy" class="w-11 h-11 rounded-full object-cover border border-neutral-200 shrink-0">
+            {% else %}
+            <div class="w-11 h-11 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-neutral-400 shrink-0">
+                {% include "core/_ui_icon.html" with name="star-outline" class_name="h-5 w-5" %}
             </div>
-            <span class="text-xs text-neutral-400 whitespace-nowrap shrink-0">{{ r.app.updated_at|date:"d.m H:i" }}</span>
+            {% endif %}
+            <div class="flex-1 min-w-0">
+                <div class="flex items-baseline justify-between gap-2">
+                    <p class="font-semibold text-neutral-900 truncate">{{ r.counterpart.full_name }}</p>
+                    <span class="text-[11px] text-neutral-400 whitespace-nowrap shrink-0">{{ r.last_at|date:"d.m H:i" }}</span>
+                </div>
+                <p class="text-xs text-neutral-500 mt-0.5 truncate">{{ r.app.job.work_type|default:"Задание" }} · {{ r.app.get_status_display }}</p>
+                <div class="flex items-center justify-between gap-2 mt-1">
+                    <p class="text-sm truncate {% if r.unread_count %}font-semibold text-neutral-700{% else %}text-neutral-500{% endif %}">
+                        {% if r.has_attachment %}<span class="inline-flex align-middle mr-1 text-neutral-400">{% include "core/_ui_icon.html" with name="plus" class_name="h-3.5 w-3.5" %}</span>{% endif %}
+                        {{ r.last|default:"Нет сообщений" }}
+                    </p>
+                    {% if r.unread_count %}
+                    <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary-600 text-white text-[11px] font-bold shrink-0" aria-label="Непрочитанных: {{ r.unread_count }}">{{ r.unread_count }}</span>
+                    {% endif %}
+                </div>
+            </div>
         </a>
         {% endfor %}
     </div>
