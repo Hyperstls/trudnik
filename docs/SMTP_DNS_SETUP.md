@@ -1,16 +1,28 @@
 # Почта: SMTP, SPF, DKIM, DMARC
 
-## Что сейчас
+## Текущая настройка (Вариант A, 2026-11-03)
 
-Прод отправляет письма через **smtp.yandex.ru** (видно в run-logs Amvera).
-Адрес отправителя задан секретом `SMTP_FROM_EMAIL`; по умолчанию в коде —
-`notifications@trudnik.ru`.
+В Amvera настроено:
 
-Проблема: домен `trudnik.ru` сейчас **припаркован** (`ns1.snparking.ru`,
-`MX = void.blackhole.mx`), у него нет SPF, DKIM и DMARC. Если письма уходят
-с `@trudnik.ru`, они не проходят проверку подлинности и попадают в спам или
-отклоняются.
+- `SMTP_HOST=smtp.yandex.ru`
+- `SMTP_PORT=465`, `SMTP_USE_SSL=true`, `SMTP_USE_TLS=false`
+- `SMTP_USER=trudnik-app@yandex.ru`
+- `SMTP_FROM_EMAIL=trudnik-app@yandex.ru`
+- `SMTP_FROM_NAME=Трудник`
+- `SMTP_PASSWORD` — пароль приложения Яндекс.Почты (секрет, в репозитории нет)
 
+Проверено: SMTP login через `smtp.yandex.ru:465` успешен, тестовое письмо
+отправлено. Дубликатов (`SMTP_USERNAME`, второго From и т.п.) в Amvera нет.
+
+DNS менять не нужно: письма уходят с домена `yandex.ru`, у которого уже есть
+SPF/DKIM/DMARC. Брендовый `@trudnik.ru` — отдельный Вариант B ниже.
+
+## Что было
+
+Изначально использовался `SMTP_FROM_EMAIL=notifications@trudnik.ru`, но домен
+`trudnik.ru` припаркован (`ns1.snparking.ru`, `MX = void.blackhole.mx`), без
+SPF/DKIM/DMARC. Письма с такого адреса не проходили проверку подлинности.
+Поэтому выбран Вариант A — отправка с реального ящика Яндекса.
 ## Вариант A — быстро и без DNS (рекомендую для запуска)
 
 Использовать реальный ящик Яндекс.Почты как отправителя, например
