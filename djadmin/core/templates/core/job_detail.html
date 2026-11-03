@@ -1,44 +1,44 @@
 {% extends "core/base.html" %}
-{% load l10n %}
+{% load l10n i18n %}
 {% load static %}
-{% block title %}{{ job.work_type|default:"Задание" }} — Трудник{% endblock %}
-{% block meta_description %}{{ job.work_type|default:"Задание" }}{% if job.payment_amount %} — {{ job.payment_amount|floatformat:"-1" }} ₽{% endif %}{% if job.city %}, {{ job.city }}{% endif %}. {{ job.object_description|default:"Подработка рядом на Трудник."|truncatechars:140 }}{% endblock %}
+{% block title %}{{ job.work_type|default:_("Задание") }} — Трудник{% endblock %}
+{% block meta_description %}{{ job.work_type|default:"Задание" }}{% if job.payment_amount %} — {{ job.payment_amount|floatformat:"-1" }} ₽{% endif %}{% if job.city %}, {{ job.city }}{% endif %}. {{ job.object_description|default:_("Подработка рядом на Трудник.")|truncatechars:140 }}{% endblock %}
 {% block og_title %}{{ job.work_type|default:"Задание" }}{% if job.payment_amount %} — {{ job.payment_amount|floatformat:"-1" }} ₽{% endif %} — Трудник{% endblock %}
-{% block og_description %}{{ job.organization_name|default:"Заказчик" }}{% if job.city %} · {{ job.city }}{% endif %} · {{ job.date_time|date:"d.m.Y H:i" }}. {{ job.object_description|default:"Задания рядом, отклики и чат."|truncatechars:140 }}{% endblock %}
+{% block og_description %}{{ job.organization_name|default:_("Заказчик") }}{% if job.city %} · {{ job.city }}{% endif %} · {{ job.date_time|date:"d.m.Y H:i" }}. {{ job.object_description|default:_("Задания рядом, отклики и чат.")|truncatechars:140 }}{% endblock %}
 {% block og_image %}https://{{ request.get_host }}{% url 'core:job_og_image' job.pk %}{% endblock %}
 {% block twitter_title %}{{ job.work_type|default:"Задание" }}{% if job.payment_amount %} — {{ job.payment_amount|floatformat:"-1" }} ₽{% endif %} — Трудник{% endblock %}
-{% block twitter_description %}{{ job.organization_name|default:"Заказчик" }}{% if job.city %} · {{ job.city }}{% endif %} · {{ job.date_time|date:"d.m.Y H:i" }}. {{ job.object_description|default:"Задания рядом, отклики и чат."|truncatechars:140 }}{% endblock %}
+{% block twitter_description %}{{ job.organization_name|default:_("Заказчик") }}{% if job.city %} · {{ job.city }}{% endif %} · {{ job.date_time|date:"d.m.Y H:i" }}. {{ job.object_description|default:_("Задания рядом, отклики и чат.")|truncatechars:140 }}{% endblock %}
 {% block twitter_image %}https://{{ request.get_host }}{% url 'core:job_og_image' job.pk %}{% endblock %}
 {% block content %}
 <div class="pt-4" data-job-id="{{ job.pk }}">
     <a href="{% url 'core:jobs' %}" class="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 mb-4">
         <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-        Все задания
+        {% translate "Все задания" %}
     </a>
 
     {% if is_owner and job.moderation_status == 'review' %}
     <div class="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4" role="status">
-        <p class="text-sm font-semibold text-amber-900">Задание на проверке</p>
-        <p class="text-sm text-amber-800 mt-1">Оно станет видно в каталоге после одобрения модератором. Пока доступно только вам.</p>
+        <p class="text-sm font-semibold text-amber-900">{% translate "Задание на проверке" %}</p>
+        <p class="text-sm text-amber-800 mt-1">{% translate "Оно станет видно в каталоге после одобрения модератором. Пока доступно только вам." %}</p>
         {% if job.moderation_reason %}<p class="text-xs text-amber-700 mt-1">{{ job.moderation_reason }}</p>{% endif %}
     </div>
     {% elif is_owner and job.moderation_status == 'rejected' %}
     <div class="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4" role="alert">
-        <p class="text-sm font-semibold text-red-900">Задание отклонено модератором</p>
-        <p class="text-sm text-red-800 mt-1">Исправьте описание и сохраните изменения — задание вернётся на проверку.</p>
+        <p class="text-sm font-semibold text-red-900">{% translate "Задание отклонено модератором" %}</p>
+        <p class="text-sm text-red-800 mt-1">{% translate "Исправьте описание и сохраните изменения — задание вернётся на проверку." %}</p>
         {% if job.moderation_reason %}<p class="text-xs text-red-700 mt-1">{{ job.moderation_reason }}</p>{% endif %}
     </div>
     {% endif %}
 
     {% if show_push_prompt and user.is_authenticated %}
-    <div id="push-prompt" class="hidden mb-4 rounded-2xl border border-primary-200 bg-primary-50 p-4 flex flex-wrap items-center justify-between gap-3" role="region" aria-label="Уведомления о задании">
+    <div id="push-prompt" class="hidden mb-4 rounded-2xl border border-primary-200 bg-primary-50 p-4 flex flex-wrap items-center justify-between gap-3" role="region" aria-label="{% translate 'Уведомления о задании' %}">
         <div class="min-w-0">
-            <p class="text-sm font-semibold text-neutral-800">Не пропустите ответ</p>
-            <p id="push-prompt-status" class="text-xs text-neutral-600 mt-0.5">Включите push — сообщим об откликах и сообщениях, даже если вкладка закрыта.</p>
+            <p class="text-sm font-semibold text-neutral-800">{% translate "Не пропустите ответ" %}</p>
+            <p id="push-prompt-status" class="text-xs text-neutral-600 mt-0.5">{% translate "Включите push — сообщим об откликах и сообщениях, даже если вкладка закрыта." %}</p>
         </div>
         <div class="flex items-center gap-2 shrink-0">
-            <button type="button" id="push-prompt-enable" class="px-3.5 h-9 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold">Включить push</button>
-            <button type="button" id="push-prompt-dismiss" class="px-3 h-9 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600 text-sm font-medium">Не сейчас</button>
+            <button type="button" id="push-prompt-enable" class="px-3.5 h-9 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold">{% translate "Включить push" %}</button>
+            <button type="button" id="push-prompt-dismiss" class="px-3 h-9 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600 text-sm font-medium">{% translate "Не сейчас" %}</button>
         </div>
     </div>
     {% endif %}
@@ -46,42 +46,42 @@
     <article class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 sm:p-6">
         <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
             <div class="flex-1 min-w-0">
-                <h1 class="text-xl sm:text-2xl font-bold text-neutral-800 leading-tight">{{ job.work_type|default:"Задание" }}</h1>
+                <h1 class="text-xl sm:text-2xl font-bold text-neutral-800 leading-tight">{{ job.work_type|default:_("Задание") }}</h1>
                 <p class="text-sm text-neutral-500 mt-1">
-                    {{ job.organization_name|default:"Частное лицо" }}{% if job.city %} · {{ job.city }}{% endif %}
-                    {% if job.is_remote %} · {% include "core/_ui_badge.html" with label="Удалённо" variant="info" %}{% endif %}
+                    {{ job.organization_name|default:_("Частное лицо") }}{% if job.city %} · {{ job.city }}{% endif %}
+                    {% if job.is_remote %} · {% translate "Удалённо" as remote_label %}{% include "core/_ui_badge.html" with label=remote_label variant="info" %}{% endif %}
                 </p>
             </div>
             <div class="text-right shrink-0">
                 {% if job.payment_amount %}
                 <p class="text-xl sm:text-2xl font-bold text-primary-600">{{ job.payment_amount }} ₽</p>
                 {% else %}
-                <p class="text-sm text-neutral-400">договорная</p>
+                <p class="text-sm text-neutral-400">{% translate "договорная" %}</p>
                 {% endif %}
             </div>
         </div>
 
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm border-y border-neutral-100 py-3 mb-4">
             <div>
-                <dt class="text-neutral-400 text-xs">Когда</dt>
+                <dt class="text-neutral-400 text-xs">{% translate "Когда" %}</dt>
                 <dd class="font-medium text-neutral-700">{{ job.date_time|date:"d.m.Y H:i" }}</dd>
             </div>
             <div>
-                <dt class="text-neutral-400 text-xs">Работников</dt>
-                <dd class="font-medium text-neutral-700">{{ job.current_workers|default:0 }} из {{ job.max_workers|default:"—" }}</dd>
+                <dt class="text-neutral-400 text-xs">{% translate "Работников" %}</dt>
+                <dd class="font-medium text-neutral-700">{{ job.current_workers|default:0 }} {% translate "из" %} {{ job.max_workers|default:"—" }}</dd>
             </div>
             <div>
-                <dt class="text-neutral-400 text-xs">Откликнулось</dt>
+                <dt class="text-neutral-400 text-xs">{% translate "Откликнулось" %}</dt>
                 <dd class="font-medium text-neutral-700">{{ application_count }}</dd>
             </div>
             {% if job.city %}
             <div>
-                <dt class="text-neutral-400 text-xs">Город</dt>
+                <dt class="text-neutral-400 text-xs">{% translate "Город" %}</dt>
                 <dd class="font-medium text-neutral-700">{{ job.city }}</dd>
             </div>
             {% endif %}
             <div>
-                <dt class="text-neutral-400 text-xs">Статус</dt>
+                <dt class="text-neutral-400 text-xs">{% translate "Статус" %}</dt>
                 <dd class="font-medium text-neutral-700">{{ job.get_status_display }}</dd>
             </div>
         </div>
@@ -89,18 +89,18 @@
         {% if not job.is_remote %}
         {% if job.address or job.city %}
         <section class="mb-4">
-            <h2 class="text-sm font-semibold text-neutral-600 mb-1.5">Адрес</h2>
+            <h2 class="text-sm font-semibold text-neutral-600 mb-1.5">{% translate "Адрес" %}</h2>
             <p class="text-sm text-neutral-700">
                 {% if job.address %}{{ job.address }}{% if job.city %} · {{ job.city }}{% endif %}{% elif job.city %}{{ job.city }}{% endif %}
             </p>
             <div class="flex flex-wrap gap-2 mt-2">
                 {% if job.address and job.lat is not None and job.lng is not None %}
-                <a href="https://yandex.ru/maps/?pt={% localize off %}{{ job.lng }},{{ job.lat }}{% endlocalize %}&z=16&l=map" target="_blank" rel="noopener noreferrer" class="px-3 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">Открыть на карте</a>
-                <a href="https://yandex.ru/maps/?rtext=~{% localize off %}{{ job.lat }},{{ job.lng }}{% endlocalize %}&rtt=auto" target="_blank" rel="noopener noreferrer" class="px-3 h-9 inline-flex items-center rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold">Маршрут</a>
+                <a href="https://yandex.ru/maps/?pt={% localize off %}{{ job.lng }},{{ job.lat }}{% endlocalize %}&z=16&l=map" target="_blank" rel="noopener noreferrer" class="px-3 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">{% translate "Открыть на карте" %}</a>
+                <a href="https://yandex.ru/maps/?rtext=~{% localize off %}{{ job.lat }},{{ job.lng }}{% endlocalize %}&rtt=auto" target="_blank" rel="noopener noreferrer" class="px-3 h-9 inline-flex items-center rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold">{% translate "Маршрут" %}</a>
                 {% elif job.address %}
-                <a href="https://yandex.ru/maps/?text={{ job.address|urlencode }}" target="_blank" rel="noopener noreferrer" class="px-3 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">Найти адрес</a>
+                <a href="https://yandex.ru/maps/?text={{ job.address|urlencode }}" target="_blank" rel="noopener noreferrer" class="px-3 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">{% translate "Найти адрес" %}</a>
                 {% elif job.city %}
-                <a href="https://yandex.ru/maps/?text={{ job.city|urlencode }}" target="_blank" rel="noopener noreferrer" class="px-3 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">Найти город</a>
+                <a href="https://yandex.ru/maps/?text={{ job.city|urlencode }}" target="_blank" rel="noopener noreferrer" class="px-3 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">{% translate "Найти город" %}</a>
                 {% endif %}
             </div>
         </section>
@@ -109,7 +109,7 @@
         {% if yandex_maps_key and job.address and job.lat is not None and job.lng is not None %}
         <section class="mb-4">
             <div id="job-detail-map" data-lat="{% localize off %}{{ job.lat }}{% endlocalize %}" data-lng="{% localize off %}{{ job.lng }}{% endlocalize %}" style="height:280px" class="w-full rounded-xl border border-neutral-200"></div>
-            <p class="text-xs text-neutral-400 mt-1">Карта показывает адрес задания.</p>
+            <p class="text-xs text-neutral-400 mt-1">{% translate "Карта показывает адрес задания." %}</p>
         </section>
         <script nonce="{{ request.csp_nonce }}" src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_key|urlencode }}&lang=ru_RU"></script>
         <script nonce="{{ request.csp_nonce }}">
@@ -149,24 +149,24 @@
 
         {% if job.detailed_description %}
         <section class="mb-4">
-            <h2 class="text-sm font-semibold text-neutral-600 mb-1.5">Описание</h2>
+            <h2 class="text-sm font-semibold text-neutral-600 mb-1.5">{% translate "Описание" %}</h2>
             <p class="text-sm text-neutral-700 whitespace-pre-line leading-relaxed">{{ job.detailed_description }}</p>
         </section>
         {% endif %}
 
         {% if job.object_description %}
         <section class="mb-4">
-            <h2 class="text-sm font-semibold text-neutral-600 mb-1.5">Об объекте</h2>
+            <h2 class="text-sm font-semibold text-neutral-600 mb-1.5">{% translate "Об объекте" %}</h2>
             <p class="text-sm text-neutral-600 whitespace-pre-line leading-relaxed">{{ job.object_description }}</p>
         </section>
         {% endif %}
 
         {% if photos %}
         <section class="mb-4">
-            <h2 class="text-sm font-semibold text-neutral-600 mb-2">Фото</h2>
+            <h2 class="text-sm font-semibold text-neutral-600 mb-2">{% translate "Фото" %}</h2>
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {% for i, url in photos %}
-                <img src="{{ url }}" alt="Фото задания {{ forloop.counter }}" loading="lazy" class="rounded-xl border border-neutral-200 w-full aspect-video object-cover">
+                <img src="{{ url }}" alt="{% translate 'Фото задания' %} {{ forloop.counter }}" loading="lazy" class="rounded-xl border border-neutral-200 w-full aspect-video object-cover">
                 {% endfor %}
             </div>
         </section>
@@ -174,16 +174,16 @@
 
         <section class="mb-4 border-t border-neutral-100 pt-4">
             <div class="flex items-center justify-between gap-2 mb-2">
-                <h2 class="text-sm font-semibold text-neutral-600">Работодатель</h2>
-                <a href="{% url 'core:user_ratings' employer.pk %}" class="text-sm text-primary-600 hover:text-primary-700 underline underline-offset-2">Все отзывы</a>
+                <h2 class="text-sm font-semibold text-neutral-600">{% translate "Работодатель" %}</h2>
+                <a href="{% url 'core:user_ratings' employer.pk %}" class="text-sm text-primary-600 hover:text-primary-700 underline underline-offset-2">{% translate "Все отзывы" %}</a>
             </div>
             <p class="text-sm text-neutral-700">
                 {% if employer.role == 'admin' %}
-                <span class="font-medium">{{ employer.full_name|default:"Работодатель" }}</span>
+                <span class="font-medium">{{ employer.full_name|default:_("Работодатель") }}</span>
                 {% else %}
-                <a href="{% url 'core:worker_detail' employer.pk %}" class="font-medium hover:text-primary-700 transition-colors">{{ employer.full_name|default:"Работодатель" }}</a>
+                <a href="{% url 'core:worker_detail' employer.pk %}" class="font-medium hover:text-primary-700 transition-colors">{{ employer.full_name|default:_("Работодатель") }}</a>
                 {% endif %}
-                {% if employer.verification_status == 'approved' %}<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{% include "core/_ui_icon.html" with name="check" class_name="h-3 w-3" %} Подтверждён</span>{% endif %}
+                {% if employer.verification_status == 'approved' %}<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{% include "core/_ui_icon.html" with name="check" class_name="h-3 w-3" %} {% translate "Подтверждён" %}</span>{% endif %}
                 <span class="text-neutral-500"> · {% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline" %} {{ employer.rating|default:0|floatformat:1 }} ({{ employer.total_reviews|default:0 }})</span>
             </p>
             {% if employer_reviews %}
@@ -191,84 +191,84 @@
                 {% for r in employer_reviews %}
                 <li class="text-sm text-neutral-600">
                     <span class="font-medium text-neutral-800">{{ r.rating }}{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline" %}</span>
-                    {{ r.comment|default:"без комментария" }}
+                    {{ r.comment|default:_("без комментария") }}
                 </li>
                 {% endfor %}
             </ul>
             {% else %}
-            <p class="text-sm text-neutral-500 mt-2">Отзывов пока нет.</p>
+            <p class="text-sm text-neutral-500 mt-2">{% translate "Отзывов пока нет." %}</p>
             {% endif %}
         </section>
 
         <div class="flex flex-wrap gap-2 items-center border-t border-neutral-100 pt-4">
             {% if is_owner %}
-            <a href="{% url 'core:job_applicants' job.pk %}" class="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">Отклики ({{ application_count }})</a>
-            <a href="{% url 'core:job_edit' job.pk %}" class="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Изменить</a>
+            <a href="{% url 'core:job_applicants' job.pk %}" class="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">{% translate "Отклики" %} ({{ application_count }})</a>
+            <a href="{% url 'core:job_edit' job.pk %}" class="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">{% translate "Изменить" %}</a>
             {% elif user.is_authenticated %}
                 {% if my_app %}
-                <span class="text-sm text-neutral-500 px-2">Отклик: {{ my_app.status }}.</span>
+                <span class="text-sm text-neutral-500 px-2">{% translate "Отклик:" %} {{ my_app.status }}.</span>
                 {% if my_app.status == 'pending' or my_app.status == 'accepted' %}
                 <form method="post" action="{% url 'core:job_unapply' job.pk %}">{% csrf_token %}
                     <button class="px-4 h-10 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 text-sm font-medium transition-colors"
-                            {% if my_app.status == 'accepted' and not can_withdraw %}disabled title="До начала менее 12 часов — отзыв недоступен"{% endif %}>Отозвать</button>
+                            {% if my_app.status == 'accepted' and not can_withdraw %}disabled title="До начала менее 12 часов — отзыв недоступен"{% endif %}>{% translate "Отозвать" %}</button>
                 </form>
                 {% if my_app.status == 'accepted' and not can_withdraw %}
-                <p class="text-xs text-neutral-600 mt-2" role="note">Отзыв недоступен: до начала задания осталось менее 12 часов</p>
+                <p class="text-xs text-neutral-600 mt-2" role="note">{% translate "Отзыв недоступен: до начала задания осталось менее 12 часов" %}</p>
                 {% endif %}
                 {% if my_app.status == 'accepted' %}
-                <a href="{% url 'core:chat_room' my_app.id %}" class="inline-flex items-center px-4 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">Написать в чат</a>
+                <a href="{% url 'core:chat_room' my_app.id %}" class="inline-flex items-center px-4 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">{% translate "Написать в чат" %}</a>
                 {% endif %}
                 {% endif %}
                 {% elif job.status == 'open' %}
                 <form method="post" action="{% url 'core:job_apply' job.pk %}">{% csrf_token %}
-                    <button class="px-5 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm">Откликнуться</button>
+                    <button class="px-5 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm">{% translate "Откликнуться" %}</button>
                 </form>
                 {% endif %}
             <form method="post" action="{% url 'core:job_favorite_toggle' job.pk %}">{% csrf_token %}
-                <button class="px-4 h-10 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-500 text-sm font-medium transition-colors" aria-label="{{ is_fav|yesno:'В избранном,В избранное' }}">
+                <button class="px-4 h-10 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-500 text-sm font-medium transition-colors" aria-label="{% if is_fav %}{% translate 'В избранном' %}{% else %}{% translate 'В избранное' %}{% endif %}">
                     <svg aria-hidden="true" class="inline h-4 w-4 {% if is_fav %}text-primary-600 fill-current{% else %}text-neutral-400{% endif %}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                    {{ is_fav|yesno:"В избранном,В избранное" }}
+                    {% if is_fav %}{% translate "В избранном" %}{% else %}{% translate "В избранное" %}{% endif %}
                 </button>
             </form>
-            <div class="w-full mt-3 pt-3 border-t border-neutral-100 flex flex-wrap gap-2 items-center" role="group" aria-label="Действия с работодателем">
+            <div class="w-full mt-3 pt-3 border-t border-neutral-100 flex flex-wrap gap-2 items-center" role="group" aria-label="{% translate 'Действия с работодателем' %}">
                 <form method="post" action="{% url 'core:people_favorite_toggle' job.employer_id %}">{% csrf_token %}
                     <input type="hidden" name="as" value="employer">
-                    <button class="px-4 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 text-sm font-medium transition-colors">{{ is_employer_fav|yesno:"В избранном,В избранное" }}</button>
+                    <button class="px-4 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 text-sm font-medium transition-colors">{% if is_employer_fav %}{% translate "В избранном" %}{% else %}{% translate "В избранное" %}{% endif %}</button>
                 </form>
-                <button type="button" id="report-open" class="px-4 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">Пожаловаться</button>
-                <span class="text-sm text-neutral-500 ml-auto">Поделиться:</span>
+                <button type="button" id="report-open" class="px-4 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">{% translate "Пожаловаться" %}</button>
+                <span class="text-sm text-neutral-500 ml-auto">{% translate "Поделиться:" %}</span>
                 <a href="https://t.me/share/url?url={{ request.build_absolute_uri|urlencode }}" target="_blank" rel="noopener noreferrer" class="text-sm text-primary-600 hover:text-primary-700 underline underline-offset-2">Telegram</a>
                 <a href="https://wa.me/?text={{ request.build_absolute_uri|urlencode }}" target="_blank" rel="noopener noreferrer" class="text-sm text-primary-600 hover:text-primary-700 underline underline-offset-2">WhatsApp</a>
             </div>
             {% else %}
-            <a href="{% url 'core:login' %}?next={% url 'core:job_detail' job.pk %}" class="px-5 h-10 inline-flex items-center rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm">Войти, чтобы откликнуться</a>
+            <a href="{% url 'core:login' %}?next={% url 'core:job_detail' job.pk %}" class="px-5 h-10 inline-flex items-center rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm">{% translate "Войти, чтобы откликнуться" %}</a>
             {% endif %}
-            <span class="text-xs text-neutral-400 ml-auto">Размещено {{ job.created_at|date:"d.m.Y" }}</span>
+            <span class="text-xs text-neutral-400 ml-auto">{% translate "Размещено" %} {{ job.created_at|date:"d.m.Y" }}</span>
         </div>
         {% if is_owner %}
-        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-3" aria-label="Статистика откликов">
-            <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-2"><p class="text-xs text-neutral-500">Просмотры</p><p class="text-lg font-bold text-neutral-800">{{ job_stats.views }}</p></div>
-            <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-2"><p class="text-xs text-neutral-500">Всего откликов</p><p class="text-lg font-bold text-neutral-800">{{ job_stats.total }}</p></div>
-            <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-2"><p class="text-xs text-neutral-500">Ожидают</p><p class="text-lg font-bold text-neutral-800">{{ job_stats.pending }}</p></div>
-            <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-2"><p class="text-xs text-neutral-500">Принято</p><p class="text-lg font-bold text-neutral-800">{{ job_stats.accepted }}</p></div>
-            <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-2"><p class="text-xs text-neutral-500">Отклонено</p><p class="text-lg font-bold text-neutral-800">{{ job_stats.rejected }}</p></div>
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-3" aria-label="{% translate 'Статистика откликов' %}">
+            <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-2"><p class="text-xs text-neutral-500">{% translate "Просмотры" %}</p><p class="text-lg font-bold text-neutral-800">{{ job_stats.views }}</p></div>
+            <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-2"><p class="text-xs text-neutral-500">{% translate "Всего откликов" %}</p><p class="text-lg font-bold text-neutral-800">{{ job_stats.total }}</p></div>
+            <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-2"><p class="text-xs text-neutral-500">{% translate "Ожидают" %}</p><p class="text-lg font-bold text-neutral-800">{{ job_stats.pending }}</p></div>
+            <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-2"><p class="text-xs text-neutral-500">{% translate "Принято" %}</p><p class="text-lg font-bold text-neutral-800">{{ job_stats.accepted }}</p></div>
+            <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-2"><p class="text-xs text-neutral-500">{% translate "Отклонено" %}</p><p class="text-lg font-bold text-neutral-800">{{ job_stats.rejected }}</p></div>
         </div>
         {% endif %}
         <div class="mt-4 rounded-xl bg-primary-50 border border-primary-100 p-3 text-sm text-neutral-700">
-            <span class="font-semibold text-neutral-800">Безопасная сделка.</span>
-            Обсуждайте детали в чате и не переводите предоплату вне платформы.
-            <a href="{% url 'core:safety' %}" class="text-primary-600 hover:text-primary-700 underline underline-offset-2">Правила безопасности</a>
+            <span class="font-semibold text-neutral-800">{% translate "Безопасная сделка." %}</span>
+            {% translate "Обсуждайте детали в чате и не переводите предоплату вне платформы." %}
+            <a href="{% url 'core:safety' %}" class="text-primary-600 hover:text-primary-700 underline underline-offset-2">{% translate "Правила безопасности" %}</a>
         </div>
     </article>
     {% if user.is_authenticated and not is_owner %}
     <dialog id="report-dialog" aria-labelledby="report-title" class="report-dialog rounded-2xl border border-neutral-200 bg-white p-0 shadow-xl" style="width:min(28rem, calc(100vw - 2rem))">
         <form method="post" action="{% url 'core:report_user' job.employer_id %}" class="p-5 space-y-3">{% csrf_token %}
-            <h2 id="report-title" class="text-lg font-bold text-neutral-800">Пожаловаться на работодателя</h2>
-            <p class="text-sm text-neutral-500">Опишите нарушение: мошенничество, спам, некорректное поведение. Жалобу рассмотрит модерация.</p>
-            <textarea name="reason" maxlength="500" required rows="4" placeholder="Причина жалобы" class="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent"></textarea>
+            <h2 id="report-title" class="text-lg font-bold text-neutral-800">{% translate "Пожаловаться на работодателя" %}</h2>
+            <p class="text-sm text-neutral-500">{% translate "Опишите нарушение: мошенничество, спам, некорректное поведение. Жалобу рассмотрит модерация." %}</p>
+            <textarea name="reason" maxlength="500" required rows="4" placeholder="{% translate 'Причина жалобы' %}" class="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent"></textarea>
             <div class="flex justify-end gap-2">
-                <button type="button" data-close-report class="px-4 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">Отмена</button>
-                <button type="submit" class="px-4 h-9 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold">Отправить жалобу</button>
+                <button type="button" data-close-report class="px-4 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">{% translate "Отмена" %}</button>
+                <button type="submit" class="px-4 h-9 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold">{% translate "Отправить жалобу" %}</button>
             </div>
         </form>
     </dialog>
@@ -323,10 +323,10 @@
     if (!window.PushNotifications) return;
     enable.style.opacity = '0.5';
     enable.style.pointerEvents = 'none';
-    if (status) status.textContent = 'Запрашиваем разрешение…';
+    if (status) status.textContent = '{% translate "Запрашиваем разрешение…" %}';
     window.PushNotifications.init().then(function(supported){
       if (!supported) {
-        if (status) status.textContent = 'Push не поддерживается этим браузером.';
+        if (status) status.textContent = '{% translate "Push не поддерживается этим браузером." %}';
         enable.style.opacity = '';
         enable.style.pointerEvents = '';
         return false;
@@ -337,11 +337,11 @@
       });
     }).then(function(ok){
       if (ok) { hide(); return; }
-      if (status) status.textContent = 'Не удалось включить push. Проверьте разрешение браузера.';
+      if (status) status.textContent = '{% translate "Не удалось включить push. Проверьте разрешение браузера." %}';
       enable.style.opacity = '';
       enable.style.pointerEvents = '';
     }).catch(function(){
-      if (status) status.textContent = 'Не удалось включить push. Попробуйте в настройках уведомлений.';
+      if (status) status.textContent = '{% translate "Не удалось включить push. Попробуйте в настройках уведомлений." %}';
       enable.style.opacity = '';
       enable.style.pointerEvents = '';
     });

@@ -8,6 +8,7 @@ validate_inn_checksum (10/12 цифр, алгоритм ФНС), honeypot «webs
 import re
 
 from django import forms
+from django.utils.translation import gettext, gettext_lazy as _
 
 from .models import Profile, Skill
 
@@ -22,17 +23,17 @@ def validate_password(password: str) -> str | None:
     Кириллица не удовлетворяет [A-Z]/[a-z] — паритет Flask.
     """
     if len(password) < 8:
-        return "Пароль должен содержать минимум 8 символов."
+        return gettext("Пароль должен содержать минимум 8 символов.")
     if not re.search(r"[A-Z]", password):
-        return "Пароль должен содержать заглавную букву."
+        return gettext("Пароль должен содержать заглавную букву.")
     if not re.search(r"[a-z]", password):
-        return "Пароль должен содержать строчную букву."
+        return gettext("Пароль должен содержать строчную букву.")
     if not re.search(r"[0-9]", password):
-        return "Пароль должен содержать цифру."
+        return gettext("Пароль должен содержать цифру.")
     if not SPECIAL_RE.search(password):
-        return "Пароль должен содержать специальный символ (!@#$%^&* и т.п.)."
+        return gettext("Пароль должен содержать специальный символ (!@#$%^&* и т.п.).")
     if re.search(r"\s", password):
-        return "Пароль не должен содержать пробелы."
+        return gettext("Пароль не должен содержать пробелы.")
     return None
 
 
@@ -74,42 +75,42 @@ def validate_inn_checksum(inn: str) -> bool:
 
 class RegisterForm(forms.Form):
     INTENT_CHOICES = (
-        ("both", "Ищу подработку и размещаю задания"),
-        ("find_work", "Ищу подработку"),
-        ("post_jobs", "Размещаю задания"),
+        ("both", _("Ищу подработку и размещаю задания")),
+        ("find_work", _("Ищу подработку")),
+        ("post_jobs", _("Размещаю задания")),
     )
-    email = forms.EmailField(label="Email", widget=forms.EmailInput(attrs={"class": INPUT_CLS}))
-    full_name = forms.CharField(label="ФИО", max_length=150, widget=forms.TextInput(attrs={"class": INPUT_CLS}))
-    city = forms.CharField(label="Город", max_length=100, required=False, widget=forms.TextInput(attrs={"class": INPUT_CLS}))
-    password = forms.CharField(label="Пароль", widget=forms.PasswordInput(attrs={"class": INPUT_CLS}))
+    email = forms.EmailField(label=_("Email"), widget=forms.EmailInput(attrs={"class": INPUT_CLS}))
+    full_name = forms.CharField(label=_("ФИО"), max_length=150, widget=forms.TextInput(attrs={"class": INPUT_CLS}))
+    city = forms.CharField(label=_("Город"), max_length=100, required=False, widget=forms.TextInput(attrs={"class": INPUT_CLS}))
+    password = forms.CharField(label=_("Пароль"), widget=forms.PasswordInput(attrs={"class": INPUT_CLS}))
     portfolio_link = forms.URLField(
-        label="Портфолио (ссылка)", required=False,
+        label=_("Портфолио (ссылка)"), required=False,
         widget=forms.URLInput(attrs={"class": INPUT_CLS}),
     )
     contact = forms.CharField(
-        label="Контакт для связи", max_length=300, required=False,
+        label=_("Контакт для связи"), max_length=300, required=False,
         widget=forms.TextInput(attrs={"class": INPUT_CLS}),
     )
     inn = forms.CharField(
-        label="ИНН", max_length=12, required=False,
+        label=_("ИНН"), max_length=12, required=False,
         widget=forms.TextInput(attrs={"class": INPUT_CLS}),
     )
-    is_self_employed = forms.BooleanField(label="Самозанятый", required=False)
+    is_self_employed = forms.BooleanField(label=_("Самозанятый"), required=False)
     experience = forms.CharField(
-        label="Опыт работы", required=False,
+        label=_("Опыт работы"), required=False,
         widget=forms.Textarea(attrs={"class": INPUT_CLS, "rows": 3}),
     )
     desired_payment = forms.DecimalField(
-        label="Желаемая оплата, ₽", max_digits=12, decimal_places=2, min_value=0, required=False,
+        label=_("Желаемая оплата, ₽"), max_digits=12, decimal_places=2, min_value=0, required=False,
         widget=forms.NumberInput(attrs={"class": INPUT_CLS, "min": 0, "step": "0.01"}),
     )
     skills = forms.ModelMultipleChoiceField(
         queryset=Skill.objects.order_by("sort_order", "name"),
-        widget=forms.CheckboxSelectMultiple, required=False, label="Навыки",
+        widget=forms.CheckboxSelectMultiple, required=False, label=_("Навыки"),
     )
-    intent = forms.ChoiceField(label="Цель", choices=INTENT_CHOICES, initial="both",
+    intent = forms.ChoiceField(label=_("Цель"), choices=INTENT_CHOICES, initial="both",
                                widget=forms.RadioSelect)
-    consent = forms.BooleanField(label="Согласен с обработкой персональных данных (152-ФЗ)")
+    consent = forms.BooleanField(label=_("Согласен с обработкой персональных данных (152-ФЗ)"))
     website = forms.CharField(  # honeypot: люди это поле не видят/не заполняют
         required=False, widget=forms.HiddenInput,
     )
@@ -135,9 +136,9 @@ class RegisterForm(forms.Form):
         if not self._is_worker_intent() or not contact:
             return contact
         if len(contact) < 3:
-            raise forms.ValidationError("Контакт должен содержать минимум 3 символа.")
+            raise forms.ValidationError(gettext("Контакт должен содержать минимум 3 символа."))
         if not is_valid_contact(contact):
-            raise forms.ValidationError("Введите корректный контакт: email, телефон или никнейм.")
+            raise forms.ValidationError(gettext("Введите корректный контакт: email, телефон или никнейм."))
         return contact
 
     def clean_inn(self):
@@ -145,16 +146,16 @@ class RegisterForm(forms.Form):
         if not self._is_worker_intent() or not inn:
             return inn
         if not inn.isdigit() or len(inn) != 12:
-            raise forms.ValidationError("ИНН должен содержать ровно 12 цифр.")
+            raise forms.ValidationError(gettext("ИНН должен содержать ровно 12 цифр."))
         if not validate_inn_checksum(inn):
-            raise forms.ValidationError("Некорректный ИНН — проверьте контрольную сумму.")
+            raise forms.ValidationError(gettext("Некорректный ИНН — проверьте контрольную сумму."))
         return inn
 
     def clean(self):
         cleaned = super().clean()
         if cleaned.get("website"):
             # honeypот заполнен — тихо считаем форму невалидной (боту не сообщаем причину)
-            raise forms.ValidationError("Регистрация невозможна.")
+            raise forms.ValidationError(gettext("Регистрация невозможна."))
         return cleaned
 
     def role_and_visibility(self):
@@ -165,7 +166,7 @@ class RegisterForm(forms.Form):
 
 
 class PasswordResetRequestForm(forms.Form):
-    email = forms.EmailField(label="Email", widget=forms.EmailInput(attrs={"class": INPUT_CLS, "autofocus": True}))
+    email = forms.EmailField(label=_("Email"), widget=forms.EmailInput(attrs={"class": INPUT_CLS, "autofocus": True}))
     smart_token = forms.CharField(required=False, widget=forms.HiddenInput)
 
     def clean_email(self):
@@ -173,8 +174,8 @@ class PasswordResetRequestForm(forms.Form):
 
 
 class PasswordResetConfirmForm(forms.Form):
-    new_password = forms.CharField(label="Новый пароль", widget=forms.PasswordInput(attrs={"class": INPUT_CLS}))
-    confirm_password = forms.CharField(label="Повторите пароль", widget=forms.PasswordInput(attrs={"class": INPUT_CLS}))
+    new_password = forms.CharField(label=_("Новый пароль"), widget=forms.PasswordInput(attrs={"class": INPUT_CLS}))
+    confirm_password = forms.CharField(label=_("Повторите пароль"), widget=forms.PasswordInput(attrs={"class": INPUT_CLS}))
 
     def clean_new_password(self):
         password = self.cleaned_data.get("new_password") or ""
@@ -187,5 +188,5 @@ class PasswordResetConfirmForm(forms.Form):
         cleaned = super().clean()
         if cleaned.get("new_password") and cleaned.get("confirm_password") and \
                 cleaned["new_password"] != cleaned["confirm_password"]:
-            raise forms.ValidationError("Пароли не совпадают.")
+            raise forms.ValidationError(gettext("Пароли не совпадают."))
         return cleaned

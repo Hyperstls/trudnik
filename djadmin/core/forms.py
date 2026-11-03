@@ -1,5 +1,6 @@
 """Формы пользовательских флоу (фаза 2а)."""
 from django import forms
+from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 
 from .models import Job, JobSkill, Skill
@@ -102,5 +103,5 @@ class JobForm(forms.ModelForm):
 
 
 class LoginForm(forms.Form):
-    email = forms.EmailField(label="Email", widget=forms.EmailInput(attrs={"class": INPUT_CLS, "autofocus": True}))
-    password = forms.CharField(label="Пароль", widget=forms.PasswordInput(attrs={"class": INPUT_CLS}))
+    email = forms.EmailField(label=_("Email"), widget=forms.EmailInput(attrs={"class": INPUT_CLS, "autofocus": True}))
+    password = forms.CharField(label=_("Пароль"), widget=forms.PasswordInput(attrs={"class": INPUT_CLS}))

@@ -4,6 +4,7 @@
 Компонентные классы (.card, .action-icon-btn, .accept-btn, .reject-btn,
 .accepted-badge, .contact-btn) — из static/css/app.css (Flask-оригинал).
 {% endcomment %}
+{% load i18n %}
 <article class="card bg-white rounded-2xl shadow-sm border border-neutral-200 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group fade-in{% if applied_ids and job.pk|stringformat:"s" in applied_ids %} applied{% endif %}" data-job-id="{{ job.pk }}">
     {% with photo=job.display_photo_urls.0 %}
     {% if photo %}
@@ -16,7 +17,7 @@
         <a href="{% url 'core:job_detail' job.pk %}" class="block">
             <div class="flex items-start justify-between gap-2">
                 {% if user.is_authenticated and job.employer_id != user.pk %}
-                <input type="checkbox" name="job_ids" value="{{ job.pk }}" form="bulk-form" class="job-checkbox mt-1 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 shrink-0" aria-label="Выбрать задание">
+                <input type="checkbox" name="job_ids" value="{{ job.pk }}" form="bulk-form" class="job-checkbox mt-1 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 shrink-0" aria-label="{% translate 'Выбрать задание' %}">
                 {% endif %}
                 <h3 class="font-semibold text-neutral-900 text-base leading-tight line-clamp-1 flex-1 min-w-0">{{ job.work_type|default:job.object_description|truncatechars:60 }}</h3>
                 {% if job.payment_amount %}
@@ -32,7 +33,7 @@
                 {% endif %}
             </p>
             <p class="text-xs text-neutral-500 mt-1 flex items-center gap-1 flex-wrap">
-                {% if job.is_remote %}{% include "core/_ui_badge.html" with label="Удалённо" variant="info" %}{% endif %}
+                {% if job.is_remote %}{% translate "Удалённо" as remote_label %}{% include "core/_ui_badge.html" with label=remote_label variant="info" %}{% endif %}
                 {% if job.city %}<span>{{ job.city }}</span><span class="w-1 h-1 rounded-full bg-neutral-300"></span>{% endif %}
                 <span class="inline-flex items-center gap-0.5">
                     <svg aria-hidden="true" class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -40,7 +41,7 @@
                 </span>
             </p>
             {% if job.max_workers|default:1 > 1 %}
-            <p class="text-xs text-neutral-500 mt-1">Откликнулось: <span class="font-semibold text-neutral-700">{{ job.applicant_count|default:0 }}</span> · нужно {{ job.max_workers }}</p>
+            <p class="text-xs text-neutral-500 mt-1">{% translate "Откликнулось:" %} <span class="font-semibold text-neutral-700">{{ job.applicant_count|default:0 }}</span> · {% translate "нужно" %} {{ job.max_workers }}</p>
             {% endif %}
             {% if job.object_description %}
             <p class="mt-2 text-sm text-neutral-600 line-clamp-2 leading-relaxed">{{ job.object_description }}</p>
@@ -49,40 +50,40 @@
         {% if user.is_authenticated and job.employer_id != user.pk %}
         <div class="mt-3 flex flex-wrap gap-2 items-center js-card-actions">
             {% if applied_ids and job.pk|stringformat:"s" in applied_ids %}
-            <span class="action-icon-btn accepted-badge js-applied-badge" title="Вы откликнулись">
+            <span class="action-icon-btn accepted-badge js-applied-badge" title="{% translate 'Вы откликнулись' %}">
                 <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                <span class="text-xs ml-1 font-medium">Отклик отправлен</span>
+                <span class="text-xs ml-1 font-medium">{% translate "Отклик отправлен" %}</span>
             </span>
             <form action="{% url 'core:job_unapply' job.pk %}" method="post" class="inline">{% csrf_token %}
-                <button type="submit" class="action-icon-btn reject-btn" title="Отозвать">
+                <button type="submit" class="action-icon-btn reject-btn" title="{% translate 'Отозвать' %}">
                     <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    <span class="text-xs ml-1 font-medium">Отозвать</span>
+                    <span class="text-xs ml-1 font-medium">{% translate "Отозвать" %}</span>
                 </button>
             </form>
             {% elif job.date_time < now %}
-            <span class="action-icon-btn opacity-50 cursor-not-allowed" title="Задание уже началось или прошло">
+            <span class="action-icon-btn opacity-50 cursor-not-allowed" title="{% translate 'Задание уже началось или прошло' %}">
                 <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                <span class="text-xs ml-1 font-medium">Задание прошло</span>
+                <span class="text-xs ml-1 font-medium">{% translate "Задание прошло" %}</span>
             </span>
             {% else %}
             <form action="{% url 'core:job_apply' job.pk %}" method="post" class="inline">{% csrf_token %}
-                <button type="submit" class="action-icon-btn accept-btn" title="Откликнуться">
+                <button type="submit" class="action-icon-btn accept-btn" title="{% translate 'Откликнуться' %}">
                     <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                    <span class="text-xs ml-1 font-medium">Откликнуться</span>
+                    <span class="text-xs ml-1 font-medium">{% translate "Откликнуться" %}</span>
                 </button>
             </form>
             {% endif %}
             <form action="{% url 'core:job_favorite_toggle' job.pk %}" method="post" class="inline">{% csrf_token %}
-                <button type="submit" class="action-icon-btn contact-btn" title="В избранное">
+                <button type="submit" class="action-icon-btn contact-btn" title="{% translate 'В избранное' %}">
                     <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                    <span class="text-xs ml-1 font-medium">В избранное</span>
+                    <span class="text-xs ml-1 font-medium">{% translate "В избранное" %}</span>
                 </button>
             </form>
         </div>
         {% elif user.is_authenticated and job.employer_id == user.pk %}
         <div class="mt-3 flex gap-4">
-            <a href="{% url 'core:job_applicants' job.pk %}" class="text-sm text-primary-600 hover:text-primary-700 font-medium">Отклики</a>
-            <a href="{% url 'core:my_jobs' %}" class="text-sm text-neutral-500 hover:text-neutral-700 font-medium">Мои задания</a>
+            <a href="{% url 'core:job_applicants' job.pk %}" class="text-sm text-primary-600 hover:text-primary-700 font-medium">{% translate "Отклики" %}</a>
+            <a href="{% url 'core:my_jobs' %}" class="text-sm text-neutral-500 hover:text-neutral-700 font-medium">{% translate "Мои задания" %}</a>
         </div>
         {% endif %}
     </div>

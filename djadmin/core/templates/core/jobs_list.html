@@ -1,11 +1,11 @@
 {% extends "core/base.html" %}
-{% load l10n %}
-{% block title %}Трудник — Поиск работы{% endblock %}
+{% load l10n i18n %}
+{% block title %}Трудник — {% translate "Поиск работы" %}{% endblock %}
 {% block content %}
 <div class="px-0 py-4 fade-in">
     <!-- Header row -->
     <div class="mb-4">
-        <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">Задания</h2>
+        <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">{% translate "Задания" %}</h2>
     </div>
     {% if user.is_authenticated %}
     <div class="flex flex-wrap items-center gap-2 mb-4">
@@ -17,19 +17,19 @@
             {% if payment_min %}<input type="hidden" name="payment_min" value="{{ payment_min }}">{% endif %}
             {% if payment_max %}<input type="hidden" name="payment_max" value="{{ payment_max }}">{% endif %}
             {% for skill in selected_skills %}<input type="hidden" name="skills" value="{{ skill }}">{% endfor %}
-            <button class="px-3 h-8 rounded-full border border-neutral-200 bg-white hover:bg-neutral-50 text-xs font-medium text-neutral-600">{% include "core/_ui_icon.html" with name="plus" class_name="h-3.5 w-3.5" %} Сохранить поиск</button>
+            <button class="px-3 h-8 rounded-full border border-neutral-200 bg-white hover:bg-neutral-50 text-xs font-medium text-neutral-600">{% include "core/_ui_icon.html" with name="plus" class_name="h-3.5 w-3.5" %} {% translate "Сохранить поиск" %}</button>
         </form>
         {% endif %}
         {% for item in saved_searches %}
         <span class="inline-flex items-center rounded-full border border-primary-200 bg-primary-50 text-xs overflow-hidden">
             <a href="{{ item.url }}" class="px-2.5 py-1.5 text-primary-700 hover:text-primary-800 font-medium">{{ item.name }}</a>
             <form method="post" action="{% url 'core:toggle_search' item.id %}" class="inline">{% csrf_token %}
-                <button class="px-1.5 py-1.5 {% if item.notify %}text-primary-600{% else %}text-neutral-400{% endif %} hover:text-primary-800" title="{% if item.notify %}Уведомления включены{% else %}Уведомления выключены{% endif %}" aria-label="{% if item.notify %}Выключить уведомления{% else %}Включить уведомления{% endif %} для поиска {{ item.name }}">
+                <button class="px-1.5 py-1.5 {% if item.notify %}text-primary-600{% else %}text-neutral-400{% endif %} hover:text-primary-800" title="{% if item.notify %}{% translate 'Уведомления включены' %}{% else %}{% translate 'Уведомления выключены' %}{% endif %}" aria-label="{% if item.notify %}{% translate 'Выключить уведомления' %}{% else %}{% translate 'Включить уведомления' %}{% endif %} — {{ item.name }}">
                     {% if item.notify %}{% include "core/_ui_icon.html" with name="bell" class_name="h-4 w-4" %}{% else %}{% include "core/_ui_icon.html" with name="bell-off" class_name="h-4 w-4" %}{% endif %}
                 </button>
             </form>
             <form method="post" action="{% url 'core:delete_search' item.id %}" class="inline">{% csrf_token %}
-                <button class="px-1.5 py-1.5 text-primary-600 hover:text-red-600" aria-label="Удалить сохранённый поиск {{ item.name }}">×</button>
+                <button class="px-1.5 py-1.5 text-primary-600 hover:text-red-600" aria-label="{% translate 'Удалить сохранённый поиск' %} — {{ item.name }}">×</button>
             </form>
         </span>
         {% endfor %}
@@ -103,11 +103,11 @@
     <!-- Фильтр-пилюли статуса (Flask: Все/Новые/Откликнулся — упрощено до публичных статусов) -->
     <div class="flex gap-2 mb-4 flex-wrap">
         <a href="{% url 'core:jobs' %}{% if query_string %}?{{ query_string|default:'' }}{% endif %}"
-           class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if not status %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Все</a>
+           class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if not status %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">{% translate "Все" %}</a>
         <a href="?status=open{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}"
-           class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if status == 'open' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Открытые</a>
+           class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if status == 'open' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">{% translate "Открытые" %}</a>
         <a href="?status=completed{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}"
-           class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if status == 'completed' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Завершённые</a>
+           class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if status == 'completed' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">{% translate "Завершённые" %}</a>
     </div>
 
     <!-- Дополнительные фильтры: оплата до, навык, Новые/Откликнулся -->
@@ -123,14 +123,14 @@
     </form>
     <button type="button" id="filters-open" class="sm:hidden inline-flex items-center gap-2 mb-4 px-4 h-10 rounded-xl border border-neutral-200 bg-white text-sm font-semibold text-neutral-700 shadow-sm" aria-haspopup="dialog" aria-controls="filters-form" aria-expanded="false">
         <svg aria-hidden="true" class="h-4 w-4 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
-        Фильтры
+        {% translate "Фильтры" %}
         {% if active_filter_count %}<span id="filters-active-count" class="min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center rounded-full bg-neutral-800 text-white text-[11px] font-bold">{{ active_filter_count }}</span>{% else %}<span id="filters-active-count" class="hidden min-w-[20px] h-5 px-1.5 rounded-full bg-neutral-800 text-white text-[11px] font-bold"></span>{% endif %}
     </button>
     <div id="filters-backdrop" class="filters-backdrop hidden" aria-hidden="true"></div>
-    <form id="filters-form" method="get" action="{% url 'core:jobs' %}" role="search" aria-label="Фильтры заданий" class="flex flex-wrap gap-2 mb-4 items-center">
+    <form id="filters-form" method="get" action="{% url 'core:jobs' %}" role="search" aria-label="{% translate 'Фильтры заданий' %}" class="flex flex-wrap gap-2 mb-4 items-center">
         <div class="filter-sheet-head sm:hidden flex items-center justify-between w-full">
-            <h3 id="filters-title" class="text-base font-bold text-neutral-900">Фильтры</h3>
-            <button type="button" id="filters-close" class="w-9 h-9 inline-flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-50" aria-label="Закрыть фильтры">
+            <h3 id="filters-title" class="text-base font-bold text-neutral-900">{% translate "Фильтры" %}</h3>
+            <button type="button" id="filters-close" class="w-9 h-9 inline-flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-50" aria-label="{% translate 'Закрыть фильтры' %}">
                 <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
         </div>
@@ -140,23 +140,23 @@
         {% if sort %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
         {% if payment_min %}<input type="hidden" name="payment_min" value="{{ payment_min }}">{% endif %}
         <div class="flex items-end gap-2 w-full sm:w-auto">
-            <label class="text-xs font-medium text-neutral-500 flex-1 sm:flex-none">Радиус, км
+            <label class="text-xs font-medium text-neutral-500 flex-1 sm:flex-none">{% translate "Радиус, км" %}
                 <input type="number" name="radius" id="radius-input" min="0.1" max="100" step="0.1" value="{{ radius|default:'10' }}" class="mt-1 block w-full sm:w-24 px-3 h-10 rounded-xl border border-neutral-200 bg-white text-sm">
             </label>
-            <button type="button" id="geo-btn" class="px-3 h-10 shrink-0 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Рядом со мной</button>
+            <button type="button" id="geo-btn" class="px-3 h-10 shrink-0 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">{% translate "Рядом со мной" %}</button>
         </div>
-        {% if geo_active %}<button type="submit" form="geo-clear-form" class="px-3 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 text-sm font-medium transition-colors">Сбросить гео</button>{% endif %}
+        {% if geo_active %}<button type="submit" form="geo-clear-form" class="px-3 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 text-sm font-medium transition-colors">{% translate "Сбросить гео" %}</button>{% endif %}
         <p class="basis-full text-xs text-neutral-400">Геопозиция используется только для поиска рядом, округляется и хранится в сессии 1 час; в ссылку не попадает.</p>
         <p id="geo-msg" class="basis-full text-xs text-red-600 hidden" role="alert"></p>
-        <input type="number" name="payment_max" min="0" value="{{ payment_max }}" placeholder="Оплата до, ₽"
+        <input type="number" name="payment_max" min="0" value="{{ payment_max }}" placeholder="{% translate 'Оплата до, ₽' %}"
                class="w-36 px-3 h-9 rounded-xl border border-neutral-200 bg-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent">
         <label class="inline-flex items-center gap-2 h-9 text-sm text-neutral-600">
             <input type="checkbox" name="remote" value="1" {% if remote_only %}checked{% endif %} class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
-            Удалённо
+            {% translate "Удалённо" %}
         </label>
         <details class="relative">
             <summary class="px-3 h-9 inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white text-sm text-neutral-700 cursor-pointer select-none hover:bg-neutral-50">
-                Навыки{% if selected_skills %} · {{ selected_skills|length }}{% endif %}
+                {% translate "Навыки" %}{% if selected_skills %} · {{ selected_skills|length }}{% endif %}
                 <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
             </summary>
             <div class="absolute right-0 z-30 mt-1 w-64 max-h-64 overflow-y-auto rounded-xl border border-neutral-200 bg-white p-2 shadow-lg">
@@ -166,37 +166,37 @@
                     <span class="min-w-0 break-words">{{ s.name }}</span>
                 </label>
                 {% empty %}
-                <p class="px-2 py-1.5 text-sm text-neutral-500">Навыков пока нет</p>
+                <p class="px-2 py-1.5 text-sm text-neutral-500">{% translate "Навыков пока нет" %}</p>
                 {% endfor %}
             </div>
         </details>
         {% if user.is_authenticated %}
         <details class="relative w-full sm:w-auto">
             <summary class="px-3 h-10 inline-flex items-center justify-between gap-2 rounded-xl border border-neutral-200 bg-white text-sm text-neutral-700 cursor-pointer select-none hover:bg-neutral-50">
-                <span class="truncate">{% if job_filter == 'new' %}Новые{% elif job_filter == 'applied' %}Откликнулся{% else %}Все задания{% endif %}</span>
+                <span class="truncate">{% if job_filter == 'new' %}{% translate "Новые" %}{% elif job_filter == 'applied' %}{% translate "Откликнулся" %}{% else %}{% translate "Все задания" %}{% endif %}</span>
                 <svg aria-hidden="true" class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
             </summary>
             <div class="absolute left-0 z-30 mt-1 w-full sm:w-56 rounded-xl border border-neutral-200 bg-white p-2 shadow-lg">
-                <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-neutral-50 text-sm text-neutral-700 cursor-pointer"><input type="radio" name="filter" value="" {% if not job_filter %}checked{% endif %} class="border-neutral-300 text-primary-600 focus:ring-primary-500"> Все задания</label>
-                <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-neutral-50 text-sm text-neutral-700 cursor-pointer"><input type="radio" name="filter" value="new" {% if job_filter == 'new' %}checked{% endif %} class="border-neutral-300 text-primary-600 focus:ring-primary-500"> Новые</label>
-                <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-neutral-50 text-sm text-neutral-700 cursor-pointer"><input type="radio" name="filter" value="applied" {% if job_filter == 'applied' %}checked{% endif %} class="border-neutral-300 text-primary-600 focus:ring-primary-500"> Откликнулся</label>
+                <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-neutral-50 text-sm text-neutral-700 cursor-pointer"><input type="radio" name="filter" value="" {% if not job_filter %}checked{% endif %} class="border-neutral-300 text-primary-600 focus:ring-primary-500"> {% translate "Все задания" %}</label>
+                <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-neutral-50 text-sm text-neutral-700 cursor-pointer"><input type="radio" name="filter" value="new" {% if job_filter == 'new' %}checked{% endif %} class="border-neutral-300 text-primary-600 focus:ring-primary-500"> {% translate "Новые" %}</label>
+                <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-neutral-50 text-sm text-neutral-700 cursor-pointer"><input type="radio" name="filter" value="applied" {% if job_filter == 'applied' %}checked{% endif %} class="border-neutral-300 text-primary-600 focus:ring-primary-500"> {% translate "Откликнулся" %}</label>
             </div>
         </details>
         {% endif %}
-        <button type="submit" class="hidden sm:inline-flex items-center px-4 h-9 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">Применить</button>
+        <button type="submit" class="hidden sm:inline-flex items-center px-4 h-9 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">{% translate "Применить" %}</button>
         <div class="filter-sheet-actions sm:hidden sticky bottom-0 -mx-4 mt-2 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white border-t border-neutral-200 flex gap-2">
             {% if geo_active %}
-            <button type="submit" form="geo-clear-form" class="flex-1 h-11 rounded-xl border border-neutral-200 text-neutral-700 text-sm font-semibold hover:bg-neutral-50">Сбросить</button>
+            <button type="submit" form="geo-clear-form" class="flex-1 h-11 rounded-xl border border-neutral-200 text-neutral-700 text-sm font-semibold hover:bg-neutral-50">{% translate "Сбросить" %}</button>
             {% else %}
-            <a href="{% url 'core:jobs' %}" class="flex-1 h-11 inline-flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-700 text-sm font-semibold hover:bg-neutral-50">Сбросить</a>
+            <a href="{% url 'core:jobs' %}" class="flex-1 h-11 inline-flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-700 text-sm font-semibold hover:bg-neutral-50">{% translate "Сбросить" %}</a>
             {% endif %}
-            <button type="submit" class="flex-[2] h-11 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold shadow-sm">Применить{% if active_filter_count %} · {{ active_filter_count }}{% endif %}</button>
+            <button type="submit" class="flex-[2] h-11 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold shadow-sm">{% translate "Применить" %}{% if active_filter_count %} · {{ active_filter_count }}{% endif %}</button>
         </div>
     </form>
 
     <!-- Панель сортировки (Flask sort_panel) -->
     <div class="flex flex-wrap gap-2 mb-4 items-center">
-        <span class="text-sm text-neutral-500 self-center mr-1">Сортировка:</span>
+        <span class="text-sm text-neutral-500 self-center mr-1">{% translate "Сортировка:" %}</span>
         {% for value, label in sort_options %}
         <a href="?sort={{ value }}{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if payment_max %}&payment_max={{ payment_max }}{% endif %}{% if payment_min %}&payment_min={{ payment_min }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if job_filter %}&filter={{ job_filter }}{% endif %}{% if geo_active %}&geo=1&radius={{ radius }}{% endif %}{% if remote_only %}&remote=1{% endif %}"
            class="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 {% if sort == value %}bg-primary-600 text-white shadow-sm{% else %}bg-neutral-100 text-neutral-600 hover:bg-neutral-200{% endif %}">{{ label }}</a>
@@ -212,9 +212,9 @@
             <div class="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
                 <svg aria-hidden="true" class="h-8 w-8 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             </div>
-            <p class="text-neutral-600 text-lg font-medium">Пока нет заданий</p>
-            <p class="text-sm text-neutral-500 mt-1">Попробуйте изменить фильтры или зайдите позже</p>
-            <a href="{% url 'core:jobs' %}" class="mt-4 text-sm text-primary-600 hover:text-primary-700 underline underline-offset-2">Сбросить фильтры</a>
+            <p class="text-neutral-600 text-lg font-medium">{% translate "Пока нет заданий" %}</p>
+            <p class="text-sm text-neutral-500 mt-1">{% translate "Попробуйте изменить фильтры или зайдите позже" %}</p>
+            <a href="{% url 'core:jobs' %}" class="mt-4 text-sm text-primary-600 hover:text-primary-700 underline underline-offset-2">{% translate "Сбросить фильтры" %}</a>
         </div>
         {% endfor %}
     </div>
@@ -222,10 +222,10 @@
     {% if user.is_authenticated %}
     <form id="bulk-form" method="post" action="{% url 'core:bulk_apply' %}" class="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white rounded-2xl shadow-lg border border-neutral-200 px-4 py-3 flex items-center gap-3 hidden">
         {% csrf_token %}
-        <output id="bulk-count" class="text-sm font-semibold text-neutral-600 whitespace-nowrap">0 выбрано</output>
+        <output id="bulk-count" class="text-sm font-semibold text-neutral-600 whitespace-nowrap">0 {% translate "выбрано" %}</output>
         <div class="h-6 w-px bg-neutral-200"></div>
-        <button type="submit" class="action-icon-btn accept-btn"><span class="text-xs font-medium">Откликнуться</span></button>
-        <button type="submit" formaction="{% url 'core:bulk_unapply' %}" class="action-icon-btn reject-btn"><span class="text-xs font-medium">Отозвать</span></button>
+        <button type="submit" class="action-icon-btn accept-btn"><span class="text-xs font-medium">{% translate "Откликнуться" %}</span></button>
+        <button type="submit" formaction="{% url 'core:bulk_unapply' %}" class="action-icon-btn reject-btn"><span class="text-xs font-medium">{% translate "Отозвать" %}</span></button>
     </form>
     <script nonce="{{ request.csp_nonce }}">
     (function(){
@@ -233,7 +233,7 @@
       if (!bar) return;
       function update(){
         var n = document.querySelectorAll('input.job-checkbox:checked').length;
-        document.getElementById('bulk-count').textContent = n + ' выбрано';
+        document.getElementById('bulk-count').textContent = n + ' {% translate "выбрано" %}';
         bar.classList.toggle('hidden', n === 0);
       }
       document.addEventListener('change', function(e){ if (e.target.classList.contains('job-checkbox')) update(); });
@@ -336,13 +336,13 @@
     </script>
 
     {% if page.paginator.num_pages > 1 %}
-    <nav class="mt-6 flex gap-2 items-center justify-center text-sm" aria-label="Пагинация">
+    <nav class="mt-6 flex gap-2 items-center justify-center text-sm" aria-label="{% translate 'Пагинация' %}">
         {% if page.has_previous %}
-        <a href="?page={{ page.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if payment_max %}&payment_max={{ payment_max }}{% endif %}{% if payment_min %}&payment_min={{ payment_min }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if job_filter %}&filter={{ job_filter }}{% endif %}{% if geo_active %}&geo=1&radius={{ radius }}{% endif %}{% if remote_only %}&remote=1{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 transition-colors">← Назад</a>
+        <a href="?page={{ page.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if payment_max %}&payment_max={{ payment_max }}{% endif %}{% if payment_min %}&payment_min={{ payment_min }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if job_filter %}&filter={{ job_filter }}{% endif %}{% if geo_active %}&geo=1&radius={{ radius }}{% endif %}{% if remote_only %}&remote=1{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 transition-colors">{% translate "← Назад" %}</a>
         {% endif %}
-        <span class="text-neutral-400 px-2">{{ page.number }} из {{ page.paginator.num_pages }}</span>
+        <span class="text-neutral-400 px-2">{{ page.number }} {% translate "из" %} {{ page.paginator.num_pages }}</span>
         {% if page.has_next %}
-        <a href="?page={{ page.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if payment_max %}&payment_max={{ payment_max }}{% endif %}{% if payment_min %}&payment_min={{ payment_min }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if job_filter %}&filter={{ job_filter }}{% endif %}{% if geo_active %}&geo=1&radius={{ radius }}{% endif %}{% if remote_only %}&remote=1{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 transition-colors">Вперёд →</a>
+        <a href="?page={{ page.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if payment_max %}&payment_max={{ payment_max }}{% endif %}{% if payment_min %}&payment_min={{ payment_min }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if job_filter %}&filter={{ job_filter }}{% endif %}{% if geo_active %}&geo=1&radius={{ radius }}{% endif %}{% if remote_only %}&remote=1{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 transition-colors">{% translate "Вперёд →" %}</a>
         {% endif %}
     </nav>
     {% endif %}

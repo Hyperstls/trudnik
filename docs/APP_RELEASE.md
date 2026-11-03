@@ -103,6 +103,14 @@ Workflow требует `twa-config.json` в корне (добавлен) и с
   `Content-Disposition: attachment`, `Cache-Control: public, max-age=3600`.
 - Ссылки: футер «Приложение» и профильное меню «Установить приложение».
 
+## iOS
+
+- Сейчас iOS покрыт PWA: Safari → «Поделиться» → «На экран Домой». Иконка,
+  splash-фон, standalone-режим и push через Web Push (iOS 16.4+) работают без
+  App Store.
+- Нативная сборка (Swift/Capacitor) требует Apple Developer Program (99 $/год),
+  macOS с Xcode и подписи; до появления аккаунта она не входит в релизный цикл.
+
 ## Чек-лист релиза
 
 1. `npm run build:css`, `pre_deploy_check`, `manage.py test core`.

@@ -1,5 +1,5 @@
-{% load static %}<!DOCTYPE html>
-<html lang="ru">
+{% load static i18n %}{% get_current_language as LANGUAGE_CODE %}<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:'ru' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -22,20 +22,20 @@
         } catch (e) { /* private mode */ }
     })();
     </script>
-    <meta name="description" content="{% block meta_description %}Платформа для поиска разовой подработки. Работодатели публикуют задания, исполнители откликаются и выполняют работу.{% endblock %}">
+    <meta name="description" content="{% block meta_description %}{% translate 'Платформа для поиска разовой подработки. Работодатели публикуют задания, исполнители откликаются и выполняют работу.' %}{% endblock %}">
     <link rel="canonical" href="https://{{ request.get_host }}{{ request.path }}">
     <meta property="og:site_name" content="Трудник">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="{% block og_title %}Трудник — платформа разовой подработки{% endblock %}">
-    <meta property="og:description" content="{% block og_description %}Задания рядом, отклики, чат и оценки. Найдите подработку или исполнителя на трудник.рф.{% endblock %}">
+    <meta property="og:title" content="{% block og_title %}{% translate 'Трудник — платформа разовой подработки' %}{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}{% translate 'Задания рядом, отклики, чат и оценки. Найдите подработку или исполнителя на трудник.рф.' %}{% endblock %}">
     <meta property="og:url" content="https://{{ request.get_host }}{{ request.path }}">
     <meta property="og:image" content="{% block og_image %}https://{{ request.get_host }}{% static 'icons/og-preview.png' %}{% endblock %}">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:locale" content="ru_RU">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{% block twitter_title %}Трудник — платформа разовой подработки{% endblock %}">
-    <meta name="twitter:description" content="{% block twitter_description %}Задания рядом, отклики, чат и оценки. трудник.рф{% endblock %}">
+    <meta name="twitter:title" content="{% block twitter_title %}{% translate 'Трудник — платформа разовой подработки' %}{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}{% translate 'Задания рядом, отклики, чат и оценки. трудник.рф' %}{% endblock %}">
     <meta name="twitter:image" content="{% block twitter_image %}https://{{ request.get_host }}{% static 'icons/og-preview.png' %}{% endblock %}">
     <meta name="csrf-token" content="{{ csrf_token }}">
     <link rel="preload" href="{% static 'fonts/inter/UcCo3FwrK3iLTcvmYwYL8g.woff2' %}" as="font" type="font/woff2" crossorigin>
@@ -44,80 +44,80 @@
     <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
 <body class="bg-neutral-50 text-neutral-800 min-h-screen flex flex-col"{% if user.is_authenticated %} data-user-id="{{ user.pk }}"{% endif %}>
-<a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary-600 focus:text-white focus:rounded focus:shadow-lg">Перейти к основному содержимому</a>
-<noscript><div class="bg-warning text-neutral-800 px-4 py-3 text-center text-sm">JavaScript отключён.</div></noscript>
+<a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-primary-600 focus:text-white focus:rounded focus:shadow-lg">{% translate 'Перейти к основному содержимому' %}</a>
+<noscript><div class="bg-warning text-neutral-800 px-4 py-3 text-center text-sm">{% translate 'JavaScript отключён.' %}</div></noscript>
 
     <header class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-neutral-200 shadow-sm">
         <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-            <a href="/" class="flex items-center gap-2.5 shrink-0" aria-label="Трудник — на главную">
+            <a href="/" class="flex items-center gap-2.5 shrink-0" aria-label="{% translate 'Трудник — на главную' %}">
                 {% include "core/_logo.html" with size=36 id_suffix="hdr" %}
                 <span class="text-lg font-bold tracking-tight text-neutral-800">Трудник</span>
             </a>
 
             <div class="hidden md:flex flex-1 max-w-md mx-4">
-                <form action="{% url 'core:search' %}" method="get" class="relative w-full" aria-label="Поиск по сайту">
+                <form action="{% url 'core:search' %}" method="get" class="relative w-full" aria-label="{% translate 'Поиск по сайту' %}">
                     <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input type="text" name="q" placeholder="Задания, трудники…" aria-label="Поиск по сайту" class="w-full pl-9 pr-4 py-2 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                    <input type="text" name="q" placeholder="{% translate 'Задания, трудники…' %}" aria-label="{% translate 'Поиск по сайту' %}" class="w-full pl-9 pr-4 py-2 bg-neutral-100 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
                 </form>
             </div>
 
             {% if user.is_authenticated %}
             {% with current=request.resolver_match.url_name %}
-            <nav class="hidden md:flex items-center gap-1" aria-label="Основная навигация">
-                <a href="{% url 'core:jobs' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'jobs' or current == 'job_detail' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}" aria-current="{% if current == 'jobs' %}page{% elif current == 'job_detail' %}true{% else %}false{% endif %}">Задания</a>
-                <a href="{% url 'core:my_applications' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'my_applications' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}" aria-current="{% if current == 'my_applications' %}page{% else %}false{% endif %}">Отклики</a>
-                <a href="{% url 'core:chats' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'chats' or current == 'chat' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}" aria-current="{% if current == 'chats' %}page{% elif current == 'chat' %}true{% else %}false{% endif %}">Чаты<span class="js-chat-unread-badge {% if not unread_chats_count %}hidden{% endif %} ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-[10px] font-bold">{{ unread_chats_count|default:0 }}</span></a>
-                <a href="{% url 'core:favorites_page' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'favorites_page' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}" aria-current="{% if current == 'favorites_page' %}page{% else %}false{% endif %}">Избранное</a>
-                <a href="{% url 'core:workers' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'workers' or current == 'worker_detail' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}" aria-current="{% if current == 'workers' %}page{% elif current == 'worker_detail' %}true{% else %}false{% endif %}">Трудники</a>
-                <a href="{% url 'core:employers' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'employers' or current == 'employer_detail' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}" aria-current="{% if current == 'employers' %}page{% elif current == 'employer_detail' %}true{% else %}false{% endif %}">Работодатели</a>
+            <nav class="hidden md:flex items-center gap-1" aria-label="{% translate 'Основная навигация' %}">
+                <a href="{% url 'core:jobs' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'jobs' or current == 'job_detail' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}" aria-current="{% if current == 'jobs' %}page{% elif current == 'job_detail' %}true{% else %}false{% endif %}">{% translate 'Задания' %}</a>
+                <a href="{% url 'core:my_applications' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'my_applications' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}" aria-current="{% if current == 'my_applications' %}page{% else %}false{% endif %}">{% translate 'Отклики' %}</a>
+                <a href="{% url 'core:chats' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'chats' or current == 'chat' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}" aria-current="{% if current == 'chats' %}page{% elif current == 'chat' %}true{% else %}false{% endif %}">{% translate 'Чаты' %}<span class="js-chat-unread-badge {% if not unread_chats_count %}hidden{% endif %} ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-[10px] font-bold">{{ unread_chats_count|default:0 }}</span></a>
+                <a href="{% url 'core:favorites_page' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'favorites_page' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}" aria-current="{% if current == 'favorites_page' %}page{% else %}false{% endif %}">{% translate 'Избранное' %}</a>
+                <a href="{% url 'core:workers' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'workers' or current == 'worker_detail' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}" aria-current="{% if current == 'workers' %}page{% elif current == 'worker_detail' %}true{% else %}false{% endif %}">{% translate 'Трудники' %}</a>
+                <a href="{% url 'core:employers' %}" class="px-3 py-2 rounded-lg text-sm font-medium {% if current == 'employers' or current == 'employer_detail' %}text-primary-700 bg-primary-50{% else %}text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100{% endif %}" aria-current="{% if current == 'employers' %}page{% elif current == 'employer_detail' %}true{% else %}false{% endif %}">{% translate 'Работодатели' %}</a>
             </nav>
             {% endwith %}
             {% endif %}
 
             <div class="flex items-center gap-2">
-                <button id="theme-toggle" type="button" class="w-10 h-10 flex items-center justify-center rounded-xl text-neutral-600 hover:bg-neutral-100 transition-colors" aria-label="Включить тёмную тему" aria-pressed="false" title="Включить тёмную тему">
+                <button id="theme-toggle" type="button" class="w-10 h-10 flex items-center justify-center rounded-xl text-neutral-600 hover:bg-neutral-100 transition-colors" aria-label="{% translate 'Включить тёмную тему' %}" aria-pressed="false" title="{% translate 'Включить тёмную тему' %}">
                     <svg data-theme-sun aria-hidden="true" class="h-5 w-5 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
                     <svg data-theme-moon aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
                 </button>
-                <a href="{% url 'core:search' %}" class="md:hidden w-10 h-10 flex items-center justify-center rounded-xl text-neutral-600 hover:bg-neutral-100" aria-label="Поиск по сайту">
+                <a href="{% url 'core:search' %}" class="md:hidden w-10 h-10 flex items-center justify-center rounded-xl text-neutral-600 hover:bg-neutral-100" aria-label="{% translate 'Поиск по сайту' %}">
                     <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 </a>
                 {% if user.is_authenticated %}
-                <a href="{% url 'core:job_create' %}" class="hidden sm:inline-flex items-center gap-1.5 px-3.5 h-9 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm" aria-label="Создать задание">
+                <a href="{% url 'core:job_create' %}" class="hidden sm:inline-flex items-center gap-1.5 px-3.5 h-9 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm" aria-label="{% translate 'Создать задание' %}">
                     <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    <span class="hidden lg:inline">Создать</span>
+                    <span class="hidden lg:inline">{% translate 'Создать' %}</span>
                 </a>
-                <a href="{% url 'core:job_create' %}" class="sm:hidden w-10 h-10 flex items-center justify-center rounded-xl bg-primary-600 hover:bg-primary-700 text-white transition-colors" aria-label="Создать задание">
+                <a href="{% url 'core:job_create' %}" class="sm:hidden w-10 h-10 flex items-center justify-center rounded-xl bg-primary-600 hover:bg-primary-700 text-white transition-colors" aria-label="{% translate 'Создать задание' %}">
                     <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 </a>
-                <a href="{% url 'core:notifications' %}" class="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors" aria-label="Уведомления">
+                <a href="{% url 'core:notifications' %}" class="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors" aria-label="{% translate 'Уведомления' %}">
                     <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                     <output id="unread-badge" class="{% if not unread_count %}hidden {% endif %}absolute -top-0.5 -right-0.5 bg-danger text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-sm border-2 border-white">{% if unread_count > 99 %}99+{% else %}{{ unread_count|default:0 }}{% endif %}</output>
                 </a>
                 <div class="relative">
-                    <button id="profile-menu-btn" type="button" class="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors" aria-label="Меню профиля" aria-haspopup="true" aria-expanded="false">
+                    <button id="profile-menu-btn" type="button" class="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-neutral-100 transition-colors" aria-label="{% translate 'Меню профиля' %}" aria-haspopup="true" aria-expanded="false">
                         <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     </button>
                     <div id="profile-menu" role="menu" class="hidden absolute right-0 top-full mt-2 w-60 bg-white rounded-2xl border border-neutral-200 shadow-elevated py-1.5 z-50">
-                        <a href="{% url 'core:profile' %}" role="menuitem" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-100"><svg aria-hidden="true" class="h-4 w-4 text-neutral-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Профиль</a>
-                        <a href="{% url 'core:my_jobs' %}" role="menuitem" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-100"><svg aria-hidden="true" class="h-4 w-4 text-neutral-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Мои задания</a>
-                        <a href="{% url 'core:app_download' %}" role="menuitem" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-100"><svg aria-hidden="true" class="h-4 w-4 text-primary-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Установить приложение</a>
-                        <a href="{% url 'core:workers' %}" role="menuitem" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-100"><svg aria-hidden="true" class="h-4 w-4 text-neutral-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Трудники</a>
-                        <a href="{% url 'core:employers' %}" role="menuitem" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-100"><svg aria-hidden="true" class="h-4 w-4 text-neutral-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7h-4V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M8 7V5h8v2"/></svg>Работодатели</a>
-                        <a href="{% url 'core:invitations' %}" role="menuitem" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-100"><svg aria-hidden="true" class="h-4 w-4 text-blue-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>Приглашения</a>
-                        <a href="{% url 'core:blacklist' %}" role="menuitem" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-100"><svg aria-hidden="true" class="h-4 w-4 text-neutral-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>Чёрный список</a>
+                        <a href="{% url 'core:profile' %}" role="menuitem" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-100"><svg aria-hidden="true" class="h-4 w-4 text-neutral-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>{% translate 'Профиль' %}</a>
+                        <a href="{% url 'core:my_jobs' %}" role="menuitem" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-100"><svg aria-hidden="true" class="h-4 w-4 text-neutral-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>{% translate 'Мои задания' %}</a>
+                        <a href="{% url 'core:app_download' %}" role="menuitem" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-100"><svg aria-hidden="true" class="h-4 w-4 text-primary-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>{% translate 'Установить приложение' %}</a>
+                        <a href="{% url 'core:workers' %}" role="menuitem" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-100"><svg aria-hidden="true" class="h-4 w-4 text-neutral-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>{% translate 'Трудники' %}</a>
+                        <a href="{% url 'core:employers' %}" role="menuitem" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-100"><svg aria-hidden="true" class="h-4 w-4 text-neutral-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7h-4V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M8 7V5h8v2"/></svg>{% translate 'Работодатели' %}</a>
+                        <a href="{% url 'core:invitations' %}" role="menuitem" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-100"><svg aria-hidden="true" class="h-4 w-4 text-blue-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>{% translate 'Приглашения' %}</a>
+                        <a href="{% url 'core:blacklist' %}" role="menuitem" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-100"><svg aria-hidden="true" class="h-4 w-4 text-neutral-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>{% translate 'Чёрный список' %}</a>
                         {% if user.is_staff %}
-                        <a href="/admin/" role="menuitem" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-purple-600 hover:bg-purple-50"><svg aria-hidden="true" class="h-4 w-4 text-purple-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Админка</a>
+                        <a href="/admin/" role="menuitem" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-purple-600 hover:bg-purple-50"><svg aria-hidden="true" class="h-4 w-4 text-purple-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>{% translate 'Админка' %}</a>
                         {% endif %}
                         <hr class="my-1.5 border-neutral-100" aria-hidden="true">
                         <form action="{% url 'core:logout' %}" method="post">{% csrf_token %}
-                            <button type="submit" role="menuitem" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-danger hover:bg-neutral-100"><svg aria-hidden="true" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Выход</button>
+                            <button type="submit" role="menuitem" class="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-danger hover:bg-neutral-100"><svg aria-hidden="true" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>{% translate 'Выход' %}</button>
                         </form>
                     </div>
                 </div>
                 {% else %}
-                <a href="{% url 'core:login' %}" class="hidden md:inline-flex px-4 py-2 rounded-xl text-sm font-semibold text-neutral-700 hover:bg-neutral-100">Войти</a>
-                <a href="{% url 'core:register' %}" class="hidden md:inline-flex px-4 py-2 rounded-xl text-sm font-semibold bg-primary-600 hover:bg-primary-700 text-white">Регистрация</a>
+                <a href="{% url 'core:login' %}" class="hidden md:inline-flex px-4 py-2 rounded-xl text-sm font-semibold text-neutral-700 hover:bg-neutral-100">{% translate 'Войти' %}</a>
+                <a href="{% url 'core:register' %}" class="hidden md:inline-flex px-4 py-2 rounded-xl text-sm font-semibold bg-primary-600 hover:bg-primary-700 text-white">{% translate 'Регистрация' %}</a>
                 {% endif %}
             </div>
         </div>
@@ -138,73 +138,80 @@
 
     <footer class="bg-neutral-100 border-t border-neutral-200 px-4 pt-3 pb-20 md:pb-3 text-center text-xs text-neutral-600">
         <div class="max-w-6xl mx-auto leading-relaxed">
-            <p class="mb-1">&copy; {% now "Y" %} Трудник. Все права защищены.</p>
-            <nav aria-label="Ссылки в подвале">
-                <a href="{% url 'core:terms' %}" class="text-primary-600 hover:text-primary-700 mx-2">Условия</a>
-                <a href="{% url 'core:privacy' %}" class="text-primary-600 hover:text-primary-700 mx-2">Конфиденциальность</a>
-                <a href="{% url 'core:safety' %}" class="text-primary-600 hover:text-primary-700 mx-2">Безопасность</a>
-                <a href="{% url 'core:faq' %}" class="text-primary-600 hover:text-primary-700 mx-2">Вопросы</a>
-                <a href="{% url 'core:support' %}" class="text-primary-600 hover:text-primary-700 mx-2">Поддержка</a>
-                <a href="{% url 'core:workers' %}" class="text-primary-600 hover:text-primary-700 mx-2">Трудники</a>
-                <a href="{% url 'core:employers' %}" class="text-primary-600 hover:text-primary-700 mx-2">Работодатели</a>
-                <a href="{% url 'core:app_download' %}" class="text-primary-600 hover:text-primary-700 mx-2">Приложение</a>
+            <p class="mb-1">&copy; {% now "Y" %} Трудник. {% translate 'Все права защищены.' %}</p>
+            <form action="{% url 'set_language' %}" method="post" class="inline-flex items-center gap-1 mb-1">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <button type="submit" name="language" value="ru" class="px-1.5 py-0.5 rounded {% if LANGUAGE_CODE == 'ru' %}font-bold text-neutral-800{% else %}text-neutral-500 hover:text-neutral-700{% endif %}" lang="ru">RU</button>
+                <span aria-hidden="true">·</span>
+                <button type="submit" name="language" value="en" class="px-1.5 py-0.5 rounded {% if LANGUAGE_CODE == 'en' %}font-bold text-neutral-800{% else %}text-neutral-500 hover:text-neutral-700{% endif %}" lang="en">EN</button>
+            </form>
+            <nav aria-label="{% translate 'Ссылки в подвале' %}">
+                <a href="{% url 'core:terms' %}" class="text-primary-600 hover:text-primary-700 mx-2">{% translate 'Условия' %}</a>
+                <a href="{% url 'core:privacy' %}" class="text-primary-600 hover:text-primary-700 mx-2">{% translate 'Конфиденциальность' %}</a>
+                <a href="{% url 'core:safety' %}" class="text-primary-600 hover:text-primary-700 mx-2">{% translate 'Безопасность' %}</a>
+                <a href="{% url 'core:faq' %}" class="text-primary-600 hover:text-primary-700 mx-2">{% translate 'Вопросы' %}</a>
+                <a href="{% url 'core:support' %}" class="text-primary-600 hover:text-primary-700 mx-2">{% translate 'Поддержка' %}</a>
+                <a href="{% url 'core:workers' %}" class="text-primary-600 hover:text-primary-700 mx-2">{% translate 'Трудники' %}</a>
+                <a href="{% url 'core:employers' %}" class="text-primary-600 hover:text-primary-700 mx-2">{% translate 'Работодатели' %}</a>
+                <a href="{% url 'core:app_download' %}" class="text-primary-600 hover:text-primary-700 mx-2">{% translate 'Приложение' %}</a>
             </nav>
         </div>
     </footer>
 
-    <div id="install-prompt" class="hidden fixed left-3 right-3 bottom-20 md:bottom-4 z-40 mx-auto max-w-md rounded-2xl border border-neutral-200 bg-white p-3 shadow-xl" role="region" aria-label="Установка приложения">
+    <div id="install-prompt" class="hidden fixed left-3 right-3 bottom-20 md:bottom-4 z-40 mx-auto max-w-md rounded-2xl border border-neutral-200 bg-white p-3 shadow-xl" role="region" aria-label="{% translate 'Установка приложения' %}">
         <div class="flex items-start gap-3">
             <img src="{% static 'icons/icon-192x192.png' %}" alt="" width="40" height="40" class="w-10 h-10 rounded-xl shrink-0">
             <div class="min-w-0 flex-1">
-                <p id="install-title" class="text-sm font-semibold text-neutral-900">Трудник под рукой</p>
-                <p id="install-text" class="text-xs text-neutral-600 mt-0.5">Установите приложение — задания и чаты откроются в один клик.</p>
+                <p id="install-title" class="text-sm font-semibold text-neutral-900">{% translate 'Трудник под рукой' %}</p>
+                <p id="install-text" class="text-xs text-neutral-600 mt-0.5">{% translate 'Установите приложение — задания и чаты откроются в один клик.' %}</p>
             </div>
-            <button type="button" id="install-dismiss" class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-neutral-500 hover:bg-neutral-100 shrink-0" aria-label="Скрыть предложение установки">
+            <button type="button" id="install-dismiss" class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-neutral-500 hover:bg-neutral-100 shrink-0" aria-label="{% translate 'Скрыть предложение установки' %}">
                 <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
         </div>
-        <button type="button" id="install-action" class="mt-2 w-full h-9 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold">Установить</button>
+        <button type="button" id="install-action" class="mt-2 w-full h-9 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold">{% translate 'Установить' %}</button>
     </div>
     <dialog id="install-help" class="rounded-2xl border border-neutral-200 bg-white p-0 shadow-xl" style="width:min(26rem, calc(100vw - 2rem))" aria-labelledby="install-help-title">
         <div class="p-5">
             <div class="flex items-start justify-between gap-3 mb-3">
-                <h2 id="install-help-title" class="text-lg font-bold text-neutral-800">Установка на iPhone/iPad</h2>
-                <button type="button" id="install-help-close" class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-neutral-500 hover:bg-neutral-100" aria-label="Закрыть инструкцию">×</button>
+                <h2 id="install-help-title" class="text-lg font-bold text-neutral-800">{% translate 'Установка на iPhone/iPad' %}</h2>
+                <button type="button" id="install-help-close" class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-neutral-500 hover:bg-neutral-100" aria-label="{% translate 'Закрыть инструкцию' %}">×</button>
             </div>
             <ol class="space-y-2 text-sm text-neutral-600 list-decimal list-inside">
-                <li>Откройте сайт в Safari.</li>
-                <li>Нажмите кнопку «Поделиться» внизу экрана.</li>
-                <li>Выберите «На экран Домой» и подтвердите.</li>
+                <li>{% translate 'Откройте сайт в Safari.' %}</li>
+                <li>{% translate 'Нажмите кнопку «Поделиться» внизу экрана.' %}</li>
+                <li>{% translate 'Выберите «На экран Домой» и подтвердите.' %}</li>
             </ol>
-            <p class="text-xs text-neutral-500 mt-3">Приложение откроется без адресной строки и будет работать как обычное.</p>
+            <p class="text-xs text-neutral-500 mt-3">{% translate 'Приложение откроется без адресной строки и будет работать как обычное.' %}</p>
         </div>
     </dialog>
 
     {% if user.is_authenticated %}
     {% with current=request.resolver_match.url_name %}
-    <nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-neutral-200 flex justify-around md:hidden items-center pt-2 pb-1 z-50" role="navigation" aria-label="Мобильная навигация">
+    <nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-neutral-200 flex justify-around md:hidden items-center pt-2 pb-1 z-50" role="navigation" aria-label="{% translate 'Мобильная навигация' %}">
         <a href="{% url 'core:jobs' %}" class="flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'jobs' or current == 'job_detail' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="Задания" aria-current="{% if current == 'jobs' %}page{% elif current == 'job_detail' %}true{% else %}false{% endif %}">
-            <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Задания</span>
+            <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>{% translate 'Задания' %}</span>
         </a>
-        <a href="{% url 'core:my_jobs' %}" class="flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'my_jobs' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="Мои задания" aria-current="{% if current == 'my_jobs' %}page{% else %}false{% endif %}">
-            <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span>Мои</span>
+        <a href="{% url 'core:my_jobs' %}" class="flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'my_jobs' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="{% translate 'Мои задания' %}" aria-current="{% if current == 'my_jobs' %}page{% else %}false{% endif %}">
+            <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span>{% translate 'Мои' %}</span>
         </a>
         <a href="{% url 'core:my_applications' %}" class="flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'my_applications' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="Отклики" aria-current="{% if current == 'my_applications' %}page{% else %}false{% endif %}">
-            <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="6" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="18" y2="12"/></svg><span>Отклики</span>
+            <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="6" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="18" y2="12"/></svg><span>{% translate 'Отклики' %}</span>
         </a>
         <a href="{% url 'core:chats' %}" class="relative flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'chats' or current == 'chat' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="Чаты" aria-current="{% if current == 'chats' %}page{% elif current == 'chat' %}true{% else %}false{% endif %}">
-            <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Чаты</span>
+            <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>{% translate 'Чаты' %}</span>
             <span class="js-chat-unread-badge {% if not unread_chats_count %}hidden{% endif %} absolute top-0 right-1 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-danger text-white text-[9px] font-bold">{{ unread_chats_count|default:0 }}</span>
         </a>
-        <a href="{% url 'core:favorites_page' %}" class="flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'favorites_page' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="Избранное" aria-current="{% if current == 'favorites_page' %}page{% else %}false{% endif %}">
-            <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span>Избр.</span>
+        <a href="{% url 'core:favorites_page' %}" class="flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'favorites_page' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="{% translate 'Избранное' %}" aria-current="{% if current == 'favorites_page' %}page{% else %}false{% endif %}">
+            <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span>{% translate 'Избр.' %}</span>
         </a>
     </nav>
     {% endwith %}
     {% else %}
     <div class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-neutral-200 flex justify-center md:hidden items-center gap-4 pt-3 pb-3 z-50">
-        <a href="{% url 'core:login' %}" class="bg-primary-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-primary-700 shadow-md">Войти</a>
-        <a href="{% url 'core:register' %}" class="bg-neutral-800 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-neutral-900 shadow-sm">Регистрация</a>
+        <a href="{% url 'core:login' %}" class="bg-primary-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-primary-700 shadow-md">{% translate 'Войти' %}</a>
+        <a href="{% url 'core:register' %}" class="bg-neutral-800 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-neutral-900 shadow-sm">{% translate 'Регистрация' %}</a>
     </div>
     {% endif %}
 

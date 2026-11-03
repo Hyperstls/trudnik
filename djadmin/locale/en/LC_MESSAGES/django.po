@@ -1,0 +1,715 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: trudnik\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-03 19:05+0300\n"
+"PO-Revision-Date: 2026-11-03 19:05+0300\n"
+"Last-Translator: Trudnik\n"
+"Language-Team: English\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "1. Аккаунт"
+msgstr "1. Account"
+
+msgid "12 цифр"
+msgstr "12 digits"
+
+msgid "2. О себе"
+msgstr "2. About you"
+
+msgid "3. Контакты"
+msgstr "3. Contacts"
+
+msgid "Email"
+msgstr "Email"
+
+msgid "JavaScript отключён."
+msgstr "JavaScript is disabled."
+
+msgid "Админка"
+msgstr "Admin"
+
+msgid "Безопасность"
+msgstr "Safety"
+
+msgid "Ваш пароль"
+msgstr "Your password"
+
+msgid "Введите корректный контакт: email, телефон или никнейм."
+msgstr "Enter a valid contact: email, phone or username."
+
+msgid "Включить тёмную тему"
+msgstr "Enable dark theme"
+
+msgid "Войти"
+msgstr "Log in"
+
+msgid "Вопросы"
+msgstr "FAQ"
+
+msgid "Все права защищены."
+msgstr "All rights reserved."
+
+msgid "Вход"
+msgstr "Log in"
+
+msgid "Вход в аккаунт"
+msgstr "Sign in to your account"
+
+msgid "Выберите «На экран Домой» и подтвердите."
+msgstr "Choose “Add to Home Screen” and confirm."
+
+msgid "Выход"
+msgstr "Log out"
+
+msgid "Город"
+msgstr "City"
+
+msgid "Далее →"
+msgstr "Next →"
+
+msgid "Добро пожаловать в Трудник"
+msgstr "Welcome to Trudnik"
+
+msgid "Желаемая оплата, ₽"
+msgstr "Desired pay, ₽"
+
+msgid "Забыли пароль?"
+msgstr "Forgot your password?"
+
+msgid "Заглавная, строчная, цифра и спецсимвол обязательны"
+msgstr "Uppercase, lowercase, digit and special character are required"
+
+msgid "Задания"
+msgstr "Jobs"
+
+msgid ""
+"Задания рядом, отклики, чат и оценки. Найдите подработку или исполнителя на "
+"трудник.рф."
+msgstr ""
+"Jobs nearby, applications, chat and ratings. Find gig work or a worker on "
+"трудник.рф."
+
+msgid "Задания рядом, отклики, чат и оценки. трудник.рф"
+msgstr "Jobs nearby, applications, chat and ratings. трудник.рф"
+
+msgid "Задания, трудники…"
+msgstr "Jobs, workers…"
+
+msgid "Закрыть инструкцию"
+msgstr "Close instructions"
+
+msgid "Зарегистрироваться"
+msgstr "Create account"
+
+msgid "И то, и другое"
+msgstr "Both"
+
+msgid "ИНН"
+msgstr "INN"
+
+msgid "ИНН должен содержать ровно 12 цифр."
+msgstr "INN must contain exactly 12 digits."
+
+msgid "Иван Иванов"
+msgstr "John Smith"
+
+msgid "Избр."
+msgstr "Saved"
+
+msgid "Избранное"
+msgstr "Favorites"
+
+msgid "Искать подработку"
+msgstr "Find work"
+
+msgid "Ищу подработку"
+msgstr "I am looking for work"
+
+msgid "Ищу подработку и размещаю задания"
+msgstr "I am looking for work and posting jobs"
+
+msgid "Контакт для связи"
+msgstr "Contact details"
+
+msgid "Контакт должен содержать минимум 3 символа."
+msgstr "Contact must contain at least 3 characters."
+
+msgid "Конфиденциальность"
+msgstr "Privacy"
+
+msgid "Любой аккаунт может и подрабатывать, и размещать задания."
+msgstr "Every account can both work and post jobs."
+
+msgid "Меню профиля"
+msgstr "Profile menu"
+
+msgid "Минимум 8 символов"
+msgstr "At least 8 characters"
+
+msgid "Мобильная навигация"
+msgstr "Mobile navigation"
+
+msgid "Мои"
+msgstr "Mine"
+
+msgid "Мои задания"
+msgstr "My jobs"
+
+msgid "Москва"
+msgstr "Moscow"
+
+msgid "Навыки"
+msgstr "Skills"
+
+msgid "Нажмите кнопку «Поделиться» внизу экрана."
+msgstr "Tap the Share button at the bottom of the screen."
+
+msgid "Нанимать; меня не видно в каталоге исполнителей"
+msgstr "Hire people; you stay hidden from the worker catalog"
+
+msgid "Не пришло письмо подтверждения?"
+msgstr "Didn’t receive the confirmation email?"
+
+msgid "Некорректный ИНН — проверьте контрольную сумму."
+msgstr "Invalid INN — check the checksum."
+
+msgid "Нет аккаунта?"
+msgstr "No account?"
+
+msgid "Новый пароль"
+msgstr "New password"
+
+msgid "Опыт работы"
+msgstr "Work experience"
+
+msgid "Основная навигация"
+msgstr "Main navigation"
+
+msgid "Откликаться на задания"
+msgstr "Apply to jobs"
+
+msgid "Отклики"
+msgstr "Applications"
+
+msgid "Откройте сайт в Safari."
+msgstr "Open the site in Safari."
+
+msgid "Пароли не совпадают."
+msgstr "Passwords do not match."
+
+msgid "Пароль"
+msgstr "Password"
+
+msgid "Пароль должен содержать заглавную букву."
+msgstr "Password must contain an uppercase letter."
+
+msgid "Пароль должен содержать минимум 8 символов."
+msgstr "Password must contain at least 8 characters."
+
+msgid "Пароль должен содержать специальный символ (!@#$%^&* и т.п.)."
+msgstr "Password must contain a special character (!@#$%^&* etc.)."
+
+msgid "Пароль должен содержать строчную букву."
+msgstr "Password must contain a lowercase letter."
+
+msgid "Пароль должен содержать цифру."
+msgstr "Password must contain a digit."
+
+msgid "Пароль не должен содержать пробелы."
+msgstr "Password must not contain spaces."
+
+msgid "Перейти к основному содержимому"
+msgstr "Skip to main content"
+
+msgid ""
+"Платформа для поиска разовой подработки. Работодатели публикуют задания, "
+"исполнители откликаются и выполняют работу."
+msgstr ""
+"A platform for one-off gig work. Employers post jobs, workers apply and get "
+"the job done."
+
+msgid "Повторите пароль"
+msgstr "Repeat password"
+
+msgid "Поддержка"
+msgstr "Support"
+
+msgid "Подрабатывать и размещать задания"
+msgstr "Work and post jobs"
+
+msgid "Поиск по сайту"
+msgstr "Search the site"
+
+msgid "Показать пароль"
+msgstr "Show password"
+
+msgid "Полное имя"
+msgstr "Full name"
+
+msgid "Портфолио (ссылка)"
+msgstr "Portfolio (link)"
+
+msgid "Приглашения"
+msgstr "Invitations"
+
+msgid "Приложение"
+msgstr "App"
+
+msgid "Приложение откроется без адресной строки и будет работать как обычное."
+msgstr "The app opens without an address bar and works like a native app."
+
+msgid "Присоединяйтесь к Трудник"
+msgstr "Join Trudnik"
+
+msgid "Профиль"
+msgstr "Profile"
+
+msgid "Работодатели"
+msgstr "Employers"
+
+msgid "Размещаю задания"
+msgstr "I post jobs"
+
+msgid "Расскажите об опыте"
+msgstr "Tell us about your experience"
+
+msgid "Регистрация"
+msgstr "Sign up"
+
+msgid "Регистрация невозможна."
+msgstr "Registration is not possible."
+
+msgid "Рекомендуем"
+msgstr "Recommended"
+
+msgid "Самозанятый"
+msgstr "Self-employed"
+
+msgid "Скрыть пароль"
+msgstr "Hide password"
+
+msgid "Скрыть предложение установки"
+msgstr "Dismiss install prompt"
+
+msgid "Согласен с"
+msgstr "I agree to the"
+
+msgid "Согласен с обработкой персональных данных (152-ФЗ)"
+msgstr "I agree to the processing of personal data (152-FZ)"
+
+msgid "Создать"
+msgstr "Post"
+
+msgid "Создать задание"
+msgstr "Post a job"
+
+msgid "Ссылки в подвале"
+msgstr "Footer links"
+
+msgid "Телефон, мессенджер или email"
+msgstr "Phone, messenger or email"
+
+msgid "Только размещать задания"
+msgstr "Only post jobs"
+
+msgid "Трудник под рукой"
+msgstr "Trudnik in your pocket"
+
+msgid "Трудник — на главную"
+msgstr "Trudnik — home"
+
+msgid "Трудник — платформа разовой подработки"
+msgstr "Trudnik — a platform for gig work"
+
+msgid "Трудники"
+msgstr "Workers"
+
+msgid "Уведомления"
+msgstr "Notifications"
+
+msgid "Уже есть аккаунт?"
+msgstr "Already have an account?"
+
+msgid "Условия"
+msgstr "Terms"
+
+msgid "Установите приложение — задания и чаты откроются в один клик."
+msgstr "Install the app — jobs and chats are one tap away."
+
+msgid "Установить"
+msgstr "Install"
+
+msgid "Установить приложение"
+msgstr "Install the app"
+
+msgid "Установка на iPhone/iPad"
+msgstr "Install on iPhone/iPad"
+
+msgid "Установка приложения"
+msgstr "App installation"
+
+msgid "ФИО"
+msgstr "Full name"
+
+msgid "Цель"
+msgstr "Goal"
+
+msgid "Чаты"
+msgstr "Chats"
+
+msgid "Что вы хотите делать?"
+msgstr "What do you want to do?"
+
+msgid "Чёрный список"
+msgstr "Blocklist"
+
+msgid "Этапы регистрации"
+msgstr "Registration steps"
+
+msgid "и обработкой персональных данных (152-ФЗ)"
+msgstr "and the processing of personal data (152-FZ)"
+
+msgid "политикой конфиденциальности"
+msgstr "Privacy Policy"
+
+msgid "← Назад"
+msgstr "← Back"
+
+msgid "Push не поддерживается этим браузером."
+msgstr "Push is not supported by this browser."
+
+msgid "Адрес"
+msgstr "Address"
+
+msgid "Безопасная сделка."
+msgstr "Safe deal."
+
+msgid "Ближе"
+msgstr "Closer"
+
+msgid "В избранное"
+msgstr "Add to favorites"
+
+msgid "В избранном"
+msgstr "In favorites"
+
+msgid ""
+"Включите push — сообщим об откликах и сообщениях, даже если вкладка закрыта."
+msgstr ""
+"Enable push — we will notify you about applications and messages even if the"
+" tab is closed."
+
+msgid "Включить push"
+msgstr "Enable push"
+
+msgid "Включить уведомления"
+msgstr "Enable notifications"
+
+msgid "Войти, чтобы откликнуться"
+msgstr "Log in to apply"
+
+msgid "Вперёд →"
+msgstr "Next →"
+
+msgid "Все"
+msgstr "All"
+
+msgid "Все задания"
+msgstr "All jobs"
+
+msgid "Все отзывы"
+msgstr "All reviews"
+
+msgid "Всего откликов"
+msgstr "Total applications"
+
+msgid "Вы откликнулись"
+msgstr "You applied"
+
+msgid "Выбрать задание"
+msgstr "Select job"
+
+msgid "Выключить уведомления"
+msgstr "Disable notifications"
+
+msgid "Действия с работодателем"
+msgstr "Employer actions"
+
+msgid "Дешевле"
+msgstr "Cheapest"
+
+msgid "Дороже"
+msgstr "Most expensive"
+
+msgid "Завершённые"
+msgstr "Completed"
+
+msgid "Задание"
+msgstr "Job"
+
+msgid "Задание на проверке"
+msgstr "Job under review"
+
+msgid "Задание отклонено модератором"
+msgstr "Job rejected by moderator"
+
+msgid "Задание прошло"
+msgstr "Job has passed"
+
+msgid "Задание уже началось или прошло"
+msgstr "The job has started or passed"
+
+msgid "Задания рядом, отклики и чат."
+msgstr "Jobs nearby, applications and chat."
+
+msgid "Заказчик"
+msgstr "Employer"
+
+msgid "Закрыть фильтры"
+msgstr "Close filters"
+
+msgid "Запрашиваем разрешение…"
+msgstr "Requesting permission…"
+
+msgid "Изменить"
+msgstr "Edit"
+
+msgid ""
+"Исправьте описание и сохраните изменения — задание вернётся на проверку."
+msgstr "Edit the description and save — the job will return to review."
+
+msgid "Карта показывает адрес задания."
+msgstr "The map shows the job address."
+
+msgid "Когда"
+msgstr "When"
+
+msgid "Маршрут"
+msgstr "Route"
+
+msgid "Навыков пока нет"
+msgstr "No skills yet"
+
+msgid "Найти адрес"
+msgstr "Find address"
+
+msgid "Найти город"
+msgstr "Find city"
+
+msgid "Написать в чат"
+msgstr "Open chat"
+
+msgid "Не пропустите ответ"
+msgstr "Don’t miss the reply"
+
+msgid "Не сейчас"
+msgstr "Not now"
+
+msgid "Не удалось включить push. Попробуйте в настройках уведомлений."
+msgstr "Could not enable push. Try notification settings."
+
+msgid "Не удалось включить push. Проверьте разрешение браузера."
+msgstr "Could not enable push. Check browser permission."
+
+msgid "Новые"
+msgstr "New"
+
+msgid "Об объекте"
+msgstr "About the site"
+
+msgid "Обсуждайте детали в чате и не переводите предоплату вне платформы."
+msgstr ""
+"Discuss details in chat and never transfer prepayment outside the platform."
+
+msgid "Ожидают"
+msgstr "Pending"
+
+msgid ""
+"Оно станет видно в каталоге после одобрения модератором. Пока доступно "
+"только вам."
+msgstr ""
+"It will appear in the catalog after moderator approval. For now only you can"
+" see it."
+
+msgid "Описание"
+msgstr "Description"
+
+msgid ""
+"Опишите нарушение: мошенничество, спам, некорректное поведение. Жалобу "
+"рассмотрит модерация."
+msgstr ""
+"Describe the violation: fraud, spam or inappropriate behavior. Moderation "
+"will review the report."
+
+msgid "Оплата до, ₽"
+msgstr "Pay up to, ₽"
+
+msgid "Отзыв недоступен: до начала задания осталось менее 12 часов"
+msgstr "Withdrawal unavailable: less than 12 hours until the job starts"
+
+msgid "Отзывов пока нет."
+msgstr "No reviews yet."
+
+msgid "Отклик отправлен"
+msgstr "Application sent"
+
+msgid "Отклик:"
+msgstr "Application:"
+
+msgid "Откликнулось"
+msgstr "Applied"
+
+msgid "Откликнулось:"
+msgstr "Applied:"
+
+msgid "Откликнулся"
+msgstr "Applied"
+
+msgid "Откликнуться"
+msgstr "Apply"
+
+msgid "Отклонено"
+msgstr "Rejected"
+
+msgid "Открытые"
+msgstr "Open"
+
+msgid "Открыть на карте"
+msgstr "Open in maps"
+
+msgid "Отмена"
+msgstr "Cancel"
+
+msgid "Отозвать"
+msgstr "Withdraw"
+
+msgid "Отправить жалобу"
+msgstr "Send report"
+
+msgid "Пагинация"
+msgstr "Pagination"
+
+msgid "Поделиться:"
+msgstr "Share:"
+
+msgid "Подработка рядом на Трудник."
+msgstr "Gig work nearby on Trudnik."
+
+msgid "Подтверждён"
+msgstr "Verified"
+
+msgid "Пожаловаться"
+msgstr "Report"
+
+msgid "Пожаловаться на работодателя"
+msgstr "Report the employer"
+
+msgid "Поиск работы"
+msgstr "Job search"
+
+msgid "Пока нет заданий"
+msgstr "No jobs yet"
+
+msgid "Попробуйте изменить фильтры или зайдите позже"
+msgstr "Try changing filters or come back later"
+
+msgid "Правила безопасности"
+msgstr "Safety rules"
+
+msgid "Применить"
+msgstr "Apply"
+
+msgid "Принято"
+msgstr "Accepted"
+
+msgid "Причина жалобы"
+msgstr "Report reason"
+
+msgid "Просмотры"
+msgstr "Views"
+
+msgid "Работников"
+msgstr "Workers"
+
+msgid "Работодатель"
+msgstr "Employer"
+
+msgid "Радиус, км"
+msgstr "Radius, km"
+
+msgid "Размещено"
+msgstr "Posted"
+
+msgid "Рядом со мной"
+msgstr "Near me"
+
+msgid "Сбросить"
+msgstr "Reset"
+
+msgid "Сбросить гео"
+msgstr "Reset geo"
+
+msgid "Сбросить фильтры"
+msgstr "Reset filters"
+
+msgid "Сортировка:"
+msgstr "Sort:"
+
+msgid "Сохранить поиск"
+msgstr "Save search"
+
+msgid "Статистика откликов"
+msgstr "Application stats"
+
+msgid "Статус"
+msgstr "Status"
+
+msgid "Уведомления включены"
+msgstr "Notifications on"
+
+msgid "Уведомления выключены"
+msgstr "Notifications off"
+
+msgid "Уведомления о задании"
+msgstr "Job notifications"
+
+msgid "Удалить сохранённый поиск"
+msgstr "Delete saved search"
+
+msgid "Удалённо"
+msgstr "Remote"
+
+msgid "Фильтры"
+msgstr "Filters"
+
+msgid "Фильтры заданий"
+msgstr "Job filters"
+
+msgid "Фото"
+msgstr "Photos"
+
+msgid "Фото задания"
+msgstr "Job photo"
+
+msgid "Частное лицо"
+msgstr "Private person"
+
+msgid "без комментария"
+msgstr "no comment"
+
+msgid "выбрано"
+msgstr "selected"
+
+msgid "договорная"
+msgstr "negotiable"
+
+msgid "из"
+msgstr "of"
+
+msgid "нужно"
+msgstr "needed"

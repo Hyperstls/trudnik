@@ -6,6 +6,7 @@ from core import views
 
 urlpatterns = [
     path("admin/", core_admin.site.urls),
+    path("i18n/", include("django.conf.urls.i18n")),
     path("", include("core.urls")),
 ]
 

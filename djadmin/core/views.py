@@ -24,6 +24,7 @@ from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
@@ -449,8 +450,8 @@ def jobs_list(request):
         "page": page, "q": q, "city": city, "status": status,
         "remote_only": remote_only,
         "payment_min": payment_min, "payment_max": payment_max, "sort": sort,
-        "sort_options": (("newest", "Новые"), ("price_asc", "Дешевле"), ("price_desc", "Дороже"))
-        + ((("distance", "Ближе"),) if geo_active else ()),
+        "sort_options": (("newest", _("Новые")), ("price_asc", _("Дешевле")), ("price_desc", _("Дороже")))
+        + ((("distance", _("Ближе")),) if geo_active else ()),
         "skills": list(Skill.objects.order_by("sort_order", "name")),
         "selected_skills": selected_skills,
         "job_filter": job_filter,

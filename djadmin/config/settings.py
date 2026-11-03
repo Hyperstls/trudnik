@@ -125,6 +125,7 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "core.middleware.AttributionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "core.middleware.CsrfHeaderAliasMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -292,6 +293,11 @@ SMARTCAPTCHA_CLIENT_KEY = os.getenv("SMARTCAPTCHA_CLIENT_KEY", "")
 
 # ── Локализация ─────────────────────────────────────────────────────────────
 LANGUAGE_CODE = "ru-ru"
+LANGUAGES = [
+    ("ru", "Русский"),
+    ("en", "English"),
+]
+LOCALE_PATHS = [BASE_DIR / "locale"]
 TIME_ZONE = "Europe/Moscow"
 USE_I18N = True
 USE_TZ = True
