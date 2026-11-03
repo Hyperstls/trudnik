@@ -263,6 +263,13 @@ class InvitationTests(TestCase):
         self.assertContains(response, "Отправленные приглашения")
         self.assertContains(response, reverse("core:invitation_revoke", args=[inv.pk]))
 
+    def test_workers_invited_only_filter(self):
+        self._invite()
+        other = make_profile("not-invited@example.com", role="worker", full_name="ZZZ Not Invited")
+        response = self.client.get(reverse("core:workers") + "?invited=1&q=ZZZ")
+        self.assertContains(response, self.worker.full_name)
+        self.assertNotContains(response, other.full_name)
+
     def test_accept_via_rpc_creates_application(self):
         self._invite()
         inv = Invitation.objects.get(job=self.job, worker=self.worker)

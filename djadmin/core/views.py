@@ -594,6 +594,13 @@ def workers_list(request):
         payment_to_value = None
     if payment_to_value is not None and payment_to_value.is_finite() and 0 <= payment_to_value <= max_amount:
         qs = qs.filter(desired_payment__lte=payment_to_value)
+    invited_only = request.GET.get("invited") == "1" and request.user.is_authenticated
+    if invited_only:
+        qs = qs.filter(
+            pk__in=Invitation.objects.filter(
+                employer=request.user, status=Invitation.Status.PENDING,
+            ).values("worker_id")
+        )
     sort = request.GET.get("sort") or "rating"
     from django.db.models import F
 
@@ -646,7 +653,7 @@ def workers_list(request):
             }
     active_filter_count = sum(bool(value) for value in (
         q, skill_ids, rating_min, payment_from, payment_to,
-        request.GET.get("sort") not in (None, "", "rating"),
+        request.GET.get("sort") not in (None, "", "rating"), invited_only,
     ))
     return render(request, "core/workers_list.html", {
         "page": page, "q": q,
@@ -657,6 +664,7 @@ def workers_list(request):
         "payment_from": payment_from,
         "payment_to": payment_to,
         "sort": sort,
+        "invited_only": invited_only,
         "reliable_worker_ids": reliable_worker_ids,
         "invited_worker_ids": invited_worker_ids,
         "pending_invited_worker_ids": pending_invited_worker_ids,

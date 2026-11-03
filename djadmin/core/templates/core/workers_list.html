@@ -53,6 +53,12 @@
                 <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>Оплата ↓</option>
             </select>
         </label>
+        {% if user.is_authenticated %}
+        <label class="inline-flex items-center gap-2 text-sm text-neutral-600 pb-2">
+            <input type="checkbox" name="invited" value="1" {% if invited_only %}checked{% endif %} class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+            Только приглашённые
+        </label>
+        {% endif %}
         <button type="submit" class="hidden sm:inline-flex items-center h-10 px-5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">Найти</button>
         <div class="filter-sheet-actions sm:hidden sticky bottom-0 -mx-4 mt-2 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white border-t border-neutral-200 flex gap-2">
             <a href="{% url 'core:workers' %}" class="flex-1 h-11 inline-flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-700 text-sm font-semibold hover:bg-neutral-50">Сбросить</a>
@@ -139,11 +145,11 @@
 
     <nav class="mt-6 flex gap-2 items-center justify-center text-sm" aria-label="Пагинация">
         {% if page.has_previous %}
-        <a href="?page={{ page.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if rating_min %}&rating_min={{ rating_min }}{% endif %}{% if payment_from %}&payment_from={{ payment_from }}{% endif %}{% if payment_to %}&payment_to={{ payment_to }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600">← Назад</a>
+        <a href="?page={{ page.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if rating_min %}&rating_min={{ rating_min }}{% endif %}{% if payment_from %}&payment_from={{ payment_from }}{% endif %}{% if payment_to %}&payment_to={{ payment_to }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if invited_only %}&invited=1{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600">← Назад</a>
         {% endif %}
         <span class="text-neutral-400 px-2">{{ page.number }} из {{ page.paginator.num_pages }}</span>
         {% if page.has_next %}
-        <a href="?page={{ page.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if rating_min %}&rating_min={{ rating_min }}{% endif %}{% if payment_from %}&payment_from={{ payment_from }}{% endif %}{% if payment_to %}&payment_to={{ payment_to }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600">Вперёд →</a>
+        <a href="?page={{ page.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if rating_min %}&rating_min={{ rating_min }}{% endif %}{% if payment_from %}&payment_from={{ payment_from }}{% endif %}{% if payment_to %}&payment_to={{ payment_to }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if invited_only %}&invited=1{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600">Вперёд →</a>
         {% endif %}
     </nav>
     {% else %}
