@@ -337,6 +337,9 @@ class Application(models.Model):
     job = models.ForeignKey(Job, verbose_name="задание", on_delete=models.CASCADE, related_name="applications")
     worker = models.ForeignKey(Profile, verbose_name="трудник", on_delete=models.CASCADE, db_column="worker_id", related_name="+")
     status = models.CharField("статус", max_length=20, choices=Status.choices, default=Status.PENDING)
+    worker_completed_at = models.DateTimeField(
+        "трудник отметил выполнение", null=True, blank=True,
+    )
     contact_paid = models.BooleanField("контакт оплачен", default=False)
     contact_payment_id = models.UUIDField("платёж контакта", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)

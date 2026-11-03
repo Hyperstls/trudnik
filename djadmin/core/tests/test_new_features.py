@@ -150,6 +150,40 @@ class AvatarDeleteTests(TestCase):
         self.assertIsNone(user.photo_url)
 
 
+class WorkerCompletionTests(TestCase):
+    def setUp(self):
+        self.employer = make_profile("complete-employer@example.com", role="employer")
+        self.worker = make_profile("complete-worker@example.com", role="worker")
+        self.job = make_job(self.employer, work_type="Завершение")
+        self.app = Application.objects.create(
+            job=self.job, worker=self.worker, status="accepted",
+        )
+
+    def test_accepted_worker_marks_completion(self):
+        self.client.force_login(self.worker)
+        response = self.client.post(
+            reverse("core:worker_confirm_completion", args=[self.app.pk])
+        )
+        self.assertEqual(response.status_code, 302)
+        self.app.refresh_from_db()
+        self.assertIsNotNone(self.app.worker_completed_at)
+
+    def test_pending_application_cannot_be_marked(self):
+        self.app.status = "pending"
+        self.app.save(update_fields=["status"])
+        self.client.force_login(self.worker)
+        self.client.post(reverse("core:worker_confirm_completion", args=[self.app.pk]))
+        self.app.refresh_from_db()
+        self.assertIsNone(self.app.worker_completed_at)
+
+    def test_other_worker_cannot_mark(self):
+        other = make_profile("complete-other@example.com", role="worker")
+        self.client.force_login(other)
+        self.client.post(reverse("core:worker_confirm_completion", args=[self.app.pk]))
+        self.app.refresh_from_db()
+        self.assertIsNone(self.app.worker_completed_at)
+
+
 class SupportTests(TestCase):
     def test_get_support_page(self):
         response = self.client.get(reverse("core:support"))

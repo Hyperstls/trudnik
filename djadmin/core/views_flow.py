@@ -367,6 +367,40 @@ def my_applications(request):
 
 
 @login_required
+@require_POST
+@rate_limit_write(limit=10, window=60, redirect_to="/my-applications")
+def worker_confirm_completion(request, app_id):
+    """Accepted worker marks the work as done; employer still completes the job."""
+    application = (
+        Application.objects.select_related("job")
+        .filter(pk=app_id, worker=request.user)
+        .first()
+    )
+    if application is None or application.status != Application.Status.ACCEPTED:
+        messages.error(request, "Можно отметить только принятый отклик.")
+        return redirect(reverse("core:my_applications") + "?tab=sent")
+    result = call_rpc(
+        "worker_confirm_completion", application.pk, request.user.pk
+    ) or {}
+    ok = _rpc_message(request, result, "Выполнение отмечено. Работодатель увидит это.")
+    if ok:
+        job = application.job
+        enqueue_notification(
+            job.employer_id,
+            "worker_completed",
+            "Трудник отметил выполнение",
+            "Трудник отметил, что работа по заданию выполнена.",
+            {
+                "job_id": str(job.pk),
+                "link": request.build_absolute_uri(
+                    reverse("core:job_applicants", args=[job.pk])
+                ),
+            },
+        )
+    return redirect(reverse("core:my_applications") + "?tab=sent")
+
+
+@login_required
 def job_applicants(request, job_id):
     """Отклики на своё задание (владелец или админ)."""
     job = Job.objects.filter(pk=job_id).first()

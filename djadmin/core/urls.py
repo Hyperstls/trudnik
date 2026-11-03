@@ -33,6 +33,7 @@ urlpatterns = [
     path("jobs/<uuid:job_id>/photos", views_public_ext.job_photo_upload, name="job_photo_upload"),
     path("jobs/<uuid:job_id>/photos/<uuid:photo_id>/delete", views_public_ext.job_photo_delete, name="job_photo_delete"),
     path("jobs/<uuid:job_id>/<str:action>", views_flow.job_action, name="job_action"),
+    path("applications/<uuid:app_id>/worker-complete", views_flow.worker_confirm_completion, name="worker_confirm_completion"),
     path("applications/<uuid:app_id>/<str:action>", views_flow.application_action, name="application_action"),
     path("workers", views.workers_list, name="workers"),
     path("workers/<uuid:user_id>", views.worker_detail, name="worker_detail"),

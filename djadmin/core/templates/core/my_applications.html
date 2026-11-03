@@ -97,6 +97,7 @@
                     {% elif a.status == 'accepted' %}
                     <form method="post" action="{% url 'core:application_action' a.pk 'cancel' %}">{% csrf_token %}<button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Снять</span></button></form>
                     <a href="{% url 'core:chat_room' a.pk %}" class="action-icon-btn contact-btn"><span class="text-xs font-medium">Чат</span></a>
+                    {% if a.worker_completed_at %}{% include "core/_ui_badge.html" with label="Трудник отметил выполнение" variant="success" %}{% endif %}
                     {% endif %}
                 {% else %}
                     {% if a.status == 'pending' or a.status == 'accepted' %}
@@ -106,6 +107,11 @@
                     {% endif %}
                     {% if a.status == 'accepted' %}
                     <a href="{% url 'core:chat_room' a.pk %}" class="action-icon-btn contact-btn"><span class="text-xs font-medium">Чат</span></a>
+                    {% if a.worker_completed_at %}
+                    {% include "core/_ui_badge.html" with label="Выполнено" variant="success" %}
+                    {% else %}
+                    <form method="post" action="{% url 'core:worker_confirm_completion' a.pk %}">{% csrf_token %}<button class="action-icon-btn accept-btn"><span class="text-xs font-medium">Я выполнил</span></button></form>
+                    {% endif %}
                     {% endif %}
                     {% if a.status == 'accepted' and a.job.status == 'completed' %}
                     <form method="post" action="{% url 'core:rate_participant' a.pk %}" class="flex items-center gap-2">{% csrf_token %}
