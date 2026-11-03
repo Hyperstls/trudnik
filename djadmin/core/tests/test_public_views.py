@@ -519,11 +519,14 @@ class PublicViewsTests(TestCase):
         self._geo_jobs()
         from unittest.mock import patch
 
-        with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": "test-" + "key"}):  # pragma: allowlist secret  # pragma: allowlist secret
+        with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": "test-" + "key"}):  # pragma: allowlist secret
             response = self.client.get("/jobs", {"q": "J024"})
+        self.assertContains(response, 'id="jobs-map-block"')
         self.assertContains(response, 'id="jobs-map"')
-        self.assertContains(response, "api-maps.yandex.ru")
-        self.assertContains(response, "apikey=test-key")
+        self.assertContains(response, 'data-api-key="test-key"')
+        self.assertContains(response, "js/jobs-map.js")
+        # Lazy load: the external API is fetched only after the map is expanded.
+        self.assertNotContains(response, "api-maps.yandex.ru")
 
     def test_jobs_map_absent_without_key(self):
         self._geo_jobs()
@@ -531,7 +534,39 @@ class PublicViewsTests(TestCase):
 
         with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": ""}):
             response = self.client.get("/jobs", {"q": "J024"})
-        self.assertNotContains(response, 'id="jobs-map"')
+        self.assertNotContains(response, 'id="jobs-map-block"')
+
+    def test_jobs_map_is_below_filters_and_collapsed(self):
+        self._geo_jobs()
+        from unittest.mock import patch
+
+        with patch.dict(os.environ, {"YANDEX_MAPS_API_KEY": "test-" + "key"}):  # pragma: allowlist secret
+            response = self.client.get("/jobs", {"q": "J024"})
+        html = response.content.decode()
+        self.assertLess(html.index('id="filters-form"'), html.index('id="jobs-map-block"'))
+        self.assertLess(html.index('id="jobs-map-block"'), html.index("data-job-id="))
+        self.assertIn('id="jobs-map-block" class="jobs-map-block hidden"', html)
+        self.assertContains(response, 'id="jobs-map-toggle"')
+
+    def test_jobs_map_points_have_preview_fields(self):
+        near, _ = self._geo_jobs()
+        response = self.client.get("/jobs", {"q": "J024"})
+        point = next(p for p in response.context["map_points"] if p["id"] == str(near.pk))
+        self.assertEqual(point["price"], "1000")
+        self.assertEqual(point["city"], "Санкт-Петербург")
+        self.assertEqual(point["org"], "Приход")
+        self.assertTrue(point["when"])
+
+    def test_geo_active_map_auto_opens(self):
+        near, _ = self._geo_jobs()
+        from unittest.mock import patch
+
+        with patch("core.views.call_rpc_rows") as rpc:
+            rpc.return_value = [{"id": near.pk, "distance_meters": 100}]
+            response = self.client.get(
+                "/jobs", {"q": "J024", "lat": "60.0", "lng": "30.0", "radius": "2"}
+            )
+        self.assertContains(response, 'data-geo-active="true"')
 
     def test_jobs_map_skips_jobs_without_coords(self):
         Job.objects.create(

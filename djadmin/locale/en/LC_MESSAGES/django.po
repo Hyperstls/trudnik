@@ -3542,3 +3542,21 @@ msgid ""
 msgstr ""
 "Your account email was changed to %s.\n"
 "If this was not you, change your password immediately and contact support."
+
+msgid "Карта"
+msgstr "Map"
+
+msgid "Карта заданий"
+msgstr "Jobs map"
+
+msgid "На весь экран"
+msgstr "Fullscreen"
+
+msgid "Выйти из полноэкранного режима"
+msgstr "Exit fullscreen"
+
+msgid "Искать в этой области"
+msgstr "Search this area"
+
+msgid "Свернуть карту"
+msgstr "Collapse map"

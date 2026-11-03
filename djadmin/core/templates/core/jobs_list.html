@@ -1,5 +1,5 @@
 {% extends "core/base.html" %}
-{% load l10n i18n %}
+{% load l10n i18n static %}
 {% block title %}Трудник — {% translate "Поиск работы" %}{% endblock %}
 {% block content %}
 <div class="px-0 py-4 fade-in">
@@ -34,70 +34,6 @@
         </span>
         {% endfor %}
     </div>
-    {% endif %}
-
-    {% if yandex_maps_key %}
-    {% if map_points or geo_center %}
-    <div id="jobs-map" style="height:320px" class="w-full rounded-2xl border border-neutral-200 mb-2"></div>
-    {% if geo_center %}
-    <p class="text-xs text-neutral-500 mb-3">{% translate "Круг — радиус поиска" %} {% localize off %}{{ geo_center.radius|floatformat:"-1" }}{% endlocalize %} {% translate "км от вашей точки. Точка округлена до ~100 м и хранится в сессии 1 час." %}</p>
-    {% else %}<div class="mb-2"></div>{% endif %}
-    {{ map_points|json_script:"jobs-map-data" }}
-    {% if geo_center %}{{ geo_center|json_script:"jobs-geo-data" }}{% endif %}
-    <script nonce="{{ request.csp_nonce }}" src="https://api-maps.yandex.ru/2.1/?apikey={{ yandex_maps_key|urlencode }}&lang=ru_RU"></script>
-    <script nonce="{{ request.csp_nonce }}">
-    (function(){
-      if (!window.ymaps) return;
-      var node = document.getElementById('jobs-map-data');
-      if (!node) return;
-      var points = JSON.parse(node.textContent);
-      var geoNode = document.getElementById('jobs-geo-data');
-      var geo = geoNode ? JSON.parse(geoNode.textContent) : null;
-      ymaps.ready(function(){
-        var map = new ymaps.Map('jobs-map', {
-          center: [55.7558, 37.6173], zoom: 10,
-          controls: ['zoomControl']
-        });
-        // Логотип Яндекса — ссылка без доступного имени (axe link-name).
-        (function labelYandexLogo(tries) {
-                  var logo = document.querySelector('a[class*="copyright__logo"]');
-                  if (logo) {
-                    if (!logo.getAttribute('aria-label')) logo.setAttribute('aria-label', '{% translate "Яндекс Карты" %}');
-                    return;
-                  }
-                  if (tries > 0) window.setTimeout(function () { labelYandexLogo(tries - 1); }, 300);
-                })(20);
-        if (geo) {
-          var circle = new ymaps.Circle(
-            [[geo.lat, geo.lng], geo.radius * 1000],
-            {},
-            {fillColor: '#f59e0b22', strokeColor: '#d97706', strokeWidth: 2, strokeOpacity: 0.75}
-          );
-          map.geoObjects.add(circle);
-        }
-        points.forEach(function(p){
-          var balloon = document.createElement('div');
-          balloon.textContent = p.title;
-          var hint = document.createElement('div');
-          hint.textContent = p.title;
-          var placemark = new ymaps.Placemark([p.lat, p.lng], {
-            balloonContentBody: balloon, hintContent: hint
-          }, {preset: 'islands#orangeIcon'});
-          placemark.events.add('click', function(){ window.location.href = p.url; });
-          map.geoObjects.add(placemark);
-        });
-        if (geo) {
-          var zoom = geo.radius <= 1 ? 13 : geo.radius <= 5 ? 12 : geo.radius <= 20 ? 11 : geo.radius <= 50 ? 10 : 9;
-          map.setCenter([geo.lat, geo.lng], zoom);
-        } else if (points.length === 1) {
-          map.setCenter([points[0].lat, points[0].lng], 12);
-        } else if (points.length > 1) {
-          map.setBounds(map.geoObjects.getBounds(), {checkZoomRange: true, zoomMargin: 40});
-        }
-      });
-    })();
-    </script>
-    {% endif %}
     {% endif %}
 
     <!-- Фильтр-пилюли статуса (Flask: Все/Новые/Откликнулся — упрощено до публичных статусов) -->
@@ -201,7 +137,52 @@
         <a href="?sort={{ value }}{% if q %}&q={{ q }}{% endif %}{% if city %}&city={{ city }}{% endif %}{% if status %}&status={{ status }}{% endif %}{% if payment_max %}&payment_max={{ payment_max }}{% endif %}{% if payment_min %}&payment_min={{ payment_min }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if job_filter %}&filter={{ job_filter }}{% endif %}{% if geo_active %}&geo=1&radius={{ radius }}{% endif %}{% if remote_only %}&remote=1{% endif %}"
            class="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 {% if sort == value %}bg-primary-600 text-white shadow-sm{% else %}bg-neutral-100 text-neutral-600 hover:bg-neutral-200{% endif %}">{{ label }}</a>
         {% endfor %}
+        {% if yandex_maps_key %}{% if map_points or geo_center %}
+        <button type="button" id="jobs-map-toggle" class="jobs-map-toggle hidden" aria-expanded="false" aria-controls="jobs-map-block">
+            <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 12-9 12S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>{% translate "Карта" %}</span>
+        </button>
+        {% endif %}{% endif %}
     </div>
+
+    {% if yandex_maps_key %}{% if map_points or geo_center %}
+    <div id="jobs-map-block" class="jobs-map-block hidden" data-api-key="{{ yandex_maps_key }}"
+         data-geo-active="{% if geo_active %}true{% else %}false{% endif %}"
+         data-label-open="{% translate 'Открыть задание' %}"
+         data-label-close="{% translate 'Закрыть' %}"
+         data-label-fullscreen="{% translate 'На весь экран' %}"
+         data-label-exit-fullscreen="{% translate 'Выйти из полноэкранного режима' %}"
+         data-label-yandex="{% translate 'Яндекс Карты' %}"
+         aria-label="{% translate 'Карта заданий' %}">
+        <div class="jobs-map-toolbar">
+            <p class="jobs-map-title">{% translate "Карта заданий" %}{% if map_points %}<span class="jobs-map-count">{{ map_points|length }}</span>{% endif %}</p>
+            <div class="jobs-map-actions">
+                <button type="button" id="jobs-map-search-area" class="jobs-map-btn hidden">{% translate "Искать в этой области" %}</button>
+                <button type="button" id="jobs-map-fullscreen" class="jobs-map-icon-btn" aria-label="{% translate 'На весь экран' %}" title="{% translate 'На весь экран' %}">
+                    <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+                </button>
+                <button type="button" id="jobs-map-collapse" class="jobs-map-icon-btn" aria-label="{% translate 'Свернуть карту' %}" title="{% translate 'Свернуть карту' %}">
+                    <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+                </button>
+            </div>
+        </div>
+        <div id="jobs-map" class="jobs-map-canvas" aria-label="{% translate 'Карта заданий' %}"></div>
+        <div id="jobs-map-preview" class="jobs-map-preview hidden" role="status" aria-live="polite">
+            <div class="jobs-map-preview-body">
+                <p id="jobs-map-preview-title" class="jobs-map-preview-title"></p>
+                <p id="jobs-map-preview-meta" class="jobs-map-preview-meta"></p>
+            </div>
+            <a id="jobs-map-preview-link" class="jobs-map-preview-link" href="#">{% translate "Открыть задание" %}</a>
+            <button type="button" id="jobs-map-preview-close" class="jobs-map-preview-close" aria-label="{% translate 'Закрыть' %}">×</button>
+        </div>
+        {% if geo_center %}
+        <p class="jobs-map-note">{% translate "Круг — радиус поиска" %} {% localize off %}{{ geo_center.radius|floatformat:"-1" }}{% endlocalize %} {% translate "км от вашей точки. Точка округлена до ~100 м и хранится в сессии 1 час." %}</p>
+        {% endif %}
+    </div>
+    {{ map_points|json_script:"jobs-map-data" }}
+    {% if geo_center %}{{ geo_center|json_script:"jobs-geo-data" }}{% endif %}
+    <script nonce="{{ request.csp_nonce }}" src="{% static 'js/jobs-map.js' %}" defer></script>
+    {% endif %}{% endif %}
 
     <!-- Job cards grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

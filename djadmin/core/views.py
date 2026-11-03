@@ -428,6 +428,10 @@ def jobs_list(request):
             "lng": float(job.lng),
             "title": job.work_type or _("Задание"),
             "url": reverse("core:job_detail", args=[job.pk]),
+            "price": ("%g" % float(job.payment_amount)) if job.payment_amount is not None else "",
+            "city": job.city or "",
+            "org": job.organization_name or "",
+            "when": timezone.localtime(job.date_time).strftime("%d.%m %H:%M") if job.date_time else "",
         }
         for job in page.object_list
         if job.lat is not None and job.lng is not None and (job.address or "").strip()
