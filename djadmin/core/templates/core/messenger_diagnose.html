@@ -1,12 +1,24 @@
 {% extends "core/base.html" %}
 {% block title %}Диагностика мессенджера — Трудник{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold mb-4">Диагностика верификации</h1>
-<dl class="bg-white border border-gray-200 rounded-lg p-4 text-sm space-y-1">
-  <div>Webhook-секрет: {% if secret_set %}<span class="text-green-700">задан</span>{% else %}<span class="text-red-700">НЕТ (webhook fail-closed 503)</span>{% endif %}</div>
-  <div>Бот (username): {% if bot_set %}<span class="text-green-700">задан</span>{% else %}<span class="text-red-700">НЕТ</span>{% endif %}</div>
-  <div>Кэш-бэкенд: <code>{{ cache_backend }}</code></div>
-  <div>Платформы: {{ platforms|join:", " }}</div>
-</dl>
-<p class="text-sm text-gray-600 mt-3">Webhook MAX: <code>POST /messenger/webhook/max</code> (заголовок X-Max-Bot-Api-Secret).</p>
+<div class="max-w-2xl mx-auto py-4">
+    <h1 class="text-2xl font-bold mb-4">Диагностика верификации MAX</h1>
+    <dl class="ui-card p-4 text-sm space-y-2">
+        <div>Webhook-секрет: {% if secret_set %}<span class="text-green-700">задан</span>{% else %}<span class="text-red-700">НЕТ (webhook fail-closed 503)</span>{% endif %}</div>
+        <div>Бот (username): {% if bot_set %}<span class="text-green-700">задан</span>{% else %}<span class="text-red-700">НЕТ</span>{% endif %}</div>
+        <div>Bot token: {% if token_set %}<span class="text-green-700">задан</span>{% else %}<span class="text-red-700">НЕТ (боты не смогут отвечать)</span>{% endif %}</div>
+        <div>API MAX: <code>{{ api_url }}</code></div>
+        <div>Кэш-бэкенд: <code>{{ cache_backend }}</code></div>
+        <div>Платформы: {{ platforms|join:", " }}</div>
+    </dl>
+    <section class="ui-card p-4 mt-4 text-sm">
+        <h2 class="font-semibold text-neutral-800 mb-2">Webhook-подписка</h2>
+        <p>URL: <code>{{ webhook.url }}</code></p>
+        <p class="mt-1">Статус:
+            {% if webhook.ok %}<span class="text-green-700">{{ webhook.action }}</span>
+            {% else %}<span class="text-red-700">{{ webhook.error|default:"не зарегистрирован" }}</span>{% endif %}
+        </p>
+        <p class="text-xs text-neutral-500 mt-2">Регистрируется автоматически каждые 10 минут и при открытии страницы верификации. Webhook: <code>POST /messenger/webhook/max</code>.</p>
+    </section>
+</div>
 {% endblock %}

@@ -34,6 +34,10 @@ app.conf.beat_schedule = {
         "task": "core.tasks.notify_saved_searches",
         "schedule": 300.0,
     },
+    "ensure-max-webhook": {
+        "task": "core.tasks.ensure_max_webhook",
+        "schedule": 600.0,
+    },
 }
 
 app.autodiscover_tasks(["core"])

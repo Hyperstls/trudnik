@@ -341,3 +341,15 @@ def notify_saved_searches() -> str:
         prefs["saved_search_digest_at"] = now.isoformat()
         Profile.objects.filter(pk=user.pk).update(notification_prefs=prefs)
     return "saved_search_digest: users=%d" % notified
+
+
+@app.task(ignore_result=True)
+def ensure_max_webhook() -> str:
+    """Self-heal MAX webhook subscription (bot_started + message_created)."""
+    from .views_messenger import ensure_max_webhook as ensure
+
+    result = ensure()
+    if result.get("ok"):
+        return "max_webhook: %s" % result.get("action", "ok")
+    logger.warning("max_webhook not registered: %s", result.get("error"))
+    return "max_webhook: %s" % result.get("error", "failed")

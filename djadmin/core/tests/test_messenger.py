@@ -2,12 +2,15 @@
 import json
 
 from django.core.cache import cache
+from unittest.mock import patch
+
 from django.test import TestCase, override_settings
 
 from core.models import Profile
 from core.tests.test_auth import make_profile
 
 
+@override_settings(MAX_BOT_TOKEN="")
 class MessengerVerifyTests(TestCase):
     def setUp(self):
         cache.clear()
@@ -68,6 +71,48 @@ class MessengerVerifyTests(TestCase):
                                     headers={"X-Max-Bot-Api-Secret": "s3cret"})  # pragma: allowlist secret
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Profile.objects.get(pk=self.user.pk).messenger_user_id, "99")
+
+    @override_settings(MAX_WEBHOOK_SECRET="s3cret")  # pragma: allowlist secret
+    @patch("core.views_messenger._send_max")
+    def test_bot_started_without_payload_sends_instruction(self, send):
+        payload = {"update_type": "bot_started", "chat_id": 77, "user": {"user_id": 1}}
+        response = self.client.post(
+            "/messenger/webhook/max", data=json.dumps(payload),
+            content_type="application/json",
+            headers={"X-Max-Bot-Api-Secret": "s3cret"},  # pragma: allowlist secret
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(send.called)
+        self.assertIn("Подтвердить", send.call_args.args[1])
+
+    @override_settings(
+        MAX_BOT_TOKEN="test-bot-token",  # pragma: allowlist secret
+        MAX_API_URL="https://max.test",
+        WORKER_SITE_URL="https://trudnik.test",
+    )
+    @patch("core.views_messenger._register_subscription", return_value=(True, ""))
+    @patch("core.views_messenger.get_max_subscriptions", return_value=[])
+    def test_ensure_webhook_registers_subscription(self, _subs, _register):
+        from core.views_messenger import ensure_max_webhook
+
+        result = ensure_max_webhook()
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["action"], "registered")
+        self.assertEqual(result["url"], "https://trudnik.test/messenger/webhook/max")
+
+    @override_settings(MAX_WEBHOOK_SECRET="s3cret")  # pragma: allowlist secret
+    @patch("core.views_messenger._send_max")
+    def test_successful_verification_replies_in_chat(self, send):
+        cache.set("msg_verify:tok-reply", str(self.user.pk), 600)
+        payload = {"update_type": "bot_started", "chat_id": 55,
+                   "user": {"user_id": 4242}, "payload": "tok-reply"}
+        self.client.post(
+            "/messenger/webhook/max", data=json.dumps(payload),
+            content_type="application/json",
+            headers={"X-Max-Bot-Api-Secret": "s3cret"},  # pragma: allowlist secret
+        )
+        self.assertTrue(send.called)
+        self.assertIn("подтверждён", send.call_args.args[1])
 
     @override_settings(MAX_WEBHOOK_SECRET="s3cret")  # pragma: allowlist secret
     def test_webhook_unknown_token_no_effect(self):

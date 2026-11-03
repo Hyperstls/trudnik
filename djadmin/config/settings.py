@@ -275,7 +275,14 @@ METRICS_TOKEN = os.getenv("METRICS_TOKEN", "")
 
 # ── MAX Bot API (мессенджер-верификация; webhook fail-closed без секрета) ────
 MAX_WEBHOOK_SECRET = os.getenv("MAX_WEBHOOK_SECRET", "")
+MAX_BOT_TOKEN = os.getenv("MAX_BOT_TOKEN", "")
 MAX_BOT_USERNAME = os.getenv("MAX_BOT_USERNAME", "")
+MAX_API_URL = os.getenv("MAX_API_URL", "https://platform-api2.max.ru").rstrip("/")
+MAX_CA_BUNDLE = os.getenv(
+    "MAX_CA_BUNDLE",
+    str(REPO_ROOT / "certs" / "russian_trusted_root_ca.crt"),
+)
+MESSENGER_API_TIMEOUT = float(os.getenv("MESSENGER_API_TIMEOUT", "10"))
 
 # ── Yandex SmartCaptcha (включена при наличии серверного ключа; fail-closed) ─
 SMARTCAPTCHA_SERVER_KEY = os.getenv("SMARTCAPTCHA_SERVER_KEY", "")
