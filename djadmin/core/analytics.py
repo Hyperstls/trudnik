@@ -1,13 +1,15 @@
 """First-party aggregate funnel counters (J123).
 
 Only aggregate numbers are stored in Redis; no cookies, IP addresses or user
-identifiers are persisted. Daily keys expire after 90 days.
+identifiers are persisted. Anonymous job views and PWA launches are deduplicated
+client-side (localStorage) and sent as one beacon per browser/day. Daily keys
+expire after 90 days.
 """
 from datetime import date, timedelta
 
 from django.core.cache import cache
 
-EVENTS = ("job_view", "application_sent", "job_created", "install")
+EVENTS = ("job_view", "application_sent", "job_created", "install", "app_open", "app_return")
 RETENTION_DAYS = 90
 
 
@@ -43,8 +45,14 @@ def totals(days=7):
 
 
 def track_job_view(request, job_id):
-    """Count a job view; for authenticated users — once per session/job/day."""
-    if request.user.is_authenticated and request.session.session_key:
+    """Authenticated views: once per session/job/day.
+
+    Anonymous views are counted by ``static/js/job-view.js`` once per browser/day
+    (localStorage marker), so server-side tracking must not count them again.
+    """
+    if not request.user.is_authenticated:
+        return
+    if request.session.session_key:
         key = "analytics:view:%s:%s:%s" % (
             request.session.session_key, job_id, date.today().isoformat(),
         )

@@ -14,6 +14,9 @@
       <tr><th>Отклики</th><td><strong>{{ totals.application_sent }}</strong></td></tr>
       <tr><th>Опубликованные задания</th><td><strong>{{ totals.job_created }}</strong></td></tr>
       <tr><th>Установки приложения</th><td><strong>{{ totals.install }}</strong></td></tr>
+      <tr><th>Первые открытия PWA</th><td><strong>{{ totals.app_open }}</strong></td></tr>
+      <tr><th>Повторные открытия PWA</th><td><strong>{{ totals.app_return }}</strong></td></tr>
+      <tr><th>Доля повторных открытий</th><td><strong>{{ return_rate }}%</strong></td></tr>
       <tr><th>Просмотр → отклик</th><td><strong>{{ conversion }}%</strong></td></tr>
     </table>
   </div>
@@ -27,6 +30,8 @@
         <th>Отклики</th>
         <th>Задания</th>
         <th>Установки</th>
+        <th>PWA первые</th>
+        <th>PWA повторные</th>
       </tr>
       {% for row in rows %}
       <tr>
@@ -35,6 +40,8 @@
         <td>{{ row.application_sent }}</td>
         <td>{{ row.job_created }}</td>
         <td>{{ row.install }}</td>
+        <td>{{ row.app_open }}</td>
+        <td>{{ row.app_return }}</td>
       </tr>
       {% endfor %}
     </table>

@@ -1,5 +1,6 @@
-"""Staff-only funnel dashboard and the public install counter (J123)."""
+"""Staff-only funnel dashboard and the public install/usage counters (J123)."""
 import json
+import uuid
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import JsonResponse
@@ -7,7 +8,10 @@ from django.shortcuts import render
 from django.views.decorators.http import require_POST
 
 from .analytics import EVENTS, incr, series
+from .models import Job
 from .ratelimit import RateLimitExceeded, RateLimitUnavailable, enforce_ip_limit
+
+CLIENT_EVENTS = ("install", "job_view", "app_open", "app_return")
 
 
 def render_dashboard(request, site=None):
@@ -17,6 +21,10 @@ def render_dashboard(request, site=None):
     conversion = (
         round(totals["application_sent"] / totals["job_view"] * 100, 1)
         if totals["job_view"] else 0
+    )
+    app_opens = totals["app_open"] + totals["app_return"]
+    return_rate = (
+        round(totals["app_return"] / app_opens * 100, 1) if app_opens else 0
     )
     rows = [
         {
@@ -32,6 +40,7 @@ def render_dashboard(request, site=None):
         totals=totals,
         rows=rows,
         conversion=conversion,
+        return_rate=return_rate,
     )
     return render(request, "admin/analytics.html", context)
 
@@ -48,13 +57,21 @@ def track_event(request):
         payload = json.loads(request.body.decode("utf-8", "replace"))
     except (TypeError, ValueError):
         return JsonResponse({"error": "bad_json"}, status=400)
-    if not isinstance(payload, dict) or payload.get("event") != "install":
+    if not isinstance(payload, dict) or payload.get("event") not in CLIENT_EVENTS:
         return JsonResponse({"error": "bad_event"}, status=400)
+    event = payload["event"]
+    if event == "job_view":
+        try:
+            job_id = uuid.UUID(str(payload.get("job_id")))
+        except (TypeError, ValueError, AttributeError):
+            return JsonResponse({"error": "bad_job"}, status=400)
+        if not Job.objects.public().filter(pk=job_id).exists():
+            return JsonResponse({"error": "bad_job"}, status=400)
     try:
         enforce_ip_limit(request, "analytics_event", 20, 60)
     except RateLimitExceeded:
         return JsonResponse({"error": "rate_limited"}, status=429)
     except RateLimitUnavailable:
         pass
-    incr("install")
+    incr(event)
     return JsonResponse({"ok": True})

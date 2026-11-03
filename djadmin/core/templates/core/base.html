@@ -259,6 +259,7 @@
     }
     </script>
     <script nonce="{{ request.csp_nonce }}" src="{% static 'js/install-prompt.js' %}" defer></script>
+    <script nonce="{{ request.csp_nonce }}" src="{% static 'js/pwa-usage.js' %}" defer></script>
     <script nonce="{{ request.csp_nonce }}">
     document.addEventListener('submit', function (event) {
       var form = event.target.closest('form[data-confirm]');

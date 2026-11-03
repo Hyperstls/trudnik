@@ -1,5 +1,6 @@
-"""First-party aggregate funnel counters (J123)."""
+"""First-party aggregate funnel counters (J123/J134)."""
 import json
+import uuid
 from datetime import date, timedelta
 
 from django.core.cache import cache
@@ -29,10 +30,40 @@ class AnalyticsTests(TestCase):
         self.client.get(reverse("core:job_detail", args=[self.job.pk]))
         self.assertEqual(self.counter("job_view"), 1)
 
-    def test_anonymous_job_views_counted(self):
+    def test_anonymous_job_view_not_counted_server_side(self):
+        # Anonymous views come from job-view.js once per browser/day.
         self.client.get(reverse("core:job_detail", args=[self.job.pk]))
         self.client.get(reverse("core:job_detail", args=[self.job.pk]))
-        self.assertEqual(self.counter("job_view"), 2)
+        self.assertEqual(self.counter("job_view"), 0)
+
+    def test_job_view_beacon_counts_public_job(self):
+        response = self.client.post(
+            reverse("core:analytics_event"),
+            data=json.dumps({"event": "job_view", "job_id": str(self.job.pk)}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.counter("job_view"), 1)
+
+    def test_job_view_beacon_rejects_unknown_job(self):
+        response = self.client.post(
+            reverse("core:analytics_event"),
+            data=json.dumps({"event": "job_view", "job_id": str(uuid.uuid4())}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(self.counter("job_view"), 0)
+
+    def test_pwa_usage_events(self):
+        for event in ("app_open", "app_return"):
+            response = self.client.post(
+                reverse("core:analytics_event"),
+                data=json.dumps({"event": event}),
+                content_type="application/json",
+            )
+            self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.counter("app_open"), 1)
+        self.assertEqual(self.counter("app_return"), 1)
 
     def test_application_sent_counter(self):
         self.client.force_login(self.worker)
@@ -91,8 +122,12 @@ class AnalyticsTests(TestCase):
         )
         analytics.incr("job_view", 5)
         analytics.incr("application_sent", 2)
+        analytics.incr("app_open", 3)
+        analytics.incr("app_return", 1)
         self.client.force_login(staff)
         response = self.client.get("/admin/analytics/")
         self.assertContains(response, "Просмотры заданий")
         self.assertContains(response, "<strong>5</strong>", html=False)
         self.assertContains(response, "40,0%")
+        self.assertContains(response, "Повторные открытия PWA")
+        self.assertContains(response, "25,0%")
