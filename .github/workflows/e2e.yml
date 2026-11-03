@@ -67,3 +67,10 @@ jobs:
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/fixtures/schema.sql
       - name: Critical-path E2E
         run: bash scripts/e2e/run_critical_flows.sh
+      - name: Upload E2E server log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-server-log
+          path: /tmp/trudnik-e2e-server.log
+          if-no-files-found: ignore
