@@ -4,7 +4,7 @@
 **Эталон Flask:** `origin/main-flask` @ `9b3ed42` (read-only worktree `../trudnik-flask`)
 **Django:** `feat/agent-pipeline` @ J063 (`main` @ `3f4aa40` не менялся)
 **Статус:** auth/profile — P0/P1 закрыты и задеплоены; jobs/applications — P0/P1/P2 закрыты и задеплоены; открытых UX-пунктов нет.
-**Production (2026-11-03):** `98106c3` (J155–J159: MAX bot, chat search/mute, UTM/retention, anti-spam/moderation, RU/EN i18n); ранее — `e98ba24` (J060–J063), auth P001–P114, J029–J058. `/health` 200, Status RUNNING; миграции 72/72.
+**Production (2026-11-03):** `2bbef18` (J155–J160: MAX bot, chat search/mute, UTM/retention, anti-spam/moderation, RU/EN i18n, полная локализация кабинета); ранее — `e98ba24` (J060–J063), auth P001–P114, J029–J058. `/health` 200, Status RUNNING; миграции 72/72.
 **Исторический срез аудита (все пункты закрыты):** P0-01…P0-04 (P001–P004);
 P1-01/02/06 — P101/P102/P106; P1-03/04/11 — P103/P104; P1-07/08/14 — P107/P108/P114;
 BUILD-01 — B001; TASKS-01 — T001; P1-12 — P112; P1-10 ORM — P110; P1-05 — P105.
