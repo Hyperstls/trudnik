@@ -8,7 +8,7 @@
 | `GET /metrics` | прод | Prometheus-текст, нужен `X-Metrics-Token` = env `METRICS_TOKEN`; без токена на проде 404 |
 | `Uptime` workflow | `.github/workflows/uptime.yml` | каждые 30 минут проверяет `/health`, `/jobs`, `/login` и статику |
 | Amvera build/run logs | MCP `getBuildLogs` / `getRunLogs`, панель Amvera | ошибки сборки, рестарты, Celery |
-| UX quality workflow | `.github/workflows/ux-quality.yml` | Lighthouse + axe по живому проду (запускать после стабилизации деплоя) |
+| UX quality workflow | `.github/workflows/ux-quality.yml` | Lighthouse + axe по живому проду; запускать вручную после стабилизации деплоя |
 
 ## Uptime-алерт
 

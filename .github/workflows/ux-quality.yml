@@ -2,13 +2,16 @@ name: UX quality
 
 on:
   workflow_dispatch:
-  push:
-    branches: [feat/agent-pipeline]
   schedule:
     - cron: "0 6 * * 1"
 
 permissions:
   contents: read
+
+# Live-production audit: never run two probes against the same deploy.
+concurrency:
+  group: ux-quality
+  cancel-in-progress: true
 
 jobs:
   lighthouse:
