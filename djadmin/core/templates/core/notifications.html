@@ -34,7 +34,7 @@
     <div class="space-y-5">
         {% for day in notification_days %}
         <section aria-labelledby="notif-day-{{ day.grouper }}">
-            <div class="sticky top-14 z-10 -mx-1 px-1 py-1.5 bg-neutral-50/95 backdrop-blur-sm flex items-center justify-between">
+            <div class="sticky top-14 z-10 -mx-1 px-1 py-1.5 bg-neutral-50 backdrop-blur-sm flex items-center justify-between">
                 <h3 id="notif-day-{{ day.grouper }}" class="text-xs font-semibold uppercase tracking-wide text-neutral-500">
                     {% if day.grouper == today|date:"Y-m-d" %}Сегодня{% elif day.grouper == yesterday|date:"Y-m-d" %}Вчера{% else %}{{ day.list.0.created_at|date:"d.m.Y" }}{% endif %}
                 </h3>

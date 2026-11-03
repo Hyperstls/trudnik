@@ -1,5 +1,7 @@
 __pycache__/
 *.pyc
+axe-report.json
+.lighthouseci/
 .env
 .env.amvera
 .idea/

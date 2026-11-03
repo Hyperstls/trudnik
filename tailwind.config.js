@@ -8,27 +8,28 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        white: 'var(--ui-white)',
         neutral: {
-          50: '#fafafa',
-          100: '#f5f5f5',
-          200: '#e5e5e5',
-          300: '#d4d4d4',
-          400: '#a3a3a3',
-          500: '#737373',
-          600: '#525252',
-          700: '#404040',
-          800: '#262626',
-          900: '#171717'
+          50: 'var(--ui-neutral-50)',
+          100: 'var(--ui-neutral-100)',
+          200: 'var(--ui-neutral-200)',
+          300: 'var(--ui-neutral-300)',
+          400: 'var(--ui-neutral-400)',
+          500: 'var(--ui-neutral-500)',
+          600: 'var(--ui-neutral-600)',
+          700: 'var(--ui-neutral-700)',
+          800: 'var(--ui-neutral-800)',
+          900: 'var(--ui-neutral-900)'
         },
         primary: {
-          50: '#fef3c7',
-          100: '#fde68a',
-          200: '#fcd34d',
-          300: '#fbbf24',
-          400: '#f59e0b',
-          500: '#d97706',
-          600: '#b45309',
-          700: '#92400e'
+          50: 'var(--ui-primary-50)',
+          100: 'var(--ui-primary-100)',
+          200: 'var(--ui-primary-200)',
+          300: 'var(--ui-primary-300)',
+          400: 'var(--ui-primary-400)',
+          500: 'var(--ui-primary-500)',
+          600: 'var(--ui-primary-600)',
+          700: 'var(--ui-primary-700)'
         },
         success: {
           light: '#d1fae5',

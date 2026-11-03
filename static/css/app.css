@@ -37,6 +37,27 @@
 }
 
 :root {
+    /* Palette mapped into Tailwind (tailwind.config.js) — theme-aware. */
+    --ui-white: #ffffff;
+    --ui-neutral-50: #fafafa;
+    --ui-neutral-100: #f5f5f5;
+    --ui-neutral-200: #e5e5e5;
+    --ui-neutral-300: #d4d4d4;
+    --ui-neutral-400: #a3a3a3;
+    --ui-neutral-500: #737373;
+    --ui-neutral-600: #525252;
+    --ui-neutral-700: #404040;
+    --ui-neutral-800: #262626;
+    --ui-neutral-900: #171717;
+    --ui-primary-50: #fef3c7;
+    --ui-primary-100: #fde68a;
+    --ui-primary-200: #fcd34d;
+    --ui-primary-300: #fbbf24;
+    --ui-primary-400: #f59e0b;
+    --ui-primary-500: #d97706;
+    --ui-primary-600: #b45309;
+    --ui-primary-700: #92400e;
+
     /* Semantic design tokens (J106/J139). Values mirror the Tailwind palette. */
     --ui-color-primary: #b45309;
     --ui-color-primary-hover: #92400e;
@@ -81,6 +102,197 @@
     --ui-ease-out: cubic-bezier(0, 0, 0.58, 1);
 }
 
+/* Dark theme (J142): explicit choice or system preference. */
+[data-theme="dark"] {
+    color-scheme: dark;
+    --ui-white: #171717;
+    --ui-neutral-50: #0b0b0b;
+    --ui-neutral-100: #1a1a1a;
+    --ui-neutral-200: #333333;
+    --ui-neutral-300: #4d4d4d;
+    --ui-neutral-400: #a3a3a3;
+    --ui-neutral-500: #a3a3a3;
+    --ui-neutral-600: #c4c4c4;
+    --ui-neutral-700: #d4d4d4;
+    --ui-neutral-800: #e5e5e5;
+    --ui-neutral-900: #fafafa;
+    --ui-primary-50: #3a2a12;
+    --ui-primary-100: #4a3517;
+    --ui-primary-200: #6b4a18;
+    --ui-primary-300: #8a5a1f;
+    --ui-primary-400: #d97706;
+    --ui-primary-500: #f59e0b;
+    --ui-primary-600: #b45309;
+    --ui-primary-700: #fcd34d;
+    --ui-color-primary: #b45309;
+    --ui-color-primary-hover: #92400e;
+    --ui-color-primary-soft: #3a2a12;
+    --ui-color-text-strong: #fafafa;
+    --ui-color-text: #e5e5e5;
+    --ui-color-muted: #a3a3a3;
+    --ui-color-border: #333333;
+    --ui-color-surface: #171717;
+    --ui-color-surface-muted: #262626;
+    --ui-color-bg: #0b0b0b;
+    --ui-color-success: #6ee7b7;
+    --ui-color-success-bg: #0f2a1f;
+    --ui-color-success-border: #166534;
+    --ui-color-warning: #fcd34d;
+    --ui-color-warning-bg: #33260d;
+    --ui-color-warning-border: #78350f;
+    --ui-color-danger: #fca5a5;
+    --ui-color-danger-bg: #3b1515;
+    --ui-color-danger-border: #7f1d1d;
+    --ui-color-info: #93c5fd;
+    --ui-color-info-bg: #172033;
+    --ui-color-info-border: #1e3a8a;
+    --ui-focus-ring: 0 0 0 3px rgba(245, 158, 11, 0.3);
+    --ui-shadow-card: 0 1px 3px rgb(0 0 0 / 0.5), 0 1px 2px rgb(0 0 0 / 0.4);
+    --ui-shadow-elevated: 0 4px 12px rgb(0 0 0 / 0.5);
+    --ui-shadow-popover: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --ui-white: #171717;
+        --ui-neutral-50: #0b0b0b;
+        --ui-neutral-100: #1a1a1a;
+        --ui-neutral-200: #333333;
+        --ui-neutral-300: #4d4d4d;
+        --ui-neutral-400: #a3a3a3;
+        --ui-neutral-500: #a3a3a3;
+        --ui-neutral-600: #c4c4c4;
+        --ui-neutral-700: #d4d4d4;
+        --ui-neutral-800: #e5e5e5;
+        --ui-neutral-900: #fafafa;
+        --ui-primary-50: #3a2a12;
+        --ui-primary-100: #4a3517;
+        --ui-primary-200: #6b4a18;
+        --ui-primary-300: #8a5a1f;
+        --ui-primary-400: #d97706;
+        --ui-primary-500: #f59e0b;
+        --ui-primary-600: #b45309;
+        --ui-primary-700: #fcd34d;
+        --ui-color-primary: #b45309;
+        --ui-color-primary-hover: #92400e;
+        --ui-color-primary-soft: #3a2a12;
+        --ui-color-text-strong: #fafafa;
+        --ui-color-text: #e5e5e5;
+        --ui-color-muted: #a3a3a3;
+        --ui-color-border: #333333;
+        --ui-color-surface: #171717;
+        --ui-color-surface-muted: #262626;
+        --ui-color-bg: #0b0b0b;
+        --ui-color-success: #6ee7b7;
+        --ui-color-success-bg: #0f2a1f;
+        --ui-color-success-border: #166534;
+        --ui-color-warning: #fcd34d;
+        --ui-color-warning-bg: #33260d;
+        --ui-color-warning-border: #78350f;
+        --ui-color-danger: #fca5a5;
+        --ui-color-danger-bg: #3b1515;
+        --ui-color-danger-border: #7f1d1d;
+        --ui-color-info: #93c5fd;
+        --ui-color-info-bg: #172033;
+        --ui-color-info-border: #1e3a8a;
+        --ui-focus-ring: 0 0 0 3px rgba(245, 158, 11, 0.3);
+        --ui-shadow-card: 0 1px 3px rgb(0 0 0 / 0.5), 0 1px 2px rgb(0 0 0 / 0.4);
+        --ui-shadow-elevated: 0 4px 12px rgb(0 0 0 / 0.5);
+        --ui-shadow-popover: 0 12px 32px rgba(0, 0, 0, 0.6);
+    }
+}
+
+/* Text on colored surfaces stays white even though bg-white is themed. */
+.text-white,
+.hover\:text-white:hover {
+    color: #ffffff !important;
+}
+.bg-white\/90 { background-color: rgba(255, 255, 255, 0.9); }
+.bg-white\/95 { background-color: rgba(255, 255, 255, 0.95); }
+
+[data-theme="dark"] .text-primary-400,
+[data-theme="dark"] .text-primary-600 { color: #fbbf24; }
+[data-theme="dark"] .bg-neutral-800.text-white {
+    background-color: #f5f5f5;
+    color: #171717 !important;
+}
+[data-theme="dark"] .bg-white\/90 { background-color: rgba(23, 23, 23, 0.9); }
+[data-theme="dark"] .bg-white\/95 { background-color: rgba(23, 23, 23, 0.95); }
+[data-theme="dark"] .bottom-nav { background-color: rgba(23, 23, 23, 0.92); }
+[data-theme="dark"] .bg-red-50 { background-color: #3b1515; }
+[data-theme="dark"] .bg-red-100 { background-color: #4a1a1a; }
+[data-theme="dark"] .bg-green-50 { background-color: #0f2a1f; }
+[data-theme="dark"] .bg-green-100 { background-color: #143526; }
+[data-theme="dark"] .bg-amber-50 { background-color: #33260d; }
+[data-theme="dark"] .bg-blue-50 { background-color: #172033; }
+[data-theme="dark"] .bg-purple-50 { background-color: #261a3a; }
+[data-theme="dark"] .text-red-600,
+[data-theme="dark"] .text-red-700,
+[data-theme="dark"] .text-red-800,
+[data-theme="dark"] .text-danger { color: #fca5a5; }
+[data-theme="dark"] .text-green-700,
+[data-theme="dark"] .text-green-800 { color: #6ee7b7; }
+[data-theme="dark"] .text-amber-600,
+[data-theme="dark"] .text-amber-700,
+[data-theme="dark"] .text-amber-800,
+[data-theme="dark"] .text-amber-900,
+[data-theme="dark"] .text-warning { color: #fcd34d; }
+[data-theme="dark"] .text-blue-600,
+[data-theme="dark"] .text-blue-700 { color: #93c5fd; }
+[data-theme="dark"] .text-purple-600,
+[data-theme="dark"] .text-purple-700 { color: #c4b5fd; }
+[data-theme="dark"] .text-gray-500 { color: #a3a3a3; }
+[data-theme="dark"] .text-gray-600 { color: #c4c4c4; }
+[data-theme="dark"] .border-red-200 { border-color: #7f1d1d; }
+[data-theme="dark"] .border-green-200 { border-color: #166534; }
+[data-theme="dark"] .border-amber-200 { border-color: #78350f; }
+[data-theme="dark"] .border-blue-200 { border-color: #1e3a8a; }
+[data-theme="dark"] .border-gray-200 { border-color: #333333; }
+[data-theme="dark"] .bg-gray-900 { background-color: #0a0a0a; }
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .text-primary-400,
+    :root:not([data-theme="light"]) .text-primary-600 { color: #fbbf24; }
+    :root:not([data-theme="light"]) .bg-neutral-800.text-white {
+        background-color: #f5f5f5;
+        color: #171717 !important;
+    }
+    :root:not([data-theme="light"]) .bg-white\/90 { background-color: rgba(23, 23, 23, 0.9); }
+    :root:not([data-theme="light"]) .bg-white\/95 { background-color: rgba(23, 23, 23, 0.95); }
+    :root:not([data-theme="light"]) .bottom-nav { background-color: rgba(23, 23, 23, 0.92); }
+    :root:not([data-theme="light"]) .bg-red-50 { background-color: #3b1515; }
+    :root:not([data-theme="light"]) .bg-red-100 { background-color: #4a1a1a; }
+    :root:not([data-theme="light"]) .bg-green-50 { background-color: #0f2a1f; }
+    :root:not([data-theme="light"]) .bg-green-100 { background-color: #143526; }
+    :root:not([data-theme="light"]) .bg-amber-50 { background-color: #33260d; }
+    :root:not([data-theme="light"]) .bg-blue-50 { background-color: #172033; }
+    :root:not([data-theme="light"]) .bg-purple-50 { background-color: #261a3a; }
+    :root:not([data-theme="light"]) .text-red-600,
+    :root:not([data-theme="light"]) .text-red-700,
+    :root:not([data-theme="light"]) .text-red-800,
+    :root:not([data-theme="light"]) .text-danger { color: #fca5a5; }
+    :root:not([data-theme="light"]) .text-green-700,
+    :root:not([data-theme="light"]) .text-green-800 { color: #6ee7b7; }
+    :root:not([data-theme="light"]) .text-amber-600,
+    :root:not([data-theme="light"]) .text-amber-700,
+    :root:not([data-theme="light"]) .text-amber-800,
+    :root:not([data-theme="light"]) .text-amber-900,
+    :root:not([data-theme="light"]) .text-warning { color: #fcd34d; }
+    :root:not([data-theme="light"]) .text-blue-600,
+    :root:not([data-theme="light"]) .text-blue-700 { color: #93c5fd; }
+    :root:not([data-theme="light"]) .text-purple-600,
+    :root:not([data-theme="light"]) .text-purple-700 { color: #c4b5fd; }
+    :root:not([data-theme="light"]) .text-gray-500 { color: #a3a3a3; }
+    :root:not([data-theme="light"]) .text-gray-600 { color: #c4c4c4; }
+    :root:not([data-theme="light"]) .border-red-200 { border-color: #7f1d1d; }
+    :root:not([data-theme="light"]) .border-green-200 { border-color: #166534; }
+    :root:not([data-theme="light"]) .border-amber-200 { border-color: #78350f; }
+    :root:not([data-theme="light"]) .border-blue-200 { border-color: #1e3a8a; }
+    :root:not([data-theme="light"]) .border-gray-200 { border-color: #333333; }
+    :root:not([data-theme="light"]) .bg-gray-900 { background-color: #0a0a0a; }
+}
+
 html {
     scrollbar-gutter: stable;
     overflow-x: hidden;
@@ -122,7 +334,7 @@ h3 {
 .text-meta {
     font-size: 0.8125rem;
     line-height: 1.25rem;
-    color: #737373; /* neutral-500 */
+    color: var(--ui-color-muted);
 }
 
 /* ============================= */
@@ -153,7 +365,7 @@ h3 {
    Утилиты на элементе (shadow-md и т.п.) проигрывают этому классу,
    т.к. app.css подключён после tailwind.min.css — это intended. */
 .card {
-    background: #ffffff;
+    background: var(--ui-color-surface);
     border: 1px solid var(--ui-color-border);
     border-radius: var(--ui-radius-card);
     box-shadow: var(--ui-shadow-card);
@@ -363,8 +575,8 @@ h3 {
 /* ============================= */
 input:focus, textarea:focus, select:focus {
     outline: none;
-    border-color: #d97706;
-    box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.15);
+    border-color: var(--ui-color-primary);
+    box-shadow: var(--ui-focus-ring);
 }
 /* WCAG 2.1: forced-colors (Windows High Contrast) — box-shadow невидим,
    возвращаем стандартный outline (B7) */
@@ -413,7 +625,7 @@ input:focus, textarea:focus, select:focus {
     border: 1px solid transparent;
     cursor: pointer;
     transition: all 0.2s ease;
-    background: white;
+    background: var(--ui-color-surface);
     white-space: nowrap;
     font-size: 0.875rem;
     font-weight: 500;
@@ -672,16 +884,16 @@ input:focus, textarea:focus, select:focus {
 .floating-label-group input:focus,
 .floating-label-group textarea:focus,
 .floating-label-group select:focus {
-    border-color: #d97706;
-    box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.15);
-    background: white;
+    border-color: var(--ui-color-primary);
+    box-shadow: var(--ui-focus-ring);
+    background: var(--ui-color-surface);
 }
 .floating-label-group label {
     position: absolute;
     left: 1rem;
     top: 0.75rem;
     font-size: 0.9375rem;
-    color: #737373;
+    color: var(--ui-color-muted);
     transition: all 0.2s ease;
     pointer-events: none;
 }
@@ -729,31 +941,31 @@ input:focus, textarea:focus, select:focus {
     display: block;
     font-size: 0.875rem;
     font-weight: 500;
-    color: #404040; /* neutral-700 */
+    color: var(--ui-color-text);
     margin-bottom: 0.375rem;
 }
 .form-input {
     width: 100%;
     padding: 0.75rem 1rem; /* px-4 py-3 */
-    background: #ffffff;
-    border: 1px solid #e5e5e5; /* neutral-200 */
+    background: var(--ui-color-surface);
+    border: 1px solid var(--ui-color-border);
     border-radius: 0.75rem; /* rounded-xl */
     font-size: 0.9375rem;
     line-height: 1.5;
-    color: #262626; /* neutral-800 */
+    color: var(--ui-color-text);
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 .form-input::placeholder {
-    color: #a3a3a3; /* neutral-400 */
+    color: var(--ui-color-muted);
 }
 .form-input:focus {
     outline: none;
-    border-color: #d97706; /* primary-500 */
-    box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.3); /* ring-primary-500/30 */
-    background: #ffffff;
+    border-color: var(--ui-color-primary);
+    box-shadow: var(--ui-focus-ring);
+    background: var(--ui-color-surface);
 }
 .form-input:disabled {
-    background: #f5f5f5; /* neutral-100 */
+    background: var(--ui-color-surface-muted);
     cursor: not-allowed;
     opacity: 0.7;
 }
@@ -769,13 +981,13 @@ input:focus, textarea:focus, select:focus {
 .form-hint {
     font-size: 0.75rem;
     line-height: 1rem;
-    color: #737373; /* neutral-500 */
+    color: var(--ui-color-muted);
     margin-top: 0.375rem;
 }
 .form-error {
     font-size: 0.875rem;
     line-height: 1.25rem;
-    color: #ef4444; /* danger */
+    color: var(--ui-color-danger);
     margin-top: 0.375rem;
 }
 
@@ -873,7 +1085,7 @@ select {
     width: 320px;
     max-width: 85vw;
     z-index: 50;
-    background: white;
+    background: var(--ui-color-surface);
     box-shadow: -8px 0 32px rgba(0, 0, 0, 0.12);
     transform: translateX(100%);
     transition: transform 0.3s ease;
@@ -899,7 +1111,7 @@ select {
     padding: 1rem;
 }
 .modal-content {
-    background: white;
+    background: var(--ui-color-surface);
     border-radius: 20px;
     padding: 1.5rem;
     max-width: 440px;
@@ -1021,7 +1233,7 @@ progress::-moz-progress-bar {
    neutral-500 (#737373) is 4.74:1. Decorative icons also become slightly
    clearer, which is safe: they are aria-hidden and not the only signal. */
 .text-neutral-400 {
-    color: #737373;
+    color: var(--ui-color-muted);
 }
 
 /* Secondary card actions (J064): native details/summary keeps the menu usable

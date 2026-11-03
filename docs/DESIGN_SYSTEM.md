@@ -57,6 +57,22 @@
 Классы используют токены и готовы к тёмной теме. Существующие `.card`,
 `.report-dialog`, `.action-menu-sheet` не ломаются и мигрируются постепенно.
 
+## Тёмная тема (J142)
+
+- Переключатель `#theme-toggle` в шапке; выбор хранится в
+  `localStorage['trudnik-theme']` (`light`/`dark`).
+- Пока выбора нет — тема следует `prefers-color-scheme`.
+- Ранний inline-script в `<head>` применяет сохранённую тему до отрисовки,
+  `meta[name=theme-color]` меняется вместе с темой.
+- Tailwind-палитры `white`, `neutral`, `primary` переведены на CSS-переменные
+  (`tailwind.config.js`); `[data-theme="dark"]` и media-query переопределяют
+  палитру. Статусные `red/green/amber/blue/purple/gray` имеют точечные
+  dark-overrides.
+- `scripts/axe_audit.mjs` проверяет **обе темы** (desktop/mobile, 5 страниц);
+  `scripts/e2e/critical_flows.sh` проверяет переключение и сохранение после reload.
+- Ограничение: тайлы Яндекс.Карт остаются светлыми — это сторонний слой,
+  стилизовать его под тему нельзя без отдельного API-решения.
+
 ## Миграция
 
 1. Новые элементы — только через `_ui_*`/`.ui-*`.

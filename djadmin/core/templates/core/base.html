@@ -11,7 +11,17 @@
     <meta name="apple-mobile-web-app-title" content="Трудник">
     <link rel="apple-touch-icon" href="{% static 'icons/icon-192x192.png' %}">
     <meta name="theme-color" content="#d97706">
-    <meta name="color-scheme" content="light">
+    <meta name="color-scheme" content="light dark">
+    <script nonce="{{ request.csp_nonce }}">
+    (function () {
+        try {
+            var theme = localStorage.getItem('trudnik-theme');
+            if (theme === 'dark' || theme === 'light') {
+                document.documentElement.setAttribute('data-theme', theme);
+            }
+        } catch (e) { /* private mode */ }
+    })();
+    </script>
     <meta name="description" content="{% block meta_description %}Платформа для поиска разовой подработки. Работодатели публикуют задания, исполнители откликаются и выполняют работу.{% endblock %}">
     <link rel="canonical" href="https://{{ request.get_host }}{{ request.path }}">
     <meta property="og:site_name" content="Трудник">
@@ -65,6 +75,10 @@
             {% endif %}
 
             <div class="flex items-center gap-2">
+                <button id="theme-toggle" type="button" class="w-10 h-10 flex items-center justify-center rounded-xl text-neutral-600 hover:bg-neutral-100 transition-colors" aria-label="Включить тёмную тему" aria-pressed="false" title="Включить тёмную тему">
+                    <svg data-theme-sun aria-hidden="true" class="h-5 w-5 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+                    <svg data-theme-moon aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                </button>
                 <a href="{% url 'core:search' %}" class="md:hidden w-10 h-10 flex items-center justify-center rounded-xl text-neutral-600 hover:bg-neutral-100" aria-label="Поиск по сайту">
                     <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 </a>
@@ -260,6 +274,7 @@
     </script>
     <script nonce="{{ request.csp_nonce }}" src="{% static 'js/install-prompt.js' %}" defer></script>
     <script nonce="{{ request.csp_nonce }}" src="{% static 'js/pwa-usage.js' %}" defer></script>
+    <script nonce="{{ request.csp_nonce }}" src="{% static 'js/theme.js' %}" defer></script>
     <script nonce="{{ request.csp_nonce }}">
     document.addEventListener('submit', function (event) {
       var form = event.target.closest('form[data-confirm]');

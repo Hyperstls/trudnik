@@ -140,6 +140,18 @@ async function anonymousView(browser, jobPath) {
   await context.close();
 }
 
+async function themeToggle(browser) {
+  const { context, page } = await newPage(browser);
+  await page.goto(BASE + "/jobs", { waitUntil: "domcontentloaded" });
+  await page.locator("#theme-toggle").click();
+  await page.waitForFunction(() => document.documentElement.dataset.theme === "dark");
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => document.documentElement.dataset.theme === "dark");
+  await page.locator("#theme-toggle").click();
+  await page.waitForFunction(() => document.documentElement.dataset.theme === "light");
+  await context.close();
+}
+
 async function apply(browser, jobPath) {
   const { context, page } = await login(browser, WORKER);
   await page.goto(BASE + jobPath, { waitUntil: "domcontentloaded" });
@@ -195,6 +207,12 @@ async function main() {
       return null;
     });
     if (email) ok("новый пользователь зарегистрирован и получает подтверждение email");
+
+    console.log("▶ Тема");
+    await themeToggle(browser).catch((error) => fail("theme", error));
+    if (!failures.some((f) => f.name === "theme")) {
+      ok("тёмная тема переключается и сохраняется после reload");
+    }
 
     console.log("▶ Задание");
     const jobPath = await createJob(browser).catch((error) => {
