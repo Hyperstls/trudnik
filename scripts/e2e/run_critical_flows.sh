@@ -21,6 +21,8 @@ export YANDEX_MAPS_API_KEY=""
 export YANDEX_GEOCODER_KEY=""
 export REDIS_URL=""
 export DJANGO_DEBUG=1
+# Playwright opens many pages/assets in <60s; keep the per-IP limiter out of E2E.
+export GLOBAL_RATE_LIMIT_PER_MIN=10000
 
 LOG="${TMPDIR:-/tmp}/trudnik-e2e-server.log"
 "$PY" djadmin/manage.py e2e_seed
