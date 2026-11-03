@@ -22,14 +22,14 @@
             </div>
             {% endfor %}
             <button type="submit" class="ui-btn ui-btn--primary">Отправить</button>
-            <p class="ui-field__hint">Отправляя форму, вы соглашаетесь с <a href="{% url 'core:privacy' %}" class="text-primary-600 hover:underline">политикой конфиденциальности</a>.</p>
+            <p class="ui-field__hint">Отправляя форму, вы соглашаетесь с <a href="{% url 'core:privacy' %}" class="text-primary-600 underline underline-offset-2 hover:text-primary-700">политикой конфиденциальности</a>.</p>
         </form>
     </div>
 
     <div class="ui-card p-5 mt-4">
         <h2 class="text-base font-bold text-neutral-800 mb-2">Можно и напрямую</h2>
-        <p class="text-sm text-neutral-600">Email: <a href="mailto:{{ support_email }}" class="text-primary-600 hover:underline">{{ support_email }}</a></p>
-        <p class="text-sm text-neutral-500 mt-2">Перед обращением, возможно, ответ уже есть в <a href="{% url 'core:faq' %}" class="text-primary-600 hover:underline">частых вопросах</a>.</p>
+        <p class="text-sm text-neutral-600">Email: <a href="mailto:{{ support_email }}" class="text-primary-600 underline underline-offset-2 hover:text-primary-700">{{ support_email }}</a></p>
+        <p class="text-sm text-neutral-500 mt-2">Перед обращением, возможно, ответ уже есть в <a href="{% url 'core:faq' %}" class="text-primary-600 underline underline-offset-2 hover:text-primary-700">частых вопросах</a>.</p>
     </div>
 </div>
 {% endblock %}
