@@ -105,6 +105,7 @@ npm run build:css
 ## Статус
 
 - Карта `/jobs`: сворачиваемая, ленивая, с превью и «Искать в этой области».
+- Репутация: [`docs/REPUTATION.md`](docs/REPUTATION.md) — роли, double-blind, критерии, модерация.
 - Локализация RU/EN: [`docs/LOCALIZATION.md`](docs/LOCALIZATION.md).
 - Полный `core`: **595 OK**, `pre_deploy_check` — 7/7.
 - Паритет auth/profile и jobs/applications: открытых пунктов нет (J026 — карта трудников n/a).
