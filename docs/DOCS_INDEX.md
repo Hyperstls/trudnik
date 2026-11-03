@@ -26,6 +26,7 @@
 | [RESTORE_DRILL.md](RESTORE_DRILL.md) | проверенное восстановление БД, safety-правила, prod-процедура |
 | [LAUNCH_CHECKLIST.md](LAUNCH_CHECKLIST.md) | preflight прода, почтовый DNS, бэкапы, юр. статус, алерты |
 | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) | токены, `_ui_*` partials, card/modal/sheet, миграция |
+| [CONTENT_EDITING.md](CONTENT_EDITING.md) | SitePage: HTML, live preview, редакции документов |
 | [rkn_notification_fill.md](rkn_notification_fill.md) | уведомление Роскомнадзора (152-ФЗ) |
 | [SECRETS_ROTATION_STATUS.md](SECRETS_ROTATION_STATUS.md) | статус утёкших в историю секретов |
 

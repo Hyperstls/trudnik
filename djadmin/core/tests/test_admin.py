@@ -73,6 +73,8 @@ class AdminAccessTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "/privacy")
         self.assertNotContains(response, 'name="slug"')
+        self.assertContains(response, 'id="sitepage-preview"')
+        self.assertContains(response, "admin-sitepage-preview.js")
 
     def test_dashboard_ok(self):
         self.client.force_login(self.admin)
