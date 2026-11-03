@@ -11,6 +11,7 @@
   отправки — client_message_id (частичный UNIQUE в БД).
 """
 import uuid as uuid_lib
+from pathlib import Path
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -22,6 +23,15 @@ from django.views.decorators.http import require_POST
 
 from .models import Application, Job, Message, Profile, Rating
 from .ratelimit import rate_limit_write
+from .storage import UploadError, delete_upload_url, save_upload
+
+ATTACHMENT_MIME = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".pdf": "application/pdf",
+}
 
 
 def _chat_app_or_none(request, app_id):
@@ -100,7 +110,10 @@ def chat_room(request, app_id):
         raise Http404("Чат не найден")
     messages_qs = list(
         Message.objects.filter(application=app).order_by("created_at", "id")
-        .values("id", "sender_id", "content", "created_at")
+        .values(
+            "id", "sender_id", "content", "created_at",
+            "attachment_url", "attachment_name", "attachment_mime", "attachment_size",
+        )
     )
     return render(request, "core/chat.html", {
         "app": app,
@@ -118,9 +131,24 @@ def chat_send(request, app_id):
     if app is None:
         raise Http404("Чат не найден")
     content = (request.POST.get("content") or "").strip()[:4000]
-    client_message_id = request.POST.get("client_message_id") or ""
-    if not content:
+    attachment = request.FILES.get("attachment")
+    if not content and not attachment:
         return redirect("core:chat_room", app_id=app.pk)
+
+    attachment_url = attachment_name = attachment_mime = None
+    attachment_size = None
+    if attachment is not None:
+        try:
+            attachment_url = save_upload(attachment, "chat", allow_pdf=True)
+        except UploadError as exc:
+            messages.error(request, str(exc))
+            return redirect("core:chat_room", app_id=app.pk)
+        saved_ext = Path(attachment_url).suffix.lower()
+        attachment_mime = ATTACHMENT_MIME.get(saved_ext, "application/octet-stream")
+        attachment_name = Path(attachment.name or "file").name[:255]
+        attachment_size = attachment.size
+
+    client_message_id = request.POST.get("client_message_id") or ""
     try:
         cmid = uuid_lib.UUID(client_message_id)
     except ValueError:
@@ -131,9 +159,14 @@ def chat_send(request, app_id):
             created = Message.objects.create(
                 sender=request.user, application=app,
                 content=content, client_message_id=cmid,
+                attachment_url=attachment_url,
+                attachment_name=attachment_name,
+                attachment_mime=attachment_mime,
+                attachment_size=attachment_size,
             )
     except IntegrityError:
-        pass  # повторная отправка того же клиентского сообщения — идемпотентно
+        if attachment_url:
+            delete_upload_url(attachment_url)
     if created is not None:
         from .consumers import notify_new_message
         from django.utils import timezone
@@ -141,6 +174,9 @@ def chat_send(request, app_id):
         notify_new_message(app.pk, {
             "id": created.pk, "sender_id": str(request.user.pk),
             "content": created.content, "created_at": timezone.now().isoformat(),
+            "attachment_url": created.attachment_url,
+            "attachment_name": created.attachment_name,
+            "attachment_mime": created.attachment_mime,
         })
     return redirect("core:chat_room", app_id=app.pk)
 
@@ -157,11 +193,18 @@ def chat_poll(request, app_id):
     rows = list(
         Message.objects.filter(application=app, id__gt=after)
         .order_by("id")
-        .values("id", "sender_id", "content", "created_at")
+        .values(
+            "id", "sender_id", "content", "created_at",
+            "attachment_url", "attachment_name", "attachment_mime", "attachment_size",
+        )
     )
     return JsonResponse({"messages": [
         {"id": r["id"], "sender_id": str(r["sender_id"]),
-         "content": r["content"], "created_at": r["created_at"].isoformat()}
+         "content": r["content"], "created_at": r["created_at"].isoformat(),
+         "attachment_url": r["attachment_url"],
+         "attachment_name": r["attachment_name"],
+         "attachment_mime": r["attachment_mime"],
+         "attachment_size": r["attachment_size"]}
         for r in rows
     ]})
 

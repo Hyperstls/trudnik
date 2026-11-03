@@ -2220,7 +2220,11 @@ CREATE TABLE public.messages (
     application_id uuid,
     content text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    client_message_id uuid
+    client_message_id uuid,
+    attachment_url text,
+    attachment_name text,
+    attachment_mime text,
+    attachment_size integer
 );
 
 

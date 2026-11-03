@@ -362,7 +362,11 @@ class Message(models.Model):
     id = models.BigAutoField(primary_key=True)  # IDENTITY BY DEFAULT
     sender = models.ForeignKey(Profile, verbose_name="отправитель", on_delete=models.CASCADE, related_name="+")
     application = models.ForeignKey(Application, verbose_name="отклик (чат)", on_delete=models.CASCADE, null=True, blank=True, related_name="messages")
-    content = models.TextField("текст")
+    content = models.TextField("текст", blank=True)
+    attachment_url = models.TextField("вложение", null=True, blank=True)
+    attachment_name = models.TextField("имя вложения", null=True, blank=True)
+    attachment_mime = models.TextField("MIME вложения", null=True, blank=True)
+    attachment_size = models.PositiveIntegerField("размер вложения", null=True, blank=True)
     client_message_id = models.UUIDField("идемпотентность (client)", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
 

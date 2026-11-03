@@ -19,7 +19,18 @@
             {% for m in day.list %}
             <div class="flex {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}justify-end{% endif %}">
                 <div class="max-w-[80%]">
-                    <span class="inline-block rounded-2xl px-3.5 py-2 text-sm {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}bg-primary-600 text-white{% else %}bg-neutral-100 text-neutral-800{% endif %}">{{ m.content }}</span>
+                    {% if m.attachment_url %}
+                    {% if m.attachment_mime|slice:":6" == "image/" %}
+                    <a href="{{ m.attachment_url }}" target="_blank" rel="noopener noreferrer" class="block mb-1">
+                        <img src="{{ m.attachment_url }}" alt="{{ m.attachment_name|default:'Вложение' }}" loading="lazy" class="rounded-xl max-h-64 w-auto border border-neutral-200">
+                    </a>
+                    {% else %}
+                    <a href="{{ m.attachment_url }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-primary-700 hover:bg-neutral-50 mb-1">
+                        {% include "core/_ui_icon.html" with name="plus" class_name="h-4 w-4" %} {{ m.attachment_name|default:"Файл" }}
+                    </a>
+                    {% endif %}
+                    {% endif %}
+                    {% if m.content %}<span class="inline-block rounded-2xl px-3.5 py-2 text-sm {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}bg-primary-600 text-white{% else %}bg-neutral-100 text-neutral-800{% endif %}">{{ m.content }}</span>{% endif %}
                     <p class="text-[10px] text-neutral-400 mt-0.5 {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}text-right{% endif %}">{{ m.created_at|date:"d.m H:i" }}</p>
                 </div>
             </div>
@@ -35,11 +46,15 @@
             </div>
             {% endif %}
         </div>
-        <form method="post" action="{% url 'core:chat_send' app.pk %}" class="border-t border-neutral-100 p-3 flex gap-2">
+        <form method="post" action="{% url 'core:chat_send' app.pk %}" enctype="multipart/form-data" class="border-t border-neutral-100 p-3 flex gap-2 items-center">
             {% csrf_token %}
             <input type="hidden" name="client_message_id" value="{{ client_message_id }}">
-            <input type="text" name="content" maxlength="4000" required class="flex-1 border border-neutral-200 rounded-xl px-3 py-2.5 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="Сообщение…">
-            <button class="px-5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">Отправить</button>
+            <label class="w-10 h-10 shrink-0 inline-flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-500 hover:bg-neutral-50 cursor-pointer" title="Прикрепить файл" aria-label="Прикрепить файл">
+                <input type="file" name="attachment" accept="image/jpeg,image/png,image/webp,application/pdf" class="sr-only">
+                <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            </label>
+            <input type="text" name="content" maxlength="4000" class="flex-1 border border-neutral-200 rounded-xl px-3 py-2.5 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="Сообщение…" aria-label="Сообщение">
+            <button class="px-5 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">Отправить</button>
         </form>
         <p id="chat-send-status" class="px-3 pb-2 text-xs text-neutral-500" role="status" aria-live="polite"></p>
     </div>
@@ -69,11 +84,32 @@
     if (empty) empty.remove();
     var wrap = document.createElement('div');
     wrap.className = 'flex' + (mine ? ' justify-end' : '');
-    var bubble = document.createElement('span');
-    bubble.className = 'inline-block rounded-2xl px-3.5 py-2 text-sm ' +
-      (mine ? 'bg-primary-600 text-white' : 'bg-neutral-100 text-neutral-800');
-    bubble.textContent = m.content;
-    wrap.appendChild(bubble);
+    if (m.attachment_url) {
+      var link = document.createElement('a');
+      link.href = m.attachment_url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      if ((m.attachment_mime || '').indexOf('image/') === 0) {
+        link.className = 'block mb-1';
+        var img = document.createElement('img');
+        img.src = m.attachment_url;
+        img.alt = m.attachment_name || 'Вложение';
+        img.loading = 'lazy';
+        img.className = 'rounded-xl max-h-64 w-auto border border-neutral-200';
+        link.appendChild(img);
+      } else {
+        link.className = 'inline-flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-primary-700 hover:bg-neutral-50 mb-1';
+        link.textContent = '📎 ' + (m.attachment_name || 'Файл');
+      }
+      wrap.appendChild(link);
+    }
+    if (m.content) {
+      var bubble = document.createElement('span');
+      bubble.className = 'inline-block rounded-2xl px-3.5 py-2 text-sm ' +
+        (mine ? 'bg-primary-600 text-white' : 'bg-neutral-100 text-neutral-800');
+      bubble.textContent = m.content;
+      wrap.appendChild(bubble);
+    }
     log.appendChild(wrap);
     log.scrollTop = log.scrollHeight;
   }
@@ -187,6 +223,11 @@
 
   if (form) {
     form.addEventListener('submit', function (ev) {
+      var fileInput = form.querySelector('input[type="file"]');
+      if (fileInput && fileInput.files.length) {
+        setStatus('Отправляем файл…');
+        return; // native multipart POST: files are not queued offline
+      }
       ev.preventDefault();
       var content = input.value.trim();
       if (!content) return;

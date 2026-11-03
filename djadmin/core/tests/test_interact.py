@@ -1,11 +1,13 @@
 """Фаза 2г: оценки (RPC + триггер пересчёта) и чат (доступ, идемпотентность, poll)."""
 from datetime import timedelta
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from core.models import Application, Job, Message, Profile, Rating
+from core.storage import delete_upload_url
 from core.tests.test_auth import make_profile
 from core.tests.test_flows import make_job
 import uuid
@@ -165,6 +167,38 @@ class ChatTests(TestCase):
         data2 = self.client.get(reverse("core:chat_poll", args=[self.app.pk]),
                                 {"after": data["messages"][0]["id"]}).json()
         self.assertEqual(data2["messages"], [])
+
+    def test_send_attachment_and_render(self):
+        self.client.force_login(self.worker)
+        png = b"\x89PNG\r\n\x1a\n" + b"0" * 32
+        upload = SimpleUploadedFile("photo.png", png, content_type="image/png")
+        self.client.post(
+            reverse("core:chat_send", args=[self.app.pk]),
+            {"content": "", "client_message_id": str(uuid.uuid4()), "attachment": upload},
+        )
+        msg = Message.objects.get(application=self.app)
+        try:
+            self.assertEqual(msg.attachment_name, "photo.png")
+            self.assertEqual(msg.attachment_mime, "image/png")
+            self.assertTrue(msg.attachment_url.startswith("/uploads/chat/"))
+            self.assertEqual(msg.content, "")
+            response = self.client.get(reverse("core:chat_room", args=[self.app.pk]))
+            self.assertContains(response, msg.attachment_url)
+            poll = self.client.get(
+                reverse("core:chat_poll", args=[self.app.pk]), {"after": 0}
+            ).json()
+            self.assertEqual(poll["messages"][0]["attachment_url"], msg.attachment_url)
+        finally:
+            delete_upload_url(msg.attachment_url)
+
+    def test_invalid_attachment_is_rejected(self):
+        self.client.force_login(self.worker)
+        upload = SimpleUploadedFile("notes.txt", b"not an image", content_type="text/plain")
+        self.client.post(
+            reverse("core:chat_send", args=[self.app.pk]),
+            {"content": "", "client_message_id": str(uuid.uuid4()), "attachment": upload},
+        )
+        self.assertEqual(Message.objects.filter(application=self.app).count(), 0)
 
     def test_send_idempotent_by_client_message_id(self):
         self.client.force_login(self.worker)
