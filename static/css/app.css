@@ -1606,6 +1606,12 @@ progress::-moz-progress-bar {
 .jobs-map-block.is-fullscreen .jobs-map-note {
     display: none;
 }
+.jobs-map-block.is-fullscreen .jobs-map-icon-expand {
+    display: none;
+}
+.jobs-map-block.is-fullscreen .jobs-map-icon-compress {
+    display: inline;
+}
 body.jobs-map-lock {
     overflow: hidden;
 }
