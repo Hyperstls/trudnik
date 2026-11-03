@@ -16,6 +16,7 @@ from pathlib import Path
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -23,6 +24,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .models import Application, Job, Message, Profile, Rating
+from .notifications import enqueue_notification
 from .ratelimit import rate_limit_write
 from .storage import UploadError, delete_upload_url, save_upload
 
@@ -124,17 +126,26 @@ def chat_room(request, app_id):
     if read_ids:
         from .consumers import notify_read_receipts
         notify_read_receipts(app.pk, read_ids)
+    search_query = (request.GET.get("q") or "").strip()[:100]
+    base_messages = Message.objects.filter(application=app).order_by("created_at", "id")
+    last_id = base_messages.order_by("-id").values_list("id", flat=True).first() or 0
+    if search_query:
+        base_messages = base_messages.filter(
+            Q(content__icontains=search_query) | Q(attachment_name__icontains=search_query)
+        )
     messages_qs = list(
-        Message.objects.filter(application=app).order_by("created_at", "id")
-        .values(
+        base_messages.values(
             "id", "sender_id", "content", "created_at",
             "attachment_url", "attachment_name", "attachment_mime", "attachment_size",
             "read_at", "edited_at", "deleted_at",
         )
     )
+    prefs = dict(request.user.notification_prefs or {})
     return render(request, "core/chat.html", {
         "app": app,
         "chat_messages": messages_qs,
+        "search_query": search_query,
+        "is_muted": str(app.pk) in (prefs.get("muted_chats") or []),
         "client_message_id": str(uuid_lib.uuid4()),
         "last_id": messages_qs[-1]["id"] if messages_qs else 0,
     })
@@ -195,6 +206,49 @@ def chat_send(request, app_id):
             "attachment_name": created.attachment_name,
             "attachment_mime": created.attachment_mime,
         })
+        if app.status == Application.Status.ACCEPTED:
+            recipient_id = (
+                app.job.employer_id if request.user.pk == app.worker_id else app.worker_id
+            )
+            recipient_prefs = (
+                Profile.objects.filter(pk=recipient_id)
+                .values_list("notification_prefs", flat=True).first() or {}
+            )
+            if str(app.pk) not in (recipient_prefs.get("muted_chats") or []):
+                preview = content or ("Вложение" if attachment_url else "Новое сообщение")
+                enqueue_notification(
+                    recipient_id,
+                    "new_message",
+                    "Новое сообщение",
+                    preview[:200],
+                    {
+                        "application_id": str(app.pk),
+                        "link": request.build_absolute_uri(
+                            reverse("core:chat_room", args=[app.pk])
+                        ),
+                    },
+                )
+    return redirect("core:chat_room", app_id=app.pk)
+
+
+@login_required
+@require_POST
+@rate_limit_write(limit=20, window=60)
+def chat_mute(request, app_id):
+    app = _chat_app_or_none(request, app_id)
+    if app is None:
+        raise Http404("Чат не найден")
+    prefs = dict(request.user.notification_prefs or {})
+    muted = list(prefs.get("muted_chats") or [])
+    key = str(app.pk)
+    if key in muted:
+        muted.remove(key)
+        messages.success(request, "Уведомления по этому чату включены.")
+    else:
+        muted.append(key)
+        messages.info(request, "Уведомления по этому чату отключены.")
+    prefs["muted_chats"] = muted
+    Profile.objects.filter(pk=request.user.pk).update(notification_prefs=prefs)
     return redirect("core:chat_room", app_id=app.pk)
 
 

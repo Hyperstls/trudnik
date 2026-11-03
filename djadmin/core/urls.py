@@ -61,6 +61,7 @@ urlpatterns = [
     path("chat/<uuid:app_id>/message/<int:message_id>/edit", views_interact.chat_edit_message, name="chat_edit_message"),
     path("chat/<uuid:app_id>/message/<int:message_id>/delete", views_interact.chat_delete_message, name="chat_delete_message"),
     path("chat/<uuid:app_id>/read", views_interact.chat_mark_read, name="chat_mark_read"),
+    path("chat/<uuid:app_id>/mute", views_interact.chat_mute, name="chat_mute"),
     path("api/messages/<uuid:app_id>/poll", views_interact.chat_poll, name="chat_poll"),
     path("api/chats/unread-count", views_interact.chats_unread_count, name="chats_unread_count"),
     path("rate/<uuid:app_id>", views_interact.rate_participant, name="rate_participant"),

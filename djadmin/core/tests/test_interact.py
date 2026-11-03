@@ -1,5 +1,6 @@
 """Фаза 2г: оценки (RPC + триггер пересчёта) и чат (доступ, идемпотентность, poll)."""
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
@@ -351,6 +352,37 @@ class ChatTests(TestCase):
         self.assertContains(response, 'id="chat-send-status"')
         self.assertContains(response, "trudnik-chat-queue-v1")
         self.assertContains(response, "navigator.onLine")
+
+    def test_chat_search_filters_messages(self):
+        Message.objects.create(sender=self.worker, application=self.app, content="alpha")
+        Message.objects.create(sender=self.worker, application=self.app, content="beta")
+        self.client.force_login(self.employer)
+        response = self.client.get(reverse("core:chat_room", args=[self.app.pk]), {"q": "alpha"})
+        self.assertContains(response, "alpha")
+        self.assertNotContains(response, ">beta<")
+        self.assertEqual(response.context["search_query"], "alpha")
+
+    def test_chat_mute_toggles_preferences(self):
+        self.client.force_login(self.employer)
+        response = self.client.post(reverse("core:chat_mute", args=[self.app.pk]))
+        self.assertEqual(response.status_code, 302)
+        self.employer.refresh_from_db()
+        self.assertIn(str(self.app.pk), self.employer.notification_prefs["muted_chats"])
+        response = self.client.get(reverse("core:chat_room", args=[self.app.pk]))
+        self.assertContains(response, "Уведомления выключены")
+
+    @patch("core.views_interact.enqueue_notification")
+    def test_muted_chat_does_not_create_notification(self, enqueue):
+        self.client.force_login(self.worker)
+        self.client.post(reverse("core:chat_send", args=[self.app.pk]),
+                         {"content": "first", "client_message_id": str(uuid.uuid4())})
+        self.assertEqual(enqueue.call_count, 1)
+        self.client.force_login(self.employer)
+        self.client.post(reverse("core:chat_mute", args=[self.app.pk]))
+        self.client.force_login(self.worker)
+        self.client.post(reverse("core:chat_send", args=[self.app.pk]),
+                         {"content": "second", "client_message_id": str(uuid.uuid4())})
+        self.assertEqual(enqueue.call_count, 1)
 
     def test_empty_message_ignored(self):
         self.client.force_login(self.worker)
