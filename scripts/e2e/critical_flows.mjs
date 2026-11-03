@@ -195,6 +195,17 @@ async function workerSeesChat(browser, chatPath) {
   await context.close();
 }
 
+async function workerMarksComplete(browser) {
+  const { context, page } = await login(browser, WORKER);
+  await page.goto(BASE + "/my-applications?tab=sent", { waitUntil: "domcontentloaded" });
+  const row = page.locator("article").filter({ hasText: JOB_TITLE }).first();
+  await row.getByRole("button", { name: "Я выполнил" }).click();
+  await page.waitForURL(/tab=sent/, { timeout: 20000 });
+  await page.locator("article").filter({ hasText: JOB_TITLE }).first()
+    .getByText("Выполнено", { exact: true }).waitFor({ timeout: 20000 });
+  await context.close();
+}
+
 async function main() {
   const browser = await chromium.launch({ headless: true });
   try {
@@ -243,6 +254,12 @@ async function main() {
         console.log("▶ Чат у трудника");
         await workerSeesChat(browser, chatPath).catch((error) => fail("worker chat", error));
         if (!failures.some((f) => f.name === "worker chat")) ok("трудник видит сообщение в чате");
+
+        console.log("▶ Подтверждение выполнения");
+        await workerMarksComplete(browser).catch((error) => fail("worker complete", error));
+        if (!failures.some((f) => f.name === "worker complete")) {
+          ok("трудник отметил выполнение");
+        }
       }
     }
 

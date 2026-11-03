@@ -1692,6 +1692,55 @@ END;
 $$;
 
 
+--
+-- Name: worker_confirm_completion(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.worker_confirm_completion(p_application_id uuid, p_user_id uuid) RETURNS jsonb
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+DECLARE
+    v_worker_id uuid;
+    v_status text;
+    v_job_id uuid;
+    v_completed_at timestamp with time zone;
+BEGIN
+    SELECT worker_id, status, job_id, worker_completed_at
+      INTO v_worker_id, v_status, v_job_id, v_completed_at
+      FROM public.applications
+     WHERE id = p_application_id
+     FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Отклик не найден', 'code', 'not_found');
+    END IF;
+
+    IF v_worker_id <> p_user_id THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Это не ваш отклик', 'code', 'not_worker');
+    END IF;
+
+    IF v_status <> 'accepted' THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Отклик не принят', 'code', 'invalid_status');
+    END IF;
+
+    IF v_completed_at IS NULL THEN
+        UPDATE public.applications
+           SET worker_completed_at = now(),
+               updated_at = now()
+         WHERE id = p_application_id;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'message', 'Выполнение отмечено',
+        'job_id', v_job_id,
+        'worker_completed_at', COALESCE(v_completed_at, now())
+    );
+END;
+$$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -1738,6 +1787,7 @@ CREATE TABLE public.applications (
     contact_payment_id uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now(),
+    worker_completed_at timestamp with time zone,
     CONSTRAINT applications_status_check CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'accepted'::character varying, 'rejected'::character varying, 'withdrawn'::character varying, 'cancelled'::character varying])::text[])))
 );
 
