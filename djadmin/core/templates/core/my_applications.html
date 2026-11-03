@@ -60,11 +60,11 @@
                 <p class="text-sm text-neutral-500 mt-0.5">{{ a.job.organization_name }} · {{ a.job.date_time|date:"d.m.Y H:i" }}</p>
                 {% endif %}
                 <p class="text-sm mt-1">
-                    {% if a.status == 'pending' %}<span class="text-xs bg-neutral-100 text-neutral-600 rounded-full px-2.5 py-0.5 font-medium">Ожидает</span>
-                    {% elif a.status == 'accepted' %}<span class="text-xs bg-green-50 text-green-700 border border-green-200 rounded-full px-2.5 py-0.5 font-medium">Принят</span>
-                    {% elif a.status == 'rejected' %}<span class="text-xs bg-red-50 text-red-700 border border-red-200 rounded-full px-2.5 py-0.5 font-medium">Отклонён</span>
-                    {% elif a.status == 'withdrawn' %}<span class="text-xs bg-neutral-100 text-neutral-500 rounded-full px-2.5 py-0.5 font-medium">Отозван</span>
-                    {% else %}<span class="text-xs bg-neutral-100 text-neutral-600 rounded-full px-2.5 py-0.5 font-medium">{{ a.get_status_display }}</span>{% endif %}
+                    {% if a.status == 'pending' %}{% include "core/_ui_badge.html" with label="Ожидает" variant="neutral" %}
+                    {% elif a.status == 'accepted' %}{% include "core/_ui_badge.html" with label="Принят" variant="success" %}
+                    {% elif a.status == 'rejected' %}{% include "core/_ui_badge.html" with label="Отклонён" variant="danger" %}
+                    {% elif a.status == 'withdrawn' %}{% include "core/_ui_badge.html" with label="Отозван" variant="neutral" %}
+                    {% else %}{% include "core/_ui_badge.html" with label=a.get_status_display variant="neutral" %}{% endif %}
                 </p>
                 {% if tab == 'received' %}
                 <p class="text-sm text-neutral-600 mt-1">{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline text-warning" %} {{ a.worker.rating|default:0|floatformat:1 }} ({{ a.worker.total_reviews|default:0 }}){% if a.worker.desired_payment %} · от {{ a.worker.desired_payment }} ₽{% endif %}</p>

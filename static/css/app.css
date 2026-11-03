@@ -37,14 +37,33 @@
 }
 
 :root {
-    /* Semantic design tokens (J106). Values mirror the existing Tailwind palette. */
-    --ui-color-primary: #d97706;
-    --ui-color-primary-hover: #b45309;
+    /* Semantic design tokens (J106/J139). Values mirror the Tailwind palette. */
+    --ui-color-primary: #b45309;
+    --ui-color-primary-hover: #92400e;
+    --ui-color-primary-soft: #fef3c7;
+    --ui-color-text-strong: #171717;
     --ui-color-text: #262626;
     --ui-color-muted: #737373;
     --ui-color-border: #e5e5e5;
     --ui-color-surface: #ffffff;
+    --ui-color-surface-muted: #f5f5f5;
     --ui-color-bg: #fafafa;
+    --ui-color-success: #047857;
+    --ui-color-success-bg: #f0fdf4;
+    --ui-color-success-border: #a7f3d0;
+    --ui-color-warning: #92400e;
+    --ui-color-warning-bg: #fef3c7;
+    --ui-color-warning-border: #fde68a;
+    --ui-color-danger: #b91c1c;
+    --ui-color-danger-bg: #fef2f2;
+    --ui-color-danger-border: #fecaca;
+    --ui-color-info: #1d4ed8;
+    --ui-color-info-bg: #eff6ff;
+    --ui-color-info-border: #bfdbfe;
+    --ui-control-sm: 2.25rem;
+    --ui-control-md: 2.5rem;
+    --ui-control-lg: 2.75rem;
+    --ui-focus-ring: 0 0 0 3px rgba(180, 83, 9, 0.25);
     --ui-radius-control: 0.75rem;
     --ui-radius-card: 1rem;
     --ui-radius-sheet: 1.25rem;
@@ -149,6 +168,194 @@ h3 {
 .hover-lift:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+}
+
+/* ============================= */
+/* Design system components (J139) */
+/* Tokens above; partials in      */
+/* templates/core/_ui_*.html      */
+/* ============================= */
+.ui-card {
+    background: var(--ui-color-surface);
+    border: 1px solid var(--ui-color-border);
+    border-radius: var(--ui-radius-card);
+    box-shadow: var(--ui-shadow-card);
+    transition: box-shadow var(--ui-duration-base) var(--ui-ease-standard);
+}
+.ui-card:hover {
+    box-shadow: var(--ui-shadow-elevated);
+}
+
+.ui-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: var(--ui-control-md);
+    padding: 0 1.25rem;
+    border: 1px solid transparent;
+    border-radius: var(--ui-radius-control);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+        background-color var(--ui-duration-fast) var(--ui-ease-standard),
+        border-color var(--ui-duration-fast) var(--ui-ease-standard),
+        color var(--ui-duration-fast) var(--ui-ease-standard),
+        box-shadow var(--ui-duration-fast) var(--ui-ease-standard);
+}
+.ui-btn:focus-visible {
+    outline: 2px solid var(--ui-color-primary);
+    outline-offset: 2px;
+}
+.ui-btn:disabled,
+.ui-btn[aria-disabled="true"] {
+    opacity: 0.55;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+.ui-btn--primary {
+    background: var(--ui-color-primary);
+    color: #ffffff;
+    box-shadow: var(--ui-shadow-card);
+}
+.ui-btn--primary:hover {
+    background: var(--ui-color-primary-hover);
+}
+.ui-btn--secondary {
+    background: var(--ui-color-surface);
+    border-color: var(--ui-color-border);
+    color: var(--ui-color-text);
+}
+.ui-btn--secondary:hover {
+    background: var(--ui-color-surface-muted);
+}
+.ui-btn--danger {
+    background: var(--ui-color-danger);
+    color: #ffffff;
+}
+.ui-btn--danger:hover {
+    background: #991b1b;
+}
+.ui-btn--ghost {
+    background: transparent;
+    color: var(--ui-color-muted);
+}
+.ui-btn--ghost:hover {
+    background: var(--ui-color-surface-muted);
+    color: var(--ui-color-text);
+}
+.ui-btn--sm {
+    height: var(--ui-control-sm);
+    padding: 0 0.875rem;
+    font-size: 0.8125rem;
+}
+.ui-btn--lg {
+    height: var(--ui-control-lg);
+    padding: 0 1.5rem;
+    font-size: 0.9375rem;
+}
+.ui-btn--block {
+    width: 100%;
+}
+.ui-btn__icon {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+}
+
+.ui-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.625rem;
+    border: 1px solid transparent;
+    border-radius: var(--ui-radius-pill);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    white-space: nowrap;
+}
+.ui-badge--neutral {
+    background: var(--ui-color-surface-muted);
+    color: var(--ui-color-muted);
+}
+.ui-badge--primary {
+    background: var(--ui-color-primary-soft);
+    border-color: var(--ui-color-warning-border);
+    color: var(--ui-color-warning);
+}
+.ui-badge--success {
+    background: var(--ui-color-success-bg);
+    border-color: var(--ui-color-success-border);
+    color: var(--ui-color-success);
+}
+.ui-badge--warning {
+    background: var(--ui-color-warning-bg);
+    border-color: var(--ui-color-warning-border);
+    color: var(--ui-color-warning);
+}
+.ui-badge--danger {
+    background: var(--ui-color-danger-bg);
+    border-color: var(--ui-color-danger-border);
+    color: var(--ui-color-danger);
+}
+.ui-badge--info {
+    background: var(--ui-color-info-bg);
+    border-color: var(--ui-color-info-border);
+    color: var(--ui-color-info);
+}
+
+.ui-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+.ui-field__label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--ui-color-text);
+}
+.ui-field__required {
+    color: var(--ui-color-danger);
+}
+.ui-field__hint {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: var(--ui-color-muted);
+}
+.ui-field__error {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: var(--ui-color-danger);
+}
+.ui-field .form-input,
+.ui-field input,
+.ui-field textarea,
+.ui-field select {
+    width: 100%;
+}
+
+.ui-modal {
+    width: min(28rem, calc(100vw - 2rem));
+    padding: 0;
+    border: 1px solid var(--ui-color-border);
+    border-radius: var(--ui-radius-card);
+    background: var(--ui-color-surface);
+    box-shadow: var(--ui-shadow-popover);
+}
+.ui-modal::backdrop {
+    background: rgba(0, 0, 0, 0.45);
+}
+.ui-sheet {
+    width: 100%;
+    padding: 1rem;
+    border-radius: var(--ui-radius-sheet) var(--ui-radius-sheet) 0 0;
+    background: var(--ui-color-surface);
+    box-shadow: var(--ui-shadow-popover);
 }
 
 /* ============================= */

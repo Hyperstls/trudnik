@@ -119,7 +119,7 @@
         {% if skills %}
         <div class="flex flex-wrap gap-1.5 mb-4">
             {% for s in skills %}
-            <span class="text-xs bg-primary-50 text-primary-700 border border-primary-100 rounded-full px-2.5 py-0.5 font-medium">{{ s }}</span>
+            {% include "core/_ui_badge.html" with label=s variant="primary" %}
             {% endfor %}
         </div>
         {% endif %}
