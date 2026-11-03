@@ -23,9 +23,22 @@
 
   <div class="module" style="margin-top:1rem">
     <table style="width:100%">
+      <caption style="text-align:left;font-weight:bold;padding:.5rem 0">Активность и база</caption>
+      <tr><th>Активны сегодня (DAU)</th><td><strong>{{ activity.dau }}</strong></td></tr>
+      <tr><th>Активны за 7 дней (WAU)</th><td><strong>{{ activity.wau }}</strong></td></tr>
+      <tr><th>Активны за 30 дней (MAU)</th><td><strong>{{ activity.mau }}</strong></td></tr>
+      <tr><th>Всего пользователей</th><td><strong>{{ activity.total_users }}</strong></td></tr>
+      <tr><th>Новые за 30 дней</th><td><strong>{{ activity.new_users }}</strong></td></tr>
+    </table>
+  </div>
+
+  <div class="module" style="margin-top:1rem">
+    <table style="width:100%">
       <caption style="text-align:left;font-weight:bold;padding:.5rem 0">По дням</caption>
       <tr>
         <th>Дата</th>
+        <th>Регистрации</th>
+        <th>Активные</th>
         <th>Просмотры</th>
         <th>Отклики</th>
         <th>Задания</th>
@@ -36,6 +49,8 @@
       {% for row in rows %}
       <tr>
         <td>{{ row.date|date:"d.m.Y" }}</td>
+        <td>{{ row.signups }}</td>
+        <td>{{ row.active }}</td>
         <td>{{ row.job_view }}</td>
         <td>{{ row.application_sent }}</td>
         <td>{{ row.job_created }}</td>
@@ -45,6 +60,55 @@
       </tr>
       {% endfor %}
     </table>
+  </div>
+
+  <div class="module" style="margin-top:1rem;overflow-x:auto">
+    <table style="width:100%;white-space:nowrap">
+      <caption style="text-align:left;font-weight:bold;padding:.5rem 0">Удержание по когортам регистрации, % (неделя 0 — неделя регистрации)</caption>
+      <tr>
+        <th>Когорта</th>
+        <th>Размер</th>
+        {% for week in cohorts.0.weeks %}<th>Н{{ week.week }}</th>{% endfor %}
+      </tr>
+      {% for cohort in cohorts %}
+      <tr>
+        <td><strong>{{ cohort.label }}</strong></td>
+        <td>{{ cohort.size }}</td>
+        {% for cell in cohort.weeks %}
+        <td>{% if cell.pct is None %}—{% else %}{{ cell.pct }}%{% endif %}</td>
+        {% endfor %}
+      </tr>
+      {% empty %}
+      <tr><td colspan="10">Пока нет данных о регистрациях.</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <div class="module" style="margin-top:1rem;overflow-x:auto">
+    <table style="width:100%;white-space:nowrap">
+      <caption style="text-align:left;font-weight:bold;padding:.5rem 0">Источники регистраций за 90 дней (UTM first-touch)</caption>
+      <tr>
+        <th>Источник</th>
+        <th>Канал</th>
+        <th>Кампания</th>
+        <th>Регистрации</th>
+        <th>С действием</th>
+        <th>Активация</th>
+      </tr>
+      {% for row in acquisition %}
+      <tr>
+        <td>{{ row.source }}</td>
+        <td>{{ row.medium }}</td>
+        <td>{{ row.campaign }}</td>
+        <td>{{ row.users }}</td>
+        <td>{{ row.activated }}</td>
+        <td><strong>{{ row.pct }}%</strong></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6">Пока нет регистраций с метками.</td></tr>
+      {% endfor %}
+    </table>
+    <p class="help" style="margin:.5rem 0 0">«С действием» — пользователь создал задание или отправил отклик.</p>
   </div>
 </div>
 {% endblock %}

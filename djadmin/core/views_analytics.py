@@ -8,6 +8,10 @@ from django.shortcuts import render
 from django.views.decorators.http import require_POST
 
 from .analytics import EVENTS, incr, incr_job_view, series
+from .growth import (
+    acquisition_breakdown, activity_series, activity_summary, retention_matrix,
+    signup_series,
+)
 from .models import Job
 from .ratelimit import RateLimitExceeded, RateLimitUnavailable, enforce_ip_limit
 
@@ -26,9 +30,13 @@ def render_dashboard(request, site=None):
     return_rate = (
         round(totals["app_return"] / app_opens * 100, 1) if app_opens else 0
     )
+    signups = signup_series(days)
+    active_daily = activity_series(days)
     rows = [
         {
             "date": day,
+            "signups": signups.get(day, 0),
+            "active": active_daily.get(day, 0),
             **{event: dict(data[event]).get(day, 0) for event in EVENTS},
         }
         for day, _ in data["job_view"]
@@ -41,6 +49,9 @@ def render_dashboard(request, site=None):
         rows=rows,
         conversion=conversion,
         return_rate=return_rate,
+        activity=activity_summary(),
+        cohorts=retention_matrix(months=6, weeks=8),
+        acquisition=acquisition_breakdown(days=90),
     )
     return render(request, "admin/analytics.html", context)
 

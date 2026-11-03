@@ -93,6 +93,7 @@ class Profile(AbstractBaseUser):
     email_public = models.EmailField("публичный email", max_length=320, default="", blank=True)
     contact = models.CharField("контакт", max_length=300, null=True, blank=True)
     notification_prefs = models.JSONField("настройки уведомлений", default=dict, blank=True)
+    acquisition = models.JSONField("источник привлечения", default=dict, blank=True)
     email = models.EmailField("email (логин)", max_length=320, unique=True, null=True, blank=True)
     # bcrypt $2b$/$2a$; колонка БД — password_hash (формат совместим с Flask/pgcrypto)
     password = models.CharField(max_length=255, db_column="password_hash")

@@ -1,7 +1,7 @@
 # Migration ledger — P1-13 / DB-default P1-10
 
-**Дата:** 2026-10-31
-**Статус:** dev и production приведены к **65/65**; прод RUNNING, `/health` 200,
+**Дата:** 2026-11-03
+**Статус:** dev и production приведены к **71/71** (150 + 151–156); прод RUNNING, `/health` 200,
 `/privacy`, `/terms`, `/safety` — 200. Флаги `MIGRATIONS_ENABLED` и
 `MIGRATIONS_RECONCILE` на проде — **false**.
 

@@ -148,6 +148,9 @@ def register(request):
                 "portfolio_link": form.cleaned_data.get("portfolio_link") or "",
                 "consented_at": timezone.now(),
             }
+            attribution = request.session.pop("attribution", None)
+            if isinstance(attribution, dict) and attribution:
+                profile_fields["acquisition"] = attribution
             skills = []
             if role == Profile.Role.WORKER:
                 profile_fields.update(

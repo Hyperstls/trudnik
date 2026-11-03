@@ -2358,6 +2358,7 @@ CREATE TABLE public.profiles (
     messenger_user_id text,
     verified_at timestamp with time zone,
     worker_visibility boolean DEFAULT true NOT NULL,
+    acquisition jsonb DEFAULT '{}'::jsonb NOT NULL,
     CONSTRAINT profiles_age_check CHECK (((age IS NULL) OR ((age >= 14) AND (age <= 120)))),
     CONSTRAINT profiles_email_check CHECK ((email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'::text)),
     CONSTRAINT profiles_inn_check CHECK (((inn IS NULL) OR (inn = ''::text) OR (inn ~ '^\d{10,12}$'::text))),
@@ -2519,6 +2520,16 @@ CREATE TABLE public.tariff_settings (
     renewal_price integer,
     is_active boolean DEFAULT true,
     updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: user_activity; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_activity (
+    user_id uuid NOT NULL,
+    day date NOT NULL
 );
 
 
@@ -3008,6 +3019,14 @@ ALTER TABLE ONLY public.user_reports
 
 
 --
+-- Name: user_activity user_activity_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_activity
+    ADD CONSTRAINT user_activity_pkey PRIMARY KEY (user_id, day);
+
+
+--
 -- Name: user_reports user_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3458,6 +3477,13 @@ CREATE INDEX idx_user_skills_skill_id ON public.user_skills USING btree (skill_i
 
 
 --
+-- Name: user_activity_day_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX user_activity_day_idx ON public.user_activity USING btree (day);
+
+
+--
 -- Name: applications trg_applications_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -3791,6 +3817,14 @@ ALTER TABLE ONLY public.user_skills
 
 ALTER TABLE ONLY public.user_skills
     ADD CONSTRAINT fk_user_skills_user_id FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_activity user_activity_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_activity
+    ADD CONSTRAINT user_activity_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
 
 
 --

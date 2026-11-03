@@ -184,3 +184,44 @@ class GlobalIpRateLimitMiddleware:
         except Exception:
             pass  # fail-open
         return self.get_response(request)
+
+
+class AttributionMiddleware:
+    """Запоминает first-touch UTM-метки в сессии (J157).
+
+    Ставится сразу после SessionMiddleware. Метки попадают в
+    ``profiles.acquisition`` при регистрации; повторные заходы их не
+    перезаписывают.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from core.growth import capture_first_touch
+
+        if not request.session.get("attribution"):
+            attribution = capture_first_touch(request)
+            if attribution:
+                request.session["attribution"] = attribution
+        return self.get_response(request)
+
+
+class ActivityMiddleware:
+    """Пишет одну строку активности пользователя в день (J157).
+
+    Ставится после AuthenticationMiddleware. Дедупликация — в кэше, поэтому
+    БД трогается не чаще одного раза на пользователя в сутки.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        user = getattr(request, "user", None)
+        if user is not None and user.is_authenticated:
+            from core.growth import record_activity
+
+            record_activity(user.pk)
+        return response
