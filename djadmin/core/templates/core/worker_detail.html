@@ -40,8 +40,39 @@
         </div>
         {% endif %}
 
+        {% if p.portfolio_link %}
+        <div class="mb-4">
+            <a href="{{ p.portfolio_link }}" target="_blank" rel="noopener noreferrer nofollow" class="ui-btn ui-btn--secondary ui-btn--sm">Портфолио ↗</a>
+        </div>
+        {% endif %}
+
         {% if p.bio %}<section class="mb-4"><h2 class="text-sm font-semibold text-neutral-600 mb-1.5">О себе</h2><p class="text-sm text-neutral-700 whitespace-pre-line leading-relaxed">{{ p.bio }}</p></section>{% endif %}
         {% if p.experience %}<section class="mb-4"><h2 class="text-sm font-semibold text-neutral-600 mb-1.5">Опыт</h2><p class="text-sm text-neutral-700 whitespace-pre-line leading-relaxed">{{ p.experience }}</p></section>{% endif %}
+
+        <section class="mb-4">
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <h2 class="text-sm font-semibold text-neutral-600">Отзывы</h2>
+                <a href="{% url 'core:user_ratings' p.id %}" class="text-xs text-primary-600 hover:text-primary-700 underline underline-offset-2">Все отзывы ({{ p.total_reviews|default:0 }})</a>
+            </div>
+            {% if ratings %}
+            <div class="space-y-2">
+                {% for r in ratings %}
+                <article class="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <a href="{% url 'core:worker_detail' r.rater_user.pk %}" class="text-sm font-medium text-neutral-800 hover:text-primary-700">{{ r.rater_user.full_name }}</a>
+                        <span class="inline-flex items-center gap-0.5" aria-label="Оценка {{ r.rating }} из 5">
+                            {% for i in "12345" %}{% if forloop.counter0 < r.rating %}{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 text-warning" %}{% else %}{% include "core/_ui_icon.html" with name="star-outline" class_name="h-3.5 w-3.5 text-neutral-300" %}{% endif %}{% endfor %}
+                        </span>
+                    </div>
+                    {% if r.comment %}<p class="text-sm text-neutral-600 mt-1">{{ r.comment }}</p>{% endif %}
+                    <p class="text-xs text-neutral-400 mt-1">{{ r.created_at|date:"d.m.Y" }}{% if r.job %} · {{ r.job.work_type|default:"Задание" }}{% endif %}</p>
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-sm text-neutral-500">Отзывов пока нет.</p>
+            {% endif %}
+        </section>
 
         <p class="text-sm text-neutral-500 mb-4">Контакты открываются после отклика на задание.</p>
 
@@ -55,6 +86,7 @@
                         {% for j in my_open_jobs %}<option value="{{ j.id }}">{{ j.work_type|default:"Задание" }} · {{ j.date_time|date:"d.m" }}</option>{% endfor %}
                     </select>
                 </label>
+                <textarea name="message" maxlength="500" rows="2" placeholder="Сообщение к приглашению (необязательно)" class="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent"></textarea>
                 <button class="px-4 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm">Пригласить</button>
             </form>
             {% endif %}

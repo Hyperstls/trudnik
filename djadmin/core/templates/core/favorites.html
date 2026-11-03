@@ -99,6 +99,7 @@
                         <select name="job_id" required class="px-2 h-8 rounded-lg border border-neutral-200 bg-white text-xs">
                             {% for job in my_open_jobs %}<option value="{{ job.pk }}">{{ job.work_type|default:"Задание" }}{% if job.date_time %} · {{ job.date_time|date:"d.m" }}{% endif %}</option>{% endfor %}
                         </select>
+                        <input type="text" name="message" maxlength="500" placeholder="Сообщение (необязательно)" class="w-full px-2 h-8 rounded-lg border border-neutral-200 bg-white text-xs">
                         <button class="action-icon-btn accept-btn"><span class="text-xs font-medium">Пригласить</span></button>
                     </form>
                     {% else %}

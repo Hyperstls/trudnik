@@ -30,6 +30,13 @@
             {% if user.role == 'employer' %}Работодатель{% elif user.role == 'admin' %}Администратор{% else %}Исполнитель{% endif %}
         </span>
         <p class="text-sm text-neutral-500 mt-2">{{ user.email }}</p>
+        <p class="mt-1 text-xs">
+            {% if user.role == 'employer' %}
+            <a href="{% url 'core:employer_detail' user.pk %}" class="text-primary-600 hover:text-primary-700 underline underline-offset-2">Как меня видят на странице работодателя</a>
+            {% else %}
+            <a href="{% url 'core:worker_detail' user.pk %}" class="text-primary-600 hover:text-primary-700 underline underline-offset-2">Как меня видят в каталоге трудников</a>
+            {% endif %}
+        </p>
     </div>
 
     {% if messages %}{% for message in messages %}

@@ -118,6 +118,7 @@
                                         {% for j in my_open_jobs %}<option value="{{ j.pk }}">{{ j.work_type|default:"Задание" }} · {{ j.date_time|date:"d.m" }}</option>{% endfor %}
                                     </select>
                                 </label>
+                                <textarea name="message" maxlength="500" rows="2" placeholder="Сообщение (необязательно)" class="w-full border border-neutral-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"></textarea>
                                 <button type="submit" class="w-full h-8 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold">Отправить</button>
                             </form>
                             {% else %}

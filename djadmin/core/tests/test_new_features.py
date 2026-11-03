@@ -5,8 +5,9 @@ from django.template.loader import render_to_string
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
-from core.models import EmployerDetail, Profile
+from core.models import EmployerDetail, Rating, Profile
 from core.tests.test_auth import make_profile
+from core.tests.test_flows import make_job
 from core.tokens import generate_email_change_token
 
 
@@ -80,6 +81,37 @@ class EmployerCardTests(TestCase):
         response = self.client.get(reverse("core:employer_detail", args=[employer.pk]))
         self.assertContains(response, "Приход Святого Николая")
         self.assertContains(response, "ул. Тверская, 7")
+
+
+class WorkerProfileExtrasTests(TestCase):
+    def test_portfolio_and_reviews_are_visible(self):
+        employer = make_profile("review-employer@example.com", role="employer")
+        worker = make_profile(
+            "review-worker@example.com", role="worker",
+            full_name="Иван Портфолио", portfolio_link="https://example.com/portfolio",
+        )
+        job = make_job(employer, work_type="Оценённая работа")
+        Rating.objects.create(
+            rated_user=worker, rater_user=employer, job=job,
+            rating_type="worker", target_type="worker", rating=5,
+            comment="Отличная работа",
+        )
+        response = self.client.get(reverse("core:worker_detail", args=[worker.pk]))
+        self.assertContains(response, "https://example.com/portfolio")
+        self.assertContains(response, "Отличная работа")
+        self.assertContains(response, "Все отзывы")
+
+    def test_invitation_message_is_saved(self):
+        employer = make_profile("message-employer@example.com", role="employer")
+        worker = make_profile("message-worker@example.com", role="worker")
+        job = make_job(employer, work_type="Приглашение с сообщением")
+        self.client.force_login(employer)
+        self.client.post(reverse("core:invite_worker", args=[worker.pk]), {
+            "job_id": str(job.pk),
+            "message": "Здравствуйте, есть опыт?",
+        })
+        invitation = worker.invitations_received.get(job=job)
+        self.assertEqual(invitation.message, "Здравствуйте, есть опыт?")
 
 
 class SupportTests(TestCase):

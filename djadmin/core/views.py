@@ -681,6 +681,10 @@ def worker_detail(request, user_id):
         .values_list("skill__name", flat=True)
     )
     context = {"p": profile, "skills": skills}
+    context["ratings"] = list(
+        Rating.objects.filter(rated_user_id=profile["id"], target_type="worker")
+        .select_related("rater_user", "job").order_by("-created_at")[:3]
+    )
     if request.user.is_authenticated and profile["id"] != request.user.pk:
         context["my_open_jobs"] = list(
             Job.objects.filter(employer=request.user, status=Job.Status.OPEN)
