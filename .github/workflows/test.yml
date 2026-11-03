@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, main-jango]
+    branches: [main, main-jango, feat/agent-pipeline]
   pull_request:
     branches: [main]
 
