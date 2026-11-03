@@ -28,6 +28,7 @@
 | [SMTP_DNS_SETUP.md](SMTP_DNS_SETUP.md) | Yandex SMTP: быстрый вариант и SPF/DKIM/DMARC для домена |
 | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) | токены, `_ui_*` partials, card/modal/sheet, миграция |
 | [CONTENT_EDITING.md](CONTENT_EDITING.md) | SitePage: HTML, live preview, редакции документов |
+| [FEATURE_GAPS_2026-11.md](FEATURE_GAPS_2026-11.md) | аудит недостающих функций/страниц (free, без монетизации) |
 | [rkn_notification_fill.md](rkn_notification_fill.md) | уведомление Роскомнадзора (152-ФЗ) |
 | [SECRETS_ROTATION_STATUS.md](SECRETS_ROTATION_STATUS.md) | статус утёкших в историю секретов |
 
