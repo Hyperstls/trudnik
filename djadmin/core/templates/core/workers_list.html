@@ -76,9 +76,16 @@
                     <h3 class="font-semibold text-neutral-900 truncate">
                         <a href="{% url 'core:worker_detail' w.pk %}" class="hover:text-primary-700 transition-colors">{{ w.full_name }}</a>
                     </h3>
-                    <div class="flex flex-wrap gap-1 mt-1">
+                    <div class="flex flex-wrap items-center gap-1 mt-1">
                         {% if w.pk in reliable_worker_ids %}<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Надёжный</span>{% endif %}
-                        {% if w.pk in invited_worker_ids %}<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary-50 text-primary-700 border border-primary-100">Приглашён</span>{% endif %}
+                        {% if w.pk in invited_worker_ids %}{% include "core/_ui_badge.html" with label="Приглашён" variant="primary" %}{% endif %}
+                        {% if w.pk in pending_invited_worker_ids %}
+                        <form method="post" action="{% url 'core:worker_invitations_revoke' w.pk %}" class="inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="text-xs text-red-600 hover:underline" data-confirm="Отозвать все приглашения этому труднику?">Отозвать</button>
+                        </form>
+                        {% endif %}
                     </div>
                     <div class="flex items-center gap-0.5 mt-0.5">
                         {% for i in "12345" %}{% if forloop.counter0 < w.rating|default:0 %}{% include "core/_ui_icon.html" with name="star" class_name="h-3 w-3 text-warning" %}{% else %}{% include "core/_ui_icon.html" with name="star-outline" class_name="h-3 w-3 text-neutral-300" %}{% endif %}{% endfor %}

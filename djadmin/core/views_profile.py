@@ -151,14 +151,17 @@ def favorites_page(request):
         .order_by("-created_at")[:20]
     )
     invited_worker_ids = set()
+    pending_invited_worker_ids = set()
     worker_ids = [f.target_id for f in worker_favs]
     if worker_ids:
-        invited_worker_ids = set(
-            Invitation.objects.filter(
-                employer=request.user, worker_id__in=worker_ids,
-                status__in=(Invitation.Status.PENDING, Invitation.Status.ACCEPTED),
-            ).values_list("worker_id", flat=True)
-        )
+        rows = Invitation.objects.filter(
+            employer=request.user, worker_id__in=worker_ids,
+            status__in=(Invitation.Status.PENDING, Invitation.Status.ACCEPTED),
+        ).values_list("worker_id", "status")
+        invited_worker_ids = {worker_id for worker_id, _status in rows}
+        pending_invited_worker_ids = {
+            worker_id for worker_id, status in rows if status == Invitation.Status.PENDING
+        }
     return render(request, "core/favorites.html", {
         "tab": tab,
         "job_favs": job_favs,
@@ -170,6 +173,7 @@ def favorites_page(request):
         "total_count": len(job_favs) + len(worker_favs) + len(employer_favs),
         "my_open_jobs": my_open_jobs,
         "invited_worker_ids": invited_worker_ids,
+        "pending_invited_worker_ids": pending_invited_worker_ids,
     })
 
 
@@ -232,6 +236,29 @@ def invite_worker(request, user_id):
 
 @login_required
 @require_POST
+@rate_limit_write(limit=20, window=60, redirect_to="/workers")
+def worker_invitations_revoke(request, user_id):
+    """Revoke all pending invitations from the current employer to one worker."""
+    invitations = Invitation.objects.filter(
+        employer=request.user, worker_id=user_id, status=Invitation.Status.PENDING,
+    )
+    count = invitations.count()
+    if count:
+        invitations.delete()
+        messages.success(
+            request,
+            "Приглашение отозвано." if count == 1 else "Отозвано приглашений: %d." % count,
+        )
+    else:
+        messages.info(request, "Активных приглашений этому труднику нет.")
+    next_url = (request.POST.get("next") or "").strip()
+    if next_url.startswith("/") and not next_url.startswith("//"):
+        return redirect(next_url)
+    return redirect("core:workers")
+
+
+@login_required
+@require_POST
 @rate_limit_write(limit=20, window=60, redirect_to="/invitations")
 def invitation_revoke(request, invitation_id):
     invitation = Invitation.objects.filter(
@@ -242,6 +269,9 @@ def invitation_revoke(request, invitation_id):
     else:
         invitation.delete()
         messages.success(request, "Приглашение отозвано.")
+    next_url = (request.POST.get("next") or "").strip()
+    if next_url.startswith("/") and not next_url.startswith("//"):
+        return redirect(next_url)
     return redirect("core:invitations")
 
 

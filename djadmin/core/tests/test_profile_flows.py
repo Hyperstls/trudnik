@@ -177,7 +177,9 @@ class PeopleRelationsTests(TestCase):
 class InvitationTests(TestCase):
     def setUp(self):
         self.employer = make_profile("inv-emp@example.com")
-        self.worker = make_profile("inv-worker@example.com", role="worker")
+        self.worker = make_profile(
+            "inv-worker@example.com", role="worker", full_name="ZZZ Invite Worker",
+        )
         self.job = make_job(self.employer, work_type="Пригласительная работа")
 
     def _invite(self):
@@ -222,6 +224,44 @@ class InvitationTests(TestCase):
         self.client.force_login(make_profile("revoke-stranger@example.com"))
         self.client.post(reverse("core:invitation_revoke", args=[inv.pk]))
         self.assertTrue(Invitation.objects.filter(pk=inv.pk).exists())
+
+    def test_employer_bulk_revokes_pending_for_worker(self):
+        self._invite()
+        second_job = make_job(self.employer, work_type="Второе приглашение")
+        Invitation.objects.create(job=second_job, employer=self.employer, worker=self.worker)
+        response = self.client.post(
+            reverse("core:worker_invitations_revoke", args=[self.worker.pk]),
+            {"next": "/workers"},
+        )
+        self.assertRedirects(response, "/workers")
+        self.assertFalse(
+            Invitation.objects.filter(
+                employer=self.employer, worker=self.worker,
+                status=Invitation.Status.PENDING,
+            ).exists()
+        )
+
+    def test_bulk_revoke_keeps_accepted_invitation(self):
+        self._invite()
+        inv = Invitation.objects.get(job=self.job, worker=self.worker)
+        inv.status = Invitation.Status.ACCEPTED
+        inv.save(update_fields=["status"])
+        self.client.post(reverse("core:worker_invitations_revoke", args=[self.worker.pk]))
+        self.assertTrue(Invitation.objects.filter(pk=inv.pk).exists())
+
+    def test_workers_page_shows_revoke_action_for_pending(self):
+        self._invite()
+        response = self.client.get(reverse("core:workers") + "?q=ZZZ")
+        self.assertContains(
+            response, reverse("core:worker_invitations_revoke", args=[self.worker.pk])
+        )
+
+    def test_worker_detail_lists_pending_invitation_with_revoke(self):
+        self._invite()
+        inv = Invitation.objects.get(job=self.job, worker=self.worker)
+        response = self.client.get(reverse("core:worker_detail", args=[self.worker.pk]))
+        self.assertContains(response, "Отправленные приглашения")
+        self.assertContains(response, reverse("core:invitation_revoke", args=[inv.pk]))
 
     def test_accept_via_rpc_creates_application(self):
         self._invite()

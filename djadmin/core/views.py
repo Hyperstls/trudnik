@@ -610,6 +610,7 @@ def workers_list(request):
     worker_ids = [w.pk for w in page.object_list]
     reliable_worker_ids = set()
     invited_worker_ids = set()
+    pending_invited_worker_ids = set()
     favorite_worker_ids = set()
     my_open_jobs = []
     if request.user.is_authenticated:
@@ -634,13 +635,15 @@ def workers_list(request):
             if accepted.get(wid, 0) >= 10 and rejected.get(wid, 0) == 0
         }
         if request.user.is_authenticated:
-            invited_worker_ids = set(
-                Invitation.objects.filter(
-                    employer=request.user,
-                    worker_id__in=worker_ids,
-                    status__in=("pending", "accepted"),
-                ).values_list("worker_id", flat=True)
-            )
+            invitation_rows = Invitation.objects.filter(
+                employer=request.user,
+                worker_id__in=worker_ids,
+                status__in=("pending", "accepted"),
+            ).values_list("worker_id", "status")
+            invited_worker_ids = {wid for wid, _status in invitation_rows}
+            pending_invited_worker_ids = {
+                wid for wid, status in invitation_rows if status == "pending"
+            }
     active_filter_count = sum(bool(value) for value in (
         q, skill_ids, rating_min, payment_from, payment_to,
         request.GET.get("sort") not in (None, "", "rating"),
@@ -656,6 +659,7 @@ def workers_list(request):
         "sort": sort,
         "reliable_worker_ids": reliable_worker_ids,
         "invited_worker_ids": invited_worker_ids,
+        "pending_invited_worker_ids": pending_invited_worker_ids,
         "favorite_worker_ids": favorite_worker_ids,
         "my_open_jobs": my_open_jobs,
     })
@@ -685,6 +689,12 @@ def worker_detail(request, user_id):
         context["is_fav_person"] = Favorite.objects.filter(
             user=request.user, target_id=profile["id"]
         ).exists()
+        context["pending_invitations"] = list(
+            Invitation.objects.filter(
+                employer=request.user, worker_id=profile["id"],
+                status=Invitation.Status.PENDING,
+            ).select_related("job").order_by("-created_at")
+        )
     return render(request, "core/worker_detail.html", context)
 
 
