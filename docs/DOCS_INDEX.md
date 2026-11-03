@@ -2,7 +2,7 @@
 
 **Дата:** 2026-11-01
 **Текущий стек:** Django 5.2, Python 3.12, PostgreSQL/PostGIS, Celery/Redis, Channels, Tailwind, Amvera.
-**Прод:** трудник.рф; полный `core` — 451 OK, `pre_deploy_check` — 7/7.
+**Прод:** трудник.рф; полный `core` — 495 OK, `pre_deploy_check` — 7/7.
 
 ## 1. Актуальные документы (источник истины)
 
@@ -22,6 +22,7 @@
 | [UX_ROADMAP_2026Q4.md](UX_ROADMAP_2026Q4.md) | приоритеты: черновик/степпер, дизайн-система, сохранённые поиски, CWV/axe |
 | [APP_RELEASE.md](APP_RELEASE.md) | APK/TWA: сборка, подпись, assetlinks, страница установки |
 | [E2E_TESTING.md](E2E_TESTING.md) | Playwright: регистрация → задание → отклик → принятие → чат |
+| [MONITORING.md](MONITORING.md) | `/health`, uptime-workflow, алерты, деплой-порядок, staging/restore |
 | [rkn_notification_fill.md](rkn_notification_fill.md) | уведомление Роскомнадзора (152-ФЗ) |
 | [SECRETS_ROTATION_STATUS.md](SECRETS_ROTATION_STATUS.md) | статус утёкших в историю секретов |
 
