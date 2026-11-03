@@ -1,6 +1,6 @@
 """Формы пользовательских флоу (фаза 2а)."""
 from django import forms
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext, gettext_lazy as _
 from django.utils import timezone
 
 from .models import Job, JobSkill, Skill
@@ -18,11 +18,11 @@ JOB_FIELDS = (
 class JobForm(forms.ModelForm):
     skills = forms.ModelMultipleChoiceField(
         queryset=Skill.objects.order_by("sort_order", "name"),
-        widget=forms.CheckboxSelectMultiple, required=False, label="Навыки",
+        widget=forms.CheckboxSelectMultiple, required=False, label=_("Навыки"),
     )
     is_remote = forms.BooleanField(
-        label="Удалённая работа", required=False,
-        help_text="Можно выполнять из любого города; адрес и карта необязательны.",
+        label=_("Удалённая работа"), required=False,
+        help_text=_("Можно выполнять из любого города; адрес и карта необязательны."),
     )
 
     class Meta:
@@ -66,20 +66,20 @@ class JobForm(forms.ModelForm):
         if len(organization_name) > 255:
             self.add_error(
                 "organization_name",
-                "Название слишком длинное (максимум 255 символов).",
+                gettext("Название слишком длинное (максимум 255 символов)."),
             )
         detailed_description = cleaned.get("detailed_description") or ""
         if len(detailed_description) > 5000:
             self.add_error(
                 "detailed_description",
-                "Описание слишком длинное (максимум 5000 символов).",
+                gettext("Описание слишком длинное (максимум 5000 символов)."),
             )
         lat = cleaned.get("lat")
         if lat is not None and not -90 <= lat <= 90:
-            self.add_error("lat", "Некорректная широта (должна быть от -90 до 90)")
+            self.add_error("lat", gettext("Некорректная широта (должна быть от -90 до 90)"))
         lng = cleaned.get("lng")
         if lng is not None and not -180 <= lng <= 180:
-            self.add_error("lng", "Некорректная долгота (должна быть от -180 до 180)")
+            self.add_error("lng", gettext("Некорректная долгота (должна быть от -180 до 180)"))
 
         found = find_stop_words(
             cleaned.get("organization_name"), cleaned.get("detailed_description")
@@ -87,8 +87,10 @@ class JobForm(forms.ModelForm):
         if found:
             self.add_error(
                 "detailed_description",
-                "Обнаружены слова, характерные для трудовых отношений: %s. "
-                "Пожалуйста, опишите разовую услугу." % ", ".join(found),
+                gettext(
+                    "Обнаружены слова, характерные для трудовых отношений: %s. "
+                    "Пожалуйста, опишите разовую услугу."
+                ) % ", ".join(found),
             )
 
         error = validate_payment(cleaned.get("payment_amount"))

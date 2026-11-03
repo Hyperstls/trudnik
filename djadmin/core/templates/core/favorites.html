@@ -1,15 +1,20 @@
 {% extends "core/base.html" %}
 {% load core_extras %}
-{% block title %}Избранное — Трудник{% endblock %}
+{% load i18n %}
+{% block title %}{% translate "Избранное — Трудник" %}{% endblock %}
 {% block content %}
+{% translate "Задание" as default_job_label %}
+{% translate "Частное лицо" as default_private_person_label %}
+{% translate "Трудник" as default_worker_label %}
+{% translate "Работодатель" as default_employer_label %}
 <div class="px-0 py-4 fade-in">
-    <h2 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-4">Избранное</h2>
+    <h2 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-4">{% translate "Избранное" %}</h2>
 
-    <div class="flex flex-wrap gap-2 mb-4" role="tablist" aria-label="Разделы избранного">
-        <a href="?tab=all" role="tab" aria-selected="{% if tab == 'all' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if tab == 'all' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Все · {{ total_count }}</a>
-        <a href="?tab=jobs" role="tab" aria-selected="{% if tab == 'jobs' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if tab == 'jobs' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Задания · {{ jobs_count }}</a>
-        <a href="?tab=workers" role="tab" aria-selected="{% if tab == 'workers' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if tab == 'workers' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Трудники · {{ workers_count }}</a>
-        <a href="?tab=employers" role="tab" aria-selected="{% if tab == 'employers' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if tab == 'employers' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Работодатели · {{ employers_count }}</a>
+    <div class="flex flex-wrap gap-2 mb-4" role="tablist" aria-label="{% translate 'Разделы избранного' %}">
+        <a href="?tab=all" role="tab" aria-selected="{% if tab == 'all' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if tab == 'all' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">{% translate "Все" %} · {{ total_count }}</a>
+        <a href="?tab=jobs" role="tab" aria-selected="{% if tab == 'jobs' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if tab == 'jobs' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">{% translate "Задания" %} · {{ jobs_count }}</a>
+        <a href="?tab=workers" role="tab" aria-selected="{% if tab == 'workers' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if tab == 'workers' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">{% translate "Трудники" %} · {{ workers_count }}</a>
+        <a href="?tab=employers" role="tab" aria-selected="{% if tab == 'employers' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium transition-all {% if tab == 'employers' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">{% translate "Работодатели" %} · {{ employers_count }}</a>
     </div>
 
     {% if total_count == 0 %}
@@ -17,12 +22,12 @@
         <div class="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
             <svg aria-hidden="true" class="h-8 w-8 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         </div>
-        <p class="text-neutral-600 text-lg font-medium">В избранном пока пусто</p>
-        <p class="text-sm text-neutral-500 mt-1">Сохраняйте задания, трудников и работодателей, чтобы быстро возвращаться к ним.</p>
+        <p class="text-neutral-600 text-lg font-medium">{% translate "В избранном пока пусто" %}</p>
+        <p class="text-sm text-neutral-500 mt-1">{% translate "Сохраняйте задания, трудников и работодателей, чтобы быстро возвращаться к ним." %}</p>
         <div class="mt-5 flex flex-wrap justify-center gap-2">
-            <a href="{% url 'core:jobs' %}" class="px-4 h-10 inline-flex items-center rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold shadow-sm">Найти задание</a>
-            <a href="{% url 'core:workers' %}" class="px-4 h-10 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">Найти трудника</a>
-            <a href="{% url 'core:employers' %}" class="px-4 h-10 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">Работодатели</a>
+            <a href="{% url 'core:jobs' %}" class="px-4 h-10 inline-flex items-center rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold shadow-sm">{% translate "Найти задание" %}</a>
+            <a href="{% url 'core:workers' %}" class="px-4 h-10 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">{% translate "Найти трудника" %}</a>
+            <a href="{% url 'core:employers' %}" class="px-4 h-10 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">{% translate "Работодатели" %}</a>
         </div>
     </div>
     {% else %}
@@ -30,24 +35,24 @@
     {% if job_favs %}
     <section class="mb-6">
         <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-            <h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide">Задания</h3>
-            <button type="submit" form="favorites-jobs-bulk" class="px-3 h-8 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs font-medium">Удалить выбранные</button>
+            <h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide">{% translate "Задания" %}</h3>
+            <button type="submit" form="favorites-jobs-bulk" class="px-3 h-8 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs font-medium">{% translate "Удалить выбранные" %}</button>
         </div>
         <form id="favorites-jobs-bulk" method="post" action="{% url 'core:favorites_bulk_delete' %}">{% csrf_token %}<input type="hidden" name="kind" value="jobs"></form>
         <div class="grid gap-3">
             {% for f in job_favs %}
             <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 flex flex-wrap items-start justify-between gap-3">
-                <input type="checkbox" name="ids" value="{{ f.job.pk }}" form="favorites-jobs-bulk" class="mt-1 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 shrink-0" aria-label="Выбрать задание {{ f.job.work_type|default:f.job.pk }}">
+                <input type="checkbox" name="ids" value="{{ f.job.pk }}" form="favorites-jobs-bulk" class="mt-1 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 shrink-0" aria-label="{% translate 'Выбрать задание' %} {{ f.job.work_type|default:f.job.pk }}">
                 <div class="min-w-0 flex-1">
-                    <a href="{% url 'core:job_detail' f.job.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ f.job.work_type|default:"Задание" }}</a>
-                    <p class="text-sm text-neutral-500 mt-0.5">{{ f.job.organization_name|default:"Частное лицо" }}{% if f.job.city %} · {{ f.job.city }}{% endif %} · {{ f.job.date_time|date:"d.m.Y H:i" }}</p>
+                    <a href="{% url 'core:job_detail' f.job.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ f.job.work_type|default:default_job_label }}</a>
+                    <p class="text-sm text-neutral-500 mt-0.5">{{ f.job.organization_name|default:default_private_person_label }}{% if f.job.city %} · {{ f.job.city }}{% endif %} · {{ f.job.date_time|date:"d.m.Y H:i" }}</p>
                     <div class="flex flex-wrap items-center gap-2 mt-1">
                         <span class="text-xs text-neutral-500">{{ f.job.get_status_display }}</span>
                         {% if f.job.payment_amount %}<span class="text-sm font-semibold text-primary-600">{{ f.job.payment_amount }} ₽</span>{% endif %}
                     </div>
                 </div>
                 <form method="post" action="{% url 'core:job_favorite_toggle' f.job.pk %}">{% csrf_token %}
-                    <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Убрать</span></button>
+                    <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">{% translate "Убрать" %}</span></button>
                 </form>
             </article>
             {% endfor %}
@@ -60,50 +65,50 @@
     {% if worker_favs %}
     <section class="mb-6">
         <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-            <h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide">Трудники</h3>
-            <button type="submit" form="favorites-workers-bulk" class="px-3 h-8 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs font-medium">Удалить выбранные</button>
+            <h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide">{% translate "Трудники" %}</h3>
+            <button type="submit" form="favorites-workers-bulk" class="px-3 h-8 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs font-medium">{% translate "Удалить выбранные" %}</button>
         </div>
         <form id="favorites-workers-bulk" method="post" action="{% url 'core:favorites_bulk_delete' %}">{% csrf_token %}<input type="hidden" name="kind" value="worker"></form>
         <div class="grid gap-3">
             {% for f in worker_favs %}
             <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4">
                 <div class="flex flex-wrap items-start gap-3">
-                    <input type="checkbox" name="ids" value="{{ f.target.pk }}" form="favorites-workers-bulk" class="mt-1 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 shrink-0" aria-label="Выбрать трудника {{ f.target.full_name }}">
+                    <input type="checkbox" name="ids" value="{{ f.target.pk }}" form="favorites-workers-bulk" class="mt-1 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 shrink-0" aria-label="{% translate 'Выбрать трудника' %} {{ f.target.full_name }}">
                     {% if f.target.avatar_url or f.target.photo_url %}
                     <img src="{{ f.target.avatar_url|default:f.target.photo_url|absurl }}" alt="{{ f.target.full_name }}" loading="lazy" class="w-12 h-12 rounded-full object-cover border border-neutral-200 shrink-0">
                     {% else %}
                     <div class="w-12 h-12 rounded-full bg-primary-50 border border-neutral-200 flex items-center justify-center text-primary-600 font-semibold shrink-0">{{ f.target.full_name|slice:":1" }}</div>
                     {% endif %}
                     <div class="min-w-0 flex-1">
-                        <a href="{% url 'core:worker_detail' f.target.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ f.target.full_name|default:"Трудник" }}</a>
+                        <a href="{% url 'core:worker_detail' f.target.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ f.target.full_name|default:default_worker_label }}</a>
                         <p class="text-sm text-neutral-500 mt-0.5">{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline text-warning" %} {{ f.target.rating|default:0|floatformat:1 }} ({{ f.target.total_reviews|default:0 }}){% if f.target.city %} · {{ f.target.city }}{% endif %}</p>
-                        {% if f.target.desired_payment %}<p class="text-sm text-primary-600 font-medium mt-0.5">от {{ f.target.desired_payment }} ₽</p>{% endif %}
+                        {% if f.target.desired_payment %}<p class="text-sm text-primary-600 font-medium mt-0.5">{% translate "от" %} {{ f.target.desired_payment }} ₽</p>{% endif %}
                     </div>
                     <form method="post" action="{% url 'core:people_favorite_toggle' f.target.pk %}">{% csrf_token %}
                         <input type="hidden" name="as" value="worker">
-                        <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Убрать</span></button>
+                        <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">{% translate "Убрать" %}</span></button>
                     </form>
                 </div>
                 <div class="mt-3 pt-3 border-t border-neutral-100">
                     {% if f.target.pk in invited_worker_ids %}
-                    <span class="inline-flex items-center gap-0.5 px-3 h-8 rounded-lg bg-green-50 border border-green-200 text-green-700 text-xs font-medium">{% include "core/_ui_icon.html" with name="check" class_name="h-3 w-3" %} Уже приглашён</span>
+                    <span class="inline-flex items-center gap-0.5 px-3 h-8 rounded-lg bg-green-50 border border-green-200 text-green-700 text-xs font-medium">{% include "core/_ui_icon.html" with name="check" class_name="h-3 w-3" %} {% translate "Уже приглашён" %}</span>
                     {% if f.target.pk in pending_invited_worker_ids %}
                     <form method="post" action="{% url 'core:worker_invitations_revoke' f.target.pk %}" class="inline">
                         {% csrf_token %}
                         <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                        <button type="submit" class="text-xs text-red-600 hover:underline" data-confirm="Отозвать все приглашения этому труднику?">Отозвать</button>
+                        <button type="submit" class="text-xs text-red-600 hover:underline" data-confirm="{% translate 'Отозвать все приглашения этому труднику?' %}">{% translate "Отозвать" %}</button>
                     </form>
                     {% endif %}
                     {% elif my_open_jobs %}
                     <form method="post" action="{% url 'core:invite_worker' f.target.pk %}" class="flex flex-wrap items-center gap-2">{% csrf_token %}
                         <select name="job_id" required class="px-2 h-8 rounded-lg border border-neutral-200 bg-white text-xs">
-                            {% for job in my_open_jobs %}<option value="{{ job.pk }}">{{ job.work_type|default:"Задание" }}{% if job.date_time %} · {{ job.date_time|date:"d.m" }}{% endif %}</option>{% endfor %}
+                            {% for job in my_open_jobs %}<option value="{{ job.pk }}">{{ job.work_type|default:default_job_label }}{% if job.date_time %} · {{ job.date_time|date:"d.m" }}{% endif %}</option>{% endfor %}
                         </select>
-                        <input type="text" name="message" maxlength="500" placeholder="Сообщение (необязательно)" class="w-full px-2 h-8 rounded-lg border border-neutral-200 bg-white text-xs">
-                        <button class="action-icon-btn accept-btn"><span class="text-xs font-medium">Пригласить</span></button>
+                        <input type="text" name="message" maxlength="500" placeholder="{% translate 'Сообщение (необязательно)' %}" class="w-full px-2 h-8 rounded-lg border border-neutral-200 bg-white text-xs">
+                        <button class="action-icon-btn accept-btn"><span class="text-xs font-medium">{% translate "Пригласить" %}</span></button>
                     </form>
                     {% else %}
-                    <a href="{% url 'core:job_create' %}" class="text-xs text-primary-600 hover:text-primary-700 underline underline-offset-2">Создайте задание, чтобы пригласить трудника</a>
+                    <a href="{% url 'core:job_create' %}" class="text-xs text-primary-600 hover:text-primary-700 underline underline-offset-2">{% translate "Создайте задание, чтобы пригласить трудника" %}</a>
                     {% endif %}
                 </div>
             </article>
@@ -117,22 +122,22 @@
     {% if employer_favs %}
     <section>
         <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-            <h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide">Работодатели</h3>
-            <button type="submit" form="favorites-employers-bulk" class="px-3 h-8 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs font-medium">Удалить выбранные</button>
+            <h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide">{% translate "Работодатели" %}</h3>
+            <button type="submit" form="favorites-employers-bulk" class="px-3 h-8 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs font-medium">{% translate "Удалить выбранные" %}</button>
         </div>
         <form id="favorites-employers-bulk" method="post" action="{% url 'core:favorites_bulk_delete' %}">{% csrf_token %}<input type="hidden" name="kind" value="employer"></form>
         <div class="grid gap-3">
             {% for f in employer_favs %}
             <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 flex flex-wrap items-start justify-between gap-3">
-                <input type="checkbox" name="ids" value="{{ f.target.pk }}" form="favorites-employers-bulk" class="mt-1 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 shrink-0" aria-label="Выбрать работодателя {{ f.target.full_name }}">
+                <input type="checkbox" name="ids" value="{{ f.target.pk }}" form="favorites-employers-bulk" class="mt-1 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 shrink-0" aria-label="{% translate 'Выбрать работодателя' %} {{ f.target.full_name }}">
                 <div class="min-w-0 flex-1">
-                    <a href="{% url 'core:employer_detail' f.target.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ f.target.full_name|default:"Работодатель" }}</a>
+                    <a href="{% url 'core:employer_detail' f.target.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ f.target.full_name|default:default_employer_label }}</a>
                     <p class="text-sm text-neutral-500 mt-0.5">{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline text-warning" %} {{ f.target.rating|default:0|floatformat:1 }} ({{ f.target.total_reviews|default:0 }}){% if f.target.city %} · {{ f.target.city }}{% endif %}</p>
-                    {% if f.target.verification_status == 'approved' %}<span class="inline-flex items-center gap-0.5 mt-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-[11px] font-semibold">{% include "core/_ui_icon.html" with name="check" class_name="h-3 w-3" %} Проверен</span>{% endif %}
+                    {% if f.target.verification_status == 'approved' %}<span class="inline-flex items-center gap-0.5 mt-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-[11px] font-semibold">{% include "core/_ui_icon.html" with name="check" class_name="h-3 w-3" %} {% translate "Проверен" %}</span>{% endif %}
                 </div>
                 <form method="post" action="{% url 'core:people_favorite_toggle' f.target.pk %}">{% csrf_token %}
                     <input type="hidden" name="as" value="employer">
-                    <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Убрать</span></button>
+                    <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">{% translate "Убрать" %}</span></button>
                 </form>
             </article>
             {% endfor %}
@@ -142,7 +147,7 @@
     {% endif %}
 
     {% if tab == 'jobs' and not job_favs or tab == 'workers' and not worker_favs or tab == 'employers' and not employer_favs %}
-    <p class="text-sm text-neutral-500">В этом разделе пока пусто. <a href="?tab=all" class="text-primary-600 hover:underline">Показать всё избранное</a></p>
+    <p class="text-sm text-neutral-500">{% translate "В этом разделе пока пусто." %} <a href="?tab=all" class="text-primary-600 hover:underline">{% translate "Показать всё избранное" %}</a></p>
     {% endif %}
     {% endif %}
 </div>

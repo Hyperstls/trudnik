@@ -2,11 +2,11 @@
 {% load l10n i18n %}
 {% load static %}
 {% block title %}{{ job.work_type|default:_("Задание") }} — Трудник{% endblock %}
-{% block meta_description %}{{ job.work_type|default:"Задание" }}{% if job.payment_amount %} — {{ job.payment_amount|floatformat:"-1" }} ₽{% endif %}{% if job.city %}, {{ job.city }}{% endif %}. {{ job.object_description|default:_("Подработка рядом на Трудник.")|truncatechars:140 }}{% endblock %}
-{% block og_title %}{{ job.work_type|default:"Задание" }}{% if job.payment_amount %} — {{ job.payment_amount|floatformat:"-1" }} ₽{% endif %} — Трудник{% endblock %}
+{% block meta_description %}{{ job.work_type|default:_("Задание") }}{% if job.payment_amount %} — {{ job.payment_amount|floatformat:"-1" }} ₽{% endif %}{% if job.city %}, {{ job.city }}{% endif %}. {{ job.object_description|default:_("Подработка рядом на Трудник.")|truncatechars:140 }}{% endblock %}
+{% block og_title %}{{ job.work_type|default:_("Задание") }}{% if job.payment_amount %} — {{ job.payment_amount|floatformat:"-1" }} ₽{% endif %} — Трудник{% endblock %}
 {% block og_description %}{{ job.organization_name|default:_("Заказчик") }}{% if job.city %} · {{ job.city }}{% endif %} · {{ job.date_time|date:"d.m.Y H:i" }}. {{ job.object_description|default:_("Задания рядом, отклики и чат.")|truncatechars:140 }}{% endblock %}
 {% block og_image %}https://{{ request.get_host }}{% url 'core:job_og_image' job.pk %}{% endblock %}
-{% block twitter_title %}{{ job.work_type|default:"Задание" }}{% if job.payment_amount %} — {{ job.payment_amount|floatformat:"-1" }} ₽{% endif %} — Трудник{% endblock %}
+{% block twitter_title %}{{ job.work_type|default:_("Задание") }}{% if job.payment_amount %} — {{ job.payment_amount|floatformat:"-1" }} ₽{% endif %} — Трудник{% endblock %}
 {% block twitter_description %}{{ job.organization_name|default:_("Заказчик") }}{% if job.city %} · {{ job.city }}{% endif %} · {{ job.date_time|date:"d.m.Y H:i" }}. {{ job.object_description|default:_("Задания рядом, отклики и чат.")|truncatechars:140 }}{% endblock %}
 {% block twitter_image %}https://{{ request.get_host }}{% url 'core:job_og_image' job.pk %}{% endblock %}
 {% block content %}
@@ -127,7 +127,7 @@
             (function labelYandexLogo(tries) {
                   var logo = document.querySelector('a[class*="copyright__logo"]');
                   if (logo) {
-                    if (!logo.getAttribute('aria-label')) logo.setAttribute('aria-label', 'Яндекс Карты');
+                    if (!logo.getAttribute('aria-label')) logo.setAttribute('aria-label', '{% translate "Яндекс Карты" %}');
                     return;
                   }
                   if (tries > 0) window.setTimeout(function () { labelYandexLogo(tries - 1); }, 300);

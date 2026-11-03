@@ -4,6 +4,7 @@
  * The draft stores only intent and skill ids (no personal data).
  */
 (function () {
+    var T = window.TRUDNIK_I18N || {};
     'use strict';
 
     var form = document.querySelector('form[data-register-stepper]');
@@ -67,7 +68,7 @@
         if (next) next.classList.toggle('hidden', current === total);
         if (submitWrap) submitWrap.classList.toggle('hidden', current !== total);
         setIndicators(current);
-        if (status) status.textContent = 'Шаг ' + current + ' из ' + total;
+        if (status) status.textContent = (T.step_word || 'Шаг') + ' ' + current + ' ' + (T.of || 'из') + ' ' + total;
         if (current === total) renderCaptcha();
         if (!focus) return;
         var first = steps[current - 1].querySelector('input:not([type="hidden"]), select, textarea');

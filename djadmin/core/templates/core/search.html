@@ -1,34 +1,36 @@
 {% extends "core/base.html" %}
-{% block title %}Поиск — Трудник{% endblock %}
-{% block meta_description %}Поиск заданий, трудников и работодателей на Трудник.{% endblock %}
+{% load i18n %}
+{% block title %}{% translate "Поиск" %} — Трудник{% endblock %}
+{% block meta_description %}{% translate "Поиск заданий, трудников и работодателей на Трудник." %}{% endblock %}
 {% block content %}
+{% translate "Задание" as t_job %}
 <div class="pt-4 max-w-4xl mx-auto">
-    <h1 class="text-xl sm:text-2xl font-bold text-neutral-800">Поиск</h1>
+    <h1 class="text-xl sm:text-2xl font-bold text-neutral-800">{% translate "Поиск" %}</h1>
     <form action="{% url 'core:search' %}" method="get" class="mt-3 flex gap-2" role="search">
-        <label for="global-search-q" class="sr-only">Поисковый запрос</label>
-        <input id="global-search-q" type="search" name="q" value="{{ q }}" minlength="2" placeholder="Задание, трудник или работодатель" class="form-input flex-1"{% if not q %} autofocus{% endif %}>
-        <button type="submit" class="px-5 h-11 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold shrink-0">Найти</button>
+        <label for="global-search-q" class="sr-only">{% translate "Поисковый запрос" %}</label>
+        <input id="global-search-q" type="search" name="q" value="{{ q }}" minlength="2" placeholder="{% translate "Задание, трудник или работодатель" %}" class="form-input flex-1"{% if not q %} autofocus{% endif %}>
+        <button type="submit" class="px-5 h-11 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold shrink-0">{% translate "Найти" %}</button>
     </form>
 
     {% if q %}
         {% if too_short %}
-        <p class="text-sm text-neutral-500 mt-4">Введите минимум 2 символа.</p>
+        <p class="text-sm text-neutral-500 mt-4">{% translate "Введите минимум 2 символа." %}</p>
         {% elif total == 0 %}
-        {% include "core/_ui_empty_state.html" with title="Ничего не найдено" description="Попробуйте другой запрос или откройте каталоги." action_url="/jobs" action_label="Смотреть задания" icon="search" %}
+        {% translate "Ничего не найдено" as t_empty_title %}{% translate "Попробуйте другой запрос или откройте каталоги." as t_empty_description %}{% translate "Смотреть задания" as t_empty_action %}{% include "core/_ui_empty_state.html" with title=t_empty_title description=t_empty_description action_url="/jobs" action_label=t_empty_action icon="search" %}
         {% else %}
-        <p class="text-sm text-neutral-500 mt-4">Найдено: {{ total }}</p>
+        <p class="text-sm text-neutral-500 mt-4">{% translate "Найдено:" %} {{ total }}</p>
 
         {% if jobs %}
         <section class="mt-5">
             <div class="flex items-center justify-between gap-2 mb-2">
-                <h2 class="text-base font-bold text-neutral-800">Задания</h2>
-                <a href="{% url 'core:jobs' %}?q={{ q|urlencode }}" class="text-sm text-primary-600 hover:text-primary-700">Все задания</a>
+                <h2 class="text-base font-bold text-neutral-800">{% translate "Задания" %}</h2>
+                <a href="{% url 'core:jobs' %}?q={{ q|urlencode }}" class="text-sm text-primary-600 hover:text-primary-700">{% translate "Все задания" %}</a>
             </div>
             <div class="grid gap-2">
                 {% for job in jobs %}
                 <a href="{% url 'core:job_detail' job.pk %}" class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 hover:shadow-md transition-shadow flex justify-between gap-3">
                     <div class="min-w-0">
-                        <p class="font-medium text-neutral-900 truncate">{{ job.work_type|default:"Задание" }}</p>
+                        <p class="font-medium text-neutral-900 truncate">{{ job.work_type|default:t_job }}</p>
                         <p class="text-xs text-neutral-500 mt-0.5 truncate">{{ job.organization_name }}{% if job.city %} · {{ job.city }}{% endif %}{% if job.date_time %} · {{ job.date_time|date:"d.m.Y" }}{% endif %}</p>
                     </div>
                     {% if job.payment_amount %}<span class="text-sm font-bold text-primary-600 shrink-0">{{ job.payment_amount|floatformat:"-1" }} ₽</span>{% endif %}
@@ -41,8 +43,8 @@
         {% if workers %}
         <section class="mt-6">
             <div class="flex items-center justify-between gap-2 mb-2">
-                <h2 class="text-base font-bold text-neutral-800">Трудники</h2>
-                <a href="{% url 'core:workers' %}?q={{ q|urlencode }}" class="text-sm text-primary-600 hover:text-primary-700">Все трудники</a>
+                <h2 class="text-base font-bold text-neutral-800">{% translate "Трудники" %}</h2>
+                <a href="{% url 'core:workers' %}?q={{ q|urlencode }}" class="text-sm text-primary-600 hover:text-primary-700">{% translate "Все трудники" %}</a>
             </div>
             <div class="grid sm:grid-cols-2 gap-2">
                 {% for w in workers %}
@@ -65,14 +67,14 @@
         {% if employers %}
         <section class="mt-6">
             <div class="flex items-center justify-between gap-2 mb-2">
-                <h2 class="text-base font-bold text-neutral-800">Работодатели</h2>
-                <a href="{% url 'core:employers' %}?q={{ q|urlencode }}" class="text-sm text-primary-600 hover:text-primary-700">Все работодатели</a>
+                <h2 class="text-base font-bold text-neutral-800">{% translate "Работодатели" %}</h2>
+                <a href="{% url 'core:employers' %}?q={{ q|urlencode }}" class="text-sm text-primary-600 hover:text-primary-700">{% translate "Все работодатели" %}</a>
             </div>
             <div class="grid sm:grid-cols-2 gap-2">
                 {% for e in employers %}
                 <a href="{% url 'core:employer_detail' e.pk %}" class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 hover:shadow-md transition-shadow">
                     <p class="font-medium text-neutral-900 truncate">{{ e.full_name }}</p>
-                    <p class="text-xs text-neutral-500 mt-0.5 truncate">{% if e.employer_detail.name %}{{ e.employer_detail.name }} · {% endif %}{{ e.open_jobs }} заданий{% if e.city %} · {{ e.city }}{% endif %}</p>
+                    <p class="text-xs text-neutral-500 mt-0.5 truncate">{% if e.employer_detail.name %}{{ e.employer_detail.name }} · {% endif %}{{ e.open_jobs }} {% translate "заданий" %}{% if e.city %} · {{ e.city }}{% endif %}</p>
                 </a>
                 {% endfor %}
             </div>
@@ -80,7 +82,7 @@
         {% endif %}
         {% endif %}
     {% else %}
-    <p class="text-sm text-neutral-500 mt-4">Ищите задания, трудников и работодателей по названию, городу или описанию.</p>
+    <p class="text-sm text-neutral-500 mt-4">{% translate "Ищите задания, трудников и работодателей по названию, городу или описанию." %}</p>
     {% endif %}
 </div>
 {% endblock %}

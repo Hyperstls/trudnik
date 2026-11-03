@@ -11,6 +11,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 from uuid import UUID
 
@@ -48,21 +49,21 @@ def profile_edit(request):
                     user.refresh_from_db()
                     update_session_auth_hash(request, user)
                     Profile.objects.filter(pk=user.pk).update(password_changed_at=timezone.now())
-                    messages.success(request, "Пароль изменён.")
+                    messages.success(request, _("Пароль изменён."))
                     return redirect("core:profile")
-                change_form.add_error(None, "Текущий пароль неверен или операция не выполнена.")
+                change_form.add_error(None, _("Текущий пароль неверен или операция не выполнена."))
         elif action == "employer":
             if employer_form.is_valid():
                 card = employer_form.save(commit=False)
                 card.user = user
                 card.save()
-                messages.success(request, "Карточка работодателя сохранена.")
+                messages.success(request, _("Карточка работодателя сохранена."))
                 return redirect("core:profile")
         elif action == "skills":
             posted = set(request.POST.getlist("skills"))
             chosen = [s.pk for s in form.fields["skills"].queryset if str(s.pk) in posted]
             sync_user_skills_raw(user.pk, chosen)
-            messages.success(request, "Навыки обновлены: %d." % len(chosen))
+            messages.success(request, _("Навыки обновлены: %d.") % len(chosen))
             return redirect("core:profile")
         elif form.is_valid():
             from django.db import transaction
@@ -70,7 +71,7 @@ def profile_edit(request):
             with transaction.atomic():
                 form.save()
                 sync_user_skills_raw(user.pk, [s.pk for s in form.cleaned_data["skills"]])
-            messages.success(request, "Профиль сохранён.")
+            messages.success(request, _("Профиль сохранён."))
             return redirect("core:profile")
 
     from .models import UserSkill
@@ -87,7 +88,7 @@ def profile_edit(request):
 def people_favorite_toggle(request, user_id):
     target = Profile.objects.filter(pk=user_id, role__in=("worker", "employer")).first()
     if target is None or target.pk == request.user.pk:
-        messages.error(request, "Профиль недоступен.")
+        messages.error(request, _("Профиль недоступен."))
         return redirect("core:workers")
     favorite_type = request.POST.get("as")
     if favorite_type not in ("worker", "employer"):
@@ -97,9 +98,9 @@ def people_favorite_toggle(request, user_id):
     )
     if not created:
         fav.delete()
-        messages.info(request, "Удалено из избранного.")
+        messages.info(request, _("Удалено из избранного."))
     else:
-        messages.success(request, "Добавлено в избранное.")
+        messages.success(request, _("Добавлено в избранное."))
     return redirect("core:worker_detail", user_id=target.pk)
 
 
@@ -108,10 +109,10 @@ def people_favorite_toggle(request, user_id):
 def people_block(request, user_id):
     target = Profile.objects.filter(pk=user_id).first()
     if target is None or target.pk == request.user.pk:
-        messages.error(request, "Профиль недоступен.")
+        messages.error(request, _("Профиль недоступен."))
         return redirect("core:workers")
-    _, created = Blacklist.objects.get_or_create(user=request.user, blocked_user=target)
-    messages.info(request, "Пользователь заблокирован." if created else "Уже заблокирован.")
+    _omitted, created = Blacklist.objects.get_or_create(user=request.user, blocked_user=target)
+    messages.info(request, _("Пользователь заблокирован.") if created else _("Уже заблокирован."))
     return redirect("core:worker_detail", user_id=target.pk)
 
 
@@ -119,7 +120,7 @@ def people_block(request, user_id):
 @require_POST
 def people_unblock(request, user_id):
     Blacklist.objects.filter(user=request.user, blocked_user_id=user_id).delete()
-    messages.info(request, "Разблокирован.")
+    messages.info(request, _("Разблокирован."))
     return redirect("core:blacklist")
 
 
@@ -192,20 +193,20 @@ def favorites_bulk_delete(request):
     kind = request.POST.get("kind")
     ids = _uuid_values(request.POST.getlist("ids"))
     if not ids:
-        messages.error(request, "Ничего не выбрано.")
+        messages.error(request, _("Ничего не выбрано."))
         return redirect("core:favorites_page")
     if kind == "jobs":
-        deleted, _ = JobFavorite.objects.filter(
+        deleted, _omitted = JobFavorite.objects.filter(
             user=request.user, job_id__in=ids
         ).delete()
     elif kind in ("worker", "employer"):
-        deleted, _ = Favorite.objects.filter(
+        deleted, _omitted = Favorite.objects.filter(
             user=request.user, favorite_type=kind, target_id__in=ids
         ).delete()
     else:
-        messages.error(request, "Неизвестный тип избранного.")
+        messages.error(request, _("Неизвестный тип избранного."))
         return redirect("core:favorites_page")
-    messages.info(request, "Удалено: %d." % deleted)
+    messages.info(request, _("Удалено: %d.") % deleted)
     return redirect("core:favorites_page")
 
 
@@ -228,7 +229,7 @@ def invite_worker(request, user_id):
     except (ValueError, ValidationError):
         job = None
     if worker is None or job is None or worker.pk == request.user.pk:
-        messages.error(request, "Приглашение невозможно: проверьте задание и профиль.")
+        messages.error(request, _("Приглашение невозможно: проверьте задание и профиль."))
         return redirect("core:worker_detail", user_id=user_id)
     try:
         with transaction.atomic():  # savepoint: дубль не роняет внешнюю транзакцию
@@ -237,9 +238,9 @@ def invite_worker(request, user_id):
                 message=(request.POST.get("message") or "")[:500],
             )
     except IntegrityError:
-        messages.info(request, "Приглашение на это задание уже отправлено.")
+        messages.info(request, _("Приглашение на это задание уже отправлено."))
         return redirect("core:worker_detail", user_id=user_id)
-    messages.success(request, "Приглашение отправлено.")
+    messages.success(request, _("Приглашение отправлено."))
     return redirect("core:worker_detail", user_id=user_id)
 
 
@@ -256,10 +257,10 @@ def worker_invitations_revoke(request, user_id):
         invitations.delete()
         messages.success(
             request,
-            "Приглашение отозвано." if count == 1 else "Отозвано приглашений: %d." % count,
+            _("Приглашение отозвано.") if count == 1 else _("Отозвано приглашений: %d.") % count,
         )
     else:
-        messages.info(request, "Активных приглашений этому труднику нет.")
+        messages.info(request, _("Активных приглашений этому труднику нет."))
     next_url = (request.POST.get("next") or "").strip()
     if next_url.startswith("/") and not next_url.startswith("//"):
         return redirect(next_url)
@@ -274,10 +275,10 @@ def invitation_revoke(request, invitation_id):
         pk=invitation_id, employer=request.user, status=Invitation.Status.PENDING,
     ).first()
     if invitation is None:
-        messages.error(request, "Приглашение не найдено или уже обработано.")
+        messages.error(request, _("Приглашение не найдено или уже обработано."))
     else:
         invitation.delete()
-        messages.success(request, "Приглашение отозвано.")
+        messages.success(request, _("Приглашение отозвано."))
     next_url = (request.POST.get("next") or "").strip()
     if next_url.startswith("/") and not next_url.startswith("//"):
         return redirect(next_url)
@@ -302,19 +303,19 @@ def invitation_respond(request, invitation_id, action):
         pk=invitation_id, worker=request.user,
     ).first()
     if invitation is None or invitation.status != Invitation.Status.PENDING:
-        messages.error(request, "Приглашение не найдено или уже обработано.")
+        messages.error(request, _("Приглашение не найдено или уже обработано."))
         return redirect("core:invitations")
     if action == "accept":
         result = call_rpc("accept_invitation_atomic", invitation.pk, request.user.pk) or {}
         if result.get("success"):
-            messages.success(request, "Приглашение принято — вы откликнулись на задание.")
+            messages.success(request, _("Приглашение принято — вы откликнулись на задание."))
         else:
-            messages.error(request, "Не удалось принять: %s." % (result.get("code") or "ошибка"))
+            messages.error(request, _("Не удалось принять: %s.") % (result.get("code") or _("ошибка")))
     elif action == "decline":
         invitation.status = Invitation.Status.REJECTED
         invitation.responded_at = timezone.now()
         invitation.save(update_fields=["status", "responded_at"])
-        messages.info(request, "Приглашение отклонено.")
+        messages.info(request, _("Приглашение отклонено."))
     else:
-        messages.error(request, "Неизвестное действие.")
+        messages.error(request, _("Неизвестное действие."))
     return redirect("core:invitations")

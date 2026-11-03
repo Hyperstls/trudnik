@@ -29,6 +29,7 @@ from django.db import IntegrityError, transaction
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
 from .captcha import verify_captcha_token
@@ -109,16 +110,16 @@ def register(request):
         try:
             enforce_ip_limit(request, "register", 10, 3600)
         except RateLimitExceeded:
-            messages.error(request, "Слишком много попыток регистрации. Попробуйте позже.")
+            messages.error(request, _("Слишком много попыток регистрации. Попробуйте позже."))
             return render(request, "core/register.html", {"form": form, **captcha_ctx})
         except RateLimitUnavailable:
-            messages.error(request, "Сервис временно недоступен. Попробуйте позже.")
+            messages.error(request, _("Сервис временно недоступен. Попробуйте позже."))
             return render(request, "core/register.html", {"form": form, **captcha_ctx})
     if request.method == "POST" and form.is_valid():
         # виджет Yandex кладёт поле `smart-token`; `smart_token` — backward-compat
         captcha_token = request.POST.get("smart-token") or form.cleaned_data.get("smart_token", "")
         if not verify_captcha_token(captcha_token):
-            messages.error(request, "Капча не пройдена. Попробуйте ещё раз.")
+            messages.error(request, _("Капча не пройдена. Попробуйте ещё раз."))
             return render(request, "core/register.html", {"form": form, **captcha_ctx})
         email = form.cleaned_data["email"]
         role, worker_visibility = form.role_and_visibility()
@@ -141,7 +142,7 @@ def register(request):
             user_id = str(raw) if raw else None
         if user_id is None:
             # единый ответ: не подтверждаем, существует ли email
-            form.add_error(None, "Регистрация не выполнена. Проверьте данные: возможно, такой email уже зарегистрирован.")
+            form.add_error(None, _("Регистрация не выполнена. Проверьте данные: возможно, такой email уже зарегистрирован."))
         else:
             profile_fields = {
                 "city": form.cleaned_data.get("city") or None,
@@ -178,8 +179,10 @@ def register(request):
             )
             messages.success(
                 request,
-                "Аккаунт создан. Письмо отправлено на %s. Проверьте почту и папку «Спам»; "
-                "если письма нет — отправьте его повторно." % email,
+                _(
+                    "Аккаунт создан. Письмо отправлено на %s. Проверьте почту и папку «Спам»; "
+                    "если письма нет — отправьте его повторно."
+                ) % email,
             )
             return redirect(
                 "%s?email=%s"
@@ -194,9 +197,9 @@ def verify_email(request, token: str):
     if email:
         updated = Profile.objects.filter(email=email).update(email_verified=True)
         if updated:
-            messages.success(request, "Email подтверждён. Теперь можно войти.")
+            messages.success(request, _("Email подтверждён. Теперь можно войти."))
             return redirect("core:login")
-    messages.error(request, "Ссылка недействительна или истекла. Запросите новую.")
+    messages.error(request, _("Ссылка недействительна или истекла. Запросите новую."))
     return redirect("core:verify_email_resend")
 
 
@@ -206,14 +209,14 @@ def verify_email_resend(request):
         try:
             enforce_ip_limit(request, "resend", 10, 3600)
         except RateLimitExceeded:
-            messages.error(request, "Слишком много попыток. Попробуйте позже.")
+            messages.error(request, _("Слишком много попыток. Попробуйте позже."))
             return redirect("core:login")
         except RateLimitUnavailable:
-            messages.error(request, "Сервис временно недоступен. Попробуйте позже.")
+            messages.error(request, _("Сервис временно недоступен. Попробуйте позже."))
             return redirect("core:login")
         email = (request.POST.get("email") or "").strip().lower()
         if not email:
-            messages.error(request, "Укажите email.")
+            messages.error(request, _("Укажите email."))
             return redirect("core:verify_email_resend")
         sent = False
         try:
@@ -230,12 +233,12 @@ def verify_email_resend(request):
                         email,
                     )
         except RateLimitUnavailable:
-            messages.error(request, "Сервис временно недоступен. Попробуйте позже.")
+            messages.error(request, _("Сервис временно недоступен. Попробуйте позже."))
             return redirect("core:login")
         if sent:
-            messages.success(request, "Письмо отправлено. Проверьте почту и папку «Спам».")
+            messages.success(request, _("Письмо отправлено. Проверьте почту и папку «Спам»."))
         else:
-            messages.info(request, "Письмо уже отправлялось недавно. Повторить можно через 2 минуты.")
+            messages.info(request, _("Письмо уже отправлялось недавно. Повторить можно через 2 минуты."))
         return redirect(
             "%s?email=%s" % (reverse("core:verify_email_resend"), quote(email))
         )
@@ -251,17 +254,17 @@ def password_reset_request(request):
         try:
             enforce_ip_limit(request, "reset", 10, 3600)
         except RateLimitExceeded:
-            messages.error(request, "Слишком много попыток. Попробуйте позже.")
+            messages.error(request, _("Слишком много попыток. Попробуйте позже."))
             return render(request, "core/password_reset_request.html", {"form": form, **captcha_ctx})
         except RateLimitUnavailable:
-            messages.error(request, "Сервис временно недоступен. Попробуйте позже.")
+            messages.error(request, _("Сервис временно недоступен. Попробуйте позже."))
             return render(request, "core/password_reset_request.html", {"form": form, **captcha_ctx})
     if request.method == "POST" and form.is_valid():
         email = form.cleaned_data["email"]
         # виджет Yandex кладёт поле `smart-token`; `smart_token` — backward-compat
         captcha_token = request.POST.get("smart-token") or form.cleaned_data.get("smart_token", "")
         if not verify_captcha_token(captcha_token):
-            messages.error(request, "Капча не пройдена. Попробуйте ещё раз.")
+            messages.error(request, _("Капча не пройдена. Попробуйте ещё раз."))
             return render(request, "core/password_reset_request.html", {"form": form, **captcha_ctx})
         try:
             if not _cooldown_active("reset:%s" % email):
@@ -280,10 +283,10 @@ def password_reset_request(request):
                         email,
                     )
         except RateLimitUnavailable:
-            messages.error(request, "Сервис временно недоступен. Попробуйте позже.")
+            messages.error(request, _("Сервис временно недоступен. Попробуйте позже."))
             return redirect("core:login")
         # единый ответ: не раскрываем существование email
-        messages.info(request, "Если аккаунт существует, письмо с инструкцией отправлено.")
+        messages.info(request, _("Если аккаунт существует, письмо с инструкцией отправлено."))
         return redirect("core:login")
     return render(request, "core/password_reset_request.html", {"form": form, **captcha_ctx})
 
@@ -301,7 +304,7 @@ def password_reset_confirm(request, token: str):
             if current != payload["pwd_changed_at"]:
                 payload = None
     if not payload or not profile:
-        messages.error(request, "Ссылка недействительна или истекла. Запросите сброс заново.")
+        messages.error(request, _("Ссылка недействительна или истекла. Запросите сброс заново."))
         return redirect("core:password_reset_request")
     form = PasswordResetConfirmForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -311,7 +314,7 @@ def password_reset_confirm(request, token: str):
         except Exception:
             logger.exception("change_password(2-arg) rpc failed")
         if ok:
-            messages.success(request, "Пароль изменён. Войдите с новым паролем.")
+            messages.success(request, _("Пароль изменён. Войдите с новым паролем."))
             return redirect("core:login")
-        form.add_error(None, "Не удалось изменить пароль. Попробуйте позже.")
+        form.add_error(None, _("Не удалось изменить пароль. Попробуйте позже."))
     return render(request, "core/password_reset_confirm.html", {"form": form, "token": token})

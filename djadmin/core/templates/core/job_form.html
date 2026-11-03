@@ -1,24 +1,25 @@
 {% extends "core/base.html" %}
 {% load l10n %}
 {% load static %}
-{% block title %}{{ title }} — Трудник{% endblock %}
+{% load i18n %}
+{% block title %}{{ title }} — {% translate "Трудник" context "brand" %}{% endblock %}
 {% block content %}
 <div class="max-w-2xl mx-auto px-0 py-4 fade-in">
     <a href="{% url 'core:my_jobs' %}" class="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 mb-3">
         <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-        Мои задания
+        {% translate "Мои задания" %}
     </a>
     <div class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 sm:p-6">
         <h1 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-4">{{ title }}</h1>
         {% if not job %}
         <div id="job-draft-banner" class="hidden mb-4 rounded-xl border border-primary-200 bg-primary-50 p-3 flex flex-wrap items-center justify-between gap-2" role="status" aria-live="polite">
             <div>
-                <p class="text-sm font-semibold text-neutral-800">Найден черновик задания</p>
+                <p class="text-sm font-semibold text-neutral-800">{% translate "Найден черновик задания" %}</p>
                 <p id="job-draft-meta" class="text-xs text-neutral-600 mt-0.5"></p>
             </div>
             <div class="flex gap-2">
-                <button type="button" id="job-draft-restore" class="px-3 h-9 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold">Продолжить</button>
-                <button type="button" id="job-draft-discard" class="px-3 h-9 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600 text-sm font-medium">Удалить</button>
+                <button type="button" id="job-draft-restore" class="px-3 h-9 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold">{% translate "Продолжить" %}</button>
+                <button type="button" id="job-draft-discard" class="px-3 h-9 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-600 text-sm font-medium">{% translate "Удалить" %}</button>
             </div>
         </div>
         {% endif %}
@@ -26,7 +27,7 @@
             {% csrf_token %}
             {% if locked %}
             <div class="rounded-xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800" role="note">
-                Нельзя редактировать условия задания: есть принятые отклики ({{ accepted_count }}). Разрешено менять только описание работы.
+                {% translate "Нельзя редактировать условия задания: есть принятые отклики" %} ({{ accepted_count }}). {% translate "Разрешено менять только описание работы." %}
             </div>
             <div class="form-field">
                 <label class="form-label" for="{{ description_form.detailed_description.id_for_label }}">{{ description_form.detailed_description.label }}</label>
@@ -36,19 +37,19 @@
             {% else %}
             {% if yandex_maps_key %}
             <div class="form-field">
-                <span class="form-label">Точка на карте</span>
-                <p class="form-hint mb-2">Кликните по карте, найдите адрес или определите своё местоположение. Координаты нужны только для метки офлайн-задания и сохраняются вместе с ним; геопозиция устройства отдельно не сохраняется. Для дистанционных заданий карту не заполняйте.</p>
+                <span class="form-label">{% translate "Точка на карте" %}</span>
+                <p class="form-hint mb-2">{% translate "Кликните по карте, найдите адрес или определите своё местоположение. Координаты нужны только для метки офлайн-задания и сохраняются вместе с ним; геопозиция устройства отдельно не сохраняется. Для дистанционных заданий карту не заполняйте." %}</p>
                 <div class="flex flex-wrap gap-2 mb-2">
-                    <button type="button" id="geo-locate" class="px-3 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Моё местоположение</button>
-                    <button type="button" id="geo-find" class="px-3 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Найти по адресу</button>
-                    <button type="button" id="geo-reverse" class="px-3 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Адрес по метке</button>
-                    <button type="button" id="geo-clear" class="px-3 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-500 text-sm font-medium transition-colors">Очистить метку</button>
+                    <button type="button" id="geo-locate" class="px-3 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">{% translate "Моё местоположение" %}</button>
+                    <button type="button" id="geo-find" class="px-3 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">{% translate "Найти по адресу" %}</button>
+                    <button type="button" id="geo-reverse" class="px-3 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">{% translate "Адрес по метке" %}</button>
+                    <button type="button" id="geo-clear" class="px-3 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-500 text-sm font-medium transition-colors">{% translate "Очистить метку" %}</button>
                 </div>
                 <div id="geo-confirm-box" class="geo-confirm-box hidden mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900" role="status">
-                    <span id="geo-confirm-text">Проверьте адрес и метку на карте.</span>
-                    <button type="button" id="geo-confirm" class="px-3 h-8 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shrink-0">Подтвердить адрес</button>
+                    <span id="geo-confirm-text">{% translate "Проверьте адрес и метку на карте." %}</span>
+                    <button type="button" id="geo-confirm" class="px-3 h-8 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shrink-0">{% translate "Подтвердить адрес" %}</button>
                 </div>
-                <div id="geo-suggest" class="geo-suggest" role="listbox" aria-label="Подсказки адреса" hidden></div>
+                <div id="geo-suggest" class="geo-suggest" role="listbox" aria-label="{% translate "Подсказки адреса" %}" hidden></div>
                 <p id="geo-status" class="text-xs text-neutral-500 mb-2" role="status" aria-live="polite"></p>
                 <div id="job-map" data-lat="{% localize off %}{{ form.instance.lat|default_if_none:'' }}{% endlocalize %}" data-lng="{% localize off %}{{ form.instance.lng|default_if_none:'' }}{% endlocalize %}" style="height:320px" class="w-full rounded-xl border border-neutral-200"></div>
             </div>
@@ -87,7 +88,7 @@
                 confirmBtn.addEventListener('click', function(){
                   hideConfirm();
                   el.dataset.addressConfirmed = '1';
-                  setStatus('Адрес подтверждён. Метка будет сохранена вместе с заданием.');
+                  setStatus('{% translate "Адрес подтверждён. Метка будет сохранена вместе с заданием." %}');
                 });
               }
 
@@ -107,7 +108,7 @@
                 (function labelYandexLogo(tries) {
                   var logo = document.querySelector('a[class*="copyright__logo"]');
                   if (logo) {
-                    if (!logo.getAttribute('aria-label')) logo.setAttribute('aria-label', 'Яндекс Карты');
+                    if (!logo.getAttribute('aria-label')) logo.setAttribute('aria-label', '{% translate "Яндекс Карты" %}');
                     return;
                   }
                   if (tries > 0) window.setTimeout(function () { labelYandexLogo(tries - 1); }, 300);
@@ -140,19 +141,19 @@
                   if (cityInput && (force || !cityInput.value.trim()) && item.city) {
                     cityInput.value = item.city;
                   }
-                  setStatus('Адрес подставлен по метке. Проверьте и подтвердите.');
-                  showConfirm('Проверьте адрес «' + (addressInput ? addressInput.value.trim() : '') + '» и метку на карте.');
+                  setStatus('{% translate "Адрес подставлен по метке. Проверьте и подтвердите." %}');
+                  showConfirm('{% translate "Проверьте адрес" %}' + ' «' + (addressInput ? addressInput.value.trim() : '') + '» ' + '{% translate "и метку на карте." %}');
                 }
 
                 function reverseGeocodeClient(coords, force, geocoderDisabled) {
                   if (typeof ymaps.geocode !== 'function') {
-                    setStatus('Координаты сохранены. Адрес можно ввести вручную.');
+                    setStatus('{% translate "Координаты сохранены. Адрес можно ввести вручную." %}');
                     return;
                   }
                   ymaps.geocode(coords, {results: 1}).then(function(res){
                     var obj = res.geoObjects.get(0);
                     if (!obj) {
-                      setStatus('Координаты сохранены. Адрес не найден — введите вручную.');
+                      setStatus('{% translate "Координаты сохранены. Адрес не найден — введите вручную." %}');
                       return;
                     }
                     var localities = obj.getLocalities();
@@ -162,8 +163,8 @@
                     }, force);
                   }).catch(function(){
                     setStatus(geocoderDisabled
-                      ? 'Автоподстановка адреса недоступна. Введите адрес вручную — метка сохранена.'
-                      : 'Не удалось определить адрес. Введите адрес вручную — метка сохранена.');
+                      ? '{% translate "Автоподстановка адреса недоступна. Введите адрес вручную — метка сохранена." %}'
+                      : '{% translate "Не удалось определить адрес. Введите адрес вручную — метка сохранена." %}');
                   });
                 }
 
@@ -229,18 +230,18 @@
                 if (locateBtn) {
                   locateBtn.addEventListener('click', function(){
                     if (!navigator.geolocation) {
-                      setStatus('Геолокация недоступна в этом браузере.');
+                      setStatus('{% translate "Геолокация недоступна в этом браузере." %}');
                       return;
                     }
-                    setStatus('Определяем местоположение…');
+                    setStatus('{% translate "Определяем местоположение…" %}');
                     navigator.geolocation.getCurrentPosition(function(pos){
                       setCoords([pos.coords.latitude, pos.coords.longitude], {zoom: 16, reverse: true, forceAddress: true});
-                      setStatus('Метка поставлена по вашему местоположению. Проверьте адрес.');
+                      setStatus('{% translate "Метка поставлена по вашему местоположению. Проверьте адрес." %}');
                     }, function(err){
                       if (err && err.code === 1) {
-                        setStatus('Доступ к геолокации запрещён. Разрешите его в браузере или кликните по карте.');
+                        setStatus('{% translate "Доступ к геолокации запрещён. Разрешите его в браузере или кликните по карте." %}');
                       } else {
-                        setStatus('Не удалось определить местоположение. Кликните по карте или введите адрес.');
+                        setStatus('{% translate "Не удалось определить местоположение. Кликните по карте или введите адрес." %}');
                       }
                     }, {enableHighAccuracy: true, timeout: 10000, maximumAge: 60000});
                   });
@@ -253,20 +254,20 @@
                     if (cityInput && cityInput.value.trim()) parts.push(cityInput.value.trim());
                     if (addressInput && addressInput.value.trim()) parts.push(addressInput.value.trim());
                     if (!parts.length) {
-                      setStatus('Введите город или адрес, чтобы найти точку на карте.');
+                      setStatus('{% translate "Введите город или адрес, чтобы найти точку на карте." %}');
                       return;
                     }
-                    setStatus('Ищем адрес…');
+                    setStatus('{% translate "Ищем адрес…" %}');
                     forwardGeocode(parts.join(', ')).then(function(found){
                       if (!found) {
-                        setStatus('Адрес не найден. Проверьте написание или поставьте метку на карте.');
+                        setStatus('{% translate "Адрес не найден. Проверьте написание или поставьте метку на карте." %}');
                         return;
                       }
                       if (addressInput && found.displayName) addressInput.value = found.displayName;
                       if (cityInput && !cityInput.value.trim() && found.city) cityInput.value = found.city;
                       setCoords(found.coords, {zoom: 16, keepConfirm: true});
-                      setStatus('Адрес найден: ' + found.displayName);
-                      showConfirm('Проверьте адрес «' + found.displayName + '» и метку на карте.');
+                      setStatus('{% translate "Адрес найден:" %}' + ' ' + found.displayName);
+                      showConfirm('{% translate "Проверьте адрес" %}' + ' «' + found.displayName + '» ' + '{% translate "и метку на карте." %}');
                     });
                   });
                 }
@@ -275,7 +276,7 @@
                 if (reverseBtn) {
                   reverseBtn.addEventListener('click', function(){
                     if (!currentCoords) {
-                      setStatus('Сначала поставьте метку на карте.');
+                      setStatus('{% translate "Сначала поставьте метку на карте." %}');
                       return;
                     }
                     reverseGeocode(currentCoords, true);
@@ -290,7 +291,7 @@
                     lngInput.value = '';
                     placemark.options.set('visible', false);
                     hideConfirm();
-                    setStatus('Метка удалена. Для офлайн-задания укажите точку на карте.');
+                    setStatus('{% translate "Метка удалена. Для офлайн-задания укажите точку на карте." %}');
                   });
                 }
 
@@ -307,7 +308,7 @@
                     suggestBox.id = 'geo-suggest';
                     suggestBox.className = 'geo-suggest';
                     suggestBox.setAttribute('role', 'listbox');
-                    suggestBox.setAttribute('aria-label', 'Подсказки адреса');
+                    suggestBox.setAttribute('aria-label', '{% translate "Подсказки адреса" %}');
                     suggestBox.hidden = true;
                   }
                   addressInput.parentNode.appendChild(suggestBox);
@@ -335,8 +336,8 @@
                       cityInput.value = localities[0];
                     }
                     setCoords(coords, {zoom: 16, keepConfirm: true});
-                    showConfirm('Адрес выбран: ' + label + '. Проверьте метку и подтвердите.');
-                    setStatus('Адрес выбран. Подтвердите точку.');
+                    showConfirm('{% translate "Адрес выбран:" %}' + ' ' + label + '. ' + '{% translate "Проверьте метку и подтвердите." %}');
+                    setStatus('{% translate "Адрес выбран. Подтвердите точку." %}');
                   }
 
                   function chooseSuggestion(item) {
@@ -348,10 +349,10 @@
                       applySuggestion(label, item.coords, item.localities);
                       return;
                     }
-                    setStatus('Ищем выбранный адрес на карте…');
+                    setStatus('{% translate "Ищем выбранный адрес на карте…" %}');
                     forwardGeocode(query).then(function(found){
                       if (!found) {
-                        setStatus('Адрес выбран, но координаты не найдены. Поставьте метку вручную.');
+                        setStatus('{% translate "Адрес выбран, но координаты не найдены. Поставьте метку вручную." %}');
                         return;
                       }
                       applySuggestion(label, found.coords, found.city ? [found.city] : []);
@@ -411,7 +412,7 @@
                       return geocodeSuggestions(query).then(renderSuggestions);
                     }).catch(function(){
                       closeSuggestions();
-                      setStatus('Подсказки недоступны — введите адрес и нажмите «Найти по адресу».');
+                      setStatus('{% translate "Подсказки недоступны — введите адрес и нажмите «Найти по адресу»." %}');
                     });
                   }
 
@@ -494,7 +495,7 @@
               {% endif %}
             {% endfor %}
             <fieldset class="pt-1">
-                <legend class="form-label">Навыки</legend>
+                <legend class="form-label">{% translate "Навыки" %}</legend>
                 <div class="grid grid-cols-2 gap-1.5 text-sm">
                     {% for choice in form.skills.field.queryset %}
                     <label class="flex items-center gap-2 cursor-pointer">
@@ -508,31 +509,31 @@
             </fieldset>
             {% endif %}
             <div class="flex gap-3 pt-3">
-                <button type="submit" class="px-6 h-11 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm">Сохранить</button>
-                <a href="{% url 'core:my_jobs' %}" class="px-6 h-11 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Отмена</a>
+                <button type="submit" class="px-6 h-11 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm">{% translate "Сохранить" %}</button>
+                <a href="{% url 'core:my_jobs' %}" class="px-6 h-11 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">{% translate "Отмена" %}</a>
             </div>
         </form>
     </div>
 
     {% if job.pk %}
     <section class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 mt-4">
-        <h2 class="text-base font-bold text-neutral-800 mb-3">Фотографии задания</h2>
+        <h2 class="text-base font-bold text-neutral-800 mb-3">{% translate "Фотографии задания" %}</h2>
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
             {% for ph in job.photos.all %}
             <div class="relative">
-                <img src="{{ ph.photo_url }}" alt="Фото" loading="lazy" class="rounded-xl border border-neutral-200 w-full aspect-video object-cover">
+                <img src="{{ ph.photo_url }}" alt="{% translate "Фото" %}" loading="lazy" class="rounded-xl border border-neutral-200 w-full aspect-video object-cover">
                 <form method="post" action="{% url 'core:job_photo_delete' job.pk ph.pk %}" class="absolute top-1 right-1">{% csrf_token %}
-                    <button class="w-7 h-7 rounded-full bg-white/90 border border-neutral-200 text-red-600 text-xs" aria-label="Удалить фото">{% include "core/_ui_icon.html" with name="x" class_name="h-3.5 w-3.5" %}</button>
+                    <button class="w-7 h-7 rounded-full bg-white/90 border border-neutral-200 text-red-600 text-xs" aria-label="{% translate "Удалить фото" %}">{% include "core/_ui_icon.html" with name="x" class_name="h-3.5 w-3.5" %}</button>
                 </form>
             </div>
             {% empty %}
-            <p class="text-sm text-neutral-500 col-span-full">Фото пока нет.</p>
+            <p class="text-sm text-neutral-500 col-span-full">{% translate "Фото пока нет." %}</p>
             {% endfor %}
         </div>
         <form method="post" action="{% url 'core:job_photo_upload' job.pk %}" enctype="multipart/form-data" class="flex flex-wrap gap-2 items-center">
             {% csrf_token %}
             <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" required class="text-sm">
-            <button type="submit" class="px-4 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Добавить фото</button>
+            <button type="submit" class="px-4 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">{% translate "Добавить фото" %}</button>
         </form>
     </section>
     {% endif %}

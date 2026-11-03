@@ -11,6 +11,7 @@ import functools
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.shortcuts import redirect
+from django.utils.translation import gettext as _
 
 
 class RateLimitExceeded(Exception):
@@ -70,7 +71,7 @@ def rate_limit_write(limit: int = 10, window: int = 60, redirect_to: str | None 
                     if redirect_to:
                         from django.contrib import messages
 
-                        messages.warning(request, "Слишком часто. Попробуйте через минуту.")
+                        messages.warning(request, _("Слишком часто. Попробуйте через минуту."))
                         return redirect(redirect_to)
                     return JsonResponse({"error": "rate_limited"}, status=429)
             except Exception:

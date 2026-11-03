@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.core.mail import EmailMessage
 from django.shortcuts import redirect, render
+from django.utils.translation import gettext as _
 from django.views.decorators.http import require_http_methods
 
 from .forms_support import SupportForm
@@ -20,7 +21,7 @@ def support(request):
         try:
             enforce_ip_limit(request, "support", 5, 3600)
         except RateLimitExceeded:
-            messages.error(request, "Слишком много обращений. Попробуйте позже или напишите на email.")
+            messages.error(request, _("Слишком много обращений. Попробуйте позже или напишите на email."))
             return redirect("core:support")
         except RateLimitUnavailable:
             pass
@@ -44,10 +45,10 @@ def support(request):
             logger.exception("support email failed")
             messages.error(
                 request,
-                "Не удалось отправить сообщение. Напишите на %s." % settings.SUPPORT_EMAIL,
+                _("Не удалось отправить сообщение. Напишите на %s.") % settings.SUPPORT_EMAIL,
             )
         else:
-            messages.success(request, "Сообщение отправлено. Ответим на указанный email.")
+            messages.success(request, _("Сообщение отправлено. Ответим на указанный email."))
             return redirect("core:support")
     return render(request, "core/support.html", {
         "form": form, "support_email": settings.SUPPORT_EMAIL,

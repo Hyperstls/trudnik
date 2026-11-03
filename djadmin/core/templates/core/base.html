@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>{% block title %}Трудник{% endblock %}</title>
+    <title>{% block title %}{% translate "Трудник" context "brand" %}{% endblock %}</title>
     <link rel="icon" type="image/svg+xml" href="{% static 'icons/favicon.svg' %}">
     <link rel="manifest" href="{% static 'manifest.json' %}">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Трудник">
+    <meta name="apple-mobile-web-app-title" content="{% translate 'Трудник' context 'brand' %}">
     <link rel="apple-touch-icon" href="{% static 'icons/icon-192x192.png' %}">
     <meta name="theme-color" content="#d97706">
     <meta name="color-scheme" content="light dark">
@@ -24,7 +24,7 @@
     </script>
     <meta name="description" content="{% block meta_description %}{% translate 'Платформа для поиска разовой подработки. Работодатели публикуют задания, исполнители откликаются и выполняют работу.' %}{% endblock %}">
     <link rel="canonical" href="https://{{ request.get_host }}{{ request.path }}">
-    <meta property="og:site_name" content="Трудник">
+    <meta property="og:site_name" content="{% translate 'Трудник' context 'brand' %}">
     <meta property="og:type" content="website">
     <meta property="og:title" content="{% block og_title %}{% translate 'Трудник — платформа разовой подработки' %}{% endblock %}">
     <meta property="og:description" content="{% block og_description %}{% translate 'Задания рядом, отклики, чат и оценки. Найдите подработку или исполнителя на трудник.рф.' %}{% endblock %}">
@@ -51,7 +51,7 @@
         <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
             <a href="/" class="flex items-center gap-2.5 shrink-0" aria-label="{% translate 'Трудник — на главную' %}">
                 {% include "core/_logo.html" with size=36 id_suffix="hdr" %}
-                <span class="text-lg font-bold tracking-tight text-neutral-800">Трудник</span>
+                <span class="text-lg font-bold tracking-tight text-neutral-800">{% translate "Трудник" context "brand" %}</span>
             </a>
 
             <div class="hidden md:flex flex-1 max-w-md mx-4">
@@ -138,7 +138,7 @@
 
     <footer class="bg-neutral-100 border-t border-neutral-200 px-4 pt-3 pb-20 md:pb-3 text-center text-xs text-neutral-600">
         <div class="max-w-6xl mx-auto leading-relaxed">
-            <p class="mb-1">&copy; {% now "Y" %} Трудник. {% translate 'Все права защищены.' %}</p>
+            <p class="mb-1">&copy; {% now "Y" %} {% translate "Трудник" context "brand" %}. {% translate 'Все права защищены.' %}</p>
             <form action="{% url 'set_language' %}" method="post" class="inline-flex items-center gap-1 mb-1">
                 {% csrf_token %}
                 <input type="hidden" name="next" value="{{ request.path }}">
@@ -190,16 +190,16 @@
     {% if user.is_authenticated %}
     {% with current=request.resolver_match.url_name %}
     <nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-neutral-200 flex justify-around md:hidden items-center pt-2 pb-1 z-50" role="navigation" aria-label="{% translate 'Мобильная навигация' %}">
-        <a href="{% url 'core:jobs' %}" class="flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'jobs' or current == 'job_detail' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="Задания" aria-current="{% if current == 'jobs' %}page{% elif current == 'job_detail' %}true{% else %}false{% endif %}">
+        <a href="{% url 'core:jobs' %}" class="flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'jobs' or current == 'job_detail' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="{% translate 'Задания' %}" aria-current="{% if current == 'jobs' %}page{% elif current == 'job_detail' %}true{% else %}false{% endif %}">
             <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>{% translate 'Задания' %}</span>
         </a>
         <a href="{% url 'core:my_jobs' %}" class="flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'my_jobs' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="{% translate 'Мои задания' %}" aria-current="{% if current == 'my_jobs' %}page{% else %}false{% endif %}">
             <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span>{% translate 'Мои' %}</span>
         </a>
-        <a href="{% url 'core:my_applications' %}" class="flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'my_applications' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="Отклики" aria-current="{% if current == 'my_applications' %}page{% else %}false{% endif %}">
+        <a href="{% url 'core:my_applications' %}" class="flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'my_applications' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="{% translate 'Отклики' %}" aria-current="{% if current == 'my_applications' %}page{% else %}false{% endif %}">
             <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="6" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="18" y2="12"/></svg><span>{% translate 'Отклики' %}</span>
         </a>
-        <a href="{% url 'core:chats' %}" class="relative flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'chats' or current == 'chat' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="Чаты" aria-current="{% if current == 'chats' %}page{% elif current == 'chat' %}true{% else %}false{% endif %}">
+        <a href="{% url 'core:chats' %}" class="relative flex flex-col items-center text-[11px] py-1 px-2 font-medium min-w-[64px] {% if current == 'chats' or current == 'chat' %}text-primary-700{% else %}text-neutral-600{% endif %}" aria-label="{% translate 'Чаты' %}" aria-current="{% if current == 'chats' %}page{% elif current == 'chat' %}true{% else %}false{% endif %}">
             <svg aria-hidden="true" class="h-6 w-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>{% translate 'Чаты' %}</span>
             <span class="js-chat-unread-badge {% if not unread_chats_count %}hidden{% endif %} absolute top-0 right-1 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-danger text-white text-[9px] font-bold">{{ unread_chats_count|default:0 }}</span>
         </a>
@@ -291,6 +291,44 @@
       document.body.appendChild(box);
       setTimeout(function(){ box.style.opacity='0'; box.style.transition='opacity .3s'; setTimeout(function(){box.remove()},300); }, 5000);
     }
+    </script>
+    {% translate "Закрыть" as t_close %}
+    {% translate "Подтвердите действие" as t_confirm_title %}
+    {% translate "Подтвердить" as t_confirm_ok %}
+    {% translate "Соединение восстановлено" as t_connection_restored %}
+    {% translate "Показать" as t_show %}
+    {% translate "Скрыть" as t_hide %}
+    {% translate "Показать пароль" as t_show_password %}
+    {% translate "Скрыть пароль" as t_hide_password %}
+    {% translate "Шаг" as t_step_word %}
+    {% translate "из" as t_of %}
+    {% translate "Описание" as t_step_desc %}
+    {% translate "Оплата и срок" as t_step_pay %}
+    {% translate "Адрес и карта" as t_step_address %}
+    {% translate "Шаги формы" as t_form_steps %}
+    {% translate "← Назад" as t_back %}
+    {% translate "Далее →" as t_next %}
+    {% translate "Выбрано:" as t_selected %}
+    <script nonce="{{ request.csp_nonce }}">
+    window.TRUDNIK_I18N = {
+        close: "{{ t_close|escapejs }}",
+        confirm_title: "{{ t_confirm_title|escapejs }}",
+        confirm_ok: "{{ t_confirm_ok|escapejs }}",
+        connection_restored: "{{ t_connection_restored|escapejs }}",
+        show: "{{ t_show|escapejs }}",
+        hide: "{{ t_hide|escapejs }}",
+        show_password: "{{ t_show_password|escapejs }}",
+        hide_password: "{{ t_hide_password|escapejs }}",
+        step_word: "{{ t_step_word|escapejs }}",
+        of: "{{ t_of|escapejs }}",
+        step_desc: "{{ t_step_desc|escapejs }}",
+        step_pay: "{{ t_step_pay|escapejs }}",
+        step_address: "{{ t_step_address|escapejs }}",
+        form_steps: "{{ t_form_steps|escapejs }}",
+        back: "{{ t_back|escapejs }}",
+        next: "{{ t_next|escapejs }}",
+        selected: "{{ t_selected|escapejs }}"
+    };
     </script>
     <script nonce="{{ request.csp_nonce }}" src="{% static 'js/install-prompt.js' %}" defer></script>
     <script nonce="{{ request.csp_nonce }}" src="{% static 'js/pwa-usage.js' %}" defer></script>

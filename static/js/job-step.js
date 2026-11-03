@@ -6,6 +6,7 @@
 (function () {
     'use strict';
 
+    var T = window.TRUDNIK_I18N || {};
     var form = document.querySelector('form[data-job-draft="1"]');
     if (!form) return;
 
@@ -14,7 +15,7 @@
         2: ['payment_amount', 'max_workers', 'date_time'],
         3: ['is_remote', 'address', 'city']
     };
-    var titles = { 1: 'Описание', 2: 'Оплата и срок', 3: 'Адрес и карта' };
+    var titles = { 1: T.step_desc || 'Описание', 2: T.step_pay || 'Оплата и срок', 3: T.step_address || 'Адрес и карта' };
 
     function nodeFor(name) {
         var el = form.querySelector('[name="' + name + '"]');
@@ -28,7 +29,7 @@
         panel.className = 'space-y-3';
         var heading = document.createElement('h3');
         heading.className = 'text-sm font-semibold text-neutral-800';
-        heading.textContent = 'Шаг ' + step + '. ' + titles[step];
+        heading.textContent = (T.step_word || 'Шаг') + ' ' + step + '. ' + titles[step];
         panel.appendChild(heading);
         return panel;
     }
@@ -84,7 +85,7 @@
 
     var progress = document.createElement('nav');
     progress.className = 'hidden sm:flex flex-wrap gap-2 mb-4';
-    progress.setAttribute('aria-label', 'Шаги формы');
+    progress.setAttribute('aria-label', T.form_steps || 'Шаги формы');
     var navButtons = {};
     [1, 2, 3].forEach(function (step) {
         navButtons[step] = addNavButton(progress, step, step + '. ' + titles[step]);
@@ -122,14 +123,14 @@
 
     back = document.createElement('button');
     back.type = 'button';
-    back.textContent = '← Назад';
+    back.textContent = T.back || '← Назад';
     back.className = 'px-4 h-10 rounded-xl border border-neutral-200 bg-white text-sm font-medium text-neutral-700';
     back.addEventListener('click', function () { show(Math.max(1, step - 1)); });
     navBox.appendChild(back);
 
     next = document.createElement('button');
     next.type = 'button';
-    next.textContent = 'Далее →';
+    next.textContent = T.next || 'Далее →';
     next.className = 'px-4 h-10 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold';
     next.addEventListener('click', function () {
         var invalid = null;

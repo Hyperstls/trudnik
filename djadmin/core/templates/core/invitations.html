@@ -1,33 +1,35 @@
 {% extends "core/base.html" %}
-{% block title %}Приглашения — Трудник{% endblock %}
+{% load i18n %}
+{% block title %}{% translate "Приглашения — Трудник" %}{% endblock %}
 {% block content %}
+{% translate "Задание" as default_job_label %}
 <div class="px-0 py-4 fade-in">
-    <h2 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-4">Приглашения</h2>
-    <h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-2">Мне</h3>
+    <h2 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-4">{% translate "Приглашения" %}</h2>
+    <h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-2">{% translate "Мне" %}</h3>
     {% if incoming %}
     <form method="post" action="{% url 'core:invitations_reject_all' %}" class="mb-3">{% csrf_token %}
-        <button class="px-3 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">Отклонить все ожидающие</button>
+        <button class="px-3 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">{% translate "Отклонить все ожидающие" %}</button>
     </form>
     <div class="grid gap-3 mb-8">
         {% for inv in incoming %}
         <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 flex flex-wrap justify-between gap-3">
             <div class="min-w-0">
-                <a href="{% url 'core:job_detail' inv.job.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ inv.job.work_type|default:"Задание" }}</a>
+                <a href="{% url 'core:job_detail' inv.job.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ inv.job.work_type|default:default_job_label }}</a>
                 <p class="text-sm text-neutral-500 mt-0.5">{{ inv.job.organization_name }} · {{ inv.job.date_time|date:"d.m.Y H:i" }}</p>
                 {% if inv.message %}<p class="text-sm text-neutral-700 mt-1">{{ inv.message }}</p>{% endif %}
                 <p class="text-sm mt-1">
-                    {% if inv.status == 'pending' %}<span class="text-xs bg-neutral-100 text-neutral-600 rounded-full px-2.5 py-0.5 font-medium">Ожидает ответа</span>
-                    {% elif inv.status == 'accepted' %}<span class="text-xs bg-green-50 text-green-700 border border-green-200 rounded-full px-2.5 py-0.5 font-medium">Принято</span>
-                    {% else %}<span class="text-xs bg-red-50 text-red-700 border border-red-200 rounded-full px-2.5 py-0.5 font-medium">Отклонено</span>{% endif %}
+                    {% if inv.status == 'pending' %}<span class="text-xs bg-neutral-100 text-neutral-600 rounded-full px-2.5 py-0.5 font-medium">{% translate "Ожидает ответа" %}</span>
+                    {% elif inv.status == 'accepted' %}<span class="text-xs bg-green-50 text-green-700 border border-green-200 rounded-full px-2.5 py-0.5 font-medium">{% translate "Принято" %}</span>
+                    {% else %}<span class="text-xs bg-red-50 text-red-700 border border-red-200 rounded-full px-2.5 py-0.5 font-medium">{% translate "Отклонено" %}</span>{% endif %}
                 </p>
             </div>
             {% if inv.status == 'pending' %}
             <div class="flex gap-2 text-sm shrink-0">
                 <form method="post" action="{% url 'core:invitation_respond' inv.pk 'accept' %}">{% csrf_token %}
-                    <button class="action-icon-btn accept-btn"><span class="text-xs font-medium">Принять</span></button>
+                    <button class="action-icon-btn accept-btn"><span class="text-xs font-medium">{% translate "Принять" %}</span></button>
                 </form>
                 <form method="post" action="{% url 'core:invitation_respond' inv.pk 'decline' %}">{% csrf_token %}
-                    <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Отклонить</span></button>
+                    <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">{% translate "Отклонить" %}</span></button>
                 </form>
             </div>
             {% endif %}
@@ -35,22 +37,22 @@
         {% endfor %}
     </div>
     {% else %}
-    <p class="text-sm text-neutral-500 mb-8">Входящих приглашений нет.</p>
+    <p class="text-sm text-neutral-500 mb-8">{% translate "Входящих приглашений нет." %}</p>
     {% endif %}
 
-    <h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-2">Отправленные</h3>
+    <h3 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-2">{% translate "Отправленные" %}</h3>
     {% if outgoing %}
     <div class="grid gap-3">
         {% for inv in outgoing %}
         <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4">
             <p class="font-semibold text-neutral-900">{{ inv.worker.full_name }}</p>
             <div class="flex flex-wrap items-center justify-between gap-2 mt-1">
-                <p class="text-sm text-neutral-500">{{ inv.job.work_type|default:"Задание" }} ·
-                    {% if inv.status == 'pending' %}ожидает{% elif inv.status == 'accepted' %}принято{% else %}отклонено{% endif %}
+                <p class="text-sm text-neutral-500">{{ inv.job.work_type|default:default_job_label }} ·
+                    {% if inv.status == 'pending' %}{% translate "ожидает" %}{% elif inv.status == 'accepted' %}{% translate "принято" %}{% else %}{% translate "отклонено" %}{% endif %}
                 </p>
                 {% if inv.status == 'pending' %}
                 <form method="post" action="{% url 'core:invitation_revoke' inv.pk %}">{% csrf_token %}
-                    <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Отозвать</span></button>
+                    <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">{% translate "Отозвать" %}</span></button>
                 </form>
                 {% endif %}
             </div>
@@ -58,7 +60,7 @@
         {% endfor %}
     </div>
     {% else %}
-    <p class="text-sm text-neutral-500">Вы ещё никого не приглашали.</p>
+    <p class="text-sm text-neutral-500">{% translate "Вы ещё никого не приглашали." %}</p>
     {% endif %}
 </div>
 {% endblock %}

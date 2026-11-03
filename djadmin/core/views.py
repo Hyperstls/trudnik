@@ -24,7 +24,7 @@ from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext as _, gettext_lazy as _lazy
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
@@ -133,17 +133,17 @@ def jobs_geo_set(request):
     if request.POST.get("clear") == "1":
         for key in ("geo_lat", "geo_lng", "geo_radius"):
             request.session.pop(key, None)
-        messages.info(request, "Гео-поиск отключён.")
+        messages.info(request, _("Гео-поиск отключён."))
         return redirect(nxt)
     try:
         lat = float(request.POST.get("lat") or "")
         lng = float(request.POST.get("lng") or "")
         radius = float(request.POST.get("radius") or 10)
     except (TypeError, ValueError):
-        messages.error(request, "Не удалось получить координаты. Попробуйте ещё раз.")
+        messages.error(request, _("Не удалось получить координаты. Попробуйте ещё раз."))
         return redirect(nxt)
     if not (-90 <= lat <= 90 and -180 <= lng <= 180 and 0.1 <= radius <= 100):
-        messages.error(request, "Некорректные координаты или радиус.")
+        messages.error(request, _("Некорректные координаты или радиус."))
         return redirect(nxt)
     # 152-ФЗ: минимальная точность для поиска (≈110 м) и короткий срок жизни.
     request.session["geo_lat"] = round(lat, 3)
@@ -162,7 +162,7 @@ def _saved_searches(user):
             continue
         result.append({
             "id": item["id"],
-            "name": item.get("name") or "Мой поиск",
+            "name": item.get("name") or _("Мой поиск"),
             "url": reverse("core:jobs") + "?" + item["query"],
             "notify": item.get("notify", True) is not False,
         })
@@ -187,7 +187,7 @@ def _saved_search_data(post):
     query = urlencode(params)
     city = (post.get("city") or "").strip()
     q = (post.get("q") or "").strip()
-    name = city or q or ("Все задания" if not query else "Мой поиск")
+    name = city or q or (_("Все задания") if not query else _("Мой поиск"))
     return {"query": query, "name": name[:80]}
 
 
@@ -197,13 +197,13 @@ def _saved_search_data(post):
 def save_search(request):
     data = _saved_search_data(request.POST)
     if not data["query"]:
-        messages.info(request, "Сначала выберите хотя бы один фильтр.")
+        messages.info(request, _("Сначала выберите хотя бы один фильтр."))
         return redirect("core:jobs")
     prefs = request.user.notification_prefs or {}
     items = prefs.get("saved_searches") if isinstance(prefs.get("saved_searches"), list) else []
     items = [item for item in items if isinstance(item, dict)]
     if any(item.get("query") == data["query"] for item in items):
-        messages.info(request, "Такой поиск уже сохранён.")
+        messages.info(request, _("Такой поиск уже сохранён."))
         return redirect(reverse("core:jobs") + (("?" + data["query"]) if data["query"] else ""))
     items.insert(0, {
         "id": uuid.uuid4().hex, "name": data["name"], "query": data["query"],
@@ -211,7 +211,7 @@ def save_search(request):
     })
     prefs["saved_searches"] = items[:10]
     Profile.objects.filter(pk=request.user.pk).update(notification_prefs=prefs)
-    messages.success(request, "Поиск сохранён.")
+    messages.success(request, _("Поиск сохранён."))
     return redirect(reverse("core:jobs") + (("?" + data["query"]) if data["query"] else ""))
 
 
@@ -234,7 +234,7 @@ def toggle_search(request, search_id):
     if found:
         prefs["saved_searches"] = updated[:10]
         Profile.objects.filter(pk=request.user.pk).update(notification_prefs=prefs)
-        messages.info(request, "Настройка уведомлений поиска обновлена.")
+        messages.info(request, _("Настройка уведомлений поиска обновлена."))
     next_url = request.POST.get("next") or ""
     if next_url and url_has_allowed_host_and_scheme(
         next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
@@ -254,7 +254,7 @@ def delete_search(request, search_id):
         if isinstance(item, dict) and item.get("id") != search_id
     ][:10]
     Profile.objects.filter(pk=request.user.pk).update(notification_prefs=prefs)
-    messages.info(request, "Сохранённый поиск удалён.")
+    messages.info(request, _("Сохранённый поиск удалён."))
     return redirect("core:jobs")
 
 
@@ -362,7 +362,7 @@ def jobs_list(request):
         try:
             nearby = call_rpc_rows("nearby_jobs", geo_lat, geo_lng, geo_radius * 1000)
         except Exception:
-            messages.warning(request, "Гео-поиск недоступен — показаны все задания.")
+            messages.warning(request, _("Гео-поиск недоступен — показаны все задания."))
         else:
             nearby = [row for row in (nearby or []) if row.get("id") is not None]
             nearby.sort(key=lambda row: row.get("distance_meters") or 0)
@@ -426,7 +426,7 @@ def jobs_list(request):
             "id": str(job.pk),
             "lat": float(job.lat),
             "lng": float(job.lng),
-            "title": job.work_type or "Задание",
+            "title": job.work_type or _("Задание"),
             "url": reverse("core:job_detail", args=[job.pk]),
         }
         for job in page.object_list
@@ -747,9 +747,9 @@ def worker_detail(request, user_id):
 
 # LEGAL-P0-01: заголовки legacy-страниц, рендерятся, когда site_pages пуст.
 LEGAL_TITLES = {
-    "privacy": "Политика конфиденциальности",
-    "terms": "Условия использования",
-    "safety": "Как мы защищаем",
+    "privacy": _lazy("Политика конфиденциальности"),
+    "terms": _lazy("Условия использования"),
+    "safety": _lazy("Как мы защищаем"),
 }
 
 

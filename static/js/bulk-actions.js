@@ -3,6 +3,7 @@
  * Works for jobs and received applications, one root per page.
  */
 (function () {
+    var T = window.TRUDNIK_I18N || {};
     'use strict';
 
     document.querySelectorAll('[data-bulk-root]').forEach(function (root) {
@@ -19,7 +20,7 @@
 
         function refresh() {
             var chosen = selected().length;
-            if (count) count.textContent = 'Выбрано: ' + chosen;
+            if (count) count.textContent = (T.selected || 'Выбрано: ') + chosen;
             actions.forEach(function (btn) {
                 var requires = btn.getAttribute('data-bulk-requires');
                 var applicable = chosen;

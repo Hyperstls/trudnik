@@ -16,6 +16,7 @@ from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 
 class ProfileManager(BaseUserManager):
@@ -55,63 +56,63 @@ class Profile(AbstractBaseUser):
     """
 
     class Role(models.TextChoices):
-        WORKER = "worker", "Трудник"
-        EMPLOYER = "employer", "Работодатель"
-        ADMIN = "admin", "Администратор"
+        WORKER = "worker", _("Трудник")
+        EMPLOYER = "employer", _("Работодатель")
+        ADMIN = "admin", _("Администратор")
 
     class VerificationStatus(models.TextChoices):
-        NONE = "none", "Не верифицирован"
-        PENDING = "pending", "На проверке"
-        APPROVED = "approved", "Подтверждён"
-        REJECTED = "rejected", "Отклонён"
+        NONE = "none", _("Не верифицирован")
+        PENDING = "pending", _("На проверке")
+        APPROVED = "approved", _("Подтверждён")
+        REJECTED = "rejected", _("Отклонён")
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    role = models.CharField("роль-ориентация", max_length=20, choices=Role.choices, default=Role.WORKER)
-    full_name = models.CharField("ФИО", max_length=300, default="")
-    phone = models.CharField("телефон", max_length=40, null=True, blank=True)
-    photo_url = models.URLField("фото (legacy)", max_length=1000, null=True, blank=True)
-    avatar_url = models.URLField("аватар", max_length=1000, null=True, blank=True)
-    age = models.PositiveIntegerField("возраст", null=True, blank=True)
-    bio = models.TextField("о себе", null=True, blank=True)
-    city = models.CharField("город", max_length=200, null=True, blank=True)
-    experience = models.TextField("опыт", null=True, blank=True)
-    desired_payment = models.DecimalField("желаемая оплата", max_digits=12, decimal_places=2, null=True, blank=True)
+    role = models.CharField(_("роль-ориентация"), max_length=20, choices=Role.choices, default=Role.WORKER)
+    full_name = models.CharField(_("ФИО"), max_length=300, default="")
+    phone = models.CharField(_("телефон"), max_length=40, null=True, blank=True)
+    photo_url = models.URLField(_("фото (legacy)"), max_length=1000, null=True, blank=True)
+    avatar_url = models.URLField(_("аватар"), max_length=1000, null=True, blank=True)
+    age = models.PositiveIntegerField(_("возраст"), null=True, blank=True)
+    bio = models.TextField(_("о себе"), null=True, blank=True)
+    city = models.CharField(_("город"), max_length=200, null=True, blank=True)
+    experience = models.TextField(_("опыт"), null=True, blank=True)
+    desired_payment = models.DecimalField(_("желаемая оплата"), max_digits=12, decimal_places=2, null=True, blank=True)
     verification_status = models.CharField(
-        "верификация", max_length=20, choices=VerificationStatus.choices, default=VerificationStatus.NONE
+        _("верификация"), max_length=20, choices=VerificationStatus.choices, default=VerificationStatus.NONE
     )
-    verification_doc_url = models.URLField("документ верификации", max_length=1000, null=True, blank=True)
-    rating = models.FloatField("рейтинг", default=0, editable=False)
-    total_reviews = models.IntegerField("всего отзывов", default=0, editable=False)
-    ratings_count = models.IntegerField("количество оценок", default=0, editable=False)
+    verification_doc_url = models.URLField(_("документ верификации"), max_length=1000, null=True, blank=True)
+    rating = models.FloatField(_("рейтинг"), default=0, editable=False)
+    total_reviews = models.IntegerField(_("всего отзывов"), default=0, editable=False)
+    ratings_count = models.IntegerField(_("количество оценок"), default=0, editable=False)
     religion = models.ForeignKey(
-        "core.Religion", verbose_name="вероисповедание", on_delete=models.SET_NULL,
+        "core.Religion", verbose_name=_("вероисповедание"), on_delete=models.SET_NULL,
         null=True, blank=True, db_column="religion_id", related_name="profiles",
     )
-    portfolio_link = models.URLField("портфолио", max_length=1000, default="", blank=True)
-    inn = models.CharField("ИНН", max_length=12, default="", blank=True)
-    is_self_employed = models.BooleanField("самозанятый", default=False)
-    email_public = models.EmailField("публичный email", max_length=320, default="", blank=True)
-    contact = models.CharField("контакт", max_length=300, null=True, blank=True)
-    notification_prefs = models.JSONField("настройки уведомлений", default=dict, blank=True)
-    acquisition = models.JSONField("источник привлечения", default=dict, blank=True)
-    email = models.EmailField("email (логин)", max_length=320, unique=True, null=True, blank=True)
+    portfolio_link = models.URLField(_("портфолио"), max_length=1000, default="", blank=True)
+    inn = models.CharField(_("ИНН"), max_length=12, default="", blank=True)
+    is_self_employed = models.BooleanField(_("самозанятый"), default=False)
+    email_public = models.EmailField(_("публичный email"), max_length=320, default="", blank=True)
+    contact = models.CharField(_("контакт"), max_length=300, null=True, blank=True)
+    notification_prefs = models.JSONField(_("настройки уведомлений"), default=dict, blank=True)
+    acquisition = models.JSONField(_("источник привлечения"), default=dict, blank=True)
+    email = models.EmailField(_("email (логин)"), max_length=320, unique=True, null=True, blank=True)
     # bcrypt $2b$/$2a$; колонка БД — password_hash (формат совместим с Flask/pgcrypto)
     password = models.CharField(max_length=255, db_column="password_hash")
-    created_at = models.DateTimeField("создан", auto_now_add=True, editable=False)
-    updated_at = models.DateTimeField("обновлён", auto_now=True, editable=False)
+    created_at = models.DateTimeField(_("создан"), auto_now_add=True, editable=False)
+    updated_at = models.DateTimeField(_("обновлён"), auto_now=True, editable=False)
     # fail-closed на ORM-пути: create_user создаёт неподтверждённого пользователя.
     # DB-default остаётся TRUE до P113 (миграция в этом пакете не меняется);
     # create_superuser ставит True явно.
-    email_verified = models.BooleanField("email подтверждён", default=False)
-    consented_at = models.DateTimeField("согласие 152-ФЗ", null=True, blank=True)
-    password_changed_at = models.DateTimeField("пароль изменён", null=True, blank=True)
-    suspended = models.BooleanField("заблокирован", default=False)
-    suspended_reason = models.TextField("причина блокировки", null=True, blank=True)
-    suspended_at = models.DateTimeField("дата блокировки", null=True, blank=True)
-    verification_provider = models.CharField("способ верификации", max_length=30, default="manual")
-    messenger_user_id = models.CharField("id в мессенджере", max_length=200, null=True, blank=True)
-    verified_at = models.DateTimeField("верифицирован", null=True, blank=True)
-    worker_visibility = models.BooleanField("виден в каталоге трудников", default=True)
+    email_verified = models.BooleanField(_("email подтверждён"), default=False)
+    consented_at = models.DateTimeField(_("согласие 152-ФЗ"), null=True, blank=True)
+    password_changed_at = models.DateTimeField(_("пароль изменён"), null=True, blank=True)
+    suspended = models.BooleanField(_("заблокирован"), default=False)
+    suspended_reason = models.TextField(_("причина блокировки"), null=True, blank=True)
+    suspended_at = models.DateTimeField(_("дата блокировки"), null=True, blank=True)
+    verification_provider = models.CharField(_("способ верификации"), max_length=30, default="manual")
+    messenger_user_id = models.CharField(_("id в мессенджере"), max_length=200, null=True, blank=True)
+    verified_at = models.DateTimeField(_("верифицирован"), null=True, blank=True)
+    worker_visibility = models.BooleanField(_("виден в каталоге трудников"), default=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["full_name"]
@@ -124,8 +125,8 @@ class Profile(AbstractBaseUser):
     class Meta:
         managed = False
         db_table = "profiles"
-        verbose_name = "профиль"
-        verbose_name_plural = "Профили"
+        verbose_name = _("профиль")
+        verbose_name_plural = _("Профили")
         ordering = ("-created_at",)
 
     def __str__(self):
@@ -181,16 +182,16 @@ class Profile(AbstractBaseUser):
 
 class Religion(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField("название", max_length=200, unique=True)
-    sort_order = models.IntegerField("порядок", default=0)
+    name = models.CharField(_("название"), max_length=200, unique=True)
+    sort_order = models.IntegerField(_("порядок"), default=0)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
 
     class Meta:
         managed = False
         db_table = "religions"
         ordering = ("sort_order", "name")
-        verbose_name = "вероисповедание"
-        verbose_name_plural = "Вероисповедания"
+        verbose_name = _("вероисповедание")
+        verbose_name_plural = _("Вероисповедания")
 
     def __str__(self):
         return self.name
@@ -198,16 +199,16 @@ class Religion(models.Model):
 
 class Skill(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField("название", max_length=200, unique=True)
-    sort_order = models.IntegerField("порядок", default=0)
+    name = models.CharField(_("название"), max_length=200, unique=True)
+    sort_order = models.IntegerField(_("порядок"), default=0)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
 
     class Meta:
         managed = False
         db_table = "skills"
         ordering = ("sort_order", "name")
-        verbose_name = "навык"
-        verbose_name_plural = "Навыки (справочник)"
+        verbose_name = _("навык")
+        verbose_name_plural = _("Навыки (справочник)")
 
     def __str__(self):
         return self.name
@@ -223,8 +224,8 @@ class UserSkill(models.Model):
         managed = False
         db_table = "user_skills"
         unique_together = (("user", "skill"),)
-        verbose_name = "навык профиля"
-        verbose_name_plural = "Навыки профилей"
+        verbose_name = _("навык профиля")
+        verbose_name_plural = _("Навыки профилей")
 
     def __str__(self):
         return "%s → %s" % (self.user_id, self.skill_id)
@@ -241,53 +242,53 @@ class JobManager(models.Manager):
 
 class Job(models.Model):
     class Status(models.TextChoices):
-        DRAFT = "draft", "Черновик"
-        OPEN = "open", "Открыта"
-        ACTIVE = "active", "Активна"
-        IN_PROGRESS = "in_progress", "В работе"
-        COMPLETED = "completed", "Завершена"
-        CANCELLED = "cancelled", "Отменена"
-        PAID = "paid", "Оплачена"
-        EXPIRED = "expired", "Истекла"
+        DRAFT = "draft", _("Черновик")
+        OPEN = "open", _("Открыта")
+        ACTIVE = "active", _("Активна")
+        IN_PROGRESS = "in_progress", _("В работе")
+        COMPLETED = "completed", _("Завершена")
+        CANCELLED = "cancelled", _("Отменена")
+        PAID = "paid", _("Оплачена")
+        EXPIRED = "expired", _("Истекла")
 
     class ModerationStatus(models.TextChoices):
-        OK = "ok", "Опубликовано"
-        REVIEW = "review", "На проверке"
-        REJECTED = "rejected", "Отклонено"
+        OK = "ok", _("Опубликовано")
+        REVIEW = "review", _("На проверке")
+        REJECTED = "rejected", _("Отклонено")
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     employer = models.ForeignKey(
-        Profile, verbose_name="работодатель", on_delete=models.CASCADE,
+        Profile, verbose_name=_("работодатель"), on_delete=models.CASCADE,
         db_column="employer_id", related_name="jobs",
     )
-    organization_name = models.CharField("организация", max_length=500, default="")
-    org_description = models.TextField("об организации", default="", blank=True)
-    object_description = models.TextField("об объекте", default="", blank=True)
-    detailed_description = models.TextField("подробное описание", default="", blank=True)
-    work_type = models.CharField("тип работ", max_length=100, default="")
-    address = models.CharField("адрес", max_length=500, null=True, blank=True)
-    city = models.CharField("город", max_length=255, null=True, blank=True)
-    is_remote = models.BooleanField("удалённая работа", default=False)
-    lat = models.FloatField("широта", null=True, blank=True)
-    lng = models.FloatField("долгота", null=True, blank=True)
-    date_time = models.DateTimeField("дата/время работ")
-    payment_amount = models.DecimalField("оплата", max_digits=12, decimal_places=2, null=True, blank=True)
-    status = models.CharField("статус", max_length=20, choices=Status.choices, default=Status.OPEN)
+    organization_name = models.CharField(_("организация"), max_length=500, default="")
+    org_description = models.TextField(_("об организации"), default="", blank=True)
+    object_description = models.TextField(_("об объекте"), default="", blank=True)
+    detailed_description = models.TextField(_("подробное описание"), default="", blank=True)
+    work_type = models.CharField(_("тип работ"), max_length=100, default="")
+    address = models.CharField(_("адрес"), max_length=500, null=True, blank=True)
+    city = models.CharField(_("город"), max_length=255, null=True, blank=True)
+    is_remote = models.BooleanField(_("удалённая работа"), default=False)
+    lat = models.FloatField(_("широта"), null=True, blank=True)
+    lng = models.FloatField(_("долгота"), null=True, blank=True)
+    date_time = models.DateTimeField(_("дата/время работ"))
+    payment_amount = models.DecimalField(_("оплата"), max_digits=12, decimal_places=2, null=True, blank=True)
+    status = models.CharField(_("статус"), max_length=20, choices=Status.choices, default=Status.OPEN)
     moderation_status = models.CharField(
-        "модерация", max_length=20, choices=ModerationStatus.choices,
+        _("модерация"), max_length=20, choices=ModerationStatus.choices,
         default=ModerationStatus.OK,
     )
-    moderation_reason = models.TextField("причина модерации", null=True, blank=True)
-    max_workers = models.PositiveIntegerField("нужно работников", default=1, null=True, blank=True)
-    current_workers = models.PositiveSmallIntegerField("принято", default=0, null=True, blank=True)
-    tariff = models.CharField("тариф", max_length=20, default="standard", null=True, blank=True)
-    is_paid = models.BooleanField("оплачено размещение", default=False, null=True, blank=True)
-    paid_at = models.DateTimeField("оплачено в", null=True, blank=True)
-    expires_at = models.DateTimeField("истекает", null=True, blank=True)
-    promoted_until = models.DateTimeField("промо до", null=True, blank=True)
-    is_promoted = models.BooleanField("промо", default=False, null=True, blank=True)
-    preferred_religion = models.TextField("предпочтение по вере", default="не важно", null=True, blank=True)
-    photo_urls = ArrayField(models.TextField(), verbose_name="фото (legacy)", default=list, blank=True)
+    moderation_reason = models.TextField(_("причина модерации"), null=True, blank=True)
+    max_workers = models.PositiveIntegerField(_("нужно работников"), default=1, null=True, blank=True)
+    current_workers = models.PositiveSmallIntegerField(_("принято"), default=0, null=True, blank=True)
+    tariff = models.CharField(_("тариф"), max_length=20, default="standard", null=True, blank=True)
+    is_paid = models.BooleanField(_("оплачено размещение"), default=False, null=True, blank=True)
+    paid_at = models.DateTimeField(_("оплачено в"), null=True, blank=True)
+    expires_at = models.DateTimeField(_("истекает"), null=True, blank=True)
+    promoted_until = models.DateTimeField(_("промо до"), null=True, blank=True)
+    is_promoted = models.BooleanField(_("промо"), default=False, null=True, blank=True)
+    preferred_religion = models.TextField(_("предпочтение по вере"), default="не важно", null=True, blank=True)
+    photo_urls = ArrayField(models.TextField(), verbose_name=_("фото (legacy)"), default=list, blank=True)
     skills = models.ManyToManyField(Skill, through="core.JobSkill", related_name="jobs", blank=True)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
     updated_at = models.DateTimeField(auto_now=True, editable=False)
@@ -297,8 +298,8 @@ class Job(models.Model):
     class Meta:
         managed = False
         db_table = "jobs"
-        verbose_name = "задание"
-        verbose_name_plural = "Задания"
+        verbose_name = _("задание")
+        verbose_name_plural = _("Задания")
         ordering = ("-created_at",)
 
     def __str__(self):
@@ -315,8 +316,8 @@ class JobSkill(models.Model):
         managed = False
         db_table = "job_skills"
         unique_together = (("job", "skill"),)
-        verbose_name = "навык задания"
-        verbose_name_plural = "Навыки заданий"
+        verbose_name = _("навык задания")
+        verbose_name_plural = _("Навыки заданий")
 
     def __str__(self):
         return "%s → %s" % (self.job_id, self.skill_id)
@@ -324,17 +325,17 @@ class JobSkill(models.Model):
 
 class JobPhoto(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    job = models.ForeignKey(Job, verbose_name="задание", on_delete=models.CASCADE, related_name="photos")
-    photo_url = models.URLField("фото", max_length=1000, default="")
-    order_num = models.IntegerField("порядок", default=0)
+    job = models.ForeignKey(Job, verbose_name=_("задание"), on_delete=models.CASCADE, related_name="photos")
+    photo_url = models.URLField(_("фото"), max_length=1000, default="")
+    order_num = models.IntegerField(_("порядок"), default=0)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
 
     class Meta:
         managed = False
         db_table = "job_photos"
         ordering = ("order_num", "created_at")
-        verbose_name = "фото задания"
-        verbose_name_plural = "Фото заданий"
+        verbose_name = _("фото задания")
+        verbose_name_plural = _("Фото заданий")
 
     def __str__(self):
         return "%s #%d" % (self.job_id, self.order_num)
@@ -342,21 +343,21 @@ class JobPhoto(models.Model):
 
 class Application(models.Model):
     class Status(models.TextChoices):
-        PENDING = "pending", "Ожидает"
-        ACCEPTED = "accepted", "Принят"
-        REJECTED = "rejected", "Отклонён"
-        WITHDRAWN = "withdrawn", "Отозван"
-        CANCELLED = "cancelled", "Отменён"
+        PENDING = "pending", _("Ожидает")
+        ACCEPTED = "accepted", _("Принят")
+        REJECTED = "rejected", _("Отклонён")
+        WITHDRAWN = "withdrawn", _("Отозван")
+        CANCELLED = "cancelled", _("Отменён")
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    job = models.ForeignKey(Job, verbose_name="задание", on_delete=models.CASCADE, related_name="applications")
-    worker = models.ForeignKey(Profile, verbose_name="трудник", on_delete=models.CASCADE, db_column="worker_id", related_name="+")
-    status = models.CharField("статус", max_length=20, choices=Status.choices, default=Status.PENDING)
+    job = models.ForeignKey(Job, verbose_name=_("задание"), on_delete=models.CASCADE, related_name="applications")
+    worker = models.ForeignKey(Profile, verbose_name=_("трудник"), on_delete=models.CASCADE, db_column="worker_id", related_name="+")
+    status = models.CharField(_("статус"), max_length=20, choices=Status.choices, default=Status.PENDING)
     worker_completed_at = models.DateTimeField(
-        "трудник отметил выполнение", null=True, blank=True,
+        _("трудник отметил выполнение"), null=True, blank=True,
     )
-    contact_paid = models.BooleanField("контакт оплачен", default=False)
-    contact_payment_id = models.UUIDField("платёж контакта", null=True, blank=True)
+    contact_paid = models.BooleanField(_("контакт оплачен"), default=False)
+    contact_payment_id = models.UUIDField(_("платёж контакта"), null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
     updated_at = models.DateTimeField(auto_now=True, editable=False)
 
@@ -364,8 +365,8 @@ class Application(models.Model):
         managed = False
         db_table = "applications"
         unique_together = (("job", "worker"),)
-        verbose_name = "отклик"
-        verbose_name_plural = "Отклики"
+        verbose_name = _("отклик")
+        verbose_name_plural = _("Отклики")
         ordering = ("-created_at",)
 
     def __str__(self):
@@ -374,24 +375,24 @@ class Application(models.Model):
 
 class Message(models.Model):
     id = models.BigAutoField(primary_key=True)  # IDENTITY BY DEFAULT
-    sender = models.ForeignKey(Profile, verbose_name="отправитель", on_delete=models.CASCADE, related_name="+")
-    application = models.ForeignKey(Application, verbose_name="отклик (чат)", on_delete=models.CASCADE, null=True, blank=True, related_name="messages")
-    content = models.TextField("текст", blank=True)
-    attachment_url = models.TextField("вложение", null=True, blank=True)
-    attachment_name = models.TextField("имя вложения", null=True, blank=True)
-    attachment_mime = models.TextField("MIME вложения", null=True, blank=True)
-    attachment_size = models.PositiveIntegerField("размер вложения", null=True, blank=True)
-    read_at = models.DateTimeField("прочитано", null=True, blank=True)
-    edited_at = models.DateTimeField("изменено", null=True, blank=True)
-    deleted_at = models.DateTimeField("удалено", null=True, blank=True)
-    client_message_id = models.UUIDField("идемпотентность (client)", null=True, blank=True)
+    sender = models.ForeignKey(Profile, verbose_name=_("отправитель"), on_delete=models.CASCADE, related_name="+")
+    application = models.ForeignKey(Application, verbose_name=_("отклик (чат)"), on_delete=models.CASCADE, null=True, blank=True, related_name="messages")
+    content = models.TextField(_("текст"), blank=True)
+    attachment_url = models.TextField(_("вложение"), null=True, blank=True)
+    attachment_name = models.TextField(_("имя вложения"), null=True, blank=True)
+    attachment_mime = models.TextField(_("MIME вложения"), null=True, blank=True)
+    attachment_size = models.PositiveIntegerField(_("размер вложения"), null=True, blank=True)
+    read_at = models.DateTimeField(_("прочитано"), null=True, blank=True)
+    edited_at = models.DateTimeField(_("изменено"), null=True, blank=True)
+    deleted_at = models.DateTimeField(_("удалено"), null=True, blank=True)
+    client_message_id = models.UUIDField(_("идемпотентность (client)"), null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
 
     class Meta:
         managed = False
         db_table = "messages"
-        verbose_name = "сообщение чата"
-        verbose_name_plural = "Сообщения чата"
+        verbose_name = _("сообщение чата")
+        verbose_name_plural = _("Сообщения чата")
         ordering = ("created_at",)
 
     def __str__(self):
@@ -400,21 +401,21 @@ class Message(models.Model):
 
 class Notification(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(Profile, verbose_name="получатель", on_delete=models.CASCADE, related_name="notifications")
-    type = models.CharField("тип", max_length=50)
-    title = models.CharField("заголовок", max_length=500)
-    message = models.TextField("текст", null=True, blank=True)
-    job = models.ForeignKey(Job, verbose_name="задание", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
-    application = models.ForeignKey(Application, verbose_name="отклик", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    user = models.ForeignKey(Profile, verbose_name=_("получатель"), on_delete=models.CASCADE, related_name="notifications")
+    type = models.CharField(_("тип"), max_length=50)
+    title = models.CharField(_("заголовок"), max_length=500)
+    message = models.TextField(_("текст"), null=True, blank=True)
+    job = models.ForeignKey(Job, verbose_name=_("задание"), on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    application = models.ForeignKey(Application, verbose_name=_("отклик"), on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     data = models.JSONField(default=dict, blank=True)
-    is_read = models.BooleanField("прочитано", default=False)
+    is_read = models.BooleanField(_("прочитано"), default=False)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
 
     class Meta:
         managed = False
         db_table = "notifications"
-        verbose_name = "уведомление"
-        verbose_name_plural = "Уведомления"
+        verbose_name = _("уведомление")
+        verbose_name_plural = _("Уведомления")
         ordering = ("-created_at",)
 
     def __str__(self):
@@ -423,27 +424,27 @@ class Notification(models.Model):
 
 class NotificationOutbox(models.Model):
     class Status(models.TextChoices):
-        PENDING = "pending", "Ожидает"
-        SENT = "sent", "Отправлено"
-        FAILED = "failed", "Ошибка"
-        SKIPPED = "skipped", "Пропущено"
+        PENDING = "pending", _("Ожидает")
+        SENT = "sent", _("Отправлено")
+        FAILED = "failed", _("Ошибка")
+        SKIPPED = "skipped", _("Пропущено")
 
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(Profile, verbose_name="получатель", on_delete=models.CASCADE, related_name="+")
-    type = models.CharField("тип", max_length=50)
-    title = models.CharField("заголовок", max_length=255)
-    body = models.TextField("текст", null=True, blank=True)
+    user = models.ForeignKey(Profile, verbose_name=_("получатель"), on_delete=models.CASCADE, related_name="+")
+    type = models.CharField(_("тип"), max_length=50)
+    title = models.CharField(_("заголовок"), max_length=255)
+    body = models.TextField(_("текст"), null=True, blank=True)
     data = models.JSONField(default=dict, blank=True)
-    status = models.CharField("статус", max_length=20, choices=Status.choices, default=Status.PENDING)
-    attempts = models.IntegerField("попыток", default=0)
-    processed_at = models.DateTimeField("обработано", null=True, blank=True)
+    status = models.CharField(_("статус"), max_length=20, choices=Status.choices, default=Status.PENDING)
+    attempts = models.IntegerField(_("попыток"), default=0)
+    processed_at = models.DateTimeField(_("обработано"), null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
 
     class Meta:
         managed = False
         db_table = "notification_outbox"
-        verbose_name = "outbox-запись"
-        verbose_name_plural = "Outbox уведомлений"
+        verbose_name = _("outbox-запись")
+        verbose_name_plural = _("Outbox уведомлений")
         ordering = ("-created_at",)
 
     def __str__(self):
@@ -452,13 +453,13 @@ class NotificationOutbox(models.Model):
 
 class Rating(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    rated_user = models.ForeignKey(Profile, verbose_name="оцениваемый", on_delete=models.CASCADE, related_name="ratings_received")
-    rater_user = models.ForeignKey(Profile, verbose_name="оценивший", on_delete=models.CASCADE, related_name="+")
-    job = models.ForeignKey(Job, verbose_name="задание", on_delete=models.CASCADE, null=True, blank=True, related_name="+")
+    rated_user = models.ForeignKey(Profile, verbose_name=_("оцениваемый"), on_delete=models.CASCADE, related_name="ratings_received")
+    rater_user = models.ForeignKey(Profile, verbose_name=_("оценивший"), on_delete=models.CASCADE, related_name="+")
+    job = models.ForeignKey(Job, verbose_name=_("задание"), on_delete=models.CASCADE, null=True, blank=True, related_name="+")
     rating_type = models.CharField(max_length=20, choices=Profile.Role.choices)
     target_type = models.CharField(max_length=20, choices=Profile.Role.choices)
-    rating = models.PositiveSmallIntegerField("оценка")  # CHECK 1..5 в БД
-    comment = models.TextField("комментарий", null=True, blank=True)
+    rating = models.PositiveSmallIntegerField(_("оценка"))  # CHECK 1..5 в БД
+    comment = models.TextField(_("комментарий"), null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
     updated_at = models.DateTimeField(auto_now=True, editable=False)
 
@@ -466,8 +467,8 @@ class Rating(models.Model):
         managed = False
         db_table = "ratings"
         unique_together = (("rater_user", "job", "rated_user"),)
-        verbose_name = "оценка"
-        verbose_name_plural = "Оценки"
+        verbose_name = _("оценка")
+        verbose_name_plural = _("Оценки")
         ordering = ("-created_at",)
 
     def __str__(self):
@@ -476,25 +477,25 @@ class Rating(models.Model):
 
 class Invitation(models.Model):
     class Status(models.TextChoices):
-        PENDING = "pending", "Ожидает"
-        ACCEPTED = "accepted", "Принято"
-        REJECTED = "rejected", "Отклонено"
+        PENDING = "pending", _("Ожидает")
+        ACCEPTED = "accepted", _("Принято")
+        REJECTED = "rejected", _("Отклонено")
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    job = models.ForeignKey(Job, verbose_name="задание", on_delete=models.CASCADE, related_name="invitations")
-    employer = models.ForeignKey(Profile, verbose_name="работодатель", on_delete=models.CASCADE, related_name="+")
-    worker = models.ForeignKey(Profile, verbose_name="трудник", on_delete=models.CASCADE, db_column="worker_id", related_name="invitations_received")
-    status = models.CharField("статус", max_length=20, choices=Status.choices, default=Status.PENDING)
-    message = models.TextField("сообщение", null=True, blank=True)
+    job = models.ForeignKey(Job, verbose_name=_("задание"), on_delete=models.CASCADE, related_name="invitations")
+    employer = models.ForeignKey(Profile, verbose_name=_("работодатель"), on_delete=models.CASCADE, related_name="+")
+    worker = models.ForeignKey(Profile, verbose_name=_("трудник"), on_delete=models.CASCADE, db_column="worker_id", related_name="invitations_received")
+    status = models.CharField(_("статус"), max_length=20, choices=Status.choices, default=Status.PENDING)
+    message = models.TextField(_("сообщение"), null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
-    responded_at = models.DateTimeField("ответ в", null=True, blank=True)
+    responded_at = models.DateTimeField(_("ответ в"), null=True, blank=True)
 
     class Meta:
         managed = False
         db_table = "invitations"
         unique_together = (("job", "worker"),)
-        verbose_name = "приглашение"
-        verbose_name_plural = "Приглашения"
+        verbose_name = _("приглашение")
+        verbose_name_plural = _("Приглашения")
         ordering = ("-created_at",)
 
     def __str__(self):
@@ -503,17 +504,17 @@ class Invitation(models.Model):
 
 class Favorite(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(Profile, verbose_name="кто", on_delete=models.CASCADE, related_name="+")
-    target = models.ForeignKey(Profile, verbose_name="кого", on_delete=models.CASCADE, related_name="+")
-    favorite_type = models.CharField("тип", max_length=20, default="worker")
+    user = models.ForeignKey(Profile, verbose_name=_("кто"), on_delete=models.CASCADE, related_name="+")
+    target = models.ForeignKey(Profile, verbose_name=_("кого"), on_delete=models.CASCADE, related_name="+")
+    favorite_type = models.CharField(_("тип"), max_length=20, default="worker")
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
 
     class Meta:
         managed = False
         db_table = "favorites"
         unique_together = (("user", "target", "favorite_type"),)
-        verbose_name = "избранное (люди)"
-        verbose_name_plural = "Избранное (люди)"
+        verbose_name = _("избранное (люди)")
+        verbose_name_plural = _("Избранное (люди)")
 
     def __str__(self):
         return "%s ♥ %s" % (self.user_id, self.target_id)
@@ -521,16 +522,16 @@ class Favorite(models.Model):
 
 class JobFavorite(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(Profile, verbose_name="кто", on_delete=models.CASCADE, related_name="+")
-    job = models.ForeignKey(Job, verbose_name="задание", on_delete=models.CASCADE, related_name="+")
+    user = models.ForeignKey(Profile, verbose_name=_("кто"), on_delete=models.CASCADE, related_name="+")
+    job = models.ForeignKey(Job, verbose_name=_("задание"), on_delete=models.CASCADE, related_name="+")
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
 
     class Meta:
         managed = False
         db_table = "job_favorites"
         unique_together = (("user", "job"),)
-        verbose_name = "избранное (задания)"
-        verbose_name_plural = "Избранное (задания)"
+        verbose_name = _("избранное (задания)")
+        verbose_name_plural = _("Избранное (задания)")
 
     def __str__(self):
         return "%s ♥ %s" % (self.user_id, self.job_id)
@@ -538,16 +539,16 @@ class JobFavorite(models.Model):
 
 class Blacklist(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(Profile, verbose_name="кто заблокировал", on_delete=models.CASCADE, related_name="+")
-    blocked_user = models.ForeignKey(Profile, verbose_name="заблокирован", on_delete=models.CASCADE, related_name="+")
+    user = models.ForeignKey(Profile, verbose_name=_("кто заблокировал"), on_delete=models.CASCADE, related_name="+")
+    blocked_user = models.ForeignKey(Profile, verbose_name=_("заблокирован"), on_delete=models.CASCADE, related_name="+")
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
 
     class Meta:
         managed = False
         db_table = "blacklists"
         unique_together = (("user", "blocked_user"),)
-        verbose_name = "чёрный список"
-        verbose_name_plural = "Чёрные списки"
+        verbose_name = _("чёрный список")
+        verbose_name_plural = _("Чёрные списки")
 
     def __str__(self):
         return "%s ⛔ %s" % (self.user_id, self.blocked_user_id)
@@ -555,23 +556,23 @@ class Blacklist(models.Model):
 
 class UserReport(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    reporter = models.ForeignKey(Profile, verbose_name="жалобщик", on_delete=models.CASCADE, related_name="reports_filed")
-    reported = models.ForeignKey(Profile, verbose_name="нарушитель", on_delete=models.CASCADE, related_name="+")
-    reason = models.TextField("причина", default="", blank=True)
-    status = models.CharField("статус", max_length=20, default="new")
+    reporter = models.ForeignKey(Profile, verbose_name=_("жалобщик"), on_delete=models.CASCADE, related_name="reports_filed")
+    reported = models.ForeignKey(Profile, verbose_name=_("нарушитель"), on_delete=models.CASCADE, related_name="+")
+    reason = models.TextField(_("причина"), default="", blank=True)
+    status = models.CharField(_("статус"), max_length=20, default="new")
     reviewed_by = models.ForeignKey(
-        Profile, verbose_name="разобрал", on_delete=models.SET_NULL,
+        Profile, verbose_name=_("разобрал"), on_delete=models.SET_NULL,
         null=True, blank=True, db_column="reviewed_by", related_name="+",
     )
-    reviewed_at = models.DateTimeField("разобрано в", null=True, blank=True)
+    reviewed_at = models.DateTimeField(_("разобрано в"), null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
 
     class Meta:
         managed = False
         db_table = "user_reports"
         unique_together = (("reporter", "reported"),)
-        verbose_name = "жалоба"
-        verbose_name_plural = "Жалобы"
+        verbose_name = _("жалоба")
+        verbose_name_plural = _("Жалобы")
         ordering = ("-created_at",)
 
     def __str__(self):
@@ -580,23 +581,23 @@ class UserReport(models.Model):
 
 class EmployerDetail(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.OneToOneField(Profile, verbose_name="профиль", on_delete=models.CASCADE, db_column="user_id", related_name="employer_detail")
-    name = models.CharField("название", max_length=300, default="")
-    description = models.TextField("описание", null=True, blank=True)
-    address = models.TextField("адрес", null=True, blank=True)
-    city = models.CharField("город", max_length=200, null=True, blank=True)
-    lat = models.FloatField("широта", null=True, blank=True)
-    lng = models.FloatField("долгота", null=True, blank=True)
-    company_name = models.CharField("компания", max_length=255, null=True, blank=True)
-    inn = models.CharField("ИНН", max_length=12, null=True, blank=True)
-    is_self_employed = models.BooleanField("самозанятый", default=False)
+    user = models.OneToOneField(Profile, verbose_name=_("профиль"), on_delete=models.CASCADE, db_column="user_id", related_name="employer_detail")
+    name = models.CharField(_("название"), max_length=300, default="")
+    description = models.TextField(_("описание"), null=True, blank=True)
+    address = models.TextField(_("адрес"), null=True, blank=True)
+    city = models.CharField(_("город"), max_length=200, null=True, blank=True)
+    lat = models.FloatField(_("широта"), null=True, blank=True)
+    lng = models.FloatField(_("долгота"), null=True, blank=True)
+    company_name = models.CharField(_("компания"), max_length=255, null=True, blank=True)
+    inn = models.CharField(_("ИНН"), max_length=12, null=True, blank=True)
+    is_self_employed = models.BooleanField(_("самозанятый"), default=False)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
 
     class Meta:
         managed = False
         db_table = "employer_details"
-        verbose_name = "карточка работодателя"
-        verbose_name_plural = "Карточки работодателей"
+        verbose_name = _("карточка работодателя")
+        verbose_name_plural = _("Карточки работодателей")
 
     def __str__(self):
         return self.name or str(self.user_id)
@@ -604,24 +605,24 @@ class EmployerDetail(models.Model):
 
 class EmployerSubscription(models.Model):
     class Tariff(models.TextChoices):
-        BASIC = "basic", "Базовый"
-        PRO = "pro", "Про"
-        BUSINESS = "business", "Бизнес"
+        BASIC = "basic", _("Базовый")
+        PRO = "pro", _("Про")
+        BUSINESS = "business", _("Бизнес")
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    employer = models.ForeignKey(Profile, verbose_name="работодатель", on_delete=models.CASCADE, related_name="subscriptions")
-    tariff = models.CharField("тариф", max_length=20, choices=Tariff.choices, default=Tariff.BASIC)
-    jobs_remaining = models.IntegerField("размещений осталось", default=0)
-    is_promoted = models.BooleanField("промо", default=False)
-    promoted_until = models.DateTimeField("промо до", null=True, blank=True)
+    employer = models.ForeignKey(Profile, verbose_name=_("работодатель"), on_delete=models.CASCADE, related_name="subscriptions")
+    tariff = models.CharField(_("тариф"), max_length=20, choices=Tariff.choices, default=Tariff.BASIC)
+    jobs_remaining = models.IntegerField(_("размещений осталось"), default=0)
+    is_promoted = models.BooleanField(_("промо"), default=False)
+    promoted_until = models.DateTimeField(_("промо до"), null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
     updated_at = models.DateTimeField(auto_now=True, editable=False)
 
     class Meta:
         managed = False
         db_table = "employer_subscriptions"
-        verbose_name = "подписка работодателя"
-        verbose_name_plural = "Подписки работодателей"
+        verbose_name = _("подписка работодателя")
+        verbose_name_plural = _("Подписки работодателей")
 
     def __str__(self):
         return "%s [%s]" % (self.employer_id, self.tariff)
@@ -629,21 +630,21 @@ class EmployerSubscription(models.Model):
 
 class JobPayment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    job = models.ForeignKey(Job, verbose_name="задание", on_delete=models.CASCADE, related_name="+")
-    employer = models.ForeignKey(Profile, verbose_name="работодатель", on_delete=models.CASCADE, related_name="+")
-    amount = models.PositiveIntegerField("сумма, ₽")
-    tariff = models.CharField("тариф", max_length=20, default="standard")
-    type = models.CharField("тип", max_length=30, default="publication")
-    status = models.CharField("статус", max_length=20, default="pending")
-    transaction_id = models.CharField("транзакция", max_length=255, null=True, blank=True)
-    paid_at = models.DateTimeField("оплачено в", null=True, blank=True)
+    job = models.ForeignKey(Job, verbose_name=_("задание"), on_delete=models.CASCADE, related_name="+")
+    employer = models.ForeignKey(Profile, verbose_name=_("работодатель"), on_delete=models.CASCADE, related_name="+")
+    amount = models.PositiveIntegerField(_("сумма, ₽"))
+    tariff = models.CharField(_("тариф"), max_length=20, default="standard")
+    type = models.CharField(_("тип"), max_length=30, default="publication")
+    status = models.CharField(_("статус"), max_length=20, default="pending")
+    transaction_id = models.CharField(_("транзакция"), max_length=255, null=True, blank=True)
+    paid_at = models.DateTimeField(_("оплачено в"), null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
 
     class Meta:
         managed = False
         db_table = "job_payments"
-        verbose_name = "платёж за задание"
-        verbose_name_plural = "Платежи за задания"
+        verbose_name = _("платёж за задание")
+        verbose_name_plural = _("Платежи за задания")
 
     def __str__(self):
         return "%s — %d₽ [%s]" % (self.job_id, self.amount, self.status)
@@ -657,17 +658,17 @@ class ArchiveContactPayment(models.Model):
     worker_id = models.UUIDField()
     job_id = models.UUIDField()
     application_id = models.UUIDField(null=True, blank=True)
-    amount = models.PositiveIntegerField("сумма, ₽", default=290)
-    status = models.CharField("статус", max_length=20, default="pending")
-    transaction_id = models.CharField("транзакция", max_length=255, default="")
+    amount = models.PositiveIntegerField(_("сумма, ₽"), default=290)
+    status = models.CharField(_("статус"), max_length=20, default="pending")
+    transaction_id = models.CharField(_("транзакция"), max_length=255, default="")
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
-    paid_at = models.DateTimeField("оплачено в", null=True, blank=True)
+    paid_at = models.DateTimeField(_("оплачено в"), null=True, blank=True)
 
     class Meta:
         managed = False
         db_table = "_archive_contact_payments"
-        verbose_name = "архив: оплата контакта"
-        verbose_name_plural = "Архив: оплаты контактов"
+        verbose_name = _("архив: оплата контакта")
+        verbose_name_plural = _("Архив: оплаты контактов")
         ordering = ("-created_at",)
 
     def __str__(self):
@@ -676,21 +677,21 @@ class ArchiveContactPayment(models.Model):
 
 class Receipt(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    contact_payment_id = models.UUIDField("платёж контакта", null=True, blank=True)
-    church_name = models.TextField("храм", default="")
-    church_inn = models.TextField("ИНН храма", default="")
-    service_description = models.TextField("описание услуги", default="")
-    amount = models.PositiveIntegerField("сумма, ₽", default=0)
-    status = models.TextField("статус", default="sent")
-    receipt_json = models.JSONField("квитанция", default=dict, blank=True)
+    contact_payment_id = models.UUIDField(_("платёж контакта"), null=True, blank=True)
+    church_name = models.TextField(_("храм"), default="")
+    church_inn = models.TextField(_("ИНН храма"), default="")
+    service_description = models.TextField(_("описание услуги"), default="")
+    amount = models.PositiveIntegerField(_("сумма, ₽"), default=0)
+    status = models.TextField(_("статус"), default="sent")
+    receipt_json = models.JSONField(_("квитанция"), default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
-    resent_at = models.DateTimeField("переотправлено", null=True, blank=True)
+    resent_at = models.DateTimeField(_("переотправлено"), null=True, blank=True)
 
     class Meta:
         managed = False
         db_table = "receipts"
-        verbose_name = "квитанция (храм)"
-        verbose_name_plural = "Квитанции (храмы)"
+        verbose_name = _("квитанция (храм)")
+        verbose_name_plural = _("Квитанции (храмы)")
         ordering = ("-created_at",)
 
     def __str__(self):
@@ -699,15 +700,15 @@ class Receipt(models.Model):
 
 class SitePage(models.Model):
     slug = models.CharField("slug", max_length=100, primary_key=True)
-    title = models.TextField("заголовок", default="")
-    content = models.TextField("содержимое (HTML)", default="")
+    title = models.TextField(_("заголовок"), default="")
+    content = models.TextField(_("содержимое (HTML)"), default="")
     updated_at = models.DateTimeField(auto_now=True, editable=False)
 
     class Meta:
         managed = False
         db_table = "site_pages"
-        verbose_name = "контентная страница"
-        verbose_name_plural = "Контентные страницы"
+        verbose_name = _("контентная страница")
+        verbose_name_plural = _("Контентные страницы")
 
     def __str__(self):
         return self.slug
@@ -715,20 +716,20 @@ class SitePage(models.Model):
 
 class AuditLog(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(Profile, verbose_name="кто", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
-    action = models.CharField("действие", max_length=100)
-    table_name = models.CharField("таблица", max_length=100, null=True, blank=True)
-    record_id = models.UUIDField("запись", null=True, blank=True)
-    old_data = models.JSONField("до", default=None, blank=True, null=True)
-    new_data = models.JSONField("после", default=None, blank=True, null=True)
+    user = models.ForeignKey(Profile, verbose_name=_("кто"), on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    action = models.CharField(_("действие"), max_length=100)
+    table_name = models.CharField(_("таблица"), max_length=100, null=True, blank=True)
+    record_id = models.UUIDField(_("запись"), null=True, blank=True)
+    old_data = models.JSONField(_("до"), default=None, blank=True, null=True)
+    new_data = models.JSONField(_("после"), default=None, blank=True, null=True)
     ip_address = models.GenericIPAddressField("IP", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
 
     class Meta:
         managed = False
         db_table = "audit_log"
-        verbose_name = "запись аудита"
-        verbose_name_plural = "Аудит действий"
+        verbose_name = _("запись аудита")
+        verbose_name_plural = _("Аудит действий")
         ordering = ("-created_at",)
 
     def __str__(self):
@@ -737,15 +738,15 @@ class AuditLog(models.Model):
 
 class EmailLog(models.Model):
     id = models.BigAutoField(primary_key=True)
-    notification = models.ForeignKey(Notification, verbose_name="уведомление", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
-    user = models.ForeignKey(Profile, verbose_name="получатель", on_delete=models.CASCADE, related_name="+")
-    to_email = models.TextField("кому", null=True, blank=True)
-    subject = models.TextField("тема", null=True, blank=True)
-    template_name = models.CharField("шаблон", max_length=100, null=True, blank=True)
-    status = models.CharField("статус", max_length=20, default="pending")
-    attempts = models.IntegerField("попыток", default=0)
+    notification = models.ForeignKey(Notification, verbose_name=_("уведомление"), on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    user = models.ForeignKey(Profile, verbose_name=_("получатель"), on_delete=models.CASCADE, related_name="+")
+    to_email = models.TextField(_("кому"), null=True, blank=True)
+    subject = models.TextField(_("тема"), null=True, blank=True)
+    template_name = models.CharField(_("шаблон"), max_length=100, null=True, blank=True)
+    status = models.CharField(_("статус"), max_length=20, default="pending")
+    attempts = models.IntegerField(_("попыток"), default=0)
     last_attempt_at = models.DateTimeField(null=True, blank=True)
-    sent_at = models.DateTimeField("отправлено", null=True, blank=True)
+    sent_at = models.DateTimeField(_("отправлено"), null=True, blank=True)
     error_message = models.TextField(null=True, blank=True)
     error = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
@@ -753,8 +754,8 @@ class EmailLog(models.Model):
     class Meta:
         managed = False
         db_table = "email_log"
-        verbose_name = "письмо (лог)"
-        verbose_name_plural = "Лог писем"
+        verbose_name = _("письмо (лог)")
+        verbose_name_plural = _("Лог писем")
         ordering = ("-created_at",)
 
     def __str__(self):
@@ -763,7 +764,7 @@ class EmailLog(models.Model):
 
 class PushSubscription(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(Profile, verbose_name="пользователь", on_delete=models.CASCADE, related_name="push_subscriptions")
+    user = models.ForeignKey(Profile, verbose_name=_("пользователь"), on_delete=models.CASCADE, related_name="push_subscriptions")
     endpoint = models.TextField("endpoint")
     p256dh = models.TextField("p256dh")
     auth = models.TextField("auth")
@@ -773,8 +774,8 @@ class PushSubscription(models.Model):
     class Meta:
         managed = False
         db_table = "push_subscriptions"
-        verbose_name = "push-подписка"
-        verbose_name_plural = "Push-подписки"
+        verbose_name = _("push-подписка")
+        verbose_name_plural = _("Push-подписки")
         ordering = ("-created_at",)
 
     def __str__(self):
@@ -783,15 +784,15 @@ class PushSubscription(models.Model):
 
 class MonetizationSetting(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    key = models.CharField("ключ", max_length=200, unique=True)
-    value = models.TextField("значение", default="")
+    key = models.CharField(_("ключ"), max_length=200, unique=True)
+    value = models.TextField(_("значение"), default="")
     updated_at = models.DateTimeField(auto_now=True, editable=False)
 
     class Meta:
         managed = False
         db_table = "monetization_settings"
-        verbose_name = "параметр монетизации"
-        verbose_name_plural = "Параметры монетизации"
+        verbose_name = _("параметр монетизации")
+        verbose_name_plural = _("Параметры монетизации")
 
     def __str__(self):
         return self.key
@@ -799,18 +800,18 @@ class MonetizationSetting(models.Model):
 
 class TariffSetting(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    tariff_key = models.CharField("ключ тарифа", max_length=30, unique=True)
-    price = models.PositiveIntegerField("цена, ₽")
-    duration_days = models.PositiveIntegerField("дней", default=30)
-    renewal_price = models.PositiveIntegerField("продление, ₽", null=True, blank=True)
-    is_active = models.BooleanField("активен", default=True)
+    tariff_key = models.CharField(_("ключ тарифа"), max_length=30, unique=True)
+    price = models.PositiveIntegerField(_("цена, ₽"))
+    duration_days = models.PositiveIntegerField(_("дней"), default=30)
+    renewal_price = models.PositiveIntegerField(_("продление, ₽"), null=True, blank=True)
+    is_active = models.BooleanField(_("активен"), default=True)
     updated_at = models.DateTimeField(auto_now=True, editable=False)
 
     class Meta:
         managed = False
         db_table = "tariff_settings"
-        verbose_name = "тариф"
-        verbose_name_plural = "Тарифы"
+        verbose_name = _("тариф")
+        verbose_name_plural = _("Тарифы")
 
     def __str__(self):
         return self.tariff_key

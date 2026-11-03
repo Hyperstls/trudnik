@@ -11,6 +11,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
+from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
 from .models import Notification, Profile, PushSubscription
@@ -49,7 +50,7 @@ def notification_mark_read(request, notification_id):
 @require_POST
 def notifications_mark_all_read(request):
     count = Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
-    messages.info(request, "Отмечено прочитанными: %d." % count)
+    messages.info(request, _("Отмечено прочитанными: %d.") % count)
     return redirect("core:notifications")
 
 
@@ -72,7 +73,7 @@ def notifications_delete_all(request):
 
     # data->>'type' у обычных уведомлений NULL: NOT (NULL OR false) не сработает,
     # поэтому сначала приводим отсутствующий ключ к пустой строке.
-    deleted, _ = (
+    deleted, _omitted = (
         Notification.objects.filter(user=request.user)
         .annotate(_invitation_type=Coalesce(KeyTextTransform("type", "data"), Value(""), output_field=CharField()))
         .exclude(
@@ -81,7 +82,7 @@ def notifications_delete_all(request):
         )
         .delete()
     )
-    messages.info(request, "Удалено уведомлений: %d." % deleted)
+    messages.info(request, _("Удалено уведомлений: %d.") % deleted)
     return redirect("core:notifications")
 
 
@@ -90,14 +91,14 @@ def notifications_delete_all(request):
 @rate_limit_write(limit=3, window=60, redirect_to="/notifications/settings")
 def notification_test(request):
     ok = enqueue_notification(
-        request.user.pk, "test", "Тестовое уведомление",
-        "Если вы видите это — уведомления работают.",
+        request.user.pk, "test", _("Тестовое уведомление"),
+        _("Если вы видите это — уведомления работают."),
         {"link": "/notifications"},
     )
     if ok:
-        messages.success(request, "Тестовое уведомление поставлено в очередь. Доставка — до 10 секунд.")
+        messages.success(request, _("Тестовое уведомление поставлено в очередь. Доставка — до 10 секунд."))
     else:
-        messages.error(request, "Не удалось поставить уведомление в очередь.")
+        messages.error(request, _("Не удалось поставить уведомление в очередь."))
     return redirect("core:notification_prefs")
 
 

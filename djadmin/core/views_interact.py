@@ -21,6 +21,7 @@ from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
 from .anti_fraud import is_duplicate_message
@@ -64,27 +65,27 @@ def rate_participant(request, app_id):
     if app is None:
         raise Http404("Отклик не найден")
     if app.job.status != Job.Status.COMPLETED:
-        messages.error(request, "Оценить можно только завершённое задание.")
+        messages.error(request, _("Оценить можно только завершённое задание."))
         return redirect(request.META.get("HTTP_REFERER") or "/")
     try:
         stars = int(request.POST.get("rating", "0"))
     except ValueError:
         stars = 0
     if not 1 <= stars <= 5:
-        messages.error(request, "Оценка — от 1 до 5.")
+        messages.error(request, _("Оценка — от 1 до 5."))
         return redirect(request.META.get("HTTP_REFERER") or "/")
     if request.user.pk == app.worker_id:  # работник оценивает работодателя задания
         if app.status != Application.Status.ACCEPTED:
-            messages.error(request, "Оценить работодателя можно только после принятия отклика.")
+            messages.error(request, _("Оценить работодателя можно только после принятия отклика."))
             return redirect(request.META.get("HTTP_REFERER") or "/")
         rated_id, rating_type, target_type = app.job.employer_id, "worker", "employer"
     else:  # владелец задания оценивает принятого работника
         if app.status != Application.Status.ACCEPTED:
-            messages.error(request, "Оценить можно только принятого работника.")
+            messages.error(request, _("Оценить можно только принятого работника."))
             return redirect(request.META.get("HTTP_REFERER") or "/")
         rated_id, rating_type, target_type = app.worker_id, "employer", "worker"
     if rated_id == request.user.pk:
-        messages.error(request, "Нельзя оценить самого себя.")
+        messages.error(request, _("Нельзя оценить самого себя."))
         return redirect(request.META.get("HTTP_REFERER") or "/")
     comment = (request.POST.get("comment") or "")[:1000]
     defaults = {
@@ -102,7 +103,7 @@ def rate_participant(request, app_id):
         Rating.objects.filter(
             rater_user=request.user, job=app.job, rated_user_id=rated_id
         ).update(updated_at=timezone.now(), **defaults)
-    messages.success(request, "Оценка сохранена.")
+    messages.success(request, _("Оценка сохранена."))
     return redirect(request.META.get("HTTP_REFERER") or "/")
 
 
@@ -164,7 +165,7 @@ def chat_send(request, app_id):
     if not content and not attachment:
         return redirect("core:chat_room", app_id=app.pk)
     if not attachment and is_duplicate_message(request.user.pk, app.pk, content):
-        messages.info(request, "Такое сообщение уже отправлено.")
+        messages.info(request, _("Такое сообщение уже отправлено."))
         return redirect("core:chat_room", app_id=app.pk)
 
     attachment_url = attachment_name = attachment_mime = None
@@ -219,11 +220,13 @@ def chat_send(request, app_id):
                 .values_list("notification_prefs", flat=True).first() or {}
             )
             if str(app.pk) not in (recipient_prefs.get("muted_chats") or []):
-                preview = content or ("Вложение" if attachment_url else "Новое сообщение")
+                preview = content or (
+                    _("Вложение") if attachment_url else _("Новое сообщение")
+                )
                 enqueue_notification(
                     recipient_id,
                     "new_message",
-                    "Новое сообщение",
+                    _("Новое сообщение"),
                     preview[:200],
                     {
                         "application_id": str(app.pk),
@@ -247,10 +250,10 @@ def chat_mute(request, app_id):
     key = str(app.pk)
     if key in muted:
         muted.remove(key)
-        messages.success(request, "Уведомления по этому чату включены.")
+        messages.success(request, _("Уведомления по этому чату включены."))
     else:
         muted.append(key)
-        messages.info(request, "Уведомления по этому чату отключены.")
+        messages.info(request, _("Уведомления по этому чату отключены."))
     prefs["muted_chats"] = muted
     Profile.objects.filter(pk=request.user.pk).update(notification_prefs=prefs)
     return redirect("core:chat_room", app_id=app.pk)
@@ -268,11 +271,11 @@ def chat_edit_message(request, app_id, message_id):
         deleted_at__isnull=True,
     ).first()
     if msg is None:
-        messages.error(request, "Сообщение не найдено или уже удалено.")
+        messages.error(request, _("Сообщение не найдено или уже удалено."))
         return redirect("core:chat_room", app_id=app.pk)
     content = (request.POST.get("content") or "").strip()[:4000]
     if not content and not msg.attachment_url:
-        messages.error(request, "Сообщение не может быть пустым.")
+        messages.error(request, _("Сообщение не может быть пустым."))
         return redirect("core:chat_room", app_id=app.pk)
     msg.content = content
     msg.edited_at = timezone.now()
@@ -299,7 +302,7 @@ def chat_delete_message(request, app_id, message_id):
         deleted_at__isnull=True,
     ).first()
     if msg is None:
-        messages.error(request, "Сообщение не найдено или уже удалено.")
+        messages.error(request, _("Сообщение не найдено или уже удалено."))
         return redirect("core:chat_room", app_id=app.pk)
     attachment_url = msg.attachment_url
     msg.content = ""
@@ -423,9 +426,9 @@ def chats_list(request):
         if a.last_content:
             last = a.last_content[:80]
         elif a.last_attachment_mime and a.last_attachment_mime.startswith("image/"):
-            last = "Изображение"
+            last = _("Изображение")
         elif a.last_attachment_name:
-            last = "Файл: " + a.last_attachment_name[:70]
+            last = _("Файл: %s") % a.last_attachment_name[:70]
         else:
             last = ""
         rows.append({

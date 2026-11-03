@@ -29,6 +29,7 @@ from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.translation import gettext as _, gettext_lazy as _lazy
 from django.views.decorators.http import require_POST
 
 from .models import (
@@ -137,17 +138,17 @@ def delete_account(request):
     user_pk = request.user.pk
     key = "delete_account:%s" % user_pk
     if not cache.add(key, "1", 3600):
-        messages.warning(request, "Попробуйте позже (не чаще раза в час).")
+        messages.warning(request, _("Попробуйте позже (не чаще раза в час)."))
         return redirect("core:profile")
     upload_urls = _collect_user_upload_urls(request.user)
     result = call_rpc("delete_user_cascade", user_pk) or {}
     if not result.get("success", True):
         cache.delete(key)
-        messages.error(request, "Ошибка удаления аккаунта. Попробуйте позже.")
+        messages.error(request, _("Ошибка удаления аккаунта. Попробуйте позже."))
         return redirect("core:profile")
     _delete_user_uploads(upload_urls, user_pk)
     auth_logout(request)
-    messages.success(request, "Ваш аккаунт полностью удалён.")
+    messages.success(request, _("Ваш аккаунт полностью удалён."))
     return redirect("core:login")
 
 
@@ -159,18 +160,18 @@ def email_change_request(request):
     new_email = (request.POST.get("new_email") or "").strip().lower()
     current_password = request.POST.get("current_password") or ""
     if not request.user.check_password(current_password):
-        messages.error(request, "Текущий пароль указан неверно.")
+        messages.error(request, _("Текущий пароль указан неверно."))
         return redirect("core:profile")
     try:
         validate_email(new_email)
     except ValidationError:
-        messages.error(request, "Укажите корректный email.")
+        messages.error(request, _("Укажите корректный email."))
         return redirect("core:profile")
     if new_email == (request.user.email or "").lower():
-        messages.info(request, "Этот email уже привязан к аккаунту.")
+        messages.info(request, _("Этот email уже привязан к аккаунту."))
         return redirect("core:profile")
     if Profile.objects.filter(email=new_email).exclude(pk=request.user.pk).exists():
-        messages.error(request, "Этот email уже используется другим аккаунтом.")
+        messages.error(request, _("Этот email уже используется другим аккаунтом."))
         return redirect("core:profile")
 
     token = generate_email_change_token(request.user.pk, new_email)
@@ -193,7 +194,7 @@ def email_change_request(request):
     )
     messages.success(
         request,
-        "Письмо для подтверждения отправлено на %s. Проверьте почту и папку «Спам»." % new_email,
+        _("Письмо для подтверждения отправлено на %s. Проверьте почту и папку «Спам».") % new_email,
     )
     return redirect("core:profile")
 
@@ -202,16 +203,16 @@ def email_change_request(request):
 def email_change_confirm(request, token):
     payload = verify_email_change_token(token)
     if not payload or str(request.user.pk) != payload.get("user_id"):
-        messages.error(request, "Ссылка недействительна или истекла. Запросите смену email снова.")
+        messages.error(request, _("Ссылка недействительна или истекла. Запросите смену email снова."))
         return redirect("core:profile")
     new_email = (payload.get("email") or "").strip().lower()
     try:
         validate_email(new_email)
     except ValidationError:
-        messages.error(request, "Некорректный email в ссылке.")
+        messages.error(request, _("Некорректный email в ссылке."))
         return redirect("core:profile")
     if Profile.objects.filter(email=new_email).exclude(pk=request.user.pk).exists():
-        messages.error(request, "Этот email уже используется другим аккаунтом.")
+        messages.error(request, _("Этот email уже используется другим аккаунтом."))
         return redirect("core:profile")
 
     old_email = request.user.email
@@ -219,7 +220,7 @@ def email_change_confirm(request, token):
         email=new_email, email_verified=True,
     )
     request.user.refresh_from_db()
-    messages.success(request, "Email изменён и подтверждён.")
+    messages.success(request, _("Email изменён и подтверждён."))
     if old_email and old_email.lower() != new_email:
         from .views_auth import _send_mail
 
@@ -239,29 +240,29 @@ def report_user(request, user_id):
     """Жалоба на пользователя → RPC file_report (антифрод)."""
     reason = (request.POST.get("reason") or "").strip()[:500]
     if not reason:
-        messages.error(request, "Укажите причину жалобы.")
+        messages.error(request, _("Укажите причину жалобы."))
         return redirect("core:worker_detail", user_id=user_id)
     result = call_rpc_as_user("file_report", request.user.pk, user_id, reason) or {}
     if result.get("ok") or result.get("success"):
-        messages.success(request, "Жалоба отправлена. Спасибо!")
+        messages.success(request, _("Жалоба отправлена. Спасибо!"))
     else:
-        messages.error(request, "Не удалось отправить жалобу.")
+        messages.error(request, _("Не удалось отправить жалобу."))
     return redirect("core:worker_detail", user_id=user_id)
 
 
 # ── Настройки уведомлений ──────────────────────────────────────────────────
 CHANNEL_LABELS = (
-    ("email_enabled", "Email-письма"),
-    ("push_enabled", "Push-уведомления"),
-    ("in_app_enabled", "Уведомления в приложении"),
+    ("email_enabled", _lazy("Email-письма")),
+    ("push_enabled", _lazy("Push-уведомления")),
+    ("in_app_enabled", _lazy("Уведомления в приложении")),
 )
 TYPE_LABELS = (
-    ("application", "Отклики на мои задания"),
-    ("invitation", "Приглашения"),
-    ("chat", "Сообщения в чате"),
-    ("rating", "Оценки"),
-    ("job", "Изменения моих заданий"),
-    ("saved_search", "Новые задания по сохранённым поискам"),
+    ("application", _lazy("Отклики на мои задания")),
+    ("invitation", _lazy("Приглашения")),
+    ("chat", _lazy("Сообщения в чате")),
+    ("rating", _lazy("Оценки")),
+    ("job", _lazy("Изменения моих заданий")),
+    ("saved_search", _lazy("Новые задания по сохранённым поискам")),
 )
 
 
@@ -270,18 +271,18 @@ def notification_prefs(request):
     prefs = request.user.notification_prefs or {}
     if request.method == "POST":
         updated = dict(prefs)
-        for key, _ in CHANNEL_LABELS + TYPE_LABELS:
+        for key, _label in CHANNEL_LABELS + TYPE_LABELS:
             updated[key] = key in request.POST
         frequency = request.POST.get("digest_frequency")
         updated["digest_frequency"] = frequency if frequency in ("instant", "daily", "off") else "daily"
         Profile.objects.filter(pk=request.user.pk).update(notification_prefs=updated)
-        messages.success(request, "Настройки уведомлений сохранены.")
+        messages.success(request, _("Настройки уведомлений сохранены."))
         return redirect("core:notification_prefs")
     searches = []
     for item in (prefs.get("saved_searches") or [])[:10]:
         if isinstance(item, dict) and item.get("id"):
             searches.append({
-                "id": item["id"], "name": item.get("name") or "Мой поиск",
+                "id": item["id"], "name": item.get("name") or _("Мой поиск"),
                 "notify": item.get("notify", True) is not False,
             })
     context = {
@@ -308,7 +309,7 @@ def notification_prefs_api(request):
 def upload_avatar(request):
     file = request.FILES.get("avatar")
     if file is None:
-        messages.error(request, "Файл не выбран.")
+        messages.error(request, _("Файл не выбран."))
         return redirect("core:profile")
     try:
         url = save_upload(file, "avatars")
@@ -316,7 +317,7 @@ def upload_avatar(request):
         messages.error(request, str(exc))
         return redirect("core:profile")
     Profile.objects.filter(pk=request.user.pk).update(avatar_url=url)
-    messages.success(request, "Аватар обновлён.")
+    messages.success(request, _("Аватар обновлён."))
     return redirect("core:profile")
 
 
@@ -328,7 +329,7 @@ def delete_avatar(request):
     for url in urls:
         if url:
             delete_upload_url(url)
-    messages.success(request, "Фото профиля удалено.")
+    messages.success(request, _("Фото профиля удалено."))
     return redirect("core:profile")
 
 
@@ -337,7 +338,7 @@ def delete_avatar(request):
 def upload_verification_doc(request):
     file = request.FILES.get("document")
     if file is None:
-        messages.error(request, "Файл не выбран.")
+        messages.error(request, _("Файл не выбран."))
         return redirect("core:verify_employer")
     try:
         url = save_upload(file, "verification-docs", allow_pdf=True)
@@ -349,7 +350,7 @@ def upload_verification_doc(request):
         verification_status="pending",
         verification_provider="manual",
     )
-    messages.success(request, "Документ отправлен на проверку.")
+    messages.success(request, _("Документ отправлен на проверку."))
     return redirect("core:profile")
 
 

@@ -9,13 +9,14 @@ Fail-closed: suspended → отказ (is_active=False), неподтвержд�
 from django.contrib.auth import backends
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
+from django.utils.translation import gettext_lazy as _lazy
 
 MAX_FAILS = 5
 FAIL_WINDOW = 900  # окно накопления неудач аккаунта, сек
 BASE_LOCK_SECONDS = 900  # первая блокировка, далее BASE * 2**count
 COUNT_TTL_SECONDS = 86_400  # счётчик серий блокировок живёт сутки
-CACHE_UNAVAILABLE_TEXT = "Сервис входа временно недоступен. Попробуйте позже."
-LOCKOUT_TEXT = "Аккаунт временно заблокирован по числу неудачных попыток (%d сек.)."
+CACHE_UNAVAILABLE_TEXT = _lazy("Сервис входа временно недоступен. Попробуйте позже.")
+LOCKOUT_TEXT = _lazy("Аккаунт временно заблокирован по числу неудачных попыток (%d сек.).")
 
 
 class ProfileBackend(backends.ModelBackend):

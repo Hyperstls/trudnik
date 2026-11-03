@@ -1,17 +1,18 @@
 {% extends "core/base.html" %}
 {% load static %}
-{% block title %}Настройки уведомлений — Трудник{% endblock %}
+{% load i18n %}
+{% block title %}{% translate "Настройки уведомлений" %} — {% translate "Трудник" context "brand" %}{% endblock %}
 {% block content %}
 <div class="max-w-2xl mx-auto px-0 py-4 fade-in">
     <a href="{% url 'core:notifications' %}" class="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 mb-3">
         <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-        Уведомления
+        {% translate "Уведомления" %}
     </a>
     <div class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5">
-        <h1 class="text-xl font-bold text-neutral-800 mb-4">Настройки уведомлений</h1>
+        <h1 class="text-xl font-bold text-neutral-800 mb-4">{% translate "Настройки уведомлений" %}</h1>
         <form method="post">
             {% csrf_token %}
-            <h2 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-2">Куда присылать</h2>
+            <h2 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-2">{% translate "Куда присылать" %}</h2>
             <div class="space-y-2 mb-5">
                 {% for key, label, checked in channels %}
                 <label class="flex items-center gap-2.5 text-sm text-neutral-700 cursor-pointer">
@@ -20,7 +21,7 @@
                 </label>
                 {% endfor %}
             </div>
-            <h2 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-2">Какие уведомления</h2>
+            <h2 class="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-2">{% translate "Какие уведомления" %}</h2>
             <div class="space-y-2 mb-5">
                 {% for key, label, checked in types %}
                 <label class="flex items-center gap-2.5 text-sm text-neutral-700 cursor-pointer">
@@ -30,51 +31,51 @@
                 {% endfor %}
             </div>
             <div class="mb-5 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
-                <label for="digest_frequency" class="block text-sm font-medium text-neutral-800">Новые задания по сохранённым поискам</label>
-                <p class="text-xs text-neutral-500 mt-1 mb-2">Сохранённый поиск — это фильтр заданий, который вы сохранили на странице «Задания». Мы можем присылать новые задания, подходящие под него.</p>
+                <label for="digest_frequency" class="block text-sm font-medium text-neutral-800">{% translate "Новые задания по сохранённым поискам" %}</label>
+                <p class="text-xs text-neutral-500 mt-1 mb-2">{% translate "Сохранённый поиск — это фильтр заданий, который вы сохранили на странице «Задания». Мы можем присылать новые задания, подходящие под него." %}</p>
                 <select id="digest_frequency" name="digest_frequency" class="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-white">
-                    <option value="instant" {% if digest_frequency == 'instant' %}selected{% endif %}>Сразу — проверяем раз в 5 минут</option>
-                    <option value="daily" {% if digest_frequency == 'daily' %}selected{% endif %}>Раз в день — одна сводка</option>
-                    <option value="off" {% if digest_frequency == 'off' %}selected{% endif %}>Не присылать</option>
+                    <option value="instant" {% if digest_frequency == 'instant' %}selected{% endif %}>{% translate "Сразу — проверяем раз в 5 минут" %}</option>
+                    <option value="daily" {% if digest_frequency == 'daily' %}selected{% endif %}>{% translate "Раз в день — одна сводка" %}</option>
+                    <option value="off" {% if digest_frequency == 'off' %}selected{% endif %}>{% translate "Не присылать" %}</option>
                 </select>
-                <p class="text-xs text-neutral-500 mt-2">Придёт по выбранным выше каналам. Работает, только если включён тип «Новые задания по сохранённым поискам».</p>
+                <p class="text-xs text-neutral-500 mt-2">{% translate "Придёт по выбранным выше каналам. Работает, только если включён тип «Новые задания по сохранённым поискам»." %}</p>
             </div>
-            <button type="submit" class="w-full px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm">Сохранить</button>
+            <button type="submit" class="w-full px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm">{% translate "Сохранить" %}</button>
         </form>
     </div>
     <div class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 mt-4">
-        <h2 class="text-base font-bold text-neutral-800 mb-1">Push-уведомления</h2>
-        <p class="text-sm text-neutral-500 mb-3">Уведомления в браузере, даже когда вкладка «Трудник» закрыта. Требуется разрешение браузера.</p>
-        <button type="button" id="push-toggle" class="px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm disabled:opacity-50">Включить push</button>
+        <h2 class="text-base font-bold text-neutral-800 mb-1">{% translate "Push-уведомления" %}</h2>
+        <p class="text-sm text-neutral-500 mb-3">{% translate "Уведомления в браузере, даже когда вкладка «Трудник» закрыта. Требуется разрешение браузера." %}</p>
+        <button type="button" id="push-toggle" class="px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm disabled:opacity-50">{% translate "Включить push" %}</button>
         <p id="push-status" class="text-xs text-neutral-500 mt-2" role="status" aria-live="polite"></p>
         <details class="mt-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-600">
-            <summary class="cursor-pointer font-medium text-neutral-700">Инструкция для iPhone/iPad</summary>
+            <summary class="cursor-pointer font-medium text-neutral-700">{% translate "Инструкция для iPhone/iPad" %}</summary>
             <ol class="list-decimal list-inside space-y-1 mt-2 text-xs">
-                <li>Откройте сайт в Safari и добавьте его на экран «Домой».</li>
-                <li>Запустите приложение с иконки на экране «Домой».</li>
-                <li>Откройте настройки уведомлений и включите push.</li>
-                <li>Разрешите уведомления в системном запросе.</li>
+                <li>{% translate "Откройте сайт в Safari и добавьте его на экран «Домой»." %}</li>
+                <li>{% translate "Запустите приложение с иконки на экране «Домой»." %}</li>
+                <li>{% translate "Откройте настройки уведомлений и включите push." %}</li>
+                <li>{% translate "Разрешите уведомления в системном запросе." %}</li>
             </ol>
         </details>
         <form method="post" action="{% url 'core:notification_test' %}" class="mt-4 pt-3 border-t border-neutral-100">
             {% csrf_token %}
-            <button class="px-4 py-2.5 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-semibold transition-colors">Отправить тестовое уведомление</button>
-            <p class="text-xs text-neutral-500 mt-2">Учитываются выбранные каналы. Push придёт только если подписка включена в этом браузере; доставка — до 10 секунд.</p>
+            <button class="px-4 py-2.5 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-semibold transition-colors">{% translate "Отправить тестовое уведомление" %}</button>
+            <p class="text-xs text-neutral-500 mt-2">{% translate "Учитываются выбранные каналы. Push придёт только если подписка включена в этом браузере; доставка — до 10 секунд." %}</p>
         </form>
     </div>
     <div class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 mt-4">
-        <h2 class="text-base font-bold text-neutral-800 mb-1">Сохранённые поиски</h2>
-        <p class="text-sm text-neutral-500 mb-3">Частота новых заданий по ним настраивается выше, в блоке «Новые задания по сохранённым поискам». Колокольчик отключает уведомления по конкретному поиску.</p>
+        <h2 class="text-base font-bold text-neutral-800 mb-1">{% translate "Сохранённые поиски" %}</h2>
+        <p class="text-sm text-neutral-500 mb-3">{% translate "Частота новых заданий по ним настраивается выше, в блоке «Новые задания по сохранённым поискам». Колокольчик отключает уведомления по конкретному поиску." %}</p>
         {% for item in saved_searches %}
         <div class="flex items-center justify-between gap-2 py-2 border-b border-neutral-100 last:border-0">
             <a href="{% url 'core:jobs' %}" class="text-sm text-neutral-700 truncate">{{ item.name }}</a>
             <form method="post" action="{% url 'core:toggle_search' item.id %}" class="inline-flex items-center gap-1">{% csrf_token %}
                 <input type="hidden" name="next" value="{% url 'core:notification_prefs' %}">
-                <button class="px-2 h-8 rounded-lg border border-neutral-200 text-sm" title="{% if item.notify %}Выключить уведомления{% else %}Включить уведомления{% endif %}" aria-label="{% if item.notify %}Выключить уведомления по поиску «{{ item.name }}»{% else %}Включить уведомления по поиску «{{ item.name }}»{% endif %}">{% if item.notify %}{% include "core/_ui_icon.html" with name="bell" class_name="h-4 w-4" %}{% else %}{% include "core/_ui_icon.html" with name="bell-off" class_name="h-4 w-4" %}{% endif %}</button>
+                <button class="px-2 h-8 rounded-lg border border-neutral-200 text-sm" title="{% if item.notify %}{% translate "Выключить уведомления" %}{% else %}{% translate "Включить уведомления" %}{% endif %}" aria-label="{% if item.notify %}{% translate "Выключить уведомления по поиску" %} «{{ item.name }}»{% else %}{% translate "Включить уведомления по поиску" %} «{{ item.name }}»{% endif %}">{% if item.notify %}{% include "core/_ui_icon.html" with name="bell" class_name="h-4 w-4" %}{% else %}{% include "core/_ui_icon.html" with name="bell-off" class_name="h-4 w-4" %}{% endif %}</button>
             </form>
         </div>
         {% empty %}
-        <p class="text-sm text-neutral-500">Сохранённых поисков нет. Откройте <a href="{% url 'core:jobs' %}" class="text-primary-600 hover:text-primary-700 underline underline-offset-2">Задания</a>, настройте фильтры и нажмите «Сохранить поиск».</p>
+        <p class="text-sm text-neutral-500">{% translate "Сохранённых поисков нет. Откройте" %} <a href="{% url 'core:jobs' %}" class="text-primary-600 hover:text-primary-700 underline underline-offset-2">{% translate "Задания" %}</a>{% translate ", настройте фильтры и нажмите «Сохранить поиск»." %}</p>
         {% endfor %}
     </div>
 </div>
@@ -91,20 +92,20 @@
   var serverCount = null;
 
   function permissionText() {
-    if (!('Notification' in window)) return 'браузер не поддерживает';
-    if (Notification.permission === 'granted') return 'разрешение выдано';
-    if (Notification.permission === 'denied') return 'разрешение запрещено в настройках браузера';
-    return 'разрешение ещё не выдано';
+    if (!('Notification' in window)) return '{% translate "браузер не поддерживает" %}';
+    if (Notification.permission === 'granted') return '{% translate "разрешение выдано" %}';
+    if (Notification.permission === 'denied') return '{% translate "разрешение запрещено в настройках браузера" %}';
+    return '{% translate "разрешение ещё не выдано" %}';
   }
 
   function render() {
     var denied = ('Notification' in window) && Notification.permission === 'denied';
     btn.disabled = denied;
-    btn.textContent = subscribed ? 'Отключить push' : 'Включить push';
-    var parts = [subscribed ? 'Подписка в этом браузере: есть.' : 'Подписка в этом браузере: нет.'];
-    parts.push('Разрешение: ' + permissionText() + '.');
+    btn.textContent = subscribed ? '{% translate "Отключить push" %}' : '{% translate "Включить push" %}';
+    var parts = [subscribed ? '{% translate "Подписка в этом браузере: есть." %}' : '{% translate "Подписка в этом браузере: нет." %}'];
+    parts.push('{% translate "Разрешение:" %}' + ' ' + permissionText() + '.');
     if (serverCount !== null) {
-      parts.push(serverCount > 0 ? 'Подписка на сервере: есть.' : 'Подписка на сервере: нет.');
+      parts.push(serverCount > 0 ? '{% translate "Подписка на сервере: есть." %}' : '{% translate "Подписка на сервере: нет." %}');
     }
     status.textContent = parts.join(' ');
   }
@@ -112,8 +113,8 @@
   window.PushNotifications.init().then(function(supported){
     if (!supported) {
       btn.disabled = true;
-      btn.textContent = 'Push не поддерживается';
-      status.textContent = 'Браузер не поддерживает push-уведомления.';
+      btn.textContent = '{% translate "Push не поддерживается" %}';
+      status.textContent = '{% translate "Браузер не поддерживает push-уведомления." %}';
       return null;
     }
     return window.PushNotifications.checkSubscription().then(function(on){
@@ -126,10 +127,10 @@
       btn.addEventListener('click', function(){
         btn.disabled = true;
         var action = subscribed ? 'unsubscribe' : 'subscribe';
-        status.textContent = subscribed ? 'Отключаем…' : 'Запрашиваем разрешение…';
+        status.textContent = subscribed ? '{% translate "Отключаем…" %}' : '{% translate "Запрашиваем разрешение…" %}';
         window.PushNotifications[action]().then(function(ok){
           if (!ok) {
-            status.textContent = 'Не удалось изменить подписку. Проверьте разрешение браузера.';
+            status.textContent = '{% translate "Не удалось изменить подписку. Проверьте разрешение браузера." %}';
             btn.disabled = false;
             return;
           }
@@ -139,14 +140,14 @@
             render();
           });
         }).catch(function(){
-          status.textContent = 'Ошибка push-подписки. Попробуйте ещё раз.';
+          status.textContent = '{% translate "Ошибка push-подписки. Попробуйте ещё раз." %}';
           btn.disabled = false;
         });
       });
     });
   }).catch(function(){
     btn.disabled = true;
-    status.textContent = 'Push временно недоступны.';
+    status.textContent = '{% translate "Push временно недоступны." %}';
   });
 })();
 </script>

@@ -1,31 +1,35 @@
 {% extends "core/base.html" %}
-{% block title %}Чат — Трудник{% endblock %}
+{% load i18n %}
+{% block title %}{% translate "Чат — Трудник" %}{% endblock %}
 {% block content %}
+{% translate "задание" as default_job_label %}
+{% translate "Вложение" as default_attachment_label %}
+{% translate "Файл" as default_file_label %}
 <div class="max-w-2xl mx-auto fade-in py-4">
     <a href="{% url 'core:chats' %}" class="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 mb-3">
         <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-        Все чаты
+        {% translate "Все чаты" %}
     </a>
     <div class="bg-white rounded-2xl border border-neutral-200 shadow-card flex flex-col overflow-hidden" style="min-height:65vh">
         <div class="border-b border-neutral-100 px-4 py-3">
-            <h1 class="font-semibold text-neutral-800">Чат · {{ app.job.work_type|default:"задание" }}</h1>
+            <h1 class="font-semibold text-neutral-800">{% translate "Чат" %} · {{ app.job.work_type|default:default_job_label }}</h1>
             <p class="text-xs text-neutral-500 mt-0.5">{{ app.job.organization_name }}{% if app.job.city %} · {{ app.job.city }}{% endif %}</p>
         </div>
         <div class="border-b border-neutral-100 px-4 py-2 flex flex-wrap items-center gap-2">
             <form method="get" action="{% url 'core:chat_room' app.pk %}" class="flex flex-1 min-w-[12rem] gap-2">
-                <input type="search" name="q" value="{{ search_query }}" placeholder="Поиск по чату" aria-label="Поиск по чату" class="flex-1 border border-neutral-200 rounded-xl px-3 h-9 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-                <button type="submit" class="px-3 h-9 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-sm font-medium">Найти</button>
-                {% if search_query %}<a href="{% url 'core:chat_room' app.pk %}" class="px-2 h-9 inline-flex items-center text-xs text-neutral-500 hover:text-neutral-700 underline underline-offset-2">Сброс</a>{% endif %}
+                <input type="search" name="q" value="{{ search_query }}" placeholder="{% translate 'Поиск по чату' %}" aria-label="{% translate 'Поиск по чату' %}" class="flex-1 border border-neutral-200 rounded-xl px-3 h-9 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                <button type="submit" class="px-3 h-9 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-sm font-medium">{% translate "Найти" %}</button>
+                {% if search_query %}<a href="{% url 'core:chat_room' app.pk %}" class="px-2 h-9 inline-flex items-center text-xs text-neutral-500 hover:text-neutral-700 underline underline-offset-2">{% translate "Сброс" %}</a>{% endif %}
             </form>
             <form method="post" action="{% url 'core:chat_mute' app.pk %}">
                 {% csrf_token %}
                 <button type="submit" class="px-3 h-9 rounded-xl border {% if is_muted %}border-primary-200 bg-primary-50 text-primary-700{% else %}border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50{% endif %} text-xs font-medium">
-                    {% if is_muted %}Уведомления выключены{% else %}Без звука{% endif %}
+                    {% if is_muted %}{% translate "Уведомления выключены" %}{% else %}{% translate "Без звука" %}{% endif %}
                 </button>
             </form>
         </div>
         <div id="chat-log" class="flex-1 space-y-2 overflow-y-auto p-4" data-app="{{ app.pk }}" data-last="{{ last_id }}">
-            {% if search_query %}<p class="text-xs text-neutral-500 mb-2">Результаты поиска: {{ chat_messages|length }}</p>{% endif %}
+            {% if search_query %}<p class="text-xs text-neutral-500 mb-2">{% translate "Результаты поиска:" %} {{ chat_messages|length }}</p>{% endif %}
             {% if chat_messages %}
             {% regroup chat_messages by created_at|date:"d.m.Y" as message_days %}
             {% for day in message_days %}
@@ -35,16 +39,16 @@
                 <div class="max-w-[80%]">
                     <div class="message-body">
                     {% if m.deleted_at %}
-                    <span class="message-deleted inline-block rounded-2xl px-3.5 py-2 text-sm italic text-neutral-400 bg-neutral-100">Сообщение удалено</span>
+                    <span class="message-deleted inline-block rounded-2xl px-3.5 py-2 text-sm italic text-neutral-400 bg-neutral-100">{% translate "Сообщение удалено" %}</span>
                     {% else %}
                     {% if m.attachment_url %}
                     {% if m.attachment_mime|slice:":6" == "image/" %}
                     <a href="{{ m.attachment_url }}" target="_blank" rel="noopener noreferrer" class="message-attachment block mb-1">
-                        <img src="{{ m.attachment_url }}" alt="{{ m.attachment_name|default:'Вложение' }}" loading="lazy" class="rounded-xl max-h-64 w-auto border border-neutral-200">
+                        <img src="{{ m.attachment_url }}" alt="{{ m.attachment_name|default:default_attachment_label }}" loading="lazy" class="rounded-xl max-h-64 w-auto border border-neutral-200">
                     </a>
                     {% else %}
                     <a href="{{ m.attachment_url }}" target="_blank" rel="noopener noreferrer" class="message-attachment inline-flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-primary-700 hover:bg-neutral-50 mb-1">
-                        {% include "core/_ui_icon.html" with name="plus" class_name="h-4 w-4" %} {{ m.attachment_name|default:"Файл" }}
+                        {% include "core/_ui_icon.html" with name="plus" class_name="h-4 w-4" %} {{ m.attachment_name|default:default_file_label }}
                     </a>
                     {% endif %}
                     {% endif %}
@@ -52,16 +56,16 @@
                     {% endif %}
                     </div>
                     <p class="message-meta text-[10px] text-neutral-400 mt-0.5 {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}text-right{% endif %}">
-                        {{ m.created_at|date:"d.m H:i" }}{% if m.edited_at %} · <span class="message-edited">изменено</span>{% endif %}
+                        {{ m.created_at|date:"d.m H:i" }}{% if m.edited_at %} · <span class="message-edited">{% translate "изменено" %}</span>{% endif %}
                     </p>
                     {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' and not m.deleted_at %}
                     <div class="message-actions flex gap-2 justify-end mt-0.5">
-                        <button type="button" class="js-edit-message text-[10px] text-neutral-400 hover:text-primary-600" data-message-id="{{ m.id }}" data-content="{{ m.content|escape }}">Изменить</button>
-                        <button type="button" class="js-delete-message text-[10px] text-neutral-400 hover:text-red-600" data-message-id="{{ m.id }}">Удалить</button>
+                        <button type="button" class="js-edit-message text-[10px] text-neutral-400 hover:text-primary-600" data-message-id="{{ m.id }}" data-content="{{ m.content|escape }}">{% translate "Изменить" %}</button>
+                        <button type="button" class="js-delete-message text-[10px] text-neutral-400 hover:text-red-600" data-message-id="{{ m.id }}">{% translate "Удалить" %}</button>
                     </div>
                     {% endif %}
                     {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}
-                    <span class="message-status block text-[10px] text-neutral-400 text-right">{% if m.read_at %}Прочитано{% else %}Отправлено{% endif %}</span>
+                    <span class="message-status block text-[10px] text-neutral-400 text-right">{% if m.read_at %}{% translate "Прочитано" %}{% else %}{% translate "Отправлено" %}{% endif %}</span>
                     {% endif %}
                 </div>
             </div>
@@ -72,29 +76,29 @@
                 <div class="w-14 h-14 rounded-full bg-neutral-100 flex items-center justify-center mb-3">
                     <svg aria-hidden="true" class="h-7 w-7 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                 </div>
-                <p class="text-sm font-medium text-neutral-600">{% if search_query %}Ничего не найдено{% else %}Сообщений пока нет{% endif %}</p>
-                <p class="text-xs text-neutral-400 mt-1">{% if search_query %}Попробуйте другой запрос.{% else %}Напишите первым — обсудите детали задания.{% endif %}</p>
+                <p class="text-sm font-medium text-neutral-600">{% if search_query %}{% translate "Ничего не найдено" %}{% else %}{% translate "Сообщений пока нет" %}{% endif %}</p>
+                <p class="text-xs text-neutral-400 mt-1">{% if search_query %}{% translate "Попробуйте другой запрос." %}{% else %}{% translate "Напишите первым — обсудите детали задания." %}{% endif %}</p>
             </div>
             {% endif %}
         </div>
         <form method="post" action="{% url 'core:chat_send' app.pk %}" enctype="multipart/form-data" class="border-t border-neutral-100 p-3 flex gap-2 items-center">
             {% csrf_token %}
             <input type="hidden" name="client_message_id" value="{{ client_message_id }}">
-            <label class="w-10 h-10 shrink-0 inline-flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-500 hover:bg-neutral-50 cursor-pointer" title="Прикрепить файл" aria-label="Прикрепить файл">
+            <label class="w-10 h-10 shrink-0 inline-flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-500 hover:bg-neutral-50 cursor-pointer" title="{% translate 'Прикрепить файл' %}" aria-label="{% translate 'Прикрепить файл' %}">
                 <input type="file" name="attachment" accept="image/jpeg,image/png,image/webp,application/pdf" class="sr-only">
                 <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
             </label>
-            <input type="text" name="content" maxlength="4000" class="flex-1 border border-neutral-200 rounded-xl px-3 py-2.5 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="Сообщение…" aria-label="Сообщение">
-            <button class="px-5 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">Отправить</button>
+            <input type="text" name="content" maxlength="4000" class="flex-1 border border-neutral-200 rounded-xl px-3 py-2.5 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="{% translate 'Сообщение…' %}" aria-label="{% translate 'Сообщение' %}">
+            <button class="px-5 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">{% translate "Отправить" %}</button>
         </form>
         <p id="chat-send-status" class="px-3 pb-2 text-xs text-neutral-500" role="status" aria-live="polite"></p>
     </div>
     <dialog id="chat-edit-dialog" class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-xl" style="width:min(28rem, calc(100vw - 2rem))" aria-labelledby="chat-edit-title">
-        <h2 id="chat-edit-title" class="text-base font-bold text-neutral-800 mb-2">Редактировать сообщение</h2>
-        <textarea id="chat-edit-text" rows="4" maxlength="4000" class="form-input" placeholder="Текст сообщения"></textarea>
+        <h2 id="chat-edit-title" class="text-base font-bold text-neutral-800 mb-2">{% translate "Редактировать сообщение" %}</h2>
+        <textarea id="chat-edit-text" rows="4" maxlength="4000" class="form-input" placeholder="{% translate 'Текст сообщения' %}"></textarea>
         <div class="flex justify-end gap-2 mt-3">
-            <button type="button" id="chat-edit-cancel" class="ui-btn ui-btn--secondary ui-btn--sm">Отмена</button>
-            <button type="button" id="chat-edit-save" class="ui-btn ui-btn--primary ui-btn--sm">Сохранить</button>
+            <button type="button" id="chat-edit-cancel" class="ui-btn ui-btn--secondary ui-btn--sm">{% translate "Отмена" %}</button>
+            <button type="button" id="chat-edit-save" class="ui-btn ui-btn--primary ui-btn--sm">{% translate "Сохранить" %}</button>
         </div>
     </dialog>
     <script nonce="{{ request.csp_nonce }}">
@@ -126,7 +130,7 @@
     if (m.deleted_at) {
       var deleted = document.createElement('span');
       deleted.className = 'message-deleted inline-block rounded-2xl px-3.5 py-2 text-sm italic text-neutral-400 bg-neutral-100';
-      deleted.textContent = 'Сообщение удалено';
+      deleted.textContent = '{% translate "Сообщение удалено" %}';
       body.appendChild(deleted);
       return body;
     }
@@ -139,13 +143,13 @@
         link.className = 'message-attachment block mb-1';
         var img = document.createElement('img');
         img.src = m.attachment_url;
-        img.alt = m.attachment_name || 'Вложение';
+        img.alt = m.attachment_name || '{% translate "Вложение" %}';
         img.loading = 'lazy';
         img.className = 'rounded-xl max-h-64 w-auto border border-neutral-200';
         link.appendChild(img);
       } else {
         link.className = 'message-attachment inline-flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-primary-700 hover:bg-neutral-50 mb-1';
-        link.textContent = '📎 ' + (m.attachment_name || 'Файл');
+        link.textContent = '📎 ' + (m.attachment_name || '{% translate "Файл" %}');
       }
       body.appendChild(link);
     }
@@ -169,7 +173,7 @@
       meta.appendChild(document.createTextNode(' · '));
       var edited = document.createElement('span');
       edited.className = 'message-edited';
-      edited.textContent = 'изменено';
+      edited.textContent = '{% translate "изменено" %}';
       meta.appendChild(edited);
     }
     return meta;
@@ -189,12 +193,12 @@
     var edit = document.createElement('button');
     edit.type = 'button';
     edit.className = 'js-edit-message text-[10px] text-neutral-400 hover:text-primary-600';
-    edit.textContent = 'Изменить';
+    edit.textContent = '{% translate "Изменить" %}';
     edit.dataset.content = m.content || '';
     var del = document.createElement('button');
     del.type = 'button';
     del.className = 'js-delete-message text-[10px] text-neutral-400 hover:text-red-600';
-    del.textContent = 'Удалить';
+    del.textContent = '{% translate "Удалить" %}';
     actions.appendChild(edit);
     actions.appendChild(del);
     bindActions(actions);
@@ -219,7 +223,7 @@
     if (mine) {
       var receipt = document.createElement('span');
       receipt.className = 'message-status block text-[10px] text-neutral-400 text-right';
-      receipt.textContent = m.read_at ? 'Прочитано' : 'Отправлено';
+      receipt.textContent = m.read_at ? '{% translate "Прочитано" %}' : '{% translate "Отправлено" %}';
       content.appendChild(receipt);
     }
     wrap.appendChild(content);
@@ -236,7 +240,7 @@
         body.innerHTML = '';
         var deleted = document.createElement('span');
         deleted.className = 'message-deleted inline-block rounded-2xl px-3.5 py-2 text-sm italic text-neutral-400 bg-neutral-100';
-        deleted.textContent = 'Сообщение удалено';
+        deleted.textContent = '{% translate "Сообщение удалено" %}';
         body.appendChild(deleted);
       }
       var actions = row.querySelector('.message-actions');
@@ -259,7 +263,7 @@
       meta.appendChild(document.createTextNode(' · '));
       var edited = document.createElement('span');
       edited.className = 'message-edited';
-      edited.textContent = 'изменено';
+      edited.textContent = '{% translate "изменено" %}';
       meta.appendChild(edited);
     }
   }
@@ -274,7 +278,7 @@
   function saveEdit() {
     if (!editingId) return;
     var content = editText.value.trim();
-    if (!content) { setStatus('Текст сообщения не может быть пустым.'); return; }
+    if (!content) { setStatus('{% translate "Текст сообщения не может быть пустым." %}'); return; }
     fetch('/chat/' + appId + '/message/' + editingId + '/edit', {
       method: 'POST',
       headers: { 'X-CSRFToken': csrf ? csrf.value : '' },
@@ -284,12 +288,12 @@
       applyChange({ id: editingId, content: content, edited_at: new Date().toISOString() });
       editDialog.close();
     }).catch(function () {
-      setStatus('Не удалось изменить сообщение.');
+      setStatus('{% translate "Не удалось изменить сообщение." %}');
     });
   }
 
   function deleteMessage(row) {
-    if (!window.confirm('Удалить сообщение?')) return;
+    if (!window.confirm('{% translate "Удалить сообщение?" %}')) return;
     var id = row.dataset.messageId;
     fetch('/chat/' + appId + '/message/' + id + '/delete', {
       method: 'POST',
@@ -298,7 +302,7 @@
       if (!r.ok) throw new Error('delete failed');
       applyChange({ id: id, deleted_at: new Date().toISOString() });
     }).catch(function () {
-      setStatus('Не удалось удалить сообщение.');
+      setStatus('{% translate "Не удалось удалить сообщение." %}');
     });
   }
 
@@ -310,7 +314,7 @@
     (ids || []).forEach(function (id) {
       var row = log.querySelector('[data-message-id="' + id + '"]');
       var status = row ? row.querySelector('.message-status') : null;
-      if (status) status.textContent = 'Прочитано';
+      if (status) status.textContent = '{% translate "Прочитано" %}';
     });
   }
 
@@ -433,8 +437,8 @@
     chain.then(function () {
       writeQueue(failed ? [] : remaining);
       flushing = false;
-      if (failed) setStatus('Не удалось отправить сообщение. Проверьте соединение.');
-      else if (remaining.length) setStatus('Нет сети — сообщения отправятся, когда связь появится.');
+      if (failed) setStatus('{% translate "Не удалось отправить сообщение. Проверьте соединение." %}');
+      else if (remaining.length) setStatus('{% translate "Нет сети — сообщения отправятся, когда связь появится." %}');
       else { setStatus(''); pollOnce(); }
     });
   }
@@ -443,7 +447,7 @@
     form.addEventListener('submit', function (ev) {
       var fileInput = form.querySelector('input[type="file"]');
       if (fileInput && fileInput.files.length) {
-        setStatus('Отправляем файл…');
+        setStatus('{% translate "Отправляем файл…" %}');
         return; // native multipart POST: files are not queued offline
       }
       ev.preventDefault();
@@ -454,20 +458,20 @@
       input.style.height = 'auto';
       if (!navigator.onLine || readQueue().length) {
         enqueue(content, cmid);
-        setStatus('Нет сети — сообщение отправится, когда связь появится.');
+        setStatus('{% translate "Нет сети — сообщение отправится, когда связь появится." %}');
         flushQueue();
         return;
       }
-      setStatus('Отправляем…');
+      setStatus('{% translate "Отправляем…" %}');
       deliverOne({ content: content, cmid: cmid }).then(function (result) {
         if (result === 'ok') {
           setStatus('');
           pollOnce();
         } else if (result === 'retry') {
           enqueue(content, cmid);
-          setStatus('Нет сети — сообщение отправится, когда связь появится.');
+          setStatus('{% translate "Нет сети — сообщение отправится, когда связь появится." %}');
         } else {
-          setStatus('Не удалось отправить сообщение. Обновите страницу и попробуйте снова.');
+          setStatus('{% translate "Не удалось отправить сообщение. Обновите страницу и попробуйте снова." %}');
         }
       });
     });

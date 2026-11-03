@@ -56,3 +56,104 @@ class LanguageSwitchTests(TestCase):
         self.assertContains(response, "Description")
         self.assertContains(response, "Address")
         self.assertContains(response, "Log in to apply")
+
+
+class CabinetEnglishTests(TestCase):
+    def setUp(self):
+        from core.tests.test_auth import make_profile
+        from core.tests.test_flows import make_job
+
+        self.worker = make_profile("i18n-cabinet-worker@example.com")
+        self.employer = make_profile("i18n-cabinet-emp@example.com", role="employer")
+        self.job = make_job(self.employer, work_type="Painting", city="Moscow")
+
+    def _english(self):
+        self.client.post(reverse("set_language"), {"language": "en", "next": "/"})
+
+    def test_profile_page_english(self):
+        self.client.force_login(self.worker)
+        self._english()
+        response = self.client.get(reverse("core:profile"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Save profile")
+        self.assertContains(response, "Data and account")
+
+    def test_my_jobs_english(self):
+        self.client.force_login(self.employer)
+        self._english()
+        response = self.client.get(reverse("core:my_jobs"))
+        self.assertContains(response, "My jobs")
+        self.assertContains(response, "Trudnik")
+
+    def test_my_applications_english(self):
+        self.client.force_login(self.worker)
+        self._english()
+        response = self.client.get(reverse("core:my_applications"))
+        self.assertContains(response, "My applications")
+
+    def test_chats_english(self):
+        from core.models import Application
+
+        Application.objects.create(job=self.job, worker=self.worker)
+        self.client.force_login(self.worker)
+        self._english()
+        response = self.client.get(reverse("core:chats"))
+        self.assertContains(response, "Chats")
+
+    def test_notifications_english(self):
+        self.client.force_login(self.worker)
+        self._english()
+        response = self.client.get(reverse("core:notifications"))
+        self.assertContains(response, "Notifications")
+
+    def test_job_form_english(self):
+        self.client.force_login(self.employer)
+        self._english()
+        response = self.client.get(reverse("core:job_create"))
+        self.assertContains(response, "Description")
+
+    def test_status_display_translated(self):
+        from django.utils import translation
+
+        with translation.override("en"):
+            self.assertEqual(self.job.get_status_display(), "Open")
+
+    def test_english_cabinet_pages_render(self):
+        self.client.force_login(self.worker)
+        self._english()
+        urls = [
+            "core:workers", "core:employers", "core:search",
+            "core:favorites_page", "core:favorite_jobs", "core:favorite_people",
+            "core:blacklist", "core:invitations", "core:notification_prefs",
+            "core:my_applications", "core:my_jobs", "core:profile",
+            "core:job_create", "core:chats", "core:notifications",
+            "core:verify_employer", "core:faq", "core:support", "core:app_download",
+        ]
+        for name in urls:
+            with self.subTest(url=name):
+                response = self.client.get(reverse(name))
+                self.assertEqual(response.status_code, 200, name)
+
+    def test_english_people_pages_render(self):
+        from core.models import Application
+
+        Application.objects.create(job=self.job, worker=self.worker)
+        self.client.force_login(self.worker)
+        self._english()
+        for url in (
+            reverse("core:worker_detail", args=[self.worker.pk]),
+            reverse("core:employer_detail", args=[self.employer.pk]),
+            reverse("core:user_ratings", args=[self.worker.pk]),
+        ):
+            self.assertEqual(self.client.get(url).status_code, 200, url)
+        self.client.force_login(self.employer)
+        self._english()
+        response = self.client.get(reverse("core:job_applicants", args=[self.job.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Applications")
+
+    def test_js_translation_bridge(self):
+        self._english()
+        response = self.client.get(reverse("core:login"))
+        self.assertContains(response, "TRUDNIK_I18N")
+        self.assertContains(response, "Confirm action")

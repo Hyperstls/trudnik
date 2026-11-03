@@ -6,6 +6,8 @@
 """
 from datetime import date, datetime
 
+from django.utils.translation import gettext
+
 # Признаки трудовых отношений (ст. 15 ТК РФ).
 STOP_WORDS = ('ставка', 'зарплата', 'штат', 'трудовая', 'график', 'постоянная работа', 'вахта')
 
@@ -27,7 +29,7 @@ def validate_payment(value) -> str | None:
         return None
     if PAYMENT_MIN <= value <= PAYMENT_MAX:
         return None
-    return "Оплата должна быть от 0 до 1 000 000 ₽"
+    return gettext("Оплата должна быть от 0 до 1 000 000 ₽")
 
 
 def validate_workers(value) -> str | None:
@@ -36,7 +38,7 @@ def validate_workers(value) -> str | None:
         return None
     if WORKERS_MIN <= value <= WORKERS_MAX:
         return None
-    return "Количество работников должно быть от 1 до 100"
+    return gettext("Количество работников должно быть от 1 до 100")
 
 
 def validate_deadline(value: date | datetime | None, today: date) -> str | None:
@@ -45,5 +47,5 @@ def validate_deadline(value: date | datetime | None, today: date) -> str | None:
         return None
     deadline = value.date() if isinstance(value, datetime) else value
     if deadline < today:
-        return "Дата выполнения не может быть в прошлом"
+        return gettext("Дата выполнения не может быть в прошлом")
     return None

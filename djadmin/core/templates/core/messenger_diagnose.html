@@ -1,24 +1,25 @@
 {% extends "core/base.html" %}
-{% block title %}Диагностика мессенджера — Трудник{% endblock %}
+{% load i18n %}
+{% block title %}{% translate "Диагностика мессенджера" %} — Трудник{% endblock %}
 {% block content %}
 <div class="max-w-2xl mx-auto py-4">
-    <h1 class="text-2xl font-bold mb-4">Диагностика верификации MAX</h1>
+    <h1 class="text-2xl font-bold mb-4">{% translate "Диагностика верификации MAX" %}</h1>
     <dl class="ui-card p-4 text-sm space-y-2">
-        <div>Webhook-секрет: {% if secret_set %}<span class="text-green-700">задан</span>{% else %}<span class="text-red-700">НЕТ (webhook fail-closed 503)</span>{% endif %}</div>
-        <div>Бот (username): {% if bot_set %}<span class="text-green-700">задан</span>{% else %}<span class="text-red-700">НЕТ</span>{% endif %}</div>
-        <div>Bot token: {% if token_set %}<span class="text-green-700">задан</span>{% else %}<span class="text-red-700">НЕТ (боты не смогут отвечать)</span>{% endif %}</div>
+        <div>{% translate "Webhook-секрет:" %} {% if secret_set %}<span class="text-green-700">{% translate "задан" %}</span>{% else %}<span class="text-red-700">{% translate "НЕТ (webhook fail-closed 503)" %}</span>{% endif %}</div>
+        <div>{% translate "Бот (username):" %} {% if bot_set %}<span class="text-green-700">{% translate "задан" %}</span>{% else %}<span class="text-red-700">{% translate "НЕТ" %}</span>{% endif %}</div>
+        <div>Bot token: {% if token_set %}<span class="text-green-700">{% translate "задан" %}</span>{% else %}<span class="text-red-700">{% translate "НЕТ (боты не смогут отвечать)" %}</span>{% endif %}</div>
         <div>API MAX: <code>{{ api_url }}</code></div>
-        <div>Кэш-бэкенд: <code>{{ cache_backend }}</code></div>
-        <div>Платформы: {{ platforms|join:", " }}</div>
+        <div>{% translate "Кэш-бэкенд:" %} <code>{{ cache_backend }}</code></div>
+        <div>{% translate "Платформы:" %} {{ platforms|join:", " }}</div>
     </dl>
     <section class="ui-card p-4 mt-4 text-sm">
-        <h2 class="font-semibold text-neutral-800 mb-2">Webhook-подписка</h2>
+        <h2 class="font-semibold text-neutral-800 mb-2">{% translate "Webhook-подписка" %}</h2>
         <p>URL: <code>{{ webhook.url }}</code></p>
-        <p class="mt-1">Статус:
+        <p class="mt-1">{% translate "Статус:" %}
             {% if webhook.ok %}<span class="text-green-700">{{ webhook.action }}</span>
-            {% else %}<span class="text-red-700">{{ webhook.error|default:"не зарегистрирован" }}</span>{% endif %}
+            {% else %}{% translate "не зарегистрирован" as webhook_not_registered %}<span class="text-red-700">{{ webhook.error|default:webhook_not_registered }}</span>{% endif %}
         </p>
-        <p class="text-xs text-neutral-500 mt-2">Регистрируется автоматически каждые 10 минут и при открытии страницы верификации. Webhook: <code>POST /messenger/webhook/max</code>.</p>
+        <p class="text-xs text-neutral-500 mt-2">{% translate "Регистрируется автоматически каждые 10 минут и при открытии страницы верификации." %} Webhook: <code>POST /messenger/webhook/max</code>.</p>
     </section>
 </div>
 {% endblock %}

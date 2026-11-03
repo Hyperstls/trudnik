@@ -1,73 +1,75 @@
 {% extends "core/base.html" %}
 {% load static %}
-{% block title %}Мои задания — Трудник{% endblock %}
+{% load i18n %}
+{% block title %}{% translate "Мои задания" %} — {% translate "Трудник" context "brand" %}{% endblock %}
 {% block content %}
 <div class="px-0 py-4 fade-in">
     <div class="mb-4">
-        <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">Мои задания</h2>
+        <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">{% translate "Мои задания" %}</h2>
     </div>
-    <div class="flex flex-wrap gap-2 mb-4" role="tablist" aria-label="Фильтр заданий">
-        <a href="{% url 'core:my_jobs' %}" role="tab" aria-selected="{% if not status %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if not status %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Все</a>
-        <a href="?status=open" role="tab" aria-selected="{% if status == 'open' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if status == 'open' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Открытые</a>
-        <a href="?status=completed" role="tab" aria-selected="{% if status == 'completed' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if status == 'completed' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Завершённые</a>
-        <a href="?status=cancelled" role="tab" aria-selected="{% if status == 'cancelled' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if status == 'cancelled' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">Отменённые</a>
+    <div class="flex flex-wrap gap-2 mb-4" role="tablist" aria-label="{% translate "Фильтр заданий" %}">
+        <a href="{% url 'core:my_jobs' %}" role="tab" aria-selected="{% if not status %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if not status %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">{% translate "Все" %}</a>
+        <a href="?status=open" role="tab" aria-selected="{% if status == 'open' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if status == 'open' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">{% translate "Открытые" %}</a>
+        <a href="?status=completed" role="tab" aria-selected="{% if status == 'completed' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if status == 'completed' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">{% translate "Завершённые" %}</a>
+        <a href="?status=cancelled" role="tab" aria-selected="{% if status == 'cancelled' %}true{% else %}false{% endif %}" class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all {% if status == 'cancelled' %}bg-primary-600 text-white shadow-sm{% else %}bg-white text-neutral-700 border border-neutral-200 hover:bg-neutral-50{% endif %}">{% translate "Отменённые" %}</a>
     </div>
     {% if jobs %}
     <form id="bulk-jobs-form" method="post" action="{% url 'core:my_jobs_bulk' %}">{% csrf_token %}</form>
     <div class="bulk-toolbar rounded-xl border border-neutral-200 bg-neutral-50 p-2 mb-3" data-bulk-root data-bulk-form="bulk-jobs-form">
         <div class="flex flex-wrap items-center gap-2 mb-2">
             <label class="flex items-center gap-2 text-xs text-neutral-600 cursor-pointer">
-                <input type="checkbox" id="select-all-jobs" data-bulk-all class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"> Выбрать все на странице
+                <input type="checkbox" id="select-all-jobs" data-bulk-all class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"> {% translate "Выбрать все на странице" %}
             </label>
-            <output data-bulk-count class="text-xs font-medium text-neutral-500" aria-live="polite">Выбрано: 0</output>
+            <output data-bulk-count class="text-xs font-medium text-neutral-500" aria-live="polite">{% translate "Выбрано:" %} 0</output>
         </div>
-        <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" role="group" aria-label="Массовые действия">
-            <button type="submit" form="bulk-jobs-form" name="action" value="cancel" data-bulk-action data-bulk-requires="open,active" class="px-3 h-9 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap"><span class="sm:hidden">Отменить</span><span class="hidden sm:inline">Отменить выбранные</span></button>
-            <button type="submit" form="bulk-jobs-form" name="action" value="restore" data-bulk-action data-bulk-requires="cancelled" class="px-3 h-9 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap"><span class="sm:hidden">Восстановить</span><span class="hidden sm:inline">Восстановить выбранные</span></button>
-            <button type="submit" form="bulk-jobs-form" name="action" value="duplicate" data-bulk-action class="px-3 h-9 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap"><span class="sm:hidden">Дублировать</span><span class="hidden sm:inline">Дублировать выбранные</span></button>
-            <button type="submit" form="bulk-jobs-form" name="action" value="delete" data-bulk-action data-confirm="Удалить выбранные задания? Действие нельзя отменить." disabled class="px-3 h-9 rounded-xl border border-red-200 bg-white text-red-600 hover:bg-red-50 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap"><span class="sm:hidden">Удалить</span><span class="hidden sm:inline">Удалить выбранные</span></button>
+        <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" role="group" aria-label="{% translate "Массовые действия" %}">
+            <button type="submit" form="bulk-jobs-form" name="action" value="cancel" data-bulk-action data-bulk-requires="open,active" class="px-3 h-9 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap"><span class="sm:hidden">{% translate "Отменить" %}</span><span class="hidden sm:inline">{% translate "Отменить выбранные" %}</span></button>
+            <button type="submit" form="bulk-jobs-form" name="action" value="restore" data-bulk-action data-bulk-requires="cancelled" class="px-3 h-9 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap"><span class="sm:hidden">{% translate "Восстановить" %}</span><span class="hidden sm:inline">{% translate "Восстановить выбранные" %}</span></button>
+            <button type="submit" form="bulk-jobs-form" name="action" value="duplicate" data-bulk-action class="px-3 h-9 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap"><span class="sm:hidden">{% translate "Дублировать" %}</span><span class="hidden sm:inline">{% translate "Дублировать выбранные" %}</span></button>
+            <button type="submit" form="bulk-jobs-form" name="action" value="delete" data-bulk-action data-confirm="{% translate "Удалить выбранные задания? Действие нельзя отменить." %}" disabled class="px-3 h-9 rounded-xl border border-red-200 bg-white text-red-600 hover:bg-red-50 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap"><span class="sm:hidden">{% translate "Удалить" %}</span><span class="hidden sm:inline">{% translate "Удалить выбранные" %}</span></button>
         </div>
     </div>
     <div class="grid gap-3">
         {% for job in jobs %}
         <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4">
             <div class="flex flex-wrap items-start justify-between gap-3">
-                <input type="checkbox" name="job_ids" value="{{ job.pk }}" form="bulk-jobs-form" data-bulk-item data-job-status="{{ job.status }}" class="mt-1 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 shrink-0" aria-label="Выбрать задание {{ job.work_type|default:job.pk }}">
+                <input type="checkbox" name="job_ids" value="{{ job.pk }}" form="bulk-jobs-form" data-bulk-item data-job-status="{{ job.status }}" class="mt-1 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 shrink-0" aria-label="{% translate "Выбрать задание" %} {{ job.work_type|default:job.pk }}">
                 <div class="min-w-0 flex-1">
-                    <a href="{% url 'core:job_detail' job.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ job.work_type|default:"Задание" }}</a>
+                    {% translate "Задание" as job_type_default %}{% translate "Частное лицо" as private_person_default %}
+                    <a href="{% url 'core:job_detail' job.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ job.work_type|default:job_type_default }}</a>
                     <p class="text-sm text-neutral-500 mt-0.5">
-                        {{ job.organization_name|default:"Частное лицо" }} · {{ job.get_status_display }} · {{ job.date_time|date:"d.m.Y H:i" }}
-                        {% if job.moderation_status == 'review' %}<span class="ml-1 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">На проверке</span>{% elif job.moderation_status == 'rejected' %}<span class="ml-1 inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">Отклонено</span>{% endif %}
+                        {{ job.organization_name|default:private_person_default }} · {{ job.get_status_display }} · {{ job.date_time|date:"d.m.Y H:i" }}
+                        {% if job.moderation_status == 'review' %}<span class="ml-1 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">{% translate "На проверке" %}</span>{% elif job.moderation_status == 'rejected' %}<span class="ml-1 inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">{% translate "Отклонено" %}</span>{% endif %}
                     </p>
                 </div>
                 <div class="flex flex-wrap gap-2 text-sm w-full sm:w-auto sm:justify-end">
-                    <a href="{% url 'core:job_applicants' job.pk %}" class="action-icon-btn contact-btn"><span class="text-xs font-medium">Отклики{% if job.application_count %} · {{ job.application_count }}{% endif %}</span></a>
+                    <a href="{% url 'core:job_applicants' job.pk %}" class="action-icon-btn contact-btn"><span class="text-xs font-medium">{% translate "Отклики" %}{% if job.application_count %} · {{ job.application_count }}{% endif %}</span></a>
                     <details class="action-menu relative" name="job-actions">
-                        <summary class="action-icon-btn bg-neutral-50 border border-neutral-200 hover:bg-neutral-100 px-3" aria-label="Другие действия с заданием" title="Другие действия">
+                        <summary class="action-icon-btn bg-neutral-50 border border-neutral-200 hover:bg-neutral-100 px-3" aria-label="{% translate "Другие действия с заданием" %}" title="{% translate "Другие действия" %}">
                             <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
                         </summary>
-                        <div class="action-menu-panel action-menu-sheet" role="group" aria-label="Действия с заданием">
+                        <div class="action-menu-panel action-menu-sheet" role="group" aria-label="{% translate "Действия с заданием" %}">
                             <a href="{% url 'core:job_edit' job.pk %}" class="action-menu-item">
                                 <svg aria-hidden="true" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
-                                Изменить
+                                {% translate "Изменить" %}
                             </a>
                             <form method="post" action="{% url 'core:repost_job' job.pk %}">{% csrf_token %}
                                 <button type="submit" class="action-menu-item">
                                     <svg aria-hidden="true" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                                    Дублировать
+                                    {% translate "Дублировать" %}
                                 </button>
                             </form>
                             {% if job.status == 'open' or job.status == 'active' %}
                             <form method="post" action="{% url 'core:job_action' job.pk 'force_complete' %}">{% csrf_token %}
                                 <button type="submit" class="action-menu-item">
                                     <svg aria-hidden="true" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                                    Завершить
+                                    {% translate "Завершить" %}
                                 </button>
                             </form>
                             <form method="post" action="{% url 'core:job_action' job.pk 'cancel' %}">{% csrf_token %}
                                 <button type="submit" class="action-menu-item">
                                     <svg aria-hidden="true" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-                                    Отменить
+                                    {% translate "Отменить" %}
                                 </button>
                             </form>
                             {% endif %}
@@ -75,14 +77,14 @@
                             <form method="post" action="{% url 'core:job_action' job.pk 'restore' %}">{% csrf_token %}
                                 <button type="submit" class="action-menu-item">
                                     <svg aria-hidden="true" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-                                    Восстановить
+                                    {% translate "Восстановить" %}
                                 </button>
                             </form>
                             {% endif %}
                             <form method="post" action="{% url 'core:job_action' job.pk 'delete' %}">{% csrf_token %}
                                 <button type="submit" class="action-menu-item is-danger">
                                     <svg aria-hidden="true" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                                    Удалить
+                                    {% translate "Удалить" %}
                                 </button>
                             </form>
                         </div>
@@ -94,7 +96,8 @@
     </div>
     {% else %}
     {% url 'core:job_create' as job_create_url %}
-    {% include "core/_ui_empty_state.html" with title="Пока нет заданий" description="Создайте первое задание — отклики появятся здесь." action_url=job_create_url action_label="Создать задание" icon="folder" %}
+    {% translate "Пока нет заданий" as empty_title %}{% translate "Создайте первое задание — отклики появятся здесь." as empty_description %}{% translate "Создать задание" as empty_action %}
+    {% include "core/_ui_empty_state.html" with title=empty_title description=empty_description action_url=job_create_url action_label=empty_action icon="folder" %}
     {% endif %}
 </div>
 {% endblock %}

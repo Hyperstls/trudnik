@@ -1,9 +1,12 @@
 {% extends "core/base.html" %}
 {% load core_extras %}
-{% block title %}Чаты — Трудник{% endblock %}
+{% load i18n %}
+{% block title %}{% translate "Чаты — Трудник" %}{% endblock %}
 {% block content %}
+{% translate "Задание" as default_job_label %}
+{% translate "Нет сообщений" as no_messages_label %}
 <div class="px-0 py-4 fade-in">
-    <h2 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-4">Чаты</h2>
+    <h2 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-4">{% translate "Чаты" %}</h2>
     {% if rows %}
     <div class="grid gap-2">
         {% for r in rows %}
@@ -20,14 +23,14 @@
                     <p class="font-semibold text-neutral-900 truncate">{{ r.counterpart.full_name }}</p>
                     <span class="text-[11px] text-neutral-400 whitespace-nowrap shrink-0">{{ r.last_at|date:"d.m H:i" }}</span>
                 </div>
-                <p class="text-xs text-neutral-500 mt-0.5 truncate">{{ r.app.job.work_type|default:"Задание" }} · {{ r.app.get_status_display }}</p>
+                <p class="text-xs text-neutral-500 mt-0.5 truncate">{{ r.app.job.work_type|default:default_job_label }} · {{ r.app.get_status_display }}</p>
                 <div class="flex items-center justify-between gap-2 mt-1">
                     <p class="text-sm truncate {% if r.unread_count %}font-semibold text-neutral-700{% else %}text-neutral-500{% endif %}">
                         {% if r.has_attachment %}<span class="inline-flex align-middle mr-1 text-neutral-400">{% include "core/_ui_icon.html" with name="plus" class_name="h-3.5 w-3.5" %}</span>{% endif %}
-                        {{ r.last|default:"Нет сообщений" }}
+                        {{ r.last|default:no_messages_label }}
                     </p>
                     {% if r.unread_count %}
-                    <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary-600 text-white text-[11px] font-bold shrink-0" aria-label="Непрочитанных: {{ r.unread_count }}">{{ r.unread_count }}</span>
+                    <span class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary-600 text-white text-[11px] font-bold shrink-0" aria-label="{% translate 'Непрочитанных:' %} {{ r.unread_count }}">{{ r.unread_count }}</span>
                     {% endif %}
                 </div>
             </div>
@@ -39,8 +42,8 @@
         <div class="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
             <svg aria-hidden="true" class="h-8 w-8 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         </div>
-        <p class="text-neutral-600 text-lg font-medium">Чатов нет</p>
-        <p class="text-sm text-neutral-500 mt-1">Они появляются после отклика или приглашения</p>
+        <p class="text-neutral-600 text-lg font-medium">{% translate "Чатов нет" %}</p>
+        <p class="text-sm text-neutral-500 mt-1">{% translate "Они появляются после отклика или приглашения" %}</p>
     </div>
     {% endif %}
 </div>

@@ -1,11 +1,13 @@
 {% extends "core/base.html" %}
 {% load core_extras %}
+{% load i18n %}
 {% block title %}{{ p.full_name }} — Трудник{% endblock %}
 {% block content %}
+{% translate "Задание" as t_job %}
 <div class="max-w-2xl mx-auto px-0 py-4 fade-in">
     <a href="{% url 'core:workers' %}" class="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 mb-3">
         <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-        Все трудники
+        {% translate "Все трудники" %}
     </a>
 
     <div class="bg-white rounded-2xl border border-neutral-200 shadow-card p-6">
@@ -19,19 +21,19 @@
             {% endif %}
             <h1 class="text-xl font-bold text-neutral-900 mt-3">
                 {{ p.full_name }}
-                {% if p.verification_status == 'approved' %}<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{% include "core/_ui_icon.html" with name="check" class_name="h-3 w-3" %} Подтверждён</span>{% endif %}
+                {% if p.verification_status == 'approved' %}<span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{% include "core/_ui_icon.html" with name="check" class_name="h-3 w-3" %} {% translate "Подтверждён" %}</span>{% endif %}
             </h1>
             <div class="flex items-center gap-1.5 mt-1">
                 {% for i in "12345" %}{% if forloop.counter0 < p.rating|default:0 %}{% include "core/_ui_icon.html" with name="star" class_name="h-4 w-4 text-warning" %}{% else %}{% include "core/_ui_icon.html" with name="star-outline" class_name="h-4 w-4 text-neutral-300" %}{% endif %}{% endfor %}
                 <span class="text-sm font-medium text-neutral-700">{{ p.rating|default:0|floatformat:1 }}</span>
-                <span class="text-xs text-neutral-400">({{ p.total_reviews|default:0 }} отзывов)</span>
+                <span class="text-xs text-neutral-400">({{ p.total_reviews|default:0 }} {% translate "отзывов" %})</span>
             </div>
-            {% if p.city %}<p class="text-sm text-neutral-500 mt-1">{{ p.city }}{% if p.age %} · {{ p.age }} лет{% endif %}</p>{% endif %}
+            {% if p.city %}<p class="text-sm text-neutral-500 mt-1">{{ p.city }}{% if p.age %} · {{ p.age }} {% translate "лет" %}{% endif %}</p>{% endif %}
         </div>
 
         <div class="grid grid-cols-2 gap-3 text-sm border-y border-neutral-100 py-3 mb-4">
-            {% if p.desired_payment %}<div><dt class="text-neutral-400 text-xs">Желаемая оплата</dt><dd class="font-medium text-neutral-700">{{ p.desired_payment }} ₽</dd></div>{% endif %}
-            {% if p.is_self_employed %}<div><dt class="text-neutral-400 text-xs">Статус</dt><dd class="font-medium text-neutral-700">Самозанятый</dd></div>{% endif %}
+            {% if p.desired_payment %}<div><dt class="text-neutral-400 text-xs">{% translate "Желаемая оплата" %}</dt><dd class="font-medium text-neutral-700">{{ p.desired_payment }} ₽</dd></div>{% endif %}
+            {% if p.is_self_employed %}<div><dt class="text-neutral-400 text-xs">{% translate "Статус" %}</dt><dd class="font-medium text-neutral-700">{% translate "Самозанятый" %}</dd></div>{% endif %}
         </div>
 
         {% if skills %}
@@ -42,17 +44,17 @@
 
         {% if p.portfolio_link %}
         <div class="mb-4">
-            <a href="{{ p.portfolio_link }}" target="_blank" rel="noopener noreferrer nofollow" class="ui-btn ui-btn--secondary ui-btn--sm">Портфолио ↗</a>
+            <a href="{{ p.portfolio_link }}" target="_blank" rel="noopener noreferrer nofollow" class="ui-btn ui-btn--secondary ui-btn--sm">{% translate "Портфолио" %} ↗</a>
         </div>
         {% endif %}
 
-        {% if p.bio %}<section class="mb-4"><h2 class="text-sm font-semibold text-neutral-600 mb-1.5">О себе</h2><p class="text-sm text-neutral-700 whitespace-pre-line leading-relaxed">{{ p.bio }}</p></section>{% endif %}
-        {% if p.experience %}<section class="mb-4"><h2 class="text-sm font-semibold text-neutral-600 mb-1.5">Опыт</h2><p class="text-sm text-neutral-700 whitespace-pre-line leading-relaxed">{{ p.experience }}</p></section>{% endif %}
+        {% if p.bio %}<section class="mb-4"><h2 class="text-sm font-semibold text-neutral-600 mb-1.5">{% translate "О себе" %}</h2><p class="text-sm text-neutral-700 whitespace-pre-line leading-relaxed">{{ p.bio }}</p></section>{% endif %}
+        {% if p.experience %}<section class="mb-4"><h2 class="text-sm font-semibold text-neutral-600 mb-1.5">{% translate "Опыт" %}</h2><p class="text-sm text-neutral-700 whitespace-pre-line leading-relaxed">{{ p.experience }}</p></section>{% endif %}
 
         <section class="mb-4">
             <div class="flex items-center justify-between gap-2 mb-2">
-                <h2 class="text-sm font-semibold text-neutral-600">Отзывы</h2>
-                <a href="{% url 'core:user_ratings' p.id %}" class="text-xs text-primary-600 hover:text-primary-700 underline underline-offset-2">Все отзывы ({{ p.total_reviews|default:0 }})</a>
+                <h2 class="text-sm font-semibold text-neutral-600">{% translate "Отзывы" %}</h2>
+                <a href="{% url 'core:user_ratings' p.id %}" class="text-xs text-primary-600 hover:text-primary-700 underline underline-offset-2">{% translate "Все отзывы" %} ({{ p.total_reviews|default:0 }})</a>
             </div>
             {% if ratings %}
             <div class="space-y-2">
@@ -60,46 +62,46 @@
                 <article class="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <a href="{% url 'core:worker_detail' r.rater_user.pk %}" class="text-sm font-medium text-neutral-800 hover:text-primary-700">{{ r.rater_user.full_name }}</a>
-                        <span class="inline-flex items-center gap-0.5" aria-label="Оценка {{ r.rating }} из 5">
+                        <span class="inline-flex items-center gap-0.5" aria-label="{% translate "Оценка" %} {{ r.rating }} {% translate "из" %} 5">
                             {% for i in "12345" %}{% if forloop.counter0 < r.rating %}{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 text-warning" %}{% else %}{% include "core/_ui_icon.html" with name="star-outline" class_name="h-3.5 w-3.5 text-neutral-300" %}{% endif %}{% endfor %}
                         </span>
                     </div>
                     {% if r.comment %}<p class="text-sm text-neutral-600 mt-1">{{ r.comment }}</p>{% endif %}
-                    <p class="text-xs text-neutral-400 mt-1">{{ r.created_at|date:"d.m.Y" }}{% if r.job %} · {{ r.job.work_type|default:"Задание" }}{% endif %}</p>
+                    <p class="text-xs text-neutral-400 mt-1">{{ r.created_at|date:"d.m.Y" }}{% if r.job %} · {{ r.job.work_type|default:t_job }}{% endif %}</p>
                 </article>
                 {% endfor %}
             </div>
             {% else %}
-            <p class="text-sm text-neutral-500">Отзывов пока нет.</p>
+            <p class="text-sm text-neutral-500">{% translate "Отзывов пока нет." %}</p>
             {% endif %}
         </section>
 
-        <p class="text-sm text-neutral-500 mb-4">Контакты открываются после отклика на задание.</p>
+        <p class="text-sm text-neutral-500 mb-4">{% translate "Контакты открываются после отклика на задание." %}</p>
 
         {% if user.is_authenticated and p.id != user.pk %}
         <div class="border-t border-neutral-100 pt-4 space-y-3">
             {% if my_open_jobs %}
             <form method="post" action="{% url 'core:invite_worker' p.id %}" class="flex flex-wrap gap-2 items-end">
                 {% csrf_token %}
-                <label class="text-sm flex-1 font-medium text-neutral-700">Пригласить на моё задание
+                <label class="text-sm flex-1 font-medium text-neutral-700">{% translate "Пригласить на моё задание" %}
                     <select name="job_id" class="mt-1 w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50" required>
-                        {% for j in my_open_jobs %}<option value="{{ j.id }}">{{ j.work_type|default:"Задание" }} · {{ j.date_time|date:"d.m" }}</option>{% endfor %}
+                        {% for j in my_open_jobs %}<option value="{{ j.id }}">{{ j.work_type|default:t_job }} · {{ j.date_time|date:"d.m" }}</option>{% endfor %}
                     </select>
                 </label>
-                <textarea name="message" maxlength="500" rows="2" placeholder="Сообщение к приглашению (необязательно)" class="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent"></textarea>
-                <button class="px-4 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm">Пригласить</button>
+                <textarea name="message" maxlength="500" rows="2" placeholder="{% translate "Сообщение к приглашению (необязательно)" %}" class="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent"></textarea>
+                <button class="px-4 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm">{% translate "Пригласить" %}</button>
             </form>
             {% endif %}
             {% if pending_invitations %}
             <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-3 space-y-2">
-                <p class="text-xs font-semibold text-neutral-600">Отправленные приглашения</p>
+                <p class="text-xs font-semibold text-neutral-600">{% translate "Отправленные приглашения" %}</p>
                 {% for inv in pending_invitations %}
                 <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
-                    <span class="text-neutral-700">{{ inv.job.work_type|default:"Задание" }} · {{ inv.job.date_time|date:"d.m.Y H:i" }}</span>
+                    <span class="text-neutral-700">{{ inv.job.work_type|default:t_job }} · {{ inv.job.date_time|date:"d.m.Y H:i" }}</span>
                     <form method="post" action="{% url 'core:invitation_revoke' inv.pk %}">
                         {% csrf_token %}
                         <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                        <button type="submit" class="text-xs text-red-600 hover:underline" data-confirm="Отозвать приглашение?">Отозвать</button>
+                        <button type="submit" class="text-xs text-red-600 hover:underline" data-confirm="{% translate "Отозвать приглашение?" %}">{% translate "Отозвать" %}</button>
                     </form>
                 </div>
                 {% endfor %}
@@ -107,12 +109,12 @@
             {% endif %}
             <div class="flex gap-2 text-sm">
                 <form method="post" action="{% url 'core:people_favorite_toggle' p.id %}">{% csrf_token %}
-                    <button class="action-icon-btn contact-btn"><span class="text-xs font-medium">{{ is_fav_person|yesno:"В избранном,В избранное" }}</span></button>
+                    <button class="action-icon-btn contact-btn"><span class="text-xs font-medium">{% if is_fav_person %}{% translate "В избранном" %}{% else %}{% translate "В избранное" %}{% endif %}</span></button>
                 </form>
                 <form method="post" action="{% url 'core:people_block' p.id %}">{% csrf_token %}
-                    <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">Заблокировать</span></button>
+                    <button class="action-icon-btn reject-btn"><span class="text-xs font-medium">{% translate "Заблокировать" %}</span></button>
                 </form>
-                <button type="button" id="report-open-worker" class="action-icon-btn reject-btn"><span class="text-xs font-medium">Жалоба</span></button>
+                <button type="button" id="report-open-worker" class="action-icon-btn reject-btn"><span class="text-xs font-medium">{% translate "Жалоба" %}</span></button>
             </div>
         </div>
         {% endif %}
@@ -120,12 +122,12 @@
     {% if user.is_authenticated and p.id != user.pk %}
     <dialog id="report-dialog-worker" aria-labelledby="report-worker-title" class="report-dialog rounded-2xl border border-neutral-200 bg-white p-0 shadow-xl" style="width:min(28rem, calc(100vw - 2rem))">
         <form method="post" action="{% url 'core:report_user' p.id %}" class="p-5 space-y-3">{% csrf_token %}
-            <h2 id="report-worker-title" class="text-lg font-bold text-neutral-800">Пожаловаться на пользователя</h2>
-            <p class="text-sm text-neutral-500">Опишите нарушение. Жалобу рассмотрит модерация.</p>
-            <textarea name="reason" maxlength="500" required rows="4" placeholder="Причина жалобы" class="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent"></textarea>
+            <h2 id="report-worker-title" class="text-lg font-bold text-neutral-800">{% translate "Пожаловаться на пользователя" %}</h2>
+            <p class="text-sm text-neutral-500">{% translate "Опишите нарушение. Жалобу рассмотрит модерация." %}</p>
+            <textarea name="reason" maxlength="500" required rows="4" placeholder="{% translate "Причина жалобы" %}" class="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent"></textarea>
             <div class="flex justify-end gap-2">
-                <button type="button" data-close-report class="px-4 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">Отмена</button>
-                <button type="submit" class="px-4 h-9 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold">Отправить жалобу</button>
+                <button type="button" data-close-report class="px-4 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium">{% translate "Отмена" %}</button>
+                <button type="submit" class="px-4 h-9 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold">{% translate "Отправить жалобу" %}</button>
             </div>
         </form>
     </dialog>

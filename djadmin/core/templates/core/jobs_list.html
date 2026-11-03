@@ -40,7 +40,7 @@
     {% if map_points or geo_center %}
     <div id="jobs-map" style="height:320px" class="w-full rounded-2xl border border-neutral-200 mb-2"></div>
     {% if geo_center %}
-    <p class="text-xs text-neutral-500 mb-3">Круг — радиус поиска {% localize off %}{{ geo_center.radius|floatformat:"-1" }}{% endlocalize %} км от вашей точки. Точка округлена до ~100 м и хранится в сессии 1 час.</p>
+    <p class="text-xs text-neutral-500 mb-3">{% translate "Круг — радиус поиска" %} {% localize off %}{{ geo_center.radius|floatformat:"-1" }}{% endlocalize %} {% translate "км от вашей точки. Точка округлена до ~100 м и хранится в сессии 1 час." %}</p>
     {% else %}<div class="mb-2"></div>{% endif %}
     {{ map_points|json_script:"jobs-map-data" }}
     {% if geo_center %}{{ geo_center|json_script:"jobs-geo-data" }}{% endif %}
@@ -62,7 +62,7 @@
         (function labelYandexLogo(tries) {
                   var logo = document.querySelector('a[class*="copyright__logo"]');
                   if (logo) {
-                    if (!logo.getAttribute('aria-label')) logo.setAttribute('aria-label', 'Яндекс Карты');
+                    if (!logo.getAttribute('aria-label')) logo.setAttribute('aria-label', '{% translate "Яндекс Карты" %}');
                     return;
                   }
                   if (tries > 0) window.setTimeout(function () { labelYandexLogo(tries - 1); }, 300);
@@ -146,7 +146,7 @@
             <button type="button" id="geo-btn" class="px-3 h-10 shrink-0 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">{% translate "Рядом со мной" %}</button>
         </div>
         {% if geo_active %}<button type="submit" form="geo-clear-form" class="px-3 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600 text-sm font-medium transition-colors">{% translate "Сбросить гео" %}</button>{% endif %}
-        <p class="basis-full text-xs text-neutral-400">Геопозиция используется только для поиска рядом, округляется и хранится в сессии 1 час; в ссылку не попадает.</p>
+        <p class="basis-full text-xs text-neutral-400">{% translate "Геопозиция используется только для поиска рядом, округляется и хранится в сессии 1 час; в ссылку не попадает." %}</p>
         <p id="geo-msg" class="basis-full text-xs text-red-600 hidden" role="alert"></p>
         <input type="number" name="payment_max" min="0" value="{{ payment_max }}" placeholder="{% translate 'Оплата до, ₽' %}"
                class="w-36 px-3 h-9 rounded-xl border border-neutral-200 bg-white text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent">
@@ -252,7 +252,7 @@
       }
       btn.addEventListener('click', function(){
         if (!navigator.geolocation) {
-          fail('Геолокация недоступна в браузере.');
+          fail('{% translate "Геолокация недоступна в браузере." %}');
           return;
         }
         btn.disabled = true;
@@ -271,7 +271,7 @@
           document.getElementById('geo-next').value = window.location.pathname + '?' + params.toString();
           document.getElementById('geo-form').submit();
         }, function(){
-          fail('Не удалось получить координаты. Разрешите геолокацию.');
+          fail('{% translate "Не удалось получить координаты. Разрешите геолокацию." %}');
         }, {enableHighAccuracy: true, timeout: 10000, maximumAge: 60000});
       });
     })();
@@ -301,7 +301,7 @@
         } else {
           form.removeAttribute('aria-modal');
           form.removeAttribute('aria-labelledby');
-          form.setAttribute('aria-label', 'Фильтры заданий');
+          form.setAttribute('aria-label', '{% translate "Фильтры заданий" %}');
         }
         document.body.classList.toggle('overflow-hidden', next);
         if (next) {

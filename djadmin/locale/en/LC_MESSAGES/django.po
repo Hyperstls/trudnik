@@ -713,3 +713,2832 @@ msgstr "of"
 
 msgid "нужно"
 msgstr "needed"
+
+msgid ", настройте фильтры и нажмите «Сохранить поиск»."
+msgstr ", set the filters and tap «Save search»."
+
+msgid "Push временно недоступны."
+msgstr "Push is temporarily unavailable."
+
+msgid "Push не поддерживается"
+msgstr "Push not supported"
+
+msgid "Push-уведомления"
+msgstr "Push notifications"
+
+msgid ""
+"Автоподстановка адреса недоступна. Введите адрес вручную — метка сохранена."
+msgstr ""
+"Address autofill is unavailable. Enter the address manually — the marker is "
+"saved."
+
+msgid "Администратор"
+msgstr "Administrator"
+
+msgid "Адрес выбран, но координаты не найдены. Поставьте метку вручную."
+msgstr ""
+"Address selected, but no coordinates found. Place the marker manually."
+
+msgid "Адрес выбран. Подтвердите точку."
+msgstr "Address selected. Confirm the point."
+
+msgid "Адрес выбран:"
+msgstr "Address selected:"
+
+msgid "Адрес найден:"
+msgstr "Address found:"
+
+msgid "Адрес не найден. Проверьте написание или поставьте метку на карте."
+msgstr "Address not found. Check the spelling or place a marker on the map."
+
+msgid "Адрес по метке"
+msgstr "Address from marker"
+
+msgid "Адрес подставлен по метке. Проверьте и подтвердите."
+msgstr "Address filled from the marker. Check and confirm."
+
+msgid "Адрес подтверждён. Метка будет сохранена вместе с заданием."
+msgstr "Address confirmed. The marker will be saved with the job."
+
+msgid "Анкета"
+msgstr "Profile form"
+
+msgid "Браузер не поддерживает push-уведомления."
+msgstr "The browser does not support push notifications."
+
+msgid "Ваше фото"
+msgstr "Your photo"
+
+msgid "Введите город или адрес, чтобы найти точку на карте."
+msgstr "Enter a city or address to find a point on the map."
+
+msgid "Верификация"
+msgstr "Verification"
+
+msgid "Включить уведомления по поиску"
+msgstr "Enable notifications for search"
+
+msgid "Восстановить"
+msgstr "Restore"
+
+msgid "Восстановить выбранные"
+msgstr "Restore selected"
+
+msgid "Вчера"
+msgstr "Yesterday"
+
+msgid "Выбрано:"
+msgstr "Selected:"
+
+msgid "Выбрать все на странице"
+msgstr "Select all on page"
+
+msgid "Выбрать отклик"
+msgstr "Select application"
+
+msgid "Выключить уведомления по поиску"
+msgstr "Disable notifications for search"
+
+msgid "Выполнено"
+msgstr "Completed"
+
+msgid "Геолокация недоступна в этом браузере."
+msgstr "Geolocation is unavailable in this browser."
+
+msgid "Данные и аккаунт"
+msgstr "Data and account"
+
+msgid "Действия с заданием"
+msgstr "Job actions"
+
+msgid "Добавить фото"
+msgstr "Add photo"
+
+msgid ""
+"Доступ к геолокации запрещён. Разрешите его в браузере или кликните по "
+"карте."
+msgstr ""
+"Geolocation access is blocked. Allow it in the browser or click the map."
+
+msgid "Другие действия"
+msgstr "More actions"
+
+msgid "Другие действия с заданием"
+msgstr "More job actions"
+
+msgid "Дублировать"
+msgstr "Duplicate"
+
+msgid "Дублировать выбранные"
+msgstr "Duplicate selected"
+
+msgid "Завершить"
+msgstr "Complete"
+
+msgid "Загрузить"
+msgstr "Upload"
+
+msgid "Загрузить документ"
+msgstr "Upload document"
+
+msgid "Задание завершено"
+msgstr "Job completed"
+
+msgid "Запустите приложение с иконки на экране «Домой»."
+msgstr "Launch the app from the Home screen icon."
+
+msgid "Здесь появятся отклики, приглашения и оценки"
+msgstr "Applications, invitations and ratings will appear here"
+
+msgid "Изменить email"
+msgstr "Change email"
+
+msgid "Изменить пароль"
+msgstr "Change password"
+
+msgid "Инструкция для iPhone/iPad"
+msgstr "iPhone/iPad instructions"
+
+msgid "Исполнитель"
+msgstr "Worker"
+
+msgid "Ищем адрес…"
+msgstr "Searching for the address…"
+
+msgid "Ищем выбранный адрес на карте…"
+msgstr "Finding the selected address on the map…"
+
+msgid "Как меня видят в каталоге трудников"
+msgstr "How I appear in the worker directory"
+
+msgid "Как меня видят на странице работодателя"
+msgstr "How I appear on the employer page"
+
+msgid "Какие уведомления"
+msgstr "Which notifications"
+
+msgid "Карточка работодателя"
+msgstr "Employer card"
+
+msgid ""
+"Кликните по карте, найдите адрес или определите своё местоположение. "
+"Координаты нужны только для метки офлайн-задания и сохраняются вместе с ним;"
+" геопозиция устройства отдельно не сохраняется. Для дистанционных заданий "
+"карту не заполняйте."
+msgstr ""
+"Click the map, search for an address or detect your location. Coordinates "
+"are only used for the offline job marker and are saved with it; the device "
+"location is not stored separately. Do not fill in the map for remote jobs."
+
+msgid "Комментарий"
+msgstr "Comment"
+
+msgid "Контакты"
+msgstr "Contacts"
+
+msgid "Контакты не указаны"
+msgstr "No contacts provided"
+
+msgid "Координаты сохранены. Адрес можно ввести вручную."
+msgstr "Coordinates saved. You can enter the address manually."
+
+msgid "Координаты сохранены. Адрес не найден — введите вручную."
+msgstr "Coordinates saved. Address not found — enter it manually."
+
+msgid "Куда присылать"
+msgstr "Where to send"
+
+msgid "Массовые действия"
+msgstr "Bulk actions"
+
+msgid "Метка поставлена по вашему местоположению. Проверьте адрес."
+msgstr "Marker placed at your location. Check the address."
+
+msgid "Метка удалена. Для офлайн-задания укажите точку на карте."
+msgstr "Marker removed. For an offline job, set a point on the map."
+
+msgid "Мои отклики"
+msgstr "My applications"
+
+msgid "Моё местоположение"
+msgstr "My location"
+
+msgid ""
+"На новый адрес придёт ссылка подтверждения (1 час). Текущий email продолжит "
+"работать до подтверждения."
+msgstr ""
+"A confirmation link will be sent to the new address (valid for 1 hour). The "
+"current email keeps working until confirmation."
+
+msgid "На проверке"
+msgstr "Under review"
+
+msgid "Найден черновик задания"
+msgstr "Job draft found"
+
+msgid "Найти задание"
+msgstr "Find a job"
+
+msgid "Найти по адресу"
+msgstr "Find by address"
+
+msgid "Настройки"
+msgstr "Settings"
+
+msgid "Настройки уведомлений"
+msgstr "Notification settings"
+
+msgid "Не присылать"
+msgstr "Do not send"
+
+msgid "Не удалось изменить подписку. Проверьте разрешение браузера."
+msgstr "Could not change the subscription. Check the browser permission."
+
+msgid "Не удалось определить адрес. Введите адрес вручную — метка сохранена."
+msgstr ""
+"Could not determine the address. Enter it manually — the marker is saved."
+
+msgid ""
+"Не удалось определить местоположение. Кликните по карте или введите адрес."
+msgstr "Could not determine the location. Click the map or enter an address."
+
+msgid "Нельзя редактировать условия задания: есть принятые отклики"
+msgstr "The job terms cannot be edited: there are accepted applications"
+
+msgid "Необязательно. Показывается на вашей публичной странице работодателя."
+msgstr "Optional. Shown on your public employer page."
+
+msgid "Новые задания по сохранённым поискам"
+msgstr "New jobs from saved searches"
+
+msgid "Новый email"
+msgstr "New email"
+
+msgid "Ожидает"
+msgstr "Pending"
+
+msgid "Определяем местоположение…"
+msgstr "Detecting your location…"
+
+msgid "Отклик"
+msgstr "Application"
+
+msgid "Отклик отклонён"
+msgstr "Application rejected"
+
+msgid "Отклик принят"
+msgstr "Application accepted"
+
+msgid "Отклики:"
+msgstr "Applications:"
+
+msgid "Откликов на ваши задания пока нет"
+msgstr "No applications to your jobs yet"
+
+msgid "Откликов пока нет"
+msgstr "No applications yet"
+
+msgid "Отклонить"
+msgstr "Reject"
+
+msgid "Отклонить выбранные"
+msgstr "Reject selected"
+
+msgid "Отклонить выбранные отклики? Трудники получат уведомление."
+msgstr "Reject the selected applications? Workers will be notified."
+
+msgid "Отклонён"
+msgstr "Rejected"
+
+msgid "Отключаем…"
+msgstr "Disabling…"
+
+msgid "Отключить push"
+msgstr "Disable push"
+
+msgid "Откройте настройки уведомлений и включите push."
+msgstr "Open notification settings and enable push."
+
+msgid "Откройте сайт в Safari и добавьте его на экран «Домой»."
+msgstr "Open the site in Safari and add it to the Home screen."
+
+msgid "Открыть задание"
+msgstr "Open job"
+
+msgid "Открыть приглашение"
+msgstr "Open invitation"
+
+msgid "Открыть чат"
+msgstr "Open chat"
+
+msgid "Отменить"
+msgstr "Cancel"
+
+msgid "Отменить выбранные"
+msgstr "Cancel selected"
+
+msgid "Отменённые"
+msgstr "Cancelled"
+
+msgid "Отозван"
+msgstr "Withdrawn"
+
+msgid "Отправить тестовое уведомление"
+msgstr "Send test notification"
+
+msgid "Отправленные"
+msgstr "Sent"
+
+msgid "Оценить"
+msgstr "Rate"
+
+msgid "Оценка"
+msgstr "Rating"
+
+msgid "Очистить метку"
+msgstr "Clear marker"
+
+msgid "Ошибка push-подписки. Попробуйте ещё раз."
+msgstr "Push subscription error. Please try again."
+
+msgid "Подписка в этом браузере: есть."
+msgstr "Subscription in this browser: yes."
+
+msgid "Подписка в этом браузере: нет."
+msgstr "Subscription in this browser: no."
+
+msgid "Подписка на сервере: есть."
+msgstr "Server subscription: yes."
+
+msgid "Подписка на сервере: нет."
+msgstr "Server subscription: no."
+
+msgid "Подсказки адреса"
+msgstr "Address suggestions"
+
+msgid "Подсказки недоступны — введите адрес и нажмите «Найти по адресу»."
+msgstr ""
+"Suggestions are unavailable — enter the address and tap «Find by address»."
+
+msgid "Подтвердите личность через мессенджер MAX — это повышает доверие."
+msgstr "Verify your identity via the MAX messenger — it increases trust."
+
+msgid "Подтвердите паролем"
+msgstr "Confirm with your password"
+
+msgid "Подтвердить адрес"
+msgstr "Confirm address"
+
+msgid "Подтвердить через MAX →"
+msgstr "Verify via MAX →"
+
+msgid "Полученные"
+msgstr "Received"
+
+msgid ""
+"Придёт по выбранным выше каналам. Работает, только если включён тип «Новые "
+"задания по сохранённым поискам»."
+msgstr ""
+"Sent via the channels selected above. Works only if the «New jobs from saved"
+" searches» type is enabled."
+
+msgid "Принят"
+msgstr "Accepted"
+
+msgid "Принять"
+msgstr "Accept"
+
+msgid "Принять выбранные"
+msgstr "Accept selected"
+
+msgid "Принять повторно"
+msgstr "Accept again"
+
+msgid "Проверьте адрес"
+msgstr "Check the address"
+
+msgid "Проверьте адрес и метку на карте."
+msgstr "Check the address and the marker on the map."
+
+msgid "Проверьте метку и подтвердите."
+msgstr "Check the marker and confirm."
+
+msgid "Продолжить"
+msgstr "Continue"
+
+msgid "Прочитано"
+msgstr "Read"
+
+msgid "Прочитать все"
+msgstr "Mark all as read"
+
+msgid "Раз в день — одна сводка"
+msgstr "Once a day — one digest"
+
+msgid "Разрешение:"
+msgstr "Permission:"
+
+msgid "Разрешено менять только описание работы."
+msgstr "Only the work description can be changed."
+
+msgid "Разрешите уведомления в системном запросе."
+msgstr "Allow notifications in the system prompt."
+
+msgid "Связь:"
+msgstr "Contact:"
+
+msgid "Сегодня"
+msgstr "Today"
+
+msgid "Сейчас:"
+msgstr "Current:"
+
+msgid "Скачать мои данные (JSON)"
+msgstr "Download my data (JSON)"
+
+msgid "Смена пароля"
+msgstr "Change password"
+
+msgid "Смотреть задания"
+msgstr "Browse jobs"
+
+msgid "Сначала поставьте метку на карте."
+msgstr "Place a marker on the map first."
+
+msgid "Снять"
+msgstr "Remove"
+
+msgid "Создайте первое задание — отклики появятся здесь."
+msgstr "Create your first job — applications will appear here."
+
+msgid "Сообщение"
+msgstr "Message"
+
+msgid "Сохранить"
+msgstr "Save"
+
+msgid "Сохранить карточку"
+msgstr "Save card"
+
+msgid "Сохранить профиль"
+msgstr "Save profile"
+
+msgid "Сохранённые поиски"
+msgstr "Saved searches"
+
+msgid ""
+"Сохранённый поиск — это фильтр заданий, который вы сохранили на странице "
+"«Задания». Мы можем присылать новые задания, подходящие под него."
+msgstr ""
+"A saved search is a job filter you saved on the «Jobs» page. We can send you"
+" new jobs that match it."
+
+msgid "Сохранённых поисков нет. Откройте"
+msgstr "No saved searches yet. Open"
+
+msgid "Сразу — проверяем раз в 5 минут"
+msgstr "Immediately — checked every 5 minutes"
+
+msgid "Стр."
+msgstr "Page"
+
+msgid "Страницы"
+msgstr "Pages"
+
+msgid "Текущий пароль"
+msgstr "Current password"
+
+msgid "Тел.:"
+msgstr "Phone:"
+
+msgid "Типы откликов"
+msgstr "Application types"
+
+msgid "Точка на карте"
+msgstr "Point on the map"
+
+msgid "Трудник"
+msgstr "Worker"
+
+msgid "Трудник отметил выполнение"
+msgstr "Worker marked the job as done"
+
+msgid "Трудники увидят ваше задание в ленте"
+msgstr "Workers will see your job in the feed"
+
+msgid "Уведомление"
+msgstr "Notification"
+
+msgid "Уведомлений нет"
+msgstr "No notifications"
+
+msgid ""
+"Уведомления в браузере, даже когда вкладка «Трудник» закрыта. Требуется "
+"разрешение браузера."
+msgstr ""
+"Browser notifications even when the «Trudnik» tab is closed. Browser "
+"permission is required."
+
+msgid "Удалить"
+msgstr "Delete"
+
+msgid "Удалить аккаунт"
+msgstr "Delete account"
+
+msgid "Удалить аккаунт безвозвратно? Это действие необратимо."
+msgstr "Delete the account permanently? This action cannot be undone."
+
+msgid "Удалить все"
+msgstr "Delete all"
+
+msgid "Удалить выбранные"
+msgstr "Delete selected"
+
+msgid "Удалить выбранные задания? Действие нельзя отменить."
+msgstr "Delete the selected jobs? This action cannot be undone."
+
+msgid "Удалить фото"
+msgstr "Delete photo"
+
+msgid "Удалить фото профиля?"
+msgstr "Delete the profile photo?"
+
+msgid ""
+"Учитываются выбранные каналы. Push придёт только если подписка включена в "
+"этом браузере; доставка — до 10 секунд."
+msgstr ""
+"The selected channels are used. Push arrives only if the subscription is "
+"enabled in this browser; delivery takes up to 10 seconds."
+
+msgid "Фильтр заданий"
+msgstr "Job filter"
+
+msgid "Фото пока нет."
+msgstr "No photos yet."
+
+msgid "Фото профиля"
+msgstr "Profile photo"
+
+msgid "Фотографии задания"
+msgstr "Job photos"
+
+msgid ""
+"Частота новых заданий по ним настраивается выше, в блоке «Новые задания по "
+"сохранённым поискам». Колокольчик отключает уведомления по конкретному "
+"поиску."
+msgstr ""
+"The frequency of new jobs for them is configured above, in the «New jobs "
+"from saved searches» block. The bell disables notifications for a specific "
+"search."
+
+msgid "Чат"
+msgstr "Chat"
+
+msgid "Я выполнил"
+msgstr "I completed it"
+
+msgid "Яндекс Карты"
+msgstr "Yandex Maps"
+
+msgid "браузер не поддерживает"
+msgstr "not supported by the browser"
+
+msgid "задание"
+msgstr "job"
+
+msgid "занято"
+msgstr "filled"
+
+msgid "и метку на карте."
+msgstr "and the marker on the map."
+
+msgid "от"
+msgstr "from"
+
+msgid "разрешение выдано"
+msgstr "permission granted"
+
+msgid "разрешение ещё не выдано"
+msgstr "permission not granted yet"
+
+msgid "разрешение запрещено в настройках браузера"
+msgstr "permission blocked in browser settings"
+
+msgid "Чат — Трудник"
+msgstr "Chat — Trudnik"
+
+msgid "Вложение"
+msgstr "Attachment"
+
+msgid "Файл"
+msgstr "File"
+
+msgid "Все чаты"
+msgstr "All chats"
+
+msgid "Поиск по чату"
+msgstr "Search in chat"
+
+msgid "Найти"
+msgstr "Search"
+
+msgid "Сброс"
+msgstr "Reset"
+
+msgid "Без звука"
+msgstr "Mute"
+
+msgid "Результаты поиска:"
+msgstr "Search results:"
+
+msgid "Сообщение удалено"
+msgstr "Message deleted"
+
+msgid "изменено"
+msgstr "edited"
+
+msgid "Отправлено"
+msgstr "Sent"
+
+msgid "Ничего не найдено"
+msgstr "Nothing found"
+
+msgid "Сообщений пока нет"
+msgstr "No messages yet"
+
+msgid "Попробуйте другой запрос."
+msgstr "Try a different query."
+
+msgid "Напишите первым — обсудите детали задания."
+msgstr "Write first — discuss the job details."
+
+msgid "Прикрепить файл"
+msgstr "Attach file"
+
+msgid "Сообщение…"
+msgstr "Message…"
+
+msgid "Отправить"
+msgstr "Send"
+
+msgid "Редактировать сообщение"
+msgstr "Edit message"
+
+msgid "Текст сообщения"
+msgstr "Message text"
+
+msgid "Текст сообщения не может быть пустым."
+msgstr "Message text cannot be empty."
+
+msgid "Не удалось изменить сообщение."
+msgstr "Could not edit the message."
+
+msgid "Удалить сообщение?"
+msgstr "Delete the message?"
+
+msgid "Не удалось удалить сообщение."
+msgstr "Could not delete the message."
+
+msgid "Не удалось отправить сообщение. Проверьте соединение."
+msgstr "Could not send the message. Check your connection."
+
+msgid "Нет сети — сообщения отправятся, когда связь появится."
+msgstr "No network — messages will be sent when the connection returns."
+
+msgid "Отправляем файл…"
+msgstr "Sending file…"
+
+msgid "Нет сети — сообщение отправится, когда связь появится."
+msgstr "No network — the message will be sent when the connection returns."
+
+msgid "Отправляем…"
+msgstr "Sending…"
+
+msgid "Не удалось отправить сообщение. Обновите страницу и попробуйте снова."
+msgstr "Could not send the message. Refresh the page and try again."
+
+msgid "Чаты — Трудник"
+msgstr "Chats — Trudnik"
+
+msgid "Нет сообщений"
+msgstr "No messages"
+
+msgid "Непрочитанных:"
+msgstr "Unread:"
+
+msgid "Чатов нет"
+msgstr "No chats"
+
+msgid "Они появляются после отклика или приглашения"
+msgstr "They appear after an application or invitation"
+
+msgid "Приглашения — Трудник"
+msgstr "Invitations — Trudnik"
+
+msgid "Мне"
+msgstr "Received"
+
+msgid "Отклонить все ожидающие"
+msgstr "Decline all pending"
+
+msgid "Ожидает ответа"
+msgstr "Awaiting response"
+
+msgid "Входящих приглашений нет."
+msgstr "No incoming invitations."
+
+msgid "ожидает"
+msgstr "pending"
+
+msgid "принято"
+msgstr "accepted"
+
+msgid "отклонено"
+msgstr "rejected"
+
+msgid "Вы ещё никого не приглашали."
+msgstr "You haven't invited anyone yet."
+
+msgid "Избранное — Трудник"
+msgstr "Favorites — Trudnik"
+
+msgid "Разделы избранного"
+msgstr "Favorites sections"
+
+msgid "В избранном пока пусто"
+msgstr "Your favorites are empty"
+
+msgid ""
+"Сохраняйте задания, трудников и работодателей, чтобы быстро возвращаться к "
+"ним."
+msgstr "Save jobs, workers and employers to return to them quickly."
+
+msgid "Найти трудника"
+msgstr "Find a worker"
+
+msgid "Убрать"
+msgstr "Remove"
+
+msgid "Выбрать трудника"
+msgstr "Select worker"
+
+msgid "Уже приглашён"
+msgstr "Already invited"
+
+msgid "Отозвать все приглашения этому труднику?"
+msgstr "Withdraw all invitations to this worker?"
+
+msgid "Сообщение (необязательно)"
+msgstr "Message (optional)"
+
+msgid "Пригласить"
+msgstr "Invite"
+
+msgid "Создайте задание, чтобы пригласить трудника"
+msgstr "Create a job to invite a worker"
+
+msgid "Выбрать работодателя"
+msgstr "Select employer"
+
+msgid "Проверен"
+msgstr "Verified"
+
+msgid "В этом разделе пока пусто."
+msgstr "This section is empty."
+
+msgid "Показать всё избранное"
+msgstr "Show all favorites"
+
+msgid "Избранные задания — Трудник"
+msgstr "Favorite jobs — Trudnik"
+
+msgid "Избранные задания"
+msgstr "Favorite jobs"
+
+msgid "Список пуст"
+msgstr "The list is empty"
+
+msgid "К заданиям"
+msgstr "Back to jobs"
+
+msgid "Избранные люди — Трудник"
+msgstr "Favorite people — Trudnik"
+
+msgid "Избранные люди"
+msgstr "Favorite people"
+
+msgid "Добавляйте трудников в избранное из каталога"
+msgstr "Add workers to favorites from the catalog"
+
+msgid "Чёрный список — Трудник"
+msgstr "Blocklist — Trudnik"
+
+msgid "Разблокировать"
+msgstr "Unblock"
+
+msgid "Введите минимум 2 символа."
+msgstr "Enter at least 2 characters."
+
+msgid "Все работодатели"
+msgstr "All employers"
+
+msgid "Все трудники"
+msgstr "All workers"
+
+msgid "до"
+msgstr "to"
+
+msgid "Жалоба"
+msgstr "Report"
+
+msgid "Желаемая оплата"
+msgstr "Desired pay"
+
+msgid "Заблокировать"
+msgstr "Block"
+
+msgid "Задание, трудник или работодатель"
+msgstr "Job, worker or employer"
+
+msgid "Задания работодателя"
+msgstr "Employer's jobs"
+
+msgid "заданий"
+msgstr "jobs"
+
+msgid "Имя или город…"
+msgstr "Name or city…"
+
+msgid "Имя, город или описание…"
+msgstr "Name, city or description…"
+
+msgid ""
+"Ищите задания, трудников и работодателей по названию, городу или описанию."
+msgstr "Search for jobs, workers and employers by name, city or description."
+
+msgid "К заданию"
+msgstr "View job"
+
+msgid "К профилю"
+msgstr "Back to profile"
+
+msgid "К работодателю"
+msgstr "Back to employer"
+
+msgid "Контакты открываются после отклика на задание."
+msgstr "Contacts are revealed after you apply to a job."
+
+msgid "лет"
+msgstr "years old"
+
+msgid "Навыков нет"
+msgstr "No skills"
+
+msgid "Надёжный"
+msgstr "Reliable"
+
+msgid "Найдено:"
+msgstr "Found:"
+
+msgid "Не оценён"
+msgstr "Not rated"
+
+msgid "Нет активных заданий."
+msgstr "No active jobs."
+
+msgid "Нет принятых работников."
+msgstr "No accepted workers."
+
+msgid "Никого не найдено"
+msgstr "No one found"
+
+msgid "О себе"
+msgstr "About"
+
+msgid "Обновить оценку"
+msgstr "Update rating"
+
+msgid "Опишите нарушение. Жалобу рассмотрит модерация."
+msgstr "Describe the violation. Our moderators will review the report."
+
+msgid "Оплата от"
+msgstr "Payment from"
+
+msgid "Оплата по договорённости"
+msgstr "Payment by agreement"
+
+msgid "Оплата ↑"
+msgstr "Payment ↑"
+
+msgid "Оплата ↓"
+msgstr "Payment ↓"
+
+msgid "Опыт"
+msgstr "Experience"
+
+msgid "От работника"
+msgstr "From a worker"
+
+msgid "От работодателя"
+msgstr "From an employer"
+
+msgid "Отзывы"
+msgstr "Reviews"
+
+msgid "Отзывы о"
+msgstr "Reviews of"
+
+msgid "отзывов"
+msgstr "reviews"
+
+msgid "Открытых заданий:"
+msgstr "Open jobs:"
+
+msgid "Отозвать все"
+msgstr "Revoke all"
+
+msgid "Отозвать приглашения"
+msgstr "Revoke invitations"
+
+msgid "Отозвать приглашение?"
+msgstr "Revoke the invitation?"
+
+msgid "Отправленные приглашения"
+msgstr "Sent invitations"
+
+msgid "Оценить работников"
+msgstr "Rate workers"
+
+msgid "Оценка доступна после завершения задания"
+msgstr "Rating becomes available after the job is completed"
+
+msgid "Оценён"
+msgstr "Rated"
+
+msgid "По алфавиту"
+msgstr "Alphabetically"
+
+msgid "По заданиям"
+msgstr "By jobs"
+
+msgid "По имени"
+msgstr "By name"
+
+msgid "По рейтингу"
+msgstr "By rating"
+
+msgid "Пожаловаться на пользователя"
+msgstr "Report user"
+
+msgid "Поиск"
+msgstr "Search"
+
+msgid "Поиск заданий, трудников и работодателей на Трудник."
+msgstr "Search for jobs, workers and employers on Trudnik."
+
+msgid "Поисковый запрос"
+msgstr "Search query"
+
+msgid "Попробуйте другой запрос или откройте каталоги."
+msgstr "Try another query or browse the catalogs."
+
+msgid "Попробуйте изменить запрос"
+msgstr "Try changing your query"
+
+msgid "Попробуйте изменить параметры поиска"
+msgstr "Try changing your search criteria"
+
+msgid "Портфолио"
+msgstr "Portfolio"
+
+msgid "Пригласить на задание"
+msgstr "Invite to a job"
+
+msgid "Пригласить на моё задание"
+msgstr "Invite to my job"
+
+msgid "Приглашение"
+msgstr "Invitation"
+
+msgid "Приглашён"
+msgstr "Invited"
+
+msgid "Работодатели не найдены"
+msgstr "No employers found"
+
+msgid "Рейтинг от"
+msgstr "Rating from"
+
+msgid "Сначала создайте открытое задание."
+msgstr "Create an open job first."
+
+msgid "Сообщение к приглашению (необязательно)"
+msgstr "Invitation message (optional)"
+
+msgid "Сортировка"
+msgstr "Sort"
+
+msgid "Только приглашённые"
+msgstr "Invited only"
+
+msgid "Убрать из избранного"
+msgstr "Remove from favorites"
+
+msgid "Фильтры трудников"
+msgstr "Worker filters"
+
+msgid "APK временно недоступен. Используйте веб-версию или установку PWA."
+msgstr ""
+"APK is temporarily unavailable. Use the web version or install the PWA."
+
+msgid ""
+"APK подписан ключом проекта. Устанавливайте только с трудник.рф. Проверить "
+"целостность можно по SHA-256 выше."
+msgstr ""
+"The APK is signed with the project key. Install it only from трудник.рф. You"
+" can verify its integrity using the SHA-256 above."
+
+msgid ""
+"Android APK, установка PWA на iPhone/iPad и ПК. Задания рядом, отклики, чат "
+"и оценки."
+msgstr ""
+"Android APK, PWA installation on iPhone/iPad and desktop. Jobs nearby, "
+"applications, chat and ratings."
+
+msgid "Webhook-подписка"
+msgstr "Webhook subscription"
+
+msgid "Webhook-секрет:"
+msgstr "Webhook secret:"
+
+msgid "iPhone и iPad"
+msgstr "iPhone and iPad"
+
+msgid "Безопасность и верификация"
+msgstr "Security and verification"
+
+msgid "Бот (username):"
+msgstr "Bot (username):"
+
+msgid ""
+"В Chrome или Edge откройте сайт и нажмите иконку установки в адресной строке"
+" (или меню → «Установить приложение»). На macOS можно добавить в Dock."
+msgstr ""
+"In Chrome or Edge, open the site and click the install icon in the address "
+"bar (or menu → “Install app”). On macOS you can add it to the Dock."
+
+msgid "В «Моих откликах» нажмите «Отозвать» рядом с нужным заданием."
+msgstr "In “My applications”, click “Withdraw” next to the job you want."
+
+msgid ""
+"В профиле доступна верификация через MAX: перейдите по ссылке в чат с ботом "
+"и отправьте /start. Также можно загрузить документ в разделе «Верификация». "
+"Подтверждённые профили получают значок «Проверен»."
+msgstr ""
+"Verification via MAX is available in your profile: follow the link to the "
+"bot chat and send /start. You can also upload a document in the "
+"“Verification” section. Verified profiles get a “Verified” badge."
+
+msgid ""
+"В профиле есть «Скачать мои данные» (JSON, 152-ФЗ) и «Удалить аккаунт». "
+"Удаление необратимо."
+msgstr ""
+"Your profile has “Download my data” (JSON, 152-FZ) and “Delete account”. "
+"Deletion is irreversible."
+
+msgid ""
+"В профиле используйте «Подтвердить через MAX» — бот подтвердит личность. "
+"Также можно загрузить документ в разделе верификации."
+msgstr ""
+"In your profile, use “Verify via MAX” — the bot will confirm your identity. "
+"You can also upload a document in the verification section."
+
+msgid "Верификация недоступна."
+msgstr "Verification is unavailable."
+
+msgid "Верификация через MAX"
+msgstr "Verification via MAX"
+
+msgid "Версия"
+msgstr "Version"
+
+msgid "Вопросы и ответы"
+msgstr "Questions and answers"
+
+msgid "Выберите «На экран „Домой“»."
+msgstr "Choose “Add to Home Screen”."
+
+msgid ""
+"Да, кнопкой «Отозвать». Если до начала задания осталось менее 12 часов, "
+"отзыв недоступен — это защищает работодателя от срыва смены в последний "
+"момент."
+msgstr ""
+"Yes, with the “Withdraw” button. If less than 12 hours remain before the job"
+" starts, withdrawal is unavailable — this protects the employer from last-"
+"minute no-shows."
+
+msgid ""
+"Да. Любой аккаунт может откликаться на задания и создавать свои. При "
+"регистрации вы выбираете цель — «Искать подработку», «Размещать задания» или"
+" «И то, и другое»; это влияет только на стартовый экран, а не на доступ к "
+"функциям."
+msgstr ""
+"Yes. Any account can apply for jobs and create its own. When you sign up you"
+" choose a goal — “Find work”, “Post jobs” or “Both”; this only affects your "
+"start screen, not access to features."
+
+msgid "Диагностика верификации MAX"
+msgstr "MAX verification diagnostics"
+
+msgid "Диагностика мессенджера"
+msgstr "Messenger diagnostics"
+
+msgid "Документ"
+msgstr "Document"
+
+msgid ""
+"Заблокированный пользователь не сможет откликаться на ваши задания и не "
+"увидит их в ленте. Блокировку можно снять в разделе «Чёрный список»."
+msgstr ""
+"A blocked user cannot apply to your jobs and will not see them in the feed. "
+"You can lift the block in the “Blacklist” section."
+
+msgid ""
+"Загрузите документ, подтверждающий личность (PDF, JPEG, PNG или WebP до 5 "
+"МБ). После проверки администратором профиль получит статус «Подтверждён»."
+msgstr ""
+"Upload an identity document (PDF, JPEG, PNG or WebP up to 5 MB). Once an "
+"administrator reviews it, your profile will be marked “Verified”."
+
+msgid "Как зарегистрироваться?"
+msgstr "How do I sign up?"
+
+msgid "Как найти подработку?"
+msgstr "How do I find work?"
+
+msgid "Как откликнуться на задание?"
+msgstr "How do I apply for a job?"
+
+msgid "Как отозвать отклик?"
+msgstr "How do I withdraw an application?"
+
+msgid "Как подтвердить профиль?"
+msgstr "How do I verify my profile?"
+
+msgid "Как пожаловаться на пользователя?"
+msgstr "How do I report a user?"
+
+msgid "Как происходит расчёт?"
+msgstr "How does payment work?"
+
+msgid "Как работает платформа разовой подработки «Трудник»"
+msgstr "How the Trudnik one-off work platform works"
+
+msgid "Как разместить задание?"
+msgstr "How do I post a job?"
+
+msgid "Как создать задание?"
+msgstr "How do I create a job?"
+
+msgid "Как удалить аккаунт и забрать данные?"
+msgstr "How do I delete my account and get my data?"
+
+msgid "Какие данные нужны для профиля?"
+msgstr "What data does my profile need?"
+
+msgid "Когда открывается чат?"
+msgstr "When does the chat become available?"
+
+msgid "Компьютер"
+msgstr "Computer"
+
+msgid "Кэш-бэкенд:"
+msgstr "Cache backend:"
+
+msgid "МБ"
+msgstr "MB"
+
+msgid "Можно и напрямую"
+msgstr "You can also reach us directly"
+
+msgid "Можно ли и работать, и размещать задания?"
+msgstr "Can I both work and post jobs?"
+
+msgid "Можно ли изменить или отменить задание?"
+msgstr "Can I edit or cancel a job?"
+
+msgid "Можно ли отозвать отклик?"
+msgstr "Can I withdraw an application?"
+
+msgid "НЕТ"
+msgstr "NO"
+
+msgid "НЕТ (webhook fail-closed 503)"
+msgstr "NO (webhook fail-closed 503)"
+
+msgid "НЕТ (боты не смогут отвечать)"
+msgstr "NO (bots will not be able to respond)"
+
+msgid ""
+"На странице профиля или задания нажмите «Пожаловаться» и опишите причину. "
+"Жалобы рассматривает администратор; при множественных жалобах аккаунт может "
+"быть приостановлен до разбирательства."
+msgstr ""
+"On a profile or job page, click “Report” and describe the reason. An "
+"administrator reviews reports; accounts with multiple reports may be "
+"suspended pending investigation."
+
+msgid ""
+"На странице профиля нарушителя нажмите «Заблокировать» или отправьте жалобу "
+"— модерация рассмотрит обращение."
+msgstr ""
+"On the offender's profile page, click “Block” or submit a report — "
+"moderation will review it."
+
+msgid "Нажмите «Поделиться»."
+msgstr "Tap “Share”."
+
+msgid ""
+"Нажмите «Регистрация», укажите имя, email и пароль. После регистрации "
+"подтвердите email по ссылке из письма — без подтверждения вход и часть "
+"функций недоступны. Если письмо не пришло, на странице входа есть «Не пришло"
+" письмо подтверждения?»."
+msgstr ""
+"Click “Sign up”, enter your name, email and password. After signing up, "
+"confirm your email using the link in the message — without confirmation, "
+"sign-in and some features are unavailable. If the email did not arrive, "
+"there is a “Didn't receive a confirmation email?” link on the sign-in page."
+
+msgid ""
+"Нажмите «Создать» в шапке, заполните описание, место, время и оплату. "
+"Задание появится в ленте."
+msgstr ""
+"Click “Create” in the header, fill in the description, location, time and "
+"pay. The job will appear in the feed."
+
+msgid ""
+"Нажмите «Создать» в шапке. Укажите вид работы, описание, адрес и город, дату"
+" и время, оплату и число работников. Для офлайн-задания поставьте точку на "
+"карте или найдите адрес — координаты нужны только для метки. Дистанционные "
+"задания можно создавать без карты."
+msgstr ""
+"Click “Create” in the header. Specify the type of work, description, address"
+" and city, date and time, pay and number of workers. For an offline job, "
+"drop a pin on the map or search for the address — coordinates are only "
+"needed for the marker. Remote jobs can be created without a map."
+
+msgid "Не нашли ответ? Посмотрите"
+msgstr "Didn't find an answer? Check out the"
+
+msgid "Не сработало? Вернитесь на"
+msgstr "Didn't work? Go back to the"
+
+msgid "Нет соединения"
+msgstr "No connection"
+
+msgid ""
+"Обязательно — имя и email. Дополнительно можно указать город, навыки, опыт, "
+"желаемую оплату и портфолио. ИНН указывается добровольно. Контакты не "
+"показываются публично: работодатель видит их после отклика. Экспорт и "
+"удаление данных — в «Профиле» (152-ФЗ)."
+msgstr ""
+"Name and email are required. You can optionally add your city, skills, "
+"experience, desired pay and portfolio. Your tax ID (INN) is optional. "
+"Contacts are not shown publicly: an employer sees them after you apply. "
+"Export and deletion of data are in “Profile” (152-FZ)."
+
+msgid "Оплата"
+msgstr "Payment"
+
+msgid ""
+"Оплата указывается в задании и происходит напрямую между работодателем и "
+"исполнителем. Платформа не выступает платёжным посредником и не удерживает "
+"комиссию. После завершения стороны могут оценить друг друга."
+msgstr ""
+"Pay is stated in the job and is settled directly between the employer and "
+"the worker. The platform is not a payment intermediary and does not take a "
+"commission. After completion, both sides can rate each other."
+
+msgid "Ответим на email, обычно в течение рабочего дня."
+msgstr "We will reply by email, usually within one business day."
+
+msgid "Отклики и чат"
+msgstr "Applications and chat"
+
+msgid ""
+"Откройте задание и нажмите «Откликнуться». Работодатель увидит отклик в "
+"«Полученных» и сможет принять или отклонить его. Можно откликаться сразу на "
+"несколько заданий из ленты через чекбоксы."
+msgstr ""
+"Open the job and click “Apply”. The employer will see your application under"
+" “Received” and can accept or decline it. You can apply to several jobs from"
+" the feed at once using the checkboxes."
+
+msgid ""
+"Откройте ленту «Задания», отфильтруйте по городу и оплате, нажмите "
+"«Откликнуться». Работодатель увидит ваш отклик и сможет принять его."
+msgstr ""
+"Open the “Jobs” feed, filter by city and pay, and click “Apply”. The "
+"employer will see your application and can accept it."
+
+msgid "Открыть бота в MAX"
+msgstr "Open the bot in MAX"
+
+msgid "Открыть веб-версию"
+msgstr "Open the web version"
+
+msgid "Отправим ссылку повторно (не чаще раза в 2 минуты)"
+msgstr "We will send the link again (no more than once every 2 minutes)"
+
+msgid "Отправить на проверку"
+msgstr "Submit for review"
+
+msgid "Отправить повторно"
+msgstr "Send again"
+
+msgid "Отправить ссылку"
+msgstr "Send link"
+
+msgid "Отправляя форму, вы соглашаетесь с"
+msgstr "By submitting the form, you agree to the"
+
+msgid "Перед обращением, возможно, ответ уже есть в"
+msgstr "Before contacting us, the answer may already be in the"
+
+msgid ""
+"Перейдите по ссылке и нажмите «Start» в боте — профиль получит статус "
+"«Верифицирован». Ссылка действует"
+msgstr ""
+"Follow the link and press “Start” in the bot — your profile will be marked "
+"“Verified”. The link is valid for"
+
+msgid "Платформы:"
+msgstr "Platforms:"
+
+msgid "Повторить"
+msgstr "Retry"
+
+msgid "Повторное письмо"
+msgstr "Resend email"
+
+msgid "Подтверждение email"
+msgstr "Email confirmation"
+
+msgid "Подтверждение через MAX"
+msgstr "Verification via MAX"
+
+msgid ""
+"Пока нет принятых откликов, доступно полное редактирование. После принятия "
+"работника можно менять только описание работы. «Отменить» снимает задание с "
+"публикации; отменённое задание можно восстановить, но прежние отклики при "
+"этом сбрасываются."
+msgstr ""
+"While no applications have been accepted, full editing is available. After a"
+" worker is accepted, only the job description can be changed. “Cancel” "
+"unpublishes the job; a cancelled job can be restored, but previous "
+"applications are reset."
+
+msgid "Приложение «Трудник»"
+msgstr "The Trudnik app"
+
+msgid "Приложение Трудник — скачать"
+msgstr "Trudnik app — download"
+
+msgid "Приложение Трудник — установить на телефон или компьютер"
+msgstr "Trudnik app — install on your phone or computer"
+
+msgid "Приложение откроется без браузерной панели, как обычное."
+msgstr "The app opens without the browser bar, like a regular app."
+
+msgid "Пришлём ссылку восстановления (1 час)"
+msgstr "We will send a recovery link (valid for 1 hour)"
+
+msgid "Проверьте интернет и обновите страницу"
+msgstr "Check your internet connection and refresh the page"
+
+msgid "Проверьте папки «Спам» и «Промоакции»: письмо могло попасть туда."
+msgstr ""
+"Check your “Spam” and “Promotions” folders: the email may have landed there."
+
+msgid "Регистрация и возможности"
+msgstr "Registration and features"
+
+msgid ""
+"Регистрируется автоматически каждые 10 минут и при открытии страницы "
+"верификации."
+msgstr ""
+"Registered automatically every 10 minutes and when the verification page is "
+"opened."
+
+msgid "Сброс пароля"
+msgstr "Password reset"
+
+msgid "Свяжитесь с поддержкой «Трудник»: вопросы, проблемы, идеи и жалобы."
+msgstr "Contact Trudnik support: questions, problems, ideas and complaints."
+
+msgid ""
+"Сейчас все функции бесплатны: публикация заданий, отклики, чат, уведомления "
+"и поиск исполнителей. Платная монетизация отключена."
+msgstr ""
+"All features are currently free: posting jobs, applications, chat, "
+"notifications and worker search. Paid monetization is disabled."
+
+msgid ""
+"Скачайте APK и разрешите установку из этого источника. Приложение открывает "
+"трудник.рф в отдельном окне без адресной строки."
+msgstr ""
+"Download the APK and allow installation from this source. The app opens "
+"трудник.рф in a separate window without an address bar."
+
+msgid "Скачать APK"
+msgstr "Download APK"
+
+msgid "Сколько стоит платформа?"
+msgstr "How much does the platform cost?"
+
+msgid "Сколько человек можно принять?"
+msgstr "How many people can I hire?"
+
+msgid "Сменить пароль"
+msgstr "Change password"
+
+msgid "Создание заданий"
+msgstr "Creating jobs"
+
+msgid "Статус:"
+msgstr "Status:"
+
+msgid "Текущий статус:"
+msgstr "Current status:"
+
+msgid ""
+"Установите на телефон или компьютер — быстрый доступ к заданиям, откликам и "
+"чатам."
+msgstr ""
+"Install it on your phone or computer — quick access to jobs, applications "
+"and chats."
+
+msgid ""
+"Чат доступен после принятия отклика. Работодатель может пригласить вас на "
+"задание — приглашение придёт в «Приглашения», где его можно принять или "
+"отклонить. Список «Чаты» показывает только принятые отклики."
+msgstr ""
+"Chat becomes available after an application is accepted. An employer can "
+"invite you to a job — the invitation arrives in “Invitations”, where you can"
+" accept or decline it. The “Chats” list shows only accepted applications."
+
+msgid ""
+"Число мест задаётся при создании. Когда все места заняты, приём откликов "
+"закрывается, а непринятые отклики отклоняются. Набор можно завершить "
+"досрочно кнопкой «Завершить»."
+msgstr ""
+"The number of spots is set when the job is created. When all spots are "
+"taken, applications close and pending ones are declined. You can close "
+"hiring early with the “Finish” button."
+
+msgid "Что делает чёрный список?"
+msgstr "What does the blacklist do?"
+
+msgid "Что делать при нарушении правил?"
+msgstr "What should I do if someone breaks the rules?"
+
+msgid "задан"
+msgstr "set"
+
+msgid "и"
+msgstr "and"
+
+msgid "и получите новую ссылку."
+msgstr "and get a new link."
+
+msgid "минут и одноразовая."
+msgstr "minutes and is single-use."
+
+msgid "не зарегистрирован"
+msgstr "not registered"
+
+msgid "политику конфиденциальности"
+msgstr "privacy policy"
+
+msgid "правила безопасности"
+msgstr "safety rules"
+
+msgid "профиль"
+msgstr "profile"
+
+msgid "условия"
+msgstr "terms"
+
+msgid "частых вопросах"
+msgstr "FAQ"
+
+msgid "← Вернуться ко входу"
+msgstr "← Back to sign in"
+
+msgid "← Ко входу"
+msgstr "← Back to sign in"
+
+msgid "Email изменён и подтверждён."
+msgstr "Email changed and confirmed."
+
+msgid "Email подтверждён. Теперь можно войти."
+msgstr "Email confirmed. You can now sign in."
+
+msgid "Аватар обновлён."
+msgstr "Avatar updated."
+
+msgid ""
+"Аккаунт создан. Письмо отправлено на %s. Проверьте почту и папку «Спам»; "
+"если письма нет — отправьте его повторно."
+msgstr ""
+"Account created. A letter has been sent to %s. Check your inbox and the Spam"
+" folder; if there is no letter, send it again."
+
+msgid "Активного отклика нет."
+msgstr "There is no active application."
+
+msgid "Активных приглашений этому труднику нет."
+msgstr "There are no active invitations for this worker."
+
+msgid "Ваш аккаунт полностью удалён."
+msgstr "Your account has been completely deleted."
+
+msgid ""
+"Верификация через мессенджер не настроена (обратитесь к администратору)."
+msgstr "Messenger verification is not configured (contact the administrator)."
+
+msgid "Вы вышли."
+msgstr "You have been logged out."
+
+msgid "Выполнено: %d, пропущено: %d, ошибок: %d."
+msgstr "Done: %d, skipped: %d, errors: %d."
+
+msgid "Выполнено: %d."
+msgstr "Done: %d."
+
+msgid "Гео-поиск недоступен — показаны все задания."
+msgstr "Geo search is unavailable — all jobs are shown."
+
+msgid "Гео-поиск отключён."
+msgstr "Geo search disabled."
+
+msgid "Дневной лимит откликов исчерпан. Попробуйте снова завтра."
+msgstr "Daily application limit reached. Try again tomorrow."
+
+msgid "Добавлено в избранное."
+msgstr "Added to favorites."
+
+msgid "Документ отправлен на проверку."
+msgstr "Document submitted for review."
+
+msgid "Если аккаунт существует, письмо с инструкцией отправлено."
+msgstr "If the account exists, an instruction email has been sent."
+
+msgid "Жалоба отправлена. Спасибо!"
+msgstr "Report submitted. Thank you!"
+
+msgid "Задание не найдено или отклик невозможен."
+msgstr "Job not found or application is not possible."
+
+msgid "Задание не найдено."
+msgstr "Job not found."
+
+msgid "Задание обновлено и отправлено на проверку."
+msgstr "Job updated and submitted for review."
+
+msgid "Задание обновлено."
+msgstr "Job updated."
+
+msgid "Задание перепубликовано."
+msgstr "Job republished."
+
+msgid ""
+"Задание создано и отправлено на проверку. Оно появится в каталоге после "
+"одобрения модератором."
+msgstr ""
+"Job created and submitted for review. It will appear in the catalog after "
+"moderator approval."
+
+msgid "Задание создано."
+msgstr "Job created."
+
+msgid "Капча не пройдена. Попробуйте ещё раз."
+msgstr "Captcha not passed. Please try again."
+
+msgid "Карточка работодателя сохранена."
+msgstr "Employer card saved."
+
+msgid "Можно добавить не более 3 фото."
+msgstr "You can add no more than 3 photos."
+
+msgid "Можно отметить только принятый отклик."
+msgstr "Only an accepted application can be marked."
+
+msgid "Навыки обновлены: %d."
+msgstr "Skills updated: %d."
+
+msgid "Настройка уведомлений поиска обновлена."
+msgstr "Saved search notification setting updated."
+
+msgid "Настройки уведомлений сохранены."
+msgstr "Notification settings saved."
+
+msgid "Не выбрано ни одного задания."
+msgstr "No jobs selected."
+
+msgid "Не выбрано ни одного отклика."
+msgstr "No applications selected."
+
+msgid "Не выполнено: %d."
+msgstr "Not completed: %d."
+
+msgid "Не удалось отправить жалобу."
+msgstr "Failed to submit the report."
+
+msgid "Не удалось отправить сообщение. Напишите на %s."
+msgstr "Failed to send the message. Please write to %s."
+
+msgid "Не удалось получить координаты. Попробуйте ещё раз."
+msgstr "Could not get coordinates. Please try again."
+
+msgid "Не удалось поставить уведомление в очередь."
+msgstr "Failed to queue the notification."
+
+msgid "Не удалось принять: %s."
+msgstr "Failed to accept: %s."
+
+msgid "Неверный email или пароль, либо аккаунт заблокирован/не подтверждён."
+msgstr "Incorrect email or password, or the account is blocked/unconfirmed."
+
+msgid "Неизвестное действие."
+msgstr "Unknown action."
+
+msgid "Неизвестный тип избранного."
+msgstr "Unknown favorites type."
+
+msgid "Некорректные координаты или радиус."
+msgstr "Invalid coordinates or radius."
+
+msgid "Некорректный email в ссылке."
+msgstr "Invalid email in the link."
+
+msgid "Нельзя оценить самого себя."
+msgstr "You cannot rate yourself."
+
+msgid ""
+"Нельзя редактировать условия задания: есть принятые отклики. Разрешено "
+"менять только описание работы."
+msgstr ""
+"Job terms cannot be edited: there are accepted applications. Only the work "
+"description can be changed."
+
+msgid "Ничего не выбрано."
+msgstr "Nothing selected."
+
+msgid "Описание задания обновлено."
+msgstr "Job description updated."
+
+msgid "Отклик не найден."
+msgstr "Application not found."
+
+msgid "Отклонено приглашений: %d."
+msgstr "Invitations declined: %d."
+
+msgid "Отмечено прочитанными: %d."
+msgstr "Marked as read: %d."
+
+msgid "Отозвано приглашений: %d."
+msgstr "Invitations revoked: %d."
+
+msgid "Оценить можно только завершённое задание."
+msgstr "Only a completed job can be rated."
+
+msgid "Оценить можно только принятого работника."
+msgstr "Only an accepted worker can be rated."
+
+msgid "Оценить работодателя можно только после принятия отклика."
+msgstr "The employer can be rated only after the application is accepted."
+
+msgid "Оценка сохранена."
+msgstr "Rating saved."
+
+msgid "Оценка — от 1 до 5."
+msgstr "Rating must be from 1 to 5."
+
+msgid "Ошибка удаления аккаунта. Попробуйте позже."
+msgstr "Account deletion error. Please try again later."
+
+msgid "Пароль изменён."
+msgstr "Password changed."
+
+msgid "Пароль изменён. Войдите с новым паролем."
+msgstr "Password changed. Sign in with your new password."
+
+msgid ""
+"Письмо для подтверждения отправлено на %s. Проверьте почту и папку «Спам»."
+msgstr ""
+"A confirmation email has been sent to %s. Check your inbox and the Spam "
+"folder."
+
+msgid "Письмо отправлено. Проверьте почту и папку «Спам»."
+msgstr "Email sent. Check your inbox and the Spam folder."
+
+msgid "Письмо уже отправлялось недавно. Повторить можно через 2 минуты."
+msgstr "An email was already sent recently. You can retry in 2 minutes."
+
+msgid "Поиск сохранён."
+msgstr "Search saved."
+
+msgid "Пользователь заблокирован."
+msgstr "User blocked."
+
+msgid "Попробуйте позже (не чаще раза в час)."
+msgstr "Try again later (no more than once an hour)."
+
+msgid "Приглашение на это задание уже отправлено."
+msgstr "An invitation for this job has already been sent."
+
+msgid "Приглашение не найдено или уже обработано."
+msgstr "Invitation not found or already processed."
+
+msgid "Приглашение невозможно: проверьте задание и профиль."
+msgstr "Invitation is not possible: check the job and the profile."
+
+msgid "Приглашение отклонено."
+msgstr "Invitation declined."
+
+msgid "Приглашение отозвано."
+msgstr "Invitation revoked."
+
+msgid "Приглашение отправлено."
+msgstr "Invitation sent."
+
+msgid "Приглашение принято — вы откликнулись на задание."
+msgstr "Invitation accepted — you have applied for the job."
+
+msgid "Пропущено/ошибок: %d."
+msgstr "Skipped/errors: %d."
+
+msgid "Профиль недоступен."
+msgstr "Profile unavailable."
+
+msgid "Профиль сохранён."
+msgstr "Profile saved."
+
+msgid "Работодатель добавлен в избранное."
+msgstr "Employer added to favorites."
+
+msgid "Работодатель недоступен."
+msgstr "Employer unavailable."
+
+msgid "Работодатель удалён из избранного."
+msgstr "Employer removed from favorites."
+
+msgid "Разблокирован."
+msgstr "Unblocked."
+
+msgid "Сервис временно недоступен. Попробуйте позже."
+msgstr "Service temporarily unavailable. Please try again later."
+
+msgid "Сервис входа временно недоступен. Попробуйте позже."
+msgstr "Sign-in service temporarily unavailable. Please try again later."
+
+msgid ""
+"Слишком много новых заданий за последний час. Подождите немного и попробуйте"
+" снова."
+msgstr "Too many new jobs in the last hour. Please wait a bit and try again."
+
+msgid "Слишком много обращений. Попробуйте позже или напишите на email."
+msgstr "Too many requests. Try again later or send an email."
+
+msgid "Слишком много попыток регистрации. Попробуйте позже."
+msgstr "Too many registration attempts. Please try again later."
+
+msgid "Слишком много попыток с вашего IP. Попробуйте позже."
+msgstr "Too many attempts from your IP. Please try again later."
+
+msgid "Слишком много попыток. Попробуйте позже."
+msgstr "Too many attempts. Please try again later."
+
+msgid "Сначала выберите хотя бы один фильтр."
+msgstr "Select at least one filter first."
+
+msgid "Сообщение не может быть пустым."
+msgstr "The message cannot be empty."
+
+msgid "Сообщение не найдено или уже удалено."
+msgstr "Message not found or already deleted."
+
+msgid "Сообщение отправлено. Ответим на указанный email."
+msgstr "Message sent. We will reply to the specified email."
+
+msgid "Сохранённый поиск удалён."
+msgstr "Saved search deleted."
+
+msgid "Ссылка недействительна или истекла. Запросите новую."
+msgstr "The link is invalid or has expired. Request a new one."
+
+msgid "Ссылка недействительна или истекла. Запросите сброс заново."
+msgstr "The link is invalid or has expired. Request a new reset."
+
+msgid "Ссылка недействительна или истекла. Запросите смену email снова."
+msgstr "The link is invalid or has expired. Request the email change again."
+
+msgid "Такое сообщение уже отправлено."
+msgstr "This message has already been sent."
+
+msgid "Такой поиск уже сохранён."
+msgstr "This search is already saved."
+
+msgid "Текущий пароль указан неверно."
+msgstr "The current password is incorrect."
+
+msgid "Тестовое уведомление поставлено в очередь. Доставка — до 10 секунд."
+msgstr "Test notification queued. Delivery takes up to 10 seconds."
+
+msgid "Уведомления по этому чату включены."
+msgstr "Notifications for this chat enabled."
+
+msgid "Уведомления по этому чату отключены."
+msgstr "Notifications for this chat disabled."
+
+msgid "Удалено из избранного."
+msgstr "Removed from favorites."
+
+msgid "Удалено уведомлений: %d."
+msgstr "Notifications deleted: %d."
+
+msgid "Удалено: %d."
+msgstr "Deleted: %d."
+
+msgid "Уже заблокирован."
+msgstr "Already blocked."
+
+msgid "Укажите email."
+msgstr "Enter your email."
+
+msgid "Укажите корректный email."
+msgstr "Enter a valid email."
+
+msgid "Укажите причину жалобы."
+msgstr "Provide a reason for the report."
+
+msgid "Файл не выбран."
+msgstr "No file selected."
+
+msgid "Фото добавлено."
+msgstr "Photo added."
+
+msgid "Фото профиля удалено."
+msgstr "Profile photo deleted."
+
+msgid "Фото удалено."
+msgstr "Photo deleted."
+
+msgid "Этот email уже используется другим аккаунтом."
+msgstr "This email is already used by another account."
+
+msgid "Этот email уже привязан к аккаунту."
+msgstr "This email is already linked to the account."
+
+msgid "MIME вложения"
+msgstr "Attachment MIME type"
+
+msgid "Outbox уведомлений"
+msgstr "Notification outbox"
+
+msgid "Push-подписки"
+msgstr "Push subscriptions"
+
+msgid "email (логин)"
+msgstr "email (login)"
+
+msgid "email подтверждён"
+msgstr "email confirmed"
+
+msgid "id в мессенджере"
+msgstr "messenger user ID"
+
+msgid "outbox-запись"
+msgstr "outbox entry"
+
+msgid "push-подписка"
+msgstr "push subscription"
+
+msgid "Активна"
+msgstr "Active"
+
+msgid "Архив: оплаты контактов"
+msgstr "Archive: contact payments"
+
+msgid "Аудит действий"
+msgstr "Action audit"
+
+msgid "Базовый"
+msgstr "Basic"
+
+msgid "Бизнес"
+msgstr "Business"
+
+msgid "В работе"
+msgstr "In progress"
+
+msgid "Вероисповедания"
+msgstr "Religions"
+
+msgid "Дата выполнения не может быть в прошлом"
+msgstr "The due date cannot be in the past"
+
+msgid "Жалобы"
+msgstr "Reports"
+
+msgid "Завершена"
+msgstr "Completed"
+
+msgid "ИНН должен содержать 10 или 12 цифр."
+msgstr "INN must contain 10 or 12 digits."
+
+msgid "ИНН храма"
+msgstr "Church INN (tax ID)"
+
+msgid "Избранное (задания)"
+msgstr "Favorites (jobs)"
+
+msgid "Избранное (люди)"
+msgstr "Favorites (people)"
+
+msgid "Истекла"
+msgstr "Expired"
+
+msgid "Карточки работодателей"
+msgstr "Employer cards"
+
+msgid "Квитанции (храмы)"
+msgstr "Receipts (churches)"
+
+msgid "Количество работников должно быть от 1 до 100"
+msgstr "Number of workers must be between 1 and 100"
+
+msgid "Контентные страницы"
+msgstr "Content pages"
+
+msgid "Лог писем"
+msgstr "Email log"
+
+msgid "Можно выполнять из любого города; адрес и карта необязательны."
+msgstr "Can be done from any city; address and map are optional."
+
+msgid "Навыки (справочник)"
+msgstr "Skills (reference)"
+
+msgid "Навыки заданий"
+msgstr "Job skills"
+
+msgid "Навыки профилей"
+msgstr "Profile skills"
+
+msgid "Название слишком длинное (максимум 255 символов)."
+msgstr "Name is too long (maximum 255 characters)."
+
+msgid "Не верифицирован"
+msgstr "Not verified"
+
+msgid "Некорректная долгота (должна быть от -180 до 180)"
+msgstr "Invalid longitude (must be between -180 and 180)"
+
+msgid "Некорректная широта (должна быть от -90 до 90)"
+msgstr "Invalid latitude (must be between -90 and 90)"
+
+msgid ""
+"Обнаружены слова, характерные для трудовых отношений: %s. Пожалуйста, "
+"опишите разовую услугу."
+msgstr ""
+"Found words typical of employment relationships: %s. Please describe a one-"
+"time service."
+
+msgid "Описание слишком длинное (максимум 5000 символов)."
+msgstr "Description is too long (maximum 5000 characters)."
+
+msgid "Оплата должна быть от 0 до 1 000 000 ₽"
+msgstr "Payment must be between 0 and 1,000,000 ₽"
+
+msgid "Оплачена"
+msgstr "Paid"
+
+msgid "Опубликовано"
+msgstr "Published"
+
+msgid "Открыта"
+msgstr "Open"
+
+msgid "Отменена"
+msgstr "Cancelled"
+
+msgid "Отменён"
+msgstr "Cancelled"
+
+msgid "Оценки"
+msgstr "Ratings"
+
+msgid "Ошибка"
+msgstr "Error"
+
+msgid "Параметры монетизации"
+msgstr "Monetization settings"
+
+msgid "Платежи за задания"
+msgstr "Job payments"
+
+msgid "Повторите новый"
+msgstr "Repeat new password"
+
+msgid "Подписки работодателей"
+msgstr "Employer subscriptions"
+
+msgid "Про"
+msgstr "Pro"
+
+msgid "Пропущено"
+msgstr "Skipped"
+
+msgid "Профили"
+msgstr "Profiles"
+
+msgid "Сообщения чата"
+msgstr "Chat messages"
+
+msgid "Тарифы"
+msgstr "Tariffs"
+
+msgid "Удалённая работа"
+msgstr "Remote work"
+
+msgid "Фото заданий"
+msgstr "Job photos"
+
+msgid "Черновик"
+msgstr "Draft"
+
+msgid "Чёрные списки"
+msgstr "Blacklists"
+
+msgid "аватар"
+msgstr "avatar"
+
+msgid "адрес"
+msgstr "address"
+
+msgid "активен"
+msgstr "active"
+
+msgid "архив: оплата контакта"
+msgstr "archive: contact payment"
+
+msgid "верификация"
+msgstr "verification"
+
+msgid "верифицирован"
+msgstr "verified"
+
+msgid "вероисповедание"
+msgstr "religion"
+
+msgid "виден в каталоге трудников"
+msgstr "visible in the worker catalog"
+
+msgid "вложение"
+msgstr "attachment"
+
+msgid "возраст"
+msgstr "age"
+
+msgid "всего отзывов"
+msgstr "total reviews"
+
+msgid "город"
+msgstr "city"
+
+msgid "дата блокировки"
+msgstr "block date"
+
+msgid "дата/время работ"
+msgstr "work date/time"
+
+msgid "действие"
+msgstr "action"
+
+msgid "дней"
+msgstr "days"
+
+msgid "документ верификации"
+msgstr "verification document"
+
+msgid "долгота"
+msgstr "longitude"
+
+msgid "жалоба"
+msgstr "report"
+
+msgid "жалобщик"
+msgstr "reporter"
+
+msgid "желаемая оплата"
+msgstr "desired pay"
+
+msgid "заблокирован"
+msgstr "blocked"
+
+msgid "заголовок"
+msgstr "title"
+
+msgid "запись"
+msgstr "record"
+
+msgid "запись аудита"
+msgstr "audit entry"
+
+msgid "значение"
+msgstr "value"
+
+msgid "идемпотентность (client)"
+msgstr "idempotency (client)"
+
+msgid "избранное (задания)"
+msgstr "favorites (jobs)"
+
+msgid "избранное (люди)"
+msgstr "favorites (people)"
+
+msgid "имя вложения"
+msgstr "attachment name"
+
+msgid "истекает"
+msgstr "expires"
+
+msgid "источник привлечения"
+msgstr "acquisition source"
+
+msgid "карточка работодателя"
+msgstr "employer card"
+
+msgid "квитанция"
+msgstr "receipt"
+
+msgid "квитанция (храм)"
+msgstr "receipt (church)"
+
+msgid "ключ"
+msgstr "key"
+
+msgid "ключ тарифа"
+msgstr "tariff key"
+
+msgid "кого"
+msgstr "target"
+
+msgid "количество оценок"
+msgstr "ratings count"
+
+msgid "комментарий"
+msgstr "comment"
+
+msgid "компания"
+msgstr "company"
+
+msgid "кому"
+msgstr "to"
+
+msgid "контакт"
+msgstr "contact"
+
+msgid "контакт оплачен"
+msgstr "contact paid"
+
+msgid "контентная страница"
+msgstr "content page"
+
+msgid "кто"
+msgstr "user"
+
+msgid "кто заблокировал"
+msgstr "blocked by"
+
+msgid "модерация"
+msgstr "moderation"
+
+msgid "навык"
+msgstr "skill"
+
+msgid "навык задания"
+msgstr "job skill"
+
+msgid "навык профиля"
+msgstr "profile skill"
+
+msgid "название"
+msgstr "name"
+
+msgid "нарушитель"
+msgstr "offender"
+
+msgid "настройки уведомлений"
+msgstr "notification settings"
+
+msgid "нужно работников"
+msgstr "workers needed"
+
+msgid "о себе"
+msgstr "about me"
+
+msgid "об объекте"
+msgstr "about the site"
+
+msgid "об организации"
+msgstr "about the organization"
+
+msgid "обновлён"
+msgstr "updated"
+
+msgid "обработано"
+msgstr "processed"
+
+msgid "описание"
+msgstr "description"
+
+msgid "описание услуги"
+msgstr "service description"
+
+msgid "оплата"
+msgstr "payment"
+
+msgid "оплачено в"
+msgstr "paid at"
+
+msgid "оплачено размещение"
+msgstr "placement paid"
+
+msgid "опыт"
+msgstr "experience"
+
+msgid "организация"
+msgstr "organization"
+
+msgid "ответ в"
+msgstr "responded at"
+
+msgid "отклик"
+msgstr "application"
+
+msgid "отклик (чат)"
+msgstr "application (chat)"
+
+msgid "отправитель"
+msgstr "sender"
+
+msgid "отправлено"
+msgstr "sent"
+
+msgid "оцениваемый"
+msgstr "rated user"
+
+msgid "оценивший"
+msgstr "rater"
+
+msgid "оценка"
+msgstr "rating"
+
+msgid "параметр монетизации"
+msgstr "monetization setting"
+
+msgid "пароль изменён"
+msgstr "password changed"
+
+msgid "переотправлено"
+msgstr "resent"
+
+msgid "письмо (лог)"
+msgstr "email (log)"
+
+msgid "платёж за задание"
+msgstr "job payment"
+
+msgid "платёж контакта"
+msgstr "contact payment"
+
+msgid "подписка работодателя"
+msgstr "employer subscription"
+
+msgid "подробное описание"
+msgstr "detailed description"
+
+msgid "получатель"
+msgstr "recipient"
+
+msgid "пользователь"
+msgstr "user"
+
+msgid "попыток"
+msgstr "attempts"
+
+msgid "портфолио"
+msgstr "portfolio"
+
+msgid "порядок"
+msgstr "order"
+
+msgid "после"
+msgstr "after"
+
+msgid "предпочтение по вере"
+msgstr "religion preference"
+
+msgid "приглашение"
+msgstr "invitation"
+
+msgid "причина"
+msgstr "reason"
+
+msgid "причина блокировки"
+msgstr "block reason"
+
+msgid "причина модерации"
+msgstr "moderation reason"
+
+msgid "продление, ₽"
+msgstr "renewal, ₽"
+
+msgid "промо"
+msgstr "promoted"
+
+msgid "промо до"
+msgstr "promoted until"
+
+msgid "прочитано"
+msgstr "read"
+
+msgid "публичный email"
+msgstr "public email"
+
+msgid "работодатель"
+msgstr "employer"
+
+msgid "размер вложения"
+msgstr "attachment size"
+
+msgid "размещений осталось"
+msgstr "placements remaining"
+
+msgid "разобрал"
+msgstr "reviewed by"
+
+msgid "разобрано в"
+msgstr "reviewed at"
+
+msgid "рейтинг"
+msgstr "rating"
+
+msgid "роль-ориентация"
+msgstr "role orientation"
+
+msgid "самозанятый"
+msgstr "self-employed"
+
+msgid "согласие 152-ФЗ"
+msgstr "consent (152-FZ)"
+
+msgid "содержимое (HTML)"
+msgstr "content (HTML)"
+
+msgid "создан"
+msgstr "created"
+
+msgid "сообщение"
+msgstr "message"
+
+msgid "сообщение чата"
+msgstr "chat message"
+
+msgid "способ верификации"
+msgstr "verification method"
+
+msgid "статус"
+msgstr "status"
+
+msgid "сумма, ₽"
+msgstr "amount, ₽"
+
+msgid "таблица"
+msgstr "table"
+
+msgid "тариф"
+msgstr "tariff"
+
+msgid "текст"
+msgstr "text"
+
+msgid "телефон"
+msgstr "phone"
+
+msgid "тема"
+msgstr "subject"
+
+msgid "тип"
+msgstr "type"
+
+msgid "тип работ"
+msgstr "work type"
+
+msgid "транзакция"
+msgstr "transaction"
+
+msgid "трудник"
+msgstr "worker"
+
+msgid "трудник отметил выполнение"
+msgstr "worker marked as completed"
+
+msgid "уведомление"
+msgstr "notification"
+
+msgid "удалено"
+msgstr "deleted"
+
+msgid "удалённая работа"
+msgstr "remote work"
+
+msgid "фото"
+msgstr "photo"
+
+msgid "фото (legacy)"
+msgstr "photo (legacy)"
+
+msgid "фото задания"
+msgstr "job photo"
+
+msgid "храм"
+msgstr "church"
+
+msgid "цена, ₽"
+msgstr "price, ₽"
+
+msgid "чёрный список"
+msgstr "blacklist"
+
+msgid "шаблон"
+msgstr "template"
+
+msgid "широта"
+msgstr "latitude"
+
+msgid "Круг — радиус поиска"
+msgstr "The circle is the search radius"
+
+msgid ""
+"км от вашей точки. Точка округлена до ~100 м и хранится в сессии 1 час."
+msgstr ""
+"km around your location. The point is rounded to ~100 m and kept in the "
+"session for 1 hour."
+
+msgid ""
+"Геопозиция используется только для поиска рядом, округляется и хранится в "
+"сессии 1 час; в ссылку не попадает."
+msgstr ""
+"Geolocation is used only for nearby search, is rounded and kept in the "
+"session for 1 hour; it never appears in the link."
+
+msgid "Геолокация недоступна в браузере."
+msgstr "Geolocation is not available in this browser."
+
+msgid "Не удалось получить координаты. Разрешите геолокацию."
+msgstr "Could not get your coordinates. Allow geolocation access."
+
+msgid "км"
+msgstr "km"
+
+msgid "Email для ответа"
+msgstr "Reply email"
+
+msgid "Email-письма"
+msgstr "Emails"
+
+msgid "JPEG, PNG или WebP"
+msgstr "JPEG, PNG or WebP"
+
+msgid "PDF, JPEG, PNG или WebP"
+msgstr "PDF, JPEG, PNG or WebP"
+
+msgid "Аккаунт временно заблокирован по числу неудачных попыток (%d сек.)."
+msgstr "Account temporarily locked after too many failed attempts (%d s)."
+
+msgid "В описании несколько внешних контактов"
+msgstr "The description contains several external contacts"
+
+msgid "Ваш отклик на задание #%s был %s"
+msgstr "Your application for job #%s was %s"
+
+msgid "Вопрос"
+msgstr "Question"
+
+msgid "Все места уже заняты."
+msgstr "All slots are already taken."
+
+msgid "Вы уже откликнулись на это задание."
+msgstr "You have already applied for this job."
+
+msgid "Выполнение отмечено. Работодатель увидит это."
+msgstr "Completion marked. The employer will see it."
+
+msgid "Готово."
+msgstr "Done."
+
+msgid "Дата работ уже в прошлом."
+msgstr "The work date is already in the past."
+
+msgid "Действие не выполнено."
+msgstr "The action was not completed."
+
+msgid "Допустимы только %s"
+msgstr "Only %s are allowed"
+
+msgid "Если вы видите это — уведомления работают."
+msgstr "If you can see this, notifications are working."
+
+msgid "Задание восстановлено."
+msgstr "Job restored."
+
+msgid "Задание завершено."
+msgstr "Job completed."
+
+msgid "Задание истекло."
+msgstr "The job has expired."
+
+msgid "Задание не открыто для откликов."
+msgstr "The job is not open for applications."
+
+msgid "Задание отменено."
+msgstr "Job cancelled."
+
+msgid "Задание удалено."
+msgstr "Job deleted."
+
+msgid "Заказчик ограничил приём откликов от вас."
+msgstr "The employer has restricted applications from you."
+
+msgid "Идея"
+msgstr "Idea"
+
+msgid "Изменения моих заданий"
+msgstr "Changes to my jobs"
+
+msgid "Изображение"
+msgstr "Image"
+
+msgid "Как к вам обращаться"
+msgstr "How should we address you"
+
+msgid "Как мы защищаем"
+msgstr "How we protect you"
+
+msgid "Мой поиск"
+msgstr "My search"
+
+msgid "На ваше задание поступил новый отклик"
+msgstr "Your job has received a new application"
+
+msgid "На ваши задания поступили новые отклики"
+msgstr "Your jobs have received new applications"
+
+msgid "Не найдено или недоступно."
+msgstr "Not found or unavailable."
+
+msgid "Не удалось изменить пароль. Попробуйте позже."
+msgstr "Failed to change the password. Please try again later."
+
+msgid "Недопустимый статус для этого действия."
+msgstr "Invalid status for this action."
+
+msgid "Недостаточно прав."
+msgstr "Insufficient permissions."
+
+msgid "Нельзя откликнуться на собственное задание."
+msgstr "You cannot apply for your own job."
+
+msgid "Новое задание"
+msgstr "New job"
+
+msgid "Новое сообщение"
+msgstr "New message"
+
+msgid "Новые отклики"
+msgstr "New applications"
+
+msgid "Новый отклик"
+msgstr "New application"
+
+msgid "Описание работы"
+msgstr "Work description"
+
+msgid "Отклик отклонён."
+msgstr "Application rejected."
+
+msgid "Отклик отозван."
+msgstr "Application withdrawn."
+
+msgid "Отклик отправлен."
+msgstr "Application sent."
+
+msgid "Отклик принят повторно."
+msgstr "Application accepted again."
+
+msgid "Отклик принят."
+msgstr "Application accepted."
+
+msgid "Отклики на мои задания"
+msgstr "Applications for my jobs"
+
+msgid "Повторная проверка после правки"
+msgstr "Re-review after edit"
+
+msgid "Политика конфиденциальности"
+msgstr "Privacy Policy"
+
+msgid "Похожее задание уже создавалось за последние 24 часа"
+msgstr "A similar job was created in the last 24 hours"
+
+msgid "Проблема"
+msgstr "Problem"
+
+msgid "Работник снят с задания."
+msgstr "The worker has been removed from the job."
+
+msgid ""
+"Регистрация не выполнена. Проверьте данные: возможно, такой email уже "
+"зарегистрирован."
+msgstr ""
+"Registration failed. Check your details: this email may already be "
+"registered."
+
+msgid "Редактирование задания"
+msgstr "Edit job"
+
+msgid "Слишком много внешних ссылок"
+msgstr "Too many external links"
+
+msgid "Слишком много заданий за последний час"
+msgstr "Too many jobs in the last hour"
+
+msgid "Слишком часто. Попробуйте через минуту."
+msgstr "Too many requests. Please try again in a minute."
+
+msgid "Сообщения в чате"
+msgstr "Chat messages"
+
+msgid "Срок размещения задания истёк."
+msgstr "The job posting period has expired."
+
+msgid "Текущий пароль неверен или операция не выполнена."
+msgstr "The current password is incorrect or the operation failed."
+
+msgid "Тема"
+msgstr "Subject"
+
+msgid "Тестовое уведомление"
+msgstr "Test notification"
+
+msgid "Трудник отметил, что работа по заданию выполнена."
+msgstr "The worker marked the job as completed."
+
+msgid "Уведомления в приложении"
+msgstr "In-app notifications"
+
+msgid "Условия использования"
+msgstr "Terms of Use"
+
+msgid "Файл больше %d МБ"
+msgstr "The file is larger than %d MB"
+
+msgid "Файл: %s"
+msgstr "File: %s"
+
+msgid "Это задание уже началось или прошло."
+msgstr "This job has already started or passed."
+
+msgid "отклонён"
+msgstr "rejected"
+
+msgid "ошибка"
+msgstr "error"
+
+msgid "принят"
+msgstr "accepted"
+
+msgid "Адрес и карта"
+msgstr "Address and map"
+
+msgid "Закрыть"
+msgstr "Close"
+
+msgid "Оплата и срок"
+msgstr "Pay and timing"
+
+msgid "Подтвердите действие"
+msgstr "Confirm action"
+
+msgid "Подтвердить"
+msgstr "Confirm"
+
+msgid "Показать"
+msgstr "Show"
+
+msgid "Скрыть"
+msgstr "Hide"
+
+msgid "Соединение восстановлено"
+msgstr "Connection restored"
+
+msgid "Шаг"
+msgstr "Step"
+
+msgid "Шаги формы"
+msgstr "Form steps"
+
+msgctxt "brand"
+msgid "Трудник"
+msgstr "Trudnik"
+
+msgid "Трудник: подтвердите email"
+msgstr "Trudnik: confirm your email"
+
+msgid ""
+"Здравствуйте!\n"
+"\n"
+"Перейдите по ссылке для подтверждения email (24 часа):\n"
+"%s\n"
+"\n"
+"Если вы не регистрировались на «Трудник» — просто игнорируйте письмо."
+msgstr ""
+"Hello!\n"
+"\n"
+"Follow the link to confirm your email (valid for 24 hours):\n"
+"%s\n"
+"\n"
+"If you did not sign up for Trudnik, just ignore this email."
+
+msgid ""
+"Ссылка для подтверждения email (24 часа):\n"
+"%s"
+msgstr ""
+"Email confirmation link (valid for 24 hours):\n"
+"%s"
+
+msgid "Трудник: сброс пароля"
+msgstr "Trudnik: password reset"
+
+msgid ""
+"Для смены пароля перейдите по ссылке (1 час):\n"
+"%s\n"
+"\n"
+"Если вы не запрашивали сброс — игнорируйте письмо."
+msgstr ""
+"Follow the link to change your password (valid for 1 hour):\n"
+"%s\n"
+"\n"
+"If you did not request a reset, ignore this email."
+
+msgid "Трудник: подтвердите новый email"
+msgstr "Trudnik: confirm your new email"
+
+msgid ""
+"Здравствуйте!\n"
+"\n"
+"Подтвердите смену email в «Труднике» (ссылка действует 1 час):\n"
+"%s\n"
+"\n"
+"Если вы не запрашивали смену — просто игнорируйте письмо."
+msgstr ""
+"Hello!\n"
+"\n"
+"Confirm the email change in Trudnik (the link is valid for 1 hour):\n"
+"%s\n"
+"\n"
+"If you did not request the change, just ignore this email."
+
+msgid "Трудник: запрос на смену email"
+msgstr "Trudnik: email change requested"
+
+msgid ""
+"На вашем аккаунте запрошена смена email на %s.\n"
+"Если это были не вы — смените пароль."
+msgstr ""
+"An email change to %s was requested on your account.\n"
+"If this was not you, change your password."
+
+msgid "Трудник: email изменён"
+msgstr "Trudnik: email changed"
+
+msgid ""
+"Email вашего аккаунта изменён на %s.\n"
+"Если это были не вы — немедленно смените пароль и свяжитесь с поддержкой."
+msgstr ""
+"Your account email was changed to %s.\n"
+"If this was not you, change your password immediately and contact support."

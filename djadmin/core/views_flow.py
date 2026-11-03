@@ -30,6 +30,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.translation import gettext as _, gettext_lazy as _lazy
 from django.views.decorators.http import require_POST
 
 from .auth_backend import LOCKOUT_TEXT, ProfileBackend
@@ -46,21 +47,21 @@ from .storage import delete_upload_url
 from .views_public_ext import duplicate_job
 
 RPC_ERROR_TEXT = {
-    "not_found": "Не найдено или недоступно.",
-    "job_not_found": "Задание не найдено.",
-    "job_not_open": "Задание не открыто для откликов.",
-    "no_slots": "Все места уже заняты.",
-    "bad_status": "Недопустимый статус для этого действия.",
-    "already_applied": "Вы уже откликнулись на это задание.",
-    "duplicate": "Вы уже откликнулись на это задание.",
-    "own_job": "Нельзя откликнуться на собственное задание.",
-    "blacklisted": "Заказчик ограничил приём откликов от вас.",
-    "expired": "Задание истекло.",
-    "job_expired": "Срок размещения задания истёк.",
-    "past_date": "Дата работ уже в прошлом.",
-    "job_in_past": "Это задание уже началось или прошло.",
-    "not_owner": "Недостаточно прав.",
-    "unknown": "Действие не выполнено.",
+    "not_found": _lazy("Не найдено или недоступно."),
+    "job_not_found": _lazy("Задание не найдено."),
+    "job_not_open": _lazy("Задание не открыто для откликов."),
+    "no_slots": _lazy("Все места уже заняты."),
+    "bad_status": _lazy("Недопустимый статус для этого действия."),
+    "already_applied": _lazy("Вы уже откликнулись на это задание."),
+    "duplicate": _lazy("Вы уже откликнулись на это задание."),
+    "own_job": _lazy("Нельзя откликнуться на собственное задание."),
+    "blacklisted": _lazy("Заказчик ограничил приём откликов от вас."),
+    "expired": _lazy("Задание истекло."),
+    "job_expired": _lazy("Срок размещения задания истёк."),
+    "past_date": _lazy("Дата работ уже в прошлом."),
+    "job_in_past": _lazy("Это задание уже началось или прошло."),
+    "not_owner": _lazy("Недостаточно прав."),
+    "unknown": _lazy("Действие не выполнено."),
 }
 
 
@@ -88,7 +89,7 @@ def _safe_back(request, fallback: str):
     return fallback
 
 
-def _rpc_message(request, result: dict, ok_text: str = "Готово.") -> bool:
+def _rpc_message(request, result: dict, ok_text: str = _lazy("Готово.")) -> bool:
     """Машинный 'code' приоритетен (стабилен), fallback — человекочитаемый 'error' RPC."""
     if result.get("success"):
         messages.success(request, ok_text)
@@ -114,10 +115,10 @@ def login_view(request):
         try:
             enforce_ip_limit(request, "login", 20, 3600)
         except RateLimitExceeded:
-            messages.error(request, "Слишком много попыток с вашего IP. Попробуйте позже.")
+            messages.error(request, _("Слишком много попыток с вашего IP. Попробуйте позже."))
             return render(request, "core/login.html", {"form": form})
         except RateLimitUnavailable:
-            messages.error(request, "Сервис входа временно недоступен. Попробуйте позже.")
+            messages.error(request, _("Сервис входа временно недоступен. Попробуйте позже."))
             return render(request, "core/login.html", {"form": form})
     if request.method == "POST" and form.is_valid():
         email = form.cleaned_data["email"].strip().lower()
@@ -142,14 +143,14 @@ def login_view(request):
                 if remaining:
                     messages.error(request, LOCKOUT_TEXT % remaining)
                 else:
-                    messages.error(request, "Неверный email или пароль, либо аккаунт заблокирован/не подтверждён.")
+                    messages.error(request, _("Неверный email или пароль, либо аккаунт заблокирован/не подтверждён."))
     return render(request, "core/login.html", {"form": form})
 
 
 @require_POST
 def logout_view(request):
     auth_logout(request)
-    messages.info(request, "Вы вышли.")
+    messages.info(request, _("Вы вышли."))
     return redirect(settings.LOGOUT_REDIRECT_URL or "core:jobs")
 
 
@@ -161,8 +162,10 @@ def job_create(request):
         if not allow_job_post(request.user.pk):
             messages.error(
                 request,
-                "Слишком много новых заданий за последний час. "
-                "Подождите немного и попробуйте снова.",
+                _(
+                    "Слишком много новых заданий за последний час. "
+                    "Подождите немного и попробуйте снова."
+                ),
             )
         else:
             assessment = assess_job(
@@ -189,14 +192,16 @@ def job_create(request):
             if assessment["status"] == Job.ModerationStatus.REVIEW:
                 messages.warning(
                     request,
-                    "Задание создано и отправлено на проверку. "
-                    "Оно появится в каталоге после одобрения модератором.",
+                    _(
+                        "Задание создано и отправлено на проверку. "
+                        "Оно появится в каталоге после одобрения модератором."
+                    ),
                 )
             else:
-                messages.success(request, "Задание создано.")
+                messages.success(request, _("Задание создано."))
             return redirect(reverse("core:job_detail", args=[job.pk]) + "?created=1&push=1")
     return render(request, "core/job_form.html", {
-        "form": form, "title": "Новое задание", "selected_skills": set(),
+        "form": form, "title": _("Новое задание"), "selected_skills": set(),
         "yandex_maps_key": os.getenv("YANDEX_MAPS_API_KEY", ""),
     })
 
@@ -205,7 +210,7 @@ class JobDescriptionForm(forms.Form):
     """Ограниченная правка задания после принятого отклика (паритет Flask)."""
 
     detailed_description = forms.CharField(
-        label="Описание работы", required=False, max_length=5000,
+        label=_lazy("Описание работы"), required=False, max_length=5000,
         widget=forms.Textarea(attrs={"class": INPUT_CLS, "rows": 6}),
     )
 
@@ -222,22 +227,24 @@ def job_edit(request, job_id):
             if forbidden:
                 messages.error(
                     request,
-                    "Нельзя редактировать условия задания: есть принятые отклики. "
-                    "Разрешено менять только описание работы.",
+                    _(
+                        "Нельзя редактировать условия задания: есть принятые отклики. "
+                        "Разрешено менять только описание работы."
+                    ),
                 )
                 return redirect("core:job_detail", job_id=job.pk)
             description_form = JobDescriptionForm(request.POST)
             if description_form.is_valid():
                 job.detailed_description = description_form.cleaned_data["detailed_description"]
                 job.save(update_fields=["detailed_description"])
-                messages.success(request, "Описание задания обновлено.")
+                messages.success(request, _("Описание задания обновлено."))
                 return redirect("core:job_detail", job_id=job.pk)
         else:
             description_form = JobDescriptionForm(
                 initial={"detailed_description": job.detailed_description or ""}
             )
         return render(request, "core/job_form.html", {
-            "title": "Редактирование задания", "job": job, "locked": True,
+            "title": _("Редактирование задания"), "job": job, "locked": True,
             "accepted_count": Application.objects.filter(
                 job=job, status="accepted"
             ).count(),
@@ -263,23 +270,23 @@ def job_edit(request, job_id):
             if job.moderation_status == Job.ModerationStatus.REJECTED:
                 # Правка отклонённого задания возвращает его в очередь.
                 job.moderation_status = Job.ModerationStatus.REVIEW
-                job.moderation_reason = "Повторная проверка после правки"
+                job.moderation_reason = _("Повторная проверка после правки")
             elif assessment["status"] == Job.ModerationStatus.REVIEW:
                 job.moderation_status = Job.ModerationStatus.REVIEW
                 job.moderation_reason = assessment["reason"] or None
             job.save()
             sync_job_skills_raw(job.pk, [s.pk for s in form.cleaned_data["skills"]])
         if job.moderation_status == Job.ModerationStatus.REVIEW:
-            messages.warning(request, "Задание обновлено и отправлено на проверку.")
+            messages.warning(request, _("Задание обновлено и отправлено на проверку."))
         else:
-            messages.success(request, "Задание обновлено.")
+            messages.success(request, _("Задание обновлено."))
         return redirect("core:job_detail", job_id=job.pk)
     from django.db import connection as _c
     with _c.cursor() as cur:
         cur.execute("SELECT skill_id::text FROM job_skills WHERE job_id = %s", [job.pk])
         selected = {r[0] for r in cur.fetchall()}
     return render(request, "core/job_form.html", {
-        "form": form, "title": "Редактирование задания", "job": job,
+        "form": form, "title": _("Редактирование задания"), "job": job,
         "selected_skills": selected,
         "yandex_maps_key": os.getenv("YANDEX_MAPS_API_KEY", ""),
     })
@@ -328,13 +335,13 @@ def job_action(request, job_id, action):
     file_urls = _job_file_urls(job) if action == "delete" else []
     uid = request.user.pk
     if action == "cancel":
-        ok = _rpc_message(request, call_rpc("cancel_job_atomic", job.pk, uid) or {}, "Задание отменено.")
+        ok = _rpc_message(request, call_rpc("cancel_job_atomic", job.pk, uid) or {}, _("Задание отменено."))
     elif action == "restore":
-        ok = _rpc_message(request, call_rpc("restore_job_atomic", job.pk, uid) or {}, "Задание восстановлено.")
+        ok = _rpc_message(request, call_rpc("restore_job_atomic", job.pk, uid) or {}, _("Задание восстановлено."))
     elif action == "force_complete":
-        ok = _rpc_message(request, call_rpc("force_complete_job", job.pk, uid) or {}, "Задание завершено.")
+        ok = _rpc_message(request, call_rpc("force_complete_job", job.pk, uid) or {}, _("Задание завершено."))
     else:  # delete
-        ok = _rpc_message(request, call_rpc("delete_job_cascade", job.pk) or {}, "Задание удалено.")
+        ok = _rpc_message(request, call_rpc("delete_job_cascade", job.pk) or {}, _("Задание удалено."))
     if action == "delete" and ok:
         _delete_job_files(file_urls)
         return redirect("core:my_jobs")
@@ -348,21 +355,21 @@ def job_action(request, job_id, action):
 def job_apply(request, job_id):
     job = _public_job_or_none(job_id)
     if job is None or job.employer_id == request.user.pk:
-        messages.error(request, "Задание не найдено или отклик невозможен.")
+        messages.error(request, _("Задание не найдено или отклик невозможен."))
         return redirect("core:jobs")
     if not allow_application(request.user.pk):
         messages.error(
             request,
-            "Дневной лимит откликов исчерпан. Попробуйте снова завтра.",
+            _("Дневной лимит откликов исчерпан. Попробуйте снова завтра."),
         )
         return redirect("core:job_detail", job_id=job.pk)
     result = call_rpc("apply_job_atomic", job.pk, request.user.pk) or {}
-    ok = _rpc_message(request, result, "Отклик отправлен.")
+    ok = _rpc_message(request, result, _("Отклик отправлен."))
     if ok:
         incr("application_sent")
         enqueue_notification(
-            job.employer_id, "application_received", "Новый отклик",
-            "На ваше задание поступил новый отклик",
+            job.employer_id, "application_received", _("Новый отклик"),
+            _("На ваше задание поступил новый отклик"),
             {
                 "job_id": str(job.pk),
                 "link": request.build_absolute_uri(
@@ -381,10 +388,10 @@ def job_unapply(request, job_id):
         status__in=("withdrawn", "cancelled")
     ).first()
     if application is None:
-        messages.error(request, "Активного отклика нет.")
+        messages.error(request, _("Активного отклика нет."))
         return redirect("core:job_detail", job_id=job_id)
     result = call_rpc("withdraw_application_atomic", application.pk, request.user.pk) or {}
-    _rpc_message(request, result, "Отклик отозван.")
+    _rpc_message(request, result, _("Отклик отозван."))
     return redirect("core:job_detail", job_id=job_id)
 
 
@@ -435,19 +442,19 @@ def worker_confirm_completion(request, app_id):
         .first()
     )
     if application is None or application.status != Application.Status.ACCEPTED:
-        messages.error(request, "Можно отметить только принятый отклик.")
+        messages.error(request, _("Можно отметить только принятый отклик."))
         return redirect(reverse("core:my_applications") + "?tab=sent")
     result = call_rpc(
         "worker_confirm_completion", application.pk, request.user.pk
     ) or {}
-    ok = _rpc_message(request, result, "Выполнение отмечено. Работодатель увидит это.")
+    ok = _rpc_message(request, result, _("Выполнение отмечено. Работодатель увидит это."))
     if ok:
         job = application.job
         enqueue_notification(
             job.employer_id,
             "worker_completed",
-            "Трудник отметил выполнение",
-            "Трудник отметил, что работа по заданию выполнена.",
+            _("Трудник отметил выполнение"),
+            _("Трудник отметил, что работа по заданию выполнена."),
             {
                 "job_id": str(job.pk),
                 "link": request.build_absolute_uri(
@@ -479,7 +486,7 @@ def application_action(request, app_id, action):
         return HttpResponseNotAllowed(["POST"])
     application = Application.objects.select_related("job").filter(pk=app_id).first()
     if application is None:
-        messages.error(request, "Отклик не найден.")
+        messages.error(request, _("Отклик не найден."))
         return redirect("core:jobs")
     job = application.job
     user = request.user
@@ -488,31 +495,31 @@ def application_action(request, app_id, action):
         if application.worker_id != user.pk:
             return redirect("core:jobs")
         result = call_rpc("withdraw_application_atomic", application.pk, user.pk) or {}
-        ok_text = "Отклик отозван."
+        ok_text = _("Отклик отозван.")
     else:
         if job.employer_id != user.pk and user.role != "admin":
             return redirect("core:jobs")
         if action == "accept":
             result = call_rpc("accept_application", job.pk, application.pk) or {}
-            ok_text = "Отклик принят."
+            ok_text = _("Отклик принят.")
         elif action == "reject":
             result = call_rpc("reject_application", job.pk, application.pk) or {}
-            ok_text = "Отклик отклонён."
+            ok_text = _("Отклик отклонён.")
         elif action == "cancel":  # работодатель снимает конкретного работника
             result = call_rpc("cancel_worker_atomic", application.pk, user.pk) or {}
-            ok_text = "Работник снят с задания."
+            ok_text = _("Работник снят с задания.")
         elif action == "reopen":  # паритет Flask: reopen делегирует в accept-RPC
             result = call_rpc("accept_application", job.pk, application.pk) or {}
-            ok_text = "Отклик принят повторно."
+            ok_text = _("Отклик принят повторно.")
     ok = _rpc_message(request, result, ok_text)
     if ok and action in ("accept", "reject", "reopen"):
         accepted = action != "reject"
         enqueue_notification(
             application.worker_id,
             "application_accepted" if accepted else "application_rejected",
-            "Отклик принят" if accepted else "Отклик отклонён",
-            "Ваш отклик на задание #%s был %s" % (
-                job.pk, "принят" if accepted else "отклонён",
+            _("Отклик принят") if accepted else _("Отклик отклонён"),
+            _("Ваш отклик на задание #%s был %s") % (
+                job.pk, _("принят") if accepted else _("отклонён"),
             ),
             {
                 "job_id": str(job.pk),
@@ -545,7 +552,7 @@ def my_jobs_bulk(request):
         return HttpResponseNotAllowed(["POST"])
     job_ids = _bulk_ids(request.POST.getlist("job_ids"))
     if not job_ids:
-        messages.error(request, "Не выбрано ни одного задания.")
+        messages.error(request, _("Не выбрано ни одного задания."))
         return redirect("core:my_jobs")
     jobs = list(
         Job.objects.filter(pk__in=job_ids, employer=request.user).prefetch_related("photos")
@@ -569,10 +576,10 @@ def my_jobs_bulk(request):
                 if action == "delete":
                     _delete_job_files(file_urls[job.pk])
     if done:
-        messages.success(request, "Выполнено: %d." % done)
+        messages.success(request, _("Выполнено: %d.") % done)
     failed = len(job_ids) - done
     if failed:
-        messages.warning(request, "Не выполнено: %d." % failed)
+        messages.warning(request, _("Не выполнено: %d.") % failed)
     return redirect("core:my_jobs")
 
 
@@ -585,7 +592,7 @@ def my_applications_bulk(request):
         return HttpResponseNotAllowed(["POST"])
     app_ids = _bulk_ids(request.POST.getlist("app_ids"))
     if not app_ids:
-        messages.error(request, "Не выбрано ни одного отклика.")
+        messages.error(request, _("Не выбрано ни одного отклика."))
         return redirect("core:my_applications")
     apps = list(
         Application.objects.filter(
@@ -609,9 +616,9 @@ def my_applications_bulk(request):
         enqueue_notification(
             app.worker_id,
             "application_accepted" if accepted else "application_rejected",
-            "Отклик принят" if accepted else "Отклик отклонён",
-            "Ваш отклик на задание #%s был %s" % (
-                app.job_id, "принят" if accepted else "отклонён",
+            _("Отклик принят") if accepted else _("Отклик отклонён"),
+            _("Ваш отклик на задание #%s был %s") % (
+                app.job_id, _("принят") if accepted else _("отклонён"),
             ),
             {
                 "job_id": str(app.job_id),
@@ -619,9 +626,9 @@ def my_applications_bulk(request):
             },
         )
     if done:
-        messages.success(request, "Выполнено: %d." % done)
+        messages.success(request, _("Выполнено: %d.") % done)
     if skipped:
-        messages.warning(request, "Пропущено/ошибок: %d." % skipped)
+        messages.warning(request, _("Пропущено/ошибок: %d.") % skipped)
     return redirect(reverse("core:my_applications") + "?tab=received")
 
 
@@ -631,14 +638,14 @@ def my_applications_bulk(request):
 def job_favorite_toggle(request, job_id):
     # только публично видимые задания (без оракула существования скрытых)
     if not Job.objects.public().filter(pk=job_id).exists():
-        messages.error(request, "Задание не найдено.")
+        messages.error(request, _("Задание не найдено."))
         return redirect("core:jobs")
     fav, created = JobFavorite.objects.get_or_create(user=request.user, job_id=job_id)
     if not created:
         fav.delete()
-        messages.info(request, "Удалено из избранного.")
+        messages.info(request, _("Удалено из избранного."))
     else:
-        messages.success(request, "Добавлено в избранное.")
+        messages.success(request, _("Добавлено в избранное."))
     return redirect(_safe_back(request, reverse("core:jobs")))
 
 

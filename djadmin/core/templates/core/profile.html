@@ -1,6 +1,7 @@
 {% extends "core/base.html" %}
+{% load i18n %}
 {% load core_extras %}
-{% block title %}Профиль — Трудник{% endblock %}
+{% block title %}{% translate "Профиль" %} — {% translate "Трудник" context "brand" %}{% endblock %}
 {% block content %}
 <div class="px-0 pb-24 max-w-lg mx-auto py-4 fade-in">
 
@@ -8,7 +9,7 @@
     <div class="flex flex-col items-center mb-6">
         <div class="relative">
             {% if user.avatar_url or user.photo_url %}
-            <img src="{{ user.avatar_url|default:user.photo_url|absurl }}" loading="lazy" class="w-24 h-24 rounded-full object-cover border-4 border-primary-500 shadow-lg" alt="Ваше фото">
+            <img src="{{ user.avatar_url|default:user.photo_url|absurl }}" loading="lazy" class="w-24 h-24 rounded-full object-cover border-4 border-primary-500 shadow-lg" alt="{% translate "Ваше фото" %}">
             {% else %}
             <div class="w-24 h-24 rounded-full border-4 border-primary-500 shadow-lg bg-primary-50 flex items-center justify-center text-primary-400">
                 <svg aria-hidden="true" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
@@ -18,7 +19,7 @@
         <h3 class="text-xl font-bold text-neutral-900 mt-3">
             {{ user.full_name }}
             {% if user.verification_status == 'approved' %}
-            <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{% include "core/_ui_icon.html" with name="check" class_name="h-3 w-3" %} Подтверждён</span>
+            <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{% include "core/_ui_icon.html" with name="check" class_name="h-3 w-3" %} {% translate "Подтверждён" %}</span>
             {% endif %}
         </h3>
         <div class="flex items-center gap-1.5 mt-1">
@@ -27,14 +28,14 @@
             <span class="text-xs text-neutral-400">({{ user.total_reviews|default:0 }})</span>
         </div>
         <span class="mt-2 inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium {% if user.role == 'employer' %}bg-primary-50 text-primary-700{% elif user.role == 'admin' %}bg-purple-50 text-purple-700{% else %}bg-blue-50 text-blue-700{% endif %}">
-            {% if user.role == 'employer' %}Работодатель{% elif user.role == 'admin' %}Администратор{% else %}Исполнитель{% endif %}
+            {% if user.role == 'employer' %}{% translate "Работодатель" %}{% elif user.role == 'admin' %}{% translate "Администратор" %}{% else %}{% translate "Исполнитель" %}{% endif %}
         </span>
         <p class="text-sm text-neutral-500 mt-2">{{ user.email }}</p>
         <p class="mt-1 text-xs">
             {% if user.role == 'employer' %}
-            <a href="{% url 'core:employer_detail' user.pk %}" class="text-primary-600 hover:text-primary-700 underline underline-offset-2">Как меня видят на странице работодателя</a>
+            <a href="{% url 'core:employer_detail' user.pk %}" class="text-primary-600 hover:text-primary-700 underline underline-offset-2">{% translate "Как меня видят на странице работодателя" %}</a>
             {% else %}
-            <a href="{% url 'core:worker_detail' user.pk %}" class="text-primary-600 hover:text-primary-700 underline underline-offset-2">Как меня видят в каталоге трудников</a>
+            <a href="{% url 'core:worker_detail' user.pk %}" class="text-primary-600 hover:text-primary-700 underline underline-offset-2">{% translate "Как меня видят в каталоге трудников" %}</a>
             {% endif %}
         </p>
     </div>
@@ -45,7 +46,7 @@
 
     <!-- Анкета -->
     <section class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 mb-4">
-        <h2 class="text-base font-bold text-neutral-800 mb-4">Анкета</h2>
+        <h2 class="text-base font-bold text-neutral-800 mb-4">{% translate "Анкета" %}</h2>
         <form method="post">
             {% csrf_token %}
             <input type="hidden" name="action" value="profile">
@@ -61,7 +62,7 @@
                 {% endfor %}
             </div>
             <div class="mt-4">
-                <h3 class="text-sm font-semibold text-neutral-700 mb-1.5">Навыки</h3>
+                <h3 class="text-sm font-semibold text-neutral-700 mb-1.5">{% translate "Навыки" %}</h3>
                 <div class="grid grid-cols-2 gap-1.5 text-sm">
                     {% for choice in form.skills.field.queryset %}
                     <label class="flex items-center gap-2 cursor-pointer">
@@ -71,14 +72,14 @@
                     {% endfor %}
                 </div>
             </div>
-            <button type="submit" class="mt-4 w-full px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm">Сохранить профиль</button>
+            <button type="submit" class="mt-4 w-full px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm">{% translate "Сохранить профиль" %}</button>
         </form>
     </section>
 
     <!-- Карточка работодателя -->
     <section class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 mb-4">
-        <h2 class="text-base font-bold text-neutral-800 mb-1">Карточка работодателя</h2>
-        <p class="text-sm text-neutral-500 mb-4">Необязательно. Показывается на вашей публичной странице работодателя.</p>
+        <h2 class="text-base font-bold text-neutral-800 mb-1">{% translate "Карточка работодателя" %}</h2>
+        <p class="text-sm text-neutral-500 mb-4">{% translate "Необязательно. Показывается на вашей публичной странице работодателя." %}</p>
         <form method="post" class="space-y-3">
             {% csrf_token %}
             <input type="hidden" name="action" value="employer">
@@ -89,71 +90,71 @@
                 {% for error in field.errors %}<p class="form-error" role="alert"><span>{{ error }}</span></p>{% endfor %}
             </div>
             {% endfor %}
-            <button type="submit" class="w-full px-4 py-2.5 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-semibold transition-colors">Сохранить карточку</button>
+            <button type="submit" class="w-full px-4 py-2.5 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-semibold transition-colors">{% translate "Сохранить карточку" %}</button>
         </form>
     </section>
 
     <!-- Аватар -->
     <section class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 mb-4">
-        <h2 class="text-base font-bold text-neutral-800 mb-3">Фото профиля</h2>
+        <h2 class="text-base font-bold text-neutral-800 mb-3">{% translate "Фото профиля" %}</h2>
         <form method="post" action="{% url 'core:upload_avatar' %}" enctype="multipart/form-data" class="flex flex-wrap gap-2 items-center">
             {% csrf_token %}
             <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" required class="text-sm">
-            <button type="submit" class="px-4 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Загрузить</button>
+            <button type="submit" class="px-4 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">{% translate "Загрузить" %}</button>
         </form>
         {% if user.avatar_url or user.photo_url %}
-        <form method="post" action="{% url 'core:delete_avatar' %}" class="mt-2" data-confirm="Удалить фото профиля?">
+        <form method="post" action="{% url 'core:delete_avatar' %}" class="mt-2" data-confirm="{% translate "Удалить фото профиля?" %}">
             {% csrf_token %}
-            <button type="submit" class="px-4 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">Удалить фото</button>
+            <button type="submit" class="px-4 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">{% translate "Удалить фото" %}</button>
         </form>
         {% endif %}
     </section>
 
     <!-- Данные и аккаунт (152-ФЗ) -->
     <section class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 mb-4">
-        <h2 class="text-base font-bold text-neutral-800 mb-3">Данные и аккаунт</h2>
+        <h2 class="text-base font-bold text-neutral-800 mb-3">{% translate "Данные и аккаунт" %}</h2>
         <div class="flex flex-wrap gap-2 mb-3">
-            <a href="{% url 'core:export_data' %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Скачать мои данные (JSON)</a>
-            <a href="{% url 'core:notification_prefs' %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Настройки уведомлений</a>
-            <a href="{% url 'core:verify_employer' %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">Загрузить документ</a>
+            <a href="{% url 'core:export_data' %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">{% translate "Скачать мои данные (JSON)" %}</a>
+            <a href="{% url 'core:notification_prefs' %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">{% translate "Настройки уведомлений" %}</a>
+            <a href="{% url 'core:verify_employer' %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">{% translate "Загрузить документ" %}</a>
         </div>
-        <form method="post" action="{% url 'core:delete_account' %}" data-confirm="Удалить аккаунт безвозвратно? Это действие необратимо.">
+        <form method="post" action="{% url 'core:delete_account' %}" data-confirm="{% translate "Удалить аккаунт безвозвратно? Это действие необратимо." %}">
             {% csrf_token %}
-            <button type="submit" class="px-4 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">Удалить аккаунт</button>
+            <button type="submit" class="px-4 h-9 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-sm font-medium transition-colors">{% translate "Удалить аккаунт" %}</button>
         </form>
     </section>
 
     <!-- Email -->
     <section class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 mb-4">
         <h2 class="text-base font-bold text-neutral-800 mb-1">Email</h2>
-        <p class="text-sm text-neutral-500 mb-3">Сейчас: <span class="font-medium text-neutral-700">{{ user.email }}</span></p>
+        <p class="text-sm text-neutral-500 mb-3">{% translate "Сейчас:" %} <span class="font-medium text-neutral-700">{{ user.email }}</span></p>
         <form method="post" action="{% url 'core:email_change_request' %}" class="space-y-3">
             {% csrf_token %}
             <div class="form-field">
-                <label class="form-label" for="new-email">Новый email</label>
+                <label class="form-label" for="new-email">{% translate "Новый email" %}</label>
                 <input id="new-email" name="new_email" type="email" required autocomplete="email" class="form-input" placeholder="new@example.com">
             </div>
             <div class="form-field">
-                <label class="form-label" for="email-current-password">Текущий пароль</label>
-                <input id="email-current-password" name="current_password" type="password" required autocomplete="current-password" class="form-input" placeholder="Подтвердите паролем">
+                <label class="form-label" for="email-current-password">{% translate "Текущий пароль" %}</label>
+                <input id="email-current-password" name="current_password" type="password" required autocomplete="current-password" class="form-input" placeholder="{% translate "Подтвердите паролем" %}">
             </div>
-            <button type="submit" class="w-full sm:w-auto px-4 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">Изменить email</button>
-            <p class="form-hint">На новый адрес придёт ссылка подтверждения (1 час). Текущий email продолжит работать до подтверждения.</p>
+            <button type="submit" class="w-full sm:w-auto px-4 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">{% translate "Изменить email" %}</button>
+            <p class="form-hint">{% translate "На новый адрес придёт ссылка подтверждения (1 час). Текущий email продолжит работать до подтверждения." %}</p>
         </form>
     </section>
 
     <!-- Верификация -->
     <section class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 mb-4">
-        <h2 class="text-base font-bold text-neutral-800 mb-2">Верификация</h2>
-        <p class="text-sm text-neutral-600 mb-3">Подтвердите личность через мессенджер MAX — это повышает доверие.</p>
+        <h2 class="text-base font-bold text-neutral-800 mb-2">{% translate "Верификация" %}</h2>
+        <p class="text-sm text-neutral-600 mb-3">{% translate "Подтвердите личность через мессенджер MAX — это повышает доверие." %}</p>
         <a href="{% url 'core:messenger_start' platform='max' %}" class="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl bg-neutral-800 hover:bg-neutral-900 text-white text-sm font-semibold transition-colors">
-            Подтвердить через MAX →
+            {% translate "Подтвердить через MAX →" %}
         </a>
     </section>
 
     <!-- Смена пароля -->
     <section class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5">
-        <h2 class="text-base font-bold text-neutral-800 mb-4">Смена пароля</h2>
+        <h2 class="text-base font-bold text-neutral-800 mb-4">{% translate "Смена пароля" %}</h2>
         <form method="post">
             {% csrf_token %}
             <input type="hidden" name="action" value="password">
@@ -166,7 +167,7 @@
                 {% endfor %}
                 {% if change_form.non_field_errors %}{% for e in change_form.non_field_errors %}<p class="form-error" role="alert"><span>{{ e }}</span></p>{% endfor %}{% endif %}
             </div>
-            <button type="submit" class="mt-4 w-full px-4 py-2.5 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-semibold transition-colors">Изменить пароль</button>
+            <button type="submit" class="mt-4 w-full px-4 py-2.5 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-semibold transition-colors">{% translate "Изменить пароль" %}</button>
         </form>
     </section>
 

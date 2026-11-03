@@ -12,6 +12,7 @@ from datetime import timedelta
 from django.core.cache import cache
 from django.db.models import Q
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from .models import Job, Message
 
@@ -82,7 +83,7 @@ def assess_job(employer, *, work_type="", city="", texts=(), exclude_job_id=None
         duplicate = duplicate_qs.exists()
         if duplicate:
             score += 4
-            reasons.append("Похожее задание уже создавалось за последние 24 часа")
+            reasons.append(_("Похожее задание уже создавалось за последние 24 часа"))
 
     recent_qs = Job.objects.filter(
         employer=employer, created_at__gte=now - timedelta(hours=1)
@@ -92,7 +93,7 @@ def assess_job(employer, *, work_type="", city="", texts=(), exclude_job_id=None
     recent = recent_qs.count()
     if recent >= 5:
         score += 4
-        reasons.append("Слишком много заданий за последний час")
+        reasons.append(_("Слишком много заданий за последний час"))
 
     text = " ".join(str(value or "") for value in texts)
     contacts = (
@@ -102,11 +103,11 @@ def assess_job(employer, *, work_type="", city="", texts=(), exclude_job_id=None
     )
     if contacts >= 2:
         score += 4
-        reasons.append("В описании несколько внешних контактов")
+        reasons.append(_("В описании несколько внешних контактов"))
 
     if len(URL_RE.findall(text)) >= 4:
         score += 1
-        reasons.append("Слишком много внешних ссылок")
+        reasons.append(_("Слишком много внешних ссылок"))
 
     status = (
         Job.ModerationStatus.REVIEW

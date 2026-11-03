@@ -9,6 +9,7 @@ import uuid
 from pathlib import Path
 
 from django.conf import settings
+from django.utils.translation import gettext as _
 
 MAGIC = {
     b"\xff\xd8\xff": ".jpg",
@@ -49,11 +50,11 @@ def save_upload(uploaded_file, subdir: str, allow_pdf: bool = False) -> str:
     data = uploaded_file.read()
     max_mb = int(os.getenv("MAX_PHOTO_SIZE_MB", "5"))
     if len(data) > max_mb * 1024 * 1024:
-        raise UploadError("Файл больше %d МБ" % max_mb)
+        raise UploadError(_("Файл больше %d МБ") % max_mb)
     ext = detect_extension(data, allow_pdf=allow_pdf)
     if ext is None:
-        allowed = "PDF, JPEG, PNG или WebP" if allow_pdf else "JPEG, PNG или WebP"
-        raise UploadError("Допустимы только %s" % allowed)
+        allowed = _("PDF, JPEG, PNG или WebP") if allow_pdf else _("JPEG, PNG или WebP")
+        raise UploadError(_("Допустимы только %s") % allowed)
     folder = _upload_root() / subdir
     folder.mkdir(parents=True, exist_ok=True)
     name = "%s%s" % (uuid.uuid4().hex, ext)

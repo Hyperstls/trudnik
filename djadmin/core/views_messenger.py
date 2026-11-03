@@ -21,6 +21,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, JsonResponse
 from django.shortcuts import render
+from django.utils.translation import gettext as _
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
@@ -135,7 +136,7 @@ def start(request, platform: str):
         raise Http404("Неизвестная платформа")
     bot = (getattr(settings, "MAX_BOT_USERNAME", "") or "").strip()
     if not bot:
-        messages.error(request, "Верификация через мессенджер не настроена (обратитесь к администратору).")
+        messages.error(request, _("Верификация через мессенджер не настроена (обратитесь к администратору)."))
         return render(request, "core/messenger_start.html", {"link": None, "platform": platform})
     _ensure_webhook_best_effort()
     token = pysecrets.token_urlsafe(24)

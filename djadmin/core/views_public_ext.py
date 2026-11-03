@@ -18,6 +18,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
 from .models import (
@@ -90,16 +91,16 @@ def employers_list(request):
 def employer_favorite_toggle(request, employer_id):
     employer = Profile.objects.public_visible().filter(pk=employer_id).first()
     if employer is None or employer.pk == request.user.pk:
-        messages.error(request, "Работодатель недоступен.")
+        messages.error(request, _("Работодатель недоступен."))
     else:
         fav, created = Favorite.objects.get_or_create(
             user=request.user, target=employer, favorite_type="employer",
         )
         if created:
-            messages.success(request, "Работодатель добавлен в избранное.")
+            messages.success(request, _("Работодатель добавлен в избранное."))
         else:
             fav.delete()
-            messages.info(request, "Работодатель удалён из избранного.")
+            messages.info(request, _("Работодатель удалён из избранного."))
     referer = request.META.get("HTTP_REFERER") or ""
     if not url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}):
         referer = reverse("core:employers")
@@ -232,8 +233,8 @@ def _bulk(request, apply: bool):
                 failed += 1
     for employer_id, job_ids in employer_jobs.items():
         enqueue_notification(
-            employer_id, "application_received", "Новые отклики",
-            "На ваши задания поступили новые отклики",
+            employer_id, "application_received", _("Новые отклики"),
+            _("На ваши задания поступили новые отклики"),
             {
                 "job_ids": job_ids,
                 "link": request.build_absolute_uri(reverse("core:my_applications")),
@@ -241,7 +242,7 @@ def _bulk(request, apply: bool):
         )
     messages.info(
         request,
-        "Выполнено: %d, пропущено: %d, ошибок: %d." % (applied, skipped, failed),
+        _("Выполнено: %d, пропущено: %d, ошибок: %d.") % (applied, skipped, failed),
     )
     referer = request.META.get("HTTP_REFERER") or ""
     if not url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}):
@@ -256,7 +257,7 @@ def invitations_reject_all(request):
     count = Invitation.objects.filter(
         worker=request.user, status=Invitation.Status.PENDING
     ).update(status=Invitation.Status.REJECTED, responded_at=timezone.now())
-    messages.info(request, "Отклонено приглашений: %d." % count)
+    messages.info(request, _("Отклонено приглашений: %d.") % count)
     return redirect("core:invitations")
 
 
@@ -268,11 +269,11 @@ def job_photo_upload(request, job_id):
     if job is None:
         raise Http404("Задание не найдено")
     if len(job_photo_urls(job)) >= 3:
-        messages.error(request, "Можно добавить не более 3 фото.")
+        messages.error(request, _("Можно добавить не более 3 фото."))
         return redirect("core:job_edit", job_id=job.pk)
     file = request.FILES.get("photo")
     if file is None:
-        messages.error(request, "Файл не выбран.")
+        messages.error(request, _("Файл не выбран."))
         return redirect("core:job_edit", job_id=job.pk)
     try:
         url = save_upload(file, "jobs")
@@ -281,7 +282,7 @@ def job_photo_upload(request, job_id):
         return redirect("core:job_edit", job_id=job.pk)
     last_order = JobPhoto.objects.filter(job=job).count()
     JobPhoto.objects.create(job=job, photo_url=url, order_num=last_order)
-    messages.success(request, "Фото добавлено.")
+    messages.success(request, _("Фото добавлено."))
     return redirect("core:job_edit", job_id=job.pk)
 
 
@@ -301,7 +302,7 @@ def job_photo_delete(request, job_id, photo_id):
         )
         if not still_used:
             delete_upload_url(url)
-        messages.info(request, "Фото удалено.")
+        messages.info(request, _("Фото удалено."))
     return redirect("core:job_edit", job_id=job_id)
 
 
@@ -383,5 +384,5 @@ def repost_job(request, job_id):
     if job is None:
         raise Http404("Задание не найдено")
     new_job = duplicate_job(job, request.user)
-    messages.success(request, "Задание перепубликовано.")
+    messages.success(request, _("Задание перепубликовано."))
     return redirect("core:job_detail", job_id=new_job.pk)

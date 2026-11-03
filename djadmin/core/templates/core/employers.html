@@ -1,28 +1,29 @@
 {% extends "core/base.html" %}
 {% load core_extras %}
-{% block title %}Работодатели — Трудник{% endblock %}
+{% load i18n %}
+{% block title %}{% translate "Работодатели" %} — Трудник{% endblock %}
 {% block content %}
 <div class="px-0 py-4 fade-in">
     <div class="flex items-center justify-between gap-2 mb-4">
-        <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">Работодатели</h2>
-        <a href="{% url 'core:workers' %}" class="px-3 h-9 inline-flex items-center rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-medium">Трудники</a>
+        <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">{% translate "Работодатели" %}</h2>
+        <a href="{% url 'core:workers' %}" class="px-3 h-9 inline-flex items-center rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-medium">{% translate "Трудники" %}</a>
     </div>
 
     <form method="get" class="bg-white rounded-2xl border border-neutral-200 p-4 mb-5 shadow-card flex flex-wrap gap-3 items-end">
-        <label class="text-xs font-medium text-neutral-500 flex-1 min-w-[180px]">Поиск
-            <input type="search" name="q" value="{{ q }}" placeholder="Имя, город или описание…" class="mt-1 w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+        <label class="text-xs font-medium text-neutral-500 flex-1 min-w-[180px]">{% translate "Поиск" %}
+            <input type="search" name="q" value="{{ q }}" placeholder="{% translate "Имя, город или описание…" %}" class="mt-1 w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
         </label>
-        <label class="text-xs font-medium text-neutral-500">Город
-            <input type="search" name="city" value="{{ city }}" placeholder="Москва" class="mt-1 block w-36 border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50">
+        <label class="text-xs font-medium text-neutral-500">{% translate "Город" %}
+            <input type="search" name="city" value="{{ city }}" placeholder="{% translate "Москва" %}" class="mt-1 block w-36 border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50">
         </label>
-        <label class="text-xs font-medium text-neutral-500">Сортировка
+        <label class="text-xs font-medium text-neutral-500">{% translate "Сортировка" %}
             <select name="sort" class="mt-1 block border border-neutral-200 rounded-xl px-2 py-2 text-sm bg-neutral-50">
-                <option value="rating" {% if sort == 'rating' %}selected{% endif %}>По рейтингу</option>
-                <option value="name" {% if sort == 'name' %}selected{% endif %}>По алфавиту</option>
-                <option value="jobs_count" {% if sort == 'jobs_count' %}selected{% endif %}>По заданиям</option>
+                <option value="rating" {% if sort == 'rating' %}selected{% endif %}>{% translate "По рейтингу" %}</option>
+                <option value="name" {% if sort == 'name' %}selected{% endif %}>{% translate "По алфавиту" %}</option>
+                <option value="jobs_count" {% if sort == 'jobs_count' %}selected{% endif %}>{% translate "По заданиям" %}</option>
             </select>
         </label>
-        <button type="submit" class="h-10 px-5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">Найти</button>
+        <button type="submit" class="h-10 px-5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">{% translate "Найти" %}</button>
     </form>
 
     {% if page.object_list %}
@@ -45,19 +46,19 @@
                             <span class="text-xs text-neutral-400 ml-1">({{ w.total_reviews|default:0 }})</span>
                         </div>
                         {% if w.verification_status == 'approved' %}
-                        <span class="inline-flex items-center gap-0.5 mt-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-[11px] font-semibold">{% include "core/_ui_icon.html" with name="check" class_name="h-3 w-3" %} Проверен</span>
+                        <span class="inline-flex items-center gap-0.5 mt-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-[11px] font-semibold">{% include "core/_ui_icon.html" with name="check" class_name="h-3 w-3" %} {% translate "Проверен" %}</span>
                         {% endif %}
                     </div>
                 </div>
                 {% if w.city %}<p class="text-xs text-neutral-500 mt-2">{{ w.city }}</p>{% endif %}
                 {% if w.bio %}<p class="text-sm text-neutral-600 mt-1 line-clamp-2 leading-relaxed">{{ w.bio }}</p>{% endif %}
-                <p class="text-xs text-primary-600 mt-2 font-medium">Открытых заданий: {{ w.open_jobs }}</p>
+                <p class="text-xs text-primary-600 mt-2 font-medium">{% translate "Открытых заданий:" %} {{ w.open_jobs }}</p>
             </a>
             <div class="mt-3 pt-3 border-t border-neutral-100 flex flex-wrap gap-2">
-                <a href="{% url 'core:employer_detail' w.pk %}" class="action-icon-btn contact-btn"><span class="text-xs font-medium">Задания</span></a>
+                <a href="{% url 'core:employer_detail' w.pk %}" class="action-icon-btn contact-btn"><span class="text-xs font-medium">{% translate "Задания" %}</span></a>
                 <form method="post" action="{% url 'core:employer_favorite_toggle' w.pk %}">{% csrf_token %}
                     <button class="action-icon-btn {% if w.pk in favorited_ids %}reject-btn{% else %}contact-btn{% endif %}">
-                        <span class="text-xs font-medium">{% if w.pk in favorited_ids %}Убрать из избранного{% else %}В избранное{% endif %}</span>
+                        <span class="text-xs font-medium">{% if w.pk in favorited_ids %}{% translate "Убрать из избранного" %}{% else %}{% translate "В избранное" %}{% endif %}</span>
                     </button>
                 </form>
             </div>
@@ -65,13 +66,13 @@
         {% endfor %}
     </div>
 
-    <nav class="mt-6 flex gap-2 items-center justify-center text-sm" aria-label="Пагинация">
+    <nav class="mt-6 flex gap-2 items-center justify-center text-sm" aria-label="{% translate "Пагинация" %}">
         {% if page.has_previous %}
-        <a href="?page={{ page.previous_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if city %}&city={{ city|urlencode }}{% endif %}&sort={{ sort }}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600">← Назад</a>
+        <a href="?page={{ page.previous_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if city %}&city={{ city|urlencode }}{% endif %}&sort={{ sort }}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600">{% translate "← Назад" %}</a>
         {% endif %}
-        <span class="text-neutral-400 px-2">{{ page.number }} из {{ page.paginator.num_pages }}</span>
+        <span class="text-neutral-400 px-2">{{ page.number }} {% translate "из" %} {{ page.paginator.num_pages }}</span>
         {% if page.has_next %}
-        <a href="?page={{ page.next_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if city %}&city={{ city|urlencode }}{% endif %}&sort={{ sort }}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600">Вперёд →</a>
+        <a href="?page={{ page.next_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if city %}&city={{ city|urlencode }}{% endif %}&sort={{ sort }}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600">{% translate "Вперёд →" %}</a>
         {% endif %}
     </nav>
     {% else %}
@@ -79,9 +80,9 @@
         <div class="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
             <svg aria-hidden="true" class="h-8 w-8 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7h-4V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M8 7V5h8v2"/></svg>
         </div>
-        <p class="text-lg font-semibold text-neutral-700">Работодатели не найдены</p>
-        <p class="text-sm text-neutral-500 mt-1">Попробуйте изменить параметры поиска</p>
-        {% if q or city %}<a href="{% url 'core:employers' %}" class="mt-4 text-sm text-primary-600 hover:text-primary-700 underline underline-offset-2">Сбросить фильтры</a>{% endif %}
+        <p class="text-lg font-semibold text-neutral-700">{% translate "Работодатели не найдены" %}</p>
+        <p class="text-sm text-neutral-500 mt-1">{% translate "Попробуйте изменить параметры поиска" %}</p>
+        {% if q or city %}<a href="{% url 'core:employers' %}" class="mt-4 text-sm text-primary-600 hover:text-primary-700 underline underline-offset-2">{% translate "Сбросить фильтры" %}</a>{% endif %}
     </div>
     {% endif %}
 </div>

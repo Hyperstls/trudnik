@@ -1,30 +1,32 @@
 {% extends "core/base.html" %}
 {% load core_extras %}
-{% block title %}Трудники — Трудник{% endblock %}
+{% load i18n %}
+{% block title %}{% translate "Трудники" %} — Трудник{% endblock %}
 {% block content %}
+{% translate "Задание" as t_job %}
 <div class="px-0 py-4 fade-in">
     <div class="flex items-center justify-between gap-2 mb-4">
-        <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">Трудники</h2>
-        <a href="{% url 'core:employers' %}" class="px-3 h-9 inline-flex items-center rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-medium">Работодатели</a>
+        <h2 class="text-xl sm:text-2xl font-bold text-neutral-800">{% translate "Трудники" %}</h2>
+        <a href="{% url 'core:employers' %}" class="px-3 h-9 inline-flex items-center rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-xs font-medium">{% translate "Работодатели" %}</a>
     </div>
 
     <button type="button" id="filters-open" class="sm:hidden inline-flex items-center gap-2 mb-4 px-4 h-10 rounded-xl border border-neutral-200 bg-white text-sm font-semibold text-neutral-700 shadow-sm" aria-haspopup="dialog" aria-controls="filters-form" aria-expanded="false">
         <svg aria-hidden="true" class="h-4 w-4 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
-        Фильтры
+        {% translate "Фильтры" %}
         {% if active_filter_count %}<span id="filters-active-count" class="min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center rounded-full bg-neutral-800 text-white text-[11px] font-bold">{{ active_filter_count }}</span>{% else %}<span id="filters-active-count" class="hidden min-w-[20px] h-5 px-1.5 rounded-full bg-neutral-800 text-white text-[11px] font-bold"></span>{% endif %}
     </button>
     <div id="filters-backdrop" class="filters-backdrop hidden" aria-hidden="true"></div>
-    <form id="filters-form" method="get" role="search" aria-label="Фильтры трудников" class="bg-white rounded-2xl border border-neutral-200 p-4 mb-5 shadow-card flex flex-wrap gap-3 items-end">
+    <form id="filters-form" method="get" role="search" aria-label="{% translate "Фильтры трудников" %}" class="bg-white rounded-2xl border border-neutral-200 p-4 mb-5 shadow-card flex flex-wrap gap-3 items-end">
         <div class="filter-sheet-head sm:hidden flex items-center justify-between w-full">
-            <h3 id="filters-title" class="text-base font-bold text-neutral-900">Фильтры</h3>
-            <button type="button" id="filters-close" class="w-9 h-9 inline-flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-50" aria-label="Закрыть фильтры">×</button>
+            <h3 id="filters-title" class="text-base font-bold text-neutral-900">{% translate "Фильтры" %}</h3>
+            <button type="button" id="filters-close" class="w-9 h-9 inline-flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-50" aria-label="{% translate "Закрыть фильтры" %}">×</button>
         </div>
-        <label class="text-xs font-medium text-neutral-500 flex-1 min-w-[180px]">Поиск
-            <input type="search" name="q" value="{{ q }}" placeholder="Имя или город…" class="mt-1 w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+        <label class="text-xs font-medium text-neutral-500 flex-1 min-w-[180px]">{% translate "Поиск" %}
+            <input type="search" name="q" value="{{ q }}" placeholder="{% translate "Имя или город…" %}" class="mt-1 w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
         </label>
         <details class="relative">
             <summary class="mt-1 px-3 h-[38px] inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-neutral-50 text-sm text-neutral-700 cursor-pointer select-none hover:bg-neutral-100">
-                Навыки{% if selected_skills %} · {{ selected_skills|length }}{% endif %}
+                {% translate "Навыки" %}{% if selected_skills %} · {{ selected_skills|length }}{% endif %}
                 <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
             </summary>
             <div class="absolute right-0 z-30 mt-1 w-64 max-h-64 overflow-y-auto rounded-xl border border-neutral-200 bg-white p-2 shadow-lg">
@@ -33,36 +35,36 @@
                     <input type="checkbox" name="skills" value="{{ s.pk }}" {% if s.pk|stringformat:"s" in selected_skills %}checked{% endif %} class="mt-0.5 rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
                     <span class="min-w-0 break-words">{{ s.name }}</span>
                 </label>
-                {% empty %}<p class="px-2 py-1.5 text-sm text-neutral-500">Навыков нет</p>{% endfor %}
+                {% empty %}<p class="px-2 py-1.5 text-sm text-neutral-500">{% translate "Навыков нет" %}</p>{% endfor %}
             </div>
         </details>
-        <label class="text-xs font-medium text-neutral-500">Рейтинг от
+        <label class="text-xs font-medium text-neutral-500">{% translate "Рейтинг от" %}
             <input type="number" name="rating_min" min="0" max="5" step="0.1" value="{{ rating_min }}" class="mt-1 block w-24 border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50">
         </label>
-        <label class="text-xs font-medium text-neutral-500">Оплата от
+        <label class="text-xs font-medium text-neutral-500">{% translate "Оплата от" %}
             <input type="number" name="payment_from" min="0" value="{{ payment_from }}" class="mt-1 block w-28 border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50">
         </label>
-        <label class="text-xs font-medium text-neutral-500">до
+        <label class="text-xs font-medium text-neutral-500">{% translate "до" %}
             <input type="number" name="payment_to" min="0" value="{{ payment_to }}" class="mt-1 block w-28 border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50">
         </label>
-        <label class="text-xs font-medium text-neutral-500">Сортировка
+        <label class="text-xs font-medium text-neutral-500">{% translate "Сортировка" %}
             <select name="sort" class="mt-1 block border border-neutral-200 rounded-xl px-2 py-2 text-sm bg-neutral-50">
-                <option value="rating" {% if sort == 'rating' %}selected{% endif %}>По рейтингу</option>
-                <option value="name" {% if sort == 'name' %}selected{% endif %}>По имени</option>
-                <option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>Оплата ↑</option>
-                <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>Оплата ↓</option>
+                <option value="rating" {% if sort == 'rating' %}selected{% endif %}>{% translate "По рейтингу" %}</option>
+                <option value="name" {% if sort == 'name' %}selected{% endif %}>{% translate "По имени" %}</option>
+                <option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>{% translate "Оплата ↑" %}</option>
+                <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>{% translate "Оплата ↓" %}</option>
             </select>
         </label>
         {% if user.is_authenticated %}
         <label class="inline-flex items-center gap-2 text-sm text-neutral-600 pb-2">
             <input type="checkbox" name="invited" value="1" {% if invited_only %}checked{% endif %} class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
-            Только приглашённые
+            {% translate "Только приглашённые" %}
         </label>
         {% endif %}
-        <button type="submit" class="hidden sm:inline-flex items-center h-10 px-5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">Найти</button>
+        <button type="submit" class="hidden sm:inline-flex items-center h-10 px-5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">{% translate "Найти" %}</button>
         <div class="filter-sheet-actions sm:hidden sticky bottom-0 -mx-4 mt-2 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white border-t border-neutral-200 flex gap-2">
-            <a href="{% url 'core:workers' %}" class="flex-1 h-11 inline-flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-700 text-sm font-semibold hover:bg-neutral-50">Сбросить</a>
-            <button type="submit" class="flex-[2] h-11 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold shadow-sm">Найти{% if active_filter_count %} · {{ active_filter_count }}{% endif %}</button>
+            <a href="{% url 'core:workers' %}" class="flex-1 h-11 inline-flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-700 text-sm font-semibold hover:bg-neutral-50">{% translate "Сбросить" %}</a>
+            <button type="submit" class="flex-[2] h-11 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold shadow-sm">{% translate "Найти" %}{% if active_filter_count %} · {{ active_filter_count }}{% endif %}</button>
         </div>
     </form>
 
@@ -83,24 +85,24 @@
                         <a href="{% url 'core:worker_detail' w.pk %}" class="hover:text-primary-700 transition-colors">{{ w.full_name }}</a>
                     </h3>
                     <div class="flex flex-wrap items-center gap-1 mt-1">
-                        {% if w.pk in reliable_worker_ids %}<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Надёжный</span>{% endif %}
-                        {% if w.pk in invited_worker_ids %}{% include "core/_ui_badge.html" with label="Приглашён" variant="primary" %}{% endif %}
+                        {% if w.pk in reliable_worker_ids %}<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{% translate "Надёжный" %}</span>{% endif %}
+                        {% if w.pk in invited_worker_ids %}{% translate "Приглашён" as t_invited %}{% include "core/_ui_badge.html" with label=t_invited variant="primary" %}{% endif %}
                         {% if w.pk in pending_invited_worker_ids %}
                         <details class="relative action-menu">
-                            <summary class="text-xs text-red-600 hover:underline">Отозвать ▾</summary>
-                            <div class="action-menu-panel" role="group" aria-label="Отозвать приглашения">
+                            <summary class="text-xs text-red-600 hover:underline">{% translate "Отозвать" %} ▾</summary>
+                            <div class="action-menu-panel" role="group" aria-label="{% translate "Отозвать приглашения" %}">
                                 {% with invs=pending_invitations_by_worker|get_item:w.pk %}
                                 {% for inv in invs %}
                                 <form method="post" action="{% url 'core:invitation_revoke' inv.pk %}">
                                     {% csrf_token %}
                                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                    <button type="submit" class="action-menu-item w-full text-left text-xs">{% if inv.job %}{{ inv.job.work_type|default:"Задание" }} · {{ inv.job.date_time|date:"d.m" }}{% else %}Приглашение{% endif %}</button>
+                                    <button type="submit" class="action-menu-item w-full text-left text-xs">{% if inv.job %}{{ inv.job.work_type|default:t_job }} · {{ inv.job.date_time|date:"d.m" }}{% else %}{% translate "Приглашение" %}{% endif %}</button>
                                 </form>
                                 {% endfor %}
                                 <form method="post" action="{% url 'core:worker_invitations_revoke' w.pk %}">
                                     {% csrf_token %}
                                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                    <button type="submit" class="action-menu-item w-full text-left text-xs text-red-600" data-confirm="Отозвать все приглашения этому труднику?">Отозвать все</button>
+                                    <button type="submit" class="action-menu-item w-full text-left text-xs text-red-600" data-confirm="{% translate "Отозвать все приглашения этому труднику?" %}">{% translate "Отозвать все" %}</button>
                                 </form>
                                 {% endwith %}
                             </div>
@@ -123,32 +125,32 @@
             {% endif %}
             {% endwith %}
             <div class="flex flex-wrap items-center justify-between gap-2 mt-3 pt-3 border-t border-neutral-100">
-                <p class="text-xs text-neutral-500">{% if w.desired_payment %}от {{ w.desired_payment }} ₽{% else %}Оплата по договорённости{% endif %}</p>
+                <p class="text-xs text-neutral-500">{% if w.desired_payment %}{% translate "от" %} {{ w.desired_payment }} ₽{% else %}{% translate "Оплата по договорённости" %}{% endif %}</p>
                 <div class="flex flex-wrap gap-2">
-                    <a href="{% url 'core:worker_detail' w.pk %}" class="action-icon-btn contact-btn"><span class="text-xs font-medium">Профиль</span></a>
+                    <a href="{% url 'core:worker_detail' w.pk %}" class="action-icon-btn contact-btn"><span class="text-xs font-medium">{% translate "Профиль" %}</span></a>
                     {% if user.is_authenticated and w.id != user.pk %}
                     <details class="relative">
-                        <summary class="action-icon-btn accept-btn"><span class="text-xs font-medium">Пригласить</span></summary>
-                        <div class="action-menu-panel" role="group" aria-label="Пригласить на задание">
+                        <summary class="action-icon-btn accept-btn"><span class="text-xs font-medium">{% translate "Пригласить" %}</span></summary>
+                        <div class="action-menu-panel" role="group" aria-label="{% translate "Пригласить на задание" %}">
                             {% if my_open_jobs %}
                             <form method="post" action="{% url 'core:invite_worker' w.pk %}" class="space-y-2">
                                 {% csrf_token %}
-                                <label class="block text-xs font-medium text-neutral-600">Задание
+                                <label class="block text-xs font-medium text-neutral-600">{% translate "Задание" %}
                                     <select name="job_id" required class="mt-1 w-full border border-neutral-200 rounded-lg px-2 py-1.5 text-sm bg-white">
-                                        {% for j in my_open_jobs %}<option value="{{ j.pk }}">{{ j.work_type|default:"Задание" }} · {{ j.date_time|date:"d.m" }}</option>{% endfor %}
+                                        {% for j in my_open_jobs %}<option value="{{ j.pk }}">{{ j.work_type|default:t_job }} · {{ j.date_time|date:"d.m" }}</option>{% endfor %}
                                     </select>
                                 </label>
-                                <textarea name="message" maxlength="500" rows="2" placeholder="Сообщение (необязательно)" class="w-full border border-neutral-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"></textarea>
-                                <button type="submit" class="w-full h-8 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold">Отправить</button>
+                                <textarea name="message" maxlength="500" rows="2" placeholder="{% translate "Сообщение (необязательно)" %}" class="w-full border border-neutral-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"></textarea>
+                                <button type="submit" class="w-full h-8 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold">{% translate "Отправить" %}</button>
                             </form>
                             {% else %}
-                            <p class="text-xs text-neutral-600 mb-2">Сначала создайте открытое задание.</p>
-                            <a href="{% url 'core:job_create' %}" class="block text-center h-8 leading-8 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold">Создать задание</a>
+                            <p class="text-xs text-neutral-600 mb-2">{% translate "Сначала создайте открытое задание." %}</p>
+                            <a href="{% url 'core:job_create' %}" class="block text-center h-8 leading-8 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold">{% translate "Создать задание" %}</a>
                             {% endif %}
                         </div>
                     </details>
                     <form method="post" action="{% url 'core:people_favorite_toggle' w.pk %}">{% csrf_token %}
-                        <button class="action-icon-btn contact-btn"><span class="text-xs font-medium">{% if w.pk in favorite_worker_ids %}В избранном{% else %}В избранное{% endif %}</span></button>
+                        <button class="action-icon-btn contact-btn"><span class="text-xs font-medium">{% if w.pk in favorite_worker_ids %}{% translate "В избранном" %}{% else %}{% translate "В избранное" %}{% endif %}</span></button>
                     </form>
                     {% endif %}
                 </div>
@@ -157,13 +159,13 @@
         {% endfor %}
     </div>
 
-    <nav class="mt-6 flex gap-2 items-center justify-center text-sm" aria-label="Пагинация">
+    <nav class="mt-6 flex gap-2 items-center justify-center text-sm" aria-label="{% translate "Пагинация" %}">
         {% if page.has_previous %}
-        <a href="?page={{ page.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if rating_min %}&rating_min={{ rating_min }}{% endif %}{% if payment_from %}&payment_from={{ payment_from }}{% endif %}{% if payment_to %}&payment_to={{ payment_to }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if invited_only %}&invited=1{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600">← Назад</a>
+        <a href="?page={{ page.previous_page_number }}{% if q %}&q={{ q }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if rating_min %}&rating_min={{ rating_min }}{% endif %}{% if payment_from %}&payment_from={{ payment_from }}{% endif %}{% if payment_to %}&payment_to={{ payment_to }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if invited_only %}&invited=1{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600">{% translate "← Назад" %}</a>
         {% endif %}
-        <span class="text-neutral-400 px-2">{{ page.number }} из {{ page.paginator.num_pages }}</span>
+        <span class="text-neutral-400 px-2">{{ page.number }} {% translate "из" %} {{ page.paginator.num_pages }}</span>
         {% if page.has_next %}
-        <a href="?page={{ page.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if rating_min %}&rating_min={{ rating_min }}{% endif %}{% if payment_from %}&payment_from={{ payment_from }}{% endif %}{% if payment_to %}&payment_to={{ payment_to }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if invited_only %}&invited=1{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600">Вперёд →</a>
+        <a href="?page={{ page.next_page_number }}{% if q %}&q={{ q }}{% endif %}{% for s in selected_skills %}&skills={{ s }}{% endfor %}{% if rating_min %}&rating_min={{ rating_min }}{% endif %}{% if payment_from %}&payment_from={{ payment_from }}{% endif %}{% if payment_to %}&payment_to={{ payment_to }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}{% if invited_only %}&invited=1{% endif %}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600">{% translate "Вперёд →" %}</a>
         {% endif %}
     </nav>
     {% else %}
@@ -171,8 +173,8 @@
         <div class="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
             <svg aria-hidden="true" class="h-8 w-8 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
         </div>
-        <p class="text-neutral-600 text-lg font-medium">Никого не найдено</p>
-        <p class="text-sm text-neutral-500 mt-1">Попробуйте изменить запрос</p>
+        <p class="text-neutral-600 text-lg font-medium">{% translate "Никого не найдено" %}</p>
+        <p class="text-sm text-neutral-500 mt-1">{% translate "Попробуйте изменить запрос" %}</p>
     </div>
     {% endif %}
 </div>
@@ -192,7 +194,7 @@
     openBtn.setAttribute('aria-expanded',next?'true':'false');
     form.setAttribute('role',next?'dialog':'search');
     if(next){form.setAttribute('aria-modal','true');form.setAttribute('aria-labelledby','filters-title');lastFocus=openBtn;if(closeBtn)closeBtn.focus();}
-    else{form.removeAttribute('aria-modal');form.removeAttribute('aria-labelledby');form.setAttribute('aria-label','Фильтры трудников');if(lastFocus)lastFocus.focus();lastFocus=null;}
+    else{form.removeAttribute('aria-modal');form.removeAttribute('aria-labelledby');form.setAttribute('aria-label','{% translate "Фильтры трудников" %}');if(lastFocus)lastFocus.focus();lastFocus=null;}
     document.body.classList.toggle('overflow-hidden',next);
   }
   openBtn.addEventListener('click',function(){setOpen(true);});
