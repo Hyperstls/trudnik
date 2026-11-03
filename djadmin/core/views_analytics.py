@@ -7,7 +7,7 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_POST
 
-from .analytics import EVENTS, incr, series
+from .analytics import EVENTS, incr, incr_job_view, series
 from .models import Job
 from .ratelimit import RateLimitExceeded, RateLimitUnavailable, enforce_ip_limit
 
@@ -74,4 +74,6 @@ def track_event(request):
     except RateLimitUnavailable:
         pass
     incr(event)
+    if event == "job_view":
+        incr_job_view(job_id)
     return JsonResponse({"ok": True})

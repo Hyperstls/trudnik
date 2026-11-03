@@ -29,7 +29,7 @@ from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 
 from .models import Application, Blacklist, Favorite, Invitation, Job, JobFavorite, Profile, Rating, SitePage, Skill, UserSkill
-from .analytics import track_job_view
+from .analytics import job_view_total, track_job_view
 from .og_image import render_job_og
 from .search import ts_query
 from .ratelimit import rate_limit_write
@@ -483,7 +483,7 @@ def job_detail(request, job_id):
         # Паритет Flask check_withdraw_window: <12 ч до начала — отзыв недоступен.
         can_withdraw = (job.date_time - timezone.now()).total_seconds() > 12 * 3600
     application_count = 0
-    job_stats = {"total": 0, "pending": 0, "accepted": 0, "rejected": 0}
+    job_stats = {"total": 0, "pending": 0, "accepted": 0, "rejected": 0, "views": 0}
     is_employer_fav = False
     if is_owner:
         stats = Counter(
@@ -494,6 +494,7 @@ def job_detail(request, job_id):
             "pending": stats.get("pending", 0),
             "accepted": stats.get("accepted", 0),
             "rejected": stats.get("rejected", 0),
+            "views": job_view_total(job.pk),
         }
         application_count = job_stats["total"]
     elif request.user.is_authenticated:

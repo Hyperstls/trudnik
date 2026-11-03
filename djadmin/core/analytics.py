@@ -32,6 +32,27 @@ def incr(event, amount=1):
         pass  # analytics must never break a request
 
 
+def incr_job_view(job_id):
+    """Per-job aggregate view counter (no identifiers), 90-day TTL."""
+    key = "analytics:job_view:%s" % job_id
+    try:
+        if cache.add(key, 1, RETENTION_DAYS * 86400):
+            return
+        try:
+            cache.incr(key)
+        except ValueError:
+            cache.set(key, 1, RETENTION_DAYS * 86400)
+    except Exception:
+        pass
+
+
+def job_view_total(job_id):
+    try:
+        return int(cache.get("analytics:job_view:%s" % job_id) or 0)
+    except Exception:
+        return 0
+
+
 def series(event, days=7):
     today = date.today()
     return [
@@ -62,3 +83,4 @@ def track_job_view(request, job_id):
         except Exception:
             pass
     incr("job_view")
+    incr_job_view(job_id)

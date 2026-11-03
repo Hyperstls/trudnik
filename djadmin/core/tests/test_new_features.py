@@ -4,6 +4,7 @@ from unittest.mock import patch
 from django.template.loader import render_to_string
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
+from django.core.cache import cache
 
 from core.models import Application, EmployerDetail, Rating, Profile
 from core.tests.test_auth import make_profile
@@ -115,6 +116,9 @@ class WorkerProfileExtrasTests(TestCase):
 
 
 class JobStatsTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_owner_sees_application_breakdown(self):
         employer = make_profile("stats-employer@example.com", role="employer")
         workers = [make_profile("stats-%d@example.com" % i, role="worker") for i in range(3)]
@@ -125,9 +129,10 @@ class JobStatsTests(TestCase):
         self.client.force_login(employer)
         response = self.client.get(reverse("core:job_detail", args=[job.pk]))
         self.assertEqual(response.context["job_stats"], {
-            "total": 3, "pending": 1, "accepted": 1, "rejected": 1,
+            "total": 3, "pending": 1, "accepted": 1, "rejected": 1, "views": 1,
         })
         self.assertContains(response, "Всего откликов")
+        self.assertContains(response, "Просмотры")
 
 
 class AvatarDeleteTests(TestCase):

@@ -223,7 +223,8 @@
             <span class="text-xs text-neutral-400 ml-auto">Размещено {{ job.created_at|date:"d.m.Y" }}</span>
         </div>
         {% if is_owner %}
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3" aria-label="Статистика откликов">
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-3" aria-label="Статистика откликов">
+            <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-2"><p class="text-xs text-neutral-500">Просмотры</p><p class="text-lg font-bold text-neutral-800">{{ job_stats.views }}</p></div>
             <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-2"><p class="text-xs text-neutral-500">Всего откликов</p><p class="text-lg font-bold text-neutral-800">{{ job_stats.total }}</p></div>
             <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-2"><p class="text-xs text-neutral-500">Ожидают</p><p class="text-lg font-bold text-neutral-800">{{ job_stats.pending }}</p></div>
             <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-2"><p class="text-xs text-neutral-500">Принято</p><p class="text-lg font-bold text-neutral-800">{{ job_stats.accepted }}</p></div>

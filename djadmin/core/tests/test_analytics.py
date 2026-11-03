@@ -29,6 +29,15 @@ class AnalyticsTests(TestCase):
         self.client.get(reverse("core:job_detail", args=[self.job.pk]))
         self.client.get(reverse("core:job_detail", args=[self.job.pk]))
         self.assertEqual(self.counter("job_view"), 1)
+        self.assertEqual(analytics.job_view_total(self.job.pk), 1)
+
+    def test_anonymous_beacon_counts_per_job(self):
+        self.client.post(
+            reverse("core:analytics_event"),
+            data=json.dumps({"event": "job_view", "job_id": str(self.job.pk)}),
+            content_type="application/json",
+        )
+        self.assertEqual(analytics.job_view_total(self.job.pk), 1)
 
     def test_anonymous_job_view_not_counted_server_side(self):
         # Anonymous views come from job-view.js once per browser/day.
