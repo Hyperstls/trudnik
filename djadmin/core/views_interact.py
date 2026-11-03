@@ -100,6 +100,7 @@ def _notify_rating_published(rating, request):
 
 
 @login_required
+@rate_limit_write(limit=20, window=60, redirect_to="/my-applications")
 def rate_participant(request, app_id):
     app = _chat_app_or_none(request, app_id)
     if app is None:
