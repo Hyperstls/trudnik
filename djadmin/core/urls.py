@@ -16,6 +16,7 @@ urlpatterns = [
     path("api/geo/geocode", views_geo.geo_geocode, name="geo_geocode"),
     path("api/jobs/draft", views_drafts.job_draft, name="job_draft_api"),
     path("api/analytics/event", views_analytics.track_event, name="analytics_event"),
+    path("searches", views.my_searches, name="my_searches"),
     path("searches/save", views.save_search, name="save_search"),
     path("searches/<str:search_id>/delete", views.delete_search, name="delete_search"),
     path("searches/<str:search_id>/toggle", views.toggle_search, name="toggle_search"),

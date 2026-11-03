@@ -38,7 +38,7 @@ class Command(BaseCommand):
         )
         job = Job.objects.create(
             employer=employer,
-            work_type="E2E Уборка",
+            work_type="E2E Seed Задача",
             organization_name="E2E Приход",
             detailed_description="Убрать территорию для E2E-проверки.",
             city="Москва",

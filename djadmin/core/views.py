@@ -8,7 +8,7 @@ Profile.objects.public_workers()/public_visible(). Публичные стран
 import os
 import hashlib
 import uuid
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode
 from collections import Counter
 from functools import lru_cache
 from uuid import UUID
@@ -252,6 +252,69 @@ def toggle_search(request, search_id):
 
 
 @login_required
+def my_searches(request):
+    """Страница сохранённых поисков: открыть, включить/выключить уведомления, удалить."""
+    prefs = request.user.notification_prefs or {}
+    raw_items = prefs.get("saved_searches") if isinstance(prefs.get("saved_searches"), list) else []
+    skill_ids = []
+    for item in raw_items:
+        if not isinstance(item, dict):
+            continue
+        for value in parse_qs(str(item.get("query") or "")).get("skills", []):
+            try:
+                skill_ids.append(UUID(str(value)))
+            except (TypeError, ValueError):
+                continue
+    skill_names = {
+        str(skill.pk): skill.name
+        for skill in Skill.objects.filter(pk__in=list(dict.fromkeys(skill_ids)))
+    }
+    searches = []
+    for item in raw_items[:10]:
+        if not isinstance(item, dict) or not item.get("id") or not item.get("query"):
+            continue
+        params = parse_qs(str(item["query"]))
+        summary = []
+        q_value = (params.get("q") or [""])[0].strip()
+        city_value = (params.get("city") or [""])[0].strip()
+        status_value = (params.get("status") or [""])[0]
+        payment_min = (params.get("payment_min") or [""])[0].strip()
+        payment_max = (params.get("payment_max") or [""])[0].strip()
+        job_filter = (params.get("filter") or [""])[0]
+        if q_value:
+            summary.append({"label": _("Запрос"), "value": q_value})
+        if city_value:
+            summary.append({"label": _("Город"), "value": city_value})
+        if status_value == "open":
+            summary.append({"label": _("Статус"), "value": _("Открытые")})
+        elif status_value == "completed":
+            summary.append({"label": _("Статус"), "value": _("Завершённые")})
+        if payment_min:
+            summary.append({"label": _("Оплата от"), "value": "%s ₽" % payment_min})
+        if payment_max:
+            summary.append({"label": _("Оплата до"), "value": "%s ₽" % payment_max})
+        skills = [
+            skill_names.get(str(value), str(value))
+            for value in params.get("skills", []) if value
+        ]
+        if skills:
+            summary.append({"label": _("Навыки"), "value": ", ".join(skills)})
+        if job_filter == "new":
+            summary.append({"label": _("Тип"), "value": _("Новые")})
+        elif job_filter == "applied":
+            summary.append({"label": _("Тип"), "value": _("Откликнулся")})
+        searches.append({
+            "id": item["id"],
+            "name": item.get("name") or _("Мой поиск"),
+            "url": reverse("core:jobs") + "?" + str(item["query"]),
+            "query": item["query"],
+            "notify": item.get("notify", True) is not False,
+            "summary": summary,
+        })
+    return render(request, "core/my_searches.html", {"searches": searches})
+
+
+@login_required
 @require_POST
 @rate_limit_write(limit=20, window=60, redirect_to="/jobs")
 def delete_search(request, search_id):
@@ -263,6 +326,11 @@ def delete_search(request, search_id):
     ][:10]
     Profile.objects.filter(pk=request.user.pk).update(notification_prefs=prefs)
     messages.info(request, _("Сохранённый поиск удалён."))
+    next_url = request.POST.get("next") or ""
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        return redirect(next_url)
     return redirect("core:jobs")
 
 

@@ -64,7 +64,10 @@
         </form>
     </div>
     <div class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 mt-4">
-        <h2 class="text-base font-bold text-neutral-800 mb-1">{% translate "Сохранённые поиски" %}</h2>
+        <div class="flex items-center justify-between gap-2 mb-1">
+            <h2 class="text-base font-bold text-neutral-800">{% translate "Сохранённые поиски" %}</h2>
+            <a href="{% url 'core:my_searches' %}" class="text-xs font-medium text-primary-600 hover:text-primary-700">{% translate "Все поиски" %} →</a>
+        </div>
         <p class="text-sm text-neutral-500 mb-3">{% translate "Частота новых заданий по ним настраивается выше, в блоке «Новые задания по сохранённым поискам». Колокольчик отключает уведомления по конкретному поиску." %}</p>
         {% for item in saved_searches %}
         <div class="flex items-center justify-between gap-2 py-2 border-b border-neutral-100 last:border-0">

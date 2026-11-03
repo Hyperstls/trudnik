@@ -1,0 +1,65 @@
+{% extends "core/base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Сохранённые поиски" %} — Трудник{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto px-0 py-4 fade-in">
+    <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+        <div>
+            <h1 class="text-xl font-bold text-neutral-900">{% translate "Сохранённые поиски" %}</h1>
+            <p class="text-sm text-neutral-500 mt-1">{% translate "Фильтры, которые вы сохранили на странице «Задания». По ним приходят новые задания, если включены уведомления." %}</p>
+        </div>
+        <a href="{% url 'core:jobs' %}" class="inline-flex items-center px-4 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold">
+            {% translate "К заданиям" %}
+        </a>
+    </div>
+
+    {% if searches %}
+    <div class="grid gap-2">
+        {% for item in searches %}
+        <article class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                    <a href="{{ item.url }}" class="text-base font-semibold text-neutral-900 hover:text-primary-700">{{ item.name }}</a>
+                    {% if item.summary %}
+                    <div class="flex flex-wrap gap-1.5 mt-2">
+                        {% for part in item.summary %}
+                        <span class="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-600">
+                            {{ part.label }}: <strong class="font-medium text-neutral-800">{{ part.value }}</strong>
+                        </span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <form method="post" action="{% url 'core:toggle_search' item.id %}">{% csrf_token %}
+                        <input type="hidden" name="next" value="{% url 'core:my_searches' %}">
+                        <button type="submit" class="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-neutral-200 {% if item.notify %}text-primary-600{% else %}text-neutral-400{% endif %} hover:bg-neutral-50" title="{% if item.notify %}{% translate "Выключить уведомления" %}{% else %}{% translate "Включить уведомления" %}{% endif %}" aria-label="{% if item.notify %}{% translate "Выключить уведомления по поиску" %}{% else %}{% translate "Включить уведомления по поиску" %}{% endif %} «{{ item.name }}»">
+                            {% if item.notify %}{% include "core/_ui_icon.html" with name="bell" class_name="h-4 w-4" %}{% else %}{% include "core/_ui_icon.html" with name="bell-off" class_name="h-4 w-4" %}{% endif %}
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'core:delete_search' item.id %}" data-confirm="{% translate 'Удалить сохранённый поиск?' %}">{% csrf_token %}
+                        <input type="hidden" name="next" value="{% url 'core:my_searches' %}">
+                        <button type="submit" class="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-neutral-200 text-neutral-500 hover:text-red-600 hover:bg-red-50" title="{% translate "Удалить" %}" aria-label="{% translate "Удалить сохранённый поиск" %} «{{ item.name }}»">
+                            ×
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <p class="text-xs text-neutral-400 mt-2">
+                {% if item.notify %}{% translate "Уведомления включены" %}{% else %}{% translate "Уведомления выключены" %}{% endif %}
+            </p>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="flex flex-col items-center justify-center py-16 text-center rounded-2xl border border-dashed border-neutral-300 bg-white">
+        <div class="w-14 h-14 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
+            <svg aria-hidden="true" class="h-7 w-7 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <p class="text-neutral-700 font-medium">{% translate "Сохранённых поисков нет" %}</p>
+        <p class="text-sm text-neutral-500 mt-1">{% translate "Откройте задания, настройте фильтры и нажмите «Сохранить поиск»." %}</p>
+        <a href="{% url 'core:jobs' %}" class="mt-4 inline-flex items-center px-4 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold">{% translate "Перейти к заданиям" %}</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -13,10 +13,10 @@ class E2ESeedTests(TestCase):
 
         self.assertTrue(Profile.objects.filter(email="e2e-employer@example.com").exists())
         self.assertTrue(Profile.objects.filter(email="e2e-worker@example.com").exists())
-        job = Job.objects.get(work_type="E2E Уборка")
+        job = Job.objects.get(work_type="E2E Seed Задача")
         self.assertEqual(job.employer.email, "e2e-employer@example.com")
         self.assertEqual(job.status, Job.Status.OPEN)
 
         call_command("e2e_seed", "--cleanup", stdout=StringIO())
         self.assertFalse(Profile.objects.filter(email__startswith="e2e-").exists())
-        self.assertFalse(Job.objects.filter(work_type="E2E Уборка").exists())
+        self.assertFalse(Job.objects.filter(work_type="E2E Seed Задача").exists())

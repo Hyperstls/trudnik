@@ -3804,3 +3804,37 @@ msgstr "tags"
 
 msgid "Пользователь"
 msgstr "User"
+
+msgid "Все поиски"
+msgstr "All searches"
+
+msgid "Запрос"
+msgstr "Query"
+
+msgid "Мои поиски"
+msgstr "My searches"
+
+msgid "Оплата до"
+msgstr "Pay up to"
+
+msgid "Откройте задания, настройте фильтры и нажмите «Сохранить поиск»."
+msgstr "Open jobs, set filters and tap “Save search”."
+
+msgid "Перейти к заданиям"
+msgstr "Go to jobs"
+
+msgid "Сохранённых поисков нет"
+msgstr "No saved searches"
+
+msgid "Тип"
+msgstr "Type"
+
+msgid "Удалить сохранённый поиск?"
+msgstr "Delete this saved search?"
+
+msgid ""
+"Фильтры, которые вы сохранили на странице «Задания». По ним приходят новые "
+"задания, если включены уведомления."
+msgstr ""
+"Filters you saved on the Jobs page. New jobs arrive for them when "
+"notifications are enabled."
