@@ -86,11 +86,25 @@
                         {% if w.pk in reliable_worker_ids %}<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Надёжный</span>{% endif %}
                         {% if w.pk in invited_worker_ids %}{% include "core/_ui_badge.html" with label="Приглашён" variant="primary" %}{% endif %}
                         {% if w.pk in pending_invited_worker_ids %}
-                        <form method="post" action="{% url 'core:worker_invitations_revoke' w.pk %}" class="inline">
-                            {% csrf_token %}
-                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                            <button type="submit" class="text-xs text-red-600 hover:underline" data-confirm="Отозвать все приглашения этому труднику?">Отозвать</button>
-                        </form>
+                        <details class="relative action-menu">
+                            <summary class="text-xs text-red-600 hover:underline">Отозвать ▾</summary>
+                            <div class="action-menu-panel" role="group" aria-label="Отозвать приглашения">
+                                {% with invs=pending_invitations_by_worker|get_item:w.pk %}
+                                {% for inv in invs %}
+                                <form method="post" action="{% url 'core:invitation_revoke' inv.pk %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button type="submit" class="action-menu-item w-full text-left text-xs">{% if inv.job %}{{ inv.job.work_type|default:"Задание" }} · {{ inv.job.date_time|date:"d.m" }}{% else %}Приглашение{% endif %}</button>
+                                </form>
+                                {% endfor %}
+                                <form method="post" action="{% url 'core:worker_invitations_revoke' w.pk %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button type="submit" class="action-menu-item w-full text-left text-xs text-red-600" data-confirm="Отозвать все приглашения этому труднику?">Отозвать все</button>
+                                </form>
+                                {% endwith %}
+                            </div>
+                        </details>
                         {% endif %}
                     </div>
                     <div class="flex items-center gap-0.5 mt-0.5">

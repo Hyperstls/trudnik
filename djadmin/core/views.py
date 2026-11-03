@@ -630,6 +630,7 @@ def workers_list(request):
     reliable_worker_ids = set()
     invited_worker_ids = set()
     pending_invited_worker_ids = set()
+    pending_invitations_by_worker = {}
     favorite_worker_ids = set()
     my_open_jobs = []
     if request.user.is_authenticated:
@@ -654,15 +655,21 @@ def workers_list(request):
             if accepted.get(wid, 0) >= 10 and rejected.get(wid, 0) == 0
         }
         if request.user.is_authenticated:
-            invitation_rows = Invitation.objects.filter(
-                employer=request.user,
-                worker_id__in=worker_ids,
-                status__in=("pending", "accepted"),
-            ).values_list("worker_id", "status")
-            invited_worker_ids = {wid for wid, _status in invitation_rows}
+            invitation_rows = list(
+                Invitation.objects.filter(
+                    employer=request.user,
+                    worker_id__in=worker_ids,
+                    status__in=("pending", "accepted"),
+                ).select_related("job")
+            )
+            invited_worker_ids = {inv.worker_id for inv in invitation_rows}
             pending_invited_worker_ids = {
-                wid for wid, status in invitation_rows if status == "pending"
+                inv.worker_id for inv in invitation_rows
+                if inv.status == Invitation.Status.PENDING
             }
+            for inv in invitation_rows:
+                if inv.status == Invitation.Status.PENDING:
+                    pending_invitations_by_worker.setdefault(inv.worker_id, []).append(inv)
     active_filter_count = sum(bool(value) for value in (
         q, skill_ids, rating_min, payment_from, payment_to,
         request.GET.get("sort") not in (None, "", "rating"), invited_only,
@@ -680,6 +687,7 @@ def workers_list(request):
         "reliable_worker_ids": reliable_worker_ids,
         "invited_worker_ids": invited_worker_ids,
         "pending_invited_worker_ids": pending_invited_worker_ids,
+        "pending_invitations_by_worker": pending_invitations_by_worker,
         "favorite_worker_ids": favorite_worker_ids,
         "my_open_jobs": my_open_jobs,
     })

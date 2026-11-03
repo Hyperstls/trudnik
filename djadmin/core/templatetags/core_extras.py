@@ -6,6 +6,15 @@ register = template.Library()
 
 
 @register.filter
+def get_item(mapping, key):
+    """Safe dict lookup in templates (UUID keys are common in Trudnik)."""
+    try:
+        return mapping.get(key)
+    except AttributeError:
+        return None
+
+
+@register.filter
 def absurl(url):
     """/uploads/x → https://<WORKER_SITE_URL>/uploads/x (файлы в volume Flask)."""
     if not url:

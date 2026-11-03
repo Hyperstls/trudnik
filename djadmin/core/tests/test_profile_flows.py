@@ -251,10 +251,12 @@ class InvitationTests(TestCase):
 
     def test_workers_page_shows_revoke_action_for_pending(self):
         self._invite()
+        inv = Invitation.objects.get(job=self.job, worker=self.worker)
         response = self.client.get(reverse("core:workers") + "?q=ZZZ")
         self.assertContains(
             response, reverse("core:worker_invitations_revoke", args=[self.worker.pk])
         )
+        self.assertContains(response, reverse("core:invitation_revoke", args=[inv.pk]))
 
     def test_worker_detail_lists_pending_invitation_with_revoke(self):
         self._invite()
