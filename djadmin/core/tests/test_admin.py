@@ -66,6 +66,14 @@ class AdminAccessTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertTrue(SitePage.objects.filter(pk="faq-admin-test").exists())
 
+    def test_sitepage_change_is_previewable_and_slug_is_readonly(self):
+        SitePage.objects.create(slug="privacy", title="Политика", content="<p>ok</p>")
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("admin:core_sitepage_change", args=["privacy"]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "/privacy")
+        self.assertNotContains(response, 'name="slug"')
+
     def test_dashboard_ok(self):
         self.client.force_login(self.admin)
         response = self.client.get("/admin/dashboard/")

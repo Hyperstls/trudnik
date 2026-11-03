@@ -2,8 +2,11 @@
 
 Паритет Flask: разбор жалоб — RPC review_complaint (block | dismiss) с авто-заморозкой.
 """
+from urllib.parse import quote
+
 from django.contrib import messages
 from django.contrib.admin import ModelAdmin
+from django.urls import reverse
 
 from core.audit import AuditAdminMixin, log_admin_action
 from core.models import (
@@ -159,6 +162,26 @@ class ReceiptAdmin(AuditAdminMixin, ModelAdmin):
 class SitePageAdmin(AuditAdminMixin, ModelAdmin):
     list_display = ("slug", "title", "updated_at")
     search_fields = ("slug", "title", "content")
+    save_on_top = True
+    fieldsets = (
+        (None, {
+            "fields": ("slug", "title", "content"),
+            "description": "HTML-содержимое. После сохранения откройте «Посмотреть на сайте», "
+                           "чтобы проверить вёрстку и текст на публичной странице.",
+        }),
+        ("Служебное", {"fields": ("updated_at",), "classes": ("collapse",)}),
+    )
+
+    def get_readonly_fields(self, request, obj=None):
+        # slug — первичный ключ: на изменении не даём случайно переименовать страницу.
+        return ("slug", "updated_at") if obj else ("updated_at",)
+
+    def view_on_site(self, obj):
+        if obj.slug == "faq":
+            return reverse("core:faq")
+        if obj.slug in ("terms", "privacy", "safety"):
+            return reverse("core:" + obj.slug)
+        return "/" + quote(obj.slug)
 
 
 class MonetizationSettingAdmin(AuditAdminMixin, ModelAdmin):
