@@ -1626,3 +1626,11 @@ body.jobs-map-lock {
         padding: 0 0.6rem;
     }
 }
+
+
+/* Header on narrow phones: keep every action visible; the logo mark remains. */
+@media (max-width: 420px) {
+    .header-brand-name {
+        display: none;
+    }
+}
