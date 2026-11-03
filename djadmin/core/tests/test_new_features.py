@@ -1,12 +1,14 @@
 """Email change, employer card, support and branded error pages (J144)."""
+from datetime import timedelta
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.template.loader import render_to_string
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
-from django.core.cache import cache
+from django.utils import timezone
 
-from core.models import Application, EmployerDetail, Rating, Profile
+from core.models import Application, EmployerDetail, Job, Rating, Profile
 from core.tests.test_auth import make_profile
 from core.tests.test_flows import make_job
 from core.tokens import generate_email_change_token
@@ -182,6 +184,36 @@ class WorkerCompletionTests(TestCase):
         self.client.post(reverse("core:worker_confirm_completion", args=[self.app.pk]))
         self.app.refresh_from_db()
         self.assertIsNone(self.app.worker_completed_at)
+
+
+class RemoteJobTests(TestCase):
+    def setUp(self):
+        self.employer = make_profile("remote-employer@example.com", role="employer")
+
+    def test_remote_filter_and_badge(self):
+        remote = make_job(self.employer, work_type="Remote ZZZ", is_remote=True)
+        make_job(self.employer, work_type="Office ZZZ", is_remote=False)
+        response = self.client.get(reverse("core:jobs") + "?remote=1")
+        self.assertContains(response, "Remote ZZZ")
+        self.assertNotContains(response, "Office ZZZ")
+        response = self.client.get(reverse("core:job_detail", args=[remote.pk]))
+        self.assertContains(response, "Удалённо")
+
+    def test_job_form_saves_remote_flag(self):
+        self.client.force_login(self.employer)
+        response = self.client.post(reverse("core:job_create"), {
+            "work_type": "Удалённая задача",
+            "organization_name": "Приход",
+            "detailed_description": "Можно выполнять из дома",
+            "city": "Москва",
+            "is_remote": "on",
+            "payment_amount": "1000",
+            "max_workers": "1",
+            "date_time": (timezone.now() + timedelta(days=3)).strftime("%Y-%m-%dT%H:%M"),
+        })
+        self.assertEqual(response.status_code, 302)
+        job = Job.objects.get(work_type="Удалённая задача")
+        self.assertTrue(job.is_remote)
 
 
 class SupportTests(TestCase):

@@ -9,7 +9,7 @@ INPUT_CLS = "w-full border border-gray-300 rounded px-3 py-2 bg-white"
 
 JOB_FIELDS = (
     "work_type", "organization_name", "org_description", "object_description",
-    "detailed_description", "address", "city", "payment_amount", "max_workers",
+    "detailed_description", "address", "city", "is_remote", "payment_amount", "max_workers",
     "date_time", "lat", "lng",
 )
 
@@ -18,6 +18,10 @@ class JobForm(forms.ModelForm):
     skills = forms.ModelMultipleChoiceField(
         queryset=Skill.objects.order_by("sort_order", "name"),
         widget=forms.CheckboxSelectMultiple, required=False, label="Навыки",
+    )
+    is_remote = forms.BooleanField(
+        label="Удалённая работа", required=False,
+        help_text="Можно выполнять из любого города; адрес и карта необязательны.",
     )
 
     class Meta:
@@ -31,6 +35,7 @@ class JobForm(forms.ModelForm):
             "detailed_description": forms.Textarea(attrs={"class": INPUT_CLS, "rows": 4}),
             "address": forms.TextInput(attrs={"class": INPUT_CLS}),
             "city": forms.TextInput(attrs={"class": INPUT_CLS}),
+            "is_remote": forms.CheckboxInput(attrs={"class": "rounded border-neutral-300 text-primary-600 focus:ring-primary-500"}),
             "payment_amount": forms.NumberInput(attrs={"class": INPUT_CLS, "min": 0, "step": "0.01"}),
             "max_workers": forms.NumberInput(attrs={"class": INPUT_CLS, "min": 1}),
             "date_time": forms.DateTimeInput(attrs={"class": INPUT_CLS, "type": "datetime-local"}),

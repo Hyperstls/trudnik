@@ -12,7 +12,7 @@
     var groups = {
         1: ['work_type', 'organization_name', 'org_description', 'object_description', 'detailed_description'],
         2: ['payment_amount', 'max_workers', 'date_time'],
-        3: ['address', 'city']
+        3: ['is_remote', 'address', 'city']
     };
     var titles = { 1: 'Описание', 2: 'Оплата и срок', 3: 'Адрес и карта' };
 

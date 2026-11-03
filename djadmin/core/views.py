@@ -293,6 +293,9 @@ def jobs_list(request):
     status = request.GET.get("status") or ""
     if status in PUBLIC_STATUSES:
         qs = qs.filter(status=status)
+    remote_only = request.GET.get("remote") == "1"
+    if remote_only:
+        qs = qs.filter(is_remote=True)
     selected_skills = []
     raw_skills = []
     for value in request.GET.getlist("skills"):
@@ -423,7 +426,7 @@ def jobs_list(request):
     if request.GET.get("geo") == "1" and geo_radius is not None:
         radius_raw = "%g" % geo_radius
     active_filter_count = sum(bool(value) for value in (
-        q, city, status, skill_ids, payment_min, payment_max, job_filter, geo_active,
+        q, city, status, skill_ids, payment_min, payment_max, job_filter, geo_active, remote_only,
     ))
     geo_center = None
     if geo_active:
@@ -436,6 +439,7 @@ def jobs_list(request):
         }
     return render(request, "core/jobs_list.html", {
         "page": page, "q": q, "city": city, "status": status,
+        "remote_only": remote_only,
         "payment_min": payment_min, "payment_max": payment_max, "sort": sort,
         "sort_options": (("newest", "Новые"), ("price_asc", "Дешевле"), ("price_desc", "Дороже"))
         + ((("distance", "Ближе"),) if geo_active else ()),

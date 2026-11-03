@@ -258,6 +258,7 @@ class Job(models.Model):
     work_type = models.CharField("тип работ", max_length=100, default="")
     address = models.CharField("адрес", max_length=500, null=True, blank=True)
     city = models.CharField("город", max_length=255, null=True, blank=True)
+    is_remote = models.BooleanField("удалённая работа", default=False)
     lat = models.FloatField("широта", null=True, blank=True)
     lng = models.FloatField("долгота", null=True, blank=True)
     date_time = models.DateTimeField("дата/время работ")

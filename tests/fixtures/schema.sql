@@ -2202,6 +2202,7 @@ CREATE TABLE public.jobs (
     promoted_until timestamp with time zone,
     photo_urls text[] DEFAULT '{}'::text[] NOT NULL,
     geom public.geometry(Point,4326),
+    is_remote boolean DEFAULT false NOT NULL,
     CONSTRAINT jobs_current_workers_check CHECK (((current_workers >= 0) AND (current_workers <= max_workers))),
     CONSTRAINT jobs_max_workers_check CHECK ((max_workers >= 1)),
     CONSTRAINT jobs_payment_amount_check CHECK ((payment_amount >= (0)::numeric)),
@@ -3244,6 +3245,13 @@ CREATE INDEX idx_jobs_geom ON public.jobs USING gist (geom);
 --
 
 CREATE INDEX idx_jobs_promoted ON public.jobs USING btree (is_promoted, promoted_until DESC) WHERE (is_promoted = true);
+
+
+--
+-- Name: idx_jobs_remote_open; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_jobs_remote_open ON public.jobs USING btree (is_remote) WHERE ((status)::text = 'open'::text);
 
 
 --
