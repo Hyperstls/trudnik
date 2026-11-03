@@ -10,6 +10,8 @@ python-dotenv==1.2.2
 itsdangerous==2.2.0
 redis==8.0.0
 celery==5.6.3
+# kombu 5.7 redis transport imports packaging.version (not a declared dep)
+packaging==26.3
 pywebpush==2.3.0
 channels==4.2.2
 channels-redis==4.3.0
