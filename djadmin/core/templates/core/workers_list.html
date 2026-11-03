@@ -86,6 +86,7 @@
                     </h3>
                     <div class="flex flex-wrap items-center gap-1 mt-1">
                         {% if w.pk in reliable_worker_ids %}<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{% translate "Надёжный" %}</span>{% endif %}
+                        {% with done=completed_by_id|get_item:w.pk %}{% if done %}<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-neutral-100 text-neutral-600">{% translate "Завершено:" %} {{ done }}</span>{% endif %}{% endwith %}
                         {% if w.pk in invited_worker_ids %}{% translate "Приглашён" as t_invited %}{% include "core/_ui_badge.html" with label=t_invited variant="primary" %}{% endif %}
                         {% if w.pk in pending_invited_worker_ids %}
                         <details class="relative action-menu">
@@ -110,8 +111,8 @@
                         {% endif %}
                     </div>
                     <div class="flex items-center gap-0.5 mt-0.5">
-                        {% for i in "12345" %}{% if forloop.counter0 < w.rating|default:0 %}{% include "core/_ui_icon.html" with name="star" class_name="h-3 w-3 text-warning" %}{% else %}{% include "core/_ui_icon.html" with name="star-outline" class_name="h-3 w-3 text-neutral-300" %}{% endif %}{% endfor %}
-                        <span class="text-xs text-neutral-400 ml-1">({{ w.total_reviews|default:0 }})</span>
+                        {% if w.worker_ratings_count %}{% for i in "12345" %}{% if forloop.counter0 < w.worker_rating|default:0 %}{% include "core/_ui_icon.html" with name="star" class_name="h-3 w-3 text-warning" %}{% else %}{% include "core/_ui_icon.html" with name="star-outline" class_name="h-3 w-3 text-neutral-300" %}{% endif %}{% endfor %}
+                        <span class="text-xs text-neutral-400 ml-1">({{ w.worker_ratings_count }})</span>{% else %}<span class="text-xs text-neutral-400">{% translate "Пока нет оценок" %}</span>{% endif %}
                     </div>
                     {% if w.city %}<p class="text-xs text-neutral-500 mt-0.5">{{ w.city }}</p>{% endif %}
                 </div>

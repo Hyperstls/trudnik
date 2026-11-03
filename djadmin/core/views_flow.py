@@ -39,7 +39,7 @@ from .anti_fraud import (
     allow_application, allow_job_post, assess_job,
 )
 from .forms import INPUT_CLS, JOB_FIELDS, JobForm, LoginForm
-from .models import Application, Job, JobFavorite, JobPhoto, Skill
+from .models import Application, Job, JobFavorite, JobPhoto, Rating, Skill
 from .notifications import enqueue_notification
 from .ratelimit import RateLimitExceeded, RateLimitUnavailable, enforce_ip_limit, rate_limit_write
 from .rpc import call_rpc, sync_job_skills_raw
@@ -422,9 +422,23 @@ def my_applications(request):
         if skill_ids:
             qs = qs.filter(job__job_skills__skill_id__in=skill_ids).distinct()
     page = Paginator(qs.order_by("-created_at"), 20).get_page(request.GET.get("page"))
+    apps = list(page.object_list)
+    if apps:
+        job_ids = {app.job_id for app in apps}
+        rated_ids = {
+            app.worker_id if tab == "received" else app.job.employer_id
+            for app in apps
+        }
+        ratings = Rating.objects.filter(
+            rater_user=request.user, job_id__in=job_ids, rated_user_id__in=rated_ids,
+        )
+        by_pair = {(rating.job_id, rating.rated_user_id): rating for rating in ratings}
+        for app in apps:
+            rated_id = app.worker_id if tab == "received" else app.job.employer_id
+            app.my_rating = by_pair.get((app.job_id, rated_id))
     return render(request, "core/my_applications.html", {
         "page": page,
-        "apps": page.object_list,
+        "apps": apps,
         "tab": tab,
         "skills": list(Skill.objects.order_by("sort_order", "name")),
         "selected_skills": [str(skill_id) for skill_id in skill_ids],
@@ -471,10 +485,16 @@ def job_applicants(request, job_id):
     job = Job.objects.filter(pk=job_id).first()
     if job is None or (job.employer_id != request.user.pk and request.user.role != "admin"):
         raise Http404("Задание не найдено")
-    apps = (
+    apps = list(
         Application.objects.filter(job=job)
-        .select_related("worker").order_by("-created_at")
+        .select_related("job", "worker").order_by("-created_at")
     )
+    existing = {
+        rating.rated_user_id: rating
+        for rating in Rating.objects.filter(rater_user=request.user, job=job)
+    }
+    for app in apps:
+        app.my_rating = existing.get(app.worker_id)
     return render(request, "core/job_applicants.html", {"job": job, "apps": apps})
 
 

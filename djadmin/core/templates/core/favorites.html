@@ -81,7 +81,7 @@
                     {% endif %}
                     <div class="min-w-0 flex-1">
                         <a href="{% url 'core:worker_detail' f.target.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ f.target.full_name|default:default_worker_label }}</a>
-                        <p class="text-sm text-neutral-500 mt-0.5">{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline text-warning" %} {{ f.target.rating|default:0|floatformat:1 }} ({{ f.target.total_reviews|default:0 }}){% if f.target.city %} · {{ f.target.city }}{% endif %}</p>
+                        <p class="text-sm text-neutral-500 mt-0.5">{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline text-warning" %} {% if f.target.role == 'employer' %}{% if f.target.employer_ratings_count %}{{ f.target.employer_rating|floatformat:1 }} ({{ f.target.employer_ratings_count }}){% else %}—{% endif %}{% else %}{% if f.target.worker_ratings_count %}{{ f.target.worker_rating|floatformat:1 }} ({{ f.target.worker_ratings_count }}){% else %}—{% endif %}{% endif %}{% if f.target.city %} · {{ f.target.city }}{% endif %}</p>
                         {% if f.target.desired_payment %}<p class="text-sm text-primary-600 font-medium mt-0.5">{% translate "от" %} {{ f.target.desired_payment }} ₽</p>{% endif %}
                     </div>
                     <form method="post" action="{% url 'core:people_favorite_toggle' f.target.pk %}">{% csrf_token %}
@@ -132,7 +132,7 @@
                 <input type="checkbox" name="ids" value="{{ f.target.pk }}" form="favorites-employers-bulk" class="mt-1 rounded border-neutral-300 text-primary-600 focus:ring-primary-500 shrink-0" aria-label="{% translate 'Выбрать работодателя' %} {{ f.target.full_name }}">
                 <div class="min-w-0 flex-1">
                     <a href="{% url 'core:employer_detail' f.target.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ f.target.full_name|default:default_employer_label }}</a>
-                    <p class="text-sm text-neutral-500 mt-0.5">{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline text-warning" %} {{ f.target.rating|default:0|floatformat:1 }} ({{ f.target.total_reviews|default:0 }}){% if f.target.city %} · {{ f.target.city }}{% endif %}</p>
+                    <p class="text-sm text-neutral-500 mt-0.5">{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline text-warning" %} {% if f.target.role == 'employer' %}{% if f.target.employer_ratings_count %}{{ f.target.employer_rating|floatformat:1 }} ({{ f.target.employer_ratings_count }}){% else %}—{% endif %}{% else %}{% if f.target.worker_ratings_count %}{{ f.target.worker_rating|floatformat:1 }} ({{ f.target.worker_ratings_count }}){% else %}—{% endif %}{% endif %}{% if f.target.city %} · {{ f.target.city }}{% endif %}</p>
                     {% if f.target.verification_status == 'approved' %}<span class="inline-flex items-center gap-0.5 mt-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-[11px] font-semibold">{% include "core/_ui_icon.html" with name="check" class_name="h-3 w-3" %} {% translate "Проверен" %}</span>{% endif %}
                 </div>
                 <form method="post" action="{% url 'core:people_favorite_toggle' f.target.pk %}">{% csrf_token %}

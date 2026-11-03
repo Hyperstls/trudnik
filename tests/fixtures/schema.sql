@@ -1035,100 +1035,67 @@ CREATE FUNCTION public.rate_user_atomic(p_job_id uuid, p_rater_user_id uuid, p_r
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
     AS $$
-DECLARE
-    v_new_avg numeric(3,1);
-    v_new_count int;
 BEGIN
-    -- 1. Валидация рейтинга
     IF p_rating < 1 OR p_rating > 5 THEN
         RETURN jsonb_build_object(
-            'success', false,
-            'error', 'Рейтинг должен быть от 1 до 5',
-            'code', 'invalid_rating'
+            'success', false, 'error', 'Рейтинг должен быть от 1 до 5', 'code', 'invalid_rating'
         );
     END IF;
 
-    -- 2. Нельзя оценить самого себя
     IF p_rater_user_id = p_rated_user_id THEN
         RETURN jsonb_build_object(
-            'success', false,
-            'error', 'Нельзя оценить самого себя',
-            'code', 'self_rating'
+            'success', false, 'error', 'Нельзя оценить самого себя', 'code', 'self_rating'
         );
     END IF;
 
-    -- 3. Проверить, что задание существует и завершено
+    IF NOT EXISTS (
+        SELECT 1 FROM public.jobs WHERE id = p_job_id AND status = 'completed'
+    ) THEN
+        RETURN jsonb_build_object(
+            'success', false, 'error', 'Оценить можно только завершённое задание', 'code', 'job_not_completed'
+        );
+    END IF;
+
+    -- Both the employer and an accepted worker are valid participants.
     IF NOT EXISTS (
         SELECT 1 FROM public.jobs
-        WHERE id = p_job_id AND status = 'completed'
+        WHERE id = p_job_id AND employer_id = p_rater_user_id
+    ) AND NOT EXISTS (
+        SELECT 1 FROM public.applications
+        WHERE job_id = p_job_id AND worker_id = p_rater_user_id AND status = 'accepted'
     ) THEN
         RETURN jsonb_build_object(
-            'success', false,
-            'error', 'Оценить можно только завершённое задание',
-            'code', 'job_not_completed'
+            'success', false, 'error', 'Вы не участвовали в этом задании', 'code', 'not_participant'
         );
     END IF;
 
-    -- 4. Проверка участия оценивающего в задании
     IF NOT EXISTS (
+        SELECT 1 FROM public.jobs
+        WHERE id = p_job_id AND employer_id = p_rated_user_id
+    ) AND NOT EXISTS (
         SELECT 1 FROM public.applications
-        WHERE job_id = p_job_id
-        AND worker_id = p_rater_user_id
-        AND status = 'accepted'
+        WHERE job_id = p_job_id AND worker_id = p_rated_user_id AND status = 'accepted'
     ) THEN
         RETURN jsonb_build_object(
-            'success', false,
-            'error', 'Вы не участвовали в этом задании',
-            'code', 'not_participant'
-        );
-    END IF;
-
-    -- 5. Проверка участия оцениваемого в задании
-    IF NOT EXISTS (
-        SELECT 1 FROM public.applications
-        WHERE job_id = p_job_id
-        AND worker_id = p_rated_user_id
-        AND status = 'accepted'
-    ) THEN
-        RETURN jsonb_build_object(
-            'success', false,
-            'error', 'Оцениваемый пользователь не участвовал в этом задании',
+            'success', false, 'error', 'Оцениваемый пользователь не участвовал в этом задании',
             'code', 'rated_not_participant'
         );
     END IF;
 
-    -- 6. Проверить, что оцениваемый пользователь существует
     IF NOT EXISTS (
         SELECT 1 FROM public.profiles WHERE id = p_rated_user_id
     ) THEN
         RETURN jsonb_build_object(
-            'success', false,
-            'error', 'Оцениваемый пользователь не найден',
-            'code', 'user_not_found'
+            'success', false, 'error', 'Оцениваемый пользователь не найден', 'code', 'user_not_found'
         );
     END IF;
 
-    -- 7. UPSERT оценки (одна оценка на пару оценщик–оцениваемый в рамках задания)
     INSERT INTO public.ratings (
-        job_id,
-        rater_user_id,
-        rated_user_id,
-        rating,
-        comment,
-        rating_type,
-        target_type,
-        created_at,
-        updated_at
+        job_id, rater_user_id, rated_user_id, rating, comment,
+        rating_type, target_type, created_at, updated_at
     ) VALUES (
-        p_job_id,
-        p_rater_user_id,
-        p_rated_user_id,
-        p_rating,
-        p_comment,
-        p_rating_type,
-        p_target_type,
-        now(),
-        now()
+        p_job_id, p_rater_user_id, p_rated_user_id, p_rating, p_comment,
+        p_rating_type, p_target_type, now(), now()
     )
     ON CONFLICT (rater_user_id, job_id, rated_user_id)
     DO UPDATE SET
@@ -1136,26 +1103,7 @@ BEGIN
         comment = EXCLUDED.comment,
         updated_at = now();
 
-    -- 8. Пересчитать средний рейтинг и количество оценок для rated_user_id
-    SELECT
-        COALESCE(ROUND(AVG(rating)::numeric, 1), 0),
-        COUNT(*)::int
-    INTO v_new_avg, v_new_count
-    FROM public.ratings
-    WHERE rated_user_id = p_rated_user_id;
-
-    -- 9. Обновить профиль пользователя
-    UPDATE public.profiles
-    SET rating = v_new_avg,
-        ratings_count = v_new_count
-    WHERE id = p_rated_user_id;
-
-    RETURN jsonb_build_object(
-        'success', true,
-        'message', 'Оценка сохранена',
-        'new_avg_rating', v_new_avg,
-        'new_ratings_count', v_new_count
-    );
+    RETURN jsonb_build_object('success', true, 'message', 'Оценка сохранена');
 END;
 $$;
 
@@ -1170,28 +1118,43 @@ CREATE FUNCTION public.recompute_profile_rating() RETURNS trigger
     AS $$
 DECLARE
     v_rated_user_id uuid;
-    v_avg_rating numeric;
-    v_count integer;
+    v_worker_rating numeric;
+    v_worker_count integer;
+    v_employer_rating numeric;
+    v_employer_count integer;
+    v_all_rating numeric;
+    v_all_count integer;
 BEGIN
-    -- Определяем rated_user_id из NEW или OLD записи
     IF TG_OP = 'DELETE' THEN
         v_rated_user_id := OLD.rated_user_id;
     ELSE
         v_rated_user_id := NEW.rated_user_id;
     END IF;
-    
-    -- Пересчитываем средний рейтинг атомарно
-    SELECT COALESCE(ROUND(AVG(rating)::numeric, 1), 0), COUNT(*)::int
-    INTO v_avg_rating, v_count
+
+    SELECT
+        COALESCE(ROUND(AVG(rating) FILTER (WHERE target_type = 'worker')::numeric, 1), 0),
+        COUNT(*) FILTER (WHERE target_type = 'worker'),
+        COALESCE(ROUND(AVG(rating) FILTER (WHERE target_type = 'employer')::numeric, 1), 0),
+        COUNT(*) FILTER (WHERE target_type = 'employer'),
+        COALESCE(ROUND(AVG(rating)::numeric, 1), 0),
+        COUNT(*)
+    INTO v_worker_rating, v_worker_count, v_employer_rating, v_employer_count,
+         v_all_rating, v_all_count
     FROM public.ratings
-    WHERE rated_user_id = v_rated_user_id;
-    
-    -- Обновляем профиль
+    WHERE rated_user_id = v_rated_user_id
+      AND published_at IS NOT NULL
+      AND moderation_status = 'ok';
+
     UPDATE public.profiles
-    SET rating = v_avg_rating,
-        ratings_count = v_count
+    SET worker_rating = v_worker_rating,
+        worker_ratings_count = v_worker_count,
+        employer_rating = v_employer_rating,
+        employer_ratings_count = v_employer_count,
+        rating = v_all_rating,
+        ratings_count = v_all_count,
+        total_reviews = v_all_count
     WHERE id = v_rated_user_id;
-    
+
     IF TG_OP = 'DELETE' THEN
         RETURN OLD;
     ELSE
@@ -2362,6 +2325,10 @@ CREATE TABLE public.profiles (
     verified_at timestamp with time zone,
     worker_visibility boolean DEFAULT true NOT NULL,
     acquisition jsonb DEFAULT '{}'::jsonb NOT NULL,
+    worker_rating double precision DEFAULT 0 NOT NULL,
+    worker_ratings_count integer DEFAULT 0 NOT NULL,
+    employer_rating double precision DEFAULT 0 NOT NULL,
+    employer_ratings_count integer DEFAULT 0 NOT NULL,
     CONSTRAINT profiles_age_check CHECK (((age IS NULL) OR ((age >= 14) AND (age <= 120)))),
     CONSTRAINT profiles_email_check CHECK ((email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'::text)),
     CONSTRAINT profiles_inn_check CHECK (((inn IS NULL) OR (inn = ''::text) OR (inn ~ '^\d{10,12}$'::text))),
@@ -2404,6 +2371,22 @@ ALTER SEQUENCE public.push_subscriptions_id_seq OWNED BY public.push_subscriptio
 
 
 --
+-- Name: rating_reports; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.rating_reports (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    rating_id uuid NOT NULL,
+    reporter_id uuid NOT NULL,
+    reason text NOT NULL,
+    status text DEFAULT 'new'::text NOT NULL,
+    reviewed_by uuid,
+    reviewed_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: ratings; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2418,6 +2401,14 @@ CREATE TABLE public.ratings (
     comment text,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
+    published_at timestamp with time zone,
+    criteria jsonb DEFAULT '{}'::jsonb NOT NULL,
+    tags jsonb DEFAULT '[]'::jsonb NOT NULL,
+    reply text,
+    replied_at timestamp with time zone,
+    moderation_status text DEFAULT 'ok'::text NOT NULL,
+    moderation_reason text,
+    CONSTRAINT ratings_moderation_status_check CHECK ((moderation_status = ANY (ARRAY['ok'::text, 'review'::text, 'hidden'::text]))),
     CONSTRAINT ratings_rating_check CHECK (((rating >= 1) AND (rating <= 5))),
     CONSTRAINT ratings_rating_type_check CHECK (((rating_type)::text = ANY ((ARRAY['worker'::character varying, 'employer'::character varying])::text[]))),
     CONSTRAINT ratings_target_type_check CHECK (((target_type)::text = ANY ((ARRAY['worker'::character varying, 'employer'::character varying])::text[])))
@@ -2915,6 +2906,22 @@ ALTER TABLE ONLY public.push_subscriptions
 
 ALTER TABLE ONLY public.push_subscriptions
     ADD CONSTRAINT push_subscriptions_user_id_endpoint_key UNIQUE (user_id, endpoint);
+
+
+--
+-- Name: rating_reports rating_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rating_reports
+    ADD CONSTRAINT rating_reports_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: rating_reports rating_reports_rating_id_reporter_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rating_reports
+    ADD CONSTRAINT rating_reports_rating_id_reporter_id_key UNIQUE (rating_id, reporter_id);
 
 
 --
@@ -3487,6 +3494,27 @@ CREATE INDEX jobs_moderation_status_idx ON public.jobs USING btree (moderation_s
 
 
 --
+-- Name: rating_reports_status_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX rating_reports_status_idx ON public.rating_reports USING btree (status, created_at DESC);
+
+
+--
+-- Name: ratings_job_pair_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ratings_job_pair_idx ON public.ratings USING btree (job_id, rater_user_id, rated_user_id);
+
+
+--
+-- Name: ratings_public_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ratings_public_idx ON public.ratings USING btree (rated_user_id, target_type, published_at DESC) WHERE (published_at IS NOT NULL);
+
+
+--
 -- Name: user_activity_day_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3827,6 +3855,30 @@ ALTER TABLE ONLY public.user_skills
 
 ALTER TABLE ONLY public.user_skills
     ADD CONSTRAINT fk_user_skills_user_id FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+
+--
+-- Name: rating_reports rating_reports_rating_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rating_reports
+    ADD CONSTRAINT rating_reports_rating_id_fkey FOREIGN KEY (rating_id) REFERENCES public.ratings(id) ON DELETE CASCADE;
+
+
+--
+-- Name: rating_reports rating_reports_reporter_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rating_reports
+    ADD CONSTRAINT rating_reports_reporter_id_fkey FOREIGN KEY (reporter_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+
+--
+-- Name: rating_reports rating_reports_reviewed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rating_reports
+    ADD CONSTRAINT rating_reports_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
 
 
 --

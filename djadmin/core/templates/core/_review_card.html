@@ -1,0 +1,72 @@
+{% load i18n core_extras %}
+<article class="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+        <a href="{% url 'core:worker_detail' r.rater_user.pk %}" class="text-sm font-medium text-neutral-800 hover:text-primary-700">{{ r.rater_user.full_name|default:_("Пользователь") }}</a>
+        <span class="inline-flex items-center gap-0.5" aria-label="{% translate 'Оценка' %} {{ r.rating }} {% translate 'из' %} 5">
+            {% for i in "12345" %}{% if forloop.counter0 < r.rating %}{% include "core/_ui_icon.html" with name="star" class_name="h-4 w-4 text-warning" %}{% else %}{% include "core/_ui_icon.html" with name="star-outline" class_name="h-4 w-4 text-neutral-300" %}{% endif %}{% endfor %}
+        </span>
+    </div>
+
+    {% if r.job and r.job.status == 'completed' %}
+    <p class="mt-1 inline-flex items-center gap-1 text-xs font-medium text-green-700">
+        {% include "core/_ui_icon.html" with name="check" class_name="h-3 w-3" %} {% translate "Подтверждённая сделка" %}
+    </p>
+    {% endif %}
+
+    {% if r.criteria %}
+    <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-600">
+        {% for key, value in r.criteria.items %}
+        {% with label=review_criteria_labels|get_item:key %}
+        {% if label %}<span>{{ label }}: <strong>{{ value }}/5</strong></span>{% endif %}
+        {% endwith %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if r.tags %}
+    <div class="mt-2 flex flex-wrap gap-1.5">
+        {% for tag in r.tags %}
+        {% with label=review_tag_labels|get_item:tag %}
+        {% if label %}<span class="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-700">{{ label }}</span>{% endif %}
+        {% endwith %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if r.comment %}<p class="text-sm text-neutral-700 mt-2 whitespace-pre-line">{{ r.comment }}</p>{% endif %}
+
+    <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-400">
+        <span>{{ r.published_at|default:r.created_at|date:"d.m.Y" }}</span>
+        {% if r.job %}<a href="{% url 'core:job_detail' r.job.pk %}" class="text-primary-600 hover:text-primary-700 underline underline-offset-2">{% translate "К заданию" %}</a>{% endif %}
+        {% if r.rating_type == 'employer' %}<span>{% translate "От работодателя" %}</span>{% else %}<span>{% translate "От работника" %}</span>{% endif %}
+    </div>
+
+    {% if r.reply %}
+    <div class="mt-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+        <p class="text-xs font-semibold text-neutral-700">{% translate "Ответ:" %}</p>
+        <p class="text-sm text-neutral-700 mt-1 whitespace-pre-line">{{ r.reply }}</p>
+    </div>
+    {% endif %}
+
+    {% if request.user.is_authenticated and request.user.pk == r.rated_user_id %}
+    <details class="mt-3">
+        <summary class="text-xs font-medium text-primary-600 hover:text-primary-700 cursor-pointer">{% if r.reply %}{% translate "Изменить ответ" %}{% else %}{% translate "Ответить на отзыв" %}{% endif %}</summary>
+        <form method="post" action="{% url 'core:rating_reply' r.pk %}" class="mt-2 space-y-2">
+            {% csrf_token %}
+            <textarea name="reply" rows="2" maxlength="1000" required class="w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm" placeholder="{% translate 'Ваш ответ' %}">{{ r.reply|default:'' }}</textarea>
+            <button type="submit" class="inline-flex items-center px-3 h-9 rounded-xl bg-neutral-800 text-white text-xs font-semibold">{% translate "Сохранить ответ" %}</button>
+        </form>
+    </details>
+    {% endif %}
+
+    {% if request.user.is_authenticated and request.user.pk != r.rated_user_id and request.user.pk != r.rater_user_id %}
+    <details class="mt-2">
+        <summary class="text-xs font-medium text-neutral-500 hover:text-red-600 cursor-pointer">{% translate "Пожаловаться на отзыв" %}</summary>
+        <form method="post" action="{% url 'core:rating_report' r.pk %}" class="mt-2 space-y-2">
+            {% csrf_token %}
+            <textarea name="reason" rows="2" maxlength="1000" required class="w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm" placeholder="{% translate 'Что нарушает правила?' %}"></textarea>
+            <button type="submit" class="inline-flex items-center px-3 h-9 rounded-xl border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-50">{% translate "Отправить жалобу" %}</button>
+        </form>
+    </details>
+    {% endif %}
+</article>

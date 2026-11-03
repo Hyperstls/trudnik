@@ -78,7 +78,7 @@ class TrudnikAdminSite(AdminSite):
         from django.urls import reverse
         from django.utils import timezone
 
-        from core.models import Application, Job, Profile, UserReport
+        from core.models import Application, Job, Profile, Rating, RatingReport, UserReport
         from core.rpc import call_rpc
 
         stats, job_stats = {}, {}
@@ -98,6 +98,8 @@ class TrudnikAdminSite(AdminSite):
             "Отклики (сегодня)": Application.objects.filter(created_at__date=today).count(),
             "Жалобы в очереди": UserReport.objects.exclude(status="reviewed").count(),
             "Задания на модерации": Job.objects.filter(moderation_status="review").count(),
+            "Отзывы на модерации": Rating.objects.filter(moderation_status="review").count(),
+            "Жалобы на отзывы": RatingReport.objects.filter(status="new").count(),
             "Верификация на проверке": Profile.objects.filter(verification_status="pending").count(),
         }
         links = [
@@ -105,6 +107,8 @@ class TrudnikAdminSite(AdminSite):
             ("Задания", reverse("admin:core_job_changelist")),
             ("Отклики", reverse("admin:core_application_changelist")),
             ("Жалобы", reverse("admin:core_userreport_changelist")),
+            ("Отзывы", reverse("admin:core_rating_changelist")),
+            ("Жалобы на отзывы", reverse("admin:core_ratingreport_changelist")),
             ("Навыки", reverse("admin:core_skill_changelist")),
             ("Страницы", reverse("admin:core_sitepage_changelist")),
             ("Аудит", reverse("admin:core_auditlog_changelist")),

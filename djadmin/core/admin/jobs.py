@@ -211,10 +211,48 @@ class ApplicationAdmin(AuditAdminMixin, ModelAdmin):
 
 
 class RatingAdmin(AuditAdminMixin, ModelAdmin):
-    list_display = ("rated_user", "rater_user", "job", "rating", "rating_type", "created_at")
-    list_filter = ("rating", "rating_type")
+    list_display = (
+        "rated_user", "rater_user", "job", "rating", "rating_type", "target_type",
+        "moderation_status", "published_at", "created_at",
+    )
+    list_filter = ("rating", "rating_type", "target_type", "moderation_status", "created_at")
     raw_id_fields = ("rated_user", "rater_user", "job")
     search_fields = ("rated_user__full_name", "rater_user__full_name", "comment")
+    actions = ("action_moderation_approve", "action_moderation_hide")
+
+    def action_moderation_approve(self, request, queryset):
+        from django.utils import timezone
+
+        approved = 0
+        for rating in queryset:
+            Rating.objects.filter(pk=rating.pk).update(
+                moderation_status=Rating.ModerationStatus.OK,
+                moderation_reason=None,
+                published_at=rating.published_at or timezone.now(),
+            )
+            log_admin_action(request, "rating_approve", "ratings", rating.pk)
+            approved += 1
+        messages.info(request, "Одобрено отзывов: %d." % approved)
+
+    action_moderation_approve.short_description = "Отзывы: одобрить и опубликовать"
+
+    def action_moderation_hide(self, request, queryset):
+        hidden = 0
+        for rating in queryset:
+            Rating.objects.filter(pk=rating.pk).update(
+                moderation_status=Rating.ModerationStatus.HIDDEN,
+                moderation_reason="Скрыто модератором",
+            )
+            log_admin_action(request, "rating_hide", "ratings", rating.pk)
+            hidden += 1
+        messages.info(request, "Скрыто отзывов: %d." % hidden)
+
+    action_moderation_hide.short_description = "Отзывы: скрыть"
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:
+            return ("id", "created_at", "updated_at", "published_at", "rating_type", "target_type")
+        return ("id", "created_at", "updated_at", "published_at")
 
 
 class InvitationAdmin(AuditAdminMixin, ModelAdmin):

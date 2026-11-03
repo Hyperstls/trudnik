@@ -3560,3 +3560,247 @@ msgstr "Search this area"
 
 msgid "Свернуть карту"
 msgstr "Collapse map"
+
+msgid "(необязательно)"
+msgstr "(optional)"
+
+msgid "Аккуратно"
+msgstr "Neat"
+
+msgid "Без оценки"
+msgstr "No rating"
+
+msgid "Безопасные условия"
+msgstr "Safe conditions"
+
+msgid "Быстро отвечает"
+msgstr "Responds quickly"
+
+msgid "Вас оценили на %d из 5."
+msgstr "You received a %d out of 5 rating."
+
+msgid "Ваш ответ"
+msgstr "Your reply"
+
+msgid "Введите ответ."
+msgstr "Enter a reply."
+
+msgid "Доля завершений:"
+msgstr "Completion rate:"
+
+msgid "Жалоба на отзыв отправлена модератору."
+msgstr "Review report sent to moderation."
+
+msgid "Жалобы на отзывы"
+msgstr "Review reports"
+
+msgid "За 12 месяцев:"
+msgstr "Last 12 months:"
+
+msgid "Завершено:"
+msgstr "Completed:"
+
+msgid "Изменить ответ"
+msgstr "Edit reply"
+
+msgid "Изменить оценку"
+msgstr "Edit rating"
+
+msgid "К откликам"
+msgstr "Back to applications"
+
+msgid "Качество работы"
+msgstr "Quality of work"
+
+msgid "Коммуникация"
+msgstr "Communication"
+
+msgid "Мало данных"
+msgstr "Limited data"
+
+msgid "Нельзя пожаловаться на свою оценку."
+msgstr "You cannot report your own review."
+
+msgid "Новая"
+msgstr "New"
+
+msgid "Новая оценка"
+msgstr "New rating"
+
+msgid "Нормально"
+msgstr "Okay"
+
+msgid "Общая оценка"
+msgstr "Overall rating"
+
+msgid "Опишите причину жалобы."
+msgstr "Describe the reason for the report."
+
+msgid "Оплата в срок"
+msgstr "Payment on time"
+
+msgid "Оплата вовремя"
+msgstr "Paid on time"
+
+msgid "Ответ сохранён."
+msgstr "Reply saved."
+
+msgid "Ответ:"
+msgstr "Reply:"
+
+msgid "Ответить на отзыв"
+msgstr "Reply to review"
+
+msgid "Ответственность"
+msgstr "Responsibility"
+
+msgid "Отзыв отправлен на проверку модератору."
+msgstr "Review submitted for moderation."
+
+msgid ""
+"Отзыв появится в профиле после ответной оценки второй стороны или через 14 "
+"дней. Изменить оценку можно в течение 14 дней."
+msgstr ""
+"The review will appear in the profile after the other party rates or in 14 "
+"days. You can edit the rating within 14 days."
+
+msgid "Отлично"
+msgstr "Excellent"
+
+msgid "Отправить оценку"
+msgstr "Submit rating"
+
+msgid "Оцените работодателя"
+msgstr "Rate the employer"
+
+msgid "Оцените трудника"
+msgstr "Rate the worker"
+
+msgid "Оценить можно только принятого участника задания."
+msgstr "Only an accepted participant can be rated."
+
+msgid "Оценить работодателя"
+msgstr "Rate employer"
+
+msgid "Оценить трудника"
+msgstr "Rate worker"
+
+msgid "Оценка зафиксирована или скрыта модератором."
+msgstr "The rating is locked or hidden by a moderator."
+
+msgid "Оценка зафиксирована: прошло больше 14 дней с момента публикации."
+msgstr "The rating is locked: more than 14 days have passed."
+
+msgid "Оценка опубликована."
+msgstr "Rating published."
+
+msgid "Оценка отправлена"
+msgstr "Rating submitted"
+
+msgid ""
+"Оценка сохранена. Она опубликуется после ответной оценки или через 14 дней."
+msgstr ""
+"Rating saved. It will be published after the other party rates or in 14 "
+"days."
+
+msgid ""
+"Оценка станет доступна после завершения задания или через 3 дня после "
+"запланированной даты работ."
+msgstr ""
+"Rating becomes available after completion or 3 days after the planned date."
+
+msgid "Оценка станет доступна после завершения задания."
+msgstr "Rating becomes available after the job is completed."
+
+msgid "Очень плохо"
+msgstr "Very poor"
+
+msgid "Плохо"
+msgstr "Poor"
+
+msgid "По критериям"
+msgstr "By criteria"
+
+msgid "Повторных наймов:"
+msgstr "Repeat hires:"
+
+msgid "Подтверждённая сделка"
+msgstr "Verified transaction"
+
+msgid "Пожаловаться на отзыв"
+msgstr "Report review"
+
+msgid "Пока нет оценок"
+msgstr "No ratings yet"
+
+msgid "Понятная задача"
+msgstr "Clear task"
+
+msgid "Пунктуальность"
+msgstr "Punctuality"
+
+msgid "Работа сдана в срок"
+msgstr "Delivered on time"
+
+msgid "Рассмотрена"
+msgstr "Reviewed"
+
+msgid "Рекомендую"
+msgstr "Recommend"
+
+msgid "Скрыто"
+msgstr "Hidden"
+
+msgid "Сохранить ответ"
+msgstr "Save reply"
+
+msgid "Хорошо"
+msgstr "Good"
+
+msgid "Что запомнилось"
+msgstr "What stood out"
+
+msgid "Что нарушает правила?"
+msgstr "What violates the rules?"
+
+msgid "Что прошло хорошо, а что можно улучшить?"
+msgstr "What went well, and what could be improved?"
+
+msgid "Чёткое ТЗ"
+msgstr "Clear brief"
+
+msgid "жалоба на отзыв"
+msgstr "review report"
+
+msgid "критерии"
+msgstr "criteria"
+
+msgid "мало данных"
+msgstr "limited data"
+
+msgid "нет оценок"
+msgstr "no ratings"
+
+msgid "опубликовано"
+msgstr "published"
+
+msgid "ответ"
+msgstr "reply"
+
+msgid "оценок как работодателя"
+msgstr "ratings as employer"
+
+msgid "оценок как трудника"
+msgstr "ratings as worker"
+
+msgid "рейтинг работодателя"
+msgstr "employer rating"
+
+msgid "рейтинг трудника"
+msgstr "worker rating"
+
+msgid "теги"
+msgstr "tags"
+
+msgid "Пользователь"
+msgstr "User"

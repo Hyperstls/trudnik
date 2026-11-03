@@ -19,7 +19,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db import connection
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -29,8 +29,15 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 
-from .models import Application, Blacklist, Favorite, Invitation, Job, JobFavorite, Profile, Rating, SitePage, Skill, UserSkill
+from .models import (
+    Application, Blacklist, Favorite, Invitation, Job, JobFavorite, Profile,
+    Rating, SitePage, Skill, UserReport, UserSkill,
+)
 from .analytics import job_view_total, track_job_view
+from .reputation import (
+    criteria_labels, profile_metrics, public_ratings, rating_distribution,
+    recent_rating, reliable_badge, tag_labels, weighted_expr,
+)
 from .og_image import render_job_og
 from .search import ts_query
 from .ratelimit import rate_limit_write
@@ -46,7 +53,8 @@ PUBLIC_STATUSES = ("open", "completed")
 PUBLIC_PROFILE_FIELDS = (
     "id", "full_name", "avatar_url", "photo_url", "age", "bio", "city",
     "experience", "desired_payment", "verification_status", "rating",
-    "total_reviews", "ratings_count", "portfolio_link", "is_self_employed",
+    "total_reviews", "ratings_count", "worker_rating", "worker_ratings_count",
+    "employer_rating", "employer_ratings_count", "portfolio_link", "is_self_employed",
     "created_at",
 )
 # contact/email_public/religion_id — НЕ публичные (152-ФЗ, P0-03/P0-04):
@@ -522,9 +530,9 @@ def job_detail(request, job_id):
         ).exists()
     employer = job.employer
     employer_reviews = list(
-        Rating.objects.filter(
-            rated_user_id=job.employer_id, target_type="employer"
-        ).order_by("-created_at")[:3]
+        public_ratings(job.employer_id, "employer")
+        .select_related("rater_user", "job")
+        .order_by("-published_at")[:3]
     )
     return render(request, "core/job_detail.html", {
         "job": job,
@@ -537,6 +545,8 @@ def job_detail(request, job_id):
         "is_employer_fav": is_employer_fav,
         "employer": employer,
         "employer_reviews": employer_reviews,
+        "review_criteria_labels": criteria_labels("employer"),
+        "review_tag_labels": tag_labels("employer"),
         "is_owner": is_owner,
         "show_push_prompt": request.GET.get("push") == "1",
         "yandex_maps_key": os.getenv("YANDEX_MAPS_API_KEY", ""),
@@ -607,7 +617,7 @@ def workers_list(request):
     except (TypeError, ValueError):
         rating_value = None
     if rating_value is not None and 0 <= rating_value <= 5:
-        qs = qs.filter(rating__gte=rating_value)
+        qs = qs.filter(worker_rating__gte=rating_value)
     payment_from = request.GET.get("payment_from") or ""
     payment_to = request.GET.get("payment_to") or ""
     from decimal import Decimal
@@ -643,7 +653,9 @@ def workers_list(request):
         qs = qs.order_by(F("desired_payment").desc(nulls_last=True))
     else:
         sort = "rating"
-        qs = qs.order_by("-rating", "-total_reviews")
+        qs = qs.annotate(
+            weighted_rating=weighted_expr("worker_rating", "worker_ratings_count")
+        ).order_by("-weighted_rating", "-worker_ratings_count", "-created_at")
     page = Paginator(qs, PAGE_SIZE).get_page(request.GET.get("page"))
     worker_ids = [w.pk for w in page.object_list]
     reliable_worker_ids = set()
@@ -661,18 +673,36 @@ def workers_list(request):
         my_open_jobs = list(
             Job.objects.filter(employer=request.user, status="open").order_by("date_time")[:50]
         )
+    completed_by_id = {}
     if worker_ids:
-        status_rows = list(
+        accepted_counts = dict(
             Application.objects.filter(
-                worker_id__in=worker_ids, status__in=("accepted", "rejected")
-            ).values_list("worker_id", "status")
+                worker_id__in=worker_ids, status=Application.Status.ACCEPTED,
+            ).values_list("worker_id").annotate(total=Count("id"))
         )
-        accepted = Counter(wid for wid, status in status_rows if status == "accepted")
-        rejected = Counter(wid for wid, status in status_rows if status == "rejected")
-        reliable_worker_ids = {
-            wid for wid in worker_ids
-            if accepted.get(wid, 0) >= 10 and rejected.get(wid, 0) == 0
-        }
+        completed_counts = dict(
+            Application.objects.filter(
+                worker_id__in=worker_ids,
+                status=Application.Status.ACCEPTED,
+                job__status=Job.Status.COMPLETED,
+            ).values_list("worker_id").annotate(total=Count("id"))
+        )
+        report_counts = dict(
+            UserReport.objects.filter(reported_id__in=worker_ids)
+            .exclude(status="reviewed")
+            .values_list("reported_id").annotate(total=Count("id"))
+        )
+        for worker in page.object_list:
+            completed = completed_counts.get(worker.pk, 0)
+            accepted = accepted_counts.get(worker.pk, 0)
+            completed_by_id[worker.pk] = completed
+            metrics = {
+                "completed_jobs": completed,
+                "completion_rate": round(completed / accepted * 100) if accepted else 0,
+                "open_reports": report_counts.get(worker.pk, 0),
+            }
+            if reliable_badge(worker, metrics):
+                reliable_worker_ids.add(worker.pk)
         if request.user.is_authenticated:
             invitation_rows = list(
                 Invitation.objects.filter(
@@ -704,6 +734,7 @@ def workers_list(request):
         "sort": sort,
         "invited_only": invited_only,
         "reliable_worker_ids": reliable_worker_ids,
+        "completed_by_id": completed_by_id,
         "invited_worker_ids": invited_worker_ids,
         "pending_invited_worker_ids": pending_invited_worker_ids,
         "pending_invitations_by_worker": pending_invitations_by_worker,
@@ -729,9 +760,19 @@ def worker_detail(request, user_id):
     )
     context = {"p": profile, "skills": skills}
     context["ratings"] = list(
-        Rating.objects.filter(rated_user_id=profile["id"], target_type="worker")
-        .select_related("rater_user", "job").order_by("-created_at")[:3]
+        public_ratings(profile["id"], "worker")
+        .select_related("rater_user", "job").order_by("-published_at")[:5]
     )
+    profile_obj = Profile.objects.filter(pk=profile["id"]).first()
+    metrics = profile_metrics(profile["id"], Profile.Role.WORKER)
+    context.update({
+        "distribution": rating_distribution(profile["id"], "worker"),
+        "recent": recent_rating(profile["id"], "worker"),
+        "metrics": metrics,
+        "is_reliable": reliable_badge(profile_obj, metrics) if profile_obj else False,
+        "review_criteria_labels": criteria_labels("worker"),
+        "review_tag_labels": tag_labels("worker"),
+    })
     if request.user.is_authenticated and profile["id"] != request.user.pk:
         context["my_open_jobs"] = list(
             Job.objects.filter(employer=request.user, status=Job.Status.OPEN)

@@ -11,8 +11,8 @@ from django.urls import reverse
 from core.audit import AuditAdminMixin, log_admin_action
 from core.models import (
     AuditLog, Blacklist, EmailLog, Favorite, Message, MonetizationSetting,
-    Notification, NotificationOutbox, PushSubscription, Receipt, SitePage,
-    TariffSetting, UserReport,
+    Notification, NotificationOutbox, PushSubscription, RatingReport, Receipt,
+    SitePage, TariffSetting, UserReport,
 )
 from core.rpc import call_rpc
 
@@ -195,7 +195,23 @@ class TariffSettingAdmin(AuditAdminMixin, ModelAdmin):
     search_fields = ("tariff_key",)
 
 
+class RatingReportAdmin(AuditAdminMixin, ModelAdmin):
+    list_display = ("rating", "reporter", "status", "created_at", "reviewed_at")
+    list_filter = ("status", "created_at")
+    raw_id_fields = ("rating", "reporter", "reviewed_by")
+    search_fields = ("rating__comment", "reporter__full_name", "reason")
+
+    def save_model(self, request, obj, form, change):
+        if obj.status == RatingReport.Status.REVIEWED and obj.reviewed_at is None:
+            from django.utils import timezone
+
+            obj.reviewed_by = request.user
+            obj.reviewed_at = timezone.now()
+        super().save_model(request, obj, form, change)
+
+
 def register(site):
+    site.register(RatingReport, RatingReportAdmin)
     site.register(UserReport, UserReportAdmin)
     site.register(Notification, NotificationAdmin)
     site.register(NotificationOutbox, NotificationOutboxAdmin)

@@ -20,21 +20,43 @@
     </a>
     {% endif %}
     <h1 class="text-xl font-bold text-neutral-800 mb-1">{% translate "Отзывы о" %} {{ p.full_name }}</h1>
-    <p class="text-sm text-neutral-500 mb-4">{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline text-warning" %} {{ p.rating|default:0|floatformat:1 }} · {{ p.total_reviews|default:0 }} {% translate "отзывов" %}</p>
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+        {% if target_type == 'employer' %}
+            {% if p.employer_ratings_count %}
+            <span class="text-2xl font-bold text-neutral-900">{{ p.employer_rating|floatformat:1 }}</span>
+            <span class="text-sm text-neutral-500">{% include "core/_ui_icon.html" with name="star" class_name="h-4 w-4 inline text-warning" %} · {{ p.employer_ratings_count }} {% translate "отзывов" %}</span>
+            {% else %}<span class="text-sm text-neutral-500">{% translate "Пока нет оценок" %}</span>{% endif %}
+        {% else %}
+            {% if p.worker_ratings_count %}
+            <span class="text-2xl font-bold text-neutral-900">{{ p.worker_rating|floatformat:1 }}</span>
+            <span class="text-sm text-neutral-500">{% include "core/_ui_icon.html" with name="star" class_name="h-4 w-4 inline text-warning" %} · {{ p.worker_ratings_count }} {% translate "отзывов" %}</span>
+            {% else %}<span class="text-sm text-neutral-500">{% translate "Пока нет оценок" %}</span>{% endif %}
+        {% endif %}
+        {% if recent.count %}<span class="text-xs text-neutral-400">{% translate "За 12 месяцев:" %} {{ recent.rating }} ({{ recent.count }})</span>{% endif %}
+    </div>
+    {% if metrics.completed_jobs or metrics.repeat_hires %}
+    <div class="flex flex-wrap gap-1.5 mb-4 text-[11px]">
+        {% if metrics.completed_jobs %}<span class="rounded-full bg-neutral-100 px-2 py-0.5 font-medium text-neutral-700">{% translate "Завершено:" %} {{ metrics.completed_jobs }}</span>{% endif %}
+        {% if metrics.completion_rate %}<span class="rounded-full bg-neutral-100 px-2 py-0.5 font-medium text-neutral-700">{% translate "Доля завершений:" %} {{ metrics.completion_rate }}%</span>{% endif %}
+        {% if metrics.repeat_hires %}<span class="rounded-full bg-neutral-100 px-2 py-0.5 font-medium text-neutral-700">{% translate "Повторных наймов:" %} {{ metrics.repeat_hires }}</span>{% endif %}
+        {% if is_reliable %}<span class="rounded-full bg-green-100 px-2 py-0.5 font-semibold text-green-800">{% translate "Надёжный" %}</span>{% endif %}
+    </div>
+    {% endif %}
+    {% if distribution %}
+    <div class="mb-4 max-w-sm space-y-1">
+        {% for row in distribution %}
+        <div class="flex items-center gap-2 text-[11px] text-neutral-500">
+            <span class="w-3">{{ row.stars }}</span>
+            <div class="h-1.5 flex-1 rounded-full bg-neutral-200 overflow-hidden"><div class="h-full rounded-full bg-warning" style="width: {{ row.pct }}%"></div></div>
+            <span class="w-6 text-right">{{ row.count }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
     {% if ratings %}
     <div class="grid gap-2">
         {% for r in ratings %}
-        <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4">
-            <div class="flex justify-between gap-2">
-                <a href="{% url 'core:worker_detail' r.rater_user.pk %}" class="text-sm font-medium text-neutral-800 hover:text-primary-700">{{ r.rater_user.full_name }}</a>
-                <span class="inline-flex items-center gap-0.5">{% for i in "12345" %}{% if forloop.counter0 < r.rating %}{% include "core/_ui_icon.html" with name="star" class_name="h-4 w-4 text-warning" %}{% else %}{% include "core/_ui_icon.html" with name="star-outline" class_name="h-4 w-4 text-neutral-300" %}{% endif %}{% endfor %}</span>
-            </div>
-            {% if r.comment %}<p class="text-sm text-neutral-600 mt-1">{{ r.comment }}</p>{% endif %}
-            <div class="flex flex-wrap items-center gap-2 mt-1">
-                <p class="text-xs text-neutral-400">{% if r.rating_type == 'employer' %}{% translate "От работодателя" %}{% else %}{% translate "От работника" %}{% endif %} · {{ r.created_at|date:"d.m.Y" }}</p>
-                {% if r.job %}<a href="{% url 'core:job_detail' r.job.pk %}" class="text-xs text-primary-600 hover:text-primary-700 underline underline-offset-2">{% translate "К заданию" %}</a>{% endif %}
-            </div>
-        </article>
+        {% include "core/_review_card.html" with r=r review_criteria_labels=review_criteria_labels review_tag_labels=review_tag_labels %}
         {% endfor %}
     </div>
     {% else %}<p class="text-sm text-neutral-500">{% translate "Отзывов пока нет." %}</p>{% endif %}

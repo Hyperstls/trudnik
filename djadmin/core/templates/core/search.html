@@ -53,7 +53,7 @@
                     <p class="text-xs text-neutral-500 mt-0.5 flex items-center gap-1">
                         {% if w.city %}<span>{{ w.city }} ·</span>{% endif %}
                         {% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 text-warning" %}
-                        <span>{{ w.rating|default:0|floatformat:1 }}</span>
+                        <span>{% if w.worker_ratings_count %}{{ w.worker_rating|floatformat:1 }}{% else %}—{% endif %}</span>
                     </p>
                     {% with ws=w.user_skills.all|slice:":3" %}{% if ws %}
                     <p class="text-xs text-neutral-500 mt-1 truncate">{% for us in ws %}{{ us.skill.name }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>

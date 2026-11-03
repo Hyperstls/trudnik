@@ -119,13 +119,16 @@ class ProfileAdmin(AuditAdminMixin, ModelAdmin):
         )}),
         ("Служебное (RO)", {"fields": (
             "id", "avatar_url", "photo_url", "rating", "total_reviews", "ratings_count",
+            "worker_rating", "worker_ratings_count", "employer_rating", "employer_ratings_count",
             "created_at", "updated_at", "consented_at", "password_changed_at",
             "notification_prefs", "messenger_user_id", "acquisition",
         )}),
     )
     readonly_fields = (
         "id", "password_hint", "avatar_url", "photo_url", "rating", "total_reviews",
-        "ratings_count", "created_at", "updated_at", "consented_at", "password_changed_at",
+        "ratings_count", "worker_rating", "worker_ratings_count",
+        "employer_rating", "employer_ratings_count",
+        "created_at", "updated_at", "consented_at", "password_changed_at",
         "notification_prefs", "messenger_user_id", "acquisition",
     )
 

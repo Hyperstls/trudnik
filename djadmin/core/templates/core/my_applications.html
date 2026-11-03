@@ -69,7 +69,7 @@
                     {% else %}{% include "core/_ui_badge.html" with label=a.get_status_display variant="neutral" %}{% endif %}
                 </p>
                 {% if tab == 'received' %}
-                <p class="text-sm text-neutral-600 mt-1">{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline text-warning" %} {{ a.worker.rating|default:0|floatformat:1 }} ({{ a.worker.total_reviews|default:0 }}){% if a.worker.desired_payment %} · {% translate "от" %} {{ a.worker.desired_payment }} ₽{% endif %}</p>
+                <p class="text-sm text-neutral-600 mt-1">{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline text-warning" %} {% if a.worker.worker_ratings_count %}{{ a.worker.worker_rating|floatformat:1 }} ({{ a.worker.worker_ratings_count }}){% else %}—{% endif %}{% if a.worker.desired_payment %} · {% translate "от" %} {{ a.worker.desired_payment }} ₽{% endif %}</p>
                 {% with worker_skills=a.worker.user_skills.all|slice:":3" %}
                 {% if worker_skills %}
                 <div class="flex flex-wrap gap-1 mt-1.5">
@@ -115,12 +115,10 @@
                     <form method="post" action="{% url 'core:worker_confirm_completion' a.pk %}">{% csrf_token %}<button class="action-icon-btn accept-btn"><span class="text-xs font-medium">{% translate "Я выполнил" %}</span></button></form>
                     {% endif %}
                     {% endif %}
-                    {% if a.status == 'accepted' and a.job.status == 'completed' %}
-                    <form method="post" action="{% url 'core:rate_participant' a.pk %}" class="flex items-center gap-2">{% csrf_token %}
-                        <select name="rating" class="border border-neutral-200 rounded-xl px-2 py-1.5 text-sm bg-white"><option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option></select>
-                        <input type="text" name="comment" placeholder="{% translate "Комментарий" %}" class="border border-neutral-200 rounded-xl px-2 py-1.5 text-sm w-32">
-                        <button class="action-icon-btn contact-btn"><span class="text-xs font-medium">{% translate "Оценить" %}</span></button>
-                    </form>
+                    {% if a.rating_available %}
+                    <a href="{% url 'core:rate_participant' a.pk %}" class="action-icon-btn contact-btn">
+                        <span class="text-xs font-medium">{% if a.my_rating %}{% translate "Оценка отправлена" %}{% else %}{% translate "Оценить" %}{% endif %}</span>
+                    </a>
                     {% endif %}
                 {% endif %}
             </div>

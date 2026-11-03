@@ -2,14 +2,15 @@
 from datetime import timedelta
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from core.models import Application, Job, Message, Profile, Rating
+from core.models import Application, Job, Message, NotificationOutbox, Profile, Rating, RatingReport
 from core.storage import delete_upload_url
-from core.tests.test_auth import make_profile
+from core.tests.test_auth import CACHE_LOCMEM, make_profile
 from core.tests.test_flows import make_job
 import uuid
 
@@ -20,48 +21,88 @@ def make_accepted(employer, worker, status="completed"):
     return job, app
 
 
+@override_settings(CACHES=CACHE_LOCMEM)
 class RatingTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.employer = make_profile("rate-emp@example.com")
         self.worker = make_profile("rate-worker@example.com", role="worker")
         self.job, self.app = make_accepted(self.employer, self.worker)
 
-    def test_employer_rates_worker_trigger_recomputes(self):
-        self.client.force_login(self.employer)
-        response = self.client.post(
-            reverse("core:rate_participant", args=[self.app.pk]), {"rating": "5", "comment": "Отлично"}
-        )
-        self.assertEqual(response.status_code, 302)
-        rating = Rating.objects.get(rater_user=self.employer, job=self.job)
-        self.assertEqual(rating.rating, 5)
-        self.assertEqual(rating.target_type, "worker")
-        # триггер recompute_profile_rating пересчитал профиль (БД, не Python)
-        self.worker.refresh_from_db()
-        self.assertEqual(self.worker.ratings_count, 1)
-        self.assertEqual(self.worker.rating, 5.0)
+    def _post(self, user, stars=5, **extra):
+        self.client.force_login(user)
+        data = {"rating": str(stars), "comment": extra.pop("comment", "")}
+        data.update(extra)
+        return self.client.post(reverse("core:rate_participant", args=[self.app.pk]), data)
 
-    def test_worker_rates_employer(self):
-        self.client.force_login(self.worker)
-        self.client.post(reverse("core:rate_participant", args=[self.app.pk]), {"rating": "4"})
+    def test_double_blind_requires_both_sides(self):
+        self._post(self.employer, 5, comment="Отлично")
+        rating = Rating.objects.get(rater_user=self.employer, job=self.job)
+        self.assertIsNone(rating.published_at)
+        self.worker.refresh_from_db()
+        self.assertEqual(self.worker.worker_ratings_count, 0)
+        self.assertEqual(self.worker.ratings_count, 0)
+
+        self._post(self.worker, 4)
+        rating.refresh_from_db()
+        counterpart = Rating.objects.get(rater_user=self.worker, job=self.job)
+        self.assertIsNotNone(rating.published_at)
+        self.assertIsNotNone(counterpart.published_at)
+        self.worker.refresh_from_db()
+        self.employer.refresh_from_db()
+        self.assertEqual((self.worker.worker_rating, self.worker.worker_ratings_count), (5.0, 1))
+        self.assertEqual((self.employer.employer_rating, self.employer.employer_ratings_count), (4.0, 1))
+        # Роли не смешиваются: у трудника нет рейтинга работодателя.
+        self.assertEqual(self.worker.employer_ratings_count, 0)
+        self.assertEqual(
+            NotificationOutbox.objects.filter(type="new_rating").count(), 2
+        )
+
+    def test_worker_rating_employer_is_pending(self):
+        self._post(self.worker, 4)
         rating = Rating.objects.get(rater_user=self.worker, job=self.job)
         self.assertEqual(rating.target_type, "employer")
+        self.assertIsNone(rating.published_at)
         self.employer.refresh_from_db()
-        self.assertEqual(self.employer.ratings_count, 1)
+        self.assertEqual(self.employer.employer_ratings_count, 0)
 
     def test_upsert_updates_not_duplicates(self):
-        self.client.force_login(self.employer)
-        self.client.post(reverse("core:rate_participant", args=[self.app.pk]), {"rating": "3"})
-        self.client.post(reverse("core:rate_participant", args=[self.app.pk]), {"rating": "5"})
+        self._post(self.employer, 3)
+        self._post(self.employer, 5)
         self.assertEqual(Rating.objects.filter(rater_user=self.employer, job=self.job).count(), 1)
+        rating = Rating.objects.get(rater_user=self.employer, job=self.job)
+        self.assertEqual(rating.rating, 5)
         self.worker.refresh_from_db()
-        self.assertEqual(self.worker.rating, 5.0)
+        self.assertEqual(self.worker.worker_ratings_count, 0)
 
-    def test_only_after_completed(self):
+    def test_role_specific_aggregates_do_not_mix(self):
+        now = timezone.now()
+        Rating.objects.create(
+            rated_user=self.worker, rater_user=self.employer, job=self.job,
+            rating=5, rating_type="employer", target_type="worker", published_at=now,
+        )
+        job2 = make_job(self.employer, work_type="Вторая роль")
+        other = make_profile("rate-role-other@example.com")
+        Rating.objects.create(
+            rated_user=self.worker, rater_user=other, job=job2,
+            rating=2, rating_type="worker", target_type="employer", published_at=now,
+        )
+        self.worker.refresh_from_db()
+        self.assertEqual((self.worker.worker_rating, self.worker.worker_ratings_count), (5.0, 1))
+        self.assertEqual((self.worker.employer_rating, self.worker.employer_ratings_count), (2.0, 1))
+        self.assertEqual((self.worker.rating, self.worker.total_reviews), (3.5, 2))
+
+    def test_only_after_completed_or_date_fallback(self):
         job = make_job(self.employer, status="open")
         app = Application.objects.create(job=job, worker=self.worker, status="accepted")
         self.client.force_login(self.employer)
         self.client.post(reverse("core:rate_participant", args=[app.pk]), {"rating": "5"})
         self.assertFalse(Rating.objects.exists())
+
+        job.date_time = timezone.now() - timedelta(days=4)
+        job.save(update_fields=["date_time"])
+        self.client.post(reverse("core:rate_participant", args=[app.pk]), {"rating": "5"})
+        self.assertTrue(Rating.objects.filter(job=job).exists())
 
     def test_pending_application_cannot_rate(self):
         job = make_job(self.employer, status="completed")
@@ -88,8 +129,7 @@ class RatingTests(TestCase):
         self.assertFalse(Rating.objects.exists())
 
     def test_bad_stars_rejected(self):
-        self.client.force_login(self.employer)
-        self.client.post(reverse("core:rate_participant", args=[self.app.pk]), {"rating": "9"})
+        self._post(self.employer, 9)
         self.assertFalse(Rating.objects.exists())
 
     def test_employer_rates_two_workers_update_keeps_other(self):
@@ -98,36 +138,125 @@ class RatingTests(TestCase):
         self.client.force_login(self.employer)
         self.client.post(reverse("core:rate_participant", args=[self.app.pk]), {"rating": "5"})
         self.client.post(reverse("core:rate_participant", args=[app2.pk]), {"rating": "4"})
-        self.assertEqual(
-            Rating.objects.filter(rater_user=self.employer, job=self.job).count(), 2
-        )
-        # повторная оценка первого работника не должна затирать оценку второго
+        self.assertEqual(Rating.objects.filter(rater_user=self.employer, job=self.job).count(), 2)
         self.client.post(reverse("core:rate_participant", args=[self.app.pk]), {"rating": "3"})
-        first = Rating.objects.get(
-            rater_user=self.employer, job=self.job, rated_user=self.worker
-        )
-        second = Rating.objects.get(
-            rater_user=self.employer, job=self.job, rated_user=worker2
-        )
+        first = Rating.objects.get(rater_user=self.employer, job=self.job, rated_user=self.worker)
+        second = Rating.objects.get(rater_user=self.employer, job=self.job, rated_user=worker2)
         self.assertEqual((first.rating, second.rating), (3, 4))
 
-    def test_pending_worker_cannot_rate_employer(self):
-        job = make_job(self.employer, status="completed")
-        app = Application.objects.create(job=job, worker=self.worker, status="pending")
+    def test_rating_page_has_criteria_and_saves_tags(self):
+        self.client.force_login(self.employer)
+        page = self.client.get(reverse("core:rate_participant", args=[self.app.pk]))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Общая оценка")
+        self.assertContains(page, "Качество работы")
+        self.assertContains(page, "Работа сдана в срок")
+        self.client.post(reverse("core:rate_participant", args=[self.app.pk]), {
+            "rating": "4", "comment": "Хорошо",
+            "criterion_quality": "5", "criterion_punctuality": "4",
+            "tags": ["on_time", "recommend"],
+        })
+        rating = Rating.objects.get(rater_user=self.employer, job=self.job)
+        self.assertEqual(rating.criteria["quality"], 5)
+        self.assertEqual(rating.criteria["punctuality"], 4)
+        self.assertIn("on_time", rating.tags)
+
+    def test_link_in_comment_goes_to_moderation(self):
+        response = self._post(self.employer, 5, comment="Смотрите https://spam.example")
+        self.assertEqual(response.status_code, 302)
+        rating = Rating.objects.get(rater_user=self.employer, job=self.job)
+        self.assertEqual(rating.moderation_status, Rating.ModerationStatus.REVIEW)
+        self.assertIsNone(rating.published_at)
+        self.worker.refresh_from_db()
+        self.assertEqual(self.worker.worker_ratings_count, 0)
+
+    def test_edit_window_is_14_days(self):
+        rating = Rating.objects.create(
+            rated_user=self.worker, rater_user=self.employer, job=self.job,
+            rating=5, rating_type="employer", target_type="worker",
+            published_at=timezone.now(),
+        )
+        Rating.objects.filter(pk=rating.pk).update(
+            created_at=timezone.now() - timedelta(days=15)
+        )
+        self._post(self.employer, 1)
+        rating.refresh_from_db()
+        self.assertEqual(rating.rating, 5)
+
+    def test_rpc_can_rate_employer(self):
+        from core.rpc import call_rpc
+
+        result = call_rpc(
+            "rate_user_atomic", self.job.pk, self.worker.pk, self.employer.pk,
+            5, "RPC", "worker", "employer",
+        )
+        self.assertTrue(result.get("success"))
+        self.assertTrue(
+            Rating.objects.filter(
+                job=self.job, rater_user=self.worker, rated_user=self.employer,
+            ).exists()
+        )
+
+    def test_publish_due_ratings_task(self):
+        from core import tasks
+
+        rating = Rating.objects.create(
+            rated_user=self.worker, rater_user=self.employer, job=self.job,
+            rating=5, rating_type="employer", target_type="worker",
+        )
+        Rating.objects.filter(pk=rating.pk).update(
+            created_at=timezone.now() - timedelta(days=15)
+        )
+        self.assertEqual(tasks.publish_due_ratings(), 1)
+        rating.refresh_from_db()
+        self.assertIsNotNone(rating.published_at)
+        self.worker.refresh_from_db()
+        self.assertEqual(self.worker.worker_ratings_count, 1)
+
+    def test_remind_pending_ratings_task_is_deduplicated(self):
+        from core import tasks
+
+        self.assertGreaterEqual(tasks.remind_pending_ratings(), 2)
+        self.assertTrue(
+            NotificationOutbox.objects.filter(
+                type="rating_reminder", data__application_id=str(self.app.pk),
+            ).exists()
+        )
+        self.assertEqual(tasks.remind_pending_ratings(), 0)
+
+    def test_reply_and_report(self):
+        rating = Rating.objects.create(
+            rated_user=self.worker, rater_user=self.employer, job=self.job,
+            rating=4, comment="Нормально", rating_type="employer",
+            target_type="worker", published_at=timezone.now(),
+        )
         self.client.force_login(self.worker)
-        self.client.post(reverse("core:rate_participant", args=[app.pk]), {"rating": "5"})
-        self.assertFalse(Rating.objects.filter(rater_user=self.worker).exists())
+        response = self.client.post(
+            reverse("core:rating_reply", args=[rating.pk]), {"reply": "Спасибо"}
+        )
+        self.assertEqual(response.status_code, 302)
+        rating.refresh_from_db()
+        self.assertEqual(rating.reply, "Спасибо")
+
+        other = make_profile("rating-reporter@example.com")
+        self.client.force_login(other)
+        response = self.client.post(
+            reverse("core:rating_report", args=[rating.pk]), {"reason": "Спам"}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(RatingReport.objects.filter(rating=rating, reporter=other).exists())
 
     def test_job_detail_reviews_filter_by_target_type(self):
+        now = timezone.now()
         Rating.objects.create(
             rated_user=self.employer, rater_user=self.worker, job=self.job,
             rating=5, comment="Отзыв о работодателе целевой",
-            rating_type="worker", target_type="employer",
+            rating_type="worker", target_type="employer", published_at=now,
         )
         Rating.objects.create(
             rated_user=self.worker, rater_user=self.employer, job=self.job,
             rating=4, comment="Оценка работнику не в блоке отзывов",
-            rating_type="employer", target_type="worker",
+            rating_type="employer", target_type="worker", published_at=now,
         )
         response = self.client.get(f"/jobs/{self.job.pk}")
         self.assertContains(response, "Отзыв о работодателе целевой")

@@ -47,7 +47,7 @@
                     <div class="min-w-0">
                         <p class="font-medium text-sm text-neutral-800">{{ n.title }}</p>
                         <span class="inline-block mt-1 text-[11px] font-medium bg-neutral-100 text-neutral-600 rounded-full px-2 py-0.5">
-                            {% if n.type == 'application_received' %}{% translate "Отклик" %}{% elif n.type == 'application_accepted' %}{% translate "Отклик принят" %}{% elif n.type == 'application_rejected' %}{% translate "Отклик отклонён" %}{% elif n.type == 'new_message' %}{% translate "Сообщение" %}{% elif n.type == 'new_rating' %}{% translate "Оценка" %}{% elif n.type == 'job_completed' %}{% translate "Задание завершено" %}{% else %}{% translate "Уведомление" %}{% endif %}
+                            {% if n.type == 'application_received' %}{% translate "Отклик" %}{% elif n.type == 'application_accepted' %}{% translate "Отклик принят" %}{% elif n.type == 'application_rejected' %}{% translate "Отклик отклонён" %}{% elif n.type == 'new_message' %}{% translate "Сообщение" %}{% elif n.type == 'new_rating' or n.type == 'rating_reminder' %}{% translate "Оценка" %}{% elif n.type == 'job_completed' %}{% translate "Задание завершено" %}{% else %}{% translate "Уведомление" %}{% endif %}
                         </span>
                         {% if n.message %}<p class="text-sm text-neutral-600 mt-0.5">{{ n.message }}</p>{% endif %}
                         <p class="text-xs text-neutral-400 mt-1">{{ n.created_at|date:"d.m.Y H:i" }}</p>

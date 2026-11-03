@@ -22,7 +22,7 @@ djadmin/                    # Django-проект (единственный пр
     forms*.py               # формы и валидаторы
     models.py               # unmanaged-модели поверх существующей БД
     templates/core/         # все актуальные шаблоны (корневые templates/ — legacy Flask)
-    tests/                  # 583 теста (manage.py test core)
+    tests/                  # 595 тестов (manage.py test core)
   static/                   # собранный Tailwind и JS
 migrations/                 # SQL-миграции 067–150+, ledger 65/65
 scripts/                    # pre_deploy_check, dj_test_clone, миграции, Amvera
@@ -106,6 +106,6 @@ npm run build:css
 
 - Карта `/jobs`: сворачиваемая, ленивая, с превью и «Искать в этой области».
 - Локализация RU/EN: [`docs/LOCALIZATION.md`](docs/LOCALIZATION.md).
-- Полный `core`: **583 OK**, `pre_deploy_check` — 7/7.
+- Полный `core`: **595 OK**, `pre_deploy_check` — 7/7.
 - Паритет auth/profile и jobs/applications: открытых пунктов нет (J026 — карта трудников n/a).
 - Прод: **RUNNING**, `/health` 200.

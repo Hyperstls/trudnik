@@ -274,6 +274,7 @@ class PublicViewsTests(TestCase):
             rated_user=self.employer, rater_user=self.worker, job=self.job,
             rating=5, comment="Отличный работодатель",
             rating_type="worker", target_type="employer",
+            published_at=timezone.now(),
         )
         response = self.client.get(f"/jobs/{self.job.pk}")
         self.assertContains(response, "Отличный работодатель")
@@ -314,20 +315,53 @@ class PublicViewsTests(TestCase):
         self.assertNotContains(response, other.full_name)
 
     def test_workers_rating_and_payment_filters(self):
-        self.worker.rating = 4.5
+        self.worker.worker_rating = 4.5
+        self.worker.worker_ratings_count = 3
         self.worker.desired_payment = 2000
-        self.worker.save(update_fields=["rating", "desired_payment"])
+        self.worker.save(update_fields=["worker_rating", "worker_ratings_count", "desired_payment"])
         other = make_profile("worker-cheap-j021@example.com", role="worker")
         other.full_name = "Дешёвый трудник J021"
-        other.rating = 1
+        other.worker_rating = 1
+        other.worker_ratings_count = 3
         other.desired_payment = 100
-        other.save(update_fields=["full_name", "rating", "desired_payment"])
+        other.save(update_fields=["full_name", "worker_rating", "worker_ratings_count", "desired_payment"])
         rated = self.client.get("/workers", {"rating_min": "4"})
         self.assertContains(rated, self.worker.full_name)
         self.assertNotContains(rated, other.full_name)
         paid = self.client.get("/workers", {"payment_from": "1500"})
         self.assertContains(paid, self.worker.full_name)
         self.assertNotContains(paid, other.full_name)
+
+    def test_workers_weighted_rating_sort(self):
+        established = make_profile(
+            "worker-established@example.com", role="worker",
+            full_name="Вес Устоявшийся", worker_rating=4.8, worker_ratings_count=20,
+        )
+        newcomer = make_profile(
+            "worker-newcomer@example.com", role="worker",
+            full_name="Вес Новичок", worker_rating=5.0, worker_ratings_count=1,
+        )
+        response = self.client.get("/workers", {"q": "Вес", "sort": "rating"})
+        names = [w.full_name for w in response.context["page"].object_list]
+        self.assertLess(names.index(established.full_name), names.index(newcomer.full_name))
+
+    def test_worker_distribution_context(self):
+        from core.models import Rating
+        now = timezone.now()
+        for i, stars in enumerate((5, 5, 4)):
+            rater = make_profile("dist-rater-%d@example.com" % i)
+            job = make_job(self.employer, work_type="Dist %d" % i)
+            Rating.objects.create(
+                rated_user=self.worker, rater_user=rater, job=job,
+                rating=stars, rating_type="employer", target_type="worker",
+                published_at=now,
+            )
+        response = self.client.get(reverse("core:worker_detail", args=[self.worker.pk]))
+        distribution = {row["stars"]: row["count"] for row in response.context["distribution"]}
+        self.assertEqual(distribution[5], 2)
+        self.assertEqual(distribution[4], 1)
+        self.worker.refresh_from_db()
+        self.assertEqual(self.worker.worker_ratings_count, 3)
 
     def test_workers_sort_by_name(self):
         self.worker.full_name = "Aaa J021sort"
@@ -349,11 +383,11 @@ class PublicViewsTests(TestCase):
                     200,
                 )
 
-    def _accepted_apps(self, count):
+    def _accepted_apps(self, count, completed=True):
         for i in range(count):
             job = Job.objects.create(
                 employer=self.employer, work_type="Reliable %d" % i,
-                organization_name="Приход", status="open", city="Москва",
+                organization_name="Приход", status="completed" if completed else "open", city="Москва",
                 payment_amount=1000,
                 date_time=timezone.now() + timedelta(days=2),
             )
@@ -366,16 +400,8 @@ class PublicViewsTests(TestCase):
         response = self.client.get("/workers", {"q": self.worker.full_name})
         self.assertContains(response, "Надёжный")
 
-    def test_workers_reliable_requires_zero_rejected(self):
-        self._accepted_apps(10)
-        job = Job.objects.create(
-            employer=self.employer, work_type="Rejected", organization_name="Приход",
-            status="open", city="Москва", payment_amount=1000,
-            date_time=timezone.now() + timedelta(days=2),
-        )
-        Application.objects.create(
-            job=job, worker=self.worker, status="rejected"
-        )
+    def test_workers_not_reliable_without_completed_jobs(self):
+        self._accepted_apps(10, completed=False)
         response = self.client.get("/workers", {"q": self.worker.full_name})
         self.assertNotContains(response, "Надёжный")
 
@@ -903,11 +929,13 @@ class EmployerDetailTests(TestCase):
             rated_user=user, rater_user=self.viewer, job=job, rating=5,
             comment="Отзыв о работодателе J032",
             rating_type="worker", target_type="employer",
+            published_at=timezone.now(),
         )
         Rating.objects.create(
             rated_user=self.viewer, rater_user=user, job=job, rating=4,
             comment="Оценка работнику J032",
             rating_type="employer", target_type="worker",
+            published_at=timezone.now(),
         )
         response = self.client.get(reverse("core:employer_detail", args=[user.pk]))
         self.assertContains(response, "Отзыв о работодателе J032")

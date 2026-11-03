@@ -65,6 +65,8 @@ urlpatterns = [
     path("api/messages/<uuid:app_id>/poll", views_interact.chat_poll, name="chat_poll"),
     path("api/chats/unread-count", views_interact.chats_unread_count, name="chats_unread_count"),
     path("rate/<uuid:app_id>", views_interact.rate_participant, name="rate_participant"),
+    path("ratings/<uuid:rating_id>/reply", views_interact.rating_reply, name="rating_reply"),
+    path("ratings/<uuid:rating_id>/report", views_interact.rating_report, name="rating_report"),
     # 152-ФЗ / профиль
     path("profile/export-data", views_profile_ext.export_data, name="export_data"),
     path("profile/delete-account", views_profile_ext.delete_account, name="delete_account"),

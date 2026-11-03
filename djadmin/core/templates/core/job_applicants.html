@@ -16,7 +16,7 @@
         <article class="card rounded-2xl bg-white shadow-sm border border-neutral-200 p-4 flex flex-wrap items-start justify-between gap-3">
             <div class="min-w-0">
                 <a href="{% url 'core:worker_detail' a.worker.pk %}" class="font-semibold text-neutral-900 hover:text-primary-700 transition-colors">{{ a.worker.full_name }}</a>
-                <p class="text-sm text-neutral-500 mt-0.5">{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline text-warning" %} {{ a.worker.rating|default:0|floatformat:1 }} ({{ a.worker.total_reviews|default:0 }}){% if a.worker.city %} · {{ a.worker.city }}{% endif %}</p>
+                <p class="text-sm text-neutral-500 mt-0.5">{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 inline text-warning" %} {% if a.worker.worker_ratings_count %}{{ a.worker.worker_rating|floatformat:1 }} ({{ a.worker.worker_ratings_count }}){% else %}—{% endif %}{% if a.worker.city %} · {{ a.worker.city }}{% endif %}</p>
                 <p class="text-sm mt-1">
                     {% if a.status == 'pending' %}<span class="text-xs bg-neutral-100 text-neutral-600 rounded-full px-2.5 py-0.5 font-medium">{% translate "Ожидает" %}</span>
                     {% elif a.status == 'accepted' %}<span class="text-xs bg-green-50 text-green-700 border border-green-200 rounded-full px-2.5 py-0.5 font-medium">{% translate "Принят" %}</span>
@@ -48,12 +48,10 @@
                 <a href="{% url 'core:chat_room' a.pk %}" class="action-icon-btn contact-btn"><span class="text-xs font-medium">{% translate "Чат" %}</span></a>
                 {% if a.worker_completed_at %}{% translate "Трудник отметил выполнение" as badge_label %}{% include "core/_ui_badge.html" with label=badge_label variant="success" %}{% endif %}
                 {% endif %}
-                {% if a.status == 'accepted' and job.status == 'completed' %}
-                <form method="post" action="{% url 'core:rate_participant' a.pk %}" class="flex items-center gap-2">{% csrf_token %}
-                    <select name="rating" class="border border-neutral-200 rounded-xl px-2 py-1.5 text-sm bg-white"><option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option></select>
-                    <input type="text" name="comment" placeholder="{% translate "Комментарий" %}" class="border border-neutral-200 rounded-xl px-2 py-1.5 text-sm w-32">
-                    <button class="action-icon-btn contact-btn"><span class="text-xs font-medium">{% translate "Оценить" %}</span></button>
-                </form>
+                {% if a.rating_available %}
+                <a href="{% url 'core:rate_participant' a.pk %}" class="action-icon-btn contact-btn">
+                    <span class="text-xs font-medium">{% if a.my_rating %}{% translate "Оценка отправлена" %}{% else %}{% translate "Оценить" %}{% endif %}</span>
+                </a>
                 {% endif %}
             </div>
         </article>

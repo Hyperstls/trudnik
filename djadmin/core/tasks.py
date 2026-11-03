@@ -12,6 +12,7 @@ from urllib.parse import parse_qs
 from uuid import UUID
 
 from django.conf import settings
+from django.core.cache import cache
 from django.core.mail import send_mail
 from django.db.models import Q
 from django.db import transaction
@@ -19,8 +20,9 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .celery_app import app
-from .models import EmailLog, Notification, NotificationOutbox, Profile
+from .models import Application, EmailLog, Job, Notification, NotificationOutbox, Profile, Rating
 from .notifications import enqueue_notification
+from .reputation import publish_reciprocal
 from .rpc import call_rpc, call_rpc_rows
 
 logger = logging.getLogger(__name__)
@@ -56,6 +58,7 @@ TYPE_PREF_KEYS = {
     "invitation": "invitation",
     "new_message": "chat",
     "new_rating": "rating",
+    "rating_reminder": "rating",
     "job_completed": "job",
     "job_expired": "job",
     "saved_search": "saved_search",
@@ -355,3 +358,82 @@ def ensure_max_webhook() -> str:
         return "max_webhook: %s" % result.get("action", "ok")
     logger.warning("max_webhook not registered: %s", result.get("error"))
     return "max_webhook: %s" % result.get("error", "failed")
+
+
+@app.task(ignore_result=True)
+def publish_due_ratings(limit: int = 500) -> int:
+    """Publish reciprocal ratings and ratings whose 14-day window has passed."""
+    pending = Rating.objects.filter(
+        published_at__isnull=True,
+        moderation_status=Rating.ModerationStatus.OK,
+    ).order_by("created_at")[:limit]
+    published = 0
+    for rating in pending:
+        for item in publish_reciprocal(rating):
+            enqueue_notification(
+                item.rated_user_id,
+                "new_rating",
+                "Новая оценка",
+                "Вас оценили на %d из 5." % item.rating,
+                {
+                    "rating_id": str(item.pk),
+                    "link": "%s%s" % (
+                        settings.SITE_URL, reverse("core:user_ratings", args=[item.rated_user_id])
+                    ),
+                },
+            )
+            published += 1
+    if published:
+        logger.info("publish_due_ratings: published=%d", published)
+    return published
+
+
+@app.task(ignore_result=True)
+def remind_pending_ratings(limit: int = 200) -> int:
+    """Remind participants to rate after completion or 3 days past the date."""
+    now = timezone.now()
+    cutoff_date = now - timedelta(days=3)
+    apps = (
+        Application.objects.filter(status=Application.Status.ACCEPTED)
+        .select_related("job", "worker", "job__employer")
+        .filter(
+            Q(job__status=Job.Status.COMPLETED)
+            | Q(
+                job__status__in=(Job.Status.OPEN, Job.Status.ACTIVE, Job.Status.IN_PROGRESS),
+                job__date_time__lte=cutoff_date,
+            )
+        )
+        .exclude(job__status=Job.Status.CANCELLED)
+        .order_by("-job__date_time")[:limit]
+    )
+    sent = 0
+    for app in apps:
+        pairs = (
+            (app.worker_id, app.job.employer_id),
+            (app.job.employer_id, app.worker_id),
+        )
+        for rater_id, rated_id in pairs:
+            if Rating.objects.filter(
+                job_id=app.job_id, rater_user_id=rater_id, rated_user_id=rated_id,
+            ).exists():
+                continue
+            key = "rating_reminder:%s:%s:%s" % (app.job_id, rater_id, rated_id)
+            try:
+                if not cache.add(key, 1, 7 * 86400):
+                    continue
+            except Exception:
+                continue
+            enqueue_notification(
+                rater_id,
+                "rating_reminder",
+                "Оцените вторую сторону",
+                "Задание завершено. Расскажите, как всё прошло.",
+                {
+                    "application_id": str(app.pk),
+                    "link": "%s/rate/%s" % (settings.SITE_URL, app.pk),
+                },
+            )
+            sent += 1
+    if sent:
+        logger.info("remind_pending_ratings: sent=%d", sent)
+    return sent

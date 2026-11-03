@@ -23,9 +23,15 @@
             {% endif %}
         </h3>
         <div class="flex items-center gap-1.5 mt-1">
-            {% for i in "12345" %}{% if forloop.counter0 < user.rating|default:0 %}{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 text-warning" %}{% else %}{% include "core/_ui_icon.html" with name="star-outline" class_name="h-3.5 w-3.5 text-neutral-300" %}{% endif %}{% endfor %}
-            <span class="text-sm font-medium text-neutral-700">{{ user.rating|default:0|floatformat:1 }}</span>
-            <span class="text-xs text-neutral-400">({{ user.total_reviews|default:0 }})</span>
+            {% if user.role == 'employer' %}
+                {% if user.employer_ratings_count %}{% for i in "12345" %}{% if forloop.counter0 < user.employer_rating|default:0 %}{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 text-warning" %}{% else %}{% include "core/_ui_icon.html" with name="star-outline" class_name="h-3.5 w-3.5 text-neutral-300" %}{% endif %}{% endfor %}
+                <span class="text-sm font-medium text-neutral-700">{{ user.employer_rating|floatformat:1 }}</span>
+                <span class="text-xs text-neutral-400">({{ user.employer_ratings_count }})</span>{% else %}<span class="text-xs text-neutral-400">{% translate "Пока нет оценок" %}</span>{% endif %}
+            {% else %}
+                {% if user.worker_ratings_count %}{% for i in "12345" %}{% if forloop.counter0 < user.worker_rating|default:0 %}{% include "core/_ui_icon.html" with name="star" class_name="h-3.5 w-3.5 text-warning" %}{% else %}{% include "core/_ui_icon.html" with name="star-outline" class_name="h-3.5 w-3.5 text-neutral-300" %}{% endif %}{% endfor %}
+                <span class="text-sm font-medium text-neutral-700">{{ user.worker_rating|floatformat:1 }}</span>
+                <span class="text-xs text-neutral-400">({{ user.worker_ratings_count }})</span>{% else %}<span class="text-xs text-neutral-400">{% translate "Пока нет оценок" %}</span>{% endif %}
+            {% endif %}
         </div>
         <span class="mt-2 inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium {% if user.role == 'employer' %}bg-primary-50 text-primary-700{% elif user.role == 'admin' %}bg-purple-50 text-purple-700{% else %}bg-blue-50 text-blue-700{% endif %}">
             {% if user.role == 'employer' %}{% translate "Работодатель" %}{% elif user.role == 'admin' %}{% translate "Администратор" %}{% else %}{% translate "Исполнитель" %}{% endif %}

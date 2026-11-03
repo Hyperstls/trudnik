@@ -10,6 +10,7 @@
 recompute_profile_rating() — в коде НЕ пересчитывать.
 """
 import uuid
+from datetime import timedelta
 
 import bcrypt
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
@@ -84,6 +85,10 @@ class Profile(AbstractBaseUser):
     rating = models.FloatField(_("рейтинг"), default=0, editable=False)
     total_reviews = models.IntegerField(_("всего отзывов"), default=0, editable=False)
     ratings_count = models.IntegerField(_("количество оценок"), default=0, editable=False)
+    worker_rating = models.FloatField(_("рейтинг трудника"), default=0, editable=False)
+    worker_ratings_count = models.IntegerField(_("оценок как трудника"), default=0, editable=False)
+    employer_rating = models.FloatField(_("рейтинг работодателя"), default=0, editable=False)
+    employer_ratings_count = models.IntegerField(_("оценок как работодателя"), default=0, editable=False)
     religion = models.ForeignKey(
         "core.Religion", verbose_name=_("вероисповедание"), on_delete=models.SET_NULL,
         null=True, blank=True, db_column="religion_id", related_name="profiles",
@@ -372,6 +377,22 @@ class Application(models.Model):
     def __str__(self):
         return "%s → %s [%s]" % (self.worker_id, self.job_id, self.status)
 
+    @property
+    def rating_available(self):
+        """Rating opens after completion, or 3 days after the planned date.
+
+        The fallback protects workers when an employer never marks the job
+        completed, while still keeping ratings tied to an accepted application.
+        """
+        if self.status != self.Status.ACCEPTED:
+            return False
+        job = self.job
+        if job.status in (Job.Status.CANCELLED, Job.Status.DRAFT):
+            return False
+        if job.status == Job.Status.COMPLETED:
+            return True
+        return bool(job.date_time and job.date_time <= timezone.now() - timedelta(days=3))
+
 
 class Message(models.Model):
     id = models.BigAutoField(primary_key=True)  # IDENTITY BY DEFAULT
@@ -452,6 +473,11 @@ class NotificationOutbox(models.Model):
 
 
 class Rating(models.Model):
+    class ModerationStatus(models.TextChoices):
+        OK = "ok", _("Опубликовано")
+        REVIEW = "review", _("На проверке")
+        HIDDEN = "hidden", _("Скрыто")
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     rated_user = models.ForeignKey(Profile, verbose_name=_("оцениваемый"), on_delete=models.CASCADE, related_name="ratings_received")
     rater_user = models.ForeignKey(Profile, verbose_name=_("оценивший"), on_delete=models.CASCADE, related_name="+")
@@ -460,6 +486,16 @@ class Rating(models.Model):
     target_type = models.CharField(max_length=20, choices=Profile.Role.choices)
     rating = models.PositiveSmallIntegerField(_("оценка"))  # CHECK 1..5 в БД
     comment = models.TextField(_("комментарий"), null=True, blank=True)
+    criteria = models.JSONField(_("критерии"), default=dict, blank=True)
+    tags = models.JSONField(_("теги"), default=list, blank=True)
+    published_at = models.DateTimeField(_("опубликовано"), null=True, blank=True, editable=False)
+    reply = models.TextField(_("ответ"), null=True, blank=True)
+    replied_at = models.DateTimeField(_("ответ в"), null=True, blank=True)
+    moderation_status = models.CharField(
+        _("модерация"), max_length=20, choices=ModerationStatus.choices,
+        default=ModerationStatus.OK,
+    )
+    moderation_reason = models.TextField(_("причина модерации"), null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
     updated_at = models.DateTimeField(auto_now=True, editable=False)
 
@@ -473,6 +509,43 @@ class Rating(models.Model):
 
     def __str__(self):
         return "%s: %d★ → %s" % (self.rater_user_id, self.rating, self.rated_user_id)
+
+    @property
+    def is_published(self):
+        return self.published_at is not None and self.moderation_status == self.ModerationStatus.OK
+
+    @property
+    def is_editable(self):
+        return self.created_at >= timezone.now() - timedelta(days=14)
+
+
+class RatingReport(models.Model):
+    class Status(models.TextChoices):
+        NEW = "new", _("Новая")
+        REVIEWED = "reviewed", _("Рассмотрена")
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    rating = models.ForeignKey(Rating, verbose_name=_("оценка"), on_delete=models.CASCADE, related_name="reports")
+    reporter = models.ForeignKey(Profile, verbose_name=_("жалобщик"), on_delete=models.CASCADE, related_name="rating_reports_filed")
+    reason = models.TextField(_("причина"), default="", blank=True)
+    status = models.CharField(_("статус"), max_length=20, choices=Status.choices, default=Status.NEW)
+    reviewed_by = models.ForeignKey(
+        Profile, verbose_name=_("разобрал"), on_delete=models.SET_NULL,
+        null=True, blank=True, db_column="reviewed_by", related_name="+",
+    )
+    reviewed_at = models.DateTimeField(_("разобрано в"), null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, editable=False)
+
+    class Meta:
+        managed = False
+        db_table = "rating_reports"
+        unique_together = (("rating", "reporter"),)
+        verbose_name = _("жалоба на отзыв")
+        verbose_name_plural = _("Жалобы на отзывы")
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return "%s → %s [%s]" % (self.reporter_id, self.rating_id, self.status)
 
 
 class Invitation(models.Model):

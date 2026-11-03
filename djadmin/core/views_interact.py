@@ -25,8 +25,11 @@ from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
 from .anti_fraud import is_duplicate_message
-from .models import Application, Job, Message, Profile, Rating
+from .models import Application, Job, Message, Profile, Rating, RatingReport
 from .notifications import enqueue_notification
+from .reputation import (
+    EDIT_WINDOW_DAYS, publish_reciprocal, rating_options, review_moderation_reason,
+)
 from .ratelimit import rate_limit_write
 from .storage import UploadError, delete_upload_url, save_upload
 
@@ -42,7 +45,7 @@ ATTACHMENT_MIME = {
 def _chat_app_or_none(request, app_id):
     """Приложение+задание, если пользователь — участник чата (паритет chat_access)."""
     app = (
-        Application.objects.select_related("job")
+        Application.objects.select_related("job", "job__employer", "worker")
         .filter(pk=app_id)
         .first()
     )
@@ -54,57 +57,180 @@ def _chat_app_or_none(request, app_id):
 
 
 # ── Оценки ──────────────────────────────────────────────────────────────────
-# Контракт (сверено с app/blueprints/ratings.py upsert_rating): RPC rate_user_atomic
-# допускает только трудник→трудник (оба с accepted-заявкой), поэтому общий случай
-# (работодатель↔работник) Flask реализует проверками + прямым upsert в ratings.
-# Уникальность (rater, job, rated_user) — миграция 145; профиль пересчитывает триггер БД.
+# Публикация двусторонняя: отзыв становится видимым после ответного отзыва
+# второй стороны или через 14 дней (double-blind, защита от retaliatory review).
+def _rating_options(target_type):
+    return rating_options(target_type)
+
+
+def _rating_target(app, user):
+    """Return the counterparty and rating sides for an accepted application."""
+    if app.status != Application.Status.ACCEPTED:
+        return None
+    if user.pk == app.worker_id:
+        return {
+            "target": app.job.employer,
+            "rated_id": app.job.employer_id,
+            "rating_type": "worker",
+            "target_type": "employer",
+        }
+    if user.pk == app.job.employer_id:
+        return {
+            "target": app.worker,
+            "rated_id": app.worker_id,
+            "rating_type": "employer",
+            "target_type": "worker",
+        }
+    return None
+
+
+def _notify_rating_published(rating, request):
+    enqueue_notification(
+        rating.rated_user_id,
+        "new_rating",
+        _("Новая оценка"),
+        _("Вас оценили на %d из 5.") % rating.rating,
+        {
+            "rating_id": str(rating.pk),
+            "link": request.build_absolute_uri(
+                reverse("core:user_ratings", args=[rating.rated_user_id])
+            ),
+        },
+    )
+
+
 @login_required
-@require_POST
 def rate_participant(request, app_id):
     app = _chat_app_or_none(request, app_id)
     if app is None:
         raise Http404("Отклик не найден")
-    if app.job.status != Job.Status.COMPLETED:
-        messages.error(request, _("Оценить можно только завершённое задание."))
-        return redirect(request.META.get("HTTP_REFERER") or "/")
-    try:
-        stars = int(request.POST.get("rating", "0"))
-    except ValueError:
-        stars = 0
-    if not 1 <= stars <= 5:
-        messages.error(request, _("Оценка — от 1 до 5."))
-        return redirect(request.META.get("HTTP_REFERER") or "/")
-    if request.user.pk == app.worker_id:  # работник оценивает работодателя задания
-        if app.status != Application.Status.ACCEPTED:
-            messages.error(request, _("Оценить работодателя можно только после принятия отклика."))
-            return redirect(request.META.get("HTTP_REFERER") or "/")
-        rated_id, rating_type, target_type = app.job.employer_id, "worker", "employer"
-    else:  # владелец задания оценивает принятого работника
-        if app.status != Application.Status.ACCEPTED:
-            messages.error(request, _("Оценить можно только принятого работника."))
-            return redirect(request.META.get("HTTP_REFERER") or "/")
-        rated_id, rating_type, target_type = app.worker_id, "employer", "worker"
-    if rated_id == request.user.pk:
-        messages.error(request, _("Нельзя оценить самого себя."))
-        return redirect(request.META.get("HTTP_REFERER") or "/")
-    comment = (request.POST.get("comment") or "")[:1000]
-    defaults = {
-        "rating": stars, "comment": comment,
-        "rating_type": rating_type, "target_type": target_type,
-    }
-    try:
+    sides = _rating_target(app, request.user)
+    if sides is None:
+        messages.error(request, _("Оценить можно только принятого участника задания."))
+        return redirect(reverse("core:my_applications"))
+    target = sides["target"]
+    existing = Rating.objects.filter(
+        rater_user=request.user, job=app.job, rated_user_id=sides["rated_id"],
+    ).first()
+    criteria_options, tag_options = _rating_options(sides["target_type"])
+
+    if request.method == "POST":
+        if not app.rating_available:
+            messages.error(request, _("Оценка станет доступна после завершения задания."))
+            return redirect(reverse("core:rate_participant", args=[app.pk]))
+        if existing is not None and (
+            not existing.is_editable
+            or existing.moderation_status == Rating.ModerationStatus.HIDDEN
+        ):
+            messages.error(request, _("Оценка зафиксирована или скрыта модератором."))
+            return redirect(reverse("core:user_ratings", args=[sides["rated_id"]]))
+        try:
+            stars = int(request.POST.get("rating", "0"))
+        except (TypeError, ValueError):
+            stars = 0
+        if not 1 <= stars <= 5:
+            messages.error(request, _("Оценка — от 1 до 5."))
+            return redirect(reverse("core:rate_participant", args=[app.pk]))
+        comment = (request.POST.get("comment") or "").strip()[:1000]
+        criteria = {}
+        allowed_criteria = {key for key, _label in criteria_options}
+        for key in allowed_criteria:
+            raw = request.POST.get("criterion_%s" % key)
+            if raw in ("1", "2", "3", "4", "5"):
+                criteria[key] = int(raw)
+        allowed_tags = {key for key, _label in tag_options}
+        tags = [key for key in request.POST.getlist("tags") if key in allowed_tags]
+        moderation_reason = review_moderation_reason(comment, criteria, tags)
+        defaults = {
+            "rating": stars,
+            "comment": comment,
+            "criteria": criteria,
+            "tags": tags,
+            "rating_type": sides["rating_type"],
+            "target_type": sides["target_type"],
+            "moderation_status": (
+                Rating.ModerationStatus.REVIEW if moderation_reason else Rating.ModerationStatus.OK
+            ),
+            "moderation_reason": moderation_reason,
+        }
         with transaction.atomic():
-            Rating.objects.update_or_create(
-                rated_user_id=rated_id, rater_user=request.user, job=app.job,
+            rating, created = Rating.objects.update_or_create(
+                rated_user_id=sides["rated_id"], rater_user=request.user, job=app.job,
                 defaults=defaults,
             )
-    except IntegrityError:
-        # upsert: одна оценка (rater, job, rated_user) — обновляем только её
-        Rating.objects.filter(
-            rater_user=request.user, job=app.job, rated_user_id=rated_id
-        ).update(updated_at=timezone.now(), **defaults)
-    messages.success(request, _("Оценка сохранена."))
-    return redirect(request.META.get("HTTP_REFERER") or "/")
+            if created:
+                Rating.objects.filter(pk=rating.pk).update(published_at=None)
+            rating.refresh_from_db()
+            published = []
+            if rating.moderation_status == Rating.ModerationStatus.OK:
+                published = publish_reciprocal(rating)
+        if published:
+            for item in published:
+                _notify_rating_published(item, request)
+            messages.success(request, _("Оценка опубликована."))
+        elif moderation_reason:
+            messages.info(request, _("Отзыв отправлен на проверку модератору."))
+        else:
+            messages.success(
+                request,
+                _("Оценка сохранена. Она опубликуется после ответной оценки или через 14 дней."),
+            )
+        return redirect(reverse("core:user_ratings", args=[sides["rated_id"]]))
+
+    return render(request, "core/rate_participant.html", {
+        "app": app,
+        "target": target,
+        "target_type": sides["target_type"],
+        "existing": existing,
+        "criteria_options": criteria_options,
+        "tag_options": tag_options,
+        "selected_tags": set(existing.tags or []) if existing else set(),
+        "selected_criteria": (existing.criteria if existing and isinstance(existing.criteria, dict) else {}),
+        "rating_choices": (
+            (5, _("Отлично")), (4, _("Хорошо")), (3, _("Нормально")),
+            (2, _("Плохо")), (1, _("Очень плохо")),
+        ),
+        "rating_available": app.rating_available,
+        "can_edit": existing is None or existing.is_editable,
+        "edit_window_days": EDIT_WINDOW_DAYS,
+    })
+
+
+@login_required
+@require_POST
+@rate_limit_write(limit=10, window=60, redirect_to="/my-applications")
+def rating_reply(request, rating_id):
+    rating = Rating.objects.filter(pk=rating_id, rated_user=request.user).first()
+    if rating is None:
+        raise Http404("Оценка не найдена")
+    reply = (request.POST.get("reply") or "").strip()[:1000]
+    if not reply:
+        messages.error(request, _("Введите ответ."))
+        return redirect(reverse("core:user_ratings", args=[rating.rated_user_id]))
+    Rating.objects.filter(pk=rating.pk).update(reply=reply, replied_at=timezone.now())
+    messages.success(request, _("Ответ сохранён."))
+    return redirect(reverse("core:user_ratings", args=[rating.rated_user_id]))
+
+
+@login_required
+@require_POST
+@rate_limit_write(limit=5, window=600, redirect_to="/jobs")
+def rating_report(request, rating_id):
+    rating = Rating.objects.filter(pk=rating_id, published_at__isnull=False).first()
+    if rating is None:
+        raise Http404("Оценка не найдена")
+    if rating.rated_user_id == request.user.pk:
+        messages.error(request, _("Нельзя пожаловаться на свою оценку."))
+        return redirect(reverse("core:user_ratings", args=[rating.rated_user_id]))
+    reason = (request.POST.get("reason") or "").strip()[:1000]
+    if not reason:
+        messages.error(request, _("Опишите причину жалобы."))
+        return redirect(reverse("core:user_ratings", args=[rating.rated_user_id]))
+    RatingReport.objects.get_or_create(
+        rating=rating, reporter=request.user, defaults={"reason": reason},
+    )
+    messages.success(request, _("Жалоба на отзыв отправлена модератору."))
+    return redirect(reverse("core:user_ratings", args=[rating.rated_user_id]))
 
 
 # ── Чат ─────────────────────────────────────────────────────────────────────

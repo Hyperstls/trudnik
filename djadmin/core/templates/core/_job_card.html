@@ -26,9 +26,9 @@
             </div>
             <p class="text-sm text-neutral-500 mt-1 flex items-center gap-1.5 truncate">
                 <span class="font-medium truncate">{{ job.organization_name }}</span>
-                {% if job.employer.rating %}
+                {% if job.employer.employer_ratings_count %}
                 <span class="inline-flex items-center gap-0.5 text-neutral-500 shrink-0">
-                    <svg aria-hidden="true" class="h-[11px] w-[11px] text-amber-400 fill-current" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>{{ job.employer.rating|floatformat:1 }}
+                    <svg aria-hidden="true" class="h-[11px] w-[11px] text-amber-400 fill-current" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>{{ job.employer.employer_rating|floatformat:1 }}
                 </span>
                 {% endif %}
             </p>

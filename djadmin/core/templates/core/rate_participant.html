@@ -1,0 +1,88 @@
+{% extends "core/base.html" %}
+{% load i18n core_extras %}
+{% block title %}{% if target_type == 'worker' %}{% translate "Оценить трудника" %}{% else %}{% translate "Оценить работодателя" %}{% endif %} — Трудник{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto px-0 py-4 fade-in">
+    <a href="{% url 'core:my_applications' %}" class="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 mb-3">
+        <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        {% translate "К откликам" %}
+    </a>
+
+    <h1 class="text-xl font-bold text-neutral-800 mb-1">
+        {% if target_type == 'worker' %}{% translate "Оцените трудника" %}{% else %}{% translate "Оцените работодателя" %}{% endif %}
+    </h1>
+    <p class="text-sm text-neutral-500 mb-4">
+        <a href="{% if target_type == 'worker' %}{% url 'core:worker_detail' target.pk %}{% else %}{% url 'core:employer_detail' target.pk %}{% endif %}" class="text-primary-600 hover:text-primary-700 font-medium">{{ target.full_name|default:target.email }}</a>
+        · {{ app.job.work_type|default:_("Задание") }}{% if app.job.date_time %} · {{ app.job.date_time|date:"d.m.Y" }}{% endif %}
+    </p>
+
+    {% if not rating_available %}
+    <div class="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700">
+        {% translate "Оценка станет доступна после завершения задания или через 3 дня после запланированной даты работ." %}
+    </div>
+    {% elif existing and not can_edit %}
+    <div class="rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-700">
+        {% translate "Оценка зафиксирована: прошло больше 14 дней с момента публикации." %}
+    </div>
+    {% else %}
+    <form method="post" class="space-y-5 rounded-2xl border border-neutral-200 bg-white p-4 sm:p-5 shadow-sm">
+        {% csrf_token %}
+
+        <fieldset>
+            <legend class="text-sm font-semibold text-neutral-800 mb-2">{% translate "Общая оценка" %}</legend>
+            <div class="flex flex-wrap gap-2">
+                {% for value, label in rating_choices %}
+                <label class="inline-flex items-center gap-1.5 px-3 h-10 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 cursor-pointer text-sm font-medium text-neutral-700 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 has-[:checked]:text-primary-700">
+                    <input type="radio" name="rating" value="{{ value }}" class="sr-only" {% if existing.rating == value %}checked{% elif not existing and value == 5 %}checked{% endif %} required>
+                    {{ value }} {% include "core/_ui_icon.html" with name="star" class_name="h-4 w-4 text-warning" %}
+                    <span class="hidden sm:inline">{{ label }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend class="text-sm font-semibold text-neutral-800 mb-2">{% translate "По критериям" %}</legend>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {% for key, label in criteria_options %}
+                <label class="text-sm text-neutral-700">
+                    {{ label }}
+                    <select name="criterion_{{ key }}" class="mt-1 w-full h-10 rounded-xl border border-neutral-200 bg-white px-3 text-sm">
+                        <option value="">{% translate "Без оценки" %}</option>
+                        {% for value in "12345" %}
+                        <option value="{{ value }}" {% if selected_criteria|get_item:key|stringformat:"s" == value %}selected{% endif %}>{{ value }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                {% endfor %}
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend class="text-sm font-semibold text-neutral-800 mb-2">{% translate "Что запомнилось" %}</legend>
+            <div class="flex flex-wrap gap-2">
+                {% for key, label in tag_options %}
+                <label class="inline-flex items-center gap-2 px-3 h-9 rounded-full border border-neutral-200 bg-white text-sm text-neutral-700 cursor-pointer has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50">
+                    <input type="checkbox" name="tags" value="{{ key }}" class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500" {% if key in selected_tags %}checked{% endif %}>
+                    {{ label }}
+                </label>
+                {% endfor %}
+            </div>
+        </fieldset>
+
+        <div>
+            <label for="comment" class="text-sm font-semibold text-neutral-800">{% translate "Комментарий" %} <span class="text-neutral-400 font-normal">{% translate "(необязательно)" %}</span></label>
+            <textarea id="comment" name="comment" rows="4" maxlength="1000" class="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm" placeholder="{% translate 'Что прошло хорошо, а что можно улучшить?' %}">{{ existing.comment|default:'' }}</textarea>
+        </div>
+
+        <p class="text-xs text-neutral-500">
+            {% translate "Отзыв появится в профиле после ответной оценки второй стороны или через 14 дней. Изменить оценку можно в течение 14 дней." %}
+        </p>
+
+        <button type="submit" class="w-full sm:w-auto inline-flex items-center justify-center px-5 h-11 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold">
+            {% if existing %}{% translate "Обновить оценку" %}{% else %}{% translate "Отправить оценку" %}{% endif %}
+        </button>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

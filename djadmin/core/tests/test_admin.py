@@ -5,8 +5,9 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
-from core.models import SitePage
+from core.models import Rating, SitePage
 from core.tests.test_auth import make_profile
 
 User = get_user_model()
@@ -26,6 +27,7 @@ CHANGELISTS = [
     "admin:core_pushsubscription_changelist",
     "admin:core_message_changelist",
     "admin:core_rating_changelist",
+    "admin:core_ratingreport_changelist",
     "admin:core_invitation_changelist",
     "admin:core_receipt_changelist",
 ]
@@ -141,3 +143,44 @@ class AdminLoginPageTests(TestCase):
     def test_login_page_renders(self):
         response = self.client.get("/admin/login/")
         self.assertEqual(response.status_code, 200)
+
+
+class RatingModerationAdminTests(TestCase):
+    def setUp(self):
+        from core.tests.test_flows import make_job
+        self.staff = User.objects.create_superuser("rating-admin@example.com", "Aa1!aaaa")  # pragma: allowlist secret
+        self.employer = make_profile("rating-mod-emp@example.com", role="employer")
+        self.worker = make_profile("rating-mod-worker@example.com", role="worker")
+        self.job = make_job(self.employer, status="completed")
+        self.rating = Rating.objects.create(
+            rated_user=self.worker, rater_user=self.employer, job=self.job,
+            rating=5, comment="На проверке", rating_type="employer",
+            target_type="worker", moderation_status=Rating.ModerationStatus.REVIEW,
+        )
+
+    def test_approve_publishes_and_recomputes(self):
+        self.client.force_login(self.staff)
+        response = self.client.post("/admin/core/rating/", {
+            "action": "action_moderation_approve",
+            "_selected_action": [str(self.rating.pk)],
+        })
+        self.assertEqual(response.status_code, 302)
+        self.rating.refresh_from_db()
+        self.assertEqual(self.rating.moderation_status, "ok")
+        self.assertIsNotNone(self.rating.published_at)
+        self.worker.refresh_from_db()
+        self.assertEqual(self.worker.worker_ratings_count, 1)
+
+    def test_hide_removes_from_aggregates(self):
+        self.rating.published_at = timezone.now()
+        self.rating.save(update_fields=["published_at"])
+        self.client.force_login(self.staff)
+        response = self.client.post("/admin/core/rating/", {
+            "action": "action_moderation_hide",
+            "_selected_action": [str(self.rating.pk)],
+        })
+        self.assertEqual(response.status_code, 302)
+        self.rating.refresh_from_db()
+        self.assertEqual(self.rating.moderation_status, "hidden")
+        self.worker.refresh_from_db()
+        self.assertEqual(self.worker.worker_ratings_count, 0)

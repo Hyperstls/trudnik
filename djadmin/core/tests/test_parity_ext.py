@@ -8,6 +8,7 @@ from django.contrib.messages import get_messages
 from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from core.models import Application, Favorite, JobFavorite, JobPhoto, Notification, Profile, Rating, UserReport
 from core.tests.test_auth import make_profile
@@ -365,13 +366,16 @@ class RatingsPagesTests(TestCase):
         Rating.objects.create(
             rated_user=worker, rater_user=owner, job=job, rating=5,
             comment="Комментарий J030", rating_type="employer", target_type="worker",
+            published_at=timezone.now(),
         )
         self.client.force_login(owner)
         response = self.client.get(reverse("core:rate_workers", args=[job.pk]))
-        self.assertContains(response, "Обновить оценку")
         self.assertContains(response, "Оценён")
-        self.assertContains(response, "Комментарий J030")
-        self.assertContains(response, 'value="5" selected')
+        self.assertContains(response, reverse("core:rate_participant", args=[Application.objects.get(job=job, worker=worker).pk]))
+        page = self.client.get(reverse("core:rate_participant", args=[Application.objects.get(job=job, worker=worker).pk]))
+        self.assertContains(page, "Комментарий J030")
+        self.assertContains(page, 'value="5"')
+        self.assertContains(page, "checked")
 
     def test_rate_workers_without_rating(self):
         owner = make_profile("rwk-empty-owner@example.com")
@@ -391,10 +395,12 @@ class RatingsPagesTests(TestCase):
         Rating.objects.create(
             rated_user=worker, rater_user=employer, job=job, rating=5,
             comment="Отзыв работодателя", rating_type="employer", target_type="worker",
+            published_at=timezone.now(),
         )
         Rating.objects.create(
             rated_user=employer, rater_user=worker, job=job, rating=4,
             comment="Отзыв работника", rating_type="worker", target_type="employer",
+            published_at=timezone.now(),
         )
         worker_page = self.client.get(reverse("core:user_ratings", args=[worker.pk]))
         self.assertContains(worker_page, "От работодателя")

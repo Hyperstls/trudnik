@@ -3,6 +3,7 @@ from django.db.models import Count, Q
 from django.shortcuts import render
 
 from .models import Blacklist, Job, Profile
+from .reputation import weighted_expr
 from .search import ts_query
 
 
@@ -22,7 +23,9 @@ def global_search(request):
             workers_qs = Profile.objects.public_workers().extra(
                 where=["profiles.search_vector @@ to_tsquery('russian', %s)"],
                 params=[ts],
-            ).prefetch_related("user_skills__skill").order_by("-rating", "-total_reviews")
+            ).prefetch_related("user_skills__skill").annotate(
+                weighted_rating=weighted_expr("worker_rating", "worker_ratings_count")
+            ).order_by("-weighted_rating", "-worker_ratings_count")
         else:
             jobs_qs = Job.objects.public().filter(
                 Q(work_type__icontains=query)
@@ -35,7 +38,9 @@ def global_search(request):
                 Q(full_name__icontains=query)
                 | Q(city__icontains=query)
                 | Q(bio__icontains=query)
-            ).prefetch_related("user_skills__skill").order_by("-rating", "-total_reviews")
+            ).prefetch_related("user_skills__skill").annotate(
+                weighted_rating=weighted_expr("worker_rating", "worker_ratings_count")
+            ).order_by("-weighted_rating", "-worker_ratings_count")
         employers_qs = None
         if request.user.is_authenticated:
             employers_qs = (
@@ -49,7 +54,9 @@ def global_search(request):
                     | Q(city__icontains=query)
                     | Q(bio__icontains=query)
                 )
-                .order_by("-rating", "-total_reviews")
+                .annotate(
+                    weighted_rating=weighted_expr("employer_rating", "employer_ratings_count")
+                ).order_by("-weighted_rating", "-employer_ratings_count")
             )
             blocked_ids = Blacklist.objects.filter(
                 blocked_user=request.user

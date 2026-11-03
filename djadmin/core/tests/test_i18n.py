@@ -152,6 +152,21 @@ class CabinetEnglishTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Applications")
 
+    def test_english_rating_page(self):
+        from core.models import Application
+
+        self.job.status = "completed"
+        self.job.save(update_fields=["status"])
+        app = Application.objects.create(
+            job=self.job, worker=self.worker, status="accepted",
+        )
+        self.client.force_login(self.employer)
+        self._english()
+        response = self.client.get(reverse("core:rate_participant", args=[app.pk]))
+        self.assertContains(response, "Overall rating")
+        self.assertContains(response, "Quality of work")
+        self.assertContains(response, "Submit rating")
+
     def test_js_translation_bridge(self):
         self._english()
         response = self.client.get(reverse("core:login"))

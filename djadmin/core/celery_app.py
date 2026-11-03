@@ -38,6 +38,14 @@ app.conf.beat_schedule = {
         "task": "core.tasks.ensure_max_webhook",
         "schedule": 600.0,
     },
+    "publish-due-ratings": {
+        "task": "core.tasks.publish_due_ratings",
+        "schedule": 3600.0,
+    },
+    "remind-pending-ratings": {
+        "task": "core.tasks.remind_pending_ratings",
+        "schedule": 21600.0,
+    },
 }
 
 app.autodiscover_tasks(["core"])

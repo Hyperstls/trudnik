@@ -1083,7 +1083,7 @@ class MyApplicationsDefaultTests(TestCase):
         employer = make_profile("myapps-default-emp@example.com", role="employer")
         worker = make_profile(
             "myapps-default-worker@example.com", role="worker",
-            rating=4.5, desired_payment=1500,
+            worker_rating=4.5, worker_ratings_count=3, desired_payment=1500,
         )
         skill = Skill.objects.create(name="Навык J046", sort_order=1)
         UserSkill.objects.create(user=worker, skill=skill)

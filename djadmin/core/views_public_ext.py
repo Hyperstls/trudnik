@@ -34,6 +34,10 @@ from .models import (
     UserReport,
 )
 from .notifications import enqueue_notification
+from .reputation import (
+    criteria_labels, profile_metrics, public_ratings, rating_distribution,
+    recent_rating, reliable_badge, tag_labels, weighted_expr,
+)
 from .rpc import call_rpc
 from .storage import UploadError, delete_upload_url, save_upload
 from .views import job_photo_urls
@@ -68,10 +72,12 @@ def employers_list(request):
     if sort == "name":
         qs = qs.order_by("full_name")
     elif sort == "jobs_count":
-        qs = qs.order_by("-open_jobs", "-rating", "-total_reviews")
+        qs = qs.order_by("-open_jobs", "-employer_rating", "-employer_ratings_count")
     else:
         sort = "rating"
-        qs = qs.order_by("-rating", "-total_reviews")
+        qs = qs.annotate(
+            weighted_rating=weighted_expr("employer_rating", "employer_ratings_count")
+        ).order_by("-weighted_rating", "-employer_ratings_count", "-created_at")
     from django.core.paginator import Paginator
 
     page = Paginator(qs, 20).get_page(request.GET.get("page"))
@@ -118,9 +124,10 @@ def employer_detail(request, employer_id):
         Job.objects.public().filter(employer=profile, status="open").order_by("-created_at")
     )
     ratings = (
-        Rating.objects.filter(rated_user=profile, target_type="employer")
-        .select_related("rater_user", "job").order_by("-created_at")[:10]
+        public_ratings(profile.pk, "employer")
+        .select_related("rater_user", "job").order_by("-published_at")[:10]
     )
+    metrics = profile_metrics(profile.pk, profile.role)
     is_favorited = Favorite.objects.filter(
         user=request.user, target=profile, favorite_type="employer"
     ).exists()
@@ -130,6 +137,12 @@ def employer_detail(request, employer_id):
     )
     return render(request, "core/employer_detail.html", {
         "p": profile, "jobs": jobs, "ratings": ratings,
+        "distribution": rating_distribution(profile.pk, "employer"),
+        "recent": recent_rating(profile.pk, "employer"),
+        "metrics": metrics,
+        "is_reliable": reliable_badge(profile, metrics),
+        "review_criteria_labels": criteria_labels("employer"),
+        "review_tag_labels": tag_labels("employer"),
         "employer_card": EmployerDetail.objects.filter(user=profile).first(),
         "is_favorited": is_favorited,
         "already_applied_job_ids": already_applied_job_ids,
@@ -141,13 +154,24 @@ def user_ratings(request, user_id):
     profile = Profile.objects.filter(pk=user_id).first()
     if profile is None:
         raise Http404("Профиль не найден")
-    ratings_qs = Rating.objects.filter(rated_user=profile)
-    if profile.role == Profile.Role.EMPLOYER:
-        ratings_qs = ratings_qs.filter(target_type="employer")
-    elif profile.role == Profile.Role.WORKER:
-        ratings_qs = ratings_qs.filter(target_type="worker")
-    ratings = ratings_qs.select_related("rater_user", "job").order_by("-created_at")[:50]
-    return render(request, "core/user_ratings.html", {"p": profile, "ratings": ratings})
+    target_type = "employer" if profile.role == Profile.Role.EMPLOYER else "worker"
+    ratings_qs = public_ratings(profile.pk, target_type)
+    ratings = (
+        ratings_qs.select_related("rater_user", "job")
+        .order_by("-published_at")[:50]
+    )
+    metrics = profile_metrics(profile.pk, profile.role)
+    return render(request, "core/user_ratings.html", {
+        "p": profile,
+        "ratings": ratings,
+        "target_type": target_type,
+        "distribution": rating_distribution(profile.pk, target_type),
+        "recent": recent_rating(profile.pk, target_type),
+        "metrics": metrics,
+        "is_reliable": reliable_badge(profile, metrics),
+        "review_criteria_labels": criteria_labels(target_type),
+        "review_tag_labels": tag_labels(target_type),
+    })
 
 
 @login_required
@@ -157,7 +181,7 @@ def rate_workers(request, job_id):
     if job is None:
         raise Http404("Задание не найдено")
     apps = list(
-        Application.objects.filter(job=job, status="accepted").select_related("worker")
+        Application.objects.filter(job=job, status="accepted").select_related("job", "worker")
     )
     existing = {
         r.rated_user_id: r

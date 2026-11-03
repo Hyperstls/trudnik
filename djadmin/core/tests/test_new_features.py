@@ -97,7 +97,7 @@ class WorkerProfileExtrasTests(TestCase):
         Rating.objects.create(
             rated_user=worker, rater_user=employer, job=job,
             rating_type="worker", target_type="worker", rating=5,
-            comment="Отличная работа",
+            comment="Отличная работа", published_at=timezone.now(),
         )
         response = self.client.get(reverse("core:worker_detail", args=[worker.pk]))
         self.assertContains(response, "https://example.com/portfolio")
