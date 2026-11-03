@@ -2224,7 +2224,8 @@ CREATE TABLE public.messages (
     attachment_url text,
     attachment_name text,
     attachment_mime text,
-    attachment_size integer
+    attachment_size integer,
+    read_at timestamp with time zone
 );
 
 
@@ -3305,6 +3306,13 @@ CREATE UNIQUE INDEX idx_messages_client_msg_id ON public.messages USING btree (a
 --
 
 CREATE INDEX idx_messages_sender_id ON public.messages USING btree (sender_id);
+
+
+--
+-- Name: idx_messages_unread; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_messages_unread ON public.messages USING btree (application_id, sender_id) WHERE (read_at IS NULL);
 
 
 --

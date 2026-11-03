@@ -17,7 +17,7 @@
             {% for day in message_days %}
             <div class="text-center text-[10px] text-neutral-400 my-1">{{ day.grouper }}</div>
             {% for m in day.list %}
-            <div class="flex {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}justify-end{% endif %}">
+            <div class="flex {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}justify-end{% endif %}" data-message-id="{{ m.id }}">
                 <div class="max-w-[80%]">
                     {% if m.attachment_url %}
                     {% if m.attachment_mime|slice:":6" == "image/" %}
@@ -32,6 +32,9 @@
                     {% endif %}
                     {% if m.content %}<span class="inline-block rounded-2xl px-3.5 py-2 text-sm {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}bg-primary-600 text-white{% else %}bg-neutral-100 text-neutral-800{% endif %}">{{ m.content }}</span>{% endif %}
                     <p class="text-[10px] text-neutral-400 mt-0.5 {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}text-right{% endif %}">{{ m.created_at|date:"d.m H:i" }}</p>
+                    {% if m.sender_id|stringformat:'s' == user.pk|stringformat:'s' %}
+                    <span class="message-status block text-[10px] text-neutral-400 text-right">{% if m.read_at %}Прочитано{% else %}Отправлено{% endif %}</span>
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}
@@ -84,6 +87,9 @@
     if (empty) empty.remove();
     var wrap = document.createElement('div');
     wrap.className = 'flex' + (mine ? ' justify-end' : '');
+    wrap.dataset.messageId = String(mid || '');
+    var content = document.createElement('div');
+    content.className = 'max-w-[80%]';
     if (m.attachment_url) {
       var link = document.createElement('a');
       link.href = m.attachment_url;
@@ -101,17 +107,39 @@
         link.className = 'inline-flex items-center gap-1 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm text-primary-700 hover:bg-neutral-50 mb-1';
         link.textContent = '📎 ' + (m.attachment_name || 'Файл');
       }
-      wrap.appendChild(link);
+      content.appendChild(link);
     }
     if (m.content) {
       var bubble = document.createElement('span');
       bubble.className = 'inline-block rounded-2xl px-3.5 py-2 text-sm ' +
         (mine ? 'bg-primary-600 text-white' : 'bg-neutral-100 text-neutral-800');
       bubble.textContent = m.content;
-      wrap.appendChild(bubble);
+      content.appendChild(bubble);
     }
+    if (mine) {
+      var receipt = document.createElement('span');
+      receipt.className = 'message-status block text-[10px] text-neutral-400 text-right';
+      receipt.textContent = m.read_at ? 'Прочитано' : 'Отправлено';
+      content.appendChild(receipt);
+    }
+    wrap.appendChild(content);
     log.appendChild(wrap);
     log.scrollTop = log.scrollHeight;
+  }
+
+  function updateReadStatus(ids) {
+    (ids || []).forEach(function (id) {
+      var row = log.querySelector('[data-message-id="' + id + '"]');
+      var status = row ? row.querySelector('.message-status') : null;
+      if (status) status.textContent = 'Прочитано';
+    });
+  }
+
+  function markRead() {
+    fetch('/chat/' + appId + '/read', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrf ? csrf.value : '' }
+    }).catch(function () {});
   }
 
   function pollOnce() {
@@ -124,6 +152,7 @@
           maxId = Math.max(maxId, Number(m.id) || 0);
         });
         last = maxId;
+        updateReadStatus(data.read_ids);
       })
       .catch(function () {});
   }
@@ -138,7 +167,12 @@
     ws.onmessage = function (ev) {
       try {
         var d = JSON.parse(ev.data);
-        if (d && d.type === 'message') appendBubble(d, String(d.sender_id) === me);
+        if (d && d.type === 'message') {
+          appendBubble(d, String(d.sender_id) === me);
+          if (String(d.sender_id) !== me) markRead();
+        } else if (d && d.type === 'read') {
+          updateReadStatus(d.read_ids);
+        }
       } catch (e) {}
     };
     ws.onclose = function () { startPoll(); };

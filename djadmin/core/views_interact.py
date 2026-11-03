@@ -103,16 +103,32 @@ def rate_participant(request, app_id):
 
 
 # ── Чат ─────────────────────────────────────────────────────────────────────
+def _mark_chat_read(app, user):
+    """Mark incoming unread messages as read; return their ids."""
+    unread = Message.objects.filter(
+        application=app, read_at__isnull=True,
+    ).exclude(sender=user)
+    ids = list(unread.values_list("id", flat=True))
+    if ids:
+        unread.update(read_at=timezone.now())
+    return ids
+
+
 @login_required
 def chat_room(request, app_id):
     app = _chat_app_or_none(request, app_id)
     if app is None:
         raise Http404("Чат не найден")
+    read_ids = _mark_chat_read(app, request.user)
+    if read_ids:
+        from .consumers import notify_read_receipts
+        notify_read_receipts(app.pk, read_ids)
     messages_qs = list(
         Message.objects.filter(application=app).order_by("created_at", "id")
         .values(
             "id", "sender_id", "content", "created_at",
             "attachment_url", "attachment_name", "attachment_mime", "attachment_size",
+            "read_at",
         )
     )
     return render(request, "core/chat.html", {
@@ -190,23 +206,50 @@ def chat_poll(request, app_id):
         after = int(request.GET.get("after", "0"))
     except ValueError:
         after = 0
+    read_ids = _mark_chat_read(app, request.user)
+    if read_ids:
+        from .consumers import notify_read_receipts
+        notify_read_receipts(app.pk, read_ids)
     rows = list(
         Message.objects.filter(application=app, id__gt=after)
         .order_by("id")
         .values(
             "id", "sender_id", "content", "created_at",
             "attachment_url", "attachment_name", "attachment_mime", "attachment_size",
+            "read_at",
         )
     )
-    return JsonResponse({"messages": [
-        {"id": r["id"], "sender_id": str(r["sender_id"]),
-         "content": r["content"], "created_at": r["created_at"].isoformat(),
-         "attachment_url": r["attachment_url"],
-         "attachment_name": r["attachment_name"],
-         "attachment_mime": r["attachment_mime"],
-         "attachment_size": r["attachment_size"]}
-        for r in rows
-    ]})
+    own_read_ids = list(
+        Message.objects.filter(
+            application=app, sender=request.user, read_at__isnull=False,
+        ).order_by("-id").values_list("id", flat=True)[:200]
+    )
+    return JsonResponse({
+        "messages": [
+            {"id": r["id"], "sender_id": str(r["sender_id"]),
+             "content": r["content"], "created_at": r["created_at"].isoformat(),
+             "attachment_url": r["attachment_url"],
+             "attachment_name": r["attachment_name"],
+             "attachment_mime": r["attachment_mime"],
+             "attachment_size": r["attachment_size"],
+             "read_at": r["read_at"].isoformat() if r["read_at"] else None}
+            for r in rows
+        ],
+        "read_ids": own_read_ids,
+    })
+
+
+@login_required
+@require_POST
+def chat_mark_read(request, app_id):
+    app = _chat_app_or_none(request, app_id)
+    if app is None:
+        return JsonResponse({"error": "not_found"}, status=404)
+    ids = _mark_chat_read(app, request.user)
+    if ids:
+        from .consumers import notify_read_receipts
+        notify_read_receipts(app.pk, ids)
+    return JsonResponse({"ok": True, "read_ids": ids})
 
 
 @login_required

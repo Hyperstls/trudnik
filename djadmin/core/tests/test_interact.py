@@ -200,6 +200,39 @@ class ChatTests(TestCase):
         )
         self.assertEqual(Message.objects.filter(application=self.app).count(), 0)
 
+    def test_read_receipt_on_room_open_and_poll(self):
+        self.client.force_login(self.worker)
+        self.client.post(
+            reverse("core:chat_send", args=[self.app.pk]),
+            {"content": "Прочитай меня", "client_message_id": str(uuid.uuid4())},
+        )
+        msg = Message.objects.get(application=self.app)
+        self.assertIsNone(msg.read_at)
+
+        self.client.force_login(self.employer)
+        self.client.get(reverse("core:chat_room", args=[self.app.pk]))
+        msg.refresh_from_db()
+        self.assertIsNotNone(msg.read_at)
+
+        self.client.force_login(self.worker)
+        data = self.client.get(
+            reverse("core:chat_poll", args=[self.app.pk]), {"after": 0}
+        ).json()
+        self.assertIn(msg.pk, data["read_ids"])
+
+    def test_mark_read_endpoint(self):
+        self.client.force_login(self.worker)
+        self.client.post(
+            reverse("core:chat_send", args=[self.app.pk]),
+            {"content": "Непрочитанное", "client_message_id": str(uuid.uuid4())},
+        )
+        msg = Message.objects.get(application=self.app)
+        self.client.force_login(self.employer)
+        response = self.client.post(reverse("core:chat_mark_read", args=[self.app.pk]))
+        self.assertEqual(response.status_code, 200)
+        msg.refresh_from_db()
+        self.assertIsNotNone(msg.read_at)
+
     def test_send_idempotent_by_client_message_id(self):
         self.client.force_login(self.worker)
         cmid = str(uuid.uuid4())

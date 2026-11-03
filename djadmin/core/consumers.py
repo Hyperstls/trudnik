@@ -42,6 +42,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({"type": "message", **event["payload"]}))
 
+    async def chat_read(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "read", "read_ids": event.get("read_ids", []),
+        }))
+
     # ── синхронные хелперы (database_sync_to_async) ────────────────────
     @staticmethod
     def _is_participant(app_id, user_id) -> bool:
@@ -73,3 +78,24 @@ def notify_new_message(application_id, message: dict) -> None:
         import logging
 
         logging.getLogger(__name__).warning("chat ws notify failed", exc_info=True)
+
+
+def notify_read_receipts(application_id, read_ids) -> None:
+    """Broadcast read receipts to the room; null-safe like notify_new_message."""
+    if not read_ids:
+        return
+    try:
+        from asgiref.sync import async_to_sync
+        from channels.layers import get_channel_layer
+
+        layer = get_channel_layer()
+        if layer is None:
+            return
+        async_to_sync(layer.group_send)(
+            "chat_%s" % application_id,
+            {"type": "chat_read", "read_ids": read_ids},
+        )
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).warning("chat read notify failed", exc_info=True)
