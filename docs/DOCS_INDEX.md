@@ -23,6 +23,7 @@
 | [APP_RELEASE.md](APP_RELEASE.md) | APK/TWA: сборка, подпись, assetlinks, страница установки |
 | [E2E_TESTING.md](E2E_TESTING.md) | Playwright: регистрация → задание → отклик → принятие → чат |
 | [MONITORING.md](MONITORING.md) | `/health`, uptime-workflow, алерты, деплой-порядок, staging/restore |
+| [RESTORE_DRILL.md](RESTORE_DRILL.md) | проверенное восстановление БД, safety-правила, prod-процедура |
 | [rkn_notification_fill.md](rkn_notification_fill.md) | уведомление Роскомнадзора (152-ФЗ) |
 | [SECRETS_ROTATION_STATUS.md](SECRETS_ROTATION_STATUS.md) | статус утёкших в историю секретов |
 

@@ -55,6 +55,9 @@ npm run build:css
 
 # 6. E2E критических флоу (Playwright, одноразовые e2e-* данные)
 bash scripts/e2e/run_critical_flows.sh
+
+# 7. Restore drill (локальная одноразовая БД, см. docs/RESTORE_DRILL.md)
+.venv\Scripts\python.exe scripts/restore_drill.py --drop-target
 ```
 
 `DJANGO_DB_NAME`, `DATABASE_URL`, `REDIS_URL`, `SECRET_KEY`, `SMTP_*`,

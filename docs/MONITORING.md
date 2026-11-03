@@ -40,6 +40,6 @@ Actions → Uptime → Run workflow. Расписание (`*/30 * * * *`) де�
 
 - Отдельный staging-проект Amvera не создан: это платное решение владельца.
   Локальный аналог — dev-БД + `scripts/e2e/run_critical_flows.sh`.
-- Restore drill не автоматизирован: бэкапы и точка восстановления находятся в
-  панели Amvera (PostgreSQL). Для учебного восстановления нужен отдельный
-  временный кластер и явное разрешение владельца — на проде drill не выполнять.
+- Restore drill проверен локально: `scripts/restore_drill.py --drop-target`
+  (counts, PostGIS, RLS, RPC — PASSED). Safety-правила и процедура восстановления
+  прода — в [RESTORE_DRILL.md](RESTORE_DRILL.md). На проде drill не выполнять.
