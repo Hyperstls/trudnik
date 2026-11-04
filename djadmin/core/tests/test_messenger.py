@@ -102,6 +102,18 @@ class MessengerVerifyTests(TestCase):
 
     @override_settings(MAX_WEBHOOK_SECRET="s3cret")  # pragma: allowlist secret
     @patch("core.views_messenger._send_max")
+    def test_webhook_rejects_oversized_body(self, send):
+        payload = '{"update_type":"bot_started","chat_id":1,"payload":"' + "x" * 70000 + '"}'
+        response = self.client.post(
+            "/messenger/webhook/max", data=payload,
+            content_type="application/json",
+            headers={"X-Max-Bot-Api-Secret": "s3cret"},  # pragma: allowlist secret
+        )
+        self.assertEqual(response.status_code, 200)
+        send.assert_not_called()
+
+    @override_settings(MAX_WEBHOOK_SECRET="s3cret")  # pragma: allowlist secret
+    @patch("core.views_messenger._send_max")
     def test_successful_verification_replies_in_chat(self, send):
         cache.set("msg_verify:tok-reply", str(self.user.pk), 600)
         payload = {"update_type": "bot_started", "chat_id": 55,

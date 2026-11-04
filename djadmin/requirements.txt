@@ -15,4 +15,5 @@ packaging==26.3
 pywebpush==2.3.0
 channels==4.2.2
 channels-redis==4.3.0
+nh3==0.3.7
 uvicorn[standard]==0.49.0

@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 TOKEN_TTL = 600  # 10 минут
 PLATFORMS = {"max"}
 BOT_LINK = {"max": "https://max.ru/{bot}?start={token}"}
+MAX_WEBHOOK_BYTES = 64 * 1024
 NEEDED_UPDATE_TYPES = ("bot_started", "message_created")
 
 INSTRUCTION_TEXT = (
@@ -184,7 +185,16 @@ def _json_body(request) -> dict:
     try:
         import json
 
-        return json.loads(request.body.decode("utf-8", "replace") or "{}")
+        try:
+            content_length = int(request.META.get("CONTENT_LENGTH") or 0)
+        except (TypeError, ValueError):
+            content_length = 0
+        if content_length > MAX_WEBHOOK_BYTES:
+            return {}
+        raw = request.body
+        if len(raw) > MAX_WEBHOOK_BYTES:
+            return {}
+        return json.loads(raw.decode("utf-8", "replace") or "{}")
     except Exception:
         return {}
 

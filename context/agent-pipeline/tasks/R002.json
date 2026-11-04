@@ -1,0 +1,43 @@
+{
+  "id": "R002",
+  "title": "Единый helper безопасных next/referer-редиректов",
+  "goal": "Новый core/http.py содержит safe_next(request, fallback) и safe_referer(request, fallback), которые разрешают только same-origin URL и требуют HTTPS для secure-запроса. views_flow.py, views.py и views_public_ext.py используют helper вместо локальных проверок; редиректы после geo/favorite/bulk действий больше не дублируют логику.",
+  "why": "Проверки next/Referer были скопированы в нескольких модулях, часть не включала require_https. Это дрейф безопасности и риск downgrade/open redirect.",
+  "files": [
+    "djadmin/core/http.py",
+    "djadmin/core/views.py",
+    "djadmin/core/views_flow.py",
+    "djadmin/core/views_public_ext.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_profile.py",
+    "djadmin/core/tests/test_review_fixes.py",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "interfaces": "core/http.py: def safe_next(request, fallback: str) -> str — берёт request.POST['next'] или request.GET['next'], возвращает его только если url_has_allowed_host_and_scheme(value, allowed_hosts={request.get_host()}, require_https=request.is_secure()), иначе fallback. def safe_referer(request, fallback: str) -> str — то же для HTTP_REFERER, пустой/внешний/небезопасный referer заменяется fallback. Не менять URL/view-контракты и бизнес-логику.",
+  "acceptance": [
+    "core/http.py существует и экспортирует safe_next и safe_referer.",
+    "views_flow._safe_next использует safe_next, _safe_back использует safe_referer.",
+    "jobs_geo_set в views.py использует safe_next для next.",
+    "employer_favorite_toggle и bulk-операции в views_public_ext используют safe_referer.",
+    "Все редиректы проходят require_https=request.is_secure().",
+    "py_compile изменённых файлов проходит.",
+    "тесты core.tests.test_flows, core.tests.test_public_views, core.tests.test_review_fixes проходят."
+  ],
+  "out_of_scope": [
+    "Не менять шаблоны, JS, модели и RPC.",
+    "Не менять поведение endpoint'ов кроме валидации редиректа."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/http.py djadmin/core/views.py djadmin/core/views_flow.py djadmin/core/views_public_ext.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows core.tests.test_public_views core.tests.test_review_fixes --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

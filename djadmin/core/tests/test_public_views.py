@@ -726,6 +726,19 @@ class LegalFallbackTests(TestCase):
         self.assertContains(response, "Как мы защищаем")
         self.assertContains(response, "Проверенные пользователи")
 
+    def test_site_page_html_is_sanitized(self):
+        SitePage.objects.create(
+            slug="privacy", title="Из БД",
+            content='<p>SAFE-CONTENT</p><script>alert(1)</script>'
+                    '<a href="javascript:alert(1)">BAD-LINK</a><strong>SAFE-BOLD</strong>',
+        )
+        response = self.client.get(reverse("core:privacy"))
+        self.assertContains(response, "SAFE-CONTENT")
+        self.assertContains(response, "SAFE-BOLD")
+        self.assertNotContains(response, "alert(1)")
+        self.assertNotContains(response, 'href="javascript:')
+        self.assertContains(response, "BAD-LINK")
+
     def test_site_page_overrides_fallback(self):
         SitePage.objects.create(
             slug="privacy", title="Из БД", content="<p>DB-OVERRIDE</p>"

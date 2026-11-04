@@ -17,10 +17,10 @@ from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
+from .http import safe_referer
 from .models import (
     Application,
     Blacklist,
@@ -107,10 +107,7 @@ def employer_favorite_toggle(request, employer_id):
         else:
             fav.delete()
             messages.info(request, _("Работодатель удалён из избранного."))
-    referer = request.META.get("HTTP_REFERER") or ""
-    if not url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}):
-        referer = reverse("core:employers")
-    return redirect(referer)
+    return redirect(safe_referer(request, reverse("core:employers")))
 
 
 @login_required
@@ -268,10 +265,7 @@ def _bulk(request, apply: bool):
         request,
         _("Выполнено: %d, пропущено: %d, ошибок: %d.") % (applied, skipped, failed),
     )
-    referer = request.META.get("HTTP_REFERER") or ""
-    if not url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}):
-        referer = "/jobs"
-    return redirect(referer)
+    return redirect(safe_referer(request, "/jobs"))
 
 
 # ── Приглашения: отклонить все ─────────────────────────────────────────────

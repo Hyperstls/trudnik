@@ -29,7 +29,6 @@ from django.http import Http404, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext as _, gettext_lazy as _lazy
 from django.views.decorators.http import require_POST
 
@@ -39,6 +38,7 @@ from .anti_fraud import (
     allow_application, allow_job_post, assess_job,
 )
 from .forms import INPUT_CLS, JOB_FIELDS, JobForm, LoginForm
+from .http import safe_next, safe_referer
 from .models import Application, Job, JobFavorite, JobPhoto, Rating, Skill
 from .notifications import enqueue_notification
 from .ratelimit import RateLimitExceeded, RateLimitUnavailable, enforce_ip_limit, rate_limit_write
@@ -66,27 +66,13 @@ RPC_ERROR_TEXT = {
 
 
 def _safe_next(request):
-    """Только same-origin относительный redirect (блокирует //evil.com и \\evil.com)."""
-    nxt = request.GET.get("next") or request.POST.get("next") or ""
-    if nxt and url_has_allowed_host_and_scheme(nxt, allowed_hosts=None):
-        return nxt
-    return settings.LOGIN_REDIRECT_URL
+    """Только same-origin redirect (блокирует //evil.com и \\evil.com)."""
+    return safe_next(request, settings.LOGIN_REDIRECT_URL)
 
 
 def _safe_back(request, fallback: str):
     """Referer валидируется как same-origin; иначе — fallback."""
-    referer = request.META.get("HTTP_REFERER", "")
-    if referer:
-        # referer абсолютный: проверяем путь на нашем хосте
-        from urllib.parse import urlsplit
-
-        parts = urlsplit(referer)
-        host = request.get_host()
-        if (parts.netloc == host or not parts.netloc) and url_has_allowed_host_and_scheme(
-            referer, allowed_hosts={host}
-        ):
-            return referer
-    return fallback
+    return safe_referer(request, fallback)
 
 
 def _rpc_message(request, result: dict, ok_text: str = _lazy("Готово.")) -> bool:

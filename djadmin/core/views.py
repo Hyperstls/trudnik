@@ -25,10 +25,11 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext as _, gettext_lazy as _lazy
-from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 
+from .content import sanitize_legal_html
+from .http import safe_next
 from .models import (
     Application, Blacklist, Favorite, Invitation, Job, JobFavorite, Profile,
     Rating, SitePage, Skill, UserReport, UserSkill,
@@ -135,9 +136,7 @@ def _promoted_first():
 @require_POST
 def jobs_geo_set(request):
     """Сохранить гео-фильтр в сессии, не вынося координаты в URL."""
-    nxt = request.POST.get("next") or reverse("core:jobs")
-    if not url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}):
-        nxt = reverse("core:jobs")
+    nxt = safe_next(request, reverse("core:jobs"))
     if request.POST.get("clear") == "1":
         for key in ("geo_lat", "geo_lng", "geo_radius"):
             request.session.pop(key, None)
@@ -243,12 +242,7 @@ def toggle_search(request, search_id):
         prefs["saved_searches"] = updated[:10]
         Profile.objects.filter(pk=request.user.pk).update(notification_prefs=prefs)
         messages.info(request, _("Настройка уведомлений поиска обновлена."))
-    next_url = request.POST.get("next") or ""
-    if next_url and url_has_allowed_host_and_scheme(
-        next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
-    ):
-        return redirect(next_url)
-    return redirect("core:jobs")
+    return redirect(safe_next(request, reverse("core:jobs")))
 
 
 @login_required
@@ -326,12 +320,7 @@ def delete_search(request, search_id):
     ][:10]
     Profile.objects.filter(pk=request.user.pk).update(notification_prefs=prefs)
     messages.info(request, _("Сохранённый поиск удалён."))
-    next_url = request.POST.get("next") or ""
-    if next_url and url_has_allowed_host_and_scheme(
-        next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
-    ):
-        return redirect(next_url)
-    return redirect("core:jobs")
+    return redirect(safe_next(request, reverse("core:jobs")))
 
 
 def jobs_list(request):
@@ -869,6 +858,7 @@ LEGAL_TITLES = {
 def legal_page(request, slug):
     page = SitePage.objects.filter(pk=slug).first()
     if page is not None:
+        page.content = sanitize_legal_html(page.content)
         return render(request, "core/legal_page.html", {"page": page})
     if slug in LEGAL_TITLES:
         return render(request, "core/legal_fallback.html", {
