@@ -16,8 +16,8 @@
             <p class="text-xs text-neutral-500 mt-0.5">{{ app.job.organization_name }}{% if app.job.city %} · {{ app.job.city }}{% endif %}</p>
         </div>
         <div class="border-b border-neutral-100 px-4 py-2 flex flex-wrap items-center gap-2">
-            <form method="get" action="{% url 'core:chat_room' app.pk %}" class="flex flex-1 min-w-[12rem] gap-2">
-                <input type="search" name="q" value="{{ search_query }}" placeholder="{% translate 'Поиск по чату' %}" aria-label="{% translate 'Поиск по чату' %}" class="flex-1 border border-neutral-200 rounded-xl px-3 h-9 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+            <form method="get" action="{% url 'core:chat_room' app.pk %}" class="flex flex-1 min-w-0 gap-2">
+                <input type="search" name="q" value="{{ search_query }}" placeholder="{% translate 'Поиск по чату' %}" aria-label="{% translate 'Поиск по чату' %}" class="flex-1 min-w-0 border border-neutral-200 rounded-xl px-3 h-9 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent">
                 <button type="submit" class="px-3 h-9 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 text-sm font-medium">{% translate "Найти" %}</button>
                 {% if search_query %}<a href="{% url 'core:chat_room' app.pk %}" class="px-2 h-9 inline-flex items-center text-xs text-neutral-500 hover:text-neutral-700 underline underline-offset-2">{% translate "Сброс" %}</a>{% endif %}
             </form>
@@ -81,15 +81,15 @@
             </div>
             {% endif %}
         </div>
-        <form method="post" action="{% url 'core:chat_send' app.pk %}" enctype="multipart/form-data" class="border-t border-neutral-100 p-3 flex gap-2 items-center">
+        <form method="post" action="{% url 'core:chat_send' app.pk %}" enctype="multipart/form-data" class="border-t border-neutral-100 p-3 flex gap-2 items-center min-w-0">
             {% csrf_token %}
             <input type="hidden" name="client_message_id" value="{{ client_message_id }}">
             <label class="w-10 h-10 shrink-0 inline-flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-500 hover:bg-neutral-50 cursor-pointer" title="{% translate 'Прикрепить файл' %}" aria-label="{% translate 'Прикрепить файл' %}">
                 <input type="file" name="attachment" accept="image/jpeg,image/png,image/webp,application/pdf" class="sr-only">
                 <svg aria-hidden="true" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
             </label>
-            <input type="text" name="content" maxlength="4000" class="flex-1 border border-neutral-200 rounded-xl px-3 py-2.5 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="{% translate 'Сообщение…' %}" aria-label="{% translate 'Сообщение' %}">
-            <button class="px-5 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">{% translate "Отправить" %}</button>
+            <input type="text" name="content" maxlength="4000" class="flex-1 min-w-0 border border-neutral-200 rounded-xl px-3 py-2.5 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="{% translate 'Сообщение…' %}" aria-label="{% translate 'Сообщение' %}">
+            <button class="px-4 sm:px-5 h-10 shrink-0 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors">{% translate "Отправить" %}</button>
         </form>
         <p id="chat-send-status" class="px-3 pb-2 text-xs text-neutral-500" role="status" aria-live="polite"></p>
     </div>

@@ -39,18 +39,18 @@ async function check(name, fn) {
   }
 }
 
-async function newPage(browser) {
+async function newPage(browser, viewport = { width: 1280, height: 1000 }) {
   const context = await browser.newContext({
     locale: "ru-RU",
-    viewport: { width: 1280, height: 1000 },
+    viewport,
   });
   const page = await context.newPage();
   page.setDefaultTimeout(15000);
   return { context, page };
 }
 
-async function login(browser, email) {
-  const { context, page } = await newPage(browser);
+async function login(browser, email, viewport) {
+  const { context, page } = await newPage(browser, viewport);
   await page.goto(BASE + "/login", { waitUntil: "domcontentloaded" });
   await page.fill("#email", email);
   await page.fill("#password", PASSWORD);
@@ -206,6 +206,29 @@ async function workerMarksComplete(browser) {
   await context.close();
 }
 
+async function mobileLayout(browser, jobPath, chatPath) {
+  const paths = [
+    "/jobs", "/searches", "/profile", "/my-jobs", "/my-applications",
+    "/chats", "/notifications", "/notifications/settings", "/workers",
+    jobPath,
+  ];
+  if (chatPath) paths.push(chatPath);
+  for (const width of [360, 390]) {
+    const { context, page } = await login(browser, EMPLOYER, { width, height: 844 });
+    for (const path of paths) {
+      await page.goto(BASE + path, { waitUntil: "domcontentloaded" });
+      const size = await page.evaluate(() => ({
+        viewport: document.documentElement.clientWidth,
+        scroll: document.documentElement.scrollWidth,
+      }));
+      if (size.scroll > size.viewport + 1) {
+        throw new Error(`${width}px ${path}: horizontal scroll ${size.scroll}/${size.viewport}`);
+      }
+    }
+    await context.close();
+  }
+}
+
 async function main() {
   const browser = await chromium.launch({ headless: true });
   try {
@@ -260,6 +283,12 @@ async function main() {
         if (!failures.some((f) => f.name === "worker complete")) {
           ok("трудник отметил выполнение");
         }
+      }
+
+      console.log("▶ Мобильная вёрстка");
+      await mobileLayout(browser, jobPath, chatPath).catch((error) => fail("mobile layout", error));
+      if (!failures.some((f) => f.name === "mobile layout")) {
+        ok("мобильная вёрстка без горизонтального скролла");
       }
     }
 
