@@ -2669,3 +2669,27 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review
 
 **Пакет:** context/agent-pipeline/packs/J110.review.prompt.md
+
+## 2026-11-04 21:57:19 — R001: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** contract check command uses unsupported -q; revise to -v 0
+
+**Переход:** implementing → fixing
+
+## 2026-11-04 21:57:19 — R001: контракт обновлён
+
+**Причина:** Django manage.py test has no -q; use -v 0
+
+**Проверки до:** ['compile', 'tests']
+
+**Проверки после:** ['compile', 'tests']
+
+## 2026-11-04 22:00:47 — R001: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R001.review.prompt.md

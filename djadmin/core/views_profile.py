@@ -11,6 +11,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 from uuid import UUID
@@ -262,7 +263,11 @@ def worker_invitations_revoke(request, user_id):
     else:
         messages.info(request, _("Активных приглашений этому труднику нет."))
     next_url = (request.POST.get("next") or "").strip()
-    if next_url.startswith("/") and not next_url.startswith("//"):
+    if url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
         return redirect(next_url)
     return redirect("core:workers")
 
@@ -280,7 +285,11 @@ def invitation_revoke(request, invitation_id):
         invitation.delete()
         messages.success(request, _("Приглашение отозвано."))
     next_url = (request.POST.get("next") or "").strip()
-    if next_url.startswith("/") and not next_url.startswith("//"):
+    if url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
         return redirect(next_url)
     return redirect("core:invitations")
 

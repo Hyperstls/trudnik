@@ -241,6 +241,25 @@ class InvitationTests(TestCase):
             ).exists()
         )
 
+    def test_bulk_revoke_rejects_backslash_next(self):
+        """Открытый редирект: next=/\\evil.example не должен уводить на внешний хост."""
+        self._invite()
+        response = self.client.post(
+            reverse("core:worker_invitations_revoke", args=[self.worker.pk]),
+            {"next": "/\\evil.example"},
+        )
+        self.assertRedirects(response, reverse("core:workers"))
+
+    def test_revoke_rejects_scheme_relative_next(self):
+        """Открытый редирект: next=//evil.example не должен уводить на внешний хост."""
+        self._invite()
+        inv = Invitation.objects.get(job=self.job, worker=self.worker)
+        response = self.client.post(
+            reverse("core:invitation_revoke", args=[inv.pk]),
+            {"next": "//evil.example"},
+        )
+        self.assertRedirects(response, reverse("core:invitations"))
+
     def test_bulk_revoke_keeps_accepted_invitation(self):
         self._invite()
         inv = Invitation.objects.get(job=self.job, worker=self.worker)

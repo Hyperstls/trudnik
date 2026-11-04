@@ -2,6 +2,19 @@
  * Инициализация WebSocket и Push-уведомлений при загрузке страницы.
  */
 
+function safeNotificationLink(raw) {
+    var value = String(raw || '');
+    if (!value) return '/notifications';
+    try {
+        // URL resolves //evil, /\evil and absolute links; only same-origin is allowed.
+        var url = new URL(value, window.location.origin);
+        if (url.origin !== window.location.origin) return '/notifications';
+        return url.pathname + url.search + url.hash;
+    } catch (error) {
+        return '/notifications';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // escapeHtml — глобальный window.escapeHtml из base.js (локальная копия удалена)
 
@@ -21,10 +34,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const notificationsList = document.getElementById('notifications-list');
             if (notificationsList && data.data) {
                 const notif = data.data;
-                // Ссылка перехода — из payload (data.link, как в серверных карточках);
-                // разрешаем только http(s)/внутренние пути, иначе — на /notifications
-                let href = (notif.data && notif.data.link) || '/notifications';
-                if (!/^(https?:\/\/|\/)/.test(href)) href = '/notifications';
+                // Ссылка перехода — только same-origin. //evil, /\evil и внешние
+                // http(s) не должны превращаться в открытый редирект.
+                let href = safeNotificationLink(notif.data && notif.data.link);
                 const item = document.createElement('a');
                 item.href = href;
                 item.className = 'flex items-start gap-3 p-4 bg-white border border-neutral-100 rounded-xl hover:bg-neutral-50 transition-colors no-underline text-inherit';

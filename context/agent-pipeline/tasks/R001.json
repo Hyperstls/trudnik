@@ -1,0 +1,40 @@
+{
+  "id": "R001",
+  "title": "Безопасные next/referer-редиректы в профиле",
+  "goal": "В views_profile.py оба POST-эндпоинта (worker_invitations_revoke и invitation_revoke) принимают next только как same-origin URL; //evil.example и /\\evil.example не приводят к внешнему редиректу. В test_profile_flows.py добавлены проверки для обоих случаев.",
+  "why": "Ручная проверка `startswith('/') and not startswith('//')` пропускает `\\` и другие формы scheme-relative URL; это открытый редирект после действия пользователя.",
+  "files": [
+    "djadmin/core/views_profile.py",
+    "djadmin/core/tests/test_profile_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_flow.py",
+    "djadmin/core/tests/test_review_fixes.py"
+  ],
+  "interfaces": "Использовать django.utils.http.url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()). При невалидном next — прежний fallback: core:workers для worker_invitations_revoke и core:invitations для invitation_revoke. Не менять бизнес-логику удаления приглашений.",
+  "acceptance": [
+    "В views_profile.py нет проверки next через startswith('/') для этих двух view.",
+    "POST worker_invitations_revoke с next=/\\evil.example редиректит на /workers (или именованный core:workers), не на внешний URL.",
+    "POST invitation_revoke с next=//evil.example редиректит на /invitations (или именованный core:invitations), не на внешний URL.",
+    "Существующие тесты test_profile_flows проходят.",
+    "py_compile изменённых Python-файлов завершается с exit 0.",
+    "check test_profile_flows завершается с exit 0."
+  ],
+  "out_of_scope": [
+    "Не менять другие views, шаблоны и JS.",
+    "Не менять модель приглашений и RPC.",
+    "Не добавлять зависимости."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_profile.py djadmin/core/tests/test_profile_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_profile_flows --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

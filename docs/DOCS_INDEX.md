@@ -2,7 +2,7 @@
 
 **Дата:** 2026-11-01
 **Текущий стек:** Django 5.2, Python 3.12, PostgreSQL/PostGIS, Celery/Redis, Channels, Tailwind, Amvera.
-**Прод:** трудник.рф; полный `core` — 599 OK, `pre_deploy_check` — 7/7.
+**Прод:** трудник.рф; полный `core` — 601 OK, `pre_deploy_check` — 7/7.
 
 ## 1. Актуальные документы (источник истины)
 
@@ -28,6 +28,7 @@
 | [LAUNCH_CHECKLIST.md](LAUNCH_CHECKLIST.md) | preflight прода, почтовый DNS, бэкапы, юр. статус, алерты |
 | [SMTP_DNS_SETUP.md](SMTP_DNS_SETUP.md) | Yandex SMTP: быстрый вариант и SPF/DKIM/DMARC для домена |
 | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) | токены, `_ui_*` partials, card/modal/sheet, миграция |
+| [CODE_REVIEW_2026-11.md](CODE_REVIEW_2026-11.md) | кодревью, исправления, приоритетные улучшения |
 | [REPUTATION.md](REPUTATION.md) | рейтинги: роли, double-blind, критерии, модерация, метрики |
 | [LOCALIZATION.md](LOCALIZATION.md) | RU/EN: переключатель, каталог, покрытие, сборка `.mo` |
 | [CONTENT_EDITING.md](CONTENT_EDITING.md) | SitePage: HTML, live preview, редакции документов |
