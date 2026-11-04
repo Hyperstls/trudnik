@@ -8,20 +8,36 @@ the repository owner a GitHub notification.
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.request
 
 BASE = os.getenv("UPTIME_BASE_URL", "https://xn--d1aigknli.xn--p1ai").rstrip("/")
 PATHS = ("/health", "/jobs", "/login", "/static/js/job-view.js")
-TIMEOUT = 20
+TIMEOUT = 10
+ATTEMPTS = 3
+RETRY_DELAY = 1.5
 
 
 def fetch(path):
+    """Fetch with retries: Amvera ingress sometimes resets TLS on a single try."""
     request = urllib.request.Request(
         BASE + path, headers={"User-Agent": "trudnik-uptime/1.0"}
     )
-    with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
-        return response.status, response.read(20000)
+    last_error = None
+    for attempt in range(ATTEMPTS):
+        try:
+            with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+                if response.status < 500:
+                    return response.status, response.read(20000)
+                last_error = "HTTP %s" % response.status
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            last_error = exc
+        if attempt + 1 < ATTEMPTS:
+            time.sleep(RETRY_DELAY)
+    if isinstance(last_error, Exception):
+        raise last_error
+    raise OSError(last_error or "request failed")
 
 
 def main():
