@@ -3963,3 +3963,6 @@ msgstr "No news yet"
 
 msgid "Открыть"
 msgstr "Open"
+
+msgid "Информация"
+msgstr "Information"

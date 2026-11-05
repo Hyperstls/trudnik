@@ -1,0 +1,40 @@
+{
+  "id": "R019",
+  "title": "Информация: ссылка в футере",
+  "goal": "Добавить в футер ссылку «Информация» на /info с теми же классами, что у «Вопросы»/«Поддержка», и проверить её в RU/EN.",
+  "why": "Страница /info готова, но без ссылки её нельзя найти из интерфейса.",
+  "files": [
+    "djadmin/core/templates/core/base.html",
+    "djadmin/core/tests/test_i18n.py",
+    "djadmin/locale/en/LC_MESSAGES/django.po",
+    "djadmin/locale/en/LC_MESSAGES/django.mo"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/info.html",
+    "djadmin/core/urls.py"
+  ],
+  "interfaces": "В base.html после ссылки «Вопросы» добавить <a href=\"{% url 'core:info' %}\" class=\"text-primary-600 hover:text-primary-700 mx-2\">{% translate 'Информация' %}</a>. В test_i18n.py добавить тест: анонимный GET /jobs содержит href=\"/info\" и «Информация»; после переключения en — «Information». Больше ничего не менять. В django.po добавить msgid \"Информация\" → msgstr \"Information\" и пересобрать django.mo через polib.",
+  "acceptance": [
+    "В футере /jobs есть ссылка href=\"/info\".",
+    "Русский футер содержит «Информация», английский — «Information».",
+    "py_compile test_i18n.py проходит.",
+    "core.tests.test_i18n, core.tests.test_public_views проходят.",
+    "В django.po есть msgid \"Информация\" → \"Information\", django.mo пересобран."
+  ],
+  "out_of_scope": [
+    "Не менять info.html, модель, админку и вьюху.",
+    "Не менять другие ссылки футера."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_i18n.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_i18n core.tests.test_public_views --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

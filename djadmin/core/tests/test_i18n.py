@@ -44,6 +44,17 @@ class LanguageSwitchTests(TestCase):
         self.assertContains(response, "Filters")
         self.assertContains(response, "Sort:")
 
+    def test_footer_info_link_translated(self):
+        """R019: ссылка «Информация» в футере ведёт на /info и переводится."""
+        response = self.client.get(reverse("core:jobs"))
+        self.assertContains(response, 'href="/info"')
+        self.assertContains(response, "Информация")
+
+        self.client.post(reverse("set_language"), {"language": "en", "next": "/jobs"})
+        response = self.client.get(reverse("core:jobs"))
+        self.assertContains(response, 'href="/info"')
+        self.assertContains(response, "Information")
+
     def test_russian_profile_security_section(self):
         from core.tests.test_auth import make_profile
 
