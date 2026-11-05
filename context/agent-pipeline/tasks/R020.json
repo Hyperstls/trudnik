@@ -1,0 +1,40 @@
+{
+  "id": "R020",
+  "title": "MAX: chat_id в query-параметре отправки сообщения",
+  "goal": "Исправить _send_max: MAX Bot API принимает chat_id только как query-параметр POST /messages?chat_id=..., а не в JSON-теле. Сейчас запрос уходит с chat_id в body и отклоняется, поэтому бот молчит после «Начать».",
+  "why": "Событие bot_started доходит до вебхука, но _send_max получает ошибку API; unit-тесты мокали _send_max и не проверяли реальный контракт. Это объясняет пустой чат на скриншотах.",
+  "files": [
+    "djadmin/core/views_messenger.py",
+    "djadmin/core/tests/test_messenger.py"
+  ],
+  "context_files": [
+    "docs/MAX_VERIFICATION.md",
+    "djadmin/config/settings.py"
+  ],
+  "interfaces": "_send_max(chat_id, text, button=None): requests.post('%s/messages' % settings.MAX_API_URL, params={'chat_id': chat_id}, json={'text': text, ...}, headers=_max_headers(), timeout=_api_timeout(), verify=_max_verify()). В JSON-теле НЕ должно быть chat_id; attachments добавляются как раньше. _answer_callback не менять (там callback_id уже query). В test_messenger.py добавить тест с patch('core.views_messenger.requests.post'): вызвать _send_max(123, 'hi', button), проверить URL /messages, params={'chat_id':123}, json без chat_id, attachments на месте; успешный ответ 200 → True, >=300 → False.",
+  "acceptance": [
+    "_send_max отправляет chat_id в params, а не в json.",
+    "JSON-тело содержит text и при наличии button — attachments, но не chat_id.",
+    "Тест с mock requests.post подтверждает URL/params/json.",
+    "Остальные вызовы (_send_instruction, _send_confirm, _complete) работают без изменений.",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_messenger, core.tests.test_auth проходят."
+  ],
+  "out_of_scope": [
+    "Не менять вебхук, подписки, callback-ответы и тексты.",
+    "Не менять MAX_WEBHOOK_SECRET и env.",
+    "Не добавлять зависимости."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_messenger.py djadmin/core/tests/test_messenger.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_messenger core.tests.test_auth --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

@@ -101,12 +101,13 @@ def _send_max(chat_id, text: str, button: dict | None = None) -> bool:
     token = _max_token()
     if not token or not chat_id:
         return False
-    payload = {"chat_id": chat_id, "text": text}
+    payload = {"text": text}
     if button:
         payload["attachments"] = [button]
     try:
         response = requests.post(
             "%s/messages" % settings.MAX_API_URL,
+            params={"chat_id": chat_id},
             json=payload,
             headers=_max_headers(),
             timeout=_api_timeout(),

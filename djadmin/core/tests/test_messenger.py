@@ -13,6 +13,7 @@ from core.views_messenger import (
     _complete,
     _reply,
     _send_confirm,
+    _send_max,
     _subscription_signature,
     ensure_max_webhook,
 )
@@ -297,6 +298,42 @@ class AnswerCallbackTests(TestCase):
 
     def test_answer_requires_callback_id(self):
         self.assertFalse(_answer_callback("", "Текст"))
+
+
+@override_settings(
+    MAX_BOT_TOKEN="test-bot-token",  # pragma: allowlist secret
+    MAX_API_URL="https://max.test",
+)
+class SendMaxTests(TestCase):
+    @patch("core.views_messenger.requests.post")
+    def test_chat_id_in_query_not_in_body(self, post):
+        post.return_value = MagicMock(status_code=200)
+        button = {"type": "inline_keyboard", "payload": {"buttons": []}}
+        self.assertTrue(_send_max(123, "hi", button))
+        args, kwargs = post.call_args
+        self.assertEqual(args[0], "https://max.test/messages")
+        self.assertEqual(kwargs["params"], {"chat_id": 123})
+        self.assertEqual(kwargs["json"], {"text": "hi", "attachments": [button]})
+        self.assertNotIn("chat_id", kwargs["json"])
+
+    @patch("core.views_messenger.requests.post")
+    def test_body_without_button_has_text_only(self, post):
+        post.return_value = MagicMock(status_code=200)
+        self.assertTrue(_send_max(7, "hi"))
+        self.assertEqual(post.call_args.kwargs["params"], {"chat_id": 7})
+        self.assertEqual(post.call_args.kwargs["json"], {"text": "hi"})
+
+    @patch("core.views_messenger.requests.post")
+    def test_error_status_returns_false(self, post):
+        post.return_value = MagicMock(status_code=400)
+        self.assertFalse(_send_max(123, "hi"))
+
+    @patch("core.views_messenger.requests.post")
+    def test_requires_token_and_chat_id(self, post):
+        with override_settings(MAX_BOT_TOKEN=""):
+            self.assertFalse(_send_max(1, "hi"))
+        self.assertFalse(_send_max(None, "hi"))
+        post.assert_not_called()
 
 
 @override_settings(

@@ -2941,3 +2941,11 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** Hyperstls
 
 **Пакет:** context/agent-pipeline/packs/R019.review.prompt.md
+
+## 2026-11-05 22:40:39 — R020: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R020.review.prompt.md
