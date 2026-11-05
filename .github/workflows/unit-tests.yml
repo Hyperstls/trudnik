@@ -50,6 +50,7 @@ jobs:
       REDIS_URL: redis://localhost:6379/0
       MIGRATIONS_ENABLED: "false"
       GLOBAL_RATE_LIMIT_PER_MIN: "10000"
+      YANDEX_MAPS_API_KEY: "test-key"  # pragma: allowlist secret
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

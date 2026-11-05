@@ -1,0 +1,30 @@
+{
+  "id": "R015",
+  "title": "CI unit: тестовый YANDEX_MAPS_API_KEY",
+  "goal": "В workflow unit-tests.yml задать YANDEX_MAPS_API_KEY=test-key, чтобы тесты карты/гео-поиска видели карту и data-geo-active, как локально с .env. Без ключа блок карты не рендерится, и test_geo_active_map_auto_opens падает.",
+  "why": "Третий запуск Unit tests: 1 failure — test_geo_active_map_auto_opens не нашёл data-geo-active, потому что в CI не было YANDEX_MAPS_API_KEY и шаблон не выводил карту. Это среда, а не код.",
+  "files": [
+    ".github/workflows/unit-tests.yml"
+  ],
+  "context_files": [
+    "djadmin/core/tests/test_public_views.py",
+    "djadmin/core/templates/core/jobs_list.html"
+  ],
+  "interfaces": "В env job unit добавить YANDEX_MAPS_API_KEY: \"test-key\" (не секрет). Остальные env и шаги не менять.",
+  "acceptance": [
+    "В workflow env есть YANDEX_MAPS_API_KEY: \"test-key\".",
+    "YAML парсится, job unit существует.",
+    "CI Unit tests на следующем push завершается success (внешняя проверка после мержа)."
+  ],
+  "out_of_scope": [
+    "Не менять приложение, тесты, шаблоны и настройки.",
+    "Не менять production-ключи и другие workflows."
+  ],
+  "checks": [
+    {
+      "name": "yaml",
+      "cmd": "{python} -c \"import yaml; d=yaml.safe_load(open('.github/workflows/unit-tests.yml', encoding='utf-8')); assert d['jobs']['unit']['env']['YANDEX_MAPS_API_KEY']=='test-key'; print('yaml ok')\"",
+      "cwd": "."
+    }
+  ]
+}
