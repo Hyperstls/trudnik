@@ -208,7 +208,7 @@ async function workerMarksComplete(browser) {
 
 async function mobileLayout(browser, jobPath, chatPath) {
   const paths = [
-    "/jobs", "/searches", "/profile", "/my-jobs", "/my-applications",
+    "/jobs", "/searches", "/profile", "/profile/sessions", "/my-jobs", "/my-applications",
     "/chats", "/notifications", "/notifications/settings", "/workers",
     jobPath,
   ];
