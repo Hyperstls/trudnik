@@ -1,0 +1,48 @@
+{
+  "id": "R006",
+  "title": "Управление сессиями: метаданные и безопасный отзыв (backend)",
+  "goal": "Каждая аутентифицированная сессия получает метаданные (user agent, login_at, last_seen) через middleware; новый core/sessions.py умеет перечислять сессии пользователя по публичным HMAC-идентификаторам и отзывать чужую сессию, не раскрывая session_key. UI-страница — отдельная задача.",
+  "why": "После включения 2FA пользователю нужен способ увидеть и завершить чужие сессии (украденный cookie/старый телефон). Django-сессии в БД уже есть; отдельная таблица не нужна.",
+  "files": [
+    "djadmin/core/sessions.py",
+    "djadmin/core/middleware.py",
+    "djadmin/config/settings.py",
+    "djadmin/core/tests/test_sessions.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/views_flow.py",
+    "djadmin/core/tests/test_auth.py"
+  ],
+  "interfaces": "core/sessions.py: session_public_id(session_key) -> str (HMAC-SHA256 по SECRET_KEY, hex[:16]); describe_user_agent(ua) -> str (Yandex Browser/Edge/Opera/Firefox/Chrome/Safari + Windows/macOS/Android/iOS/Linux, иначе gettext «Неизвестное устройство»); set_session_meta(request) -> None (только authenticated; первый раз пишет ua[:300], login_at, last_seen; затем не чаще раза в 300с через cache.add('sess_seen:<session_key>', 1, 300); сбой кэша ловится и не ломает запрос); iter_user_sessions(user) -> list[dict] (только сессии этого user по _auth_user_id, поля public_id, ua, description, login_at, last_seen, expire_date; битые данные пропускаются); revoke_user_session(user, public_id) -> str | None (сверка public_id через hmac.compare_digest, удаляет django_session по ключу; чужая/неизвестная — None). middleware.SessionMetaMiddleware вызывает set_session_meta после ActivityMiddleware; любые его исключения логируются и не ломают ответ. В settings MIDDLEWARE добавить 'core.middleware.SessionMetaMiddleware' после ActivityMiddleware. session_key никогда не покидает backend и не пишется в шаблоны/логи.",
+  "acceptance": [
+    "MIDDLEWARE содержит core.middleware.SessionMetaMiddleware после ActivityMiddleware.",
+    "После аутентифицированного запроса в session есть ua, login_at, last_seen; для анонимного — нет.",
+    "Повторный запрос в пределах 300с не меняет last_seen (проверяется с mock cache.add -> False).",
+    "iter_user_sessions возвращает только сессии текущего пользователя и не возвращает raw session_key; public_id стабилен и не равен ключу.",
+    "iter_user_sessions пропускает сессию с битым session_data, не падая.",
+    "revoke_user_session удаляет сессию по public_id; public_id чужой сессии возвращает None и не удаляет её.",
+    "Сбой кэша в set_session_meta/middleware не ломает ответ (fail-open только для метаданных, не для доступа).",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_sessions, core.tests.test_flows, core.tests.test_auth проходят."
+  ],
+  "out_of_scope": [
+    "Не добавлять страницу/URL/шаблон и кнопки отзыва (R007).",
+    "Не менять модели, миграции и схему БД.",
+    "Не хранить IP-адреса и геолокацию.",
+    "Не менять login_view, 2FA и парольный бэкенд.",
+    "Не добавлять зависимости."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/sessions.py djadmin/core/middleware.py djadmin/core/tests/test_sessions.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_sessions core.tests.test_flows core.tests.test_auth --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

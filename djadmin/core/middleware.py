@@ -1,8 +1,11 @@
 """Мидлвари Django-компаньона."""
+import logging
 import secrets
 
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseForbidden
+
+logger = logging.getLogger(__name__)
 
 
 def _public_csp(nonce: str, secure: bool = False) -> str:
@@ -224,4 +227,25 @@ class ActivityMiddleware:
             from core.growth import record_activity
 
             record_activity(user.pk)
+        return response
+
+
+class SessionMetaMiddleware:
+    """Метаданные сессии (UA, login_at, last_seen) — R006.
+
+    Ставится после ActivityMiddleware. Ошибки метаданных только логируются:
+    доступ уже определён AuthenticationMiddleware и от них не зависит.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        try:
+            from core.sessions import set_session_meta
+
+            set_session_meta(request)
+        except Exception:
+            logger.exception("Не удалось обновить метаданные сессии")
         return response
