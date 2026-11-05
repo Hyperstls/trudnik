@@ -1,0 +1,31 @@
+{
+  "id": "R014",
+  "title": "CI unit: высокий global rate limit для тестов",
+  "goal": "В workflow unit-tests.yml задать GLOBAL_RATE_LIMIT_PER_MIN=10000, чтобы полный прогон 685 тестов с одного IP не упирался в production-дефолт 120 req/min и не получал 429.",
+  "why": "Второй запуск Unit tests дал 72 failures/3 errors: большинство ответов 429 после первых 120 запросов. Локально .env поднимает лимит до 10000, поэтому тесты зелёные; CI использует дефолт 120.",
+  "files": [
+    ".github/workflows/unit-tests.yml"
+  ],
+  "context_files": [
+    "djadmin/core/middleware.py",
+    "djadmin/config/settings.py"
+  ],
+  "interfaces": "В env job unit добавить GLOBAL_RATE_LIMIT_PER_MIN: \"10000\". Остальные env и шаги не менять.",
+  "acceptance": [
+    "В workflow env есть GLOBAL_RATE_LIMIT_PER_MIN: \"10000\".",
+    "YAML парсится, job unit существует.",
+    "CI Unit tests на следующем push завершается success (внешняя проверка после мержа)."
+  ],
+  "out_of_scope": [
+    "Не менять приложение, middleware, settings и тесты.",
+    "Не менять production-лимиты.",
+    "Не менять другие workflows."
+  ],
+  "checks": [
+    {
+      "name": "yaml",
+      "cmd": "{python} -c \"import yaml; d=yaml.safe_load(open('.github/workflows/unit-tests.yml', encoding='utf-8')); assert str(d['jobs']['unit']['env']['GLOBAL_RATE_LIMIT_PER_MIN'])=='10000'; print('yaml ok')\"",
+      "cwd": "."
+    }
+  ]
+}

@@ -49,6 +49,7 @@ jobs:
       DATABASE_ADMIN_URL: postgresql://trudnik:trudnik_ci_password@localhost:5432/postgres  # pragma: allowlist secret
       REDIS_URL: redis://localhost:6379/0
       MIGRATIONS_ENABLED: "false"
+      GLOBAL_RATE_LIMIT_PER_MIN: "10000"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
