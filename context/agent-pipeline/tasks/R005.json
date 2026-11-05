@@ -1,0 +1,47 @@
+{
+  "id": "R005",
+  "title": "i18n: английские строки 2FA и секции безопасности",
+  "goal": "Все новые пользовательские строки R003/R004 (экран кода, сообщения второго фактора, секция безопасности профиля) имеют английский перевод в django.po; django.mo пересобран. Заголовок секции переименован в «Безопасность аккаунта», чтобы не конфликтовать с существующим msgid «Безопасность» → «Safety» (FAQ). Добавлены i18n-тесты английского экрана кода и секции безопасности.",
+  "why": "После J159–J160 английский кабинет не должен показывать русские строки. Один msgid «Безопасность» уже занят переводом «Safety» для FAQ, поэтому для настроек нужно отдельное имя.",
+  "files": [
+    "djadmin/core/templates/core/profile.html",
+    "djadmin/core/tests/test_i18n.py",
+    "djadmin/locale/en/LC_MESSAGES/django.po",
+    "djadmin/locale/en/LC_MESSAGES/django.mo"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/login.html",
+    "djadmin/core/views_flow.py",
+    "djadmin/core/views_profile.py",
+    "djadmin/core/tests/test_twofa.py"
+  ],
+  "interfaces": "В profile.html заголовок секции: {% translate \"Безопасность аккаунта\" %}. В django.po добавить msgid/msgstr: \"Безопасность аккаунта\"→\"Account security\", \"Двухэтапный вход: при входе дополнительно запрашивается код, отправленный на email.\"→\"Two-step sign-in: you will also enter a code sent to your email.\", \"Включить двухэтапный вход\"→\"Enable two-step sign-in\", \"Сохранить настройку\"→\"Save setting\", \"Для включения сначала подтвердите email.\"→\"Confirm your email before enabling.\", \"Включить двухэтапный вход можно только после подтверждения email.\"→\"You can enable two-step sign-in only after confirming your email.\", \"Двухэтапный вход включён.\"→\"Two-step sign-in is on.\", \"Двухэтапный вход выключен.\"→\"Two-step sign-in is off.\", \"Подтверждение входа\"→\"Sign-in confirmation\", \"Введите 6-значный код, отправленный на\"→\"Enter the 6-digit code sent to\", \"Код из письма\"→\"Code from the email\", \"Подтвердить\"→\"Confirm\", \"Код действует 10 минут.\"→\"The code is valid for 10 minutes.\", \"Мы отправили код подтверждения на %s.\"→\"We sent a confirmation code to %s.\", \"Сессия входа истекла. Войдите заново.\"→\"Your sign-in session has expired. Please sign in again.\", \"Слишком много неверных кодов. Вход отменён — попробуйте снова.\"→\"Too many incorrect codes. Sign-in cancelled — please try again.\", \"Неверный код. Осталось попыток: %d.\"→\"Incorrect code. Attempts left: %d.\", \"двухэтапный вход (email-код)\"→\"two-step sign-in (email code)\". Сборка .mo: polib.pofile(...).save_as_mofile(...). Новые тесты — в CabinetEnglishTests/LanguageSwitchTests по образцу существующих.",
+  "acceptance": [
+    "В django.po есть непустые msgstr для всех перечисленных msgid.",
+    "django.mo пересобран и содержит английские переводы (проверяется тестами).",
+    "Английская /profile содержит Account security, Enable two-step sign-in, Save setting и не содержит русских строк секции.",
+    "Английский экран кода после верного пароля содержит Sign-in confirmation, Enter the 6-digit code sent to, Confirm, The code is valid for 10 minutes.",
+    "Русская /profile по-прежнему содержит «Безопасность аккаунта» и «Включить двухэтапный вход».",
+    "Русские строки входа и сообщения об ошибках не изменились.",
+    "py_compile изменённого test_i18n.py проходит.",
+    "core.tests.test_i18n, core.tests.test_twofa, core.tests.test_flows проходят."
+  ],
+  "out_of_scope": [
+    "Не менять тексты писем (они остаются русскими, как остальные транзакционные письма).",
+    "Не менять login.html, views_flow.py, views_profile.py, миграции.",
+    "Не добавлять новые языки и зависимости.",
+    "Не менять существующие msgid/msgstr, кроме добавления новых записей."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_i18n.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_i18n core.tests.test_twofa core.tests.test_flows --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

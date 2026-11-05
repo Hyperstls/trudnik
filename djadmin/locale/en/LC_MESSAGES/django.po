@@ -3838,3 +3838,58 @@ msgid ""
 msgstr ""
 "Filters you saved on the Jobs page. New jobs arrive for them when "
 "notifications are enabled."
+
+msgid "Безопасность аккаунта"
+msgstr "Account security"
+
+msgid ""
+"Двухэтапный вход: при входе дополнительно запрашивается код, отправленный "
+"на email."
+msgstr "Two-step sign-in: you will also enter a code sent to your email."
+
+msgid "Включить двухэтапный вход"
+msgstr "Enable two-step sign-in"
+
+msgid "Сохранить настройку"
+msgstr "Save setting"
+
+msgid "Для включения сначала подтвердите email."
+msgstr "Confirm your email before enabling."
+
+msgid ""
+"Включить двухэтапный вход можно только после подтверждения email."
+msgstr "You can enable two-step sign-in only after confirming your email."
+
+msgid "Двухэтапный вход включён."
+msgstr "Two-step sign-in is on."
+
+msgid "Двухэтапный вход выключен."
+msgstr "Two-step sign-in is off."
+
+msgid "Подтверждение входа"
+msgstr "Sign-in confirmation"
+
+msgid "Введите 6-значный код, отправленный на"
+msgstr "Enter the 6-digit code sent to"
+
+msgid "Код из письма"
+msgstr "Code from the email"
+
+msgid "Код действует 10 минут."
+msgstr "The code is valid for 10 minutes."
+
+msgid "Мы отправили код подтверждения на %s."
+msgstr "We sent a confirmation code to %s."
+
+msgid "Сессия входа истекла. Войдите заново."
+msgstr "Your sign-in session has expired. Please sign in again."
+
+msgid ""
+"Слишком много неверных кодов. Вход отменён — попробуйте снова."
+msgstr "Too many incorrect codes. Sign-in cancelled — please try again."
+
+msgid "Неверный код. Осталось попыток: %d."
+msgstr "Incorrect code. Attempts left: %d."
+
+msgid "двухэтапный вход (email-код)"
+msgstr "two-step sign-in (email code)"

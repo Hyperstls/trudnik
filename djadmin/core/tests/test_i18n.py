@@ -1,6 +1,9 @@
 """i18n: переключение языка и английский каталог (J159)."""
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
+
+from core.tests.test_auth import CACHE_LOCMEM
+from core.tests.test_twofa import EMAIL_LOCMEM, PASSWORD
 
 
 class LanguageSwitchTests(TestCase):
@@ -41,6 +44,15 @@ class LanguageSwitchTests(TestCase):
         self.assertContains(response, "Filters")
         self.assertContains(response, "Sort:")
 
+    def test_russian_profile_security_section(self):
+        from core.tests.test_auth import make_profile
+
+        worker = make_profile("i18n-ru-profile@example.com")
+        self.client.force_login(worker)
+        response = self.client.get(reverse("core:profile"))
+        self.assertContains(response, "Безопасность аккаунта")
+        self.assertContains(response, "Включить двухэтапный вход")
+
     def test_english_job_detail(self):
         from core.tests.test_auth import make_profile
         from core.tests.test_flows import make_job
@@ -77,6 +89,40 @@ class CabinetEnglishTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Save profile")
         self.assertContains(response, "Data and account")
+
+    def test_profile_security_section_english(self):
+        self.client.force_login(self.worker)
+        self._english()
+        response = self.client.get(reverse("core:profile"))
+        self.assertContains(response, "Account security")
+        self.assertContains(
+            response,
+            "Two-step sign-in: you will also enter a code sent to your email.",
+        )
+        self.assertContains(response, "Enable two-step sign-in")
+        self.assertContains(response, "Save setting")
+        self.assertNotContains(response, "Безопасность аккаунта")
+        self.assertNotContains(response, "Включить двухэтапный вход")
+
+    @override_settings(CACHES=CACHE_LOCMEM, **EMAIL_LOCMEM)
+    def test_twofa_code_screen_english(self):
+        from django.core.cache import cache
+        from core.tests.test_auth import make_profile
+
+        cache.clear()
+        user = make_profile(
+            "i18n-twofa@example.com", password=PASSWORD, two_factor_enabled=True
+        )
+        self._english()
+        response = self.client.post(
+            reverse("core:login"), {"email": user.email, "password": PASSWORD}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Sign-in confirmation")
+        self.assertContains(response, "Enter the 6-digit code sent to")
+        self.assertContains(response, "Confirm")
+        self.assertContains(response, "The code is valid for 10 minutes.")
+        self.assertNotContains(response, "Подтверждение входа")
 
     def test_my_jobs_english(self):
         self.client.force_login(self.employer)
