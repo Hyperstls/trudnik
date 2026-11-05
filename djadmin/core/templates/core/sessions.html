@@ -1,0 +1,50 @@
+{% extends "core/base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Активные сессии" %} — {% translate "Трудник" context "brand" %}{% endblock %}
+{% block content %}
+<div class="px-0 py-4 max-w-2xl mx-auto fade-in">
+    <a href="{% url 'core:profile' %}" class="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-700 mb-3">
+        <svg aria-hidden="true" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        {% translate "Профиль" %}
+    </a>
+
+    <h1 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-1">{% translate "Активные сессии" %}</h1>
+    <p class="text-sm text-neutral-500 mb-4">{% translate "Устройства, с которых выполнен вход в ваш аккаунт. Если видите незнакомое устройство, завершите сессию." %}</p>
+
+    <div class="grid gap-2">
+        {% for s in sessions %}
+        <article class="bg-white rounded-2xl border border-neutral-200 shadow-card p-4">
+            <p class="font-semibold text-neutral-900 break-words">
+                {{ s.description }}
+                {% if s.is_current %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 align-middle">{% translate "Текущая" %}</span>
+                {% endif %}
+            </p>
+            <p class="text-xs text-neutral-500 mt-1">{% translate "Вход" %}: {{ s.login_at_display }}</p>
+            <p class="text-xs text-neutral-500">{% translate "Последняя активность" %}: {{ s.last_seen_display }}</p>
+            <form method="post" action="{% url 'core:session_revoke' %}" class="mt-3">
+                {% csrf_token %}
+                <input type="hidden" name="public_id" value="{{ s.public_id }}">
+                {% if s.is_current %}
+                <button type="submit" class="px-3 h-8 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs font-medium transition-colors">{% translate "Завершить текущую сессию" %}</button>
+                {% else %}
+                <button type="submit" class="px-3 h-8 rounded-lg border border-neutral-200 text-neutral-700 hover:bg-neutral-50 text-xs font-medium transition-colors">{% translate "Завершить" %}</button>
+                {% endif %}
+            </form>
+        </article>
+        {% empty %}
+        <article class="bg-white rounded-2xl border border-neutral-200 p-6 text-center text-sm text-neutral-500">
+            {% translate "Активных сессий нет." %}
+        </article>
+        {% endfor %}
+    </div>
+
+    {% if sessions|length > 1 %}
+    <form method="post" action="{% url 'core:session_revoke' %}" class="mt-4">
+        {% csrf_token %}
+        <input type="hidden" name="scope" value="others">
+        <button type="submit" class="w-full px-4 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm">{% translate "Завершить все другие сессии" %}</button>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

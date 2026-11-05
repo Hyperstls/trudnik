@@ -1,0 +1,49 @@
+{
+  "id": "R007",
+  "title": "Сессии: страница и отзыв (UI)",
+  "goal": "Появляется страница /profile/sessions со списком активных сессий (устройство, вход, активность, текущая), кнопкой завершения чужой сессии и «завершить все другие». POST-отзыв защищён CSRF и rate-limit; завершение текущей сессии разлогинивает.",
+  "why": "R006 дал backend, но без UI пользователь не может увидеть и завершить украденную/старую сессию.",
+  "files": [
+    "djadmin/core/views_sessions.py",
+    "djadmin/core/urls.py",
+    "djadmin/core/templates/core/sessions.html",
+    "djadmin/core/tests/test_sessions.py"
+  ],
+  "context_files": [
+    "djadmin/core/sessions.py",
+    "djadmin/core/views_profile.py",
+    "djadmin/core/ratelimit.py",
+    "djadmin/core/tests/test_auth.py"
+  ],
+  "interfaces": "GET /profile/sessions (name core:sessions, login_required): current_public_id = session_public_id(request.session.session_key); сессии из iter_user_sessions, каждой добавить is_current, login_at_display/last_seen_display (parse_datetime ISO -> localtime %d.%m.%Y %H:%M, пусто -> \"—\"); сортировка: текущая первой, затем last_seen по убыванию. POST /profile/sessions/revoke (name core:session_revoke, login_required, require_POST, rate_limit_write(limit=10, window=60, redirect_to=\"/profile/sessions\")): scope=others -> revoke_user_session для всех кроме текущей, сообщение со счётчиком; public_id текущей -> auth_logout + redirect core:login; иначе revoke_user_session, success/error, redirect core:sessions. Шаблон: карточки устройств, бейдж «Текущая», форма завершения (csrf_token + hidden public_id), отдельная форма scope=others при >1 сессии; без JS.",
+  "acceptance": [
+    "GET /profile/sessions анонимно редиректит на login; авторизованному отдаёт 200.",
+    "На странице видна текущая сессия с бейджем «Текущая», устройство и время; raw session_key отсутствует в HTML.",
+    "Вторая сессия того же пользователя видна; её public_id присутствует в форме завершения, чужая сессия — нет.",
+    "POST revoke с public_id другой сессии удаляет её, текущая остаётся, редирект на /profile/sessions.",
+    "POST revoke с public_id текущей сессии разлогинивает и редиректит на login.",
+    "POST scope=others удаляет все сессии кроме текущей и сообщает количество.",
+    "POST revoke с public_id чужого пользователя не удаляет его сессию.",
+    "Формы содержат csrfmiddlewaretoken; без POST-метода revoke отвечает 405.",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_sessions, core.tests.test_flows, core.tests.test_auth проходят."
+  ],
+  "out_of_scope": [
+    "Не менять core/sessions.py, middleware и settings.",
+    "Не добавлять новые модели/миграции.",
+    "Не хранить IP-адреса.",
+    "Не менять profile.html и test_flows.py (R007b)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_sessions.py djadmin/core/urls.py djadmin/core/tests/test_sessions.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_sessions core.tests.test_flows core.tests.test_auth --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

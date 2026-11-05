@@ -2,7 +2,8 @@ from django.urls import path
 
 from . import (views, views_auth, views_drafts, views_flow, views_geo, views_interact,
                views_messenger, views_notify, views_profile, views_profile_ext,
-               views_public_ext, views_search, views_service, views_support, views_analytics)
+               views_public_ext, views_search, views_service, views_sessions,
+               views_support, views_analytics)
 
 app_name = "core"
 
@@ -49,6 +50,8 @@ urlpatterns = [
     path("blacklist", views_profile.blacklist_view, name="blacklist"),
     path("invitations", views_profile.invitations, name="invitations"),
     path("profile", views_profile.profile_edit, name="profile"),
+    path("profile/sessions", views_sessions.sessions_view, name="sessions"),
+    path("profile/sessions/revoke", views_sessions.session_revoke, name="session_revoke"),
     path("workers/<uuid:user_id>/invite", views_profile.invite_worker, name="invite_worker"),
     path("workers/<uuid:user_id>/invitations/revoke", views_profile.worker_invitations_revoke, name="worker_invitations_revoke"),
     path("workers/<uuid:user_id>/favorite", views_profile.people_favorite_toggle, name="people_favorite_toggle"),
