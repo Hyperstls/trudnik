@@ -1,0 +1,32 @@
+{
+  "id": "R013",
+  "title": "CI unit: заполнить django_migrations для schema-only БД",
+  "goal": "После загрузки tests/fixtures/schema.sql workflow unit-tests.yml выполняет manage.py migrate --fake --noinput на trudnik_unit, чтобы django_migrations содержал все встроенные миграции. Без этого тестовый раннер видит пустой ledger и пытается создать уже существующие django_content_type/auth-таблицы.",
+  "why": "Первый запуск Unit tests упал: relation django_content_type already exists. Фикстура schema-only содержит таблицы, но не строки django_migrations; --fake-initial не помогает, потому что contenttypes.0002 пытается удалить уже отсутствующую колонку name.",
+  "files": [
+    ".github/workflows/unit-tests.yml"
+  ],
+  "context_files": [
+    "tests/fixtures/schema.sql",
+    "djadmin/config/settings.py",
+    "scripts/dj_test_clone.py"
+  ],
+  "interfaces": "В job unit после шага Load schema fixture и до Clone test database добавить шаг name: Fake migration ledger, run: python djadmin/manage.py migrate --fake --noinput. Env остаётся прежним (DATABASE_URL указывает на trudnik_unit). Больше ничего не менять.",
+  "acceptance": [
+    "В workflow есть шаг migrate --fake --noinput между загрузкой схемы и клонированием trudnik_test.",
+    "YAML парсится, job unit существует.",
+    "Локальная проверка на schema-only БД: migrate --fake завершается exit 0 и заполняет django_migrations (20 записей).",
+    "CI Unit tests на следующем push завершается success (внешняя проверка после мержа)."
+  ],
+  "out_of_scope": [
+    "Не менять приложение, тесты, схему и другие workflows.",
+    "Не менять команды запуска тестов."
+  ],
+  "checks": [
+    {
+      "name": "yaml",
+      "cmd": "{python} -c \"import yaml; d=yaml.safe_load(open('.github/workflows/unit-tests.yml', encoding='utf-8')); steps=d['jobs']['unit']['steps']; names=[s.get('name','') for s in steps]; assert 'Fake migration ledger' in names; print('yaml ok')\"",
+      "cwd": "."
+    }
+  ]
+}

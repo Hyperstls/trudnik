@@ -63,6 +63,8 @@ jobs:
         run: psql "$DATABASE_ADMIN_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE trudnik_unit"
       - name: Load schema fixture
         run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f tests/fixtures/schema.sql
+      - name: Fake migration ledger
+        run: python djadmin/manage.py migrate --fake --noinput
       - name: Clone test database
         run: psql "$DATABASE_ADMIN_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE trudnik_test TEMPLATE trudnik_unit"
       - name: Run full unit test suite
