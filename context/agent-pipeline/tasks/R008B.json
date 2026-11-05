@@ -1,0 +1,47 @@
+{
+  "id": "R008B",
+  "title": "i18n: английские строки страницы сессий",
+  "goal": "Все строки /profile/sessions имеют английский перевод; «Вход» и «Завершить» переименованы в «Начало сессии»/«Завершить сессию», чтобы не конфликтовать с существующими msgid (Log in/Complete). Добавлены тесты английской и русской страницы, включая Unknown device.",
+  "why": "После J159–J160 английский кабинет не должен показывать русские строки. Переиспользование занятых msgid дало бы неверный перевод («Complete» вместо «End session»).",
+  "files": [
+    "djadmin/core/templates/core/sessions.html",
+    "djadmin/core/tests/test_i18n.py",
+    "djadmin/locale/en/LC_MESSAGES/django.po",
+    "djadmin/locale/en/LC_MESSAGES/django.mo"
+  ],
+  "context_files": [
+    "djadmin/core/views_sessions.py",
+    "djadmin/core/sessions.py",
+    "djadmin/core/tests/test_sessions.py",
+    "djadmin/core/templates/core/profile.html"
+  ],
+  "interfaces": "sessions.html: label «Вход» заменить на «Начало сессии», кнопку «Завершить» — на «Завершить сессию»; остальные строки не менять. django.po добавить: \"Активные сессии\"→\"Active sessions\", \"Устройства, с которых выполнен вход в ваш аккаунт. Если видите незнакомое устройство, завершите сессию.\"→\"Devices signed in to your account. If you see an unfamiliar device, end that session.\", \"Текущая\"→\"Current\", \"Начало сессии\"→\"Session started\", \"Последняя активность\"→\"Last activity\", \"Завершить сессию\"→\"End session\", \"Завершить текущую сессию\"→\"End current session\", \"Завершить все другие сессии\"→\"End all other sessions\", \"Активных сессий нет.\"→\"No active sessions.\", \"Завершено других сессий: %d.\"→\"Other sessions ended: %d.\", \"Сессия завершена.\"→\"Session ended.\", \"Сессия не найдена или уже завершена.\"→\"Session not found or already ended.\", \"Текущая сессия завершена. Войдите снова.\"→\"Current session ended. Please sign in again.\", \"Неизвестное устройство\"→\"Unknown device\". Собрать .mo через polib. В test_i18n.py добавить проверки: английская страница содержит Active sessions/Current/Session started/Last activity/End current session и не содержит русских; русская содержит «Активные сессии»/«Начало сессии»/«Текущая»; UA curl даёт Unknown device на английской.",
+  "acceptance": [
+    "В django.po есть непустые msgstr для всех перечисленных msgid.",
+    "django.mo пересобран (тесты видят переводы).",
+    "Английская /profile/sessions содержит Active sessions, Current, Session started, Last activity, End current session.",
+    "Английская страница не содержит «Активные сессии», «Начало сессии», «Завершить сессию».",
+    "Русская /profile/sessions содержит «Активные сессии», «Начало сессии», «Текущая».",
+    "Сессия с UA curl на английской странице показывает Unknown device.",
+    "py_compile test_i18n.py проходит.",
+    "core.tests.test_i18n, core.tests.test_sessions, core.tests.test_ui_polish проходят."
+  ],
+  "out_of_scope": [
+    "Не менять base.html/login.html/views_sessions.py/sessions.py.",
+    "Не менять текст писем.",
+    "Не добавлять языки и зависимости.",
+    "Не менять существующие msgid/msgstr, кроме добавления новых записей."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_i18n.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_i18n core.tests.test_sessions core.tests.test_ui_polish --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

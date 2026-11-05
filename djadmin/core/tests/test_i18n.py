@@ -104,6 +104,37 @@ class CabinetEnglishTests(TestCase):
         self.assertNotContains(response, "Безопасность аккаунта")
         self.assertNotContains(response, "Включить двухэтапный вход")
 
+    def test_sessions_page_english(self):
+        self.client.force_login(self.worker)
+        self._english()
+        self.client.get(reverse("core:profile"))
+        response = self.client.get(reverse("core:sessions"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Active sessions")
+        self.assertContains(response, "Current")
+        self.assertContains(response, "Session started")
+        self.assertContains(response, "Last activity")
+        self.assertContains(response, "End current session")
+        self.assertNotContains(response, "Активные сессии")
+        self.assertNotContains(response, "Начало сессии")
+        self.assertNotContains(response, "Завершить сессию")
+
+    def test_sessions_page_russian(self):
+        self.client.force_login(self.worker)
+        self.client.get(reverse("core:profile"))
+        response = self.client.get(reverse("core:sessions"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Активные сессии")
+        self.assertContains(response, "Начало сессии")
+        self.assertContains(response, "Текущая")
+
+    def test_sessions_unknown_device_english(self):
+        self.client.force_login(self.worker)
+        self.client.get(reverse("core:profile"), HTTP_USER_AGENT="curl/8.5.0")
+        self._english()
+        response = self.client.get(reverse("core:sessions"))
+        self.assertContains(response, "Unknown device")
+
     @override_settings(CACHES=CACHE_LOCMEM, **EMAIL_LOCMEM)
     def test_twofa_code_screen_english(self):
         from django.core.cache import cache

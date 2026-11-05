@@ -1,0 +1,36 @@
+{
+  "id": "R008C",
+  "title": "Тесты сессий: новый label «Начало сессии»",
+  "goal": "Обновить устаревший assert в test_sessions.py: после R008B страница показывает «Начало сессии:» вместо «Вход:». Одна строка, без изменения продукта.",
+  "why": "R008B переименовал label, чтобы не конфликтовать с msgid «Вход» → «Log in». Старый assert в read-only для R008B файле гарантированно падает.",
+  "files": [
+    "djadmin/core/tests/test_sessions.py"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/sessions.html",
+    "djadmin/core/tests/test_i18n.py"
+  ],
+  "interfaces": "В SessionsPageTests.test_authenticated_sees_current_session заменить assertContains(response, \"Вход:\") на assertContains(response, \"Начало сессии:\"). Больше ничего не менять.",
+  "acceptance": [
+    "test_sessions.py не содержит assertContains(response, \"Вход:\").",
+    "core.tests.test_sessions проходит.",
+    "core.tests.test_i18n проходит (английские строки R008B).",
+    "py_compile test_sessions.py проходит."
+  ],
+  "out_of_scope": [
+    "Не менять продукт, шаблоны, locale.",
+    "Не менять другие тесты."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_sessions.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_sessions core.tests.test_i18n --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

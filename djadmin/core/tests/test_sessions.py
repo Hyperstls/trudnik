@@ -377,7 +377,7 @@ class SessionsPageTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Текущая")
         self.assertContains(response, "Chrome, Windows")
-        self.assertContains(response, "Вход:")
+        self.assertContains(response, "Начало сессии:")
         self.assertContains(response, "Последняя активность:")
         self.assertNotContains(response, self.current_key)
 

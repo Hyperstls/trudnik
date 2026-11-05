@@ -2773,3 +2773,27 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** Hyperstls
 
 **Пакет:** context/agent-pipeline/packs/R008A.review.prompt.md
+
+## 2026-11-05 13:27:32 — R008B: verify --skip-scope (обход scope)
+
+**Кто:** orchestrator
+
+**Почему:** test_sessions.py изменён задачей R008C (одна строка assert под новый label)
+
+**Дрейф, который обойдён:** ['djadmin/core/tests/test_sessions.py']
+
+## 2026-11-05 13:30:55 — R008B: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R008B.review.prompt.md
+
+## 2026-11-05 13:30:55 — R008C: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R008C.review.prompt.md

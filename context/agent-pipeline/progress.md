@@ -1049,3 +1049,15 @@
 - **2026-11-05 13:17:21** | **R008A** | `verify` | **PASS** | scope=ok checks=compile=0, tests=0 attempts=0/3
 - **2026-11-05 13:17:29** | **R008A** | `review-packet` | **READY** | bytes=7098 new_files=['djadmin/core/tests/test_ui_polish.py']
 - **2026-11-05 13:19:47** | **R008A** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-05 13:20:13** | **R008B** | `add` | **OK** | contract=context/agent-pipeline/tasks/R008B.json
+- **2026-11-05 13:20:13** | **R008B** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/R008B.impl.prompt.md
+- **2026-11-05 13:25:49** | **R008C** | `add` | **OK** | contract=context/agent-pipeline/tasks/R008C.json
+- **2026-11-05 13:25:50** | **R008C** | `dispatch` | **OK** | status=implementing baseline=7 pack=context/agent-pipeline/packs/R008C.impl.prompt.md
+- **2026-11-05 13:27:23** | **R008C** | `verify` | **PASS** | scope=ok checks=compile=0, tests=0 attempts=0/3
+- **2026-11-05 13:27:24** | **R008B** | `verify` | **FAIL** | scope=fail checks=skipped(scope) attempts=1/3 → fixing
+- **2026-11-05 13:27:32** | **R008B** | `verify` | **SKIP-SCOPE** | by=orchestrator reason=test_sessions.py изменён задачей R008C (одна строка assert под новый label) drift=['djadmin/core/tests/test_sessions.py']
+- **2026-11-05 13:28:05** | **R008B** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=1/3
+- **2026-11-05 13:28:09** | **R008C** | `review-packet` | **READY** | bytes=3110 new_files=[]
+- **2026-11-05 13:28:09** | **R008B** | `review-packet` | **READY** | bytes=9089 new_files=[]
+- **2026-11-05 13:30:55** | **R008B** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-05 13:30:55** | **R008C** | `review` | **PASS** | by=Hyperstls → done

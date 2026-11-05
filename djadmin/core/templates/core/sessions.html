@@ -20,7 +20,7 @@
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 align-middle">{% translate "Текущая" %}</span>
                 {% endif %}
             </p>
-            <p class="text-xs text-neutral-500 mt-1">{% translate "Вход" %}: {{ s.login_at_display }}</p>
+            <p class="text-xs text-neutral-500 mt-1">{% translate "Начало сессии" %}: {{ s.login_at_display }}</p>
             <p class="text-xs text-neutral-500">{% translate "Последняя активность" %}: {{ s.last_seen_display }}</p>
             <form method="post" action="{% url 'core:session_revoke' %}" class="mt-3">
                 {% csrf_token %}
@@ -28,7 +28,7 @@
                 {% if s.is_current %}
                 <button type="submit" class="px-3 h-8 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs font-medium transition-colors">{% translate "Завершить текущую сессию" %}</button>
                 {% else %}
-                <button type="submit" class="px-3 h-8 rounded-lg border border-neutral-200 text-neutral-700 hover:bg-neutral-50 text-xs font-medium transition-colors">{% translate "Завершить" %}</button>
+                <button type="submit" class="px-3 h-8 rounded-lg border border-neutral-200 text-neutral-700 hover:bg-neutral-50 text-xs font-medium transition-colors">{% translate "Завершить сессию" %}</button>
                 {% endif %}
             </form>
         </article>

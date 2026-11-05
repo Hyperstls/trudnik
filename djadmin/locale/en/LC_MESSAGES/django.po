@@ -3893,3 +3893,49 @@ msgstr "Incorrect code. Attempts left: %d."
 
 msgid "двухэтапный вход (email-код)"
 msgstr "two-step sign-in (email code)"
+
+msgid "Активные сессии"
+msgstr "Active sessions"
+
+msgid ""
+"Устройства, с которых выполнен вход в ваш аккаунт. Если видите незнакомое "
+"устройство, завершите сессию."
+msgstr ""
+"Devices signed in to your account. If you see an unfamiliar device, end "
+"that session."
+
+msgid "Текущая"
+msgstr "Current"
+
+msgid "Начало сессии"
+msgstr "Session started"
+
+msgid "Последняя активность"
+msgstr "Last activity"
+
+msgid "Завершить сессию"
+msgstr "End session"
+
+msgid "Завершить текущую сессию"
+msgstr "End current session"
+
+msgid "Завершить все другие сессии"
+msgstr "End all other sessions"
+
+msgid "Активных сессий нет."
+msgstr "No active sessions."
+
+msgid "Завершено других сессий: %d."
+msgstr "Other sessions ended: %d."
+
+msgid "Сессия завершена."
+msgstr "Session ended."
+
+msgid "Сессия не найдена или уже завершена."
+msgstr "Session not found or already ended."
+
+msgid "Текущая сессия завершена. Войдите снова."
+msgstr "Current session ended. Please sign in again."
+
+msgid "Неизвестное устройство"
+msgstr "Unknown device"
