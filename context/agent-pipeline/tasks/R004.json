@@ -1,0 +1,48 @@
+{
+  "id": "R004",
+  "title": "2FA: переключатель в профиле и тесты",
+  "goal": "В профиле появляется секция «Безопасность» с переключателем двухэтапного входа: POST /profile action=twofa включает/выключает profiles.two_factor_enabled только для своего профиля. Новый tests/test_twofa.py проверяет включение/выключение, отказ при неподтверждённом email и полный флоу входа с кодом (пароль → код → сессия), включая 5 неверных попыток и non-ASCII ввод.",
+  "why": "R003 добавил backend второго фактора, но пользователь не может включить 2FA без SQL, а поведение закреплено только ad-hoc проверкой исполнителя. Постоянные тесты защищают вход от регрессий.",
+  "files": [
+    "djadmin/core/views_profile.py",
+    "djadmin/core/templates/core/profile.html",
+    "djadmin/core/tests/test_twofa.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_flow.py",
+    "djadmin/core/tests/test_auth.py",
+    "djadmin/core/tests/test_auth_flows.py",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "interfaces": "views_profile.profile_edit: ветка action == \"twofa\" выполняется до ProfileForm; enabled = request.POST.get(\"enabled\") == \"on\"; при enabled=True и not user.email_verified — messages.error и флаг не меняется; иначе Profile.objects.filter(pk=user.pk).update(two_factor_enabled=enabled) + messages.success + redirect(\"core:profile\"). Шаблон: секция «Безопасность» рядом со сменой пароля, чекбокс name=\"enabled\" с текущим состоянием user.two_factor_enabled, hidden action=twofa, csrf_token, кнопка сохранения. Никаких новых URL и RPC. Тесты используют make_profile/test_auth, override_settings(CACHES=CACHE_LOCMEM, TRANSACTIONAL_EMAIL_ASYNC=False).",
+  "acceptance": [
+    "POST /profile с action=twofa и enabled=on включает two_factor_enabled у текущего пользователя и редиректит на /profile.",
+    "POST /profile с action=twofa без enabled выключает флаг.",
+    "Включение при email_verified=False отклоняется: флаг остаётся false, показывается ошибка.",
+    "Чужой профиль через action=twofa не меняется (используется только request.user).",
+    "test_twofa.py: при включённом 2FA верный пароль даёт 200 и форму кода, request.user не аутентифицирован, письмо содержит 6 цифр.",
+    "test_twofa.py: неверный код не аутентифицирует; после 5 неверных кодов pending-сессия очищена и следующий POST сообщает об истечении сессии.",
+    "test_twofa.py: верный код аутентифицирует и редиректит; non-ASCII код не даёт 500.",
+    "test_twofa.py: при выключенном 2FA вход по паролю сразу создаёт сессию (регрессия).",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_twofa, core.tests.test_profile_flows, core.tests.test_flows, core.tests.test_auth проходят."
+  ],
+  "out_of_scope": [
+    "Не менять login_view, _twofa_* в views_flow.py и миграцию 159.",
+    "Не добавлять зависимости, RPC, новые URL.",
+    "Не менять другие поля профиля и ProfileForm.",
+    "Не обновлять locale/*.po (отдельная задача)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_profile.py djadmin/core/tests/test_twofa.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_twofa core.tests.test_profile_flows core.tests.test_flows core.tests.test_auth --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

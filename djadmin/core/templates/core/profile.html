@@ -158,6 +158,22 @@
         </a>
     </section>
 
+    <!-- Безопасность -->
+    <section class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5 mb-4">
+        <h2 class="text-base font-bold text-neutral-800 mb-1">{% translate "Безопасность" %}</h2>
+        <p class="text-sm text-neutral-500 mb-3">{% translate "Двухэтапный вход: при входе дополнительно запрашивается код, отправленный на email." %}</p>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="twofa">
+            <label class="flex items-center gap-2 cursor-pointer text-sm text-neutral-700">
+                <input type="checkbox" name="enabled" {% if user.two_factor_enabled %}checked{% endif %} class="rounded border-neutral-300 text-primary-600 focus:ring-primary-500">
+                {% translate "Включить двухэтапный вход" %}
+            </label>
+            <button type="submit" class="mt-4 w-full px-4 py-2.5 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-semibold transition-colors">{% translate "Сохранить настройку" %}</button>
+        </form>
+        {% if not user.email_verified %}<p class="form-hint mt-3">{% translate "Для включения сначала подтвердите email." %}</p>{% endif %}
+    </section>
+
     <!-- Смена пароля -->
     <section class="bg-white rounded-2xl border border-neutral-200 shadow-card p-5">
         <h2 class="text-base font-bold text-neutral-800 mb-4">{% translate "Смена пароля" %}</h2>

@@ -26,6 +26,21 @@ from .rpc import call_rpc, sync_user_skills_raw
 @login_required
 def profile_edit(request):
     user = request.user
+    # двухэтапный вход — до ProfileForm: это отдельное действие, поля анкеты не нужны
+    if request.method == "POST" and request.POST.get("action") == "twofa":
+        enabled = request.POST.get("enabled") == "on"
+        if enabled and not user.email_verified:
+            messages.error(
+                request,
+                _("Включить двухэтапный вход можно только после подтверждения email."),
+            )
+        else:
+            Profile.objects.filter(pk=user.pk).update(two_factor_enabled=enabled)
+            messages.success(
+                request,
+                _("Двухэтапный вход включён.") if enabled else _("Двухэтапный вход выключен."),
+            )
+        return redirect("core:profile")
     employer_detail = EmployerDetail.objects.filter(user=user).first()
     form = ProfileForm(request.POST or None, instance=user)
     employer_form = EmployerDetailForm(request.POST or None, instance=employer_detail)
