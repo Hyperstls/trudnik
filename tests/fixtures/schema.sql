@@ -2329,6 +2329,7 @@ CREATE TABLE public.profiles (
     worker_ratings_count integer DEFAULT 0 NOT NULL,
     employer_rating double precision DEFAULT 0 NOT NULL,
     employer_ratings_count integer DEFAULT 0 NOT NULL,
+    two_factor_enabled boolean DEFAULT false NOT NULL,
     CONSTRAINT profiles_age_check CHECK (((age IS NULL) OR ((age >= 14) AND (age <= 120)))),
     CONSTRAINT profiles_email_check CHECK ((email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'::text)),
     CONSTRAINT profiles_inn_check CHECK (((inn IS NULL) OR (inn = ''::text) OR (inn ~ '^\d{10,12}$'::text))),

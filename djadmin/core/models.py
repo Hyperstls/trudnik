@@ -118,6 +118,7 @@ class Profile(AbstractBaseUser):
     messenger_user_id = models.CharField(_("id в мессенджере"), max_length=200, null=True, blank=True)
     verified_at = models.DateTimeField(_("верифицирован"), null=True, blank=True)
     worker_visibility = models.BooleanField(_("виден в каталоге трудников"), default=True)
+    two_factor_enabled = models.BooleanField(_("двухэтапный вход (email-код)"), default=False)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["full_name"]

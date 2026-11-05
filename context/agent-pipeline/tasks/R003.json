@@ -1,0 +1,44 @@
+{
+  "id": "R003",
+  "title": "Двухэтапный вход: email-код (backend)",
+  "goal": "Для профиля с two_factor_enabled=true вход по паролю не завершается сразу: генерируется 6-значный код, отправляется на email, а auth_login выполняется только после успешного ввода кода. Добавлено поле profiles.two_factor_enabled и экран ввода кода в login.html.",
+  "why": "Пароль остаётся единственным фактором входа; email-код добавляет второй шаг без внешнего платного сервиса.",
+  "files": [
+    "migrations/159_two_factor.sql",
+    "djadmin/core/models.py",
+    "djadmin/core/views_flow.py",
+    "djadmin/core/templates/core/login.html"
+  ],
+  "context_files": [
+    "djadmin/core/views_auth.py",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "interfaces": "profiles.two_factor_enabled boolean NOT NULL DEFAULT false. В views_flow: после authenticate(), если user.two_factor_enabled, не вызывать auth_login; создать код (6 цифр, cache TTL 600), отправить через views_auth._send_mail, сохранить в сессии twofa_user/twofa_next; GET /login при наличии twofa_user показывает форму кода; POST с code проверяет код (hmac.compare_digest), при успехе auth_login и удаление twofa_*; максимум 5 попыток, затем сброс pending. Для two_factor_enabled=false поведение входа не меняется.",
+  "acceptance": [
+    "Есть SQL-миграция 159, добавляющая profiles.two_factor_enabled boolean NOT NULL DEFAULT false.",
+    "Profile.two_factor_enabled доступен в ORM.",
+    "При включённом 2FA POST /login с верным паролем не создаёт authenticated session сразу, а показывает ввод кода.",
+    "Верный код завершает вход; неверный код не создаёт session.",
+    "После 5 неверных кодов pending-сессия сбрасывается.",
+    "Для выключенного 2FA существующий вход работает как раньше.",
+    "py_compile изменённых файлов проходит.",
+    "тесты test_flows и test_auth проходят."
+  ],
+  "out_of_scope": [
+    "Не менять профильную UI-форму включения 2FA (отдельная задача).",
+    "Не добавлять зависимости и external-сервисы.",
+    "Не менять парольный бэкенд и RPC."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_flow.py djadmin/core/models.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows core.tests.test_auth --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
