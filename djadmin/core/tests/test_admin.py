@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from core.models import Rating, SitePage
+from core.models import Announcement, Rating, SitePage
 from core.tests.test_auth import make_profile
 
 User = get_user_model()
@@ -30,6 +30,7 @@ CHANGELISTS = [
     "admin:core_ratingreport_changelist",
     "admin:core_invitation_changelist",
     "admin:core_receipt_changelist",
+    "admin:core_announcement_changelist",
 ]
 
 
@@ -117,6 +118,43 @@ class AdminAccessTests(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "PATH")
+
+class AnnouncementAdminTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = User.objects.create_superuser("announcement-admin@example.com", "Aa1!aaaa")  # pragma: allowlist secret
+
+    def test_changelist_and_add_form_ok(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("admin:core_announcement_changelist"))
+        self.assertEqual(response.status_code, 200)
+        response = self.client.get(reverse("admin:core_announcement_add"))
+        self.assertEqual(response.status_code, 200)
+        for field in ("title", "kind", "body", "url", "url_label", "is_pinned", "is_active"):
+            with self.subTest(field=field):
+                self.assertContains(response, 'name="%s"' % field)
+
+    def test_add_saves_announcement(self):
+        self.client.force_login(self.admin)
+        response = self.client.post(reverse("admin:core_announcement_add"), {
+            "title": "Админ-объявление",
+            "kind": Announcement.Kind.EVENT,
+            "body": "Текст объявления",
+            "url": "https://example.com/event",
+            "url_label": "Подробнее",
+            "is_pinned": "on",
+            "is_active": "on",
+            "_save": "Сохранить",
+        })
+        self.assertEqual(response.status_code, 302)
+        announcement = Announcement.objects.get(title="Админ-объявление")
+        self.assertEqual(announcement.kind, Announcement.Kind.EVENT)
+        self.assertEqual(announcement.body, "Текст объявления")
+        self.assertEqual(announcement.url, "https://example.com/event")
+        self.assertEqual(announcement.url_label, "Подробнее")
+        self.assertTrue(announcement.is_pinned)
+        self.assertTrue(announcement.is_active)
+
 
 class AdminEnvTests(TestCase):
     @classmethod

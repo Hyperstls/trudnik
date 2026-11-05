@@ -1,9 +1,9 @@
-"""Справочники: навыки (CRUD + RPC-удаление) и вероисповедания."""
+"""Справочники: навыки (CRUD + RPC-удаление), вероисповедания и объявления."""
 from django.contrib import messages
 from django.contrib.admin import ModelAdmin
 
 from core.audit import AuditAdminMixin, log_admin_action
-from core.models import Religion, Skill
+from core.models import Announcement, Religion, Skill
 from core.rpc import call_rpc
 
 
@@ -66,6 +66,17 @@ class ReligionAdmin(AuditAdminMixin, ModelAdmin):
     profiles_count.short_description = "профилей"
 
 
+class AnnouncementAdmin(AuditAdminMixin, ModelAdmin):
+    list_display = ("title", "kind", "is_pinned", "is_active", "created_at", "updated_at")
+    list_filter = ("kind", "is_pinned", "is_active")
+    search_fields = ("title", "body")
+    list_editable = ("is_pinned", "is_active")
+    ordering = ("-is_pinned", "-created_at")
+    list_per_page = 50
+    date_hierarchy = "created_at"
+
+
 def register(site):
     site.register(Skill, SkillAdmin)
     site.register(Religion, ReligionAdmin)
+    site.register(Announcement, AnnouncementAdmin)

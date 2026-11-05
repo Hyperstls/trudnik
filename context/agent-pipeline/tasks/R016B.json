@@ -1,0 +1,42 @@
+{
+  "id": "R016B",
+  "title": "Информационная страница: админка Announcement",
+  "goal": "Зарегистрировать Announcement в кастомной админке: список с kind/title/pinned/active/датами, фильтры по типу и активности, поиск по title/body, быстрые чекбоксы is_pinned/is_active, AuditAdminMixin. Добавить changelist/add в тесты админки.",
+  "why": "Пользователь должен вести информационную страницу из админки, как /admin/content/announcement/ в примере. Без регистрации модель недоступна staff-аккаунтам.",
+  "files": [
+    "djadmin/core/admin/dictionaries.py",
+    "djadmin/core/tests/test_admin.py"
+  ],
+  "context_files": [
+    "djadmin/core/admin/__init__.py",
+    "djadmin/core/models.py",
+    "djadmin/core/audit.py"
+  ],
+  "interfaces": "В dictionaries.py импортировать Announcement и добавить AnnouncementAdmin(AuditAdminMixin, ModelAdmin): list_display=('title','kind','is_pinned','is_active','created_at','updated_at'), list_filter=('kind','is_pinned','is_active'), search_fields=('title','body'), list_editable=('is_pinned','is_active'), ordering=('-is_pinned','-created_at'), list_per_page=50, date_hierarchy='created_at'; register(site) добавить site.register(Announcement, AnnouncementAdmin). В test_admin.py добавить 'admin:core_announcement_changelist' в CHANGELISTS и отдельный тест: staff GET changelist/add — 200, форма содержит title/kind/is_pinned/is_active; POST создания сохраняет Announcement.",
+  "acceptance": [
+    "Announcement зарегистрирован в TrudnikAdminSite.",
+    "Staff видит changelist /admin/core/announcement/ и add-форму (200).",
+    "Форма содержит поля title, kind, body, url, url_label, is_pinned, is_active.",
+    "POST создания сохраняет запись с выбранными значениями.",
+    "Анонимный пользователь редиректится на /admin/login/.",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_admin, core.tests.test_announcements проходят."
+  ],
+  "out_of_scope": [
+    "Не менять модель, миграцию и схему.",
+    "Не добавлять публичную страницу/URL (R017).",
+    "Не менять другие admin-классы."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/admin/dictionaries.py djadmin/core/tests/test_admin.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_admin core.tests.test_announcements --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
