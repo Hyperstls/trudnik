@@ -1,0 +1,49 @@
+{
+  "id": "R010",
+  "title": "MAX: кнопка подтверждения, callback-ответы и self-heal вебхука",
+  "goal": "Бот MAX после перехода по deep link присылает сообщение с inline-кнопкой «Подтвердить профиль» (callback). Нажатие подтверждает профиль и обновляет сообщение результатом (успех/истёкшая ссылка/ошибка сервера), кнопка исчезает. Вебхук подписывается на message_callback, корректно берёт chat_id из message.recipient, а ensure_max_webhook пересоздаёт подписку при смене секрета/типов и чистит старые URL — иначе MAX шлёт события без секрета и получает 401.",
+  "why": "Сейчас подписки зарегистрированы без секрета, прод отклоняет события (401) — бот молчит. Кнопки подтверждения нет, а message_created не находит chat_id (он в message.recipient.chat_id), поэтому повторные сообщения тоже остаются без ответа.",
+  "files": [
+    "djadmin/core/views_messenger.py",
+    "djadmin/core/tests/test_messenger.py"
+  ],
+  "context_files": [
+    "djadmin/core/tasks.py",
+    "djadmin/core/templates/core/messenger_start.html",
+    "djadmin/config/settings.py"
+  ],
+  "interfaces": "NEEDED_UPDATE_TYPES = (\"bot_started\", \"message_created\", \"message_callback\"). bot_started/message_created с валидным токеном НЕ подтверждают сразу, а вызывают _send_confirm(chat_id, token): текст «Подтвердите профиль «Трудник».» + inline_keyboard: callback-кнопка text «Подтвердить профиль», payload «confirm:<token>»; вторая строка — link «Открыть профиль». message_callback: callback_id = callback.callback_id, payload = callback.payload, uid = callback.user.user_id, chat_id = callback.message.recipient.chat_id; payload confirm:<token> → _complete(token, uid, chat_id, callback_id); иначе _answer_callback(callback_id, «Кнопка устарела…», link). _complete(token, uid, chat_id=None, callback_id=None) -> \"ok\"|\"expired\"|\"error\": токен забирается через cache.delete (одноразово), RPC verify_via_messenger; ответ через _answer_callback при callback_id, иначе _send_max; успех — «Профиль подтверждён…» + link «Вернуться в профиль», истёк — «Ссылка устарела…» + link, ошибка RPC — «Не удалось подтвердить…». _answer_callback(callback_id, text, button=None): POST {MAX_API_URL}/answers?callback_id=..., body {\"message\":{\"text\":..., \"attachments\":[button] или [], \"notify\":true}}. _send_max/_answer_callback не логируют токен/payload/секрет. message_created: chat_id = message.recipient.chat_id, uid = message.sender.user_id. ensure_max_webhook: подпись = sha256(url|update_types|secret)[:16] в cache key max_webhook:sig; если существующая подписка покрывает типы и подпись совпала — already_registered; иначе удалить подписки с URL, оканчивающимся /messenger/webhook/max и отличающимся от текущего, удалить текущую и POST заново с секретом и всеми тремя типами, затем сохранить подпись; при ошибке кэша — перерегистрировать. INSTRUCTION_TEXT обновить: нажать кнопку «Подтвердить профиль» в чате.",
+  "acceptance": [
+    "bot_started с валидным токеном отправляет сообщение с callback-кнопкой confirm:<token>, но профиль НЕ подтверждает.",
+    "message_created с валидным токеном отправляет такую же кнопку; chat_id берётся из message.recipient.chat_id, ответ уходит в этот чат.",
+    "message_callback с confirm:<token> подтверждает профиль, удаляет токен и отвечает через /answers с callback_id; текст успеха содержит «подтверждён».",
+    "message_callback с истёкшим токеном отвечает «Ссылка устарела», профиль не меняется.",
+    "message_callback при ошибке RPC отвечает «Не удалось подтвердить», профиль не подтверждён.",
+    "message_callback с неизвестным payload отвечает «Кнопка устарела» и не вызывает verify RPC.",
+    "NEEDED_UPDATE_TYPES содержит bot_started, message_created, message_callback.",
+    "ensure_max_webhook пересоздаёт подписку, если типы неполные или подпись (url+types+secret) не совпала с кэшем; после успеха сохраняет подпись.",
+    "ensure_max_webhook удаляет подписки со старых URL, оканчивающихся /messenger/webhook/max.",
+    "В логах и ответах нет токена, payload и секрета; новых PII/полей не появляется (152-ФЗ).",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_messenger, core.tests.test_auth, core.tests.test_public_views проходят."
+  ],
+  "out_of_scope": [
+    "Не менять модель/БД, миграции и RPC verify_via_messenger.",
+    "Не менять Flask-архив и другие мессенджеры.",
+    "Не добавлять зависимости и новые внешние сервисы.",
+    "Не хранить IP, телефон, email или содержимое чата.",
+    "Не менять профильную страницу и шаблоны (кроме текста инструкции в коде)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_messenger.py djadmin/core/tests/test_messenger.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_messenger core.tests.test_auth core.tests.test_public_views --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
