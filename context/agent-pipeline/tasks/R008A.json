@@ -1,0 +1,43 @@
+{
+  "id": "R008A",
+  "title": "UI: мобильные тосты и дубли сообщений на входе",
+  "goal": "Контейнер сообщений в base.html на узких экранах занимает ширину с отступами слева/справа (left-4 right-4, sm:left-auto sm:max-w-sm), поэтому длинные ошибки не выходят за 320–390px. login.html больше не рендерит messages вторым блоком: сообщения показывает только base (тост), дублей нет.",
+  "why": "R003 добавил в login.html собственный блок messages, а base.html уже рисует тосты — каждое сообщение показывалось дважды. Контейнер тостов с одним right-4 и max-w-sm на 320px уходил влево за экран.",
+  "files": [
+    "djadmin/core/templates/core/base.html",
+    "djadmin/core/templates/core/login.html",
+    "djadmin/core/tests/test_ui_polish.py"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/sessions.html",
+    "djadmin/core/tests/test_flows.py",
+    "djadmin/core/tests/test_auth.py"
+  ],
+  "interfaces": "base.html: класс контейнера тостов становится \"fixed top-16 left-4 right-4 sm:left-auto z-[90] space-y-2 sm:max-w-sm\", остальные классы/скрипт не менять. login.html: удалить блок {% if messages %}...{% endif %} целиком (base уже рендерит). test_ui_polish.py: новый файл, override_settings(CACHES=CACHE_LOCMEM), cache.clear в setUp; тест 1 — POST /login с неверным паролем даёт ровно одно вхождение текста ошибки; тест 2 — ответ с сообщением содержит классы left-4 right-4 sm:left-auto sm:max-w-sm; тест 3 — обычная /login без сообщений не содержит контейнер тостов.",
+  "acceptance": [
+    "login.html не содержит собственного блока {% if messages %}.",
+    "POST /login с неверным паролем: текст ошибки встречается в HTML ровно 1 раз.",
+    "base.html: контейнер тостов содержит left-4 right-4 sm:left-auto sm:max-w-sm.",
+    "На /login без сообщений контейнер тостов не рендерится.",
+    "py_compile нового теста проходит.",
+    "core.tests.test_ui_polish, core.tests.test_flows, core.tests.test_auth проходят."
+  ],
+  "out_of_scope": [
+    "Не менять locale/*.po (R008B).",
+    "Не менять sessions.html/views_sessions.py (R008B).",
+    "Не менять JS тостов, кроме классов контейнера.",
+    "Не добавлять зависимости."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_ui_polish.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_ui_polish core.tests.test_flows core.tests.test_auth --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
