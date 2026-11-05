@@ -1,0 +1,44 @@
+{
+  "id": "R018",
+  "title": "Информационная страница: EN-переводы",
+  "goal": "Обернуть литеральные строки /info в {% translate %} и добавить английские переводы: заголовок, подзаголовок, типы, «Закреплено», пустое состояние, «Открыть». Тест проверяет английскую и русскую страницу.",
+  "why": "Строки /info сейчас литеральные, поэтому EN-локаль показывает русский текст. J159–J160 требуют полной локализации.",
+  "files": [
+    "djadmin/core/templates/core/info.html",
+    "djadmin/core/tests/test_i18n.py",
+    "djadmin/locale/en/LC_MESSAGES/django.po",
+    "djadmin/locale/en/LC_MESSAGES/django.mo"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/base.html",
+    "djadmin/core/templates/core/faq.html",
+    "djadmin/core/models.py"
+  ],
+  "interfaces": "info.html: title через {% translate \"Полезная информация\" %}; h1 и подзаголовок — {% translate %}; пустое состояние — {% translate \"Пока без новостей\" %}; для кнопки {% translate \"Открыть\" as open_label %}{{ item.url_label|default:open_label }}. django.po добавить: \"Полезная информация\"→\"Useful information\", \"Новости, события и материалы сообщества\"→\"News, events and community materials\", \"Новость\"→\"News\", \"Событие\"→\"Event\", \"Ссылка\"→\"Link\", \"Закреплено\"→\"Pinned\", \"Пока без новостей\"→\"No news yet\", \"Открыть\"→\"Open\". Собрать .mo через polib. В test_i18n.py: создать активное Announcement, переключить en, GET /info — есть Useful information/News/Pinned/Open и нет русских строк; GET /info в ru — русские строки.",
+  "acceptance": [
+    "info.html не содержит литеральных «Полезная информация», «Пока без новостей», «Открыть» вне translate.",
+    "В django.po есть непустые msgstr для всех перечисленных msgid.",
+    "django.mo пересобран, EN-страница /info показывает английские строки.",
+    "Русская /info показывает русские строки.",
+    "py_compile test_i18n.py проходит.",
+    "core.tests.test_i18n, core.tests.test_public_views проходят."
+  ],
+  "out_of_scope": [
+    "Не менять модель/админку/вьюху.",
+    "Не менять футер (R019).",
+    "Не менять тексты других страниц.",
+    "Не добавлять новые языки."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_i18n.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_i18n core.tests.test_public_views --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

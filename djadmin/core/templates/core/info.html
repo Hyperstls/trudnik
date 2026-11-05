@@ -1,10 +1,10 @@
 {% extends "core/base.html" %}
 {% load i18n %}
-{% block title %}Полезная информация — Трудник{% endblock %}
+{% block title %}{% translate "Полезная информация" %} — Трудник{% endblock %}
 {% block content %}
 <div class="max-w-2xl mx-auto px-0 py-4 fade-in">
-    <h1 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-1">Полезная информация</h1>
-    <p class="text-sm text-neutral-500 mb-5">Новости, события и материалы сообщества</p>
+    <h1 class="text-xl sm:text-2xl font-bold text-neutral-800 mb-1">{% translate "Полезная информация" %}</h1>
+    <p class="text-sm text-neutral-500 mb-5">{% translate "Новости, события и материалы сообщества" %}</p>
 
     {% if announcements %}
     <div class="space-y-3">
@@ -34,7 +34,7 @@
             {% if item.safe_url %}
             <p class="mt-3">
                 <a href="{{ item.safe_url }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 rounded-xl bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700">
-                    {{ item.url_label|default:"Открыть" }}
+                    {% translate "Открыть" as open_label %}{{ item.url_label|default:open_label }}
                 </a>
             </p>
             {% endif %}
@@ -46,7 +46,7 @@
         <div class="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
             <svg class="h-8 w-8 text-neutral-500" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
         </div>
-        <p class="text-neutral-600 text-lg font-medium">Пока без новостей</p>
+        <p class="text-neutral-600 text-lg font-medium">{% translate "Пока без новостей" %}</p>
     </div>
     {% endif %}
 </div>

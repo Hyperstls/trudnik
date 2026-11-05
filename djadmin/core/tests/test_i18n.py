@@ -249,3 +249,67 @@ class CabinetEnglishTests(TestCase):
         response = self.client.get(reverse("core:login"))
         self.assertContains(response, "TRUDNIK_I18N")
         self.assertContains(response, "Confirm action")
+
+
+class InfoPageTranslationTests(TestCase):
+    """R018: страница /info локализована на en и ru (J159-J160)."""
+
+    def setUp(self):
+        from core.models import Announcement
+
+        Announcement.objects.all().delete()
+        Announcement.objects.create(
+            title="Community news R018",
+            body="Fresh materials for the community R018",
+            kind=Announcement.Kind.NEWS,
+            is_active=True,
+        )
+        Announcement.objects.create(
+            title="Meetup R018",
+            kind=Announcement.Kind.LINK,
+            url="https://example.com/r018",
+            is_pinned=True,
+            is_active=True,
+        )
+
+    def _switch(self, language):
+        self.client.post(
+            reverse("set_language"), {"language": language, "next": "/info"},
+        )
+
+    def test_info_page_english(self):
+        self._switch("en")
+        response = self.client.get("/info")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Useful information")
+        self.assertContains(response, "News, events and community materials")
+        self.assertContains(response, "News")
+        self.assertContains(response, "Link")
+        self.assertContains(response, "Pinned")
+        self.assertContains(response, "Open")
+        for russian in (
+            "Полезная информация", "Новости, события и материалы сообщества",
+            "Пока без новостей", "Закреплено", "Открыть",
+        ):
+            self.assertNotContains(response, russian)
+
+    def test_info_page_russian(self):
+        self._switch("ru")
+        response = self.client.get("/info")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Полезная информация")
+        self.assertContains(response, "Новости, события и материалы сообщества")
+        self.assertContains(response, "Новость")
+        self.assertContains(response, "Ссылка")
+        self.assertContains(response, "Закреплено")
+        self.assertContains(response, "Открыть")
+
+    def test_info_page_english_empty_state(self):
+        from core.models import Announcement
+
+        Announcement.objects.all().delete()
+        self._switch("en")
+        response = self.client.get("/info")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "No news yet")
+        self.assertNotContains(response, "Пока без новостей")

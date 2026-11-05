@@ -3939,3 +3939,27 @@ msgstr "Current session ended. Please sign in again."
 
 msgid "Неизвестное устройство"
 msgstr "Unknown device"
+
+msgid "Полезная информация"
+msgstr "Useful information"
+
+msgid "Новости, события и материалы сообщества"
+msgstr "News, events and community materials"
+
+msgid "Новость"
+msgstr "News"
+
+msgid "Событие"
+msgstr "Event"
+
+msgid "Ссылка"
+msgstr "Link"
+
+msgid "Закреплено"
+msgstr "Pinned"
+
+msgid "Пока без новостей"
+msgstr "No news yet"
+
+msgid "Открыть"
+msgstr "Open"
