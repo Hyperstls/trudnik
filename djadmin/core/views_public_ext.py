@@ -148,19 +148,23 @@ def employer_detail(request, employer_id):
 
 # ── Оценки ─────────────────────────────────────────────────────────────────
 def user_ratings(request, user_id):
+    from django.core.paginator import Paginator
+
     profile = Profile.objects.filter(pk=user_id).first()
     if profile is None:
         raise Http404("Профиль не найден")
     target_type = "employer" if profile.role == Profile.Role.EMPLOYER else "worker"
-    ratings_qs = public_ratings(profile.pk, target_type)
-    ratings = (
-        ratings_qs.select_related("rater_user", "job")
-        .order_by("-published_at")[:50]
+    ratings_qs = (
+        public_ratings(profile.pk, target_type)
+        .select_related("rater_user", "job")
+        .order_by("-published_at")
     )
+    page = Paginator(ratings_qs, 20).get_page(request.GET.get("page"))
     metrics = profile_metrics(profile.pk, profile.role)
     return render(request, "core/user_ratings.html", {
         "p": profile,
-        "ratings": ratings,
+        "page": page,
+        "ratings": page.object_list,
         "target_type": target_type,
         "distribution": rating_distribution(profile.pk, target_type),
         "recent": recent_rating(profile.pk, target_type),

@@ -59,6 +59,13 @@
         {% include "core/_review_card.html" with r=r review_criteria_labels=review_criteria_labels review_tag_labels=review_tag_labels %}
         {% endfor %}
     </div>
+    {% if page.paginator.num_pages > 1 %}
+    <nav class="mt-4 flex gap-2 items-center justify-center text-sm">
+        {% if page.has_previous %}<a href="{{ request.path }}?page={{ page.previous_page_number }}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600">{% translate "← Назад" %}</a>{% endif %}
+        <span class="text-neutral-400 px-2">{{ page.number }} {% translate "из" %} {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}<a href="{{ request.path }}?page={{ page.next_page_number }}" class="px-4 h-9 inline-flex items-center rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-600">{% translate "Вперёд →" %}</a>{% endif %}
+    </nav>
+    {% endif %}
     {% else %}<p class="text-sm text-neutral-500">{% translate "Отзывов пока нет." %}</p>{% endif %}
 </div>
 {% endblock %}

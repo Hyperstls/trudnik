@@ -1645,3 +1645,114 @@ class JobOgImageTests(TestCase):
         job = make_job(employer, work_type="OG detail")
         response = self.client.get(reverse("core:job_detail", args=[job.pk]))
         self.assertContains(response, "/jobs/%s/og.png" % job.pk)
+
+
+class UserRatingsPaginationTests(TestCase):
+    """R009: отзывы профиля постранично, 20 на страницу."""
+
+    def setUp(self):
+        self.worker = make_profile("ratings-page-worker@example.com", role="worker")
+        self.employer = make_profile("ratings-page-employer@example.com", role="employer")
+
+    def _add_rating(self, index, **overrides):
+        rater = make_profile("ratings-page-rater-%02d@example.com" % index)
+        job = make_job(self.employer, work_type="Отзыв %02d" % index)
+        data = {
+            "rated_user": self.worker,
+            "rater_user": rater,
+            "job": job,
+            "rating": 5,
+            "comment": "Отзыв номер %02d" % index,
+            "rating_type": "employer",
+            "target_type": "worker",
+            "published_at": timezone.now() - timedelta(minutes=index),
+        }
+        data.update(overrides)
+        return Rating.objects.create(**data)
+
+    def _url(self, worker=None):
+        return reverse("core:user_ratings", args=[(worker or self.worker).pk])
+
+    def test_reviews_are_paginated_20_per_page(self):
+        for i in range(25):
+            self._add_rating(i)
+        url = self._url()
+
+        first = self.client.get(url)
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(first.context["page"].number, 1)
+        self.assertEqual(first.context["page"].paginator.num_pages, 2)
+        self.assertEqual(len(first.context["ratings"]), 20)
+        self.assertEqual(first.content.count(b"<article"), 20)
+        self.assertContains(first, "1 из 2")
+
+        second = self.client.get(url, {"page": "2"})
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(second.context["page"].number, 2)
+        self.assertEqual(len(second.context["ratings"]), 5)
+        self.assertEqual(second.content.count(b"<article"), 5)
+        self.assertContains(second, "2 из 2")
+
+        seen = {r.pk for r in first.context["ratings"]} | {r.pk for r in second.context["ratings"]}
+        self.assertEqual(len(seen), 25)
+
+    def test_invalid_and_out_of_range_page_does_not_error(self):
+        for i in range(25):
+            self._add_rating(i)
+        url = self._url()
+
+        last = self.client.get(url, {"page": "999"})
+        self.assertEqual(last.status_code, 200)
+        self.assertEqual(last.context["page"].number, 2)
+        self.assertEqual(len(last.context["ratings"]), 5)
+
+        first = self.client.get(url, {"page": "abc"})
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(first.context["page"].number, 1)
+        self.assertEqual(len(first.context["ratings"]), 20)
+
+    def test_pagination_block_hidden_when_single_page(self):
+        for i in range(20):
+            self._add_rating(i)
+        response = self.client.get(self._url())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["page"].paginator.num_pages, 1)
+        self.assertNotContains(response, "?page=")
+        self.assertNotContains(response, "Вперёд →")
+
+        empty = make_profile("ratings-page-empty@example.com", role="worker")
+        empty_response = self.client.get(self._url(empty))
+        self.assertEqual(empty_response.status_code, 200)
+        self.assertNotContains(empty_response, "?page=")
+        self.assertContains(empty_response, "Отзывов пока нет.")
+
+    def test_unpublished_and_moderated_reviews_are_excluded(self):
+        for i in range(20):
+            self._add_rating(i)
+        self._add_rating(90, comment="R009-unpublished", published_at=None)
+        self._add_rating(
+            91, comment="R009-hidden",
+            moderation_status=Rating.ModerationStatus.HIDDEN,
+        )
+        self._add_rating(
+            92, comment="R009-review",
+            moderation_status=Rating.ModerationStatus.REVIEW,
+        )
+        url = self._url()
+        for page in ("1", "2"):
+            response = self.client.get(url, {"page": page})
+            self.assertEqual(response.status_code, 200)
+            for marker in ("R009-unpublished", "R009-hidden", "R009-review"):
+                self.assertNotContains(response, marker)
+        self.assertEqual(self.client.get(url).context["page"].paginator.count, 20)
+
+    def test_pagination_links_keep_path_and_use_page_param(self):
+        for i in range(21):
+            self._add_rating(i)
+        url = self._url()
+
+        first = self.client.get(url)
+        self.assertContains(first, "%s?page=2" % url)
+
+        second = self.client.get(url, {"page": "2"})
+        self.assertContains(second, "%s?page=1" % url)

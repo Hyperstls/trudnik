@@ -1,0 +1,44 @@
+{
+  "id": "R009",
+  "title": "Отзывы профиля: пагинация вместо последних 50",
+  "goal": "Страница /users/<id>/ratings отдаёт отзывы постранично (20 на страницу) через Paginator; шаблон показывает «← Назад / N из M / Вперёд →» и сохраняет существующий вид карточек. Старые и невалидные номера страниц безопасно сводятся к первой/последней.",
+  "why": "Сейчас отдаются последние 50 отзывов без страниц: при росте профиля старые отзывы недоступны, а страница тяжёлая. Пагинация — уже принятый паттерн в уведомлениях.",
+  "files": [
+    "djadmin/core/views_public_ext.py",
+    "djadmin/core/templates/core/user_ratings.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/reputation.py",
+    "djadmin/core/templates/core/notifications.html",
+    "djadmin/core/templates/core/_review_card.html"
+  ],
+  "interfaces": "В user_ratings: from django.core.paginator import Paginator; queryset public_ratings(...).select_related(\"rater_user\", \"job\").order_by(\"-published_at\") передать в Paginator(..., 20).get_page(request.GET.get(\"page\")); в контекст добавить page и ratings=page.object_list. Шаблон: после grid с карточками добавить блок пагинации как в notifications.html (page.has_previous/has_next, «← Назад», «{{ page.number }} из {{ page.paginator.num_pages }}», «Вперёд →»); показывать только если page.paginator.num_pages > 1. Никаких новых URL: параметр ?page=. Не менять _review_card.html и метрики/распределение.",
+  "acceptance": [
+    "25 опубликованных отзывов: страница 1 содержит 20 карточек, страница 2 — 5, суммарно 25.",
+    "page=999 и page=abc отдают 200 и первую/последнюю страницу без 500.",
+    "При <=20 отзывах блок пагинации не рендерится.",
+    "Неопубликованные и скрытые модерацией отзывы не попадают ни на одну страницу.",
+    "Ссылки пагинации сохраняют путь /users/<id>/ratings и используют ?page=.",
+    "py_compile изменённого .py проходит.",
+    "core.tests.test_public_views, core.tests.test_new_features, core.tests.test_interact, core.tests.test_i18n проходят."
+  ],
+  "out_of_scope": [
+    "Не менять модель/БД и порядок сортировки.",
+    "Не добавлять фильтры по оценке/критериям.",
+    "Не менять другие страницы и пагинацию уведомлений.",
+    "Не менять locale/*.po (строки пагинации уже переведены)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_public_ext.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views core.tests.test_new_features core.tests.test_interact core.tests.test_i18n --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
