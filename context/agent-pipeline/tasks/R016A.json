@@ -1,0 +1,45 @@
+{
+  "id": "R016A",
+  "title": "Информационная страница: таблица и модель Announcement",
+  "goal": "Добавить таблицу announcements (kind news/event/link, title, body, url, url_label, is_pinned, is_active, timestamps) и unmanaged-модель Announcement с сортировкой pinned → свежие. Это база для публичной /info и админки.",
+  "why": "Сейчас в «Труднике» нет управляемых объявлений/новостей. Нужна отдельная таблица, а не SitePage, чтобы админ мог вести список карточек с типом, закреплением и ссылкой.",
+  "files": [
+    "migrations/160_announcements.sql",
+    "djadmin/core/models.py",
+    "djadmin/core/tests/test_announcements.py"
+  ],
+  "context_files": [
+    "migrations/093_add_updated_at_triggers.sql",
+    "migrations/158_reputation_v2.sql",
+    "djadmin/core/tests/test_schema.py"
+  ],
+  "interfaces": "SQL: CREATE TABLE IF NOT EXISTS public.announcements (id uuid PK default gen_random_uuid(), kind text NOT NULL default 'news' CHECK in ('news','event','link'), title varchar(200) NOT NULL, body text NOT NULL default '', url varchar(500), url_label varchar(200), is_pinned boolean NOT NULL default false, is_active boolean NOT NULL default true, created_at timestamptz NOT NULL default now(), updated_at timestamptz NOT NULL default now()); индекс (is_active, is_pinned DESC, created_at DESC); trigger trg_announcements_updated_at через update_updated_at_column(); GRANT SELECT, INSERT, UPDATE, DELETE ON public.announcements TO trudnik_dj. Model Announcement: UUID pk default uuid4; Kind TextChoices NEWS/EVENT/LINK; title CharField 200; body TextField blank default ''; url URLField 500 blank default ''; url_label CharField 200 blank default ''; is_pinned/is_active Boolean default False/True; created_at auto_now_add; updated_at auto_now; Meta managed=False, db_table='announcements', ordering=('-is_pinned','-created_at'). В test_announcements.py: создание/дефолты, kind choices, ordering pinned first, is_active фильтр, unmanaged meta. Разрешено применить миграцию к dev-БД (MIGRATIONS_ENABLED=true python scripts/apply_migrations.py) и пересоздать trudnik_test (scripts/dj_test_clone.py), чтобы тесты видели таблицу.",
+  "acceptance": [
+    "migrations/160_announcements.sql добавляет таблицу, CHECK kind, индекс, updated_at trigger и grant trudnik_dj.",
+    "Announcement доступен в ORM, managed=False, db_table='announcements'.",
+    "Дефолты: kind=news, body='', url='', url_label='', is_pinned=False, is_active=True.",
+    "Ordering возвращает закреплённое первым, затем по created_at убыванию.",
+    "kind принимает только news/event/link на уровне БД.",
+    "Миграция применена к dev-БД, trudnik_test пересоздан, таблица доступна в тестах.",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_announcements, core.tests.test_schema, core.tests.test_flows проходят."
+  ],
+  "out_of_scope": [
+    "Не добавлять view/URL/шаблон (R017).",
+    "Не регистрировать админку (R016B).",
+    "Не добавлять i18n (R018).",
+    "Не менять SitePage и другие таблицы."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/models.py djadmin/core/tests/test_announcements.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_announcements core.tests.test_schema core.tests.test_flows --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

@@ -788,6 +788,36 @@ class SitePage(models.Model):
         return self.slug
 
 
+class Announcement(models.Model):
+    """Управляемые объявления информационной страницы (/info, R017)."""
+
+    class Kind(models.TextChoices):
+        NEWS = "news", _("Новость")
+        EVENT = "event", _("Событие")
+        LINK = "link", _("Ссылка")
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    kind = models.CharField(_("тип"), max_length=20, choices=Kind.choices, default=Kind.NEWS)
+    title = models.CharField(_("заголовок"), max_length=200)
+    body = models.TextField(_("текст"), blank=True, default="")
+    url = models.URLField(_("ссылка"), max_length=500, blank=True, default="")
+    url_label = models.CharField(_("подпись ссылки"), max_length=200, blank=True, default="")
+    is_pinned = models.BooleanField(_("закреплено"), default=False)
+    is_active = models.BooleanField(_("активно"), default=True)
+    created_at = models.DateTimeField(auto_now_add=True, editable=False)
+    updated_at = models.DateTimeField(auto_now=True, editable=False)
+
+    class Meta:
+        managed = False
+        db_table = "announcements"
+        verbose_name = _("объявление")
+        verbose_name_plural = _("Объявления")
+        ordering = ("-is_pinned", "-created_at")
+
+    def __str__(self):
+        return self.title
+
+
 class AuditLog(models.Model):
     id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(Profile, verbose_name=_("кто"), on_delete=models.SET_NULL, null=True, blank=True, related_name="+")

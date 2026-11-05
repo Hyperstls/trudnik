@@ -1738,6 +1738,25 @@ CREATE TABLE public._migrations (
 
 
 --
+-- Name: announcements; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.announcements (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    kind text DEFAULT 'news'::text NOT NULL,
+    title character varying(200) NOT NULL,
+    body text DEFAULT ''::text NOT NULL,
+    url character varying(500),
+    url_label character varying(200),
+    is_pinned boolean DEFAULT false NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT announcements_kind_check CHECK ((kind = ANY (ARRAY['news'::text, 'event'::text, 'link'::text])))
+);
+
+
+--
 -- Name: applications; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2606,6 +2625,14 @@ ALTER TABLE ONLY public._migrations
 
 
 --
+-- Name: announcements announcements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.announcements
+    ADD CONSTRAINT announcements_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: applications applications_job_id_worker_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3051,6 +3078,13 @@ ALTER TABLE ONLY public.user_reports
 
 ALTER TABLE ONLY public.user_skills
     ADD CONSTRAINT user_skills_pkey PRIMARY KEY (user_id, skill_id);
+
+
+--
+-- Name: announcements_active_pinned_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX announcements_active_pinned_idx ON public.announcements USING btree (is_active, is_pinned DESC, created_at DESC);
 
 
 --
@@ -3520,6 +3554,13 @@ CREATE INDEX ratings_public_idx ON public.ratings USING btree (rated_user_id, ta
 --
 
 CREATE INDEX user_activity_day_idx ON public.user_activity USING btree (day);
+
+
+--
+-- Name: announcements trg_announcements_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_announcements_updated_at BEFORE UPDATE ON public.announcements FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 --
