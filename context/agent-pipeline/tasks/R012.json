@@ -1,0 +1,37 @@
+{
+  "id": "R012",
+  "title": "CI: полный unit-прогон Django на PostGIS + Redis",
+  "goal": "Новый workflow unit-tests.yml на каждый push/PR в main поднимает PostGIS 15 и Redis, применяет tests/fixtures/schema.sql, создаёт клон trudnik_test и запускает полный manage.py test core --keepdb. Это закрывает P0-5 launch readiness: 685 тестов перестают быть только локальными.",
+  "why": "CI сейчас делает только compileall/check/makemigrations; E2E проверяет критические пути, но регрессии в 685 unit-тестах ловятся только локально. Схема в SQL-миграциях, поэтому нужен PostGIS-сервис и фикстура, как в E2E.",
+  "files": [
+    ".github/workflows/unit-tests.yml"
+  ],
+  "context_files": [
+    ".github/workflows/e2e.yml",
+    ".github/workflows/test.yml",
+    "tests/fixtures/schema.sql",
+    "djadmin/config/settings.py",
+    "scripts/dj_test_clone.py"
+  ],
+  "interfaces": "Workflow name Unit tests; on push branches [main] paths djadmin/**, tests/fixtures/schema.sql, migrations/**, .github/workflows/unit-tests.yml; pull_request branches [main]; workflow_dispatch. permissions contents: read. job unit runs-on ubuntu-latest, timeout-minutes 30; services db postgis/postgis:15-3.4 (POSTGRES_DB=trudnik, USER=trudnik, PASSWORD=<ci-only-password>, health pg_isready, port 5432) и redis redis:7 (port 6379, health redis-cli ping). env DEPLOYMENT_ENV=development, SECRET_KEY=ci-only-not-a-secret, DATABASE_URL=postgresql://trudnik:<ci-only-password>@localhost:5432/trudnik_unit, DATABASE_ADMIN_URL=.../postgres, REDIS_URL=redis://localhost:6379/0, MIGRATIONS_ENABLED=false. Steps: checkout, setup-python 3.12 + pip cache, pip install -r djadmin/requirements.txt, apt install postgresql-client, CREATE DATABASE trudnik_unit, psql schema.sql, CREATE DATABASE trudnik_test TEMPLATE trudnik_unit, python djadmin/manage.py test core --keepdb -v 1. Никаких секретов репозитория, только ci-only значения.",
+  "acceptance": [
+    "Workflow-файл существует и YAML парсится.",
+    "Job использует postgis/postgis:15-3.4 и redis:7 с health-check.",
+    "Перед тестами применяется tests/fixtures/schema.sql и создаётся trudnik_test как TEMPLATE trudnik_unit.",
+    "Запускается полный manage.py test core --keepdb, timeout не больше 30 минут.",
+    "Секреты только ci-only константы, без GitHub secrets.",
+    "Workflow не меняет существующие test.yml/e2e.yml и не запускает деплой."
+  ],
+  "out_of_scope": [
+    "Не менять приложение, тесты, миграции и схему.",
+    "Не добавлять деплой/публикацию и внешние сервисы.",
+    "Не менять существующие workflows."
+  ],
+  "checks": [
+    {
+      "name": "yaml",
+      "cmd": "{python} -c \"import yaml; d=yaml.safe_load(open('.github/workflows/unit-tests.yml', encoding='utf-8')); assert d['jobs']['unit']; print('yaml ok')\"",
+      "cwd": "."
+    }
+  ]
+}

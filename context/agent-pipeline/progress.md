@@ -1077,3 +1077,8 @@
 - **2026-11-05 16:04:58** | **R011** | `verify` | **PASS** | scope=ok checks=compile=0, tests=0 attempts=0/3
 - **2026-11-05 16:05:07** | **R011** | `review-packet` | **READY** | bytes=10615 new_files=[]
 - **2026-11-05 16:08:34** | **R011** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-05 17:31:30** | **R012** | `add` | **OK** | contract=context/agent-pipeline/tasks/R012.json
+- **2026-11-05 17:31:31** | **R012** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/R012.impl.prompt.md
+- **2026-11-05 17:33:00** | **R012** | `verify` | **PASS** | scope=ok checks=yaml=0 attempts=0/3
+- **2026-11-05 17:33:01** | **R012** | `review-packet` | **READY** | bytes=5631 new_files=['.github/workflows/unit-tests.yml']
+- **2026-11-05 17:34:44** | **R012** | `review` | **PASS** | by=Hyperstls → done
