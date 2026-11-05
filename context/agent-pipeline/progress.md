@@ -1107,3 +1107,8 @@
 - **2026-11-05 18:27:55** | **R016B** | `verify` | **PASS** | scope=ok checks=compile=0, tests=0 attempts=0/3
 - **2026-11-05 18:27:55** | **R016B** | `review-packet` | **READY** | bytes=6988 new_files=[]
 - **2026-11-05 18:29:04** | **R016B** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-05 18:29:24** | **R017** | `add` | **OK** | contract=context/agent-pipeline/tasks/R017.json
+- **2026-11-05 18:29:25** | **R017** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/R017.impl.prompt.md
+- **2026-11-05 18:42:34** | **R017** | `verify` | **PASS** | scope=ok checks=compile=0, tests=0 attempts=0/3
+- **2026-11-05 18:42:46** | **R017** | `review-packet` | **READY** | bytes=14598 new_files=['djadmin/core/views_content.py', 'djadmin/core/templates/core/info.html']
+- **2026-11-05 18:44:22** | **R017** | `review` | **PASS** | by=Hyperstls → done

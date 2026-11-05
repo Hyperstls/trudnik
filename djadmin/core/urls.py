@@ -1,9 +1,9 @@
 from django.urls import path
 
-from . import (views, views_auth, views_drafts, views_flow, views_geo, views_interact,
-               views_messenger, views_notify, views_profile, views_profile_ext,
-               views_public_ext, views_search, views_service, views_sessions,
-               views_support, views_analytics)
+from . import (views, views_auth, views_content, views_drafts, views_flow, views_geo,
+               views_interact, views_messenger, views_notify, views_profile,
+               views_profile_ext, views_public_ext, views_search, views_service,
+               views_sessions, views_support, views_analytics)
 
 app_name = "core"
 
@@ -93,6 +93,8 @@ urlpatterns = [
     path("unapply-selected", views_public_ext.bulk_unapply, name="bulk_unapply"),
     path("invitations/reject-all", views_public_ext.invitations_reject_all, name="invitations_reject_all"),
     path("faq", views_public_ext.faq, name="faq"),
+    path("info", views_content.info_page, name="info"),
+    path("info/", views_content.info_page),
     path("support", views_support.support, name="support"),
     path("sitemap.xml", views_public_ext.sitemap, name="sitemap"),
 

@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core import views
-from core.models import Application, Blacklist, Favorite, Invitation, Job, JobPhoto, JobSkill, Profile, Rating, Religion, SitePage, Skill, UserSkill
+from core.models import Announcement, Application, Blacklist, Favorite, Invitation, Job, JobPhoto, JobSkill, Profile, Rating, Religion, SitePage, Skill, UserSkill
 from core.storage import resolve_upload_url, save_upload
 from core.tests.test_auth import CACHE_LOCMEM, make_profile
 from core.tests.test_flows import make_job
@@ -1756,3 +1756,88 @@ class UserRatingsPaginationTests(TestCase):
 
         second = self.client.get(url, {"page": "2"})
         self.assertContains(second, "%s?page=1" % url)
+
+
+class InfoPageTests(TestCase):
+    """R017: публичная /info показывает активные объявления Announcement."""
+
+    def setUp(self):
+        Announcement.objects.all().delete()
+
+    def _make(self, title, **kwargs):
+        return Announcement.objects.create(title=title, **kwargs)
+
+    def test_info_and_info_slash_are_public(self):
+        for url in ("/info", "/info/"):
+            with self.subTest(url=url):
+                self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_inactive_announcements_hidden(self):
+        self._make("Активное объявление R017")
+        self._make("Скрытое объявление R017", is_active=False)
+        response = self.client.get("/info")
+        self.assertContains(response, "Активное объявление R017")
+        self.assertNotContains(response, "Скрытое объявление R017")
+        self.assertEqual(len(response.context["announcements"]), 1)
+
+    def test_pinned_first_then_newest(self):
+        now = timezone.now()
+        old = self._make("Старое объявление R017")
+        Announcement.objects.filter(pk=old.pk).update(created_at=now - timedelta(days=2))
+        new = self._make("Новое объявление R017")
+        Announcement.objects.filter(pk=new.pk).update(created_at=now)
+        pinned = self._make("Закреплённое объявление R017", is_pinned=True)
+        Announcement.objects.filter(pk=pinned.pk).update(created_at=now - timedelta(days=5))
+
+        html = self.client.get("/info").content.decode()
+        self.assertLess(
+            html.index("Закреплённое объявление R017"),
+            html.index("Новое объявление R017"),
+        )
+        self.assertLess(
+            html.index("Новое объявление R017"),
+            html.index("Старое объявление R017"),
+        )
+
+    def test_title_and_body_are_escaped(self):
+        self._make(
+            'Заголовок <script>alert("title-r017")</script>',
+            body='Текст <script>alert("body-r017")</script><b>жирный</b>',
+        )
+        response = self.client.get("/info")
+        content = response.content.decode()
+        self.assertNotIn("<script>alert", content)
+        self.assertIn("&lt;script&gt;alert(&quot;title-r017&quot;)", content)
+        self.assertIn("&lt;script&gt;alert(&quot;body-r017&quot;)", content)
+        self.assertIn("&lt;b&gt;жирный&lt;/b&gt;", content)
+
+    def test_link_rendered_with_rel_noopener(self):
+        self._make(
+            "Материал R017", kind=Announcement.Kind.LINK,
+            url="https://example.com/material-r017", url_label="Читать материал",
+        )
+        response = self.client.get("/info")
+        self.assertContains(
+            response,
+            '<a href="https://example.com/material-r017" target="_blank" '
+            'rel="noopener noreferrer"',
+        )
+        self.assertContains(response, "Читать материал")
+
+    def test_link_label_falls_back_and_bad_scheme_skipped(self):
+        self._make(
+            "Ссылка без подписи R017", kind=Announcement.Kind.LINK,
+            url="https://example.com/plain-r017",
+        )
+        self._make(
+            "Опасная ссылка R017", kind=Announcement.Kind.LINK,
+            url="javascript:alert(1)",
+        )
+        response = self.client.get("/info")
+        self.assertContains(response, 'href="https://example.com/plain-r017"')
+        self.assertContains(response, "Открыть")
+        self.assertNotContains(response, "javascript:alert(1)")
+
+    def test_empty_state(self):
+        response = self.client.get("/info")
+        self.assertContains(response, "Пока без новостей")

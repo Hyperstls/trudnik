@@ -1,0 +1,46 @@
+{
+  "id": "R017",
+  "title": "Информационная страница /info и карточки объявлений",
+  "goal": "Публичная страница /info (и /info/) показывает активные объявления Announcement: тип, заголовок, текст, опциональную ссылку; закреплённые выше. Пустое состояние. Текст экранируется, ссылка только http/https.",
+  "why": "Админка уже умеет вести объявления, но пользователю негде их увидеть. Нужна страница по аналогии со сретение-знакомства.рф/info/.",
+  "files": [
+    "djadmin/core/views_content.py",
+    "djadmin/core/urls.py",
+    "djadmin/core/templates/core/info.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/templates/core/base.html",
+    "djadmin/core/templates/core/faq.html",
+    "djadmin/core/admin/dictionaries.py"
+  ],
+  "interfaces": "views_content.info_page(request): Announcement.objects.filter(is_active=True) (ordering модели: -is_pinned,-created_at) → render core/info.html. URL: path('info', views_content.info_page, name='info') и path('info/', views_content.info_page) без имени. Шаблон: заголовок «Полезная информация», подзаголовок «Новости, события и материалы сообщества»; карточки: иконка/бейдж по kind (news/event/link), title, body через linebreaksbr, при url — кнопка url_label или «Открыть»; пусто — «Пока без новостей». Никакого |safe и inline-JS. В test_public_views.py: анонимный GET /info и /info/ 200; неактивные не видны; pinned первым; XSS в title/body экранирован; ссылка рендерится и имеет rel=noopener; пустое состояние.",
+  "acceptance": [
+    "GET /info и /info/ без авторизации — 200.",
+    "Показываются только is_active=True, pinned первым, затем свежие.",
+    "title/body экранируются: <script> в тексте не исполняется и виден как текст.",
+    "Ссылка url выводится как <a href> с rel=\"noopener noreferrer\", url_label как текст кнопки (fallback «Открыть»).",
+    "При отсутствии объявлений видно «Пока без новостей».",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_public_views, core.tests.test_announcements, core.tests.test_admin проходят."
+  ],
+  "out_of_scope": [
+    "Не менять модель/миграцию/админку.",
+    "Не добавлять API/JSON.",
+    "Не менять другие страницы.",
+    "Не добавлять i18n-переводы (R018)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_content.py djadmin/core/urls.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views core.tests.test_announcements core.tests.test_admin --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
