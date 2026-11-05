@@ -172,6 +172,7 @@
             <button type="submit" class="mt-4 w-full px-4 py-2.5 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-semibold transition-colors">{% translate "Сохранить настройку" %}</button>
         </form>
         {% if not user.email_verified %}<p class="form-hint mt-3">{% translate "Для включения сначала подтвердите email." %}</p>{% endif %}
+        <a href="{% url 'core:sessions' %}" class="inline-flex items-center gap-1.5 mt-3 text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors">{% translate "Активные сессии" %}</a>
     </section>
 
     <!-- Смена пароля -->

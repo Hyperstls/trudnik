@@ -1,0 +1,41 @@
+{
+  "id": "R007B",
+  "title": "Сессии: ссылка из профиля и изоляция login-тестов",
+  "goal": "В секции безопасности профиля появляется ссылка на /profile/sessions. LoginFlowTests переводится на locmem-кэш, чтобы Redis-лок-аут и per-IP лимит не протекали между прогонами; добавлен тест ссылки.",
+  "why": "Страница сессий недоступна из UI без ссылки. Тесты входа зависят от общего Redis и падают на 5-м прогоне, а не на коде.",
+  "files": [
+    "djadmin/core/templates/core/profile.html",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_sessions.py",
+    "djadmin/core/tests/test_auth.py",
+    "djadmin/core/tests/test_sessions.py"
+  ],
+  "interfaces": "В profile.html после формы/подсказки двухэтапного входа добавить ссылку href=\"{% url 'core:sessions' %}\" с текстом {% translate \"Активные сессии\" %} (inline-flex, mt-3, text-sm, primary). В test_flows.py импортировать override_settings и CACHE_LOCMEM из core.tests.test_auth; повесить @override_settings(CACHES=CACHE_LOCMEM) на LoginFlowTests; добавить тест: force_login(make_profile(...)), GET /profile содержит reverse(\"core:sessions\") и «Активные сессии». Ничего не менять в других тестах.",
+  "acceptance": [
+    "GET /profile авторизованного пользователя содержит ссылку /profile/sessions и текст «Активные сессии».",
+    "LoginFlowTests декорирован override_settings(CACHES=CACHE_LOCMEM).",
+    "Два последовательных прогона core.tests.test_flows не приводят к lockout/rate-limit (оба exit 0).",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_flows, core.tests.test_auth, core.tests.test_twofa проходят."
+  ],
+  "out_of_scope": [
+    "Не менять views_sessions.py, sessions.html, urls.py, sessions.py.",
+    "Не менять locale/*.po (R008).",
+    "Не менять base.html и login.html (R008).",
+    "Не добавлять новые URL/модели."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows core.tests.test_auth core.tests.test_twofa --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

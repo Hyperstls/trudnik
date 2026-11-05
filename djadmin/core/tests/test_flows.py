@@ -7,7 +7,7 @@ from datetime import timedelta
 import os
 
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -15,7 +15,7 @@ from core.admin.jobs import JobAdmin
 from core.forms import JobForm
 from core.models import Application, Blacklist, Job, JobFavorite, JobPhoto, JobSkill, NotificationOutbox, Profile, Skill, UserSkill
 from core.storage import resolve_upload_url, save_upload
-from core.tests.test_auth import make_profile
+from core.tests.test_auth import CACHE_LOCMEM, make_profile
 
 TINY_PNG = b"\x89PNG\r\n\x1a\n" + b"0" * 16
 
@@ -26,6 +26,7 @@ def make_job(employer, status="open", work_type="Покраска", **kw):
     return Job.objects.create(employer=employer, work_type=work_type, status=status, **kw)
 
 
+@override_settings(CACHES=CACHE_LOCMEM)
 class LoginFlowTests(TestCase):
     def test_login_page_get(self):
         response = self.client.get("/login")
@@ -49,6 +50,13 @@ class LoginFlowTests(TestCase):
             response = self.client.get(url)
             self.assertEqual(response.status_code, 302, url)
             self.assertIn("/login", response["Location"], url)
+
+    def test_profile_has_sessions_link(self):
+        user = make_profile("flow-sessions@example.com")
+        self.client.force_login(user)
+        response = self.client.get(reverse("core:profile"))
+        self.assertContains(response, reverse("core:sessions"))
+        self.assertContains(response, "Активные сессии")
 
 
 class JobCrudTests(TestCase):
