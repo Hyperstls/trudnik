@@ -28,7 +28,8 @@ from .anti_fraud import is_duplicate_message
 from .models import Application, Job, Message, Profile, Rating, RatingReport
 from .notifications import enqueue_notification
 from .reputation import (
-    EDIT_WINDOW_DAYS, publish_reciprocal, rating_options, review_moderation_reason,
+    EDIT_WINDOW_DAYS, lock_rating_pair, publish_reciprocal, rating_options,
+    review_moderation_reason,
 )
 from .ratelimit import rate_limit_write
 from .storage import UploadError, delete_upload_url, save_upload
@@ -155,6 +156,9 @@ def rate_participant(request, app_id):
             "moderation_reason": moderation_reason,
         }
         with transaction.atomic():
+            # Блокировка строки задания: две одновременные взаимные оценки
+            # выполняются последовательно, и вторая видит закоммиченную первую.
+            lock_rating_pair(app.job_id)
             rating, created = Rating.objects.update_or_create(
                 rated_user_id=sides["rated_id"], rater_user=request.user, job=app.job,
                 defaults=defaults,

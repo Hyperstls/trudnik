@@ -182,6 +182,19 @@ def review_moderation_reason(comment, criteria=None, tags=None):
     return None
 
 
+def lock_rating_pair(job_id):
+    """Сериализовать парную публикацию оценок одного задания.
+
+    SELECT ... FOR UPDATE по строке jobs: одновременные взаимные оценки
+    выполняются последовательно, и вторая транзакция видит уже закоммиченную
+    первую — publish_reciprocal срабатывает сразу, а не ждёт Celery.
+
+    Вызывать только внутри transaction.atomic(): вне транзакции Django
+    выбрасывает TransactionManagementError. Возвращает задание или None.
+    """
+    return Job.objects.select_for_update().filter(pk=job_id).first()
+
+
 def publish_reciprocal(rating):
     """Publish a rating together with its counterpart, or alone after 14 days."""
     if rating.published_at is not None or rating.moderation_status != Rating.ModerationStatus.OK:

@@ -1,10 +1,13 @@
 """Фаза 2г: оценки (RPC + триггер пересчёта) и чат (доступ, идемпотентность, poll)."""
+import threading
+import time
 from datetime import timedelta
 from unittest.mock import patch
 
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase, override_settings
+from django.db import connections, transaction
+from django.test import TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -57,6 +60,11 @@ class RatingTests(TestCase):
         self.assertEqual(
             NotificationOutbox.objects.filter(type="new_rating").count(), 2
         )
+
+    @patch("core.views_interact.lock_rating_pair")
+    def test_rate_participant_locks_job_row_before_publish(self, lock_rating_pair):
+        self._post(self.employer, 5, comment="Отлично")
+        lock_rating_pair.assert_called_once_with(self.job.pk)
 
     def test_worker_rating_employer_is_pending(self):
         self._post(self.worker, 4)
@@ -261,6 +269,76 @@ class RatingTests(TestCase):
         response = self.client.get(f"/jobs/{self.job.pk}")
         self.assertContains(response, "Отзыв о работодателе целевой")
         self.assertNotContains(response, "Оценка работнику не в блоке отзывов")
+
+
+class RatingPairLockTests(TransactionTestCase):
+    """Парная публикация сериализуется блокировкой строки задания (FOR UPDATE).
+
+    TransactionTestCase: строки коммитятся и видны второму потоку с отдельным
+    соединением. Таблицы core — unmanaged, поэтому стандартный flush Django их
+    не очищает: созданные строки удаляем точечно в addCleanup.
+    """
+
+    def setUp(self):
+        self.employer = make_profile(
+            "lock-rating-%s@example.com" % uuid.uuid4().hex[:12]
+        )
+        self.job = make_job(self.employer, work_type="Блокировка оценок")
+        self.addCleanup(self._cleanup)
+
+    def _cleanup(self):
+        Job.objects.filter(pk=self.job.pk).delete()
+        Profile.objects.filter(pk=self.employer.pk).delete()
+
+    def _fixture_teardown(self):
+        # core-таблицы unmanaged (managed=False) — flush их не чистит, а
+        # служебные таблицы Django трогать незачем: уборка в addCleanup.
+        pass
+
+    def test_second_lock_waits_for_first_commit(self):
+        from core.reputation import lock_rating_pair
+
+        first_locked = threading.Event()
+        state = {"errors": [], "elapsed": None, "job": None}
+
+        def holder():
+            try:
+                with transaction.atomic():
+                    lock_rating_pair(self.job.pk)
+                    first_locked.set()
+                    time.sleep(0.3)
+            except Exception as exc:  # pragma: no cover - диагностика
+                state["errors"].append(exc)
+            finally:
+                connections.close_all()
+
+        def waiter():
+            if not first_locked.wait(10):
+                state["errors"].append("держатель не получил блокировку")
+                connections.close_all()
+                return
+            start = time.monotonic()
+            try:
+                with transaction.atomic():
+                    state["job"] = lock_rating_pair(self.job.pk)
+            except Exception as exc:  # pragma: no cover - диагностика
+                state["errors"].append(exc)
+            finally:
+                state["elapsed"] = time.monotonic() - start
+                connections.close_all()
+
+        t_hold = threading.Thread(target=holder, daemon=True)
+        t_wait = threading.Thread(target=waiter, daemon=True)
+        t_hold.start()
+        t_wait.start()
+        t_hold.join(15)
+        t_wait.join(15)
+
+        self.assertFalse(t_hold.is_alive(), "держатель блокировки завис")
+        self.assertFalse(t_wait.is_alive(), "ожидающий блокировку завис")
+        self.assertEqual(state["errors"], [])
+        self.assertIsNotNone(state["job"])
+        self.assertGreaterEqual(state["elapsed"], 0.2)
 
 
 class ChatTests(TestCase):

@@ -1,0 +1,44 @@
+{
+  "id": "R011",
+  "title": "Рейтинги: сериализация парной публикации по заданию",
+  "goal": "Устранить гонку double-blind публикации: перед созданием/обновлением оценки в rate_participant транзакция блокирует строку задания через SELECT ... FOR UPDATE. Две одновременные взаимные оценки одного задания выполняются последовательно, и вторая видит уже закоммиченную первую, поэтому обе публикуются сразу, а не ждут часовую Celery-задачу.",
+  "why": "Сейчас при одновременной отправке двух взаимных отзывов каждый не видит незакоммиченный отзыв counterpart, publish_reciprocal возвращает пусто, и публикация откладывается до publish_due_ratings (до часа) или 14 дней. Это подрывает доверие к рейтингу.",
+  "files": [
+    "djadmin/core/reputation.py",
+    "djadmin/core/views_interact.py",
+    "djadmin/core/tests/test_interact.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/tasks.py",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "interfaces": "В reputation.py: def lock_rating_pair(job_id): возвращает Job.objects.select_for_update().filter(pk=job_id).first() с docstring о сериализации парной публикации. В views_interact.rate_participant внутри существующего with transaction.atomic(): первой строкой вызвать lock_rating_pair(app.job_id) до Rating.objects.update_or_create и publish_reciprocal; импортировать helper из .reputation. Никаких новых таблиц, миграций, RPC и изменения порядка сортировки. В test_interact.py: тест с patch(\"core.views_interact.lock_rating_pair\") проверяет вызов с job_id; TransactionTestCase с двумя потоками и отдельными соединениями проверяет, что второй select_for_update ждёт коммита первого (elapsed >= 0.2s при удержании 0.3s); существующий double-blind тест остаётся.",
+  "acceptance": [
+    "lock_rating_pair использует select_for_update и возвращает job или None.",
+    "rate_participant вызывает lock_rating_pair(app.job_id) внутри transaction.atomic до update_or_create.",
+    "Тест с patch подтверждает вызов lock_rating_pair с id задания.",
+    "Два потока: второй lock_rating_pair не завершается, пока первый держит транзакцию, и завершается после коммита (elapsed >= 0.2s).",
+    "Существующий sequential double-blind тест по-прежнему публикует оба отзыва.",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_interact, core.tests.test_new_features, core.tests.test_public_views проходят."
+  ],
+  "out_of_scope": [
+    "Не менять модели, миграции, схему БД и RPC.",
+    "Не менять publish_reciprocal, Celery-задачу и тексты.",
+    "Не менять другие рейтинговые страницы и UI.",
+    "Не добавлять зависимости и блокировки на уровне приложения (threading.Lock)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/reputation.py djadmin/core/views_interact.py djadmin/core/tests/test_interact.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_interact core.tests.test_new_features core.tests.test_public_views --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
