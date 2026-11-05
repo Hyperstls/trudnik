@@ -32,6 +32,7 @@
 | [REPUTATION.md](REPUTATION.md) | рейтинги: роли, double-blind, критерии, модерация, метрики |
 | [LOCALIZATION.md](LOCALIZATION.md) | RU/EN: переключатель, каталог, покрытие, сборка `.mo` |
 | [CONTENT_EDITING.md](CONTENT_EDITING.md) | SitePage: HTML, live preview, редакции документов |
+| [INFO_PAGE.md](INFO_PAGE.md) | /info: объявления, админка, безопасность |
 | [FEATURE_GAPS_2026-11.md](FEATURE_GAPS_2026-11.md) | аудит недостающих функций/страниц (free, без монетизации) |
 | [rkn_notification_fill.md](rkn_notification_fill.md) | уведомление Роскомнадзора (152-ФЗ) |
 | [SECRETS_ROTATION_STATUS.md](SECRETS_ROTATION_STATUS.md) | статус утёкших в историю секретов |
