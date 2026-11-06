@@ -1,0 +1,44 @@
+{
+  "id": "R031",
+  "title": "Кнопка отклика: состояние после отправки/отзыва/отказа",
+  "goal": "На карточке задания показывать фактическое состояние отклика: pending — «Отклик отправлен» + «Отозвать отклик»; accepted — «Отклик принят» + чат/отзыв; rejected — «Отклик отклонён», кнопка отклика недоступна; withdrawn — «Отклик отозван», повторный отклик недоступен. Убрать кнопку «Откликнуться», которая приводит к duplicate.",
+  "why": "Сейчас my_app ищет только активные отклики; после withdrawn/rejected страница снова показывает «Откликнуться», но RPC apply_job_atomic отвечает duplicate из-за UNIQUE(job_id,worker_id). Пользователь нажимает и получает ошибку — кнопка вводит в заблуждение.",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/templates/core/job_detail.html",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_flow.py",
+    "migrations/067_bootstrap_amvera.sql",
+    "djadmin/core/tests/test_interact.py"
+  ],
+  "interfaces": "views.job_detail: my_app = Application.objects.filter(job=job, worker=request.user).order_by('-created_at').values('id','status').first() (все статусы, включая withdrawn/cancelled/rejected). can_withdraw оставить только для accepted и времени. Шаблон: если my_app — вывести статус: pending «Отклик отправлен.» + форма job_unapply с кнопкой «Отозвать отклик»; accepted «Отклик принят.» + (если can_withdraw) «Отозвать отклик», иначе disabled-кнопка с пояснением + «Написать в чат»; rejected «Отклик отклонён.» + disabled span/button «Повторный отклик недоступен»; withdrawn/cancelled «Отклик отозван.» + disabled «Повторный отклик недоступен». Если my_app нет и job.status='open' — прежняя форма «Откликнуться». Кнопки disabled должны иметь disabled:opacity-50 disabled:cursor-not-allowed. В test_flows.py: после apply GET содержит «Отклик отправлен»/«Отозвать отклик» и не содержит форму job_apply; после unapply GET содержит «Отклик отозван»/«Повторный отклик недоступен» и не содержит job_apply; rejected-заявка — аналогично; без заявки форма отклика есть.",
+  "acceptance": [
+    "При активном pending-отклике нет кнопки «Откликнуться», есть «Отозвать отклик».",
+    "После отзыва показывается «Отклик отозван» и недоступность повторного отклика, формы job_apply нет.",
+    "После rejected показывается «Отклик отклонён», формы job_apply нет.",
+    "При accepted показывается «Отклик принят», чат и отзыв (если доступен).",
+    "Без отклика и при open-задании форма «Откликнуться» остаётся.",
+    "Disabled-кнопки имеют disabled:opacity-50 disabled:cursor-not-allowed.",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_flows, core.tests.test_interact, core.tests.test_public_views проходят."
+  ],
+  "out_of_scope": [
+    "Не менять apply/withdraw RPC и схему БД.",
+    "Не добавлять повторный отклик после withdrawn/rejected.",
+    "Не менять другие кнопки (R032 — общий form guard)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views.py djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows core.tests.test_interact core.tests.test_public_views --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

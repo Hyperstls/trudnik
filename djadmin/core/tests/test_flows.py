@@ -605,6 +605,46 @@ class ApplicationFlowTests(TestCase):
         app.refresh_from_db()
         self.assertEqual(app.status, "withdrawn")
 
+    def test_job_detail_pending_shows_withdraw_not_apply(self):
+        self.client.post(reverse("core:job_apply", args=[self.job.pk]))
+        response = self.client.get(reverse("core:job_detail", args=[self.job.pk]))
+        self.assertContains(response, "Отклик отправлен")
+        self.assertContains(response, "Отозвать отклик")
+        self.assertNotContains(response, reverse("core:job_apply", args=[self.job.pk]))
+
+    def test_job_detail_withdrawn_disables_reapply(self):
+        self.client.post(reverse("core:job_apply", args=[self.job.pk]))
+        self.client.post(reverse("core:job_unapply", args=[self.job.pk]))
+        response = self.client.get(reverse("core:job_detail", args=[self.job.pk]))
+        self.assertContains(response, "Отклик отозван")
+        self.assertContains(response, "Повторный отклик недоступен")
+        self.assertNotContains(response, reverse("core:job_apply", args=[self.job.pk]))
+
+    def test_job_detail_rejected_disables_apply(self):
+        self.client.post(reverse("core:job_apply", args=[self.job.pk]))
+        app = Application.objects.get(job=self.job, worker=self.worker)
+        self.client.force_login(self.employer)
+        self.client.post(reverse("core:application_action", args=[app.pk, "reject"]))
+        self.client.force_login(self.worker)
+        response = self.client.get(reverse("core:job_detail", args=[self.job.pk]))
+        self.assertContains(response, "Отклик отклонён")
+        self.assertNotContains(response, reverse("core:job_apply", args=[self.job.pk]))
+
+    def test_job_detail_accepted_shows_status_and_chat(self):
+        self.client.post(reverse("core:job_apply", args=[self.job.pk]))
+        app = Application.objects.get(job=self.job, worker=self.worker)
+        self.client.force_login(self.employer)
+        self.client.post(reverse("core:application_action", args=[app.pk, "accept"]))
+        self.client.force_login(self.worker)
+        response = self.client.get(reverse("core:job_detail", args=[self.job.pk]))
+        self.assertContains(response, "Отклик принят")
+        self.assertContains(response, "Написать в чат")
+        self.assertNotContains(response, reverse("core:job_apply", args=[self.job.pk]))
+
+    def test_job_detail_without_application_shows_apply(self):
+        response = self.client.get(reverse("core:job_detail", args=[self.job.pk]))
+        self.assertContains(response, reverse("core:job_apply", args=[self.job.pk]))
+
     def test_accept_by_owner_increments_workers(self):
         self.client.post(reverse("core:job_apply", args=[self.job.pk]))
         app = Application.objects.get(job=self.job, worker=self.worker)

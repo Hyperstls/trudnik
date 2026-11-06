@@ -557,11 +557,11 @@ def job_detail(request, job_id):
     if request.user.is_authenticated and not is_owner:
         my_app = (
             Application.objects.filter(job=job, worker=request.user)
-            .exclude(status__in=("withdrawn", "cancelled"))
+            .order_by("-created_at")
             .values("id", "status")
             .first()
         )
-    if my_app and job.date_time is not None:
+    if my_app and my_app["status"] == "accepted" and job.date_time is not None:
         # Паритет Flask check_withdraw_window: <12 ч до начала — отзыв недоступен.
         can_withdraw = (job.date_time - timezone.now()).total_seconds() > 12 * 3600
     application_count = Application.objects.filter(job=job).exclude(
