@@ -1,0 +1,41 @@
+{
+  "id": "R022",
+  "title": "Репутация: показ времени ответа в /ratings и EN",
+  "goal": "Показать в карточке репутации работодателя бейдж «Средний ответ: …» на основе metrics.response_avg_label и добавить английский перевод. Тест проверяет RU/EN.",
+  "why": "Метрика R021 уже считается, но пользователь её не видит; без UI она бесполезна.",
+  "files": [
+    "djadmin/core/templates/core/user_ratings.html",
+    "djadmin/core/tests/test_public_views.py",
+    "djadmin/locale/en/LC_MESSAGES/django.po",
+    "djadmin/locale/en/LC_MESSAGES/django.mo"
+  ],
+  "context_files": [
+    "djadmin/core/reputation.py",
+    "djadmin/core/tests/test_reputation.py"
+  ],
+  "interfaces": "В user_ratings.html рядом с существующими бейджами метрик добавить {% if metrics.response_avg_label %}<span class=\"rounded-full bg-neutral-100 px-2 py-0.5 font-medium text-neutral-700\">{% translate \"Средний ответ:\" %} {{ metrics.response_avg_label }}</span>{% endif %}. В django.po добавить \"Средний ответ:\" → \"Average response:\" и пересобрать .mo. В test_public_views.py: создать работодателя и 3 accepted-заявки, у которых created_at/responded_at дают интервалы 30/60/120 минут (через queryset.update), GET /ratings/user/<id> — есть «Средний ответ:» и «1,2 ч»; после set_language en — «Average response:».",
+  "acceptance": [
+    "Бейдж «Средний ответ:» рендерится при наличии metrics.response_avg_label.",
+    "При <3 ответах бейджа нет.",
+    "Английская страница показывает «Average response:».",
+    "py_compile test_public_views.py проходит.",
+    "core.tests.test_public_views, core.tests.test_reputation, core.tests.test_i18n проходят."
+  ],
+  "out_of_scope": [
+    "Не менять расчёт метрики и модель/миграцию.",
+    "Не менять другие страницы.",
+    "Не добавлять новые языки."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views core.tests.test_reputation core.tests.test_i18n --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

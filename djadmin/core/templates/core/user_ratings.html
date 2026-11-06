@@ -34,11 +34,12 @@
         {% endif %}
         {% if recent.count %}<span class="text-xs text-neutral-400">{% translate "За 12 месяцев:" %} {{ recent.rating }} ({{ recent.count }})</span>{% endif %}
     </div>
-    {% if metrics.completed_jobs or metrics.repeat_hires %}
+    {% if metrics.completed_jobs or metrics.repeat_hires or metrics.response_avg_label %}
     <div class="flex flex-wrap gap-1.5 mb-4 text-[11px]">
         {% if metrics.completed_jobs %}<span class="rounded-full bg-neutral-100 px-2 py-0.5 font-medium text-neutral-700">{% translate "Завершено:" %} {{ metrics.completed_jobs }}</span>{% endif %}
         {% if metrics.completion_rate %}<span class="rounded-full bg-neutral-100 px-2 py-0.5 font-medium text-neutral-700">{% translate "Доля завершений:" %} {{ metrics.completion_rate }}%</span>{% endif %}
         {% if metrics.repeat_hires %}<span class="rounded-full bg-neutral-100 px-2 py-0.5 font-medium text-neutral-700">{% translate "Повторных наймов:" %} {{ metrics.repeat_hires }}</span>{% endif %}
+        {% if metrics.response_avg_label %}<span class="rounded-full bg-neutral-100 px-2 py-0.5 font-medium text-neutral-700">{% translate "Средний ответ:" %} {{ metrics.response_avg_label }}</span>{% endif %}
         {% if is_reliable %}<span class="rounded-full bg-green-100 px-2 py-0.5 font-semibold text-green-800">{% translate "Надёжный" %}</span>{% endif %}
     </div>
     {% endif %}

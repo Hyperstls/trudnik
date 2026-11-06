@@ -1758,6 +1758,52 @@ class UserRatingsPaginationTests(TestCase):
         self.assertContains(second, "%s?page=1" % url)
 
 
+class EmployerResponseBadgeTests(TestCase):
+    """R022: среднее время ответа работодателя в карточке репутации."""
+
+    def setUp(self):
+        self.employer = make_profile("response-badge-emp@example.com", role="employer")
+        self.worker = make_profile("response-badge-worker@example.com")
+        self.url = reverse("core:user_ratings", args=[self.employer.pk])
+
+    def _reply(self, minutes, index):
+        job = make_job(self.employer, work_type="Ответ R022 %02d" % index)
+        application = Application.objects.create(
+            job=job, worker=self.worker, status="accepted"
+        )
+        responded_at = timezone.now() - timedelta(days=1)
+        Application.objects.filter(pk=application.pk).update(
+            created_at=responded_at - timedelta(minutes=minutes),
+            responded_at=responded_at,
+        )
+
+    def test_badge_shows_average_response_in_russian(self):
+        for index, minutes in enumerate((30, 60, 120)):
+            self._reply(minutes, index)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Средний ответ:")
+        self.assertContains(response, "1,2 ч")
+
+    def test_badge_hidden_with_less_than_three_replies(self):
+        for index, minutes in enumerate((30, 60)):
+            self._reply(minutes, index)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Средний ответ:")
+
+    def test_badge_shows_english_translation(self):
+        for index, minutes in enumerate((30, 60, 120)):
+            self._reply(minutes, index)
+        self.client.post(
+            reverse("set_language"), {"language": "en", "next": self.url}
+        )
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Average response:")
+        self.assertNotContains(response, "Средний ответ:")
+
+
 class InfoPageTests(TestCase):
     """R017: публичная /info показывает активные объявления Announcement."""
 
