@@ -2411,6 +2411,24 @@ ALTER SEQUENCE public.push_subscriptions_id_seq OWNED BY public.push_subscriptio
 
 
 --
+-- Name: rating_appeals; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.rating_appeals (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    rating_id uuid NOT NULL,
+    appellant_id uuid NOT NULL,
+    reason text NOT NULL,
+    status text DEFAULT 'pending'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    resolved_at timestamp with time zone,
+    resolver_id uuid,
+    resolution_note text,
+    CONSTRAINT rating_appeals_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])))
+);
+
+
+--
 -- Name: rating_reports; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2954,6 +2972,14 @@ ALTER TABLE ONLY public.push_subscriptions
 
 ALTER TABLE ONLY public.push_subscriptions
     ADD CONSTRAINT push_subscriptions_user_id_endpoint_key UNIQUE (user_id, endpoint);
+
+
+--
+-- Name: rating_appeals rating_appeals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rating_appeals
+    ADD CONSTRAINT rating_appeals_pkey PRIMARY KEY (id);
 
 
 --
@@ -3549,6 +3575,20 @@ CREATE INDEX jobs_moderation_status_idx ON public.jobs USING btree (moderation_s
 
 
 --
+-- Name: rating_appeals_pending_uniq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX rating_appeals_pending_uniq ON public.rating_appeals USING btree (rating_id) WHERE (status = 'pending'::text);
+
+
+--
+-- Name: rating_appeals_status_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX rating_appeals_status_idx ON public.rating_appeals USING btree (status, created_at DESC);
+
+
+--
 -- Name: rating_reports_status_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3924,6 +3964,30 @@ ALTER TABLE ONLY public.user_skills
 
 ALTER TABLE ONLY public.user_skills
     ADD CONSTRAINT fk_user_skills_user_id FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+
+--
+-- Name: rating_appeals rating_appeals_appellant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rating_appeals
+    ADD CONSTRAINT rating_appeals_appellant_id_fkey FOREIGN KEY (appellant_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+
+--
+-- Name: rating_appeals rating_appeals_rating_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rating_appeals
+    ADD CONSTRAINT rating_appeals_rating_id_fkey FOREIGN KEY (rating_id) REFERENCES public.ratings(id) ON DELETE CASCADE;
+
+
+--
+-- Name: rating_appeals rating_appeals_resolver_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rating_appeals
+    ADD CONSTRAINT rating_appeals_resolver_id_fkey FOREIGN KEY (resolver_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
 
 
 --

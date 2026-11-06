@@ -1,0 +1,47 @@
+{
+  "id": "R023",
+  "title": "Апелляции по скрытым отзывам: backend",
+  "goal": "Добавить таблицу rating_appeals, модель RatingAppeal и сервис: автор скрытого модератором отзыва может подать одну апелляцию, модератор — одобрить (вернуть отзыв в OK и опубликовать при возможности) или отклонить. Оба решения фиксируются и уведомляют автора.",
+  "why": "Сейчас скрытый отзыв можно оспорить только через поддержку. Нужен прозрачный workflow с историей и уведомлением, чтобы модерация не была чёрным ящиком.",
+  "files": [
+    "migrations/162_rating_appeals.sql",
+    "djadmin/core/models.py",
+    "djadmin/core/appeals.py",
+    "djadmin/core/tests/test_appeals.py"
+  ],
+  "context_files": [
+    "djadmin/core/reputation.py",
+    "djadmin/core/notifications.py",
+    "djadmin/core/tests/test_reputation.py"
+  ],
+  "interfaces": "SQL 162: rating_appeals(id uuid PK default gen_random_uuid(), rating_id uuid NOT NULL REFERENCES ratings(id) ON DELETE CASCADE, appellant_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE, reason text NOT NULL, status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')), created_at timestamptz NOT NULL DEFAULT now(), resolved_at timestamptz, resolver_id uuid REFERENCES profiles(id) ON DELETE SET NULL, resolution_note text); индекс (status, created_at DESC); частичный UNIQUE (rating_id) WHERE status='pending'; GRANT SELECT,INSERT,UPDATE,DELETE TO trudnik_dj. Model RatingAppeal unmanaged: rating FK related_name='appeals', appellant FK, reason TextField, status choices PENDING/APPROVED/REJECTED, created_at auto_now_add, resolved_at, resolver FK, resolution_note; ordering('-created_at'). appeals.py: can_appeal(rating,user) — только rater_user, moderation_status=hidden, нет pending; create_appeal(rating_id,user,reason) -> (appeal, error) в transaction.atomic с select_for_update rating; reason strip 10..2000; duplicate pending/IntegrityError -> error; resolve_appeal(appeal_id,resolver,approve,note='') -> appeal|None: select_for_update appeal+rating, только pending; approve -> rating.moderation_status='ok', moderation_reason=None, save, publish_reciprocal(rating); reject -> оставить hidden; статус/resolved_at/resolver/note; enqueue_notification(appellant_id,'rating_appeal',...); commit. В test_appeals.py: права/статусы/reason, дубль, approve публикует counterpart, reject оставляет hidden, повторное решение невозможно, уведомление создаётся.",
+  "acceptance": [
+    "migrations/162 создаёт rating_appeals, индекс, частичный UNIQUE и grant trudnik_dj.",
+    "RatingAppeal доступен в ORM, managed=False, db_table='rating_appeals'.",
+    "can_appeal True только для автора скрытого отзыва без pending-апелляции.",
+    "create_appeal валидирует reason 10..2000 и не создаёт дубль pending.",
+    "resolve_appeal(approve=True) возвращает отзыв в OK и публикует его при наличии counterpart/истечения срока.",
+    "resolve_appeal(approve=False) оставляет отзыв hidden.",
+    "Повторное решение по уже resolved апелляции возвращает None.",
+    "Автор получает уведомление rating_appeal при любом решении.",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_appeals, core.tests.test_reputation, core.tests.test_interact, core.tests.test_notifications проходят."
+  ],
+  "out_of_scope": [
+    "Не добавлять UI/URL/шаблоны (R024).",
+    "Не менять существующие rating_reports, модерацию и RPC.",
+    "Не добавлять автоматические апелляции/сроки."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/models.py djadmin/core/appeals.py djadmin/core/tests/test_appeals.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_appeals core.tests.test_reputation core.tests.test_interact core.tests.test_notifications --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

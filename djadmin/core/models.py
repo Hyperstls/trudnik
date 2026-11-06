@@ -551,6 +551,36 @@ class RatingReport(models.Model):
         return "%s → %s [%s]" % (self.reporter_id, self.rating_id, self.status)
 
 
+class RatingAppeal(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", _("На рассмотрении")
+        APPROVED = "approved", _("Одобрена")
+        REJECTED = "rejected", _("Отклонена")
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    rating = models.ForeignKey(Rating, verbose_name=_("оценка"), on_delete=models.CASCADE, related_name="appeals")
+    appellant = models.ForeignKey(Profile, verbose_name=_("апеллянт"), on_delete=models.CASCADE)
+    reason = models.TextField(_("причина"))
+    status = models.CharField(_("статус"), max_length=20, choices=Status.choices, default=Status.PENDING)
+    created_at = models.DateTimeField(auto_now_add=True, editable=False)
+    resolved_at = models.DateTimeField(_("рассмотрено в"), null=True, blank=True)
+    resolver = models.ForeignKey(
+        Profile, verbose_name=_("рассмотрел"), on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="+",
+    )
+    resolution_note = models.TextField(_("комментарий решения"), null=True, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = "rating_appeals"
+        verbose_name = _("апелляция на отзыв")
+        verbose_name_plural = _("Апелляции на отзывы")
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return "%s → %s [%s]" % (self.appellant_id, self.rating_id, self.status)
+
+
 class Invitation(models.Model):
     class Status(models.TextChoices):
         PENDING = "pending", _("Ожидает")
