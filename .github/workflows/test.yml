@@ -19,6 +19,8 @@ jobs:
           cache: pip
           cache-dependency-path: djadmin/requirements.txt
       - run: pip install -r djadmin/requirements.txt
+      - run: pip install pip-audit
+      - run: pip-audit -r djadmin/requirements.txt
       - run: python -m compileall -q djadmin
       - run: python djadmin/manage.py check
       - run: python djadmin/manage.py makemigrations core --check --dry-run

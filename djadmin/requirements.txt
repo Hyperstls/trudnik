@@ -4,7 +4,7 @@ django==5.2.18
 gunicorn==26.2.0
 whitenoise==6.12.0
 psycopg2-binary==2.9.12
-pillow==12.2.0
+pillow==13.0.0
 bcrypt==5.0.0
 python-dotenv==1.2.2
 itsdangerous==2.2.0

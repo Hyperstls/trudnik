@@ -1,0 +1,39 @@
+{
+  "id": "R035",
+  "title": "Supply chain: Pillow 13 и pip-audit в CI",
+  "goal": "Обновить Pillow до 13.0.0 (закрывает 64 известные уязвимости 12.2.0) и добавить pip-audit в CI, чтобы новые CVE в requirements блокировали сборку.",
+  "why": "pip-audit нашёл 64 уязвимости только в Pillow 12.2.0 (fix 13.0.0); остальные зависимости чистые. Без CI-шага аудит снова забудут.",
+  "files": [
+    "djadmin/requirements.txt",
+    ".github/workflows/test.yml"
+  ],
+  "context_files": [
+    ".github/workflows/e2e.yml"
+  ],
+  "interfaces": "requirements.txt: pillow==13.0.0 (остальные строки не менять). test.yml job check: после pip install -r добавить шаг `pip install pip-audit` и шаг `pip-audit -r djadmin/requirements.txt` (fail on any vulnerability). Никаких новых runtime-зависимостей.",
+  "acceptance": [
+    "requirements.txt содержит pillow==13.0.0.",
+    "pip-audit -r djadmin/requirements.txt завершается exit 0.",
+    "Pillow 13 устанавливается в venv, импорт PIL работает.",
+    "CI workflow содержит шаг pip-audit для requirements.",
+    "py_compile не требуется (нет .py), но Django check проходит.",
+    "core.tests.test_flows, core.tests.test_public_views, core.tests.test_admin проходят (загрузка/валидация изображений)."
+  ],
+  "out_of_scope": [
+    "Не обновлять другие пакеты без CVE.",
+    "Не менять runtime-код.",
+    "Не добавлять pip-audit в runtime requirements."
+  ],
+  "checks": [
+    {
+      "name": "audit",
+      "cmd": "{python} -m pip_audit -r djadmin/requirements.txt --progress-spinner off",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows core.tests.test_public_views core.tests.test_admin --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
