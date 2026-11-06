@@ -1211,3 +1211,8 @@
 - **2026-11-06 21:57:46** | **R035** | `verify` | **PASS** | scope=ok checks=audit=0, tests=0 attempts=0/3
 - **2026-11-06 21:57:46** | **R035** | `review-packet` | **READY** | bytes=3586 new_files=[]
 - **2026-11-06 21:58:20** | **R035** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-06 22:05:34** | **R036** | `add` | **OK** | contract=context/agent-pipeline/tasks/R036.json
+- **2026-11-06 22:05:34** | **R036** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/R036.impl.prompt.md
+- **2026-11-06 22:20:39** | **R036** | `verify` | **PASS** | scope=ok checks=compile=0, tests=0 attempts=0/3
+- **2026-11-06 22:20:48** | **R036** | `review-packet` | **READY** | bytes=15318 new_files=[]
+- **2026-11-06 22:23:53** | **R036** | `review` | **PASS** | by=Hyperstls → done

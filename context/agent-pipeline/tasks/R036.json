@@ -1,0 +1,41 @@
+{
+  "id": "R036",
+  "title": "Футер/шапка: убрать дубли ссылок и перенести «Информацию» в иконку",
+  "goal": "Убрать из футера дублирующие ссылки «Трудники», «Работодатели», «Приложение» и текстовую «Информация». Добавить неназойливую иконку информации в шапку (desktop) и пункт «Информация» в меню профиля (mobile/desktop). Переходы на эти страницы остаются через меню профиля/шапку.",
+  "why": "Футер дублирует навигацию и перегружен; «Информация» теряется среди юридических ссылок. Нужна одна заметная, но не назойливая точка входа.",
+  "files": [
+    "djadmin/core/templates/core/base.html",
+    "djadmin/core/tests/test_ui_polish.py"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/info.html",
+    "djadmin/core/urls.py"
+  ],
+  "interfaces": "base.html: из footer nav удалить ссылки core:workers, core:employers, core:app_download и core:info; остальные (terms/privacy/safety/faq/support) оставить. В правом кластере шапки перед theme-toggle добавить <a href=\"{% url 'core:info' %}\" class=\"hidden md:flex w-10 h-10 ...\" aria-label=\"{% translate 'Информация' %}\" title=\"{% translate 'Информация' %}\"> SVG info (circle + i). В profile-menu добавить пункт «Информация» с info SVG (перед «Админка»/выходом). Не менять мобильную нижнюю навигацию. В test_ui_polish.py: извлечь footer regex и проверить отсутствие href /workers,/employers,/app и текста «Информация»; проверить наличие иконки /info в шапке (aria-label Информация) и пункта /info в profile-menu; существующие тесты тостов сохранить.",
+  "acceptance": [
+    "В footer нет ссылок /workers, /employers, /app и текстовой «Информация».",
+    "Юридические ссылки (Условия, Конфиденциальность, Безопасность, Вопросы, Поддержка) остались.",
+    "В шапке есть иконка /info с aria-label «Информация», скрытая на мобильных (hidden md:flex).",
+    "В меню профиля есть пункт «Информация» со ссылкой /info.",
+    "Мобильная нижняя навигация не изменена.",
+    "py_compile test_ui_polish.py проходит.",
+    "core.tests.test_ui_polish, core.tests.test_i18n, core.tests.test_public_views проходят."
+  ],
+  "out_of_scope": [
+    "Не менять страницы /info,/workers,/employers,/app.",
+    "Не менять нижнюю мобильную навигацию и меню профиля кроме нового пункта.",
+    "Не менять переводы."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_ui_polish.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_ui_polish core.tests.test_i18n core.tests.test_public_views --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
