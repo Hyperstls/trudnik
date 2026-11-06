@@ -3969,3 +3969,42 @@ msgstr "Information"
 
 msgid "Средний ответ:"
 msgstr "Average response:"
+
+msgid "Мои отзывы"
+msgstr "My reviews"
+
+msgid "Отзывы, которые вы оставили. Скрытые модератором отзывы можно оспорить."
+msgstr "Reviews you left. Reviews hidden by moderation can be appealed."
+
+msgid "Опубликован"
+msgstr "Published"
+
+msgid "Скрыт"
+msgstr "Hidden"
+
+msgid "Апелляция"
+msgstr "Appeal"
+
+msgid "Причина апелляции"
+msgstr "Appeal reason"
+
+msgid "Почему отзыв не нарушает правила"
+msgstr "Why the review does not violate the rules"
+
+msgid "Опишите причину апелляции"
+msgstr "Describe the reason for the appeal"
+
+msgid "Подать апелляцию"
+msgstr "Submit appeal"
+
+msgid "Вы пока не оставляли отзывов"
+msgstr "You haven't left any reviews yet"
+
+msgid "Оценить участника можно после завершения задания."
+msgstr "You can rate a participant after the job is completed."
+
+msgid "Без задания"
+msgstr "No job"
+
+msgid "Апелляция отправлена на рассмотрение модератору."
+msgstr "Appeal submitted for moderator review."

@@ -179,6 +179,48 @@ class CabinetEnglishTests(TestCase):
         response = self.client.get(reverse("core:my_applications"))
         self.assertContains(response, "My applications")
 
+    def _hidden_rating_from_worker(self):
+        from core.models import Rating, RatingAppeal
+
+        rating = Rating.objects.create(
+            rated_user=self.employer,
+            rater_user=self.worker,
+            job=self.job,
+            rating=5,
+            rating_type="worker",
+            target_type="employer",
+            comment="Hidden review by worker",
+            moderation_status=Rating.ModerationStatus.HIDDEN,
+            moderation_reason="Spam",
+        )
+        RatingAppeal.objects.create(
+            rating=rating,
+            appellant=self.worker,
+            reason="Прошу пересмотреть решение модератора",
+            status=RatingAppeal.Status.REJECTED,
+        )
+        return rating
+
+    def test_my_ratings_english(self):
+        self._hidden_rating_from_worker()
+        self.client.force_login(self.worker)
+        self._english()
+        response = self.client.get(reverse("core:my_ratings"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "My reviews")
+        self.assertContains(response, "Hidden")
+        self.assertContains(response, "Submit appeal")
+        self.assertContains(response, "Appeal reason")
+
+    def test_my_ratings_russian(self):
+        self._hidden_rating_from_worker()
+        self.client.force_login(self.worker)
+        response = self.client.get(reverse("core:my_ratings"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Мои отзывы")
+        self.assertContains(response, "Скрыт")
+        self.assertContains(response, "Подать апелляцию")
+
     def test_chats_english(self):
         from core.models import Application
 

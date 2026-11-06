@@ -1,0 +1,43 @@
+{
+  "id": "R026",
+  "title": "Апелляции: EN-переводы страницы «Мои отзывы»",
+  "goal": "Перевести все строки /my-ratings на английский, включая статусы, форму апелляции, пустое состояние и сообщение об отправке. Исправить fallback имени пользователя на {% translate %}.",
+  "why": "Страница новая и в EN-локали показывает русский текст; J159–J160 требуют полной локализации кабинета.",
+  "files": [
+    "djadmin/core/templates/core/my_ratings.html",
+    "djadmin/core/tests/test_i18n.py",
+    "djadmin/locale/en/LC_MESSAGES/django.po",
+    "djadmin/locale/en/LC_MESSAGES/django.mo"
+  ],
+  "context_files": [
+    "djadmin/core/views_appeals.py",
+    "djadmin/core/appeals.py"
+  ],
+  "interfaces": "my_ratings.html: заменить default:_(\"Пользователь\") на {% translate \"Пользователь\" as user_label %} + default:user_label. django.po добавить: \"Мои отзывы\"→\"My reviews\", \"Отзывы, которые вы оставили. Скрытые модератором отзывы можно оспорить.\"→\"Reviews you left. Reviews hidden by moderation can be appealed.\", \"Опубликован\"→\"Published\", \"Ожидает\"→\"Pending\", \"Скрыт\"→\"Hidden\", \"Апелляция\"→\"Appeal\", \"Причина апелляции\"→\"Appeal reason\", \"Почему отзыв не нарушает правила\"→\"Why the review does not violate the rules\", \"Опишите причину апелляции\"→\"Describe the reason for the appeal\", \"Подать апелляцию\"→\"Submit appeal\", \"Вы пока не оставляли отзывов\"→\"You haven't left any reviews yet\", \"Оценить участника можно после завершения задания.\"→\"You can rate a participant after the job is completed.\", \"Перейти к заданиям\"→\"Go to jobs\", \"Пользователь\"→\"User\", \"Без задания\"→\"No job\", \"Апелляция отправлена на рассмотрение модератору.\"→\"Appeal submitted for moderator review.\". Собрать .mo через polib. В test_i18n.py: создать worker/employer/job и hidden Rating от worker; force_login worker, en, GET /my-ratings — My reviews/Hidden/Submit appeal/Appeal reason; RU — Мои отзывы/Скрыт/Подать апелляцию.",
+  "acceptance": [
+    "В django.po непустые msgstr для всех перечисленных строк.",
+    "django.mo пересобран.",
+    "EN /my-ratings содержит My reviews, Hidden, Submit appeal, Appeal reason.",
+    "RU /my-ratings содержит Мои отзывы, Скрыт, Подать апелляцию.",
+    "Fallback имени пользователя переведён через {% translate %}.",
+    "py_compile test_i18n.py проходит.",
+    "core.tests.test_i18n, core.tests.test_appeals, core.tests.test_public_views проходят."
+  ],
+  "out_of_scope": [
+    "Не менять backend/админку/модель.",
+    "Не менять другие страницы.",
+    "Не добавлять языки."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_i18n.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_i18n core.tests.test_appeals core.tests.test_public_views --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
