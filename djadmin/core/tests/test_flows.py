@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from core.admin.jobs import JobAdmin
 from core.forms import JobForm
-from core.models import Application, Blacklist, Job, JobFavorite, JobPhoto, JobSkill, NotificationOutbox, Profile, Skill, UserSkill
+from core.models import Application, Blacklist, Invitation, Job, JobFavorite, JobPhoto, JobSkill, NotificationOutbox, Profile, Skill, UserSkill
 from core.storage import resolve_upload_url, save_upload
 from core.tests.test_auth import CACHE_LOCMEM, make_profile
 
@@ -1190,3 +1190,71 @@ class MyApplicationsSkillFilterTests(TestCase):
         )
         self.assertContains(response, "Задание с навыком A")
         self.assertNotContains(response, "Задание с навыком B")
+
+
+class WorkerDetailInviteFormTests(TestCase):
+    """R033: форма приглашения не предлагает уже приглашённые задания."""
+
+    def setUp(self):
+        self.employer = make_profile("invite-form-emp@example.com")
+        self.worker = make_profile(
+            "invite-form-worker@example.com", role="worker", full_name="ZZZ Форма Приглашения",
+        )
+        self.job = make_job(self.employer, work_type="Единственное открытое")
+        self.client.force_login(self.employer)
+
+    def _invite(self, job):
+        return self.client.post(
+            reverse("core:invite_worker", args=[self.worker.pk]),
+            {"job_id": str(job.pk)},
+        )
+
+    def _detail(self):
+        return self.client.get(reverse("core:worker_detail", args=[self.worker.pk]))
+
+    def test_invited_only_job_hides_form_and_shows_explanation(self):
+        self._invite(self.job)
+        response = self._detail()
+        self.assertNotContains(response, '<option value="%s">' % self.job.pk)
+        self.assertNotContains(
+            response, reverse("core:invite_worker", args=[self.worker.pk])
+        )
+        self.assertContains(response, "Все открытые задания уже приглашены")
+
+    def test_pending_invitation_still_listed_with_revoke(self):
+        self._invite(self.job)
+        inv = Invitation.objects.get(job=self.job, worker=self.worker)
+        response = self._detail()
+        self.assertContains(response, "Отправленные приглашения")
+        self.assertContains(response, reverse("core:invitation_revoke", args=[inv.pk]))
+        self.assertContains(response, "Отозвать")
+
+    def test_second_job_remains_selectable_after_first_invite(self):
+        second = make_job(self.employer, work_type="Второе открытое")
+        self._invite(self.job)
+        response = self._detail()
+        self.assertNotContains(response, '<option value="%s">' % self.job.pk)
+        self.assertContains(response, '<option value="%s">' % second.pk)
+        self.assertNotContains(response, "Все открытые задания уже приглашены")
+
+    def test_revoked_invitation_returns_job_to_select(self):
+        self._invite(self.job)
+        inv = Invitation.objects.get(job=self.job, worker=self.worker)
+        self.client.post(reverse("core:invitation_revoke", args=[inv.pk]))
+        response = self._detail()
+        self.assertContains(response, '<option value="%s">' % self.job.pk)
+        self.assertNotContains(response, "Все открытые задания уже приглашены")
+
+    def test_foreign_invitations_do_not_hide_job(self):
+        stranger = make_profile("invite-form-stranger@example.com")
+        Invitation.objects.create(
+            job=make_job(stranger, work_type="Чужое задание"),
+            employer=stranger, worker=self.worker,
+        )
+        Invitation.objects.create(
+            job=self.job,
+            employer=self.employer, worker=make_profile("invite-form-other-worker@example.com", role="worker"),
+        )
+        response = self._detail()
+        self.assertContains(response, '<option value="%s">' % self.job.pk)
+        self.assertNotContains(response, "Все открытые задания уже приглашены")

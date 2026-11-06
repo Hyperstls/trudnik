@@ -101,6 +101,8 @@
                 <textarea name="message" maxlength="500" rows="2" placeholder="{% translate "Сообщение к приглашению (необязательно)" %}" class="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-neutral-50 focus:ring-2 focus:ring-primary-500 focus:border-transparent"></textarea>
                 <button class="px-4 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors shadow-sm">{% translate "Пригласить" %}</button>
             </form>
+            {% elif pending_invitations %}
+            <p class="text-sm text-neutral-500">{% translate "Все открытые задания уже приглашены." %}</p>
             {% endif %}
             {% if pending_invitations %}
             <div class="rounded-xl border border-neutral-200 bg-neutral-50 p-3 space-y-2">

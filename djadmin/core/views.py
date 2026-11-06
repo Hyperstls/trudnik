@@ -831,19 +831,24 @@ def worker_detail(request, user_id):
         "review_tag_labels": tag_labels("worker"),
     })
     if request.user.is_authenticated and profile["id"] != request.user.pk:
-        context["my_open_jobs"] = list(
+        my_open_jobs = list(
             Job.objects.filter(employer=request.user, status=Job.Status.OPEN)
             .order_by("date_time").values("id", "work_type", "date_time")[:20]
         )
-        context["is_fav_person"] = Favorite.objects.filter(
-            user=request.user, target_id=profile["id"]
-        ).exists()
-        context["pending_invitations"] = list(
+        pending_invitations = list(
             Invitation.objects.filter(
                 employer=request.user, worker_id=profile["id"],
                 status=Invitation.Status.PENDING,
             ).select_related("job").order_by("-created_at")
         )
+        invited_job_ids = {inv.job_id for inv in pending_invitations}
+        context["my_open_jobs"] = [
+            j for j in my_open_jobs if j["id"] not in invited_job_ids
+        ]
+        context["is_fav_person"] = Favorite.objects.filter(
+            user=request.user, target_id=profile["id"]
+        ).exists()
+        context["pending_invitations"] = pending_invitations
     return render(request, "core/worker_detail.html", context)
 
 

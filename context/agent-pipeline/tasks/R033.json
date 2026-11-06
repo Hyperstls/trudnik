@@ -1,0 +1,43 @@
+{
+  "id": "R033",
+  "title": "Кнопка приглашения: убрать уже приглашённые задания",
+  "goal": "На странице трудника форма «Пригласить на моё задание» показывает только те открытые задания, на которые ещё нет pending-приглашения этому труднику. Если все задания уже приглашены — форма скрыта, показывается пояснение. Кнопка «Пригласить» больше не предлагает заведомо дублирующее действие.",
+  "why": "Сейчас после приглашения форма остаётся, и в select можно снова выбрать то же задание; пользователь нажимает «Пригласить» и получает дубль/ошибку. Это вводит в заблуждение.",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/templates/core/worker_detail.html",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_profile.py",
+    "djadmin/core/models.py",
+    "djadmin/core/tests/test_profile_flows.py"
+  ],
+  "interfaces": "views.worker_detail: pending_invitations = list(Invitation.objects.filter(employer=request.user, worker_id=profile['id'], status=Invitation.Status.PENDING).select_related('job').order_by('-created_at')); invited_job_ids = {inv.job_id for inv in pending_invitations}; my_open_jobs = [j for j in my_open_jobs if j['id'] not in invited_job_ids]. Шаблон: форма invite показывается только при my_open_jobs; если my_open_jobs пуст и pending_invitations непуст — блок с текстом «Все открытые задания уже приглашены.» (translate); список pending_invitations остаётся с «Отозвать». В test_flows.py: после invite GET worker_detail не содержит option с job id и форму invite_worker для этого job, но содержит «Все открытые задания уже приглашены»; при двух заданиях после invite одного в select только второе; после revoke приглашения задание снова доступно.",
+  "acceptance": [
+    "После приглашения на единственное открытое задание форма invite скрыта и виден текст «Все открытые задания уже приглашены.».",
+    "При двух заданиях после приглашения одного в select остаётся только второе.",
+    "Pending-приглашение отображается в списке с кнопкой «Отозвать».",
+    "После отзыва приглашения задание снова появляется в select.",
+    "Чужие приглашения/задания не учитываются.",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_flows, core.tests.test_profile_flows проходят."
+  ],
+  "out_of_scope": [
+    "Не менять invite_worker RPC и модель Invitation.",
+    "Не менять другие кнопки.",
+    "Не добавлять i18n (отдельная задача)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views.py djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows core.tests.test_profile_flows --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
