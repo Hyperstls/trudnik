@@ -1,0 +1,44 @@
+{
+  "id": "R027",
+  "title": "Админка: безопасный просмотр скрытых env-переменных",
+  "goal": "На /admin/env/ суперпользователь может поштучно раскрыть значение скрытой переменной через POST-форму с CSRF. Раскрытие фиксируется в AuditLog (только имя, без значения), ответ no-store; staff без superuser и остальные запросы видят маску.",
+  "why": "Сейчас секреты замаскированы навсегда; для диагностики нужна возможность посмотреть конкретное значение, но без массового раскрытия, GET-утечек и следов в логах/URL.",
+  "files": [
+    "djadmin/core/admin/__init__.py",
+    "djadmin/core/templates/admin/env.html",
+    "djadmin/core/tests/test_admin.py"
+  ],
+  "context_files": [
+    "djadmin/core/audit.py",
+    "djadmin/core/models.py"
+  ],
+  "interfaces": "В admin/__init__.py: _is_secret_name(name) с текущими SECRET_ENV_MARKERS; mask_env использует его. env_view(request): GET — env=mask_env(os.environ), secret_names={имена, где _is_secret_name}; POST: только request.user.is_superuser (иначе PermissionDenied/403), reveal=request.POST.get('reveal'); если reveal есть в os.environ и _is_secret_name(reveal): revealed={'name':reveal,'value':os.environ[reveal]}; log_admin_action(request,'env_reveal','env',None,new_data={'name':reveal}); render admin/env.html с env, secret_names, revealed; response['Cache-Control']='no-store, max-age=0', response['Pragma']='no-cache'. Шаблон: для каждой строки, если имя в secret_names, форма method=post с {% csrf_token %} hidden reveal=имя и кнопкой «Показать»; если revealed.name == k — показать raw значение (autoescape) и пометку «Показ зафиксирован в аудите». Для не-secret — значение как раньше. В test_admin.py: staff не-superuser GET 200 и маска, POST reveal → 403 и значение не в контексте; superuser GET маска, POST reveal возвращает raw value, AuditLog action=env_reveal с именем и без значения, Cache-Control no-store; значение с <script> экранируется; неизвестное имя не раскрывается.",
+  "acceptance": [
+    "GET /admin/env/ для staff показывает маску, как раньше.",
+    "POST reveal скрытой переменной доступен только superuser; staff получает 403.",
+    "Superuser POST видит значение только выбранной переменной, остальные остаются маскированными.",
+    "AuditLog содержит env_reveal и имя переменной, но не значение.",
+    "Ответ с раскрытием имеет Cache-Control: no-store.",
+    "HTML экранирует значение (script не исполняется).",
+    "Не-secret переменные не требуют раскрытия и показываются как раньше.",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_admin, core.tests.test_smoke_pages проходят."
+  ],
+  "out_of_scope": [
+    "Не менять mask_env-маркеры и состав env.",
+    "Не добавлять массовое «показать все».",
+    "Не менять другие admin-страницы и аудит."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/admin/__init__.py djadmin/core/tests/test_admin.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_admin core.tests.test_smoke_pages --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

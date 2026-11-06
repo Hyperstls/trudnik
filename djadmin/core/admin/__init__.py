@@ -27,12 +27,18 @@ SECRET_ENV_MARKERS = (
 )
 
 
+def _is_secret_name(name):
+    """Имя переменной секретное: значение на /admin/env/ показывается только
+    поштучно superuser'ом через POST-раскрытие."""
+    upper = name.upper()
+    return any(marker in upper for marker in SECRET_ENV_MARKERS)
+
+
 def mask_env(environ):
     """Имена переменных + факт наличия; секретные значения заменяются маской."""
     masked = {}
     for name, value in environ.items():
-        upper = name.upper()
-        if any(marker in upper for marker in SECRET_ENV_MARKERS):
+        if _is_secret_name(name):
             masked[name] = "****** (set)" if value else "(empty)"
         else:
             masked[name] = value
@@ -62,16 +68,39 @@ class TrudnikAdminSite(AdminSite):
 
     def env_view(self, request):
         """Инвентарь переменных окружения прод-процесса. ТОЛЬКО staff;
-        секретные значения маскируются, значения не логируются и не кэшируются."""
+        секретные значения маскируются, значения не логируются и не кэшируются.
+        Superuser может поштучно раскрыть секрет POST-формой (аудит — env_reveal,
+        только имя, без значения)."""
         import os
 
+        from django.core.exceptions import PermissionDenied
         from django.shortcuts import render
 
-        return render(request, "admin/env.html", {
+        from core.audit import log_admin_action
+
+        environ = os.environ
+        secret_names = {name for name in environ if _is_secret_name(name)}
+        revealed = None
+        if request.method == "POST":
+            if not request.user.is_superuser:
+                raise PermissionDenied
+            reveal = request.POST.get("reveal")
+            if reveal and reveal in environ and _is_secret_name(reveal):
+                revealed = {"name": reveal, "value": environ[reveal]}
+                log_admin_action(
+                    request, "env_reveal", "env", None,
+                    new_data={"name": reveal},
+                )
+        response = render(request, "admin/env.html", {
             **self.each_context(request),
             "title": "Переменные окружения",
-            "env": dict(sorted(mask_env(os.environ).items())),
+            "env": dict(sorted(mask_env(environ).items())),
+            "secret_names": secret_names,
+            "revealed": revealed,
         })
+        response["Cache-Control"] = "no-store, max-age=0"
+        response["Pragma"] = "no-cache"
+        return response
 
     def dashboard_view(self, request):
         from django.shortcuts import render

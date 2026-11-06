@@ -7,7 +7,9 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from core.models import Announcement, NotificationOutbox, Rating, RatingAppeal, SitePage
+from core.models import (
+    Announcement, AuditLog, NotificationOutbox, Rating, RatingAppeal, SitePage,
+)
 from core.tests.test_auth import make_profile
 
 User = get_user_model()
@@ -176,6 +178,86 @@ class AdminEnvTests(TestCase):
         self.assertNotContains(response, "smtp-secret")
         self.assertContains(response, "****** (set)")
         self.assertContains(response, "example.com")
+
+
+class AdminEnvRevealTests(TestCase):
+    """R027: поштучное раскрытие секрета POST-формой — только superuser, с аудитом."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = User.objects.create_superuser("env-reveal@example.com", "Aa1!aaaa")  # pragma: allowlist secret
+
+    def test_staff_without_superuser_sees_mask_and_cannot_reveal(self):
+        env = {
+            "SECRET_KEY": "super-secret-value",  # pragma: allowlist secret
+            "DJANGO_ALLOWED_HOSTS": "example.com",
+        }
+        self.client.force_login(self.admin)
+        # is_staff и is_superuser у Profile — оба role == admin; «staff без
+        # superuser» моделируется только подменой is_superuser на уровне класса.
+        with patch.dict(os.environ, env), patch.object(User, "is_superuser", new=False):
+            response = self.client.get("/admin/env/")
+            self.assertEqual(response.status_code, 200)
+            self.assertNotContains(response, "super-secret-value")
+            self.assertContains(response, "****** (set)")
+            self.assertContains(response, "example.com")
+            response = self.client.post("/admin/env/", {"reveal": "SECRET_KEY"})
+        self.assertEqual(response.status_code, 403)
+        self.assertNotIn("super-secret-value", response.content.decode())
+        self.assertIsNone(getattr(response, "context", None))
+        self.assertFalse(AuditLog.objects.filter(action="env_reveal").exists())
+
+    def test_superuser_reveals_one_value_audited_and_not_cached(self):
+        env = {
+            "SECRET_KEY": "super-secret-value",  # pragma: allowlist secret
+            "SMTP_PASSWORD": "smtp-secret",  # pragma: allowlist secret
+            "DJANGO_ALLOWED_HOSTS": "example.com",
+        }
+        self.client.force_login(self.admin)
+        with patch.dict(os.environ, env):
+            response = self.client.get("/admin/env/")
+            self.assertEqual(response.status_code, 200)
+            self.assertNotContains(response, "super-secret-value")
+            self.assertContains(response, "****** (set)")
+            response = self.client.post("/admin/env/", {"reveal": "SECRET_KEY"})
+        self.assertEqual(response.status_code, 200)
+        # Раскрыт только выбранный секрет, соседний остался маской.
+        self.assertContains(response, "super-secret-value")
+        self.assertNotContains(response, "smtp-secret")
+        # admin_view(never_cache) дописывает свои директивы к нашему заголовку,
+        # поэтому проверяем ключевое требование — no-store.
+        self.assertIn("no-store", response["Cache-Control"])
+        self.assertIn("max-age=0", response["Cache-Control"])
+        self.assertEqual(response["Pragma"], "no-cache")
+        entry = AuditLog.objects.get(action="env_reveal")
+        self.assertEqual(entry.table_name, "env")
+        self.assertEqual(entry.new_data, {"name": "SECRET_KEY"})
+        self.assertNotIn("super-secret-value", str(entry.new_data))
+        self.assertNotIn("smtp-secret", str(entry.new_data))
+
+    def test_revealed_value_is_html_escaped(self):
+        payload = "<script>alert(1)</script>"
+        self.client.force_login(self.admin)
+        with patch.dict(os.environ, {"SECRET_KEY": payload}):  # pragma: allowlist secret
+            response = self.client.post("/admin/env/", {"reveal": "SECRET_KEY"})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "&lt;script&gt;alert(1)&lt;/script&gt;")
+        self.assertNotContains(response, payload)
+
+    def test_unknown_or_public_name_is_not_revealed(self):
+        env = {
+            "DJANGO_ALLOWED_HOSTS": "example.com",
+            "SECRET_KEY": "super-secret-value",  # pragma: allowlist secret
+        }
+        self.client.force_login(self.admin)
+        with patch.dict(os.environ, env):
+            for name in ("DJANGO_ALLOWED_HOSTS", "NO_SUCH_ENV_VAR"):
+                with self.subTest(name=name):
+                    response = self.client.post("/admin/env/", {"reveal": name})
+                    self.assertEqual(response.status_code, 200)
+                    self.assertIsNone(response.context["revealed"])
+                    self.assertNotContains(response, "super-secret-value")
+        self.assertFalse(AuditLog.objects.filter(action="env_reveal").exists())
 
 
 class AdminLoginPageTests(TestCase):
