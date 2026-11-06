@@ -1,0 +1,43 @@
+{
+  "id": "R025",
+  "title": "Апелляции: админка модератора и ссылка «Мои отзывы»",
+  "goal": "Зарегистрировать RatingAppeal в админке с фильтрами и массовыми действиями «Одобрить»/«Отклонить» через resolve_appeal. Добавить ссылку «Мои отзывы» в профиль, чтобы автор находил форму апелляции.",
+  "why": "Без админки апелляции невозможно рассматривать, а без ссылки автор не найдёт /my-ratings. Backend и страница уже готовы.",
+  "files": [
+    "djadmin/core/admin/dictionaries.py",
+    "djadmin/core/templates/core/profile.html",
+    "djadmin/core/tests/test_admin.py"
+  ],
+  "context_files": [
+    "djadmin/core/appeals.py",
+    "djadmin/core/models.py",
+    "djadmin/core/views_appeals.py"
+  ],
+  "interfaces": "В dictionaries.py импортировать RatingAppeal и resolve_appeal; RatingAppealAdmin(AuditAdminMixin, ModelAdmin): list_display=('rating','appellant','status','created_at','resolved_at'), list_filter=('status','created_at'), search_fields=('appellant__email','reason'), readonly_fields=('rating','appellant','reason','created_at','resolved_at','resolver','resolution_note','status'), actions=('action_approve','action_reject'), has_add_permission=False; action_approve: для каждого selected вызвать resolve_appeal(pk, request.user, True), messages.success с count; action_reject аналогично False; зарегистрировать site.register(RatingAppeal, RatingAppealAdmin). В profile.html рядом со ссылкой «Как меня видят...» добавить <a href=\"{% url 'core:my_ratings' %}\">Мои отзывы</a> (text-sm, primary). В test_admin.py добавить 'admin:core_ratingappeal_changelist' в CHANGELISTS, тест changelist 200, тест action approve меняет status на approved и создаёт уведомление, action reject — rejected; тест profile содержит /my-ratings.",
+  "acceptance": [
+    "RatingAppeal зарегистрирован в TrudnikAdminSite, changelist доступен staff.",
+    "Action approve переводит pending → approved через resolve_appeal и уведомляет автора.",
+    "Action reject переводит pending → rejected, отзыв остаётся hidden.",
+    "Add-форма для RatingAppeal недоступна.",
+    "В профиле есть ссылка href=\"/my-ratings\" с текстом «Мои отзывы».",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_admin, core.tests.test_appeals, core.tests.test_profile_flows проходят."
+  ],
+  "out_of_scope": [
+    "Не менять модель/миграцию/сервис/страницу my_ratings.",
+    "Не менять публичную страницу отзывов.",
+    "Не добавлять i18n (R026)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/admin/dictionaries.py djadmin/core/tests/test_admin.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_admin core.tests.test_appeals core.tests.test_profile_flows --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

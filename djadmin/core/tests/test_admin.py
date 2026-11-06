@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from core.models import Announcement, Rating, SitePage
+from core.models import Announcement, NotificationOutbox, Rating, RatingAppeal, SitePage
 from core.tests.test_auth import make_profile
 
 User = get_user_model()
@@ -31,6 +31,7 @@ CHANGELISTS = [
     "admin:core_invitation_changelist",
     "admin:core_receipt_changelist",
     "admin:core_announcement_changelist",
+    "admin:core_ratingappeal_changelist",
 ]
 
 
@@ -222,3 +223,76 @@ class RatingModerationAdminTests(TestCase):
         self.assertEqual(self.rating.moderation_status, "hidden")
         self.worker.refresh_from_db()
         self.assertEqual(self.worker.worker_ratings_count, 0)
+
+
+class RatingAppealAdminTests(TestCase):
+    """R025: админка апелляций — changelist, массовые действия, ссылка в профиле."""
+
+    def setUp(self):
+        from core.appeals import create_appeal
+        from core.tests.test_flows import make_job
+
+        self.staff = User.objects.create_superuser("appeal-admin@example.com", "Aa1!aaaa")  # pragma: allowlist secret
+        self.employer = make_profile("appeal-admin-emp@example.com", role="employer")
+        self.worker = make_profile("appeal-admin-worker@example.com")
+        self.job = make_job(self.employer, status="completed")
+        self.rating = Rating.objects.create(
+            rated_user=self.worker, rater_user=self.employer, job=self.job,
+            rating=5, comment="Скрытый отзыв", rating_type="employer",
+            target_type="worker", moderation_status=Rating.ModerationStatus.HIDDEN,
+            moderation_reason="Спам",
+        )
+        self.appeal, error = create_appeal(
+            self.rating.pk, self.employer, "Прошу пересмотреть решение модератора",
+        )
+        self.assertIsNone(error)
+
+    def test_changelist_ok(self):
+        self.client.force_login(self.staff)
+        response = self.client.get(reverse("admin:core_ratingappeal_changelist"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_add_form_forbidden(self):
+        self.client.force_login(self.staff)
+        response = self.client.get(reverse("admin:core_ratingappeal_add"))
+        self.assertEqual(response.status_code, 403)
+
+    def test_approve_action_resolves_and_notifies_author(self):
+        self.client.force_login(self.staff)
+        response = self.client.post(reverse("admin:core_ratingappeal_changelist"), {
+            "action": "action_approve",
+            "_selected_action": [str(self.appeal.pk)],
+        })
+        self.assertEqual(response.status_code, 302)
+        self.appeal.refresh_from_db()
+        self.assertEqual(self.appeal.status, RatingAppeal.Status.APPROVED)
+        self.assertEqual(self.appeal.resolver_id, self.staff.pk)
+        self.rating.refresh_from_db()
+        self.assertEqual(self.rating.moderation_status, Rating.ModerationStatus.OK)
+        notification = NotificationOutbox.objects.get(
+            user=self.employer, type="rating_appeal",
+        )
+        self.assertEqual(notification.data["status"], RatingAppeal.Status.APPROVED)
+
+    def test_reject_action_keeps_rating_hidden(self):
+        self.client.force_login(self.staff)
+        response = self.client.post(reverse("admin:core_ratingappeal_changelist"), {
+            "action": "action_reject",
+            "_selected_action": [str(self.appeal.pk)],
+        })
+        self.assertEqual(response.status_code, 302)
+        self.appeal.refresh_from_db()
+        self.assertEqual(self.appeal.status, RatingAppeal.Status.REJECTED)
+        self.rating.refresh_from_db()
+        self.assertEqual(self.rating.moderation_status, Rating.ModerationStatus.HIDDEN)
+        notification = NotificationOutbox.objects.get(
+            user=self.employer, type="rating_appeal",
+        )
+        self.assertEqual(notification.data["status"], RatingAppeal.Status.REJECTED)
+
+    def test_profile_has_my_ratings_link(self):
+        self.client.force_login(self.employer)
+        response = self.client.get("/profile")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'href="/my-ratings"')
+        self.assertContains(response, "Мои отзывы")

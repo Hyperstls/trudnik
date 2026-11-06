@@ -2,8 +2,9 @@
 from django.contrib import messages
 from django.contrib.admin import ModelAdmin
 
+from core.appeals import resolve_appeal
 from core.audit import AuditAdminMixin, log_admin_action
-from core.models import Announcement, Religion, Skill
+from core.models import Announcement, RatingAppeal, Religion, Skill
 from core.rpc import call_rpc
 
 
@@ -76,7 +77,40 @@ class AnnouncementAdmin(AuditAdminMixin, ModelAdmin):
     date_hierarchy = "created_at"
 
 
+class RatingAppealAdmin(AuditAdminMixin, ModelAdmin):
+    list_display = ("rating", "appellant", "status", "created_at", "resolved_at")
+    list_filter = ("status", "created_at")
+    search_fields = ("appellant__email", "reason")
+    readonly_fields = (
+        "rating", "appellant", "reason", "created_at", "resolved_at",
+        "resolver", "resolution_note", "status",
+    )
+    actions = ("action_approve", "action_reject")
+
+    def has_add_permission(self, request):
+        return False
+
+    def action_approve(self, request, queryset):
+        approved = 0
+        for appeal in queryset:
+            if resolve_appeal(appeal.pk, request.user, True) is not None:
+                approved += 1
+        messages.success(request, "Одобрено апелляций: %d." % approved)
+
+    action_approve.short_description = "Апелляции: одобрить"
+
+    def action_reject(self, request, queryset):
+        rejected = 0
+        for appeal in queryset:
+            if resolve_appeal(appeal.pk, request.user, False) is not None:
+                rejected += 1
+        messages.success(request, "Отклонено апелляций: %d." % rejected)
+
+    action_reject.short_description = "Апелляции: отклонить"
+
+
 def register(site):
     site.register(Skill, SkillAdmin)
     site.register(Religion, ReligionAdmin)
     site.register(Announcement, AnnouncementAdmin)
+    site.register(RatingAppeal, RatingAppealAdmin)

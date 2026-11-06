@@ -43,6 +43,7 @@
             {% else %}
             <a href="{% url 'core:worker_detail' user.pk %}" class="text-primary-600 hover:text-primary-700 underline underline-offset-2">{% translate "Как меня видят в каталоге трудников" %}</a>
             {% endif %}
+            <a href="{% url 'core:my_ratings' %}" class="text-sm text-primary-600 hover:text-primary-700 underline underline-offset-2">Мои отзывы</a>
         </p>
     </div>
 

@@ -1157,3 +1157,8 @@
 - **2026-11-06 16:08:56** | **R024** | `verify` | **PASS** | scope=ok checks=compile=0, tests=0 attempts=0/3
 - **2026-11-06 16:09:17** | **R024** | `review-packet` | **READY** | bytes=19028 new_files=['djadmin/core/views_appeals.py', 'djadmin/core/templates/core/my_ratings.html']
 - **2026-11-06 16:12:40** | **R024** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-06 16:16:48** | **R025** | `add` | **OK** | contract=context/agent-pipeline/tasks/R025.json
+- **2026-11-06 16:16:48** | **R025** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/R025.impl.prompt.md
+- **2026-11-06 16:22:27** | **R025** | `verify` | **PASS** | scope=ok checks=compile=0, tests=0 attempts=0/3
+- **2026-11-06 16:22:27** | **R025** | `review-packet` | **READY** | bytes=10236 new_files=[]
+- **2026-11-06 16:23:33** | **R025** | `review` | **PASS** | by=Hyperstls → done
