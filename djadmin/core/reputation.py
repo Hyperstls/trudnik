@@ -13,6 +13,9 @@ RATING_FALLBACK_DAYS = 3
 MIN_PUBLIC_REVIEWS = 3
 PRIOR_AVG = 4.2
 PRIOR_WEIGHT = 5
+RESPONSE_WINDOW_DAYS = 90
+RESPONSE_MIN_SAMPLE = 3
+RESPONSE_SAMPLE_LIMIT = 500
 
 URL_RE = re.compile(r"https?://|www\.", re.IGNORECASE)
 CONTACT_RE = re.compile(
@@ -118,6 +121,50 @@ def recent_rating(profile_id, target_type, days=365):
     }
 
 
+def _human_duration(minutes):
+    """Компактная подпись длительности: 'N мин', 'N,N ч', 'N д'."""
+    minutes = max(int(round(float(minutes or 0))), 0)
+    if minutes < 60:
+        return "%d мин" % minutes
+    if minutes < 24 * 60:
+        return ("%.1f" % (minutes / 60)).replace(".", ",") + " ч"
+    return "%d д" % int(round(minutes / (24 * 60)))
+
+
+def employer_response_metrics(profile_id):
+    """Скорость ответа работодателя: среднее/медиана от created_at до responded_at.
+
+    Берём только разрешённые отклики (accepted/rejected) за последние 90 дней,
+    не больше 500 последних ответов. Отрицательные интервалы (responded_at
+    раньше created_at) игнорируются. Меньше трёх ответов — сигнала нет.
+    """
+    since = timezone.now() - timedelta(days=RESPONSE_WINDOW_DAYS)
+    rows = (
+        Application.objects.filter(
+            job__employer_id=profile_id,
+            status__in=(Application.Status.ACCEPTED, Application.Status.REJECTED),
+            responded_at__isnull=False,
+            responded_at__gte=since,
+            created_at__lte=F("responded_at"),
+        )
+        .order_by("-responded_at")
+        .values_list("created_at", "responded_at")[:RESPONSE_SAMPLE_LIMIT]
+    )
+    minutes = sorted((responded - created).total_seconds() / 60 for created, responded in rows)
+    count = len(minutes)
+    if count < RESPONSE_MIN_SAMPLE:
+        return {}
+    middle = count // 2
+    median = minutes[middle] if count % 2 else (minutes[middle - 1] + minutes[middle]) / 2
+    avg = sum(minutes) / count
+    return {
+        "response_count": count,
+        "response_avg_minutes": round(avg, 1),
+        "response_median_minutes": round(median, 1),
+        "response_avg_label": _human_duration(avg),
+    }
+
+
 def profile_metrics(profile_id, role):
     """Behavioural signals shown next to the stars (not a replacement for reviews)."""
     profile = Profile.objects.filter(pk=profile_id).first()
@@ -143,7 +190,7 @@ def profile_metrics(profile_id, role):
             .values("job__employer_id").annotate(total=Count("id")).filter(total__gte=2).count()
         )
     reports = UserReport.objects.filter(reported_id=profile_id).exclude(status="reviewed").count()
-    return {
+    metrics = {
         "accepted": accepted_count,
         "completed": completed_apps,
         "completed_jobs": completed_jobs,
@@ -152,6 +199,9 @@ def profile_metrics(profile_id, role):
         "open_reports": reports,
         "verified": bool(profile.email_verified or profile.verification_status == "approved"),
     }
+    if role == Profile.Role.EMPLOYER:
+        metrics.update(employer_response_metrics(profile_id))
+    return metrics
 
 
 def reliable_badge(profile, metrics):

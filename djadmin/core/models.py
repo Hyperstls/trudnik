@@ -359,6 +359,8 @@ class Application(models.Model):
     job = models.ForeignKey(Job, verbose_name=_("задание"), on_delete=models.CASCADE, related_name="applications")
     worker = models.ForeignKey(Profile, verbose_name=_("трудник"), on_delete=models.CASCADE, db_column="worker_id", related_name="+")
     status = models.CharField(_("статус"), max_length=20, choices=Status.choices, default=Status.PENDING)
+    # Время ответа работодателя (accepted/rejected); ставит триггер из 161.
+    responded_at = models.DateTimeField(null=True, blank=True, editable=False)
     worker_completed_at = models.DateTimeField(
         _("трудник отметил выполнение"), null=True, blank=True,
     )

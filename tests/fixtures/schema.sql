@@ -1353,6 +1353,25 @@ $$;
 
 
 --
+-- Name: set_application_responded_at(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.set_application_responded_at() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF NEW.status = 'pending' THEN
+        NEW.responded_at := NULL;
+    ELSIF NEW.status IN ('accepted', 'rejected')
+          AND OLD.status IS DISTINCT FROM NEW.status THEN
+        NEW.responded_at := NOW();
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+
+--
 -- Name: suspend_user(uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1770,6 +1789,7 @@ CREATE TABLE public.applications (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now(),
     worker_completed_at timestamp with time zone,
+    responded_at timestamp with time zone,
     CONSTRAINT applications_status_check CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'accepted'::character varying, 'rejected'::character varying, 'withdrawn'::character varying, 'cancelled'::character varying])::text[])))
 );
 
@@ -3561,6 +3581,13 @@ CREATE INDEX user_activity_day_idx ON public.user_activity USING btree (day);
 --
 
 CREATE TRIGGER trg_announcements_updated_at BEFORE UPDATE ON public.announcements FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: applications trg_applications_responded_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_applications_responded_at BEFORE UPDATE OF status ON public.applications FOR EACH ROW EXECUTE FUNCTION public.set_application_responded_at();
 
 
 --

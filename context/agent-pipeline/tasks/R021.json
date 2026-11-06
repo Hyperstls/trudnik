@@ -1,0 +1,43 @@
+{
+  "id": "R021",
+  "title": "Репутация: время ответа работодателя (responded_at)",
+  "goal": "Добавить applications.responded_at, который заполняется триггером при переходе заявки в accepted/rejected, и считать по нему среднее/медианное время ответа работодателя за последние 90 дней. Метрика попадает в profile_metrics и будет показана в профиле (R022).",
+  "why": "Сейчас в репутации есть завершённые задания и повторные наймы, но нет скорости ответа — важного сигнала для соискателя. updated_at меняется от любых правок и для этого не годится.",
+  "files": [
+    "migrations/161_application_responded_at.sql",
+    "djadmin/core/models.py",
+    "djadmin/core/reputation.py",
+    "djadmin/core/tests/test_reputation.py"
+  ],
+  "context_files": [
+    "migrations/093_add_updated_at_triggers.sql",
+    "djadmin/core/tests/test_interact.py"
+  ],
+  "interfaces": "SQL 161: ALTER TABLE applications ADD COLUMN IF NOT EXISTS responded_at timestamptz; функция set_application_responded_at(): при NEW.status IN ('accepted','rejected') и смене статуса ставит NEW.responded_at=NOW(); при NEW.status='pending' сбрасывает NULL; RETURN NEW; триггер BEFORE UPDATE OF status ON applications; backfill UPDATE applications SET responded_at=updated_at WHERE status IN ('accepted','rejected') AND responded_at IS NULL; GRANT не нужен (колонка в существующей таблице, права таблицы уже есть). Model Application: responded_at DateTimeField(null=True, blank=True, editable=False). reputation.py: helper _human_duration(minutes) -> 'N мин'/'N,N ч'/'N д'; employer_response_metrics(profile_id): последние 90 дней, status in accepted/rejected, responded_at not null, created_at<=responded_at, до 500 строк; при <3 ответах возвращает {}; иначе response_count, response_avg_minutes, response_median_minutes, response_avg_label. profile_metrics для role=employer добавляет эти поля. В test_reputation.py: триггер ставит responded_at для accepted/rejected и не для withdrawn; backfill не ломает; <3 ответов → метрики нет; 3+ → avg/median/label корректны; withdrawn/cancelled не учитываются; отрицательные интервалы игнорируются.",
+  "acceptance": [
+    "migrations/161 создаёт responded_at, триггер и backfill.",
+    "Application.responded_at доступен в ORM; миграция применена, schema fixture обновлён.",
+    "Триггер заполняет responded_at при accepted/rejected; повторный апдейт без смены статуса не меняет его; pending сбрасывает.",
+    "profile_metrics(employer) при >=3 ответах содержит response_count/avg/median/label, иначе ключей нет.",
+    "В расчёт входят только accepted/rejected за 90 дней, неотрицательные интервалы.",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_reputation, core.tests.test_interact, core.tests.test_public_views, core.tests.test_admin проходят."
+  ],
+  "out_of_scope": [
+    "Не менять UI/шаблоны (R022).",
+    "Не менять RPC смены статуса и Celery.",
+    "Не добавлять апелляции (следующая задача)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/models.py djadmin/core/reputation.py djadmin/core/tests/test_reputation.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_reputation core.tests.test_interact core.tests.test_public_views core.tests.test_admin --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

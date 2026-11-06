@@ -1135,3 +1135,10 @@
 - **2026-11-05 22:40:08** | **R020** | `verify` | **PASS** | scope=ok checks=compile=0, tests=0 attempts=0/3
 - **2026-11-05 22:40:08** | **R020** | `review-packet` | **READY** | bytes=5729 new_files=[]
 - **2026-11-05 22:40:39** | **R020** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-06 15:04:45** | **R021** | `add` | **OK** | contract=context/agent-pipeline/tasks/R021.json
+- **2026-11-06 15:04:46** | **R021** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/R021.impl.prompt.md
+- **2026-11-06 15:17:23** | **R021** | `verify` | **FAIL** | scope=fail checks=skipped(scope) attempts=1/3 → fixing
+- **2026-11-06 15:17:29** | **R021** | `verify` | **SKIP-SCOPE** | by=orchestrator reason=tests/fixtures/schema.sql перегенерирован scripts/dump_schema.py по критерию 2 (новая колонка/триггер) drift=['tests/fixtures/schema.sql']
+- **2026-11-06 15:20:52** | **R021** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=1/3
+- **2026-11-06 15:21:12** | **R021** | `review-packet` | **READY** | bytes=19069 new_files=['migrations/161_application_responded_at.sql', 'djadmin/core/tests/test_reputation.py']
+- **2026-11-06 15:27:38** | **R021** | `review` | **PASS** | by=Hyperstls → done

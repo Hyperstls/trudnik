@@ -2949,3 +2949,19 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** Hyperstls
 
 **Пакет:** context/agent-pipeline/packs/R020.review.prompt.md
+
+## 2026-11-06 15:17:29 — R021: verify --skip-scope (обход scope)
+
+**Кто:** orchestrator
+
+**Почему:** tests/fixtures/schema.sql перегенерирован scripts/dump_schema.py по критерию 2 (новая колонка/триггер)
+
+**Дрейф, который обойдён:** ['tests/fixtures/schema.sql']
+
+## 2026-11-06 15:27:38 — R021: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R021.review.prompt.md
