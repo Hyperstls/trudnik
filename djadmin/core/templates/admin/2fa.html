@@ -1,0 +1,19 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<div id="content-main">
+  <p>Введите код из письма, отправленного на {{ email }}. Код действует {{ code_ttl_minutes }} минут.</p>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <div class="form-row">
+      <label for="id_code">Код из письма:</label>
+      <input type="text" name="code" id="id_code" inputmode="numeric" maxlength="6" autocomplete="one-time-code">
+    </div>
+    <div class="submit-row">
+      <input type="submit" value="Подтвердить" class="default">
+    </div>
+  </form>
+  <p><a href="{% url 'admin:logout' %}">Выйти</a></p>
+</div>
+{% endblock %}

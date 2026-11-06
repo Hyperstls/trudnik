@@ -1,0 +1,44 @@
+{
+  "id": "R029",
+  "title": "Staff-2FA: email-код и middleware для админки",
+  "goal": "Добавить opt-in ADMIN_2FA_REQUIRED: для staff при входе в /admin/ требуется 6-значный код на email. Сервис admin_2fa.py выдаёт/проверяет код (TTL 600, 5 попыток), middleware перенаправляет неверифицированных staff на /admin/2fa/. Экран и включение — R030.",
+  "why": "Сейчас админка защищена только паролем; user-2FA есть, staff-2FA нет. Email-код не требует внешних платных сервисов и использует существующий SMTP.",
+  "files": [
+    "djadmin/core/admin_2fa.py",
+    "djadmin/config/settings.py",
+    "djadmin/core/tests/test_admin_2fa.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_auth.py",
+    "djadmin/core/middleware.py",
+    "djadmin/core/admin/__init__.py"
+  ],
+  "interfaces": "admin_2fa.py: CODE_TTL=600, MAX_ATTEMPTS=5, SESSION_KEY='admin_2fa_ok'; issue_code(user) — 6 цифр secrets.randbelow, cache.set('admin_2fa_code:<pk>', code, 600), cache.delete tries, _send_mail('Трудник: код входа в админку', 'Код: %s...', user.email), вернуть True; verify_code(user, code) — только 6 ASCII цифр, hmac.compare_digest по байтам, неверный увеличивает 'admin_2fa_tries:<pk>' с TTL 600, при >=5 удаляет code/tries; верный удаляет оба и возвращает True; is_verified(request) — session[SESSION_KEY]==str(user.pk); mark_verified/clear_verified. needs_admin_2fa(request) — settings.ADMIN_2FA_REQUIRED и path /admin/ и user.is_staff и не verified. Admin2FAMiddleware: exempt '/admin/login/','/admin/logout/','/admin/2fa/','/admin/jsi18n/','/admin/static/'; иначе redirect('/admin/2fa/?next='+quote(path+query)). settings.py: ADMIN_2FA_REQUIRED = env false; middleware 'core.admin_2fa.Admin2FAMiddleware' после AuthenticationMiddleware. В test_admin_2fa.py: issue/verify/5 attempts/non-ASCII; middleware override true redirect, false pass, exempt login, non-staff pass, next encoded; CACHES locmem и EMAIL locmem/async false.",
+  "acceptance": [
+    "ADMIN_2FA_REQUIRED по умолчанию false; middleware зарегистрирован после AuthenticationMiddleware.",
+    "issue_code отправляет письмо с 6-значным кодом и кладёт его в кэш на 600с.",
+    "verify_code принимает только 6 ASCII цифр, сравнивает constant-time; 5 неверных сбрасывают код.",
+    "is_verified/mark_verified/clear_verified работают с сессией.",
+    "При ADMIN_2FA_REQUIRED=true staff без отметки редиректится на /admin/2fa/?next=..., кроме exempt-путей.",
+    "При false и для не-staff редиректа нет.",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_admin_2fa, core.tests.test_admin, core.tests.test_auth проходят."
+  ],
+  "out_of_scope": [
+    "Не добавлять экран/URL /admin/2fa/ (R030).",
+    "Не включать ADMIN_2FA_REQUIRED в env.",
+    "Не менять user-2FA."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/admin_2fa.py djadmin/config/settings.py djadmin/core/tests/test_admin_2fa.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_admin_2fa core.tests.test_admin core.tests.test_auth --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

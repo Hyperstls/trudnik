@@ -56,6 +56,7 @@ class TrudnikAdminSite(AdminSite):
 
         # ВАЖНО: до super().get_urls() — штатный список заканчивается catch-all
         urls = [
+            path("2fa/", self.admin_view(self.twofa_view), name="admin_2fa"),
             path("dashboard/", self.admin_view(self.dashboard_view), name="dashboard"),
             path("env/", self.admin_view(self.env_view), name="env"),
             path("analytics/", self.admin_view(self.analytics_view), name="analytics"),
@@ -101,6 +102,54 @@ class TrudnikAdminSite(AdminSite):
         response["Cache-Control"] = "no-store, max-age=0"
         response["Pragma"] = "no-cache"
         return response
+
+    def twofa_view(self, request):
+        """Экран второго шага входа staff (R030): код из письма на email.
+
+        Выключенный флаг и не-staff уходят на индекс админки; уже проверенная
+        сессия форму не показывает. next принимается только внутри /admin/.
+        """
+        from django.conf import settings
+        from django.contrib import messages
+        from django.core.cache import cache
+        from django.shortcuts import redirect, render
+        from django.urls import reverse
+        from django.utils.http import url_has_allowed_host_and_scheme
+
+        from core.admin_2fa import issue_code, is_verified, mark_verified, verify_code
+
+        index_url = reverse("admin:index")
+        if not getattr(settings, "ADMIN_2FA_REQUIRED", False) or not request.user.is_staff:
+            return redirect(index_url)
+
+        next_raw = request.POST.get("next") or request.GET.get("next") or index_url
+        next_url = index_url
+        if next_raw.startswith("/admin/") and url_has_allowed_host_and_scheme(
+            next_raw,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            next_url = next_raw
+
+        if is_verified(request):
+            return redirect(next_url)
+
+        if request.method == "POST":
+            if verify_code(request.user, request.POST.get("code", "")):
+                mark_verified(request)
+                return redirect(next_url)
+            messages.error(request, "Неверный или истёкший код. Запросите новый код.")
+        elif cache.add("admin_2fa_sent:%s" % request.user.pk, 1, 60):
+            issue_code(request.user)
+            messages.success(request, "Код отправлен на email")
+
+        return render(request, "admin/2fa.html", {
+            **self.each_context(request),
+            "title": "Двухфакторная аутентификация",
+            "email": request.user.email,
+            "next": next_url,
+            "code_ttl_minutes": 10,
+        })
 
     def dashboard_view(self, request):
         from django.shortcuts import render

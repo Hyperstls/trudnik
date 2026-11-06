@@ -130,6 +130,7 @@ MIDDLEWARE = [
     "core.middleware.CsrfHeaderAliasMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "core.admin_2fa.Admin2FAMiddleware",
     "core.middleware.ActivityMiddleware",
     "core.middleware.SessionMetaMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -203,6 +204,9 @@ AUTH_RATE_LIMIT_PER_MIN = int(os.getenv("AUTH_RATE_LIMIT_PER_MIN", "600"))
 DJANGO_ADMIN_ALLOWED_IPS = [
     ip.strip() for ip in os.getenv("DJANGO_ADMIN_ALLOWED_IPS", "").split(",") if ip.strip()
 ]
+
+# Staff-2FA (R029): opt-in, по умолчанию выключено. Включение — R030.
+ADMIN_2FA_REQUIRED = os.getenv("ADMIN_2FA_REQUIRED", "false").lower() in ("true", "1", "yes")
 
 LOGIN_URL = "/login"
 LOGIN_REDIRECT_URL = "/"

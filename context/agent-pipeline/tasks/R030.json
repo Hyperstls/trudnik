@@ -1,0 +1,45 @@
+{
+  "id": "R030",
+  "title": "Staff-2FA: экран ввода кода в админке",
+  "goal": "Добавить /admin/2fa/ в TrudnikAdminSite: staff вводит 6-значный код из письма, после успеха получает сессионную отметку и попадает на исходную admin-страницу. Неверный код/истёкшая сессия — форма с ошибкой; next только /admin/.",
+  "why": "R029 добавил middleware и сервис, но без экрана пользователь получает 404 после редиректа. Нужен рабочий второй шаг.",
+  "files": [
+    "djadmin/core/admin/__init__.py",
+    "djadmin/core/templates/admin/2fa.html",
+    "djadmin/core/tests/test_admin_2fa.py"
+  ],
+  "context_files": [
+    "djadmin/core/admin_2fa.py",
+    "djadmin/config/settings.py",
+    "djadmin/core/templates/admin/base_site.html"
+  ],
+  "interfaces": "В TrudnikAdminSite.get_urls добавить path('2fa/', self.admin_view(self.twofa_view), name='admin_2fa') до dashboard. twofa_view(request): если not settings.ADMIN_2FA_REQUIRED или not user.is_staff → redirect admin:index; если is_verified(request) → redirect next/index; next_raw = GET/POST next или reverse('admin:index'); next_url только если startswith('/admin/') и url_has_allowed_host_and_scheme(... require_https=request.is_secure()), иначе index; GET: cache.add('admin_2fa_sent:<pk>',1,60) → issue_code(user), сообщение «Код отправлен на email»; POST: verify_code(user, code) → mark_verified + redirect next, иначе messages.error и render; контекст: title, email, next, code_ttl_minutes=10. Шаблон admin/2fa.html extends admin/base_site.html: заголовок, текст «Введите код из письма, отправленного на {{ email }}», form method=post с csrf_token, hidden next, input name=code inputmode=numeric maxlength=6 autocomplete=one-time-code, кнопка «Подтвердить», ссылка «Выйти» на admin:logout. Без JS. В test_admin_2fa.py добавить: GET /admin/2fa/ 200 + письмо; неверный код 200; верный 302 на next и доступ /admin/ 200; внешний next → /admin/; повторный GET после verify редиректит; при ADMIN_2FA_REQUIRED=false /admin/2fa/ редиректит на admin:index.",
+  "acceptance": [
+    "GET /admin/2fa/ для staff 200 и отправляет одно письмо с 6-значным кодом (повторный GET в течение 60с не спамит).",
+    "Неверный код оставляет на форме с ошибкой, без отметки verified.",
+    "Верный код ставит admin_2fa_ok и редиректит на next (только /admin/).",
+    "Внешний next заменяется на admin:index.",
+    "После verify повторный GET /admin/2fa/ редиректит на admin:index.",
+    "При ADMIN_2FA_REQUIRED=false экран редиректит на admin:index и письмо не отправляет.",
+    "Форма содержит csrfmiddlewaretoken, code, next, кнопку «Подтвердить».",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_admin_2fa, core.tests.test_admin проходят."
+  ],
+  "out_of_scope": [
+    "Не менять middleware/сервис admin_2fa.py и settings.",
+    "Не включать ADMIN_2FA_REQUIRED в env.",
+    "Не менять user-2FA и другие admin-страницы."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/admin/__init__.py djadmin/core/tests/test_admin_2fa.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_admin_2fa core.tests.test_admin --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
