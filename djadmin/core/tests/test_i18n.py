@@ -366,3 +366,62 @@ class InfoPageTranslationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "No news yet")
         self.assertNotContains(response, "Пока без новостей")
+
+
+class ApplicationStateTranslationTests(TestCase):
+    """R034: EN-переводы новых состояний отклика и приглашений."""
+
+    def setUp(self):
+        from core.tests.test_auth import make_profile
+        from core.tests.test_flows import make_job
+
+        self.worker = make_profile("i18n-r034-worker@example.com")
+        self.employer = make_profile("i18n-r034-emp@example.com", role="employer")
+        self.job = make_job(self.employer, work_type="Painting", city="Moscow")
+
+    def _english(self):
+        self.client.post(reverse("set_language"), {"language": "en", "next": "/"})
+
+    def _apply_and_withdraw(self):
+        self.client.force_login(self.worker)
+        self.client.post(reverse("core:job_apply", args=[self.job.pk]))
+        self.client.post(reverse("core:job_unapply", args=[self.job.pk]))
+
+    def _invite_only_open_job(self):
+        self.client.force_login(self.employer)
+        response = self.client.post(
+            reverse("core:invite_worker", args=[self.worker.pk]),
+            {"job_id": str(self.job.pk)},
+        )
+        self.assertEqual(response.status_code, 302)
+
+    def test_english_job_detail_pending_shows_withdraw_button(self):
+        self.client.force_login(self.worker)
+        self.client.post(reverse("core:job_apply", args=[self.job.pk]))
+        self._english()
+        response = self.client.get(reverse("core:job_detail", args=[self.job.pk]))
+        self.assertContains(response, "Withdraw application")
+
+    def test_english_job_detail_after_withdraw(self):
+        self._apply_and_withdraw()
+        self._english()
+        response = self.client.get(reverse("core:job_detail", args=[self.job.pk]))
+        self.assertContains(response, "Application withdrawn.")
+        self.assertContains(response, "You cannot apply again")
+
+    def test_russian_job_detail_after_withdraw(self):
+        self._apply_and_withdraw()
+        response = self.client.get(reverse("core:job_detail", args=[self.job.pk]))
+        self.assertContains(response, "Отклик отозван.")
+        self.assertContains(response, "Повторный отклик недоступен")
+
+    def test_english_worker_detail_all_jobs_invited(self):
+        self._invite_only_open_job()
+        self._english()
+        response = self.client.get(reverse("core:worker_detail", args=[self.worker.pk]))
+        self.assertContains(response, "All open jobs have already been invited.")
+
+    def test_russian_worker_detail_all_jobs_invited(self):
+        self._invite_only_open_job()
+        response = self.client.get(reverse("core:worker_detail", args=[self.worker.pk]))
+        self.assertContains(response, "Все открытые задания уже приглашены.")

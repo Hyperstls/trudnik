@@ -4008,3 +4008,12 @@ msgstr "No job"
 
 msgid "Апелляция отправлена на рассмотрение модератору."
 msgstr "Appeal submitted for moderator review."
+
+msgid "Отозвать отклик"
+msgstr "Withdraw application"
+
+msgid "Повторный отклик недоступен"
+msgstr "You cannot apply again"
+
+msgid "Все открытые задания уже приглашены."
+msgstr "All open jobs have already been invited."

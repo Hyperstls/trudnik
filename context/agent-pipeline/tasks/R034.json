@@ -1,0 +1,41 @@
+{
+  "id": "R034",
+  "title": "Кнопки: EN-переводы новых состояний отклика и приглашений",
+  "goal": "Добавить английские переводы для «Отозвать отклик», «Повторный отклик недоступен», «Все открытые задания уже приглашены.» и проверить EN-состояния на job_detail/worker_detail.",
+  "why": "После R031/R033 новые подписи кнопок в EN-локали остаются русскими.",
+  "files": [
+    "djadmin/core/tests/test_i18n.py",
+    "djadmin/locale/en/LC_MESSAGES/django.po",
+    "djadmin/locale/en/LC_MESSAGES/django.mo"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/job_detail.html",
+    "djadmin/core/templates/core/worker_detail.html"
+  ],
+  "interfaces": "django.po добавить: \"Отозвать отклик\"→\"Withdraw application\", \"Повторный отклик недоступен\"→\"You cannot apply again\", \"Все открытые задания уже приглашены.\"→\"All open jobs have already been invited.\". Собрать .mo через polib. В test_i18n.py: EN job_detail после withdraw содержит Application withdrawn / Withdraw application? (после withdrawn формы нет, только Application withdrawn и You cannot apply again); EN worker_detail при всех приглашённых заданиях содержит All open jobs have already been invited. Русская версия содержит исходные строки.",
+  "acceptance": [
+    "В django.po непустые msgstr для трёх строк.",
+    "django.mo пересобран.",
+    "EN job_detail после отзыва показывает Application withdrawn. и You cannot apply again.",
+    "EN worker_detail при всех приглашённых заданиях показывает All open jobs have already been invited.",
+    "RU-версии показывают исходные русские строки.",
+    "py_compile test_i18n.py проходит.",
+    "core.tests.test_i18n, core.tests.test_flows проходят."
+  ],
+  "out_of_scope": [
+    "Не менять шаблоны/вьюхи/RPC.",
+    "Не менять другие переводы."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_i18n.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_i18n core.tests.test_flows --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
