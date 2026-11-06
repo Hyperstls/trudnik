@@ -425,3 +425,65 @@ class ApplicationStateTranslationTests(TestCase):
         self._invite_only_open_job()
         response = self.client.get(reverse("core:worker_detail", args=[self.worker.pk]))
         self.assertContains(response, "Все открытые задания уже приглашены.")
+
+
+class RatingsFilterTranslationTests(TestCase):
+    """R038: EN-переводы фильтров отзывов на /ratings/user/<id>."""
+
+    def setUp(self):
+        from django.utils import timezone
+
+        from core.models import Rating
+        from core.tests.test_auth import make_profile
+        from core.tests.test_flows import make_job
+
+        self.worker = make_profile("i18n-r038-worker@example.com")
+        self.employer = make_profile("i18n-r038-emp@example.com", role="employer")
+        self.job = make_job(self.employer, work_type="Painting", city="Moscow")
+        self.rating = Rating.objects.create(
+            rated_user=self.worker,
+            rater_user=self.employer,
+            job=self.job,
+            rating=5,
+            rating_type="employer",
+            target_type="worker",
+            comment="Great work",
+            moderation_status=Rating.ModerationStatus.OK,
+            published_at=timezone.now(),
+        )
+
+    def _switch(self, language):
+        self.client.post(
+            reverse("set_language"), {"language": language, "next": "/"},
+        )
+
+    def test_ratings_page_english(self):
+        self._switch("en")
+        response = self.client.get(
+            reverse("core:user_ratings", args=[self.worker.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.rating.comment)
+        for text in (
+            "Period", "All time", "Last 90 days", "Last year",
+            "With text only", "Apply", "Reset",
+        ):
+            with self.subTest(text=text):
+                self.assertContains(response, text)
+        for russian in (
+            "Период", "За всё время", "За 90 дней", "За год",
+            "Только с текстом",
+        ):
+            with self.subTest(russian=russian):
+                self.assertNotContains(response, russian)
+
+    def test_ratings_page_russian(self):
+        self._switch("ru")
+        response = self.client.get(
+            reverse("core:user_ratings", args=[self.worker.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.rating.comment)
+        for text in ("Период", "За всё время", "Только с текстом"):
+            with self.subTest(text=text):
+                self.assertContains(response, text)

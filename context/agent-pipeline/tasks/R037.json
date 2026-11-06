@@ -1,0 +1,45 @@
+{
+  "id": "R037",
+  "title": "Отзывы: фильтры по оценке, тексту и периоду",
+  "goal": "На /ratings/user/<id> добавить фильтры: оценка 1–5, только с текстом, период 90 дней/год/всё. Фильтры применяются до пагинации, невалидные значения игнорируются, ссылки страниц сохраняют фильтры.",
+  "why": "При большом числе отзывов листать всё неудобно; пользователю нужны «только 5», «с комментарием», «за последний год». Это оставшийся P2-пункт из кодревью.",
+  "files": [
+    "djadmin/core/views_public_ext.py",
+    "djadmin/core/templates/core/user_ratings.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/reputation.py",
+    "djadmin/core/models.py",
+    "djadmin/core/templates/core/_review_card.html"
+  ],
+  "interfaces": "user_ratings: stars_raw = request.GET.get('stars'); stars = int(stars_raw) if 1..5 else None; with_comment = request.GET.get('comment') == '1'; period = request.GET.get('period') if in ('90','365') else None; public_ratings(...).select_related(...).order_by('-published_at') + filter(rating=stars) при stars; filter(comment__isnull=False).exclude(comment='') при with_comment; filter(published_at__gte=timezone.now()-timedelta(days=int(period))) при period. page = Paginator(qs,20).get_page(...); base_query = request.GET.copy(); base_query.pop('page',None); urlencode; контекст filters={stars,with_comment,period}, base_query. Шаблон: форма method=get перед списком — select stars (Все/5..1), checkbox comment, select period (90/365/all), кнопка «Применить», ссылка «Сбросить» на request.path; пагинация href=\"?{{ base_query }}&page=N\" (если base_query) иначе ?page=N. В test_public_views.py: 25 отзывов с разными stars/comment/published_at; stars=5 только 5; comment=1 только с текстом; period=90 исключает старые; комбинация; stars=9/abc игнорируется; пагинация сохраняет stars=5.",
+  "acceptance": [
+    "Фильтр stars=5 показывает только отзывы с rating=5 и сохраняет пагинацию.",
+    "comment=1 показывает только отзывы с непустым comment.",
+    "period=90 отсекает отзывы старше 90 дней, period=365 — старше года.",
+    "Комбинация фильтров работает совместно.",
+    "Невалидные stars/period игнорируются, страница 200.",
+    "Ссылки пагинации сохраняют активные фильтры.",
+    "Форма фильтров адаптивна и не вызывает горизонтальный скролл на 360px.",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_public_views, core.tests.test_i18n, core.tests.test_reputation проходят."
+  ],
+  "out_of_scope": [
+    "Не менять модель/БД и public_ratings.",
+    "Не добавлять фильтры по критериям/тегам.",
+    "Не менять i18n (R038)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_public_ext.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views core.tests.test_i18n core.tests.test_reputation --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

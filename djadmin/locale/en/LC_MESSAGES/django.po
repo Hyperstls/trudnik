@@ -4017,3 +4017,18 @@ msgstr "You cannot apply again"
 
 msgid "Все открытые задания уже приглашены."
 msgstr "All open jobs have already been invited."
+
+msgid "Период"
+msgstr "Period"
+
+msgid "За всё время"
+msgstr "All time"
+
+msgid "За 90 дней"
+msgstr "Last 90 days"
+
+msgid "За год"
+msgstr "Last year"
+
+msgid "Только с текстом"
+msgstr "With text only"

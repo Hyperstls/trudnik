@@ -154,18 +154,50 @@ def user_ratings(request, user_id):
     if profile is None:
         raise Http404("Профиль не найден")
     target_type = "employer" if profile.role == Profile.Role.EMPLOYER else "worker"
+
+    # R037: фильтры отзывов. Невалидные значения молча игнорируются.
+    stars = None
+    stars_raw = request.GET.get("stars")
+    if stars_raw is not None:
+        try:
+            stars_candidate = int(stars_raw)
+        except (TypeError, ValueError):
+            stars_candidate = None
+        if stars_candidate is not None and 1 <= stars_candidate <= 5:
+            stars = stars_candidate
+    with_comment = request.GET.get("comment") == "1"
+    period = request.GET.get("period")
+    if period not in ("90", "365"):
+        period = None
+
     ratings_qs = (
         public_ratings(profile.pk, target_type)
         .select_related("rater_user", "job")
         .order_by("-published_at")
     )
+    if stars:
+        ratings_qs = ratings_qs.filter(rating=stars)
+    if with_comment:
+        ratings_qs = ratings_qs.filter(comment__isnull=False).exclude(comment="")
+    if period:
+        ratings_qs = ratings_qs.filter(
+            published_at__gte=timezone.now() - timedelta(days=int(period))
+        )
     page = Paginator(ratings_qs, 20).get_page(request.GET.get("page"))
+    base_query = request.GET.copy()
+    base_query.pop("page", None)
     metrics = profile_metrics(profile.pk, profile.role)
     return render(request, "core/user_ratings.html", {
         "p": profile,
         "page": page,
         "ratings": page.object_list,
         "target_type": target_type,
+        "filters": {
+            "stars": stars,
+            "with_comment": with_comment,
+            "period": period,
+        },
+        "base_query": base_query.urlencode(),
         "distribution": rating_distribution(profile.pk, target_type),
         "recent": recent_rating(profile.pk, target_type),
         "metrics": metrics,

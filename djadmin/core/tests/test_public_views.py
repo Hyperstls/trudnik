@@ -1758,6 +1758,149 @@ class UserRatingsPaginationTests(TestCase):
         self.assertContains(second, "%s?page=1" % url)
 
 
+class UserRatingsFilterTests(TestCase):
+    """R037: фильтры отзывов по оценке, наличию текста и периоду."""
+
+    def setUp(self):
+        self.worker = make_profile("ratings-filter-worker@example.com", role="worker")
+        self.employer = make_profile("ratings-filter-employer@example.com", role="employer")
+        self.url = reverse("core:user_ratings", args=[self.worker.pk])
+
+    def _add(self, index, stars=5, comment="Текст отзыва", days_ago=1):
+        rater = make_profile("ratings-filter-rater-%03d@example.com" % index)
+        job = make_job(self.employer, work_type="Фильтр отзывов %03d" % index)
+        return Rating.objects.create(
+            rated_user=self.worker,
+            rater_user=rater,
+            job=job,
+            rating=stars,
+            comment=comment,
+            rating_type="employer",
+            target_type="worker",
+            published_at=timezone.now() - timedelta(days=days_ago),
+        )
+
+    def _mixed(self):
+        """30 отзывов: оценка 1..5 по кругу, каждый 4-й без текста.
+
+        Давность публикации чередуется: 10, 200 и 500 дней назад.
+        """
+        ratings = []
+        for index in range(30):
+            ratings.append(self._add(
+                index,
+                stars=index % 5 + 1,
+                comment="" if index % 4 == 0 else "Текст %02d" % index,
+                days_ago=(10, 200, 500)[index % 3],
+            ))
+        return ratings
+
+    def _get(self, **params):
+        response = self.client.get(self.url, params)
+        self.assertEqual(response.status_code, 200)
+        return response
+
+    def test_filter_form_present_with_reset_link(self):
+        self._mixed()
+        response = self._get()
+        content = response.content.decode()
+        self.assertIn('method="get"', content)
+        self.assertIn('name="stars"', content)
+        self.assertIn('name="comment"', content)
+        self.assertIn('name="period"', content)
+        self.assertIn("Применить", content)
+        self.assertIn("Сбросить", content)
+        self.assertIn('href="%s"' % self.url, content)
+
+    def test_stars_filter(self):
+        ratings = self._mixed()
+        expected = {r.pk for r in ratings if r.rating == 5}
+        self.assertEqual(len(expected), 6)
+        response = self._get(stars="5")
+        self.assertEqual({r.pk for r in response.context["ratings"]}, expected)
+        self.assertEqual(response.context["page"].paginator.count, 6)
+        self.assertIn('value="5" selected', response.content.decode())
+
+    def test_comment_filter(self):
+        ratings = self._mixed()
+        expected = {r.pk for r in ratings if r.comment}
+        self.assertEqual(len(expected), 22)
+        first = self._get(comment="1")
+        self.assertEqual(first.context["page"].paginator.count, 22)
+        self.assertEqual(first.context["page"].paginator.num_pages, 2)
+        self.assertTrue(all(r.comment for r in first.context["ratings"]))
+        second = self._get(comment="1", page="2")
+        seen = {r.pk for r in first.context["ratings"]} | {
+            r.pk for r in second.context["ratings"]
+        }
+        self.assertEqual(seen, expected)
+        self.assertIn('name="comment" value="1" checked', first.content.decode())
+
+    def test_period_filters(self):
+        ratings = self._mixed()
+        now = timezone.now()
+        within_90 = {r.pk for r in ratings if r.published_at >= now - timedelta(days=90)}
+        within_365 = {r.pk for r in ratings if r.published_at >= now - timedelta(days=365)}
+        response_90 = self._get(period="90")
+        self.assertEqual({r.pk for r in response_90.context["ratings"]}, within_90)
+        self.assertEqual(response_90.context["page"].paginator.count, 10)
+        response_365 = self._get(period="365")
+        self.assertEqual({r.pk for r in response_365.context["ratings"]}, within_365)
+        self.assertEqual(response_365.context["page"].paginator.count, 20)
+
+    def test_combined_filters(self):
+        self._mixed()
+        response = self._get(stars="5", comment="1", period="90")
+        self.assertEqual(len(response.context["ratings"]), 1)
+        rating = response.context["ratings"][0]
+        self.assertEqual(rating.rating, 5)
+        self.assertTrue(rating.comment)
+        self.assertGreaterEqual(
+            rating.published_at, timezone.now() - timedelta(days=90)
+        )
+
+    def test_invalid_stars_and_period_ignored(self):
+        self._mixed()
+        for params in (
+            {"stars": "9"}, {"stars": "0"}, {"stars": "abc"}, {"stars": ""},
+            {"period": "999"}, {"period": "all"}, {"period": ""},
+        ):
+            with self.subTest(params=params):
+                response = self._get(**params)
+                self.assertEqual(response.context["page"].paginator.count, 30)
+                self.assertEqual(len(response.context["ratings"]), 20)
+
+    def test_pagination_keeps_stars_filter(self):
+        for index in range(25):
+            self._add(index, stars=5)
+        for index in range(25, 30):
+            self._add(index, stars=4)
+        first = self._get(stars="5")
+        self.assertEqual(first.context["page"].paginator.num_pages, 2)
+        self.assertEqual(len(first.context["ratings"]), 20)
+        self.assertIn("stars=5&page=2", first.content.decode())
+
+        second = self._get(stars="5", page="2")
+        self.assertEqual(len(second.context["ratings"]), 5)
+        self.assertTrue(all(r.rating == 5 for r in second.context["ratings"]))
+        self.assertIn("stars=5&page=1", second.content.decode())
+
+    def test_pagination_keeps_combined_filters(self):
+        for index in range(25):
+            self._add(index, stars=5, comment="Текст %02d" % index, days_ago=10)
+        first = self._get(stars="5", comment="1", period="90")
+        self.assertEqual(first.context["page"].paginator.num_pages, 2)
+        content = first.content.decode()
+        self.assertIn("stars=5", content)
+        self.assertIn("comment=1", content)
+        self.assertIn("period=90", content)
+        self.assertIn("page=2", content)
+        second = self._get(
+            stars="5", comment="1", period="90", page="2"
+        )
+        self.assertEqual(len(second.context["ratings"]), 5)
+
+
 class EmployerResponseBadgeTests(TestCase):
     """R022: среднее время ответа работодателя в карточке репутации."""
 

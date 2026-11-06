@@ -1,0 +1,40 @@
+{
+  "id": "R038",
+  "title": "Отзывы: EN-переводы фильтров",
+  "goal": "Добавить английские переводы фильтров отзывов (Период, За всё время, За 90 дней, За год, Только с текстом) и проверить EN/RU страницу.",
+  "why": "Новые фильтры в EN-локали показывают русский текст; J159–J160 требуют полной локализации.",
+  "files": [
+    "djadmin/core/tests/test_i18n.py",
+    "djadmin/locale/en/LC_MESSAGES/django.po",
+    "djadmin/locale/en/LC_MESSAGES/django.mo"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/user_ratings.html",
+    "djadmin/core/views_public_ext.py"
+  ],
+  "interfaces": "django.po добавить: \"Период\"→\"Period\", \"За всё время\"→\"All time\", \"За 90 дней\"→\"Last 90 days\", \"За год\"→\"Last year\", \"Только с текстом\"→\"With text only\". Собрать .mo через polib. В test_i18n.py: создать worker и опубликованный Rating; на EN /ratings/user/<id> есть Period/All time/Last 90 days/Last year/With text only/Apply/Reset; на RU — Период/За всё время/Только с текстом.",
+  "acceptance": [
+    "В django.po непустые msgstr для пяти строк.",
+    "django.mo пересобран.",
+    "EN /ratings/user/<id> содержит Period, All time, Last 90 days, Last year, With text only.",
+    "RU страница содержит Период, За всё время, Только с текстом.",
+    "py_compile test_i18n.py проходит.",
+    "core.tests.test_i18n, core.tests.test_public_views проходят."
+  ],
+  "out_of_scope": [
+    "Не менять шаблон/вьюху.",
+    "Не менять другие переводы."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_i18n.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_i18n core.tests.test_public_views --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
