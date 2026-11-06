@@ -1,0 +1,41 @@
+{
+  "id": "R032",
+  "title": "Кнопки: общий guard от двойной отправки форм",
+  "goal": "Подключить form-guard.js глобально и переписать его: после submit отключать все submit-кнопки формы (с визуальным disabled-состоянием) без таймера повторного включения; учитывать e.submitter и e.defaultPrevented, чтобы подтверждения и отмены не блокировали кнопку; восстанавливать кнопки при bfcache pageshow.",
+  "why": "form-guard.js существовал, но не подключался. Двойной клик по «Откликнуться», «Сохранить», «Отправить» и т.п. мог отправить форму дважды; таймер 1.5с снова включал кнопку до завершения навигации.",
+  "files": [
+    "static/js/form-guard.js",
+    "djadmin/core/templates/core/base.html"
+  ],
+  "context_files": [
+    "static/js/bulk-actions.js",
+    "djadmin/core/templates/core/job_detail.html"
+  ],
+  "interfaces": "form-guard.js: IIFE; document.addEventListener('submit', ...): если e.defaultPrevented → return; form=e.target; submitter=e.submitter || первый enabled button[type=submit]; если нет submitter → return; setTimeout(...,0): если e.defaultPrevented → return; для всех button[type=submit] в форме: disabled=true, aria-disabled=true, data-busy=1, style.opacity=.6, style.cursor='not-allowed'; без повторного включения по таймеру. window.addEventListener('pageshow', ...) снимает data-busy/disabled/aria-disabled/opacity/cursor у кнопок data-busy=1. base.html: <script nonce=\"{{ request.csp_nonce }}\" src=\"{% static 'js/form-guard.js' %}\" defer></script> рядом с другими static-скриптами (после theme.js). Не менять bulk-actions.js и шаблоны кнопок.",
+  "acceptance": [
+    "form-guard.js подключён в base.html с nonce и defer.",
+    "После submit все submit-кнопки формы становятся disabled с opacity 0.6 и cursor not-allowed.",
+    "Кнопки не включаются сами через 1.5с; при pageshow состояние сбрасывается.",
+    "Если submit отменён (confirm=false/preventDefault), кнопки не блокируются.",
+    "Используется e.submitter, а не только первая кнопка (важно для bulk action).",
+    "node --check static/js/form-guard.js проходит.",
+    "core.tests.test_flows, core.tests.test_smoke_pages проходят."
+  ],
+  "out_of_scope": [
+    "Не менять серверные view/RPC.",
+    "Не менять bulk-actions.js и тексты кнопок.",
+    "Не добавлять зависимости."
+  ],
+  "checks": [
+    {
+      "name": "node-check",
+      "cmd": "node --check static/js/form-guard.js",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows core.tests.test_smoke_pages --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
