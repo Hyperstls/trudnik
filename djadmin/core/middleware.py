@@ -147,11 +147,14 @@ class AdminIpAllowlistMiddleware:
         return self.get_response(request)
 
 class GlobalIpRateLimitMiddleware:
-    """Глобальный лимит запросов с IP (паритет Flask _global_ip_rate_limit).
+    """Глобальный лимит запросов (паритет Flask _global_ip_rate_limit).
 
-    120 req/min на IP (GLOBAL_RATE_LIMIT_PER_MIN). Fail-open: сбой кэша не
-    блокирует трафик. Исключения: /health, /ready, /static/, /uploads/,
-    /favicon.ico, /sw.js — healthcheck и статика не должны лимитироваться.
+    Анонимы: 120 req/min на IP (GLOBAL_RATE_LIMIT_PER_MIN), ключ по IP.
+    Авторизованные: AUTH_RATE_LIMIT_PER_MIN (600) на пользователя, ключ по
+    user_id — пользователи за общим NAT не блокируют друг друга.
+    Fail-open: сбой кэша не блокирует трафик. Исключения: /health, /ready,
+    /static/, /uploads/, /favicon.ico, /sw.js, /metrics — healthcheck и
+    статика не должны лимитироваться.
     """
 
     EXEMPT_PREFIXES = ("/health", "/ready", "/static/", "/uploads/",
@@ -168,13 +171,18 @@ class GlobalIpRateLimitMiddleware:
         path = request.path
         if any(path.startswith(prefix) for prefix in self.EXEMPT_PREFIXES):
             return self.get_response(request)
-        limit = getattr(settings, "GLOBAL_RATE_LIMIT_PER_MIN", 120)
-        ip = client_ip(request)
+        user = getattr(request, "user", None)
+        if user is not None and user.is_authenticated:
+            limit = getattr(settings, "AUTH_RATE_LIMIT_PER_MIN", 600)
+            scope = "user:%s" % user.pk
+        else:
+            limit = getattr(settings, "GLOBAL_RATE_LIMIT_PER_MIN", 120)
+            scope = client_ip(request)
         try:
             import time
 
             window = int(time.time() // 60)
-            key = "iprl:%s:%s" % (ip, window)
+            key = "iprl:%s:%s" % (scope, window)
             if cache.add(key, 1, 70):
                 count = 1
             else:

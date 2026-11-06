@@ -1,0 +1,42 @@
+{
+  "id": "R028",
+  "title": "Rate-limit: отдельный лимит для авторизованных за NAT",
+  "goal": "Глобальный IP-лимит 120/мин остаётся для анонимов, а авторизованные получают отдельный лимит AUTH_RATE_LIMIT_PER_MIN=600/мин и ключ по user_id, а не по IP. Это снимает блокировку пользователей за общим NAT/офисом.",
+  "why": "Сейчас все за одним IP делят 120 запросов/мин; в офисе или за NAT несколько пользователей блокируют друг друга. Ключ по пользователю и повышенный лимит решают это без ослабления анонимной защиты.",
+  "files": [
+    "djadmin/config/settings.py",
+    "djadmin/core/middleware.py",
+    "djadmin/core/tests/test_review_fixes.py"
+  ],
+  "context_files": [
+    "djadmin/core/ratelimit.py",
+    "djadmin/core/tests/test_auth.py"
+  ],
+  "interfaces": "settings.py: AUTH_RATE_LIMIT_PER_MIN = int(os.getenv('AUTH_RATE_LIMIT_PER_MIN', '600')). GlobalIpRateLimitMiddleware: для request.user.is_authenticated ключ 'iprl:user:<user_id>:<window>' и limit=AUTH_RATE_LIMIT_PER_MIN; для анонима прежний ключ 'iprl:<ip>:<window>' и GLOBAL_RATE_LIMIT_PER_MIN. Exempt-префиксы, fail-open и 429 Retry-After не менять. test_review_fixes.py: @override_settings(CACHES=CACHE_LOCMEM, GLOBAL_RATE_LIMIT_PER_MIN=2, AUTH_RATE_LIMIT_PER_MIN=5); аноним 3 GET /jobs → третий 429; авторизованный 5 GET /jobs → 200, шестой 429; два разных авторизованных с одного IP не делят лимит (каждый 5 своих запросов).",
+  "acceptance": [
+    "Анонимный лимит остаётся GLOBAL_RATE_LIMIT_PER_MIN и ключ по IP.",
+    "Авторизованный лимит — AUTH_RATE_LIMIT_PER_MIN и ключ по user_id.",
+    "Пользователи за одним IP не расходуют общий авторизованный лимит.",
+    "Exempt-префиксы (/health, /static/ и т.д.) по-прежнему не лимитируются.",
+    "При превышении — 429 и Retry-After: 60.",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_review_fixes, core.tests.test_flows, core.tests.test_auth проходят."
+  ],
+  "out_of_scope": [
+    "Не менять login/register/rating лимиты.",
+    "Не менять ключи других middleware.",
+    "Не добавлять зависимости."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/config/settings.py djadmin/core/middleware.py djadmin/core/tests/test_review_fixes.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_review_fixes core.tests.test_flows core.tests.test_auth --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

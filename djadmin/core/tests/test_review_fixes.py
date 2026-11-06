@@ -6,13 +6,15 @@
 favorite/apply, owner-видимость своих заданий, негативный reopen.
 """
 from datetime import timedelta
+from unittest.mock import patch
 
-from django.test import TestCase
+from django.core.cache import cache
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from core.models import Job, Profile
-from core.tests.test_auth import make_profile
+from core.tests.test_auth import CACHE_LOCMEM, make_profile
 from core.tests.test_flows import make_job
 
 
@@ -214,3 +216,51 @@ class PublicDisciplineTests(TestCase):
         # Паритет Flask: reopen делегирует в accept_application (pending и rejected).
         self.assertEqual(app.status, "accepted")
         self.assertEqual(job.current_workers, 1)
+
+
+# Фиксированное время внутри минуты, чтобы окно лимита не переехало посреди теста.
+FIXED_NOW = 1_800_000_000.0
+
+
+@override_settings(CACHES=CACHE_LOCMEM, GLOBAL_RATE_LIMIT_PER_MIN=2,
+                   AUTH_RATE_LIMIT_PER_MIN=5)
+class RateLimitScopeTests(TestCase):
+    """R028: авторизованные лимитируются по user_id, анонимы — по IP."""
+
+    def setUp(self):
+        cache.clear()
+
+    def test_anonymous_limited_by_ip(self):
+        with patch("time.time", return_value=FIXED_NOW):
+            self.assertEqual(self.client.get("/jobs").status_code, 200)
+            self.assertEqual(self.client.get("/jobs").status_code, 200)
+            response = self.client.get("/jobs")
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response["Retry-After"], "60")
+
+    def test_authenticated_uses_auth_limit(self):
+        user = make_profile("rl-auth@example.com")
+        self.client.force_login(user)
+        with patch("time.time", return_value=FIXED_NOW):
+            for _ in range(5):
+                self.assertEqual(self.client.get("/jobs").status_code, 200)
+            response = self.client.get("/jobs")
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response["Retry-After"], "60")
+
+    def test_users_behind_same_ip_have_separate_buckets(self):
+        first = make_profile("rl-nat-1@example.com")
+        second = make_profile("rl-nat-2@example.com")
+        with patch("time.time", return_value=FIXED_NOW):
+            self.client.force_login(first)
+            for _ in range(5):
+                self.assertEqual(self.client.get("/jobs").status_code, 200)
+            self.client.force_login(second)
+            for _ in range(5):
+                self.assertEqual(self.client.get("/jobs").status_code, 200)
+
+    def test_exempt_prefix_not_limited(self):
+        with patch("time.time", return_value=FIXED_NOW):
+            for _ in range(5):
+                self.assertNotEqual(self.client.get("/health").status_code, 429)
+                self.assertNotEqual(self.client.get("/static/missing.css").status_code, 429)

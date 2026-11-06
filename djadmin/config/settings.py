@@ -196,6 +196,9 @@ X_FRAME_OPTIONS = "DENY"
 # Админка: опциональный IP-allowlist (аналог ADMIN_API_ALLOWED_IPS у Flask).
 # Глобальный лимит запросов с IP (паритет Flask GLOBAL_RATE_LIMIT_PER_MIN)
 GLOBAL_RATE_LIMIT_PER_MIN = int(os.getenv("GLOBAL_RATE_LIMIT_PER_MIN", "120"))
+# Отдельный лимит для авторизованных: ключ по user_id, а не по IP, чтобы
+# пользователи за общим NAT/офисом не блокировали друг друга.
+AUTH_RATE_LIMIT_PER_MIN = int(os.getenv("AUTH_RATE_LIMIT_PER_MIN", "600"))
 
 DJANGO_ADMIN_ALLOWED_IPS = [
     ip.strip() for ip in os.getenv("DJANGO_ADMIN_ALLOWED_IPS", "").split(",") if ip.strip()
