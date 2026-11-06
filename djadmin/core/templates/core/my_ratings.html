@@ -1,0 +1,76 @@
+{% extends "core/base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Мои отзывы" %} — Трудник{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto px-0 py-4 fade-in">
+    <h1 class="text-xl font-bold text-neutral-900 mb-1">{% translate "Мои отзывы" %}</h1>
+    <p class="text-sm text-neutral-500 mb-4">{% translate "Отзывы, которые вы оставили. Скрытые модератором отзывы можно оспорить." %}</p>
+
+    {% if rows %}
+    <div class="grid gap-2">
+        {% for row in rows %}
+        {% with r=row.rating %}
+        <article class="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <span class="text-sm font-medium text-neutral-800 truncate">{{ r.rated_user.full_name|default:_("Пользователь") }}</span>
+                <span class="inline-flex items-center gap-0.5" aria-label="{% translate 'Оценка' %} {{ r.rating }} {% translate 'из' %} 5">
+                    {% for i in "12345" %}{% if forloop.counter0 < r.rating %}{% include "core/_ui_icon.html" with name="star" class_name="h-4 w-4 text-warning" %}{% else %}{% include "core/_ui_icon.html" with name="star-outline" class_name="h-4 w-4 text-neutral-300" %}{% endif %}{% endfor %}
+                </span>
+            </div>
+
+            <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-400">
+                {% if r.job %}
+                <a href="{% url 'core:job_detail' r.job.pk %}" class="text-primary-600 hover:text-primary-700 underline underline-offset-2">{{ r.job.work_type }}</a>
+                {% else %}
+                <span>{% translate "Без задания" %}</span>
+                {% endif %}
+                <span>{{ r.created_at|date:"d.m.Y" }}</span>
+            </div>
+
+            <div class="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+                {% if r.moderation_status == 'ok' %}
+                <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 font-semibold text-green-800">{% translate "Опубликован" %}</span>
+                {% elif r.moderation_status == 'review' %}
+                <span class="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 font-medium text-neutral-600">{% translate "Ожидает" %}</span>
+                {% else %}
+                <span class="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 font-semibold text-red-600">{% translate "Скрыт" %}</span>
+                {% endif %}
+                {% if row.latest_appeal %}
+                <span class="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 font-medium text-neutral-600">{% translate "Апелляция" %}: {{ row.latest_appeal.get_status_display }}</span>
+                {% endif %}
+            </div>
+
+            {% if r.comment %}<p class="text-sm text-neutral-700 mt-2 whitespace-pre-line">{{ r.comment }}</p>{% endif %}
+
+            {% if row.latest_appeal %}
+            <div class="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+                <p class="text-xs font-semibold text-neutral-700">{% translate "Причина апелляции" %}</p>
+                <p class="text-sm text-neutral-700 mt-1 whitespace-pre-line">{{ row.latest_appeal.reason }}</p>
+                {% if row.latest_appeal.resolution_note %}<p class="text-xs text-neutral-500 mt-1 whitespace-pre-line">{{ row.latest_appeal.resolution_note }}</p>{% endif %}
+            </div>
+            {% endif %}
+
+            {% if row.can_appeal %}
+            <form method="post" action="{% url 'core:rating_appeal_create' r.pk %}" class="mt-3 space-y-2">
+                {% csrf_token %}
+                <label class="block text-xs font-medium text-neutral-700" for="appeal-reason-{{ r.pk }}">{% translate "Почему отзыв не нарушает правила" %}</label>
+                <textarea id="appeal-reason-{{ r.pk }}" name="reason" rows="3" minlength="10" maxlength="2000" required class="w-full rounded-xl border border-neutral-200 px-3 py-2 text-sm" placeholder="{% translate 'Опишите причину апелляции' %}"></textarea>
+                <button type="submit" class="inline-flex items-center px-3 h-9 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold">{% translate "Подать апелляцию" %}</button>
+            </form>
+            {% endif %}
+        </article>
+        {% endwith %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="flex flex-col items-center justify-center py-16 text-center rounded-2xl border border-dashed border-neutral-300 bg-white">
+        <div class="w-14 h-14 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
+            {% include "core/_ui_icon.html" with name="star-outline" class_name="h-7 w-7 text-neutral-400" %}
+        </div>
+        <p class="text-neutral-700 font-medium">{% translate "Вы пока не оставляли отзывов" %}</p>
+        <p class="text-sm text-neutral-500 mt-1">{% translate "Оценить участника можно после завершения задания." %}</p>
+        <a href="{% url 'core:jobs' %}" class="mt-4 inline-flex items-center px-4 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold">{% translate "Перейти к заданиям" %}</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -3,7 +3,7 @@ from django.urls import path
 from . import (views, views_auth, views_content, views_drafts, views_flow, views_geo,
                views_interact, views_messenger, views_notify, views_profile,
                views_profile_ext, views_public_ext, views_search, views_service,
-               views_sessions, views_support, views_analytics)
+               views_sessions, views_support, views_analytics, views_appeals)
 
 app_name = "core"
 
@@ -71,6 +71,8 @@ urlpatterns = [
     path("rate/<uuid:app_id>", views_interact.rate_participant, name="rate_participant"),
     path("ratings/<uuid:rating_id>/reply", views_interact.rating_reply, name="rating_reply"),
     path("ratings/<uuid:rating_id>/report", views_interact.rating_report, name="rating_report"),
+    path("my-ratings", views_appeals.my_ratings, name="my_ratings"),
+    path("my-ratings/<uuid:rating_id>/appeal", views_appeals.rating_appeal_create, name="rating_appeal_create"),
     # 152-ФЗ / профиль
     path("profile/export-data", views_profile_ext.export_data, name="export_data"),
     path("profile/delete-account", views_profile_ext.delete_account, name="delete_account"),

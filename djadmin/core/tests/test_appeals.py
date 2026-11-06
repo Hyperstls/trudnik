@@ -3,6 +3,7 @@ import uuid
 from datetime import timedelta
 
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 
 from core.appeals import can_appeal, create_appeal, resolve_appeal
@@ -189,3 +190,115 @@ class ResolveAppealTests(TestCase):
         self.assertIsNone(resolve_appeal(uuid.uuid4(), self.moderator, True))
         self.appeal.delete()
         self.assertIsNone(resolve_appeal(self.appeal.pk, self.moderator, True))
+
+
+class MyRatingsViewTests(TestCase):
+    """R024: страница «Мои отзывы» и форма апелляции."""
+
+    def setUp(self):
+        self.employer = make_profile("appeal-view-emp@example.com", role="employer")
+        self.worker = make_profile("appeal-view-worker@example.com")
+        self.stranger = make_profile("appeal-view-stranger@example.com")
+        self.hidden = make_hidden_rating(
+            self.employer, self.worker, comment="Скрытый отзыв автора",
+        )
+        self.visible = make_rating(
+            self.employer, self.worker, comment="Опубликованный отзыв автора",
+        )
+        self.foreign = make_rating(
+            self.stranger, self.worker, comment="Чужой отзыв постороннего",
+        )
+
+    def test_login_required(self):
+        response = self.client.get(reverse("core:my_ratings"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login", response["Location"])
+
+    def test_author_sees_only_own_ratings_including_hidden(self):
+        self.client.force_login(self.employer)
+        response = self.client.get(reverse("core:my_ratings"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Мои отзывы")
+        self.assertContains(response, "Скрытый отзыв автора")
+        self.assertContains(response, "Опубликованный отзыв автора")
+        self.assertNotContains(response, "Чужой отзыв постороннего")
+        self.assertContains(response, "Скрыт")
+        self.assertContains(response, "Опубликован")
+
+    def test_hidden_without_pending_has_appeal_form(self):
+        self.client.force_login(self.employer)
+        response = self.client.get(reverse("core:my_ratings"))
+        self.assertContains(response, 'name="reason"')
+        self.assertContains(response, 'minlength="10"')
+        self.assertContains(response, 'maxlength="2000"')
+        self.assertContains(response, "Подать апелляцию")
+        self.assertContains(response, 'action="%s"' % reverse(
+            "core:rating_appeal_create", args=[self.hidden.pk],
+        ))
+
+    def test_visible_rating_has_no_appeal_form(self):
+        self.client.force_login(self.employer)
+        response = self.client.get(reverse("core:my_ratings"))
+        self.assertNotContains(response, "appeal-reason-%s" % self.visible.pk)
+        self.assertNotContains(response, 'action="%s"' % reverse(
+            "core:rating_appeal_create", args=[self.visible.pk],
+        ))
+
+    def test_post_creates_pending_appeal_and_redirects(self):
+        self.client.force_login(self.employer)
+        response = self.client.post(
+            reverse("core:rating_appeal_create", args=[self.hidden.pk]),
+            {"reason": VALID_REASON},
+        )
+        self.assertRedirects(response, reverse("core:my_ratings"))
+        appeal = RatingAppeal.objects.get(rating=self.hidden)
+        self.assertEqual(appeal.appellant_id, self.employer.pk)
+        self.assertEqual(appeal.status, RatingAppeal.Status.PENDING)
+        self.assertEqual(appeal.reason, VALID_REASON)
+
+    def test_pending_appeal_status_shown_and_form_hidden(self):
+        self.client.force_login(self.employer)
+        self.client.post(
+            reverse("core:rating_appeal_create", args=[self.hidden.pk]),
+            {"reason": VALID_REASON},
+        )
+        response = self.client.get(reverse("core:my_ratings"))
+        self.assertContains(response, RatingAppeal.Status.PENDING.label)
+        self.assertNotContains(response, "appeal-reason-%s" % self.hidden.pk)
+        self.assertNotContains(response, 'action="%s"' % reverse(
+            "core:rating_appeal_create", args=[self.hidden.pk],
+        ))
+
+    def test_repeat_post_does_not_create_duplicate(self):
+        self.client.force_login(self.employer)
+        url = reverse("core:rating_appeal_create", args=[self.hidden.pk])
+        self.client.post(url, {"reason": VALID_REASON})
+        response = self.client.post(url, {"reason": "Другая причина для апелляции"}, follow=True)
+        self.assertContains(response, "Апелляция уже подана")
+        self.assertEqual(RatingAppeal.objects.filter(rating=self.hidden).count(), 1)
+
+    def test_short_reason_rejected_with_message(self):
+        self.client.force_login(self.employer)
+        response = self.client.post(
+            reverse("core:rating_appeal_create", args=[self.hidden.pk]),
+            {"reason": "коротко"},
+            follow=True,
+        )
+        self.assertContains(response, "не короче 10 символов")
+        self.assertFalse(RatingAppeal.objects.exists())
+
+    def test_post_foreign_rating_returns_404(self):
+        self.client.force_login(self.employer)
+        response = self.client.post(
+            reverse("core:rating_appeal_create", args=[self.foreign.pk]),
+            {"reason": VALID_REASON},
+        )
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(RatingAppeal.objects.exists())
+
+    def test_empty_state(self):
+        nobody = make_profile("appeal-view-nobody@example.com")
+        self.client.force_login(nobody)
+        response = self.client.get(reverse("core:my_ratings"))
+        self.assertContains(response, "Вы пока не оставляли отзывов")
+        self.assertNotContains(response, "Подать апелляцию")

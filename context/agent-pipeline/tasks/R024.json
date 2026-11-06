@@ -1,0 +1,46 @@
+{
+  "id": "R024",
+  "title": "Апелляции: страница «Мои отзывы» и форма",
+  "goal": "Добавить /my-ratings: автор видит свои отзывы (включая скрытые), статус публикации и апелляции, а для скрытого отзыва — форму причины и кнопку «Подать апелляцию». POST создаёт pending-апелляцию через create_appeal.",
+  "why": "Backend R023 есть, но у автора нет точки входа, чтобы оспорить скрытый отзыв. Без UI workflow недоступен.",
+  "files": [
+    "djadmin/core/views_appeals.py",
+    "djadmin/core/urls.py",
+    "djadmin/core/templates/core/my_ratings.html",
+    "djadmin/core/tests/test_appeals.py"
+  ],
+  "context_files": [
+    "djadmin/core/appeals.py",
+    "djadmin/core/models.py",
+    "djadmin/core/views_interact.py",
+    "djadmin/core/templates/core/user_ratings.html"
+  ],
+  "interfaces": "views_appeals.my_ratings(request): login_required; Rating.objects.filter(rater_user=request.user).select_related('rated_user','job').order_by('-created_at')[:100]; для каждого can_appeal из core.appeals (учитывая pending); latest_appeal по rating_id (RatingAppeal.objects.filter(appellant=request.user).order_by('-created_at')); render core/my_ratings.html. views_appeals.rating_appeal_create(request, rating_id): login_required, require_POST, rate_limit_write(limit=5,window=600,redirect_to='/my-ratings'); rating=Rating.objects.filter(pk=rating_id,rater_user=request.user).first() или Http404; appeal,error=create_appeal(rating_id,request.user,request.POST.get('reason','')); messages.success/error; redirect core:my_ratings. URL: path('my-ratings', views_appeals.my_ratings, name='my_ratings'); path('my-ratings/<uuid:rating_id>/appeal', views_appeals.rating_appeal_create, name='rating_appeal_create'). Шаблон: заголовок «Мои отзывы», карточки со звёздами, именем оценённого, заданием, статусом (Опубликован/Ожидает/Скрыт), статусом апелляции; для скрытого без pending — textarea name=reason (minlength=10,maxlength=2000) и csrf-форма; пустое состояние.",
+  "acceptance": [
+    "GET /my-ratings без логина — 302 на login.",
+    "Автор видит только свои отзывы, включая hidden, и статус апелляции.",
+    "Для hidden без pending-апелляции есть textarea и кнопка «Подать апелляцию».",
+    "POST reason 10..2000 создаёт pending-апелляцию и редиректит на /my-ratings.",
+    "Повторный POST при pending показывает ошибку, дубль не создаётся.",
+    "POST к чужому rating_id — 404.",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_appeals, core.tests.test_i18n, core.tests.test_public_views проходят."
+  ],
+  "out_of_scope": [
+    "Не менять модель/миграцию/сервис апелляций.",
+    "Не добавлять админку (R025).",
+    "Не менять публичную страницу отзывов."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_appeals.py djadmin/core/urls.py djadmin/core/tests/test_appeals.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_appeals core.tests.test_i18n core.tests.test_public_views --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
