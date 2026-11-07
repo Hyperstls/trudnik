@@ -19,3 +19,15 @@ test('bulk-toolbar: фон следует теме, а не жёсткому #fa
     assert.match(css, /\.bulk-toolbar\s*{[^}]*background:\s*var\(--ui-neutral-50\)/s);
     assert.doesNotMatch(css, /\.bulk-toolbar\s*{[^}]*background:\s*#fafafa/s);
 });
+
+test('dark hover primary-кнопок остаётся тёмным', () => {
+    const css = read('static/css/app.css');
+    assert.match(
+        css,
+        /\[data-theme="dark"\] \.hover\\:bg-primary-700:hover\s*{\s*background-color:\s*#92400e/s,
+    );
+    assert.match(
+        css,
+        /prefers-color-scheme: dark[\s\S]*?\.hover\\:bg-primary-700:hover\s*{\s*background-color:\s*#92400e/s,
+    );
+});

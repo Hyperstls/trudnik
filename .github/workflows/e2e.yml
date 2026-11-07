@@ -8,7 +8,10 @@ on:
       - "djadmin/**"
       - "static/**"
       - "scripts/e2e/**"
+      - "scripts/axe_audit.mjs"
       - "scripts/dump_schema.py"
+      - "package.json"
+      - "package-lock.json"
       - "tests/fixtures/schema.sql"
       - ".github/workflows/e2e.yml"
   pull_request:
@@ -17,6 +20,8 @@ on:
       - "djadmin/**"
       - "static/**"
       - "scripts/e2e/**"
+      - "scripts/axe_audit.mjs"
+      - "package.json"
       - "tests/fixtures/schema.sql"
 
 permissions:
@@ -73,4 +78,11 @@ jobs:
         with:
           name: e2e-server-log
           path: /tmp/trudnik-e2e-server.log
+          if-no-files-found: ignore
+      - name: Upload axe report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: axe-report
+          path: axe-report.json
           if-no-files-found: ignore

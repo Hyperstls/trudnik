@@ -219,6 +219,17 @@
 }
 [data-theme="dark"] .bg-white\/90 { background-color: rgba(23, 23, 23, 0.9); }
 [data-theme="dark"] .bg-white\/95 { background-color: rgba(23, 23, 23, 0.95); }
+
+/* Hover primary-кнопок в тёмной теме: --ui-primary-700 = #fcd34d (светлый
+   акцент для текста) даёт 1.44:1 с белым. Держим тёмный amber, как в light. */
+[data-theme="dark"] .hover\:bg-primary-700:hover {
+    background-color: #92400e;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .hover\:bg-primary-700:hover {
+        background-color: #92400e;
+    }
+}
 [data-theme="dark"] .bottom-nav { background-color: rgba(23, 23, 23, 0.92); }
 [data-theme="dark"] .bg-red-50 { background-color: #3b1515; }
 [data-theme="dark"] .bg-red-100 { background-color: #4a1a1a; }

@@ -16,6 +16,7 @@
 
 ```bash
 npm ci
+npm install --no-save playwright @axe-core/playwright
 npx playwright install chromium
 bash scripts/e2e/run_critical_flows.sh
 ```
@@ -51,6 +52,8 @@ Python 3.12 venv, Node 20+, Chromium Playwright.
   отчёт — `axe-report.json`, `mode: "auth"`.
 - Публичный режим (`node scripts/axe_audit.mjs` без `AXE_AUTH`) не изменился:
   serious — предупреждения, critical — exit 1; используется в UX quality.
+- В CI отчёт `axe-report.json` выгружается артефактом `axe-report` даже при
+  падении прогона.
 
 ## CI
 

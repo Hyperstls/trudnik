@@ -1,0 +1,43 @@
+{
+  "id": "R047",
+  "title": "A11y: hover primary-кнопок в тёмной теме + полировка R046",
+  "goal": "Убрать системный дефект тёмной темы: hover:bg-primary-700 даёт светло-жёлтый фон (#fcd34d) с белым текстом (1.44:1) на ~49 primary-кнопках. Централизованно переопределить hover-фон в тёмной теме на #92400e. Заодно закрыть non-blockers R046: paths E2E включают скрипт axe, axe-report выгружается артефактом при падении, docs упоминают установку @axe-core/playwright.",
+  "why": "R045-ревью нашло реальный контрастный дефект hover в dark, который axe не проверяет (состояния hover не аудируются). Правка в одном месте лучше 49 правок шаблонов и сохраняет семантику text-primary-700 (светлый акцент в dark).",
+  "files": [
+    "static/css/app.css",
+    "tests_js/a11y-contrast.test.mjs",
+    ".github/workflows/e2e.yml",
+    "docs/E2E_TESTING.md"
+  ],
+  "context_files": [
+    "tailwind.config.js",
+    "static/css/tailwind.min.css"
+  ],
+  "interfaces": "app.css: в тёмной теме переопределить фон hover для primary-кнопок: [data-theme=\"dark\"] .hover\\:bg-primary-700:hover { background-color: #92400e; } и в @media (prefers-color-scheme: dark) :root:not([data-theme=\"light\"]) .hover\\:bg-primary-700:hover { background-color: #92400e; }. Светлую тему не менять (там primary-700 уже #92400e). Разместить рядом с dark-токенами с комментарием. tests_js/a11y-contrast.test.mjs: добавить кейс — app.css содержит оба селектора с background-color: #92400e; и не содержит светлых значений (#fcd34d/#f59e0b) в этих правилах. e2e.yml: paths добавить scripts/axe_audit.mjs, package.json, package-lock.json; шаг Upload axe report (if: always(), path axe-report.json, if-no-files-found: ignore). docs/E2E_TESTING.md: в локальном запуске добавить npm install --no-save playwright @axe-core/playwright.",
+  "acceptance": [
+    "В тёмной теме hover primary-кнопок остаётся тёмным (#92400e), белый текст ≥ 7:1; светлая тема не меняется.",
+    "Правило работает и для [data-theme=dark], и для system dark (prefers-color-scheme).",
+    "node:test проверяет оба селектора и отсутствие светлого фона в hover-правилах.",
+    "E2E workflow триггерится на изменения scripts/axe_audit.mjs и package.json.",
+    "axe-report.json выгружается артефактом даже при падении.",
+    "docs/E2E_TESTING.md содержит установку @axe-core/playwright.",
+    "npm test проходит; pre_deploy_check 7/7 после build:css."
+  ],
+  "out_of_scope": [
+    "Не менять токены темы и text-primary-700.",
+    "Не править 49 шаблонов/классов кнопок.",
+    "Не менять логику axe-гейта."
+  ],
+  "checks": [
+    {
+      "name": "js-tests",
+      "cmd": "npm test",
+      "cwd": "."
+    },
+    {
+      "name": "workflow-yaml",
+      "cmd": "{python} -c \"import yaml; yaml.safe_load(open('.github/workflows/e2e.yml', encoding='utf-8')); print('YAML OK')\"",
+      "cwd": "."
+    }
+  ]
+}
