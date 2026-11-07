@@ -112,6 +112,8 @@ class ErrorEventAdminTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "ValueError")
         self.assertContains(response, "/jobs/42")
+        for column in ("column-method", "column-status_code", "column-user_id"):
+            self.assertContains(response, column)
         self.assertNotContains(response, "err-profile@example.com")
         self.assertNotContains(response, "Иван Тестов")
 
@@ -126,9 +128,13 @@ class ErrorEventAdminTests(TestCase):
             with self.subTest(query=query):
                 self.assertEqual(self.client.get(changelist + query).status_code, 200)
 
-        response = self.client.get(changelist + "?q=/jobs")
+        response = self.client.get(changelist + "?exception_type=ValueError")
         self.assertContains(response, "/jobs/42")
         self.assertNotContains(response, "/api/other")
+
+        response = self.client.get(changelist + "?method=POST")
+        self.assertContains(response, "/api/other")
+        self.assertNotContains(response, "/jobs/42")
 
     def test_admin_index_links_events(self):
         self.client.force_login(self.admin)
@@ -154,6 +160,9 @@ class ErrorEventAdminTests(TestCase):
         self.assertNotContains(response, "<script>alert(1)</script>")
         self.assertNotContains(response, "err-profile@example.com")
         self.assertNotContains(response, "Иван Тестов")
+        self.assertNotContains(response, 'name="frames"')
+        # Сырой frames исключён: JSON с "line" рендерится только внутри frames_pretty.
+        self.assertEqual(response.content.count(b"&quot;line&quot;"), 1)
         self.assertEqual(self.client.post(url, {}).status_code, 403)
 
     def test_purge_old_removes_only_stale_events(self):

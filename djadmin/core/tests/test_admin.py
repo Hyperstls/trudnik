@@ -388,8 +388,8 @@ class DashboardMetricsTests(TestCase):
         cls.worker = make_profile("dash-worker@example.com")
         cls.employer = make_profile("dash-employer@example.com")
 
-    def _rating(self, moderation_status):
-        return Rating.objects.create(
+    def _rating(self, moderation_status, published_at=None, created_at=None):
+        rating = Rating.objects.create(
             rated_user=self.worker,
             rater_user=self.employer,
             rating_type="worker",
@@ -397,28 +397,64 @@ class DashboardMetricsTests(TestCase):
             rating=5,
             moderation_status=moderation_status,
         )
+        fields = {}
+        if published_at is not None:
+            fields["published_at"] = published_at
+        if created_at is not None:
+            fields["created_at"] = created_at
+        if fields:
+            Rating.objects.filter(pk=rating.pk).update(**fields)
+        return rating
+
+    def _quick(self):
+        self.client.force_login(self.admin)
+        response = self.client.get("/admin/dashboard/")
+        self.assertEqual(response.status_code, 200)
+        return response, response.context["quick"]
 
     def test_moderation_and_error_metrics(self):
+        # Средняя задержка не складывается из baseline: изолируем окно в транзакции.
+        Rating.objects.filter(published_at__isnull=False).delete()
+        _, baseline = self._quick()
+        now = timezone.now()
+
+        self._rating(Rating.ModerationStatus.HIDDEN)
         self._rating(Rating.ModerationStatus.HIDDEN)
         self._rating(Rating.ModerationStatus.REVIEW)
-        published = self._rating(Rating.ModerationStatus.OK)
-        now = timezone.now()
-        Rating.objects.filter(pk=published.pk).update(
-            created_at=now - timedelta(hours=4),
-            published_at=now - timedelta(hours=2),
-        )
+        self._rating(Rating.ModerationStatus.OK)  # OK + published_at NULL = ждёт публикации
+        self._rating(Rating.ModerationStatus.OK, published_at=now - timedelta(hours=2),
+                     created_at=now - timedelta(hours=4))
+        self._rating(Rating.ModerationStatus.OK, published_at=now - timedelta(days=31),
+                     created_at=now - timedelta(days=40))
         ErrorEvent.objects.create(exception_type="ValueError", path="/x", method="GET")
         stale = ErrorEvent.objects.create(exception_type="Old", path="/y", method="GET")
         ErrorEvent.objects.filter(pk=stale.pk).update(
             created_at=now - timedelta(hours=25),
         )
 
-        self.client.force_login(self.admin)
-        response = self.client.get("/admin/dashboard/")
-
-        self.assertEqual(response.status_code, 200)
-        quick = response.context["quick"]
-        self.assertEqual(quick["Отзывы скрыты модерацией"], 1)
-        self.assertEqual(quick["Отзывы ждут публикации"], 1)
+        response, quick = self._quick()
+        self.assertEqual(quick["Отзывы скрыты модерацией"], baseline["Отзывы скрыты модерацией"] + 2)
+        self.assertEqual(quick["Отзывы ждут публикации"], baseline["Отзывы ждут публикации"] + 1)
         self.assertEqual(quick["Средняя задержка публикации (ч)"], "2.0")
-        self.assertEqual(quick["События ошибок (24 ч)"], 1)
+        self.assertEqual(quick["События ошибок (24 ч)"], baseline["События ошибок (24 ч)"] + 1)
+        for label in (
+            "Отзывы скрыты модерацией", "Отзывы ждут публикации",
+            "Средняя задержка публикации (ч)", "События ошибок (24 ч)",
+        ):
+            self.assertContains(response, label)
+
+    def test_publish_delay_is_zero_not_dash(self):
+        Rating.objects.all().delete()
+        now = timezone.now()
+        self._rating(Rating.ModerationStatus.OK, published_at=now, created_at=now)
+
+        _, quick = self._quick()
+
+        self.assertEqual(quick["Средняя задержка публикации (ч)"], "0.0")
+
+    def test_publish_delay_is_dash_without_data(self):
+        Rating.objects.all().delete()
+
+        _, quick = self._quick()
+
+        self.assertEqual(quick["Средняя задержка публикации (ч)"], "—")

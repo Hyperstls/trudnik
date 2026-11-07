@@ -188,13 +188,14 @@ class TrudnikAdminSite(AdminSite):
             "Задания на модерации": Job.objects.filter(moderation_status="review").count(),
             "Отзывы на модерации": Rating.objects.filter(moderation_status="review").count(),
             "Отзывы ждут публикации": Rating.objects.filter(
-                moderation_status=Rating.ModerationStatus.REVIEW, published_at__isnull=True,
+                moderation_status=Rating.ModerationStatus.OK, published_at__isnull=True,
             ).count(),
             "Отзывы скрыты модерацией": Rating.objects.filter(
                 moderation_status=Rating.ModerationStatus.HIDDEN,
             ).count(),
             "Средняя задержка публикации (ч)": (
-                "%.1f" % (publish_delay.total_seconds() / 3600) if publish_delay else "—"
+                "%.1f" % (publish_delay.total_seconds() / 3600)
+                if publish_delay is not None else "—"
             ),
             "Жалобы на отзывы": RatingReport.objects.filter(status="new").count(),
             "Верификация на проверке": Profile.objects.filter(verification_status="pending").count(),

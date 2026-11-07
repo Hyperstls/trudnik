@@ -1,0 +1,43 @@
+{
+  "id": "R042",
+  "title": "Дашборд/ошибки: non-blockers ревью — очередь публикации, устойчивые тесты, фильтры",
+  "goal": "Исправить non-blockers ревью R040/R041: метрика «Отзывы ждут публикации» должна показывать реальную очередь автопубликации (OK + published_at IS NULL), а не дублировать «на модерации»; `publish_delay is not None`; тесты дашборда не зависят от пустой БД и проверяют HTML; усилить тесты фильтров ErrorEvent и отсутствие сырого frames.",
+  "why": "Ревью R041 отметило смысловое дублирование метрики и хрупкость тестов (клонированная dev-БД с данными), ревью R040 — слабую проверку фильтров и дедупликации frames. Это дешёвые улучшения без изменения поведения пользователей.",
+  "files": [
+    "djadmin/core/admin/__init__.py",
+    "djadmin/core/tests/test_admin.py",
+    "djadmin/core/tests/test_error_events.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/tasks.py"
+  ],
+  "interfaces": "admin/__init__.py: publish_delay проверять `is not None`; метрика «Отзывы ждут публикации» = Rating.objects.filter(moderation_status=Rating.ModerationStatus.OK, published_at__isnull=True).count(). Остальные метрики без изменений. test_admin.py: в DashboardMetricsTests считать baseline counts до создания объектов (hidden/review/ok/errors) и проверять дельту +1, чтобы тест не зависел от данных клонированной БД; добавить assertContains для четырёх подписей в HTML; создать 2 hidden (неравные количества), 1 review, 1 ok; добавить отзыв, опубликованный 31 день назад (created_at/published_at через update) — он не входит в среднюю; отдельный тест на «—» при отсутствии опубликованных отзывов (удалить/не создавать); проверить, что «ждут публикации» = 1 для OK+published_at NULL (создать OK с published_at=None через update). test_error_events.py: `?exception_type=ValueError` не содержит `/api/other`; `?method=POST` не содержит `/jobs/42`; changelist содержит колонки method/status_code/user_id; change-страница не содержит сырой JSON-ключ 'line' вне frames_pretty? — проще: assertNotContains(response, 'name=\"frames\"') и наличие 'frames_pretty' один раз.",
+  "acceptance": [
+    "«Отзывы ждут публикации» считает OK + published_at IS NULL и не дублирует «на модерации».",
+    "При нулевой задержке показывается «0.0», «—» только при отсутствии данных.",
+    "Тест дашборда устойчив к непустой тестовой БД (сравнивает дельту, а не абсолют).",
+    "Тест дашборда проверяет наличие четырёх подписей в HTML и «—» при пустых данных.",
+    "Отзыв, опубликованный 31 день назад, не входит в среднюю задержку.",
+    "Тесты ErrorEvent проверяют, что фильтры исключают чужие записи, и что сырой frames не рендерится.",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_admin, core.tests.test_error_events проходят."
+  ],
+  "out_of_scope": [
+    "Не менять модели/миграции/шаблоны.",
+    "Не менять middleware и ErrorEventAdmin.",
+    "Не добавлять новые метрики."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/admin/__init__.py djadmin/core/tests/test_admin.py djadmin/core/tests/test_error_events.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_admin core.tests.test_error_events --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
