@@ -53,6 +53,11 @@ Python 3.12 venv, Node 20+, Chromium Playwright.
 `/employers`, `/register`, `/search`, `/support`, `/info`, `/faq`, `/app`,
 `/terms`, `/privacy`, `/safety`, `/offline`.
 
+К обоим наборам автоматически добавляются по одной detail-странице задания,
+трудника и работодателя: скрипт берёт первую подходящую ссылку из `/jobs`,
+`/workers`, `/employers` (UUID в пути). Если списки пусты, аудит продолжается
+без них.
+
 - Логин: `E2E_EMAIL` (по умолчанию `e2e-employer@example.com`) и `E2E_PASSWORD`.
 - В режиме `AXE_AUTH=1` **critical и serious** нарушения валят прогон (exit 1);
   отчёт — `axe-report.json`, `mode: "auth"`.

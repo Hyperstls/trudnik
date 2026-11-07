@@ -1,0 +1,41 @@
+{
+  "id": "R049",
+  "title": "A11y: семантика dl на карточке задания + динамические detail-страницы в axe",
+  "goal": "Исправить dlitem на /jobs/<id> (dt/dd без dl-родителя) и научить axe-гейт находить по одной detail-странице задания, трудника и работодателя из списков, чтобы они тоже проверялись в public и auth режимах.",
+  "why": "Карточка задания — самая посещаемая страница, но в списке axe её не было (нужен UUID). Аудит нашёл serious dlitem на всех ширинах/темах; список из 5 dt/dd без <dl> — невалидная семантика для скринридеров.",
+  "files": [
+    "djadmin/core/templates/core/job_detail.html",
+    "scripts/axe_audit.mjs",
+    "docs/E2E_TESTING.md"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/workers.html",
+    "djadmin/core/templates/core/employers.html"
+  ],
+  "interfaces": "job_detail.html: контейнер сетки с 5 парами dt/dd заменить div на <dl class=\"grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm border-y border-neutral-100 py-3 mb-4\">; внутренние div-обёртки и классы dt/dd не менять; закрывающий тег соответственно </dl>. axe_audit.mjs: добавить discoverDetailPaths(page) — открывает '/jobs', '/workers', '/employers', ищет первый href по регэкспам ^/jobs/<uuid>$, ^/workers/<uuid>$, ^/employers/<uuid>$ и возвращает уникальные пути; в каждом context после login/перед аудитом добавить найденные пути к paths (без дублей); если ничего не найдено — не падать. docs/E2E_TESTING.md: указать, что к спискам автоматически добавляются по одной detail-странице задания/трудника/работодателя.",
+  "acceptance": [
+    "/jobs/<id> содержит <dl> как родителя dt/dd; axe dlitem не срабатывает в light/dark и desktop/mobile.",
+    "axe public и auth автоматически добавляют detail-страницы задания, трудника и работодателя, найденные из списков.",
+    "Если списки пусты или ссылок нет, прогон не падает и просто аудитит статический список.",
+    "Локальный public-прогон по расширенному набору: 0 critical/serious.",
+    "Дублей путей нет; E2E-время остаётся в пределах таймаута.",
+    "node --check axe_audit.mjs и npm test проходят; pre_deploy_check 7/7."
+  ],
+  "out_of_scope": [
+    "Не менять текст/данные карточки задания.",
+    "Не менять критерии serious/critical.",
+    "Не добавлять аудит всех заданий (только по одному представителю)."
+  ],
+  "checks": [
+    {
+      "name": "syntax",
+      "cmd": "node --check scripts/axe_audit.mjs",
+      "cwd": "."
+    },
+    {
+      "name": "js-tests",
+      "cmd": "npm test",
+      "cwd": "."
+    }
+  ]
+}

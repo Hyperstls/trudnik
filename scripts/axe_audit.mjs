@@ -47,6 +47,33 @@ async function login(page) {
   await page.waitForURL((url) => !url.pathname.endsWith('/login'), { timeout: 20000 });
 }
 
+// R049: карточки задания/трудника/работодателя требуют UUID, поэтому берём по
+// одной ссылке из публичных списков и аудитим их в том же прогоне.
+const DETAIL_SOURCES = [
+  ['/jobs', /^\/jobs\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/],
+  ['/workers', /^\/workers\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/],
+  ['/employers', /^\/employers\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/],
+];
+
+async function discoverDetailPaths(page) {
+  const found = [];
+  for (const [listPath, pattern] of DETAIL_SOURCES) {
+    try {
+      await page.goto(base + listPath, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      const href = await page.evaluate((source) => {
+        const re = new RegExp(source);
+        const links = Array.from(document.querySelectorAll('a[href]'));
+        const match = links.find((el) => re.test(el.getAttribute('href')));
+        return match ? match.getAttribute('href') : null;
+      }, pattern.source);
+      if (href && !paths.includes(href) && !found.includes(href)) found.push(href);
+    } catch (e) {
+      // Discovery is best-effort: empty list must not fail the audit.
+    }
+  }
+  return found;
+}
+
 const browser = await chromium.launch({ headless: true });
 const failures = [];
 const warnings = [];
@@ -63,7 +90,8 @@ for (const theme of themes) {
     });
     const page = await context.newPage();
     if (authMode) await login(page);
-    for (const path of paths) {
+    const pagePaths = paths.concat(await discoverDetailPaths(page));
+    for (const path of pagePaths) {
       const label = `${theme.name} ${viewport.name} ${path}`;
       const response = await page.goto(base + path, { waitUntil: 'domcontentloaded', timeout: 30000 });
       await page.waitForTimeout(800);
