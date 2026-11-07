@@ -41,11 +41,17 @@ Python 3.12 venv, Node 20+, Chromium Playwright.
 Все 8 шагов печатают `✓`, итог — `8 passed, 0 failed`. При падении Playwright
 печатает шаг и ошибку; лог Django лежит в `$TMPDIR/trudnik-e2e-server.log`.
 
-## A11y-гейт авторизованных страниц (R046)
+## A11y-гейт авторизованных страниц (R046–R048)
 
 После critical flows тот же сервер проверяется axe-core (WCAG 2.0/2.1 A+AA) на
-страницах `/profile`, `/my-applications`, `/my-jobs`, `/chats`, `/notifications`,
-`/searches`, `/favorites`, `/jobs/new` — в light/dark и desktop/mobile.
+15 страницах кабинета: `/profile`, `/profile/sessions`, `/my-applications`,
+`/my-jobs`, `/chats`, `/notifications`, `/notifications/settings`, `/searches`,
+`/favorites`, `/favorite-jobs`, `/favorite-people`, `/my-ratings`, `/blacklist`,
+`/invitations`, `/jobs/new` — в light/dark и desktop/mobile.
+
+Публичный режим проверяет 15 страниц: `/`, `/jobs`, `/login`, `/workers`,
+`/employers`, `/register`, `/search`, `/support`, `/info`, `/faq`, `/app`,
+`/terms`, `/privacy`, `/safety`, `/offline`.
 
 - Логин: `E2E_EMAIL` (по умолчанию `e2e-employer@example.com`) и `E2E_PASSWORD`.
 - В режиме `AXE_AUTH=1` **critical и serious** нарушения валят прогон (exit 1);
