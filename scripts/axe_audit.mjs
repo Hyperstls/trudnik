@@ -15,10 +15,16 @@ const base = (
   (authMode ? process.env.E2E_BASE_URL : process.env.BASE_URL) ||
   'https://xn--d1aigknli.xn--p1ai'
 ).replace(/\/$/, '');
-const publicPaths = ['/jobs', '/login', '/workers', '/register', '/search?q=test', '/support'];
+const publicPaths = [
+  '/', '/jobs', '/login', '/workers', '/employers', '/register',
+  '/search?q=test', '/support', '/info', '/faq', '/app',
+  '/terms', '/privacy', '/safety', '/offline',
+];
 const authPaths = [
-  '/profile', '/my-applications', '/my-jobs', '/chats',
-  '/notifications', '/searches', '/favorites', '/jobs/new',
+  '/profile', '/profile/sessions', '/my-applications', '/my-jobs', '/chats',
+  '/notifications', '/notifications/settings', '/searches', '/favorites',
+  '/favorite-jobs', '/favorite-people', '/my-ratings', '/blacklist',
+  '/invitations', '/jobs/new',
 ];
 const paths = authMode ? authPaths : publicPaths;
 const email = process.env.E2E_EMAIL || 'e2e-employer@example.com';

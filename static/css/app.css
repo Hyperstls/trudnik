@@ -504,7 +504,7 @@ h3 {
 }
 .ui-badge--neutral {
     background: var(--ui-color-surface-muted);
-    color: var(--ui-color-muted);
+    color: var(--ui-color-text);
 }
 .ui-badge--primary {
     background: var(--ui-color-primary-soft);
@@ -530,6 +530,13 @@ h3 {
     background: var(--ui-color-info-bg);
     border-color: var(--ui-color-info-border);
     color: var(--ui-color-info);
+}
+
+/* Юридические документы: ссылки внутри текста должны отличаться не только
+   цветом (WCAG 1.4.1 / axe link-in-text-block). */
+.legal-content a {
+    text-decoration: underline;
+    text-underline-offset: 2px;
 }
 
 .ui-field {

@@ -1,0 +1,42 @@
+{
+  "id": "R048",
+  "title": "A11y: контраст бейджа и подчёркивание ссылок в документах; шире охват axe",
+  "goal": "Исправить находки axe на публичных страницах: контраст .ui-badge--neutral (4.34:1) и link-in-text-block на /terms,/privacy,/safety (ссылки отличаются только цветом). Расширить список страниц axe: публичные /,/info,/faq,/app,/terms,/privacy,/safety,/employers,/support,/offline и авторизованные /profile/sessions,/notifications/settings,/my-ratings,/blacklist,/invitations,/favorite-jobs,/favorite-people.",
+  "why": "Публичный axe проверял 6 страниц и не видел юридические документы и /info; новые находки — реальные WCAG AA нарушения (4.34 < 4.5 и ссылки без нецветового отличия). Расширение списка закрепляет результат гейтом.",
+  "files": [
+    "static/css/app.css",
+    "djadmin/core/templates/core/legal_page.html",
+    "djadmin/core/templates/core/legal_fallback.html",
+    "scripts/axe_audit.mjs"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/info.html",
+    "djadmin/core/views.py"
+  ],
+  "interfaces": "app.css: .ui-badge--neutral заменить color: var(--ui-color-muted) на var(--ui-color-text) (light #262626/ #f5f5f5 = 12.6:1; dark #e5e5e5/#262626). Добавить .legal-content a { text-decoration: underline; text-underline-offset: 2px; } (лечит link-in-text-block; цвет не меняется). legal_page.html: контейнеру с page.content|safe добавить класс legal-content. legal_fallback.html: трём внешним div (terms/privacy/safety) добавить legal-content (у safety — внешний div перед cards). axe_audit.mjs: publicPaths = ['/','/jobs','/login','/workers','/employers','/register','/search?q=test','/support','/info','/faq','/app','/terms','/privacy','/safety','/offline']; authPaths += ['/profile/sessions','/notifications/settings','/my-ratings','/blacklist','/invitations','/favorite-jobs','/favorite-people']. Публичный режим по-прежнему critical→fail, serious→warning; auth critical+serious→fail.",
+  "acceptance": [
+    "Бейдж «Закреплено» на /info имеет контраст ≥ 4.5 в light и dark.",
+    "Ссылки внутри юридических документов подчёркнуты и не полагаются только на цвет (link-in-text-block не срабатывает).",
+    "Список публичного axe включает 15 страниц, авторизованного — 15 страниц.",
+    "Локальный прогон axe public+auth по расширенным спискам: 0 critical/serious.",
+    "npm test и pre_deploy_check 7/7 проходят.",
+    "Публичный режим UX quality не меняет семантику (critical→exit 1)."
+  ],
+  "out_of_scope": [
+    "Не менять текст/содержимое документов и SitePage.",
+    "Не менять логику гейта (критерии серьёзности).",
+    "Не менять другие бейджи/токены."
+  ],
+  "checks": [
+    {
+      "name": "js-tests",
+      "cmd": "npm test",
+      "cwd": "."
+    },
+    {
+      "name": "syntax",
+      "cmd": "node --check scripts/axe_audit.mjs",
+      "cwd": "."
+    }
+  ]
+}
