@@ -2,8 +2,9 @@ from django.urls import path
 
 from . import (views, views_auth, views_content, views_drafts, views_flow, views_geo,
                views_interact, views_messenger, views_notify, views_profile,
-               views_profile_ext, views_public_ext, views_search, views_service,
-               views_sessions, views_support, views_analytics, views_appeals)
+               views_profile_ext, views_public_ext, views_search, views_searches,
+               views_service, views_sessions, views_support, views_analytics,
+               views_appeals)
 
 app_name = "core"
 
@@ -17,10 +18,10 @@ urlpatterns = [
     path("api/geo/geocode", views_geo.geo_geocode, name="geo_geocode"),
     path("api/jobs/draft", views_drafts.job_draft, name="job_draft_api"),
     path("api/analytics/event", views_analytics.track_event, name="analytics_event"),
-    path("searches", views.my_searches, name="my_searches"),
-    path("searches/save", views.save_search, name="save_search"),
-    path("searches/<str:search_id>/delete", views.delete_search, name="delete_search"),
-    path("searches/<str:search_id>/toggle", views.toggle_search, name="toggle_search"),
+    path("searches", views_searches.my_searches, name="my_searches"),
+    path("searches/save", views_searches.save_search, name="save_search"),
+    path("searches/<str:search_id>/delete", views_searches.delete_search, name="delete_search"),
+    path("searches/<str:search_id>/toggle", views_searches.toggle_search, name="toggle_search"),
     path("search", views_search.global_search, name="search"),
     path("jobs/new", views_flow.job_create, name="job_create"),
     path("jobs/<uuid:job_id>", views.job_detail, name="job_detail"),

@@ -1,0 +1,42 @@
+{
+  "id": "R050",
+  "title": "Архитектура: вынести сохранённые поиски из views.py",
+  "goal": "Вынести блок сохранённых поисков (_saved_searches, _saved_search_data, save_search, toggle_search, my_searches, delete_search) из 883-строчного views.py в отдельный views_searches.py; urls.py направляет /searches* туда; jobs_list импортирует _saved_searches из нового модуля. Поведение не меняется.",
+  "why": "P2-пункт кодревью №10: views.py смешивает jobs, поиски, профили и утилиты. Сохранённые поиски — самодостаточный блок (~160 строк), безопасный первый шаг без изменения URL и шаблонов.",
+  "files": [
+    "djadmin/core/views_searches.py",
+    "djadmin/core/views.py",
+    "djadmin/core/urls.py"
+  ],
+  "context_files": [
+    "djadmin/core/tests/test_public_views.py",
+    "djadmin/core/templates/core/my_searches.html"
+  ],
+  "interfaces": "Новый views_searches.py: импорты messages, login_required, require_POST, render/redirect/reverse, gettext as _, parse_qs/urlencode, UUID, Skill, Profile, safe_next, rate_limit_write; функции переносятся ДОСЛОВНО (включая декораторы @login_required/@require_POST/@rate_limit_write(20,60,'/jobs')): _saved_searches(user), _saved_search_data(post), save_search, toggle_search, my_searches, delete_search. views.py: удалить перенесённый блок и добавить from .views_searches import _saved_searches (используется в jobs_list); неиспользуемые импорты (uuid/parse_qs/urlencode/UUID/Skill/require_POST) удалить только если больше не используются в views.py. urls.py: импортировать views_searches и направить 'searches', 'searches/save', 'searches/<str:search_id>/delete', 'searches/<str:search_id>/toggle' на views_searches. URL-имена и пути не меняются. Шаблоны/модели не трогать.",
+  "acceptance": [
+    "Все 6 функций сохранённых поисков живут в views_searches.py без изменения логики.",
+    "views.py импортирует _saved_searches для jobs_list; новых циклических импортов нет.",
+    "urls.py направляет 4 маршрута /searches* в views_searches, имена reverse прежние.",
+    "Поведение сохранения/переключения/удаления/страницы не изменилось (тесты проходят).",
+    "views.py стал меньше минимум на 150 строк.",
+    "py_compile изменённых .py проходит; pre_deploy_check 7/7.",
+    "core.tests.test_public_views, core.tests.test_flows, core.tests.test_i18n проходят."
+  ],
+  "out_of_scope": [
+    "Не менять логику/шаблоны/модели и формат notification_prefs.",
+    "Не трогать jobs_list/workers_list и другие блоки views.py.",
+    "Не менять URL и имена маршрутов."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_searches.py djadmin/core/views.py djadmin/core/urls.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views core.tests.test_flows core.tests.test_i18n --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
