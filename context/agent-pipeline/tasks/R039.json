@@ -1,0 +1,42 @@
+{
+  "id": "R039",
+  "title": "Ошибки: внутренний ErrorEvent и middleware (152-ФЗ-safe)",
+  "goal": "Добавить таблицу error_events и middleware, который для необработанных 500 сохраняет только тип исключения, путь без query, метод, user_id и file:line-фреймы (без текста ошибки, тела, query и PII). Это внутренний error tracking без внешних сервисов.",
+  "why": "Sentry SaaS отправляет данные за границу и конфликтует с 152-ФЗ. Нужен минимальный российский/локальный контур: события в своей БД + админка (R040), без чувствительных данных.",
+  "files": [
+    "migrations/163_error_events.sql",
+    "djadmin/core/models.py",
+    "djadmin/core/middleware.py",
+    "djadmin/config/settings.py"
+  ],
+  "context_files": [],
+  "interfaces": "SQL 163: error_events(id uuid PK default gen_random_uuid(), created_at timestamptz NOT NULL default now(), exception_type varchar(200) NOT NULL, path varchar(500) NOT NULL, method varchar(10) NOT NULL, status_code int NOT NULL default 500, user_id uuid REFERENCES profiles(id) ON DELETE SET NULL, frames jsonb NOT NULL DEFAULT '[]'::jsonb); индекс created_at DESC; GRANT SELECT,INSERT,DELETE TO trudnik_dj. Model ErrorEvent unmanaged db_table='error_events', ordering('-created_at'). middleware.ErrorEventMiddleware: process_exception(request, exception) — если Http404/PermissionDenied/ValidationError вернуть None (не 500); frames = последние 20 из traceback.extract_tb: {file: basename[:120], line, func: name[:100]}; ErrorEvent.objects.create(exception_type=type(exception).__name__[:200], path=request.path[:500], method=request.method[:10], status_code=500, user_id=request.user.pk if authenticated else None, frames=frames); все ошибки записи ловятся/логируются, return None. settings MIDDLEWARE: 'core.middleware.ErrorEventMiddleware' после AuthenticationMiddleware. Никаких message/body/query/headers/email в БД.",
+  "acceptance": [
+    "migrations/163 создаёт error_events, индекс, grant trudnik_dj.",
+    "ErrorEvent доступен в ORM, managed=False.",
+    "Middleware сохраняет событие для обычного исключения: exception_type/path/method/status_code/user_id/frames.",
+    "Http404 и PermissionDenied не создают ErrorEvent.",
+    "В events нет текста исключения, query string, тела запроса, заголовков и email.",
+    "Сбой записи ErrorEvent не ломает обработку 500 (исключение ловится).",
+    "MIDDLEWARE содержит ErrorEventMiddleware после AuthenticationMiddleware.",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_flows, core.tests.test_admin, core.tests.test_public_views проходят."
+  ],
+  "out_of_scope": [
+    "Не добавлять внешний Sentry/APM и зависимости.",
+    "Не делать email-алерты (R040 — админка).",
+    "Не менять обработчики 404/403."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/models.py djadmin/core/middleware.py djadmin/config/settings.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows core.tests.test_admin core.tests.test_public_views --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

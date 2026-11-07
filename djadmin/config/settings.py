@@ -130,6 +130,7 @@ MIDDLEWARE = [
     "core.middleware.CsrfHeaderAliasMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "core.middleware.ErrorEventMiddleware",
     "core.admin_2fa.Admin2FAMiddleware",
     "core.middleware.ActivityMiddleware",
     "core.middleware.SessionMetaMiddleware",

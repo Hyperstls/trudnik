@@ -1,6 +1,8 @@
 """Мидлвари Django-компаньона."""
 import logging
+import os
 import secrets
+import traceback
 
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseForbidden
@@ -257,3 +259,53 @@ class SessionMetaMiddleware:
         except Exception:
             logger.exception("Не удалось обновить метаданные сессии")
         return response
+
+
+class ErrorEventMiddleware:
+    """Внутренний error tracking необработанных 500 (R039, 152-ФЗ-safe).
+
+    Сохраняет только тип исключения, путь без query string, метод, user_id и
+    file:line-фреймы. Текст ошибки, тело запроса, заголовки, query string и
+    email в БД не попадают. Штатные Http404/PermissionDenied/ValidationError
+    не являются 500 и не пишутся. Сбой записи только логируется: обработка
+    ошибки запроса не ломается.
+
+    Ставится после AuthenticationMiddleware, чтобы request.user был доступен.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        return self.get_response(request)
+
+    def process_exception(self, request, exception):
+        from django.core.exceptions import PermissionDenied, ValidationError
+        from django.http import Http404
+
+        if isinstance(exception, (Http404, PermissionDenied, ValidationError)):
+            return None
+        try:
+            from core.models import ErrorEvent
+
+            frames = [
+                {
+                    "file": os.path.basename(frame.filename)[:120],
+                    "line": frame.lineno,
+                    "func": (frame.name or "")[:100],
+                }
+                for frame in traceback.extract_tb(exception.__traceback__)[-20:]
+            ]
+            user = getattr(request, "user", None)
+            user_id = user.pk if user is not None and user.is_authenticated else None
+            ErrorEvent.objects.create(
+                exception_type=type(exception).__name__[:200],
+                path=request.path[:500],
+                method=request.method[:10],
+                status_code=500,
+                user_id=user_id,
+                frames=frames,
+            )
+        except Exception:
+            logger.exception("Не удалось сохранить ErrorEvent")
+        return None

@@ -951,3 +951,33 @@ class TariffSetting(models.Model):
 
     def __str__(self):
         return self.tariff_key
+
+
+class ErrorEvent(models.Model):
+    """Внутреннее событие необработанной ошибки (R039, 152-ФЗ-safe).
+
+    Хранит только тип исключения, путь без query, метод, статус, user_id и
+    file:line-фреймы. Текст ошибки, тело запроса, заголовки и query не пишутся.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    created_at = models.DateTimeField(_("создано"), auto_now_add=True, editable=False)
+    exception_type = models.CharField(_("тип исключения"), max_length=200)
+    path = models.CharField(_("путь"), max_length=500)
+    method = models.CharField(_("метод"), max_length=10)
+    status_code = models.IntegerField(_("статус"), default=500)
+    user = models.ForeignKey(
+        Profile, verbose_name=_("пользователь"), on_delete=models.SET_NULL,
+        null=True, blank=True, db_column="user_id", related_name="+",
+    )
+    frames = models.JSONField(_("фреймы"), default=list, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = "error_events"
+        verbose_name = _("событие ошибки")
+        verbose_name_plural = _("События ошибок")
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return "%s %s — %s" % (self.method, self.path, self.exception_type)

@@ -2088,6 +2088,22 @@ CREATE TABLE public.employer_subscriptions (
 
 
 --
+-- Name: error_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.error_events (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    exception_type character varying(200) NOT NULL,
+    path character varying(500) NOT NULL,
+    method character varying(10) NOT NULL,
+    status_code integer DEFAULT 500 NOT NULL,
+    user_id uuid,
+    frames jsonb DEFAULT '[]'::jsonb NOT NULL
+);
+
+
+--
 -- Name: favorites; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2831,6 +2847,14 @@ ALTER TABLE ONLY public.employer_subscriptions
 
 
 --
+-- Name: error_events error_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.error_events
+    ADD CONSTRAINT error_events_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: favorites favorites_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3187,6 +3211,13 @@ CREATE INDEX django_session_expire_date_a5c62663 ON public.django_session USING 
 --
 
 CREATE INDEX django_session_session_key_c0390e0f_like ON public.django_session USING btree (session_key varchar_pattern_ops);
+
+
+--
+-- Name: error_events_created_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX error_events_created_at_idx ON public.error_events USING btree (created_at DESC);
 
 
 --
@@ -3732,6 +3763,14 @@ ALTER TABLE ONLY public.django_admin_log
 
 ALTER TABLE ONLY public.employer_subscriptions
     ADD CONSTRAINT employer_subscriptions_employer_id_fkey FOREIGN KEY (employer_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+
+--
+-- Name: error_events error_events_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.error_events
+    ADD CONSTRAINT error_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
 
 
 --
