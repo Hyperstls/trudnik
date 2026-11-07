@@ -3309,3 +3309,19 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** Hyperstls
 
 **Пакет:** context/agent-pipeline/packs/R045.review.prompt.md
+
+## 2026-11-07 14:32:09 — R047: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Сгенерированный артефакт: static/css/tailwind.min.css пересобран после правок (npm run build:css); в контракте R047 его нет
+
+**Дрейф, который обойдён:** ['static/css/tailwind.min.css']
+
+## 2026-11-07 14:36:45 — R047: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R047.review.prompt.md
