@@ -106,7 +106,8 @@
         <h2 class="text-base font-bold text-neutral-800 mb-3">{% translate "Фото профиля" %}</h2>
         <form method="post" action="{% url 'core:upload_avatar' %}" enctype="multipart/form-data" class="flex flex-wrap gap-2 items-center">
             {% csrf_token %}
-            <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" required class="text-sm w-full min-w-0 sm:w-auto">
+            <label for="id_avatar" class="sr-only">{% translate "Фото профиля" %}</label>
+            <input id="id_avatar" type="file" name="avatar" accept="image/jpeg,image/png,image/webp" required class="text-sm w-full min-w-0 sm:w-auto">
             <button type="submit" class="px-4 h-9 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium transition-colors">{% translate "Загрузить" %}</button>
         </form>
         {% if user.avatar_url or user.photo_url %}

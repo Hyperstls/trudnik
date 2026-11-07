@@ -1,0 +1,43 @@
+{
+  "id": "R044",
+  "title": "A11y: контраст переключателя языка, подпись аватара, имя ссылки «Избр.»",
+  "goal": "Исправить три находки axe на авторизованных страницах: контраст неактивной кнопки RU/EN (4.34 < 4.5), отсутствие label у input[type=file] аватара (critical), несовпадение aria-label «Избранное» с видимым текстом «Избр.» в мобильной навигации.",
+  "why": "P2-пункт кодревью №14: axe проверял только публичные страницы. Локальный прогон на seeded E2E-пользователе нашёл critical label на /profile и serious-нарушения на всех страницах кабинета; это дешёвые правки без изменения вёрстки.",
+  "files": [
+    "djadmin/core/templates/core/base.html",
+    "djadmin/core/templates/core/profile.html",
+    "djadmin/core/tests/test_ui_polish.py",
+    "context/agent-pipeline/tasks/R044.json"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/chat.html",
+    "djadmin/core/templates/core/search.html"
+  ],
+  "interfaces": "base.html: у неактивных кнопок языка (value=ru и value=en) заменить text-neutral-500 на text-neutral-600 (контраст на bg-neutral-100 ≥ 4.5). В мобильной нижней навигации у ссылки core:favorites_page удалить aria-label (доступное имя = видимый текст «Избр.», svg уже aria-hidden), aria-current оставить. profile.html: у input[name=avatar] добавить id=\"id_avatar\"; перед ним <label for=\"id_avatar\" class=\"sr-only\">{% translate \"Фото профиля\" %}</label> (строка уже переведена, новых msgid не добавлять). test_ui_polish.py: новый тест-класс с авторизованным пользователем (make_profile + client.force_login): GET /profile 200, содержит for=\"id_avatar\" и id=\"id_avatar\"; GET /jobs 200 (или любая страница с base.html): нет class-фрагмента 'text-neutral-500 hover:text-neutral-700' у кнопок name=\"language\", html содержит 'text-neutral-600 hover:text-neutral-700'; в мобильной навигации ссылка /favorites не содержит aria-label=\"Избранное\". Существующие тесты не менять.",
+  "acceptance": [
+    "Неактивные кнопки RU/EN имеют text-neutral-600 (контраст ≥ 4.5 на neutral-100).",
+    "input аватара имеет связанный label for=id_avatar; axe-правило label не срабатывает.",
+    "Ссылка «Избр.» в мобильной навигации не имеет aria-label, доступное имя совпадает с видимым текстом; label-content-name-mismatch не срабатывает.",
+    "Новых msgid в .po не добавлено.",
+    "py_compile test_ui_polish.py проходит.",
+    "core.tests.test_ui_polish, core.tests.test_i18n, core.tests.test_public_views проходят.",
+    "pre_deploy_check 7/7 после npm run build:css."
+  ],
+  "out_of_scope": [
+    "Не менять другие aria-label и навигацию.",
+    "Не менять цветовые токены/тему целиком.",
+    "Не добавлять axe в CI (отдельная задача)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_ui_polish.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_ui_polish core.tests.test_i18n core.tests.test_public_views --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

@@ -145,3 +145,41 @@ class ProfileMenuInfoTests(TestCase):
         self.assertEqual(len(links), 1, "expected exactly one /info item in profile menu")
         self.assertIn('role="menuitem"', links[0])
         self.assertIn("Информация", menu)
+
+
+class A11yFixesTests(TestCase):
+    """R044: контраст языка, подпись аватара, имя мобильной ссылки «Избр.»."""
+
+    def test_language_buttons_use_accessible_contrast(self):
+        user = make_profile("ui-a11y-lang@example.com")
+        self.client.force_login(user)
+        response = self.client.get(reverse("core:jobs"))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode("utf-8")
+        form = re.search(r'<form action="[^"]*setlang.*?</form>', html, re.DOTALL)
+        self.assertIsNotNone(form, "language form not found")
+        form_html = form.group(0)
+        self.assertNotIn("text-neutral-500", form_html)
+        self.assertEqual(form_html.count("text-neutral-600"), 1)  # неактивный язык
+        self.assertEqual(form_html.count("text-neutral-800"), 1)  # активный язык
+
+    def test_avatar_input_has_label(self):
+        user = make_profile("ui-a11y-avatar@example.com")
+        self.client.force_login(user)
+        response = self.client.get(reverse("core:profile"))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode("utf-8")
+        self.assertIn('for="id_avatar"', html)
+        self.assertIn('id="id_avatar"', html)
+        self.assertIn('name="avatar"', html)
+
+    def test_favorites_nav_link_name_matches_visible_text(self):
+        user = make_profile("ui-a11y-fav@example.com")
+        self.client.force_login(user)
+        response = self.client.get(reverse("core:jobs"))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode("utf-8")
+        tags = _anchors_with_href(html, "/favorites")
+        self.assertTrue(tags, "favorites links not found")
+        for tag in tags:
+            self.assertNotIn('aria-label="Избранное"', tag)

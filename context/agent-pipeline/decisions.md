@@ -3221,3 +3221,91 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** Hyperstls
 
 **Пакет:** context/agent-pipeline/packs/R043.review.prompt.md
+
+## 2026-11-07 13:53:11 — R045: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** Сужен scope: только фиксы контраста + регрессионный тест; axe-гейт авторизованных страниц вынесен в R046
+
+**Переход:** implementing → planned
+
+## 2026-11-07 13:55:58 — R045: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Не в scope R045: изменения scripts/axe_audit.mjs, scripts/e2e/run_critical_flows.sh, .github/workflows/e2e.yml и шаблоны R044 — отдельные задачи; R045-код (job-step/app.css/tests_js/package.json) в контракте
+
+**Дрейф, который обойдён:** ['package.json', 'static/css/app.css', 'static/css/tailwind.min.css', 'tests_js/a11y-contrast.test.mjs']
+
+## 2026-11-07 13:56:11 — R045: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** Синхронизировать контракт с новым scope (app.css/tests_js/package.json) после сужения задачи
+
+**Переход:** reviewing → planned
+
+## 2026-11-07 13:56:11 — R045: контракт обновлён
+
+**Причина:** Новый scope: job-step.js, app.css, tests_js/a11y-contrast.test.mjs, package.json; axe-гейт вынесен в R046
+
+**Проверки до:** ['js-tests', 'syntax']
+
+**Проверки после:** ['js-tests', 'syntax']
+
+## 2026-11-07 13:56:43 — R044: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Drift: файлы R045 (job-step/app.css/tests_js/package.json) и R046 (axe/e2e) в том же дереве; R044-файлы base.html/profile.html/test_ui_polish.py в контракте
+
+**Дрейф, который обойдён:** ['.github/workflows/e2e.yml', 'package.json', 'scripts/axe_audit.mjs', 'scripts/e2e/run_critical_flows.sh', 'static/css/app.css', 'static/css/tailwind.min.css', 'static/js/job-step.js', 'tests_js/a11y-contrast.test.mjs', 'tmp_axe_auth.mjs', 'tmp_axe_detail.mjs']
+
+## 2026-11-07 14:12:32 — R046: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Drift: файлы R044 (шаблоны/тесты) и R045 (job-step/app.css/tests_js) — отдельные задачи в том же дереве; R046-файлы axe/e2e/docs в контракте
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-07 14:14:55 — R045: ревью: FAIL
+
+**Раунд:** 1/2
+
+**Вердикт ревьюера:** FAIL: tailwind.min.css старше job-step.js после восстановления файла (mtime). Fiction-блокер среды; NON-BLOCKER: dark hover:bg-primary-700 = #fcd34d с белым текстом 1.44:1 — вынести в R047 (системно, 49 мест).
+
+**Действие:** fixing — раунд исправлений
+
+## 2026-11-07 14:15:03 — R045: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Повторная проверка после npm run build:css; scope без изменений, drift — файлы R044/R046 в дереве
+
+**Дрейф, который обойдён:** ['docs/E2E_TESTING.md', 'tmp_axe_auth.mjs', 'tmp_axe_detail.mjs']
+
+## 2026-11-07 14:30:14 — R044: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R044.review.prompt.md
+
+## 2026-11-07 14:30:14 — R046: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R046.review.prompt.md
+
+## 2026-11-07 14:30:15 — R045: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R045.review.prompt.md
