@@ -1403,7 +1403,7 @@ progress::-moz-progress-bar {
         position: sticky;
         top: 3.5rem;
         z-index: 20;
-        background: #fafafa;
+        background: var(--ui-neutral-50);
         box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
     }
 }

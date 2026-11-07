@@ -1,0 +1,43 @@
+{
+  "id": "R045",
+  "title": "A11y: контраст шагов задания и bulk-toolbar в тёмной теме",
+  "goal": "Исправить два контрастных дефекта: белый текст на bg-primary-500 (#d97706, 3.18:1) в шагах формы задания и жёстко светлый фон .bulk-toolbar на mobile, из-за которого в тёмной теме текст neutral-600 нечитаем (1.67:1). Закрепить регрессионным node:test.",
+  "why": "P2-пункт кодревью №14 и находки axe на /jobs/new и /my-jobs (dark mobile). Публичный axe их не видел: шаги и bulk-toolbar есть только в авторизованном кабинете.",
+  "files": [
+    "static/js/job-step.js",
+    "static/css/app.css",
+    "tests_js/a11y-contrast.test.mjs",
+    "package.json"
+  ],
+  "context_files": [
+    "static/css/tailwind.src.css",
+    "djadmin/core/templates/core/my_jobs.html",
+    "djadmin/core/templates/core/job_form.html"
+  ],
+  "interfaces": "job-step.js: активный шаг — 'border-primary-600 bg-primary-600 text-white' (было primary-500), кнопка «Далее» — 'bg-primary-600 hover:bg-primary-700 text-white' (было bg-primary-500/600). app.css: в @media (max-width:639px) у .bulk-toolbar заменить background:#fafafa на background:var(--ui-neutral-50) (в light даёт тот же #fafafa, в dark — #0b0b0b). tests_js/a11y-contrast.test.mjs: node:test + assert/strict, читает файлы через readFileSync; проверяет, что в job-step.js нет bg-primary-500 и есть обе новые комбинации классов; в app.css .bulk-toolbar использует var(--ui-neutral-50) и не содержит background:#fafafa. package.json: \"test\" перечисляет явно tests_js/job-draft.test.mjs tests_js/a11y-contrast.test.mjs (Node 20 без glob).",
+  "acceptance": [
+    "Шаги формы задания и «Далее» используют bg-primary-600; белый текст ≥ 4.5:1.",
+    ".bulk-toolbar в тёмной теме использует тёмный фон через var(--ui-neutral-50); текст читаем.",
+    "npm test проходит и включает новый тест (9+ кейсов суммарно).",
+    "Новых зависимостей нет; тест не требует DOM.",
+    "pre_deploy_check 7/7 после npm run build:css.",
+    "Локальный axe auth на /jobs/new и /my-jobs (dark mobile) не находит serious/critical (проверяется в R046)."
+  ],
+  "out_of_scope": [
+    "Не менять токены темы и другие компоненты.",
+    "Не добавлять axe в CI (R046).",
+    "Не менять серверный код."
+  ],
+  "checks": [
+    {
+      "name": "js-tests",
+      "cmd": "npm test",
+      "cwd": "."
+    },
+    {
+      "name": "syntax",
+      "cmd": "node --check static/js/job-step.js",
+      "cwd": "."
+    }
+  ]
+}

@@ -105,7 +105,7 @@
             if (navButtons[n]) {
                 navButtons[n].className = 'px-3 h-9 rounded-xl border text-sm font-medium ' +
                     (n === step
-                        ? 'border-primary-500 bg-primary-500 text-white'
+                        ? 'border-primary-600 bg-primary-600 text-white'
                         : 'border-neutral-200 bg-white text-neutral-600');
                 if (n === step) navButtons[n].setAttribute('aria-current', 'step');
                 else navButtons[n].removeAttribute('aria-current');
@@ -131,7 +131,7 @@
     next = document.createElement('button');
     next.type = 'button';
     next.textContent = T.next || 'Далее →';
-    next.className = 'px-4 h-10 rounded-xl bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold';
+    next.className = 'px-4 h-10 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold';
     next.addEventListener('click', function () {
         var invalid = null;
         panels[step].querySelectorAll('input, select, textarea').forEach(function (el) {
