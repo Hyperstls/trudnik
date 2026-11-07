@@ -3333,3 +3333,27 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** Hyperstls
 
 **Пакет:** context/agent-pipeline/packs/R048.review.prompt.md
+
+## 2026-11-07 15:50:04 — R049: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Удалён временный tmp_axe_detail_pages.mjs (не коммитился, вне контракта); остальные изменения — 3 файла контракта
+
+**Дрейф, который обойдён:** ['tmp_axe_detail_pages.mjs']
+
+## 2026-11-07 15:56:57 — R049: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R049.review.prompt.md
+
+## 2026-11-07 16:03:51 — R050: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R050.review.prompt.md

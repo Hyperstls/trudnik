@@ -90,8 +90,10 @@ E2E теперь проверяет отсутствие горизонталь�
 ### P2 — архитектура и качество кода
 
 10. **Разделить крупные модули.** `views.py` (≈750 строк) и `views_flow.py`
-    смешивают jobs, профиль, редиректы и утилиты. Вынести:
-    `core/http.py` (redirects), `core/jobs_views.py`, `core/ratings_views.py`.
+    смешивают jobs, профиль, редиректы и утилиты. Сделано в R050: сохранённые
+    поиски вынесены в `core/views_searches.py` (views.py 883 → 719 строк).
+    Осталось: `core/http.py` уже есть; кандидаты — workers/employers-блоки
+    `views.py` и `views_flow.py`.
 11. **Тесты JS.** Сделано в R043: чистые функции `job-draft.js`
     (`isExcluded`, `collectElements`, `parseDraft`) экспортируются для Node;
     `npm test` (`node:test`) проверяет, что CSRF/координаты/файлы/пароли не
