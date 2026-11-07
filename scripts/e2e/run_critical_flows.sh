@@ -49,3 +49,6 @@ if ! curl -fsS http://127.0.0.1:8801/health >/dev/null 2>&1; then
 fi
 
 E2E_BASE_URL="http://127.0.0.1:8801" node scripts/e2e/critical_flows.mjs
+
+# R045: a11y-гейт авторизованных страниц (critical+serious) на том же сервере.
+AXE_AUTH=1 E2E_BASE_URL="http://127.0.0.1:8801" node scripts/axe_audit.mjs

@@ -57,7 +57,7 @@ jobs:
         with:
           node-version: "20"
       - run: npm ci
-      - run: npm install --no-save playwright
+      - run: npm install --no-save playwright @axe-core/playwright
       - run: npx playwright install --with-deps chromium
       - name: Install psql
         run: sudo apt-get update && sudo apt-get install -y postgresql-client

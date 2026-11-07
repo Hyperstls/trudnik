@@ -1,0 +1,43 @@
+{
+  "id": "R046",
+  "title": "A11y-гейт авторизованных страниц в E2E (axe, critical+serious)",
+  "goal": "Запускать axe по авторизованным страницам в том же E2E-прогоне: логин E2E-пользователем, 8 страниц, light/dark, desktop/mobile; critical и serious валят прогон. Публичный режим UX quality не меняется.",
+  "why": "P2-пункт кодревью №14: axe проверял только публичные страницы, из-за чего critical label на /profile и контраст шагов /jobs/new жили в проде. CI-гейт закрепит R044/R045 и не даст регрессиям вернуться.",
+  "files": [
+    "scripts/axe_audit.mjs",
+    "scripts/e2e/run_critical_flows.sh",
+    ".github/workflows/e2e.yml",
+    "docs/E2E_TESTING.md"
+  ],
+  "context_files": [
+    "scripts/e2e/critical_flows.mjs",
+    ".github/workflows/ux-quality.yml"
+  ],
+  "interfaces": "axe_audit.mjs: при AXE_AUTH=1 base = E2E_BASE_URL||BASE_URL, страницы = ['/profile','/my-applications','/my-jobs','/chats','/notifications','/searches','/favorites','/jobs/new']; логин по #email/#password (E2E_EMAIL||e2e-employer@example.com, E2E_PASSWORD||Aa1!aaaa) внутри каждого context до аудита; в auth-режиме critical и serious попадают в failures (exit 1), в публичном — serious только в warnings (как сейчас). В axe-report.json добавить mode. Публичные пути и BASE_URL по умолчанию не менять. run_critical_flows.sh: после critical_flows.mjs — AXE_AUTH=1 E2E_BASE_URL=http://127.0.0.1:8801 node scripts/axe_audit.mjs (сервер ещё жив, cleanup в trap). e2e.yml: npm install --no-save playwright @axe-core/playwright. docs/E2E_TESTING.md: раздел про auth-axe, переменные AXE_AUTH/E2E_EMAIL/E2E_PASSWORD, что валит прогон, где отчёт.",
+  "acceptance": [
+    "AXE_AUTH=1 логинится E2E-пользователем и аудитит 8 авторизованных страниц в light/dark и desktop/mobile.",
+    "В auth-режиме critical и serious валят прогон (exit 1); отчёт axe-report.json содержит mode=auth.",
+    "Публичный режим (UX quality, BASE_URL) сохраняет прежнее поведение: serious — warnings, critical — exit 1.",
+    "E2E workflow устанавливает @axe-core/playwright и запускает axe после critical flows на живом сервере.",
+    "Локальный bash scripts/e2e/run_critical_flows.sh проходит без нарушений.",
+    "bash -n run_critical_flows.sh и node --check axe_audit.mjs проходят.",
+    "Документация E2E_TESTING.md описывает гейт и переменные."
+  ],
+  "out_of_scope": [
+    "Не менять шаблоны/стили (фиксы — R044/R045).",
+    "Не добавлять axe для админки.",
+    "Не менять публичный список страниц."
+  ],
+  "checks": [
+    {
+      "name": "syntax",
+      "cmd": "node --check scripts/axe_audit.mjs && bash -n scripts/e2e/run_critical_flows.sh",
+      "cwd": "."
+    },
+    {
+      "name": "e2e-axe",
+      "cmd": "bash scripts/e2e/run_critical_flows.sh",
+      "cwd": "."
+    }
+  ]
+}

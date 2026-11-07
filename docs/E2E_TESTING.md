@@ -28,6 +28,8 @@ bash scripts/e2e/run_critical_flows.sh
 - создаёт одноразовых пользователей `e2e-*` и задание `E2E Уборка`
   (`manage.py e2e_seed`);
 - гоняет `scripts/e2e/critical_flows.mjs`;
+- прогоняет a11y-гейт авторизованных страниц (R046):
+  `AXE_AUTH=1 E2E_BASE_URL=http://127.0.0.1:8801 node scripts/axe_audit.mjs`;
 - в любом исходе останавливает сервер и удаляет `e2e-*` (`e2e_seed --cleanup`).
 
 Требования: локальная БД из `.env` (`DATABASE_URL`) с применённой схемой,
@@ -37,6 +39,18 @@ Python 3.12 venv, Node 20+, Chromium Playwright.
 
 Все 8 шагов печатают `✓`, итог — `8 passed, 0 failed`. При падении Playwright
 печатает шаг и ошибку; лог Django лежит в `$TMPDIR/trudnik-e2e-server.log`.
+
+## A11y-гейт авторизованных страниц (R046)
+
+После critical flows тот же сервер проверяется axe-core (WCAG 2.0/2.1 A+AA) на
+страницах `/profile`, `/my-applications`, `/my-jobs`, `/chats`, `/notifications`,
+`/searches`, `/favorites`, `/jobs/new` — в light/dark и desktop/mobile.
+
+- Логин: `E2E_EMAIL` (по умолчанию `e2e-employer@example.com`) и `E2E_PASSWORD`.
+- В режиме `AXE_AUTH=1` **critical и serious** нарушения валят прогон (exit 1);
+  отчёт — `axe-report.json`, `mode: "auth"`.
+- Публичный режим (`node scripts/axe_audit.mjs` без `AXE_AUTH`) не изменился:
+  serious — предупреждения, critical — exit 1; используется в UX quality.
 
 ## CI
 
