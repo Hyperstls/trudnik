@@ -1,0 +1,41 @@
+{
+  "id": "R041",
+  "title": "Админ-дашборд: метрики модерации отзывов и ошибок",
+  "goal": "Добавить на /admin/dashboard/ счётчики: отзывы, скрытые модерацией; отзывы, ожидающие публикации; средняя задержка публикации отзыва за 30 дней (часы); события ошибок за 24 часа. Без ПДн и без тяжёлых запросов.",
+  "why": "P2-пункт кодревью №13: модерации нужен обзор очереди и задержки публикации, а после R039/R040 — видимость свежих 500 на дашборде.",
+  "files": [
+    "djadmin/core/admin/__init__.py",
+    "djadmin/core/tests/test_admin.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/templates/admin/dashboard.html"
+  ],
+  "interfaces": "В dashboard_view (core/admin/__init__.py) в quick добавить 4 пункта: 'Отзывы скрыты модерацией' = Rating.objects.filter(moderation_status=Rating.ModerationStatus.HIDDEN).count(); 'Отзывы ждут публикации' = Rating.objects.filter(moderation_status=Rating.ModerationStatus.REVIEW, published_at__isnull=True).count(); 'Средняя задержка публикации (ч)' = по Rating.objects.filter(published_at__gte=now-30d).aggregate(Avg(F('published_at')-F('created_at')))['...'], округлить до 1 знака, при None — '—' (строка); 'События ошибок (24 ч)' = ErrorEvent.objects.filter(created_at__gte=now-24h).count(). Импорты F/Avg/ErrorEvent — локально в dashboard_view, как остальные. Никаких N+1: только count/aggregate. В test_admin.py добавить тест: создать Rating с moderation_status=hidden, Rating с review, Rating опубликованный (published_at=now-2h, created_at=now-4h через queryset update), ErrorEvent свежий; GET /admin/dashboard/ 200 и содержит все 4 подписи и ожидаемые числа (скрытых '1', ждут '1', ошибок '1', задержка '2'); старый ErrorEvent (25 ч) не считается.",
+  "acceptance": [
+    "На /admin/dashboard/ отображаются: «Отзывы скрыты модерацией», «Отзывы ждут публикации», «Средняя задержка публикации (ч)», «События ошибок (24 ч)».",
+    "Счётчики считают только соответствующие статусы; старые ErrorEvent (>24 ч) не входят.",
+    "Средняя задержка — число с одним знаком после запятой или «—» при отсутствии данных.",
+    "Нет новых запросов в цикле (N+1); только count/aggregate.",
+    "В метриках нет email/имён/текстов отзывов.",
+    "py_compile изменённых .py проходит.",
+    "core.tests.test_admin проходит."
+  ],
+  "out_of_scope": [
+    "Не менять шаблон dashboard.html (quick рендерится существующим циклом).",
+    "Не менять модели/миграции.",
+    "Не добавлять графики и экспорт."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/admin/__init__.py djadmin/core/tests/test_admin.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_admin --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

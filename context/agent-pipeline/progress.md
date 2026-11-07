@@ -1226,3 +1226,34 @@
 - **2026-11-06 23:19:56** | **R038** | `verify` | **PASS** | scope=ok checks=compile=0, tests=0 attempts=1/3
 - **2026-11-06 23:20:03** | **R038** | `review-packet` | **READY** | bytes=6168 new_files=[]
 - **2026-11-06 23:20:55** | **R038** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-07 06:41:57** | **R039** | `add` | **OK** | contract=context/agent-pipeline/tasks/R039.json
+- **2026-11-07 06:41:57** | **R039** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/R039.impl.prompt.md
+- **2026-11-07 06:52:07** | **R039** | `verify` | **SKIP-SCOPE** | by=orchestrator reason=schema fixture и Django state migration 0005 сгенерированы из миграции 163 drift=['djadmin/core/migrations/0005_errorevent.py', 'tests/fixtures/schema.sql']
+- **2026-11-07 06:57:38** | **R039** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=0/3
+- **2026-11-07 06:57:47** | **R039** | `review-packet` | **READY** | bytes=10056 new_files=['migrations/163_error_events.sql']
+- **2026-11-07 07:03:49** | **R039** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Сгенерированные артефакты вне scope: tests/fixtures/schema.sql и djadmin/core/migrations/0005_errorevent.py (состояние Django), плюс обновление context/agent-pipeline/*.md drift=['djadmin/core/migrations/0005_errorevent.py', 'tests/fixtures/schema.sql']
+- **2026-11-07 07:09:37** | **R039** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=0/3
+- **2026-11-07 07:11:06** | **R040** | `add` | **OK** | contract=context/agent-pipeline/tasks/R040.json
+- **2026-11-07 07:11:45** | **R039** | `review-packet` | **READY** | bytes=9465 new_files=['migrations/163_error_events.sql']
+- **2026-11-07 07:11:58** | **R040** | `dispatch` | **OK** | status=implementing baseline=13 pack=context/agent-pipeline/packs/R040.impl.prompt.md
+- **2026-11-07 07:18:50** | **R039** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-07 07:36:38** | **R040** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Вне scope R040: документация ERROR_TRACKING/MONITORING/DOCS_INDEX и записи pipeline (progress/decisions); сам R040.json — контракт drift=['djadmin/core/templates/admin/trudnik_index.html', 'djadmin/core/tests/test_error_events.py', 'docs/ERROR_TRACKING.md']
+- **2026-11-07 07:37:01** | **R040** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=0/3
+- **2026-11-07 07:37:21** | **R040** | `set` | **reviewing→implementing** | by=Hyperstls reason=Контракт расширен после dispatch: добавлены шаблон admin index и тестовый файл; нужен пересбор пакета
+- **2026-11-07 07:37:28** | **R040** | `set` | **implementing→planned** | by=Hyperstls reason=Пересбор контракта: расширен scope (шаблон index + тесты)
+- **2026-11-07 07:37:29** | **R040** | `update` | **OK** | revision=1 reason=В scope добавлены admin/trudnik_index.html и tests/test_error_events.py
+- **2026-11-07 07:37:32** | **R040** | `dispatch` | **OK** | status=implementing baseline=10 pack=context/agent-pipeline/packs/R040.impl.prompt.md
+- **2026-11-07 07:37:33** | **R040** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Вне scope R040 только документация (ERROR_TRACKING/MONITORING/DOCS_INDEX) и записи pipeline; код и тесты входят в контракт drift=[]
+- **2026-11-07 07:37:56** | **R040** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=0/3
+- **2026-11-07 07:38:00** | **R040** | `review-packet` | **READY** | bytes=4070 new_files=[]
+- **2026-11-07 07:58:39** | **R041** | `add` | **OK** | contract=context/agent-pipeline/tasks/R041.json
+- **2026-11-07 08:05:48** | **R041** | `dispatch` | **OK** | status=implementing baseline=11 pack=context/agent-pipeline/packs/R041.impl.prompt.md
+- **2026-11-07 08:26:53** | **R040** | `review` | **FAIL** | by=Hyperstls round=1/2 verdict=FAIL: change-view рендерил FK user через Profile.__str__ (full_name+email) и сырой frames. Блокер исправлен: exclude=('user','frames'), тесты проверяют отсутствие email/full_name на change-странице. → fixing
+- **2026-11-07 08:26:57** | **R040** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Вне scope R040 только документация (ERROR_TRACKING/MONITORING/DOCS_INDEX) и записи pipeline; код и тесты входят в контракт drift=['djadmin/core/tests/test_admin.py', 'docs/ERROR_TRACKING.md']
+- **2026-11-07 08:27:15** | **R040** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=0/3
+- **2026-11-07 08:27:18** | **R040** | `review-packet` | **READY** | bytes=7944 new_files=[]
+- **2026-11-07 08:54:34** | **R040** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-07 08:54:38** | **R041** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Дрейф — файлы соседней задачи R040 (error_events admin, docs) в том же рабочем дереве; R041-файлы admin/__init__.py и test_admin.py входят в контракт drift=['djadmin/core/admin/error_events.py', 'djadmin/core/tests/test_error_events.py', 'docs/CODE_REVIEW_2026-11.md', 'docs/ERROR_TRACKING.md']
+- **2026-11-07 08:54:52** | **R041** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=0/3
+- **2026-11-07 08:54:55** | **R041** | `review-packet` | **READY** | bytes=8927 new_files=[]
+- **2026-11-07 09:18:30** | **R041** | `review` | **PASS** | by=Hyperstls → done

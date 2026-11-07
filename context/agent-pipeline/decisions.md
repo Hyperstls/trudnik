@@ -3085,3 +3085,107 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** Hyperstls
 
 **Пакет:** context/agent-pipeline/packs/R038.review.prompt.md
+
+## 2026-11-07 06:52:07 — R039: verify --skip-scope (обход scope)
+
+**Кто:** orchestrator
+
+**Почему:** schema fixture и Django state migration 0005 сгенерированы из миграции 163
+
+**Дрейф, который обойдён:** ['djadmin/core/migrations/0005_errorevent.py', 'tests/fixtures/schema.sql']
+
+## 2026-11-07 07:03:49 — R039: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Сгенерированные артефакты вне scope: tests/fixtures/schema.sql и djadmin/core/migrations/0005_errorevent.py (состояние Django), плюс обновление context/agent-pipeline/*.md
+
+**Дрейф, который обойдён:** ['djadmin/core/migrations/0005_errorevent.py', 'tests/fixtures/schema.sql']
+
+## 2026-11-07 07:18:50 — R039: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R039.review.prompt.md
+
+## 2026-11-07 07:36:38 — R040: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Вне scope R040: документация ERROR_TRACKING/MONITORING/DOCS_INDEX и записи pipeline (progress/decisions); сам R040.json — контракт
+
+**Дрейф, который обойдён:** ['djadmin/core/templates/admin/trudnik_index.html', 'djadmin/core/tests/test_error_events.py', 'docs/ERROR_TRACKING.md']
+
+## 2026-11-07 07:37:21 — R040: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** Контракт расширен после dispatch: добавлены шаблон admin index и тестовый файл; нужен пересбор пакета
+
+**Переход:** reviewing → implementing
+
+## 2026-11-07 07:37:28 — R040: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** Пересбор контракта: расширен scope (шаблон index + тесты)
+
+**Переход:** implementing → planned
+
+## 2026-11-07 07:37:29 — R040: контракт обновлён
+
+**Причина:** В scope добавлены admin/trudnik_index.html и tests/test_error_events.py
+
+**Проверки до:** ['compile', 'tests']
+
+**Проверки после:** ['compile', 'tests']
+
+## 2026-11-07 07:37:33 — R040: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Вне scope R040 только документация (ERROR_TRACKING/MONITORING/DOCS_INDEX) и записи pipeline; код и тесты входят в контракт
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-07 08:26:53 — R040: ревью: FAIL
+
+**Раунд:** 1/2
+
+**Вердикт ревьюера:** FAIL: change-view рендерил FK user через Profile.__str__ (full_name+email) и сырой frames. Блокер исправлен: exclude=('user','frames'), тесты проверяют отсутствие email/full_name на change-странице.
+
+**Действие:** fixing — раунд исправлений
+
+## 2026-11-07 08:26:57 — R040: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Вне scope R040 только документация (ERROR_TRACKING/MONITORING/DOCS_INDEX) и записи pipeline; код и тесты входят в контракт
+
+**Дрейф, который обойдён:** ['djadmin/core/tests/test_admin.py', 'docs/ERROR_TRACKING.md']
+
+## 2026-11-07 08:54:34 — R040: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R040.review.prompt.md
+
+## 2026-11-07 08:54:38 — R041: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Дрейф — файлы соседней задачи R040 (error_events admin, docs) в том же рабочем дереве; R041-файлы admin/__init__.py и test_admin.py входят в контракт
+
+**Дрейф, который обойдён:** ['djadmin/core/admin/error_events.py', 'djadmin/core/tests/test_error_events.py', 'docs/CODE_REVIEW_2026-11.md', 'docs/ERROR_TRACKING.md']
+
+## 2026-11-07 09:18:30 — R041: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R041.review.prompt.md

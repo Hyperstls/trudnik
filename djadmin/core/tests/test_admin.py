@@ -1,5 +1,6 @@
 """Доступ к админке и ключевым страницам: superuser да, остальные нет."""
 import os
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -8,7 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core.models import (
-    Announcement, AuditLog, NotificationOutbox, Rating, RatingAppeal, SitePage,
+    Announcement, AuditLog, ErrorEvent, NotificationOutbox, Rating, RatingAppeal, SitePage,
 )
 from core.tests.test_auth import make_profile
 
@@ -378,3 +379,46 @@ class RatingAppealAdminTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'href="/my-ratings"')
         self.assertContains(response, "Мои отзывы")
+
+
+class DashboardMetricsTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = User.objects.create_superuser("dash-admin@example.com", "Aa1!aaaa")  # pragma: allowlist secret
+        cls.worker = make_profile("dash-worker@example.com")
+        cls.employer = make_profile("dash-employer@example.com")
+
+    def _rating(self, moderation_status):
+        return Rating.objects.create(
+            rated_user=self.worker,
+            rater_user=self.employer,
+            rating_type="worker",
+            target_type="worker",
+            rating=5,
+            moderation_status=moderation_status,
+        )
+
+    def test_moderation_and_error_metrics(self):
+        self._rating(Rating.ModerationStatus.HIDDEN)
+        self._rating(Rating.ModerationStatus.REVIEW)
+        published = self._rating(Rating.ModerationStatus.OK)
+        now = timezone.now()
+        Rating.objects.filter(pk=published.pk).update(
+            created_at=now - timedelta(hours=4),
+            published_at=now - timedelta(hours=2),
+        )
+        ErrorEvent.objects.create(exception_type="ValueError", path="/x", method="GET")
+        stale = ErrorEvent.objects.create(exception_type="Old", path="/y", method="GET")
+        ErrorEvent.objects.filter(pk=stale.pk).update(
+            created_at=now - timedelta(hours=25),
+        )
+
+        self.client.force_login(self.admin)
+        response = self.client.get("/admin/dashboard/")
+
+        self.assertEqual(response.status_code, 200)
+        quick = response.context["quick"]
+        self.assertEqual(quick["Отзывы скрыты модерацией"], 1)
+        self.assertEqual(quick["Отзывы ждут публикации"], 1)
+        self.assertEqual(quick["Средняя задержка публикации (ч)"], "2.0")
+        self.assertEqual(quick["События ошибок (24 ч)"], 1)

@@ -1,0 +1,49 @@
+{
+  "id": "R040",
+  "title": "Ошибки: админка ErrorEvent (read-only, фильтры, retention) + тесты",
+  "goal": "Зарегистрировать ErrorEvent в админке: read-only список с фильтрами по типу исключения, методу и дате, поиск по path, просмотр frames, без добавления/редактирования и без ПДн. Добавить действие безопасной очистки событий старше 90 дней и покрыть R039/R040 тестами.",
+  "why": "R039 пишет события 500 в error_events, но разбирать инцидент нужно из UI. Таблица не должна расти бесконечно, а админка не должна показывать email/ПДн. У R039 не было отдельного тестового файла — закрываем контракт тестами.",
+  "files": [
+    "djadmin/core/admin/error_events.py",
+    "djadmin/core/admin/__init__.py",
+    "djadmin/core/templates/admin/trudnik_index.html",
+    "djadmin/core/tests/test_error_events.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/admin/dictionaries.py",
+    "djadmin/core/middleware.py",
+    "djadmin/core/tests/test_admin.py"
+  ],
+  "interfaces": "Новый ErrorEventAdmin(AuditAdminMixin, ModelAdmin): list_display=('created_at','exception_type','method','path','status_code','user_id'); list_filter=('exception_type','method','created_at'); search_fields=('path','exception_type'); date_hierarchy='created_at'; ordering=('-created_at',); list_per_page=50; readonly_fields=('id','created_at','exception_type','path','method','status_code','user_id','frames_pretty'); frames_pretty возвращает json.dumps(obj.frames, ensure_ascii=False, indent=2) в <pre>; has_add_permission=False; has_change_permission=False (только view); has_delete_permission=True; actions=('action_purge_old',) — delete().filter(created_at__lt=now-90d), messages.info с количеством; get_actions убирает delete_selected. Регистрация в admin/__init__.py: from core.admin import error_events; error_events.register(site). В admin/trudnik_index.html в группу «Платформа» добавить строку «События ошибок» → admin:core_errorevent_changelist с описанием «Необработанные 500: тип, путь, file:line (без ПДн)». test_error_events.py: (1) middleware пишет ErrorEvent для обычного исключения с path без query, method, status 500, user_id, frames file/line/func и без текста/email в полях; (2) Http404/PermissionDenied не пишут; (3) сбой записи не ломает ответ (patch ErrorEvent.save side_effect); (4) superuser GET changelist 200, фильтры/поиск 200; (5) в changelist нет email/full_name; (6) add/change запрещены; (7) purge_old удаляет старые и оставляет свежие; (8) на /admin/ есть ссылка на changelist. Для middleware-тестов использовать RequestFactory + прямой вызов process_exception с request.user.",
+  "acceptance": [
+    "ErrorEvent зарегистрирован в TrudnikAdminSite, changelist открывается superuser 200.",
+    "В списке видны created_at, exception_type, method, path, status_code, user_id.",
+    "Фильтры по exception_type, method и дате работают, поиск по path работает.",
+    "Добавление и редактирование события запрещены (read-only).",
+    "Страница события показывает frames без выполнения HTML (autoescape).",
+    "В админке не выводятся email/full_name пользователя.",
+    "Действие purge_old удаляет только события старше 90 дней.",
+    "На /admin/ в группе «Платформа» есть ссылка на changelist событий.",
+    "Тесты подтверждают: событие для 500 создаётся, Http404/PermissionDenied — нет, текст/query/email не сохраняются, сбой записи не ломает обработку.",
+    "py_compile новых/изменённых .py проходит.",
+    "core.tests.test_error_events проходит."
+  ],
+  "out_of_scope": [
+    "Не менять middleware/модель/миграцию R039.",
+    "Не добавлять внешние сервисы и email-алерты.",
+    "Не менять другие разделы админки."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/admin/error_events.py djadmin/core/admin/__init__.py djadmin/core/tests/test_error_events.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_error_events core.tests.test_admin --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

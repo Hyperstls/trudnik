@@ -5,7 +5,7 @@ support (жалобы/уведомления/логи/аудит), dictionaries 
 """
 from django.contrib.admin import AdminSite
 
-from . import dictionaries, jobs, support, users
+from . import dictionaries, error_events, jobs, support, users
 
 # Подстроки в имени переменной окружения, означающие секрет: значение такой
 # переменной на /admin/env/ НЕ выводится (только факт наличия).
@@ -152,11 +152,16 @@ class TrudnikAdminSite(AdminSite):
         })
 
     def dashboard_view(self, request):
+        from datetime import timedelta
+
+        from django.db.models import Avg, F
         from django.shortcuts import render
         from django.urls import reverse
         from django.utils import timezone
 
-        from core.models import Application, Job, Profile, Rating, RatingReport, UserReport
+        from core.models import (
+            Application, ErrorEvent, Job, Profile, Rating, RatingReport, UserReport,
+        )
         from core.rpc import call_rpc
 
         stats, job_stats = {}, {}
@@ -170,6 +175,11 @@ class TrudnikAdminSite(AdminSite):
         except Exception as exc:
             errors.append("get_job_stats: %s" % exc)
         today = timezone.localdate()
+        now = timezone.now()
+        publish_delay = Rating.objects.filter(
+            published_at__isnull=False,
+            published_at__gte=now - timedelta(days=30),
+        ).aggregate(delay=Avg(F("published_at") - F("created_at")))["delay"]
         quick = {
             "Новые пользователи (сегодня)": Profile.objects.filter(created_at__date=today).count(),
             "Новые задания (сегодня)": Job.objects.filter(created_at__date=today).count(),
@@ -177,8 +187,20 @@ class TrudnikAdminSite(AdminSite):
             "Жалобы в очереди": UserReport.objects.exclude(status="reviewed").count(),
             "Задания на модерации": Job.objects.filter(moderation_status="review").count(),
             "Отзывы на модерации": Rating.objects.filter(moderation_status="review").count(),
+            "Отзывы ждут публикации": Rating.objects.filter(
+                moderation_status=Rating.ModerationStatus.REVIEW, published_at__isnull=True,
+            ).count(),
+            "Отзывы скрыты модерацией": Rating.objects.filter(
+                moderation_status=Rating.ModerationStatus.HIDDEN,
+            ).count(),
+            "Средняя задержка публикации (ч)": (
+                "%.1f" % (publish_delay.total_seconds() / 3600) if publish_delay else "—"
+            ),
             "Жалобы на отзывы": RatingReport.objects.filter(status="new").count(),
             "Верификация на проверке": Profile.objects.filter(verification_status="pending").count(),
+            "События ошибок (24 ч)": ErrorEvent.objects.filter(
+                created_at__gte=now - timedelta(hours=24),
+            ).count(),
         }
         links = [
             ("Профили", reverse("admin:core_profile_changelist")),
@@ -210,3 +232,4 @@ users.register(site)
 jobs.register(site)
 support.register(site)
 dictionaries.register(site)
+error_events.register(site)

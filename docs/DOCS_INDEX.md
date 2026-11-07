@@ -24,6 +24,7 @@
 | [E2E_TESTING.md](E2E_TESTING.md) | Playwright: регистрация → задание → отклик → принятие → чат |
 | [MAX_VERIFICATION.md](MAX_VERIFICATION.md) | MAX-бот: deep link, webhook, self-heal, диагностика |
 | [MONITORING.md](MONITORING.md) | `/health`, uptime-workflow, алерты, деплой-порядок, staging/restore |
+| [ERROR_TRACKING.md](ERROR_TRACKING.md) | внутренний error tracking `error_events` (152-ФЗ-safe), админка |
 | [RESTORE_DRILL.md](RESTORE_DRILL.md) | проверенное восстановление БД, safety-правила, prod-процедура |
 | [LAUNCH_CHECKLIST.md](LAUNCH_CHECKLIST.md) | preflight прода, почтовый DNS, бэкапы, юр. статус, алерты |
 | [SMTP_DNS_SETUP.md](SMTP_DNS_SETUP.md) | Yandex SMTP: быстрый вариант и SPF/DKIM/DMARC для домена |
