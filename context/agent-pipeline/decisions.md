@@ -3197,3 +3197,27 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** Hyperstls
 
 **Пакет:** context/agent-pipeline/packs/R042.review.prompt.md
+
+## 2026-11-07 09:45:48 — R043: ревью: FAIL
+
+**Раунд:** 1/2
+
+**Вердикт ревьюера:** FAIL: Node 20 не поддерживает glob в --test (npm test упадёт на CI); tailwind.min.css старше job-draft.js. Исправление: явный путь к тест-файлу + npm run build:css.
+
+**Действие:** fixing — раунд исправлений
+
+## 2026-11-07 09:45:52 — R043: контракт обновлён
+
+**Причина:** Критерий 5: npm test вместо node --test tests_js/ (Node 20 не раскрывает glob; явный путь к файлу)
+
+**Проверки до:** ['js-tests']
+
+**Проверки после:** ['js-tests']
+
+## 2026-11-07 09:52:03 — R043: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R043.review.prompt.md

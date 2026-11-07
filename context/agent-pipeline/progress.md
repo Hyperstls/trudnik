@@ -1264,3 +1264,10 @@
 - **2026-11-07 09:26:04** | **R043** | `add` | **OK** | contract=context/agent-pipeline/tasks/R043.json
 - **2026-11-07 09:26:11** | **R043** | `dispatch` | **OK** | status=implementing baseline=6 pack=context/agent-pipeline/packs/R043.impl.prompt.md
 - **2026-11-07 09:35:48** | **R042** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-07 09:36:30** | **R043** | `verify` | **PASS** | scope=ok checks=js-tests=0 attempts=0/3
+- **2026-11-07 09:36:34** | **R043** | `review-packet` | **READY** | bytes=10690 new_files=['tests_js/job-draft.test.mjs']
+- **2026-11-07 09:45:48** | **R043** | `review` | **FAIL** | by=Hyperstls round=1/2 verdict=FAIL: Node 20 не поддерживает glob в --test (npm test упадёт на CI); tailwind.min.css старше job-draft.js. Исправление: явный путь к тест-файлу + npm run build:css. → fixing
+- **2026-11-07 09:45:52** | **R043** | `update` | **OK** | revision=1 reason=Критерий 5: npm test вместо node --test tests_js/ (Node 20 не раскрывает glob; явный путь к файлу)
+- **2026-11-07 09:46:14** | **R043** | `verify` | **PASS** | scope=ok checks=js-tests=0 attempts=0/3
+- **2026-11-07 09:46:17** | **R043** | `review-packet` | **READY** | bytes=10694 new_files=['tests_js/job-draft.test.mjs']
+- **2026-11-07 09:52:03** | **R043** | `review` | **PASS** | by=Hyperstls → done

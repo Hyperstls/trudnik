@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "djadmin/**"
+      - "static/js/**"
+      - "tests_js/**"
       - "tests/fixtures/schema.sql"
       - "migrations/**"
       - ".github/workflows/unit-tests.yml"
@@ -53,6 +55,11 @@ jobs:
       YANDEX_MAPS_API_KEY: "test-key"  # pragma: allowlist secret
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: JS unit tests
+        run: npm test
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

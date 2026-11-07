@@ -92,8 +92,11 @@ E2E теперь проверяет отсутствие горизонталь�
 10. **Разделить крупные модули.** `views.py` (≈750 строк) и `views_flow.py`
     смешивают jobs, профиль, редиректы и утилиты. Вынести:
     `core/http.py` (redirects), `core/jobs_views.py`, `core/ratings_views.py`.
-11. **Тесты JS.** Для `safeNotificationLink` и офлайн-очереди нет unit-тестов;
-    добавить небольшой Node-тест или вынести чистые функции в модуль.
+11. **Тесты JS.** Сделано в R043: чистые функции `job-draft.js`
+    (`isExcluded`, `collectElements`, `parseDraft`) экспортируются для Node;
+    `npm test` (`node:test`) проверяет, что CSRF/координаты/файлы/пароли не
+    попадают в черновик, и TTL/битые данные; CI Unit tests запускает JS-тесты
+    (`static/js/**`, `tests_js/**`).
 12. **Сохранённые поиски** хранятся в `profiles.notification_prefs` JSON.
     Для >10 поисков, истории и аналитики лучше отдельная таблица
     `saved_searches` с индексами.

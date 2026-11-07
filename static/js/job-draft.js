@@ -6,6 +6,17 @@
 (function () {
     'use strict';
 
+    // UMD: в Node экспортируем чистые функции для unit-тестов, в браузере
+    // продолжаем обычную инициализацию (function declarations хойстятся).
+    if (typeof module === 'object' && module.exports) {
+        module.exports = {
+            isExcluded: isExcluded,
+            collectElements: collectElements,
+            parseDraft: parseDraft
+        };
+        return;
+    }
+
     var KEY = 'trudnik-job-draft-v1';
     var created = false;
     try {
@@ -75,16 +86,24 @@
         }, 5000);
     }
 
+    function parseDraft(raw, now, ttl) {
+        if (!raw) return null;
+        try {
+            var draft = JSON.parse(raw);
+            if (!draft || !draft.saved_at || !draft.fields) return null;
+            if (now - draft.saved_at > ttl) return null;
+            return draft;
+        } catch (e) {
+            return null;
+        }
+    }
+
     function storageGet() {
         try {
             var raw = localStorage.getItem(KEY);
             if (!raw) return null;
-            var draft = JSON.parse(raw);
-            if (!draft || !draft.saved_at || !draft.fields) return null;
-            if (Date.now() - draft.saved_at > TTL) {
-                localStorage.removeItem(KEY);
-                return null;
-            }
+            var draft = parseDraft(raw, Date.now(), TTL);
+            if (!draft) localStorage.removeItem(KEY);
             return draft;
         } catch (e) {
             return null;
@@ -106,10 +125,10 @@
         return false;
     }
 
-    function collect() {
+    function collectElements(elements) {
         var fields = {};
         var hasValue = false;
-        Array.prototype.forEach.call(form.elements, function (el) {
+        Array.prototype.forEach.call(elements, function (el) {
             if (isExcluded(el)) return;
             if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) return;
             var value = el.value == null ? '' : String(el.value);
@@ -118,6 +137,10 @@
             if (value.trim()) hasValue = true;
         });
         return hasValue ? { saved_at: Date.now(), fields: fields } : null;
+    }
+
+    function collect() {
+        return collectElements(form.elements);
     }
 
     var touched = false;

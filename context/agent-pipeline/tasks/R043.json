@@ -1,0 +1,39 @@
+{
+  "id": "R043",
+  "title": "JS-тесты: черновик задания (node:test) и CI",
+  "goal": "Вынести чистые функции job-draft.js (isExcluded, collectElements, parseDraft) в экспортируемый вид без DOM, покрыть их node:test и запускать JS-тесты в CI. Проверить, что черновик не сохраняет CSRF, координаты, файлы, пароли и просроченные данные.",
+  "why": "P2-пункт кодревью №11: у live-JS нет unit-тестов. job-draft хранит данные в localStorage, и его гарантия «не сохраняем чувствительное» должна быть закреплена тестом, а не комментарием.",
+  "files": [
+    "static/js/job-draft.js",
+    "tests_js/job-draft.test.mjs",
+    "package.json",
+    ".github/workflows/unit-tests.yml"
+  ],
+  "context_files": [
+    "static/js/form-guard.js",
+    "djadmin/core/templates/core/job_form.html"
+  ],
+  "interfaces": "job-draft.js: в начале IIFE после 'use strict' добавить UMD-выход для Node: if (typeof module === 'object' && module.exports) { module.exports = { isExcluded: isExcluded, collectElements: collectElements, parseDraft: parseDraft }; return; } — function declarations хойстятся, DOM-код ниже в Node не выполняется. Вынести collectElements(elements): тело текущего collect() без обращения к form — фильтрует isExcluded, пропускает неотмеченные checkbox/radio, собирает fields[name] как массив строк, возвращает {saved_at: Date.now(), fields} или null, если все значения пустые. collect() вызывает collectElements(form.elements). Вынести parseDraft(raw, now, ttl): JSON.parse, проверка draft && draft.saved_at && draft.fields, expiry now - saved_at > ttl → null, ошибки → null. storageGet использует parseDraft(raw, Date.now(), TTL); если raw есть, а parseDraft вернул null — removeItem(KEY). Поведение браузера не меняется. tests_js/job-draft.test.mjs: node:test + node:assert/strict, require('../static/js/job-draft.js'); кейсы: isExcluded для csrfmiddlewaretoken/lat/lng/file/password/submit/button/без name → true, для text/checkbox → false; collectElements: пустые значения → null, значения → fields-массивы, неотмеченный checkbox пропущен, несколько значений одного name, excluded не попадают; parseDraft: валидный → объект, просроченный (now - saved_at > ttl) → null, битый JSON → null, без fields → null. package.json: \"test\": \"node --test tests_js/job-draft.test.mjs\" (явный путь: Node 20 не поддерживает glob в --test). unit-tests.yml: paths добавить \"static/js/**\" и \"tests_js/**\"; шаг actions/setup-node@v4 node-version 20 и `npm test` перед Python-тестами.",
+  "acceptance": [
+    "job-draft.js в Node экспортирует isExcluded/collectElements/parseDraft и не обращается к DOM.",
+    "В браузере поведение черновика не меняется (collect/storageGet используют вынесенные функции).",
+    "Черновик не сохраняет csrfmiddlewaretoken, lat, lng, file, password, submit, button.",
+    "parseDraft отбрасывает просроченные (TTL 7 дней), битые и неполные данные.",
+    "node --test tests_js/ проходит локально.",
+    "CI Unit tests запускает JS-тесты и триггерится на static/js/** и tests_js/**.",
+    "py_compile изменённых .py не требуется (Python не менялся); pre_deploy_check проходит.",
+    "JS-тесты не требуют npm install (только node)."
+  ],
+  "out_of_scope": [
+    "Не менять шаблоны job_form/job_detail и порядок подключения скриптов.",
+    "Не менять серверный API черновика.",
+    "Не добавлять тесты для других JS-файлов."
+  ],
+  "checks": [
+    {
+      "name": "js-tests",
+      "cmd": "npm test",
+      "cwd": "."
+    }
+  ]
+}
