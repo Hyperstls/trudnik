@@ -46,13 +46,20 @@ def main():
             print(f"  {row['conname']}: {row['def']}")
 
     print("\n" + "=" * 60)
-    print("PROFILES COLUMNS (looking for religion duplicates)")
+    print("RELIGION COLUMNS (must be absent after migration 164)")
     print("=" * 60)
-    data = exec_sql_direct("SELECT column_name, data_type FROM information_schema.columns WHERE table_schema='public' AND table_name='profiles' ORDER BY ordinal_position")
+    import os
+
+    if not (os.getenv("DATABASE_URL") or os.getenv("DATABASE_ADMIN_URL")):
+        print("  SKIP: DATABASE_URL/DATABASE_ADMIN_URL не заданы — проверить нельзя")
+        data = None
+    else:
+        data = exec_sql_direct("SELECT table_name, column_name FROM information_schema.columns WHERE table_schema='public' AND ((table_name='profiles' AND column_name IN ('religion','religion_id')) OR (table_name='jobs' AND column_name='preferred_religion')) ORDER BY table_name, column_name")
     if data:
         for row in data:
-            marker = " <-- DUP?" if row['column_name'] in ('religion', 'religion_id', 'preferred_religion') else ""
-            print(f"  {row['column_name']}: {row['data_type']}{marker}")
+            print(f"  UNEXPECTED COLUMN {row['table_name']}.{row['column_name']} <-- миграция 164 требует отсутствия")
+    elif data is not None:
+        print("  OK: religion columns absent (164 applied)")
 
     print("\n" + "=" * 60)
     print("NOTIFICATIONS COLUMNS (looking for read/is_read duplicates)")

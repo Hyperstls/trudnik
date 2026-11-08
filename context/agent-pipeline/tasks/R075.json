@@ -1,0 +1,36 @@
+{
+  "id": "R075",
+  "title": "D4/D5: check_schema проверяет отсутствие religion-колонок; мёртвые импорты",
+  "goal": "1) check_schema.py: после 164 проверять, что profiles.religion_id / jobs.preferred_religion ОТСУТСТВУЮТ (сейчас ищет дубли и метит DUP? — диагностика устарела); 2) убрать мёртвые импорты: Religion в test_profile_flows.py:9, log_admin_action в test_tasks.py:336.",
+  "why": "Строгий аудит 2026-11-08 (D4/D5): инструмент проверки схемы не заметит возврат спецкатегории; мёртвые импорты — шум.",
+  "files": [
+    "scripts/check_schema.py",
+    "djadmin/core/tests/test_profile_flows.py",
+    "djadmin/core/tests/test_tasks.py"
+  ],
+  "context_files": [
+    "migrations/164_drop_religion_columns.sql"
+  ],
+  "interfaces": "check_schema.py: блок 'PROFILES COLUMNS (looking for religion duplicates)' заменить на проверку отсутствия: для profiles колонок religion/religion_id и jobs.preferred_religion — если найдены, печатать 'UNEXPECTED COLUMN ... (миграция 164 требует отсутствия)' и возвращать ошибку (exit code как у остальных проверок скрипта — посмотреть main); если нет — OK/строка 'religion columns absent'. test_profile_flows.py: убрать 'Religion' из from core.models import. test_tasks.py: убрать локальный 'from core.audit import log_admin_action' в RetentionTaskTests (не используется).",
+  "acceptance": [
+    "check_schema больше не ищет «дубли religion», а подтверждает отсутствие трёх колонок; при их появлении скрипт сигнализирует.",
+    "В тестах нет мёртвых импортов Religion/log_admin_action.",
+    "py_compile; core.tests.test_profile_flows, core.tests.test_tasks проходят; scripts/check_schema.py запускается (--help/локально без падения)."
+  ],
+  "out_of_scope": [
+    "Не менять другие проверки check_schema.",
+    "Не трогать модели/миграции."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile scripts/check_schema.py djadmin/core/tests/test_profile_flows.py djadmin/core/tests/test_tasks.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_profile_flows core.tests.test_tasks --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

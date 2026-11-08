@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core.models import (
-    Application, Blacklist, Favorite, Invitation, Job, Profile, Religion, Skill, UserSkill,
+    Application, Blacklist, Favorite, Invitation, Profile, Skill, UserSkill,
 )
 from core.tests.test_auth import make_profile
 from core.tests.test_flows import make_job

@@ -337,7 +337,6 @@ class RetentionTaskTests(TestCase):
         self.assertTrue(NotificationOutbox.objects.filter(pk=fresh_pending.pk).exists())
 
     def test_audit_log_retention_180_days(self):
-        from core.audit import log_admin_action
         from core.models import AuditLog
 
         old = AuditLog.objects.create(action="old", created_at=self.now - timedelta(days=181))
