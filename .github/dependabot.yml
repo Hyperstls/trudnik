@@ -9,6 +9,11 @@ updates:
       timezone: "Europe/Moscow"
     open-pull-requests-limit: 5
     labels: ["dependencies", "security"]
+    ignore:
+      # major Django (5.x → 6.x) — только осознанный апгрейд с миграцией,
+      # не авто-PR: dependabot/pip django-6.1.3 падал в Unit tests (R067).
+      - dependency-name: "django"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
