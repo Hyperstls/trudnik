@@ -1,0 +1,31 @@
+{
+  "id": "R063",
+  "title": "Гигиена: .dockerignore — убрать ПДн и мусор из прод-образа",
+  "goal": "Исключить из Docker-контекста (COPY . .): djadmin/uploads/ и корневой uploads/ (ПДн: сканы документов, аватары), .kilo/, context/, .playwright-mcp/, demo/, templates/ (legacy Flask), package.json/package-lock.json, .secrets.baseline, .zcode/, axe-report.json. certs/ НЕ исключается (нужен рантайму для MAX_CA_BUNDLE).",
+  "why": "Аудит 2026-11-08: через COPY . . в прод-образ попадают локальные uploads/verification-docs (ПДн), логи конвейера/агентов и ~88 МБ мусора; риск утечки и раздувания образа.",
+  "files": [
+    ".dockerignore"
+  ],
+  "context_files": [
+    "Dockerfile.djadmin"
+  ],
+  "interfaces": "Добавить в .dockerignore секции: # ПДн/локальные пользовательские файлы — djadmin/uploads/ ; # Агентские/локальные артефакты — .kilo/, .kilocode/, context/, .playwright-mcp/, .zcode/, axe-report.json ; # Legacy Flask — templates/ ; # Tooling — package.json, package-lock.json, .secrets.baseline, demo/. ВАЖНО: certs/ НЕ исключать — MAX_CA_BUNDLE по умолчанию берёт REPO_ROOT/certs/russian_trusted_root_ca.crt. uploads/ исключать целиком (включая verification-docs). Не трогать существующие записи (docs/, tests/, node_modules/, .venv/, .env, trash/, «Trudnik backup/»). Проверить, что static/ и djadmin/ (без uploads) остаются в контексте: Dockerfile копирует весь репозиторий, collectstatic берёт static/.",
+  "acceptance": [
+    ".dockerignore исключает djadmin/uploads/, uploads/ (включая verification-docs), .kilo/, context/, .playwright-mcp/, .zcode/, demo/, templates/, package*.json, .secrets.baseline, axe-report.json.",
+    "certs/ НЕ исключён (MAX_CA_BUNDLE); static/, djadmin/requirements.txt, scripts/, supervisord.conf остаются в контексте.",
+    "Существующие исключения не изменены; дублей паттернов нет.",
+    "Проверка по Docker-семантике (паттерн без слэша якорится к корню): need-список игнорируется, keep-список — нет."
+  ],
+  "out_of_scope": [
+    "Не менять Dockerfile.djadmin.",
+    "Не удалять файлы из git (только игнор контекста).",
+    "Не менять CI."
+  ],
+  "checks": [
+    {
+      "name": "dockerignore_parser",
+      "cmd": "{python} -c \"import fnmatch; from pathlib import PurePath; pats=[l.strip() for l in open('.dockerignore',encoding='utf-8') if l.strip() and not l.strip().startswith('#')]; ign=lambda p: any((('/' in pat and (p==pat or p.startswith(pat.rstrip('/')+'/'))) or ('/' not in pat and '/' not in p and fnmatch.fnmatch(p,pat))) for pat in pats); need=['djadmin/uploads/x.png','uploads/verification-docs/x.pdf','uploads/verification_docs/x.pdf','.kilo/x','context/a/state.json','.playwright-mcp/x.png','demo/gate.py','templates/base.html','axe-report.json']; keep=['certs/russian_trusted_root_ca.crt','djadmin/requirements.txt','static/css/app.css','scripts/apply_migrations.py','supervisord.djadmin.conf']; assert not [x for x in need if not ign(x)], 'need not ignored'; assert not [k for k in keep if ign(k)], 'keep ignored'; print('DOCKERIGNORE OK')\"",
+      "cwd": "."
+    }
+  ]
+}

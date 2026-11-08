@@ -3533,3 +3533,43 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** Hyperstls
 
 **Пакет:** context/agent-pipeline/packs/R064.review.prompt.md
+
+## 2026-11-08 18:37:53 — R063: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Правки по non-blockers ревью: uploads/ целиком (ПДн), certs/ возвращён (MAX_CA_BUNDLE), дубль .kilocode/ убран; проверка keep-списка по Docker-семантике (паттерн без слэша — корень контекста)
+
+**Дрейф, который обойдён:** ['.env.example', '.github/dependabot.yml', 'djadmin/core/tests/test_parity_final.py', 'djadmin/core/views_service.py']
+
+## 2026-11-08 18:38:14 — R063: контракт обновлён
+
+**Причина:** Ревью: certs/ нужен рантайму (MAX_CA_BUNDLE), uploads/ целиком; проверка Docker-семантика в одну строку
+
+**Проверки до:** ['dockerignore_parser']
+
+**Проверки после:** ['dockerignore_parser']
+
+## 2026-11-08 18:38:20 — R063: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** Пересбор baseline под обновлённый контракт (certs/keep, uploads/целиком)
+
+**Переход:** fixing → planned
+
+## 2026-11-08 18:38:27 — R063: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Дрейф — файлы R064/R065 (AGENTS/README/amvera/views_service/tests/dependabot/env.example) в том же дереве
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-08 18:41:39 — R063: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R063.review.prompt.md

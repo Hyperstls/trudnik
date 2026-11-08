@@ -23,8 +23,8 @@ tests/
 .idea/
 .vscode/
 
-# Uploads (не копировать пользовательские файлы)
-uploads/avatars
+# Uploads: все локальные пользовательские файлы (ПДн) — в проде /data/uploads
+uploads/
 
 # Окружение
 .env
@@ -68,3 +68,23 @@ __pycache__/
 scripts/env_*.env
 archive/env_*.env
 .env.staging
+
+# ПДн: локальные пользовательские файлы (сканы документов, аватары) —
+# в проде они живут на /data/uploads, а не в образе (R063, 152-ФЗ).
+djadmin/uploads/
+
+# Агентские/локальные артефакты (логи конвейера, скриншоты браузера, планы)
+.kilo/
+context/
+.playwright-mcp/
+.zcode/
+axe-report.json
+
+# Legacy Flask-шаблоны (Django их не использует; своего static/ хватает)
+templates/
+
+# Tooling/локальные файлы, не нужные рантайму
+package.json
+package-lock.json
+.secrets.baseline
+demo/

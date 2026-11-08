@@ -1407,3 +1407,14 @@
 - **2026-11-08 18:36:15** | **R065** | `verify` | **PASS** | scope=ok checks=compile=0, tests=0, yaml=0 attempts=0/3
 - **2026-11-08 18:36:21** | **R065** | `review-packet` | **READY** | bytes=15456 new_files=['.github/dependabot.yml']
 - **2026-11-08 18:36:37** | **R064** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-08 18:37:53** | **R063** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Правки по non-blockers ревью: uploads/ целиком (ПДн), certs/ возвращён (MAX_CA_BUNDLE), дубль .kilocode/ убран; проверка keep-списка по Docker-семантике (паттерн без слэша — корень контекста) drift=['.env.example', '.github/dependabot.yml', 'djadmin/core/tests/test_parity_final.py', 'djadmin/core/views_service.py']
+- **2026-11-08 18:37:54** | **R063** | `verify` | **FAIL** | scope=skipped checks=dockerignore_parser=1 attempts=1/3 → fixing
+- **2026-11-08 18:38:14** | **R063** | `update` | **OK** | revision=1 reason=Ревью: certs/ нужен рантайму (MAX_CA_BUNDLE), uploads/ целиком; проверка Docker-семантика в одну строку
+- **2026-11-08 18:38:20** | **R063** | `set` | **fixing→planned** | by=Hyperstls reason=Пересбор baseline под обновлённый контракт (certs/keep, uploads/целиком)
+- **2026-11-08 18:38:21** | **R063** | `dispatch` | **OK** | status=implementing baseline=8 pack=context/agent-pipeline/packs/R063.impl.prompt.md
+- **2026-11-08 18:38:27** | **R063** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Дрейф — файлы R064/R065 (AGENTS/README/amvera/views_service/tests/dependabot/env.example) в том же дереве drift=[]
+- **2026-11-08 18:38:27** | **R063** | `verify` | **PASS** | scope=skipped checks=dockerignore_parser=0 attempts=1/3
+- **2026-11-08 18:38:27** | **R063** | `review-packet` | **READY** | bytes=4357 new_files=[]
+- **2026-11-08 18:39:10** | **R066** | `add` | **OK** | contract=context/agent-pipeline/tasks/R066.json
+- **2026-11-08 18:39:10** | **R066** | `dispatch` | **OK** | status=implementing baseline=10 pack=context/agent-pipeline/packs/R066.impl.prompt.md
+- **2026-11-08 18:41:39** | **R063** | `review` | **PASS** | by=Hyperstls → done
