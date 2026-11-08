@@ -89,10 +89,8 @@ class Profile(AbstractBaseUser):
     worker_ratings_count = models.IntegerField(_("оценок как трудника"), default=0, editable=False)
     employer_rating = models.FloatField(_("рейтинг работодателя"), default=0, editable=False)
     employer_ratings_count = models.IntegerField(_("оценок как работодателя"), default=0, editable=False)
-    religion = models.ForeignKey(
-        "core.Religion", verbose_name=_("вероисповедание"), on_delete=models.SET_NULL,
-        null=True, blank=True, db_column="religion_id", related_name="profiles",
-    )
+    # вероисповедание удалено из схемы (миграция 164, 152-ФЗ ст.10) —
+    # связка человек→религия была спецкатегорией ПДн.
     portfolio_link = models.URLField(_("портфолио"), max_length=1000, default="", blank=True)
     inn = models.CharField(_("ИНН"), max_length=12, default="", blank=True)
     is_self_employed = models.BooleanField(_("самозанятый"), default=False)
@@ -293,7 +291,6 @@ class Job(models.Model):
     expires_at = models.DateTimeField(_("истекает"), null=True, blank=True)
     promoted_until = models.DateTimeField(_("промо до"), null=True, blank=True)
     is_promoted = models.BooleanField(_("промо"), default=False, null=True, blank=True)
-    preferred_religion = models.TextField(_("предпочтение по вере"), default="не важно", null=True, blank=True)
     photo_urls = ArrayField(models.TextField(), verbose_name=_("фото (legacy)"), default=list, blank=True)
     skills = models.ManyToManyField(Skill, through="core.JobSkill", related_name="jobs", blank=True)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)

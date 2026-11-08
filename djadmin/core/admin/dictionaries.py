@@ -49,22 +49,13 @@ class SkillAdmin(AuditAdminMixin, ModelAdmin):
 
 
 class ReligionAdmin(AuditAdminMixin, ModelAdmin):
-    list_display = ("name", "sort_order", "created_at", "profiles_count")
+    # R062: счётчик профилей удалён — FK profiles.religion_id DropColumn (164),
+    # related_name "profiles" больше не существует.
+    list_display = ("name", "sort_order", "created_at")
     search_fields = ("name",)
     list_editable = ("sort_order",)
     ordering = ("sort_order", "name")
     list_per_page = 100
-
-    def get_queryset(self, request):
-        from django.db.models import Count
-
-        return super().get_queryset(request).annotate(_profiles_count=Count("profiles"))
-
-    def profiles_count(self, obj):
-        return obj._profiles_count
-
-    profiles_count.admin_order_field = "_profiles_count"
-    profiles_count.short_description = "профилей"
 
 
 class AnnouncementAdmin(AuditAdminMixin, ModelAdmin):

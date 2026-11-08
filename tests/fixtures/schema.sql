@@ -2212,7 +2212,6 @@ CREATE TABLE public.jobs (
     is_paid boolean DEFAULT false,
     paid_at timestamp with time zone,
     expires_at timestamp with time zone,
-    preferred_religion text DEFAULT 'не важно'::text,
     search_vector tsvector,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -2357,7 +2356,6 @@ CREATE TABLE public.profiles (
     rating double precision DEFAULT 0,
     total_reviews integer DEFAULT 0,
     ratings_count integer DEFAULT 0,
-    religion_id uuid,
     portfolio_link text DEFAULT ''::text,
     inn text DEFAULT ''::text,
     is_self_employed boolean DEFAULT false,
@@ -3947,14 +3945,6 @@ ALTER TABLE ONLY public.notifications
 
 ALTER TABLE ONLY public.notifications
     ADD CONSTRAINT fk_notifications_user_id FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
-
-
---
--- Name: profiles fk_profiles_religion_id; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.profiles
-    ADD CONSTRAINT fk_profiles_religion_id FOREIGN KEY (religion_id) REFERENCES public.religions(id) ON DELETE SET NULL;
 
 
 --

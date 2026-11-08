@@ -1,0 +1,46 @@
+{
+  "id": "R062",
+  "title": "152-ФЗ ст.10 (шаг 2/2): миграция 164 — удалить колонки вероисповедания",
+  "goal": "DROP COLUMN public.profiles.religion_id и public.jobs.preferred_religion (идемпотентно). Django: убрать FK religion из Profile и поле preferred_religion из Job; state-миграция 0006; tests/fixtures/schema.sql перегенерировать. Данные в dev пусты (0 non-null), формы/админ поля не используют, тесты отвязаны (R061).",
+  "why": "P3 аудита 152-ФЗ 2026-11-08: спецкатегория (ст.10) физически в схеме при заявленном в политике 4.2 и rkn_notification_fill.md:74 отказе; 075 выдаёт anon SELECT на religion_id. Тесты уже схемо-независимы (R061 PASS).",
+  "files": [
+    "migrations/164_drop_religion_columns.sql",
+    "djadmin/core/models.py",
+    "djadmin/core/migrations/0006_drop_religion_fields.py"
+  ],
+  "context_files": [
+    "djadmin/core/admin/dictionaries.py",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "interfaces": "164: ALTER TABLE public.profiles DROP COLUMN IF EXISTS religion_id; ALTER TABLE public.jobs DROP COLUMN IF EXISTS preferred_religion; (FK fk_profiles_religion_id и column-grant 075 уходят с колонкой автоматически). models.py: удалить religion = models.ForeignKey(Religion, ...) из Profile (строки ~92-95) и preferred_religion из Job (~296); модель Religion и админка справочника остаются. 0006: makemigrations сгенерирует RemoveField×2 (state-only, unmanaged). Применить 164 к dev-БД (psql через DATABASE_ADMIN_URL или скрипт apply_migrations с MIGRATIONS_ENABLED), пересоздать trudnik_test из dev (scripts/dj_test_clone.py), dump_schema.py → schema.sql (сгенерированный артефакт — вместе с коммитом, вне files).",
+  "acceptance": [
+    "Миграция 164 идемпотентна и удаляет обе колонки; dev-БД применена, ledger 79/79.",
+    "Profile без religion FK, Job без preferred_religion; makemigrations --check пуст.",
+    "trudnik_test пересоздан; полный core suite зелёный на новой схеме.",
+    "schema.sql перегенерирован без этих колонок/индексов/FK.",
+    "Справочник religions и ReligionAdmin не тронуты; grep djadmin не находит обращений к удалённым полям (кроме legacy миграций 0001 и комментариев).",
+    "pre_deploy_check 7/7."
+  ],
+  "out_of_scope": [
+    "Не удалять таблицу/модель religions и админку словаря.",
+    "Не менять текст политики/РКН-док (R060).",
+    "Не трогать legacy Flask-шаблоны и tests/fixtures иначе как генерацией."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/models.py djadmin/core/migrations/0006_drop_religion_fields.py",
+      "cwd": "."
+    },
+    {
+      "name": "makemigrations",
+      "cmd": "{python} djadmin/manage.py makemigrations --check --dry-run",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
