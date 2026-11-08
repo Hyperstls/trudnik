@@ -4,11 +4,11 @@
 **Эталон Flask:** `origin/main-flask` @ `9b3ed42` (read-only worktree `../trudnik-flask`)
 **Django:** `main` @ `9f82387` (J001–J164; feature-ветка влита fast-forward)
 **Статус:** auth/profile — P0/P1 закрыты и задеплоены; jobs/applications — P0/P1/P2 закрыты и задеплоены; открытых UX-пунктов нет.
-**Production (2026-11-04):** `44255ea` (J155–J164 + R001/R002: MAX bot, chat search/mute, UTM/retention, anti-spam/moderation, RU/EN i18n, полная локализация кабинета, карта /jobs, репутация v2, сохранённые поиски, мобильная шапка, безопасные редиректы, ссылки уведомлений, мобильная вёрстка, sanitizer/SitePage, webhook limit); ранее — `e98ba24` (J060–J063), auth P001–P114, J029–J058. `/health` 200, Status RUNNING; миграции 73/73.
+**Production (2026-11-04):** `44255ea` (J155–J164 + R001/R002: MAX bot, chat search/mute, UTM/retention, anti-spam/moderation, RU/EN i18n, полная локализация кабинета, карта /jobs, репутация v2, сохранённые поиски, мобильная шапка, безопасные редиректы, ссылки уведомлений, мобильная вёрстка, sanitizer/SitePage, webhook limit); ранее — `e98ba24` (J060–J063), auth P001–P114, J029–J058. `/health` 200, Status RUNNING; миграции 73/73 (на дату среза).
 **Исторический срез аудита (все пункты закрыты):** P0-01…P0-04 (P001–P004);
 P1-01/02/06 — P101/P102/P106; P1-03/04/11 — P103/P104; P1-07/08/14 — P107/P108/P114;
 BUILD-01 — B001; TASKS-01 — T001; P1-12 — P112; P1-10 ORM — P110; P1-05 — P105.
-P1-13 + DB-default P1-10: dev и production — **73/73**, `email_verified default=false`,
+P1-13 + DB-default P1-10: dev и production — **79/79** (обновлено 2026-11-08: 159–164), `email_verified default=false`,
 gate OK; процедура — [MIGRATION_LEDGER.md](MIGRATION_LEDGER.md).
 
 **Jobs/applications:** P0/P1/P2 закрыты контрактами J001–J058

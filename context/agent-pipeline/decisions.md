@@ -3669,3 +3669,163 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** Hyperstls
 
 **Пакет:** context/agent-pipeline/packs/R070.review.prompt.md
+
+## 2026-11-08 21:53:56 — R071: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R071.review.prompt.md
+
+## 2026-11-08 21:55:11 — R072: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Drift — файлы R069 (tasks/test_tasks) в дереве, соседняя задача
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-08 21:55:38 — R069: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Пост-ревью: docstring cleanup дополнен error_events (non-blocker); drift — R072 файлы
+
+**Дрейф, который обойдён:** ['djadmin/core/templates/core/login.html', 'djadmin/core/tests/test_auth_flows.py', 'djadmin/core/views_auth.py']
+
+## 2026-11-08 21:56:10 — R069: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R069.review.prompt.md
+
+## 2026-11-08 21:56:20 — R072: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R072.review.prompt.md
+
+## 2026-11-08 21:57:22 — R073: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Drift — файлы R072 (views_auth/login/test_auth_flows) в дереве, соседняя задача на ревью
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-08 21:58:50 — R074: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Drift — код-файлы R069/R072/R073 и R070/R071 в дереве/коммитах, задачи соседние; R074 — только 4 docs-файла
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-08 22:00:54 — R073: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Пост-ревью: тест теперь пиннит выжившую pending-строку (non-blocker); drift — docs R074 + R072 файлы
+
+**Дрейф, который обойдён:** ['README.md', 'docs/DOCS_INDEX.md', 'docs/parity/MIGRATION_LEDGER.md', 'docs/parity/README.md']
+
+## 2026-11-08 22:01:28 — R073: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R073.review.prompt.md
+
+## 2026-11-08 22:04:26 — R075: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Drift — docs R074 и соседние R069/R072/R073 файлы в дереве/коммитах; R075 — три файла контракта
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-08 22:05:47 — R074: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Правки по FAIL ревью: 893 теста, 159_two_factor.sql, время 164 18:25 MSK, даты срезов; drift — R075/R072 файлы в дереве
+
+**Дрейф, который обойдён:** ['djadmin/core/tests/test_profile_flows.py', 'djadmin/core/tests/test_tasks.py', 'scripts/check_schema.py']
+
+## 2026-11-08 22:06:03 — R074: контракт обновлён
+
+**Причина:** FAIL-ревью: фактические 893 теста, имя 159_two_factor.sql, время 164 18:25 MSK; чек обновлён
+
+**Проверки до:** ['grep_consistency']
+
+**Проверки после:** ['grep_consistency']
+
+## 2026-11-08 22:06:09 — R074: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** Пересбор baseline под обновлённый чек (893/159_two_factor/18:25)
+
+**Переход:** fixing → planned
+
+## 2026-11-08 22:06:17 — R074: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Drift — R075 (check_schema/tests) и R072 в дереве, соседние задачи; R074 — 4 docs-файла
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-08 22:06:31 — R074: контракт обновлён
+
+**Причина:** Чек: историческая строка 2026-11-04 помечена 'на дату среза', текущий статус 79/79
+
+**Проверки до:** ['grep_consistency']
+
+**Проверки после:** ['grep_consistency']
+
+## 2026-11-08 22:06:32 — R074: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** re-dispatch под финальный чек
+
+**Переход:** fixing → planned
+
+## 2026-11-08 22:06:39 — R074: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Drift — R075/R072 в дереве; R074 docs-only
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-08 22:07:47 — R076: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Drift — R074/R075 (docs/check_schema/tests) в дереве; R076 — только .dockerignore
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-08 22:08:32 — R077: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Drift — R074/R075/R076 файлы в дереве, соседние задачи; R077 — 3 docs-файла
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-08 22:08:48 — R074: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R074.review.prompt.md

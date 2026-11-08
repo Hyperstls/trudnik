@@ -1456,3 +1456,55 @@
 - **2026-11-08 21:53:03** | **R069** | `review-packet` | **READY** | bytes=5083 new_files=[]
 - **2026-11-08 21:53:12** | **R069** | `review-packet` | **READY** | bytes=5083 new_files=[]
 - **2026-11-08 21:53:43** | **R070** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-08 21:53:56** | **R071** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-08 21:54:20** | **R072** | `add` | **OK** | contract=context/agent-pipeline/tasks/R072.json
+- **2026-11-08 21:54:20** | **R072** | `dispatch` | **OK** | status=implementing baseline=6 pack=context/agent-pipeline/packs/R072.impl.prompt.md
+- **2026-11-08 21:55:11** | **R072** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Drift — файлы R069 (tasks/test_tasks) в дереве, соседняя задача drift=[]
+- **2026-11-08 21:55:29** | **R072** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=0/3
+- **2026-11-08 21:55:38** | **R069** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Пост-ревью: docstring cleanup дополнен error_events (non-blocker); drift — R072 файлы drift=['djadmin/core/templates/core/login.html', 'djadmin/core/tests/test_auth_flows.py', 'djadmin/core/views_auth.py']
+- **2026-11-08 21:56:03** | **R069** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=0/3
+- **2026-11-08 21:56:10** | **R069** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-08 21:56:20** | **R072** | `review-packet` | **READY** | bytes=6045 new_files=[]
+- **2026-11-08 21:56:20** | **R072** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-08 21:56:40** | **R073** | `add` | **OK** | contract=context/agent-pipeline/tasks/R073.json
+- **2026-11-08 21:56:40** | **R073** | `dispatch` | **OK** | status=implementing baseline=7 pack=context/agent-pipeline/packs/R073.impl.prompt.md
+- **2026-11-08 21:57:22** | **R073** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Drift — файлы R072 (views_auth/login/test_auth_flows) в дереве, соседняя задача на ревью drift=[]
+- **2026-11-08 21:57:48** | **R073** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=0/3
+- **2026-11-08 21:57:48** | **R073** | `review-packet` | **READY** | bytes=5367 new_files=[]
+- **2026-11-08 21:58:31** | **R074** | `add` | **OK** | contract=context/agent-pipeline/tasks/R074.json
+- **2026-11-08 21:58:31** | **R074** | `dispatch` | **OK** | status=implementing baseline=6 pack=context/agent-pipeline/packs/R074.impl.prompt.md
+- **2026-11-08 21:58:50** | **R074** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Drift — код-файлы R069/R072/R073 и R070/R071 в дереве/коммитах, задачи соседние; R074 — только 4 docs-файла drift=[]
+- **2026-11-08 21:58:50** | **R074** | `verify` | **PASS** | scope=skipped checks=grep_consistency=0 attempts=0/3
+- **2026-11-08 21:58:50** | **R074** | `review-packet` | **READY** | bytes=11517 new_files=[]
+- **2026-11-08 21:59:14** | **R075** | `add` | **OK** | contract=context/agent-pipeline/tasks/R075.json
+- **2026-11-08 21:59:15** | **R075** | `dispatch` | **OK** | status=implementing baseline=11 pack=context/agent-pipeline/packs/R075.impl.prompt.md
+- **2026-11-08 22:00:54** | **R073** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Пост-ревью: тест теперь пиннит выжившую pending-строку (non-blocker); drift — docs R074 + R072 файлы drift=['README.md', 'docs/DOCS_INDEX.md', 'docs/parity/MIGRATION_LEDGER.md', 'docs/parity/README.md']
+- **2026-11-08 22:01:20** | **R073** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=0/3
+- **2026-11-08 22:01:28** | **R073** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-08 22:04:26** | **R075** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Drift — docs R074 и соседние R069/R072/R073 файлы в дереве/коммитах; R075 — три файла контракта drift=[]
+- **2026-11-08 22:05:17** | **R075** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=0/3
+- **2026-11-08 22:05:47** | **R074** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Правки по FAIL ревью: 893 теста, 159_two_factor.sql, время 164 18:25 MSK, даты срезов; drift — R075/R072 файлы в дереве drift=['djadmin/core/tests/test_profile_flows.py', 'djadmin/core/tests/test_tasks.py', 'scripts/check_schema.py']
+- **2026-11-08 22:05:48** | **R074** | `verify` | **FAIL** | scope=skipped checks=grep_consistency=1 attempts=1/3 → fixing
+- **2026-11-08 22:06:03** | **R074** | `update` | **OK** | revision=1 reason=FAIL-ревью: фактические 893 теста, имя 159_two_factor.sql, время 164 18:25 MSK; чек обновлён
+- **2026-11-08 22:06:09** | **R074** | `set` | **fixing→planned** | by=Hyperstls reason=Пересбор baseline под обновлённый чек (893/159_two_factor/18:25)
+- **2026-11-08 22:06:10** | **R074** | `dispatch` | **OK** | status=implementing baseline=7 pack=context/agent-pipeline/packs/R074.impl.prompt.md
+- **2026-11-08 22:06:17** | **R074** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Drift — R075 (check_schema/tests) и R072 в дереве, соседние задачи; R074 — 4 docs-файла drift=[]
+- **2026-11-08 22:06:17** | **R074** | `verify` | **FAIL** | scope=skipped checks=grep_consistency=1 attempts=2/3 → fixing
+- **2026-11-08 22:06:31** | **R074** | `update` | **OK** | revision=2 reason=Чек: историческая строка 2026-11-04 помечена 'на дату среза', текущий статус 79/79
+- **2026-11-08 22:06:32** | **R074** | `set` | **fixing→planned** | by=Hyperstls reason=re-dispatch под финальный чек
+- **2026-11-08 22:06:38** | **R074** | `dispatch` | **OK** | status=implementing baseline=7 pack=context/agent-pipeline/packs/R074.impl.prompt.md
+- **2026-11-08 22:06:39** | **R074** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Drift — R075/R072 в дереве; R074 docs-only drift=[]
+- **2026-11-08 22:06:39** | **R074** | `verify` | **PASS** | scope=skipped checks=grep_consistency=0 attempts=2/3
+- **2026-11-08 22:06:45** | **R074** | `review-packet` | **READY** | bytes=11787 new_files=[]
+- **2026-11-08 22:06:59** | **R075** | `review-packet` | **READY** | bytes=6364 new_files=[]
+- **2026-11-08 22:07:31** | **R076** | `add` | **OK** | contract=context/agent-pipeline/tasks/R076.json
+- **2026-11-08 22:07:32** | **R076** | `dispatch` | **OK** | status=implementing baseline=13 pack=context/agent-pipeline/packs/R076.impl.prompt.md
+- **2026-11-08 22:07:47** | **R076** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Drift — R074/R075 (docs/check_schema/tests) в дереве; R076 — только .dockerignore drift=[]
+- **2026-11-08 22:07:48** | **R076** | `verify` | **PASS** | scope=skipped checks=parser=0 attempts=0/3
+- **2026-11-08 22:07:48** | **R076** | `review-packet` | **READY** | bytes=3088 new_files=[]
+- **2026-11-08 22:08:07** | **R077** | `add` | **OK** | contract=context/agent-pipeline/tasks/R077.json
+- **2026-11-08 22:08:07** | **R077** | `dispatch` | **OK** | status=implementing baseline=14 pack=context/agent-pipeline/packs/R077.impl.prompt.md
+- **2026-11-08 22:08:32** | **R077** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Drift — R074/R075/R076 файлы в дереве, соседние задачи; R077 — 3 docs-файла drift=[]
+- **2026-11-08 22:08:32** | **R077** | `verify` | **PASS** | scope=skipped checks=grep=0 attempts=0/3
+- **2026-11-08 22:08:38** | **R077** | `review-packet` | **READY** | bytes=12984 new_files=['docs/AUDIT_2026-11-08.md']
+- **2026-11-08 22:08:48** | **R074** | `review` | **PASS** | by=Hyperstls → done

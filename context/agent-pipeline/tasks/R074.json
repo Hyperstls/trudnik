@@ -1,0 +1,34 @@
+{
+  "id": "R074",
+  "title": "B1/B2: зафиксировать прод-статус миграций 159–164 и обновить счётчики",
+  "goal": "MIGRATION_LEDGER: 73/73 → 79/79 с записью о применении 159–164 на проде (164 — 2026-11-08 15:25 MSK по run-логу) и признанием процессного дефекта: необратимый DROP выполнен без предварительного замера прод-данных (только dev 0 non-null). parity/README, README, DOCS_INDEX: 65/65 и 73/73 → 79/79; тесты 884 → 893 (фактический DiscoverRunner).",
+  "why": "Строгий аудит 2026-11-08 (B1/B2): источник правды о схеме прода отставал на 6 миграций, а заявление «поля удалены полностью» не было подкреплено записью; счётчики в README/DOCS_INDEX вводят в заблуждение.",
+  "files": [
+    "docs/parity/MIGRATION_LEDGER.md",
+    "docs/parity/README.md",
+    "README.md",
+    "docs/DOCS_INDEX.md"
+  ],
+  "context_files": [
+    "migrations/164_drop_religion_columns.sql",
+    "docs/rkn_notification_fill.md"
+  ],
+  "interfaces": "MIGRATION_LEDGER.md: шапка «Статус: dev и production — 79/79 (150–164)», новый раздел «Журнал 159–164» с датами и источником (run-лог Amvera, SHA 164), абзац «Процессный дефект 164»: DROP COLUMN без прод-замера (dev 0 non-null), mitigation — прод в тестовом режиме; правило на будущее: необратимые миграции только после read-only замера на проде. parity/README.md: две строки 73/73 → 79/79. README.md: «ledger 65/65» → «ledger 79/79»; «884» → «893» (2 места). DOCS_INDEX.md: «884 OK» → «886 OK»; «ledger 65/65» → «ledger 79/79».",
+  "acceptance": [
+    "В MIGRATION_LEDGER нет 73/73 как текущего статуса; есть запись 159–164 и факт применения 164 на проде с датой.",
+    "Зафиксирован процессный дефект (нет прод-замера перед DROP) и правило на будущее.",
+    "Все счётчики миграций в README/DOCS_INDEX/parity/README — 79/79; тесты — 893 (фактический DiscoverRunner).",
+    "Документы консистентны (grep 73/73 и 884 по docs/README не находит текущих статусов)."
+  ],
+  "out_of_scope": [
+    "Не менять код/миграции.",
+    "Не создавать AUDIT-документ (отдельная задача R077)."
+  ],
+  "checks": [
+    {
+      "name": "grep_consistency",
+      "cmd": "{python} -c \"from pathlib import Path; r=Path('README.md').read_text(encoding='utf-8'); d=Path('docs/DOCS_INDEX.md').read_text(encoding='utf-8'); p=Path('docs/parity/README.md').read_text(encoding='utf-8'); l=Path('docs/parity/MIGRATION_LEDGER.md').read_text(encoding='utf-8'); assert '893' in r and '886' not in r, 'README counts'; assert '893' in d and '886' not in d, 'DOCS_INDEX counts'; assert 'ledger 79/79' in d, 'DOCS_INDEX ledger'; assert '159_two_factor.sql' in l and '159_twofa_sessions.sql' not in l, 'ledger 159'; assert '18:25 MSK' in l and '79/79' in l, 'ledger 164 time'; assert '73/73 (на дату среза)' in p and '79/79' in p, 'parity historical marked'; print('DOCS COUNTS OK')\"",
+      "cwd": "."
+    }
+  ]
+}
