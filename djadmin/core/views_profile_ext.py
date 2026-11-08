@@ -33,7 +33,8 @@ from django.utils.translation import gettext as _, gettext_lazy as _lazy
 from django.views.decorators.http import require_POST
 
 from .models import (
-    Application, Blacklist, Favorite, Job, JobPhoto, Profile, Rating, UserReport, UserSkill,
+    Application, Blacklist, EmployerDetail, Favorite, Job, JobPhoto, Message,
+    Profile, Rating, UserReport, UserSkill,
 )
 from .ratelimit import rate_limit_write
 from .rpc import call_rpc, call_rpc_as_user
@@ -64,6 +65,15 @@ def _own_data(user) -> dict:
         "ratings_given": list(Rating.objects.filter(rater_user=user).values()),
         "ratings_received": list(Rating.objects.filter(rated_user=user).values()),
         "reports_filed": list(UserReport.objects.filter(reporter=user).values()),
+        # R059 (152-ФЗ ст.14): переписка и карточка работодателя — тоже ПДн субъекта.
+        "messages_sent": list(
+            Message.objects.filter(sender=user).values(
+                "id", "application_id", "content", "attachment_url",
+                "attachment_name", "attachment_mime", "attachment_size",
+                "read_at", "created_at",
+            )
+        ),
+        "employer_details": EmployerDetail.objects.filter(user=user).values().first() or None,
     }
     return sections
 

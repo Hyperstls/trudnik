@@ -3453,3 +3453,27 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** Hyperstls
 
 **Пакет:** context/agent-pipeline/packs/R057.review.prompt.md
+
+## 2026-11-08 15:35:07 — R059: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Дрейф — файлы R058 (privacy/tasks/views_auth/test_privacy) в том же дереве, соседняя задача на ревью
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-08 15:36:19 — R058: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R058.review.prompt.md
+
+## 2026-11-08 15:39:08 — R059: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R059.review.prompt.md

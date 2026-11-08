@@ -55,6 +55,47 @@ class ExportDataTests(TestCase):
         self.assertEqual(data["user_id"], str(self.user.pk))
         self.assertEqual(data["profile"]["email"], self.user.email)
 
+    def test_export_includes_messages_and_employer_details(self):
+        """R059 (ст.14): в экспорте — своя переписка и карточка работодателя."""
+        from core.models import EmployerDetail, Message
+
+        other = make_profile("exp-emp-card@example.com", role="employer")
+        job = make_job(other, work_type="Экспорт-чат")
+        app = Application.objects.create(job=job, worker=self.user, status="accepted")
+        Message.objects.create(
+            sender=self.user, application=app, content="Моя переписка",
+            attachment_name="doc.pdf", attachment_mime="application/pdf",
+            attachment_size=123,
+        )
+        Message.objects.create(
+            sender=other, application=app, content="Чужое сообщение"
+        )
+        EmployerDetail.objects.create(
+            user=self.user, name="ИП Экспорт", address="ул. Тестовая, 1",
+            city="Москва", lat=55.75, lng=37.61, inn="123456789012",
+        )
+
+        response = self.client.get(reverse("core:export_data"))
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+
+        mine = data["messages_sent"]
+        self.assertEqual(len(mine), 1)
+        self.assertEqual(mine[0]["content"], "Моя переписка")
+        self.assertEqual(mine[0]["attachment_name"], "doc.pdf")
+        self.assertNotIn("Чужое сообщение", json.dumps(data, ensure_ascii=False))
+
+        card = data["employer_details"]
+        self.assertEqual(card["inn"], "123456789012")
+        self.assertEqual(card["address"], "ул. Тестовая, 1")
+        self.assertEqual(card["lat"], 55.75)
+
+    def test_export_employer_details_none_without_card(self):
+        response = self.client.get(reverse("core:export_data"))
+        data = json.loads(response.content)
+        self.assertIsNone(data["employer_details"])
+        self.assertEqual(data["messages_sent"], [])
+
     def test_requires_login(self):
         self.client.logout()
         self.assertEqual(self.client.get(reverse("core:export_data")).status_code, 302)

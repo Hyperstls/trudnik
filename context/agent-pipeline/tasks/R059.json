@@ -1,0 +1,39 @@
+{
+  "id": "R059",
+  "title": "152-ФЗ ст.14: полный экспорт ПДн — сообщения чата и карточка работодателя",
+  "goal": "Дополнить /profile/export-data: сообщения чата пользователя (sender=user; вложения — метаданные) и карточка работодателя employer_details (адрес, ИНН, координаты). Ст. 14 даёт право на доступ ко всем своим ПДн.",
+  "why": "P12 аудита 152-ФЗ 2026-11-08: views_profile_ext.py:46-85 — не входят Message (переписка) и EmployerDetail (адрес/ИНН/lat,lng) — это ПДн субъекта.",
+  "files": [
+    "djadmin/core/views_profile_ext.py",
+    "djadmin/core/tests/test_parity_ext.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/legal docs"
+  ],
+  "interfaces": "_own_data: добавить 'messages_sent': list(Message.objects.filter(sender=user).values('id','application_id','content','attachment_name','attachment_mime','attachment_size','read_at','created_at')) — без attachment_url (файл остаётся доступен по URL в чате; в экспорте достаточно метаданных, URL содержит путь uploads — можно включить 'attachment_url' как путь). Решение: включить attachment_url (это тоже данные субъекта). 'employer_details': EmployerDetail.objects.filter(user=user).values() если существует, иначе None. Импорты Message, EmployerDetail добавить в существующий блок from .models. Тесты в test_parity_ext.py (найти существующий класс ExportDataTests или создать): пользователь-работодатель с EmployerDetail (inn='123456789012', address='ул. Тест 1', lat/lng), сообщение в чате (Message.objects.create(sender=user, application=app, content='привет', attachment_name='f.pdf')); GET /profile/export-data 200; JSON содержит messages_sent с content/attachment_name, employer_details с inn/address/lat; профиль без EmployerDetail → employer_details None; messages_sent не содержит чужих сообщений.",
+  "acceptance": [
+    "Экспорт содержит messages_sent (только свои; текст, метаданные вложения, attachment_url).",
+    "Экспорт содержит employer_details (адрес, ИНН, координаты) или null.",
+    "Чужие сообщения/карточки в экспорт не попадают.",
+    "Существующие секции и пароль-исключение не изменились.",
+    "py_compile; core.tests.test_parity_ext проходит."
+  ],
+  "out_of_scope": [
+    "Не добавлять notifications/email_log (хранятся оператором, не субъекта).",
+    "Не менять delete-account и формат остальных секций.",
+    "Не трогать UI профиля."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_profile_ext.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_parity_ext --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
