@@ -1,0 +1,40 @@
+{
+  "id": "R051",
+  "title": "Безопасность: rate-limits по IP клиента (XFF), а не прокси",
+  "goal": "enforce_ip_limit должен считать по клиентскому IP (как GlobalIpRateLimitMiddleware/audit через client_ip(): последний hop X-Forwarded-For, иначе REMOTE_ADDR), а не REMOTE_ADDR прокси. Иначе лимиты login/register/reset/resend/support/geo/analytics глобальны на весь сайт за прокси Amvera (site-wide DoS входа).",
+  "why": "H-1 кодревью 2026-11-08: приложение за прокси платформы видит в REMOTE_ADDR адрес прокси для всех посетителей; один атакующий исчерпывает общий бакет (20 входов/час на всех) и блокирует аутентификацию всему сайту. Fail-closed семантика сохраняется.",
+  "files": [
+    "djadmin/core/ratelimit.py",
+    "djadmin/core/tests/test_ratelimit.py"
+  ],
+  "context_files": [
+    "djadmin/core/middleware.py",
+    "djadmin/core/tests/test_sessions.py"
+  ],
+  "interfaces": "ratelimit.py: в enforce_ip_limit получать ip через client_ip(request) (ленивый импорт from .middleware import client_ip внутри функции — middleware наверху не импортировать, чтобы не тянуть тяжёлый модуль/циклы); docstring обновить: ключ rl:ip:<bucket>:<client_ip>. Поведение rate_limit_write не менять. tests/test_ratelimit.py (новый): RequestFactory; (1) без XFF ключ/лимит по REMOTE_ADDR (127.0.0.1) — 3 вызова enforce_ip_limit(request,'t',2,60): третий бросает RateLimitExceeded(retry_after=60); (2) с HTTP_X_FORWARDED_FOR='1.2.3.4, 10.0.0.1' отдельные бакеты: 2 запроса от '1.2.3.4' (последний hop 10.0.0.1 — пояснить: client_ip берёт последний элемент) — сформулировать тест по факту: два запроса с XFF 'evil, 9.9.9.9' считаются вместе (последний hop 9.9.9.9), а запрос с XFF 'evil, 8.8.8.8' — отдельным бакетом; (3) сбой кэша (patch django.core.cache.cache.add side_effect) → RateLimitUnavailable; (4) счётчик сбрасывается на новом окне не проверять (зависит от TTL).",
+  "acceptance": [
+    "enforce_ip_limit использует client_ip(request) (XFF последний hop, fallback REMOTE_ADDR).",
+    "Разные клиентские IP получают независимые бакеты; один IP — общий счётчик с RateLimitExceeded при превышении.",
+    "Сбой кэша по-прежнему даёт RateLimitUnavailable (fail-closed).",
+    "rate_limit_write и вызовы во views не изменились.",
+    "py_compile обоих .py проходит.",
+    "core.tests.test_ratelimit, core.tests.test_sessions, core.tests.test_flows, core.tests.test_auth проходят."
+  ],
+  "out_of_scope": [
+    "Не менять client_ip()/механику XFF (отдельный low-вопрос доверия прокси).",
+    "Не менять лимиты/окна и fail-open декоратор.",
+    "Не трогать GlobalIpRateLimitMiddleware."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/ratelimit.py djadmin/core/tests/test_ratelimit.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_ratelimit core.tests.test_sessions core.tests.test_flows core.tests.test_auth --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

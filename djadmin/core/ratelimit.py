@@ -29,10 +29,15 @@ class RateLimitUnavailable(Exception):
 def enforce_ip_limit(request, bucket: str, limit: int, window: int) -> int:
     """Per-IP лимит на Django cache: count > limit → RateLimitExceeded.
 
-    Ключ 'rl:ip:<bucket>:<ip>' (ip = REMOTE_ADDR). Любой сбой кэша —
-    RateLimitUnavailable: без счётчика лимит не проверить, поэтому закрываем.
+    Ключ 'rl:ip:<bucket>:<ip>'. IP — клиентский (client_ip(): последний hop
+    X-Forwarded-For за доверенным прокси платформы, иначе REMOTE_ADDR), как в
+    GlobalIpRateLimitMiddleware и audit: REMOTE_ADDR за прокси одинаков у всех
+    посетителей и делал бы лимиты глобальными на весь сайт (site-wide DoS).
+    Любой сбой кэша — RateLimitUnavailable: без счётчика лимит не проверить.
     """
-    ip = request.META.get("REMOTE_ADDR", "unknown")
+    from .middleware import client_ip
+
+    ip = client_ip(request) or "unknown"
     key = "rl:ip:%s:%s" % (bucket, ip)
     try:
         if cache.add(key, 1, window):
