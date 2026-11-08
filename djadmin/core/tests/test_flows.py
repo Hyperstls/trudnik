@@ -285,22 +285,6 @@ class JobCrudTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, 'name="preferred_religion"')
 
-    def test_create_job_ignores_preferred_religion(self):
-        response = self.client.post(reverse("core:job_create"), {
-            "work_type": "Погрузка", "organization_name": "Храм",
-            "detailed_description": "Разгрузить коробки",
-            "address": "ул. Мира 2", "city": "Москва",
-            "payment_amount": "1000.00", "max_workers": "2",
-            "preferred_religion": "ислам",
-            "date_time": (timezone.now() + timedelta(days=2)).strftime("%Y-%m-%dT%H:%M"),
-            "skills": [],
-        })
-        self.assertEqual(response.status_code, 302)
-        job = Job.objects.filter(employer=self.user, work_type="Погрузка").first()
-        self.assertIsNotNone(job)
-        self.assertNotEqual(job.preferred_religion, "ислам")
-        self.assertEqual(job.preferred_religion, "не важно")
-
     def test_edit_by_owner(self):
         job = make_job(self.user, work_type="До правки")
         response = self.client.post(reverse("core:job_edit", args=[job.pk]), {

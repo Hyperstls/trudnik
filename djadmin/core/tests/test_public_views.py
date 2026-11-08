@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core import views
-from core.models import Announcement, Application, Blacklist, Favorite, Invitation, Job, JobPhoto, JobSkill, Profile, Rating, Religion, SitePage, Skill, UserSkill
+from core.models import Announcement, Application, Blacklist, Favorite, Invitation, Job, JobPhoto, JobSkill, Profile, Rating, SitePage, Skill, UserSkill
 from core.storage import resolve_upload_url, save_upload
 from core.tests.test_auth import CACHE_LOCMEM, make_profile
 from core.tests.test_flows import make_job
@@ -626,17 +626,15 @@ class PublicViewsTests(TestCase):
         """P0-03/P0-04 (152-ФЗ): contact/email_public/religion не публичны."""
         contact = "+7 999 555-44-33"
         email_public = "public-contact@example.com"
-        religion, _ = Religion.objects.get_or_create(name="Тестовое вероисповедание")
         self.worker.contact = contact
         self.worker.email_public = email_public
-        self.worker.religion = religion
-        self.worker.save(update_fields=["contact", "email_public", "religion"])
+        self.worker.save(update_fields=["contact", "email_public"])
 
         url = f"/workers/{self.worker.pk}"
 
         anon = self.client.get(url)
         self.assertEqual(anon.status_code, 200)
-        for value in (contact, email_public, religion.name):
+        for value in (contact, email_public):
             self.assertNotContains(anon, value)
         self.assertContains(anon, CONTACTS_AFTER_RESPONSE_TEXT)
 
@@ -644,7 +642,7 @@ class PublicViewsTests(TestCase):
         self.client.force_login(other)
         auth = self.client.get(url)
         self.assertEqual(auth.status_code, 200)
-        for value in (contact, email_public, religion.name):
+        for value in (contact, email_public):
             self.assertNotContains(auth, value)
         self.assertContains(auth, CONTACTS_AFTER_RESPONSE_TEXT)
 

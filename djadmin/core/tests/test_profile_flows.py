@@ -87,19 +87,20 @@ class ProfileEditTests(TestCase):
 
     def test_religion_not_editable(self):
         """P0-04 (152-ФЗ ст.10): вероисповедание не выбирается и не меняется."""
-        religion = Religion.objects.create(name="Тестовое вероисповедание")
         response = self.client.get("/profile")
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, 'name="religion"')
 
+        # неизвестный POST-ключ игнорируется формой (R061: без обращения к
+        # атрибуту модели — тест проходит и до, и после дропа колонки)
         response = self.client.post("/profile", {
             "action": "profile",
             "full_name": "Без вероисповедания", "worker_visibility": "on",
-            "religion": str(religion.pk),
+            "religion": "00000000-0000-0000-0000-000000000000",
         })
         self.assertEqual(response.status_code, 302)
         self.user.refresh_from_db()
-        self.assertIsNone(self.user.religion_id)
+        self.assertEqual(self.user.full_name, "Без вероисповедания")
 
         from core.admin.users import ProfileAdmin
 

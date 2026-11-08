@@ -1,0 +1,38 @@
+{
+  "id": "R061",
+  "title": "152-ФЗ ст.10 (шаг 1/2): тесты становятся независимыми от колонок вероисповедания",
+  "goal": "Подготовить тесты к удалению profiles.religion_id и jobs.preferred_religion (R062): убрать обращения к атрибутам моделей в test_profile_flows (user.religion_id), test_public_views (worker.religion), test_flows (job.preferred_religion). Тесты должны проходить И до, И после дропа колонок — проверяется на текущей схеме.",
+  "why": "P3 аудита 152-ФЗ: спецкатегория остаётся в схеме при заявленном отказе. Перед миграцией нужно отвязать тесты от удаляемых атрибутов, чтобы шаг 2 (R062) не менял тесты и был минимальным.",
+  "files": [
+    "djadmin/core/tests/test_profile_flows.py",
+    "djadmin/core/tests/test_public_views.py",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/forms.py"
+  ],
+  "interfaces": "test_profile_flows.py test_religion_not_editable: вместо self.user.religion_id — проверять, что форма профиля не содержит поля religion (assertNotContains 'name=\"religion\"' уже есть) и что POST с ключом religion даёт 302 (форма игнорирует неизвестные ключи); убрать обращение к атрибуту модели. test_public_views.py test_worker_detail_hides_contact_email_public_and_religion: убрать создание Religion и self.worker.religion/save update_fields; оставить проверки contact/email_public (переименовать тест не обязательно); убедиться, что import Religion не остался неиспользованным. test_flows.py: удалить test_create_job_ignores_preferred_religion (288-302) — после удаления поля (R062) тест гарантированно зелёный отсутствием поля; сохраняющиеся тесты 278-286 (not in form/admin/no input) продолжают покрывать поведение; payload-строку 86 'preferred_religion': 'не важно' можно оставить (форма игнорирует).",
+  "acceptance": [
+    "Ни один тест не обращается к Profile.religion/religion_id или Job.preferred_religion как к атрибуту (grep чист по трём файлам).",
+    "Полный набор тестов проходит на ТЕКУЩЕЙ схеме (колонки ещё есть).",
+    "Покрытие приватности не потеряно: contact/email_public скрытие, форма без religion, form/admin без preferred_religion остаются.",
+    "py_compile трёх файлов; core.tests.test_profile_flows, test_public_views, test_flows проходят."
+  ],
+  "out_of_scope": [
+    "Не менять модели/миграции/формы (шаг 2 — R062).",
+    "Не менять админку и словарь religions."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_profile_flows.py djadmin/core/tests/test_public_views.py djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_profile_flows core.tests.test_public_views core.tests.test_flows --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
