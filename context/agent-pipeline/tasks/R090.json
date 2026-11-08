@@ -1,0 +1,40 @@
+{
+  "id": "R090",
+  "title": "152-ФЗ: политика v1.4 — Web Push отключён, уведомления в РФ",
+  "goal": "Обновить политику: Web Push отключён по умолчанию, трансграничной передачи через push-сервисы нет; уведомления — email, in-app, MAX (РФ). Обновить 152FZ_DATA_FLOWS, .env.example (WEB_PUSH_ENABLED=0) и тест версии политики.",
+  "why": "Решение владельца 2026-11-09: push нужен, но без трансграничной передачи; политика v1.3 (п. 9.1/9.2) описывала канал как действующий с трансграничкой — это расходится с кодом после R088.",
+  "files": [
+    "djadmin/core/templates/core/legal_fallback.html",
+    "djadmin/core/tests/test_public_views.py",
+    "docs/parity/152FZ_DATA_FLOWS.md",
+    ".env.example"
+  ],
+  "context_files": [
+    "docs/rkn_notification_fill.md"
+  ],
+  "interfaces": "legal_fallback.html: редакция 09.11.2026 v1.4; п.4 recipients — убрать строку про push-сервисы браузеров, оставить email-провайдер/хостинг РФ/MAX; 9.1 — все ПДн в РФ, Web Push отключён (WEB_PUSH_ENABLED=0), трансграничной передачи нет; 9.2 — канал может быть включён только после декларирования по ст.12; уведомления доставляются email/in-app/MAX (РФ). test_public_views.py: ожидание 'версия 1.4' (+ при необходимости assert 'Web Push отключён'). 152FZ_DATA_FLOWS.md: строка Web Push — 'канал отключён по умолчанию (R088), подписки не создаются; при включении — только после декларирования'; таблица push-подписок остаётся (retention). .env.example: WEB_PUSH_ENABLED=0 с комментарием о трансграничке и решении.",
+  "acceptance": [
+    "Политика v1.4 не утверждает, что трансграничная push-передача ведётся; прямо говорит об отключении канала.",
+    "В п.4 нет действующей передачи в Google/Mozilla; MAX указан как РФ-канал.",
+    "152FZ_DATA_FLOWS отражает фактическое поведение (disabled by default) и не противоречит R088.",
+    ".env.example содержит WEB_PUSH_ENABLED=0; реальных секретов нет.",
+    "py_compile; core.tests.test_public_views проходит."
+  ],
+  "out_of_scope": [
+    "Не менять site_pages в прод-БД (owner action, прод отдаёт БД-текст).",
+    "Не включать push и не менять код R088/R089.",
+    "Не подавать уведомление РКН (владелец)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
