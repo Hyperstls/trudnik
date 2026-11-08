@@ -5,8 +5,8 @@ meta:
     name: docker
     version: latest
 build:
-  # Ветка main-jango: Django-компаньон (админка + публичные read-only страницы).
-  # Ветка main продолжает деплоить Flask-образ (Dockerfile) проекта trudnik.
+  # main — единственный прод с 2026-10-30: Django (админка + публичные страницы).
+  # Legacy Flask сохранён только в ветке main-flask (не деплоится).
   dockerfile: Dockerfile.djadmin
   skip: false
 run:

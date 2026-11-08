@@ -22,14 +22,14 @@ djadmin/                    # Django-проект (единственный пр
     forms*.py               # формы и валидаторы
     models.py               # unmanaged-модели поверх существующей БД
     templates/core/         # все актуальные шаблоны (корневые templates/ — legacy Flask)
-    tests/                  # 603 теста (manage.py test core)
+    tests/                  # фикстура схемы; тесты — djadmin/core/tests (884)
   static/                   # собранный Tailwind и JS
 migrations/                 # SQL-миграции 067–150+, ledger 65/65
 scripts/                    # pre_deploy_check, dj_test_clone, миграции, Amvera
 context/agent-pipeline/     # контракты, state, logs, packs (агентный конвейер)
 docs/                       # документация: parity, архитектура, UX/UI, 152-ФЗ
 templates/                  # legacy Flask (не используется Django)
-app/, websocket_server/     # legacy Flask-код (архив)
+app/, websocket_server/     # пусты; legacy Flask — ветка main-flask
 ```
 
 ## Быстрый старт
@@ -40,7 +40,7 @@ docker compose up -d db redis
 
 # 2. Python 3.12
 py -3.12 -m venv .venv
-.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.venv\Scripts\python.exe -m pip install -r djadmin/requirements.txt
 
 # 3. Frontend
 npm install

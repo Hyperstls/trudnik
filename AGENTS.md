@@ -14,10 +14,10 @@
 - Регистрация: `intent` ∈ {both (дефолт), find_work, post_jobs}; `register_user` RPC принимает `p_worker_visibility`.
 
 ## Верификация кода
-- Линтеров/typecheck в репо НЕТ. Проверка — через `pytest` (см. 08_testing_and_verify.md).
+- Линтеров/typecheck в репо НЕТ. Проверка — Django runner: `djadmin/manage.py test core` (pytest в репо не настроен: соберёт 0 тестов).
 - При правках `templates/` или `static/js/`: сначала `npm run build:css` (иначе упадёт проверка [7/7] Tailwind freshness).
 - **Перед коммитом:** `.venv\Scripts\python.exe scripts\pre_deploy_check.py` (0 проблем).
-- Затем: `.venv\Scripts\python.exe -m py_compile <изменённые .py>` + `.venv\Scripts\python.exe -m pytest tests -q`.
+- Затем: `.venv\Scripts\python.exe -m py_compile <изменённые .py>` + `.venv\Scripts\python.exe djadmin/manage.py test core --keepdb -v 0`.
 - Pre-commit хук `detect-secrets` блокирует коммиты с захардкоженными секретами (никогда не хардкоди PGRST_JWT_SECRET и т.п.).
 - Тестовые пароли: `Aa1!aaaa` (низкая энтропия, НЕ флагируется).
 
@@ -31,9 +31,9 @@
 - Секреты (JWT, SECRET_KEY, VAPID_*, SMTP, MAX_BOT_TOKEN, SMARTCAPTCHA_SERVER_KEY) — только из env.
 - Капча — Yandex SmartCaptcha (РФ). Turnstile (Cloudflare) и Telegram-верификация отключены 2026-08: 152-ФЗ ст. 12 — исключение трансграничной передачи ПДн (см. docs/rkn_notification_fill.md).
 - Мутирующие запросы — с CSRF (X-CSRF-Token / form csrf_token).
-- Доступ к данным — только через PostgREST/RPC (app/utils/postgrest_client.py).
+- Доступ к данным — только через RPC (`djadmin/core/rpc.py`: `call_rpc`/`call_rpc_as_user`, параметризованные запросы); PostgREST — только legacy Flask.
 
 ## Python окружение
 - Версия: 3.12 (Dockerfile: FROM python:3.12-slim). НЕ предлагай 3.13/3.14.
 - Venv: `.venv\Scripts\python.exe` (Windows), `python` (CI/Linux).
-- Установка: `.venv\Scripts\python.exe -m pip install -r requirements-dev.txt`.
+- Установка: `.venv\Scripts\python.exe -m pip install -r djadmin/requirements.txt`.

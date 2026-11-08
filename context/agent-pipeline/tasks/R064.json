@@ -1,0 +1,34 @@
+{
+  "id": "R064",
+  "title": "Гигиена: AGENTS.md/README/amvera.yaml — убрать сломанные инструкции",
+  "goal": "Исправить вводящие в заблуждение факты: AGENTS.md велит запускать `pytest tests -q` (в tests/ только fixtures → 0 тестов, ложная зелёнка) и ссылается на несуществующие requirements-dev.txt/app/utils/postgrest_client.py; README говорит «603 теста» (фактически 884) и «app/, websocket_server/ — legacy Flask-код» (каталоги пусты, код в ветке main-flask); amvera.yaml утверждает, что main деплоит Flask-образ (неверно — Dockerfile.djadmin).",
+  "why": "Аудит 2026-11-08: сломанная инструкция в AGENTS.md — источник ложной верификации для ИИ-агентов (прогон «pytest tests -q» создаёт видимость проверки). Остальное — фактический дрейф документации.",
+  "files": [
+    "AGENTS.md",
+    "README.md",
+    "amvera.yaml"
+  ],
+  "context_files": [
+    "djadmin/core/rpc.py",
+    "djadmin/requirements.txt"
+  ],
+  "interfaces": "AGENTS.md: строка 17 — «проверка через pytest» → «manage.py test core (Django runner; pytest в репо не настроен)»; строка 20 — «-m pytest tests -q» → «djadmin\\\\manage.py test core --keepdb -v 0»; строка 34 — «app/utils/postgrest_client.py» → «djadmin/core/rpc.py (call_rpc/call_rpc_as_user), PostgREST — только legacy»; строка 39 — «requirements-dev.txt» → «djadmin/requirements.txt». README.md: строка 25 «tests/ # 603 теста» → «# фикстуры схемы (тесты — djadmin/core/tests, 884)»; строка 32 «app/, websocket_server/ — legacy Flask-код (архив)» → «пусты; legacy Flask — только в ветке main-flask»; при наличии «603» в статусе — 884 (уже исправлено ранее, проверить). amvera.yaml: комментарий 8-9 → «Dockerfile.djadmin (Django — единственный прод с 2026-10-30); Flask-архив — ветка main-flask».",
+  "acceptance": [
+    "AGENTS.md не содержит pytest/requirements-dev/app/utils ссылок; команда тестов — manage.py test core.",
+    "README: нет «603 теста»; app/websocket_server описаны как пустые, legacy Flask — в main-flask.",
+    "amvera.yaml не утверждает, что main деплоит Flask-образ.",
+    "Файлы остаются валидными (yaml парсится).",
+    "Никаких изменений кода/тестов."
+  ],
+  "out_of_scope": [
+    "Не переносить/удалять legacy-файлы.",
+    "Не менять Dockerfile/CI."
+  ],
+  "checks": [
+    {
+      "name": "grep_consistency",
+      "cmd": "{python} -c \"from pathlib import Path; a=Path('AGENTS.md').read_text(encoding='utf-8'); assert 'pytest tests' not in a and 'requirements-dev' not in a and 'postgrest_client' not in a, 'AGENTS stale'; r=Path('README.md').read_text(encoding='utf-8'); assert '603 теста' not in r, 'README 603'; import yaml; yaml.safe_load(Path('amvera.yaml').read_text(encoding='utf-8')); print('OK')\"",
+      "cwd": "."
+    }
+  ]
+}
