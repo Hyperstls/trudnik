@@ -1,0 +1,38 @@
+{
+  "id": "R083",
+  "title": "Ops: нагрузочный сценарий 100 req / P=8 + протокол",
+  "goal": "scripts/load_test.py — stdlib-нагрузка только GET: N запросов при конкурентности P, перцентили p50/p90/p95/p99, ошибки/non-2xx, exit 1 при сбоях. --self-test поднимает локальный http.server и доказывает работоспособность без сети. Прод-режим требует --confirm-prod и host из allowlist (трудник.рф/xn--d1aigknli.xn--p1ai), жёсткий cap запросов. docs/LOAD_TEST.md — окно, команда, пороги приёмки, что смотреть.",
+  "why": "Аудит 2026-11-08: лимиты Amvera и поведение под конкурентностью не проверены; нужен воспроизводимый безопасный сценарий 100 req/P=8 для запуска в согласованное окно.",
+  "files": [
+    "scripts/load_test.py",
+    "docs/LOAD_TEST.md"
+  ],
+  "context_files": [
+    "docs/RESTORE_RUNBOOK.md"
+  ],
+  "interfaces": "load_test.py: argparse --base-url --requests (default 100, hard cap 500) --concurrency (default 8, 1..32) --paths (default /,/jobs,/workers,/health) --timeout 10 --self-test --confirm-prod. Только GET, заголовок User-Agent trudnik-load-test, Cache-Control: no-cache. ThreadPoolExecutor(max_workers=P) + urllib.request; собирает status, elapsed; перцентили nearest-rank; печатает total/ok/failed/non2xx/rps/p50/p90/p95/p99/max; exit 1 если есть исключения или статус вне 2xx/3xx. --self-test: ThreadingHTTPServer на 127.0.0.1:0, 100/8, assert 100% 200, печать OK. Прод: разрешён только https и host в {'xn--d1aigknli.xn--p1ai','трудник.рф'}, обязателен --confirm-prod, иначе exit 2 с объяснением; никаких POST/авторизации. docs/LOAD_TEST.md: окно, команды self-test и прод, пороги (100% 2xx, p95 ≤ 1000 мс, p99 ≤ 2000 мс — при 100 req это smoke, не стресс), наблюдение Amvera/error_events, стоп-условие.",
+  "acceptance": [
+    "--self-test проходит: 100 запросов, P=8, 100% 2xx, exit 0.",
+    "Прод-режим без --confirm-prod или с чужим host/HTTP — отказ (exit 2) без единого запроса.",
+    "Отчёт содержит total/ok/failed/non2xx/rps и p50/p90/p95/p99/max; при любой ошибке exit 1.",
+    "Скрипт делает только GET и не отправляет форм/куки/токенов.",
+    "py_compile; docs/LOAD_TEST.md содержит окно, команду и пороги приёмки."
+  ],
+  "out_of_scope": [
+    "Не запускать нагрузку на проде в этой задаче (только в согласованное окно).",
+    "Не добавлять зависимости (locust/httpx и т.п.).",
+    "Не менять прод-код и лимиты."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile scripts/load_test.py",
+      "cwd": "."
+    },
+    {
+      "name": "self-test",
+      "cmd": "{python} scripts/load_test.py --self-test",
+      "cwd": "."
+    }
+  ]
+}

@@ -3885,3 +3885,19 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review-agent
 
 **Пакет:** context/agent-pipeline/packs/R082.review.prompt.md
+
+## 2026-11-08 23:42:03 — R083: ревью: FAIL
+
+**Раунд:** 1/2
+
+**Вердикт ревьюера:** FAIL round 1: non2xx structural bug — fetch() returned non-empty error for HTTPError, so non2xx condition (error is None) was unreachable; 503 run printed non2xx:0 errors:10. Also non-blockers: non-canonical percentile (round vs ceil), read(1024) truncated body latency, redirects followed off-allowlist, self-test accepted overrides weakening 100/8, report labels differed from contract, timeout not validated. Self-test/refusals/GET-only/scope passed.
+
+**Действие:** fixing — раунд исправлений
+
+## 2026-11-08 23:46:00 — R083: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R083.review.prompt.md
