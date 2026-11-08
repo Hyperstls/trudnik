@@ -62,7 +62,7 @@ twa-config.json
 __pycache__/
 *.log
 *.bat
-*.sh
+**/*.sh
 
 # Env-файлы (даже placeholder-шаблоны не должны попадать в образ)
 scripts/env_*.env
@@ -88,3 +88,11 @@ package.json
 package-lock.json
 .secrets.baseline
 demo/
+
+# R076: прочий балласт, не нужный рантайму (аудит D6)
+app/
+Promts/
+in/
+tests_js/
+websocket_server/
+djadmin/core/tests/

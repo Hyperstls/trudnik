@@ -1,0 +1,28 @@
+{
+  "id": "R076",
+  "title": "D6: .dockerignore — дочистить балласт, поправить root-only паттерны",
+  "goal": "Исключить из образа app/, Promts/, in/, tests_js/, websocket_server/, djadmin/core/tests/; заменить *.sh на **/*.sh (текущий паттерн якорится к корню и ничего не делает, а scripts/*.sh едут в образ).",
+  "why": "Строгий аудит 2026-11-08 (D6): *.sh/*.txt работают только на корень (файлов в корне нет — no-op); тестовый и legacy-код остаётся в прод-образе.",
+  "files": [
+    ".dockerignore"
+  ],
+  "context_files": [
+    "Dockerfile.djadmin"
+  ],
+  "interfaces": ".dockerignore: добавить app/, Promts/, in/, tests_js/, websocket_server/, djadmin/core/tests/; заменить строку '*.sh' на '**/*.sh'. НЕ трогать uploads/, certs (нет), static/, djadmin/(кроме uploads), migrations/, scripts/*.py, locale.",
+  "acceptance": [
+    "Указанные каталоги исключены; **/*.sh исключает scripts/*.sh; needed keep-list (certs, static, requirements, scripts/*.py, supervisord) не задет.",
+    "Проверка по Docker-семантике проходит (need игнорируются, keep — нет)."
+  ],
+  "out_of_scope": [
+    "Не менять Dockerfile.",
+    "Не удалять файлы из git."
+  ],
+  "checks": [
+    {
+      "name": "parser",
+      "cmd": "{python} -c \"import fnmatch; from pathlib import PurePath; pats=[l.strip() for l in open('.dockerignore',encoding='utf-8') if l.strip() and not l.strip().startswith('#')]; ign=lambda p: any((('/' in pat and (p==pat or p.startswith(pat.rstrip('/')+'/'))) or ('/' not in pat and '/' not in p and fnmatch.fnmatch(p,pat))) for pat in pats); need=['app/x.py','Promts/x','in/x','tests_js/x.mjs','websocket_server/x.py','djadmin/core/tests/test_x.py']; keep=['certs/russian_trusted_root_ca.crt','static/css/app.css','djadmin/requirements.txt','scripts/apply_migrations.py','supervisord.djadmin.conf','djadmin/locale/en/LC_MESSAGES/django.mo']; assert not [x for x in need if not ign(x)], 'need'; assert not [k for k in keep if ign(k)], 'keep'; print('DOCKERIGNORE OK')\"",
+      "cwd": "."
+    }
+  ]
+}
