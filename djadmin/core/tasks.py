@@ -259,7 +259,7 @@ def cleanup_old_email_logs() -> int:
 def cleanup_personal_data_retention() -> dict:
     """R057 (152-ФЗ): сроки хранения персональных данных.
 
-    outbox: sent/skipped > 30 дн, failed > 7 дн (копии текстов уведомлений,
+    outbox: sent/skipped > 30 дн, failed/pending > 7 дн (копии текстов уведомлений,
     включая превью чатов, не живут вечно);
     audit_log: > 180 дн (IP и ФИО/email в JSON);
     error_events: > 90 дн (политика 10.8; R069);
@@ -276,7 +276,11 @@ def cleanup_personal_data_retention() -> dict:
         deleted2, _ = NotificationOutbox.objects.filter(
             status="failed", created_at__lt=now - timedelta(days=7)
         ).delete()
-        counts["notification_outbox"] = int(deleted) + int(deleted2)
+        # застрявшие pending (drain упал, admin-retry) — иначе превью живут вечно
+        deleted3, _ = NotificationOutbox.objects.filter(
+            status="pending", created_at__lt=now - timedelta(days=7)
+        ).delete()
+        counts["notification_outbox"] = int(deleted) + int(deleted2) + int(deleted3)
     except Exception:
         logger.exception("retention: notification_outbox cleanup failed")
         counts["notification_outbox"] = None

@@ -1,0 +1,37 @@
+{
+  "id": "R073",
+  "title": "C4: retention — чистить застрявшие pending-строки outbox",
+  "goal": "В cleanup_personal_data_retention добавить удаление NotificationOutbox в статусе pending старше 7 дней (зависший drain/admin-retry), чтобы превью сообщений не жили вечно. Тест: 8д удаляется, 6д остаётся.",
+  "why": "Строгий аудит 2026-11-08 (C4): ветки sent/skipped/failed не покрывают pending; после сбоя drain/retry такие строки не чистятся никогда.",
+  "files": [
+    "djadmin/core/tasks.py",
+    "djadmin/core/tests/test_tasks.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/notifications.py"
+  ],
+  "interfaces": "tasks.py: в ветке outbox после failed-удаления добавить NotificationOutbox.objects.filter(status='pending', created_at__lt=now - timedelta(days=7)).delete() и включить в counts['notification_outbox']; docstring дополнить. test_tasks.py RetentionTaskTests.test_outbox_sent_skipped_and_failed_retention: добавить pending 8д (удаляется) и pending 6д (остаётся), скорректировать ожидаемое counts/количество строк.",
+  "acceptance": [
+    "pending старше 7 дней удаляются; свежие pending остаются (не мешают drain).",
+    "sent/skipped/failed ветки не изменены по смыслу.",
+    "counts учитывает все удаления outbox.",
+    "py_compile; core.tests.test_tasks проходит."
+  ],
+  "out_of_scope": [
+    "Не менять drain/enqueue.",
+    "Не менять сроки остальных веток."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tasks.py djadmin/core/tests/test_tasks.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_tasks --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

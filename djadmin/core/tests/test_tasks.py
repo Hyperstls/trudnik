@@ -324,13 +324,17 @@ class RetentionTaskTests(TestCase):
         self._outbox("sent", processed_at=self.now - timedelta(days=29))   # остаётся
         self._outbox("failed", created_at=self.now - timedelta(days=8))    # удаляется
         self._outbox("failed", created_at=self.now - timedelta(days=6))    # остаётся
+        old_pending = self._outbox("pending", created_at=self.now - timedelta(days=8))   # удаляется (C4)
+        fresh_pending = self._outbox("pending", created_at=self.now - timedelta(days=6))  # остаётся
 
         counts = cleanup_personal_data_retention()
 
-        self.assertEqual(counts["notification_outbox"], 3)
-        self.assertEqual(NotificationOutbox.objects.count(), 2)
-        statuses = set(NotificationOutbox.objects.values_list("status", flat=True))
-        self.assertEqual(statuses, {"sent", "failed"})
+        self.assertEqual(counts["notification_outbox"], 4)
+        self.assertEqual(NotificationOutbox.objects.count(), 3)
+        statuses = sorted(NotificationOutbox.objects.values_list("status", flat=True))
+        self.assertEqual(statuses, ["failed", "pending", "sent"])
+        self.assertFalse(NotificationOutbox.objects.filter(pk=old_pending.pk).exists())
+        self.assertTrue(NotificationOutbox.objects.filter(pk=fresh_pending.pk).exists())
 
     def test_audit_log_retention_180_days(self):
         from core.audit import log_admin_action
