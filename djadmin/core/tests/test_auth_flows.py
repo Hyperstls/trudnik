@@ -112,7 +112,10 @@ class RegisterTests(TestCase):
         response = self.client.post("/register", {**REG, "email": email})
         self.assertEqual(response.status_code, 302)
         self.assertIn("/verify-email/resend", response["Location"])
-        self.assertIn("resend-redirect%40example.com", response["Location"])
+        # R066 (152-ФЗ): адрес передаётся сессией, не URL
+        self.assertNotIn("?", response["Location"])
+        self.assertNotIn("%40", response["Location"])
+        self.assertEqual(self.client.session["resend_email"], email)
 
     def test_register_intent_post_jobs_maps_to_employer(self):
         self.client.post("/register", {**REG, "email": "employer-reg@example.com", "intent": "post_jobs"})
@@ -437,8 +440,18 @@ class ResendCooldownTests(TestCase):
         cache.clear()  # cooldown ресенда живёт в общем кэше — изолируем тесты
 
     def test_resend_page_prefills_email(self):
-        response = self.client.get("/verify-email/resend", {"email": "prefill@example.com"})
+        session = self.client.session
+        session["resend_email"] = "prefill@example.com"
+        session.save()
+        response = self.client.get("/verify-email/resend")
         self.assertContains(response, 'value="prefill@example.com"')
+
+    def test_resend_page_ignores_email_in_query(self):
+        """R066: ?email= больше не читается — чужой адрес не отражается."""
+        response = self.client.get(
+            "/verify-email/resend", {"email": "victim@example.com"}
+        )
+        self.assertNotContains(response, 'value="victim@example.com"')
 
     def test_resend_post_stays_on_resend_page(self):
         make_profile("resend-stay@example.com", email_verified=False)
@@ -447,7 +460,10 @@ class ResendCooldownTests(TestCase):
         )
         self.assertEqual(response.status_code, 302)
         self.assertIn("/verify-email/resend", response["Location"])
-        self.assertIn("resend-stay%40example.com", response["Location"])
+        self.assertNotIn("%40", response["Location"])
+        self.assertEqual(
+            self.client.session["resend_email"], "resend-stay@example.com"
+        )
 
     def test_resend_sends_once_per_cooldown(self):
         make_profile("resend@example.com", email_verified=False)

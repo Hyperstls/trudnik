@@ -19,7 +19,6 @@
 Недоступный кэш = fail-closed с сообщением: лимит/cooldown не проверить.
 """
 import logging
-from urllib.parse import quote
 
 from django.conf import settings
 from django.contrib import messages
@@ -27,7 +26,6 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
 from django.shortcuts import redirect, render
-from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
@@ -188,10 +186,10 @@ def register(request):
                     "если письма нет — отправьте его повторно."
                 ) % email,
             )
-            return redirect(
-                "%s?email=%s"
-                % (reverse("core:verify_email_resend"), quote(email))
-            )
+            # R066 (152-ФЗ): email не в URL — передаём на страницу через
+            # сессию (одноразово), иначе он остаётся в истории/Referer/логах.
+            request.session["resend_email"] = email
+            return redirect("core:verify_email_resend")
     return render(request, "core/register.html", {"form": form, **captcha_ctx})
 
 
@@ -208,7 +206,8 @@ def verify_email(request, token: str):
 
 
 def verify_email_resend(request):
-    email = (request.GET.get("email") or "").strip().lower()
+    # R066: ?email= больше не читается (ПДн в URL); prefill — из сессии.
+    email = (request.session.pop("resend_email", "") or "").strip().lower()
     if request.method == "POST":
         try:
             enforce_ip_limit(request, "resend", 10, 3600)
@@ -243,9 +242,8 @@ def verify_email_resend(request):
             messages.success(request, _("Письмо отправлено. Проверьте почту и папку «Спам»."))
         else:
             messages.info(request, _("Письмо уже отправлялось недавно. Повторить можно через 2 минуты."))
-        return redirect(
-            "%s?email=%s" % (reverse("core:verify_email_resend"), quote(email))
-        )
+        request.session["resend_email"] = email
+        return redirect("core:verify_email_resend")
     return render(request, "core/verify_email_resend.html", {"email": email})
 
 

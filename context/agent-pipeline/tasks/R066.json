@@ -1,0 +1,38 @@
+{
+  "id": "R066",
+  "title": "152-ФЗ: убрать email из URL (resend-флоу через сессию)",
+  "goal": "Email больше не попадает в query string: регистрация и повторная отправка письма передают адрес на страницу resend через сессию (одноразово), redirect без ?email=. Старые входящие ?email= игнорируются.",
+  "why": "P11 аудита 152-ФЗ: ?email=... в redirect'ах (views_auth.py:188,243) и GET-параметре (:207) оставляет ПДн в истории браузера, Referer и access-логах прокси.",
+  "files": [
+    "djadmin/core/views_auth.py",
+    "djadmin/core/tests/test_auth_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/verify_email_resend.html"
+  ],
+  "interfaces": "views_auth.py: (1) после успешной регистрации — request.session['resend_email']=email; redirect(reverse('core:verify_email_resend')) без query; (2) verify_email_resend GET — email = (request.session.pop('resend_email','') or '').strip().lower() (GET ?email больше не читается); POST success/not-sent — session['resend_email']=email и redirect без query; ошибки (пустой email/лимит) — redirect без query. Шаблон не меняется (контекст email). test_auth_flows.py: test_register_redirects_to_resend_page — Location без email/percent-encoding, session['resend_email']==email; test_resend_page_prefills_email — установить session через self.client.session, GET /verify-email/resend → prefill, и отдельно: GET с ?email= чужого адреса НЕ префилит (игнорируется); test_resend_post_stays_on_resend_page — Location без email, session prefill после POST; проверить, что письмо/cooldown-логика не изменились.",
+  "acceptance": [
+    "Ни один redirect resend-флоу не содержит ?email=.",
+    "Prefill страницы resend работает через сессию (одноразово).",
+    "Входящий ?email= игнорируется (нет отражения чужого адреса).",
+    "Отправка письма и cooldown не изменились.",
+    "py_compile; core.tests.test_auth_flows, core.tests.test_auth проходят."
+  ],
+  "out_of_scope": [
+    "Не менять шаблон/тексты писем.",
+    "Не трогать reset-password flow (там email не в URL).",
+    "Не менять лимиты/cooldown."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_auth.py djadmin/core/tests/test_auth_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_auth_flows core.tests.test_auth --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

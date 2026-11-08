@@ -1418,3 +1418,13 @@
 - **2026-11-08 18:39:10** | **R066** | `add` | **OK** | contract=context/agent-pipeline/tasks/R066.json
 - **2026-11-08 18:39:10** | **R066** | `dispatch` | **OK** | status=implementing baseline=10 pack=context/agent-pipeline/packs/R066.impl.prompt.md
 - **2026-11-08 18:41:39** | **R063** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-08 18:41:51** | **R065** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Правка по non-blocker ревью: urlsplit ValueError (мусор http://[) → 204/пустой url, userinfo (токены) вырезается; плюс в дереве файлы R066 (views_auth/test_auth_flows) drift=['.dockerignore', 'README.md', 'djadmin/core/tests/test_auth_flows.py', 'djadmin/core/views_auth.py']
+- **2026-11-08 18:41:59** | **R065** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0, yaml=0 attempts=0/3
+- **2026-11-08 18:42:06** | **R065** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-08 18:43:21** | **R066** | `verify` | **FAIL** | scope=fail checks=skipped(scope) attempts=1/3 → fixing
+- **2026-11-08 18:43:34** | **R066** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Drift .env.example/views_service.py — правки R065 после dispatch R066, уже закоммичены в 07b6ce4 (не относятся к R066) drift=['.env.example', 'djadmin/core/views_service.py']
+- **2026-11-08 18:44:13** | **R066** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=1/3
+- **2026-11-08 18:44:13** | **R066** | `review-packet` | **READY** | bytes=7413 new_files=[]
+- **2026-11-08 18:46:19** | **R066** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Пост-ревью правка: удалён неиспользуемый import reverse (non-blocker); drift — закоммиченные файлы R065 drift=['.env.example', 'djadmin/core/views_service.py']
+- **2026-11-08 18:47:05** | **R066** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=1/3
+- **2026-11-08 18:48:06** | **R066** | `review` | **PASS** | by=Hyperstls → done
