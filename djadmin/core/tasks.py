@@ -76,7 +76,11 @@ def send_transactional_email(self, subject: str, message: str, to_email: str) ->
     try:
         send_mail(subject, message, None, [to_email])
     except Exception as exc:
-        logger.warning("send_transactional_email failed to=%s: %s", to_email, exc)
+        from .privacy import mask_email
+
+        logger.warning(
+            "send_transactional_email failed to=%s: %s", mask_email(to_email), exc
+        )
         raise self.retry(exc=exc)
 
 

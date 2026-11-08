@@ -1,0 +1,40 @@
+{
+  "id": "R058",
+  "title": "152-ФЗ: маскировка email в логах",
+  "goal": "Email-адреса больше не попадают в логи Amvera в открытом виде: send_transactional_email failed (tasks.py:79), email enqueue/send failed (views_auth.py:86,91) логируют маскированный адрес (первые 2 символа + ***@домен). Обещание 152FZ_DATA_FLOWS.md:24 наконец выполняется.",
+  "why": "P16 аудита 152-ФЗ 2026-11-08: немаскированные email в логах с неопределённым сроком хранения противоречат собственному доку проекта о мерах защиты.",
+  "files": [
+    "djadmin/core/privacy.py",
+    "djadmin/core/tasks.py",
+    "djadmin/core/views_auth.py",
+    "djadmin/core/tests/test_privacy.py"
+  ],
+  "context_files": [
+    "docs/parity/152FZ_DATA_FLOWS.md"
+  ],
+  "interfaces": "Новый core/privacy.py: def mask_email(email: str) -> str — 'ab***@domain.tld' (первые 2 символа локальной части или меньше, если короткая; без '@' → маскировать весь除了 первых 2 символов + '***'; пустая строка → ''). tasks.py:79 и views_auth.py:86,91: logger.warning/exception с mask_email(to_email) вместо to_email. test_privacy.py (новый): юнит mask_email (обычный, короткий локал 'a@x.y' → 'a***@x.y', без '@', пустая); assertLogs для send_transactional_email с patch send_mail raising — в записях лога нет полного email и есть 'ab***@'; assertLogs для views_auth: вызвать _enqueue? — вызвать фактический код-путь: из views_auth вынести логирование как есть (не ре�факторить), тестировать напрямую: with patch('core.views_auth.send_mail'? — уточнить по коду: views_auth использует enqueue NotificationOutbox + send_transactional_email; тест: patch core.tasks.send_mail raising → trigger task → лог замаскирован (уже покрыто); для views_auth-веток: patch core.views_auth.logger? Проще: unit-тест mask_email + тест задачи; ветки views_auth покрыть grep-ассертом в тесте (читает файл и проверяет, что 'to=%s', to_email не встречается без mask_email).",
+  "acceptance": [
+    "mask_email: 'user@example.com' → 'us***@example.com'; короткие/без @ / пустые — безопасно маскируются, не бросают исключений.",
+    "Лог send_transactional_email при SMTP-сбое содержит маскированный email, полный адрес отсутствует.",
+    "views_auth.py больше не логирует сырой to_email (все 3 места).",
+    "Тесты: unit mask_email + assertLogs задачи + статическая проверка views_auth на отсутствие сырого to=%s с to_email.",
+    "py_compile четырёх .py; core.tests.test_privacy, core.tests.test_tasks, core.tests.test_auth_flows проходят."
+  ],
+  "out_of_scope": [
+    "Не менять тексты писем и EmailLog (там email хранится по назначению, с retention).",
+    "Не трогать client_error (следующая задача).",
+    "Не менять структуру логгеров."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/privacy.py djadmin/core/tasks.py djadmin/core/views_auth.py djadmin/core/tests/test_privacy.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_privacy core.tests.test_tasks core.tests.test_auth_flows --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

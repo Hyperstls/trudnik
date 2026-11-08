@@ -40,6 +40,7 @@ from .forms_auth import (
 )
 from .models import Profile
 from .ratelimit import RateLimitExceeded, RateLimitUnavailable, enforce_ip_limit
+from .privacy import mask_email
 from .rpc import call_rpc, sync_user_skills_raw
 from .tokens import (
     generate_email_verification_token,
@@ -83,12 +84,15 @@ def _send_mail(subject: str, message: str, to_email: str) -> None:
             return
         except Exception:
             # брокер/импорт недоступен: письмо важнее очереди — синхронный fallback
-            logger.warning("transactional email enqueue failed to=%s", to_email, exc_info=True)
+            logger.warning(
+                "transactional email enqueue failed to=%s",
+                mask_email(to_email), exc_info=True,
+            )
     try:
         send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [to_email], fail_silently=False)
     except Exception:
         # сбой SMTP не должен ронять флоу: ссылка продублируется через resend
-        logger.exception("email send failed to=%s", to_email)
+        logger.exception("email send failed to=%s", mask_email(to_email))
 
 
 def _site_url(request) -> str:
