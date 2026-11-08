@@ -1,0 +1,41 @@
+{
+  "id": "R085",
+  "title": "Refactor: views_public_ext.py → views_employers.py",
+  "goal": "Вынести employers_list/employer_detail/employer_favorite_toggle из views_public_ext.py в новый views_employers.py без изменения поведения; urls.py переключить на новый модуль; в views_public_ext.py удалить ставшие неиспользуемыми импорты.",
+  "why": "views_public_ext.py смешивает работодателей, оценки, массовые отклики, фото, FAQ и sitemap (451 строка). Доменное разделение workers/employers снижает связность и риск конфликтов.",
+  "files": [
+    "djadmin/core/views_public_ext.py",
+    "djadmin/core/views_employers.py",
+    "djadmin/core/urls.py"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/employers.html",
+    "djadmin/core/templates/core/employer_detail.html",
+    "djadmin/core/models.py"
+  ],
+  "interfaces": "views_employers.py: импорты login_required, messages, require_POST, redirect, render, reverse, Http404, Count/Q, Blacklist/EmployerDetail/Favorite/Job/Application/Profile, safe_referer, reputation (criteria_labels, profile_metrics, public_ratings, rating_distribution, recent_rating, reliable_badge, tag_labels, weighted_expr); тела трёх функций дословно (включая локальный import Paginator — можно поднять в шапку). views_public_ext.py: удалить три функции и неиспользуемые после переноса импорты (Blacklist/EmployerDetail/Favorite/Job/Application/Profile проверять по фактическому использованию в оставшихся user_ratings/rate_workers/bulk/photos/faq/sitemap/repost); docstring обновить (без «работодатели»). urls.py: employers* → views_employers (добавить import views_employers).",
+  "acceptance": [
+    "URL /employers, /employers/<uuid>, /employers/<uuid>/favorite работают как раньше (тесты без правок).",
+    "views_employers.py не импортирует views_public_ext, циклических импортов нет.",
+    "В views_public_ext.py не осталось неиспользуемых импортов после переноса.",
+    "Шаблоны, тексты и поведение не меняются.",
+    "py_compile; core.tests.test_public_views, core.tests.test_flows, core.tests.test_visibility проходят."
+  ],
+  "out_of_scope": [
+    "Не менять шаблоны и тексты.",
+    "Не трогать user_ratings/rate_workers/bulk/photos/faq/sitemap/repost.",
+    "Не переименовывать URL names."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_public_ext.py djadmin/core/views_employers.py djadmin/core/urls.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views core.tests.test_flows core.tests.test_visibility --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

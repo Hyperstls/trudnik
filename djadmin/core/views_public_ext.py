@@ -1,10 +1,9 @@
-"""Остаток паритета Flask: работодатели, просмотр оценок, rate-workers,
-массовые отклики (apply-selected), reject-all приглашений, FAQ, sitemap,
-загрузка фото задания.
+"""Остаток паритета Flask: оценки, rate-workers, массовые отклики
+(apply-selected), reject-all приглашений, FAQ, sitemap, загрузка фото задания.
 
-Контракты: employers_bp (список/карточка), ratings_bp (/ratings/user/<id>,
-/jobs/<job_id>/rate-workers), applications (/apply-selected ≤ лимит),
-invitations (/api/invitations/reject-all), jobs (photo upload).
+Контракты: ratings_bp (/ratings/user/<id>, /jobs/<job_id>/rate-workers),
+applications (/apply-selected ≤ лимит), invitations (/api/invitations/reject-all),
+jobs (photo upload).
 """
 from datetime import timedelta
 
@@ -12,9 +11,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Count, Q
-from django.http import Http404, HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.http import Http404, HttpResponse
+from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext as _
@@ -22,24 +20,10 @@ from django.views.decorators.http import require_POST
 
 from .anti_fraud import allow_application
 from .http import safe_referer
-from .models import (
-    Application,
-    Blacklist,
-    EmployerDetail,
-    Favorite,
-    Invitation,
-    Job,
-    JobPhoto,
-    Profile,
-    Rating,
-    UserReport,
-)
+from .models import Application, Invitation, Job, JobPhoto, Profile, Rating
 from .notifications import enqueue_notification
 from .ratelimit import rate_limit_write
-from .reputation import (
-    criteria_labels, profile_metrics, public_ratings, rating_distribution,
-    recent_rating, reliable_badge, tag_labels, weighted_expr,
-)
+from .reputation import criteria_labels, profile_metrics, public_ratings, rating_distribution, recent_rating, reliable_badge, tag_labels
 from .rpc import call_rpc
 from .storage import UploadError, delete_upload_url, save_upload
 from .views import job_photo_urls
@@ -49,103 +33,6 @@ SKIPPED_APPLY_CODES = {
     "duplicate", "already_applied", "no_slots", "job_not_open",
     "own_job", "job_expired", "job_in_past",
 }
-
-
-# ── Работодатели ───────────────────────────────────────────────────────────
-@login_required
-def employers_list(request):
-    qs = (
-        Profile.objects.public_visible()
-        .annotate(open_jobs=Count("jobs", filter=Q(jobs__status="open")))
-        .filter(open_jobs__gt=0)
-    )
-    q = (request.GET.get("q") or "").strip()
-    if q:
-        qs = qs.filter(
-            Q(full_name__icontains=q) | Q(city__icontains=q) | Q(bio__icontains=q)
-        ).distinct()
-    city = (request.GET.get("city") or "").strip()
-    if city:
-        qs = qs.filter(city__icontains=city)
-    qs = qs.exclude(
-        pk__in=Blacklist.objects.filter(blocked_user=request.user).values("user_id")
-    )
-    sort = request.GET.get("sort") or "rating"
-    if sort == "name":
-        qs = qs.order_by("full_name")
-    elif sort == "jobs_count":
-        qs = qs.order_by("-open_jobs", "-employer_rating", "-employer_ratings_count")
-    else:
-        sort = "rating"
-        qs = qs.annotate(
-            weighted_rating=weighted_expr("employer_rating", "employer_ratings_count")
-        ).order_by("-weighted_rating", "-employer_ratings_count", "-created_at")
-    from django.core.paginator import Paginator
-
-    page = Paginator(qs, 20).get_page(request.GET.get("page"))
-    favorited_ids = set(
-        Favorite.objects.filter(
-            user=request.user, favorite_type="employer"
-        ).values_list("target_id", flat=True)
-    )
-    return render(request, "core/employers.html", {
-        "page": page, "q": q, "city": city, "sort": sort,
-        "favorited_ids": favorited_ids,
-    })
-
-
-@login_required
-@require_POST
-def employer_favorite_toggle(request, employer_id):
-    employer = Profile.objects.public_visible().filter(pk=employer_id).first()
-    if employer is None or employer.pk == request.user.pk:
-        messages.error(request, _("Работодатель недоступен."))
-    else:
-        fav, created = Favorite.objects.get_or_create(
-            user=request.user, target=employer, favorite_type="employer",
-        )
-        if created:
-            messages.success(request, _("Работодатель добавлен в избранное."))
-        else:
-            fav.delete()
-            messages.info(request, _("Работодатель удалён из избранного."))
-    return redirect(safe_referer(request, reverse("core:employers")))
-
-
-@login_required
-def employer_detail(request, employer_id):
-    profile = Profile.objects.public_visible().filter(pk=employer_id).first()
-    if profile is None:
-        raise Http404("Работодатель не найден")
-    if Blacklist.objects.filter(user=profile, blocked_user=request.user).exists():
-        raise Http404("Работодатель не найден")
-    jobs = list(
-        Job.objects.public().filter(employer=profile, status="open").order_by("-created_at")
-    )
-    ratings = (
-        public_ratings(profile.pk, "employer")
-        .select_related("rater_user", "job").order_by("-published_at")[:10]
-    )
-    metrics = profile_metrics(profile.pk, profile.role)
-    is_favorited = Favorite.objects.filter(
-        user=request.user, target=profile, favorite_type="employer"
-    ).exists()
-    already_applied_job_ids = set(
-        Application.objects.filter(worker=request.user, job__in=jobs)
-        .values_list("job_id", flat=True)
-    )
-    return render(request, "core/employer_detail.html", {
-        "p": profile, "jobs": jobs, "ratings": ratings,
-        "distribution": rating_distribution(profile.pk, "employer"),
-        "recent": recent_rating(profile.pk, "employer"),
-        "metrics": metrics,
-        "is_reliable": reliable_badge(profile, metrics),
-        "review_criteria_labels": criteria_labels("employer"),
-        "review_tag_labels": tag_labels("employer"),
-        "employer_card": EmployerDetail.objects.filter(user=profile).first(),
-        "is_favorited": is_favorited,
-        "already_applied_job_ids": already_applied_job_ids,
-    })
 
 
 # ── Оценки ─────────────────────────────────────────────────────────────────

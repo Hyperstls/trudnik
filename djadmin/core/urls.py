@@ -4,7 +4,7 @@ from . import (views, views_auth, views_content, views_drafts, views_flow, views
                views_interact, views_messenger, views_notify, views_profile,
                views_profile_ext, views_public_ext, views_search, views_searches,
                views_service, views_sessions, views_support, views_analytics,
-               views_appeals, views_workers)
+               views_appeals, views_workers, views_employers)
 
 app_name = "core"
 
@@ -88,9 +88,9 @@ urlpatterns = [
     path("api/notifications/preferences", views_profile_ext.notification_prefs_api, name="notification_prefs_api"),
     path("uploads/<path:path>", views_profile_ext.serve_upload, name="serve_upload"),
     # работодатели / оценки / bulk / FAQ / sitemap
-    path("employers", views_public_ext.employers_list, name="employers"),
-    path("employers/<uuid:employer_id>", views_public_ext.employer_detail, name="employer_detail"),
-    path("employers/<uuid:employer_id>/favorite", views_public_ext.employer_favorite_toggle, name="employer_favorite_toggle"),
+    path("employers", views_employers.employers_list, name="employers"),
+    path("employers/<uuid:employer_id>", views_employers.employer_detail, name="employer_detail"),
+    path("employers/<uuid:employer_id>/favorite", views_employers.employer_favorite_toggle, name="employer_favorite_toggle"),
     path("ratings/user/<uuid:user_id>", views_public_ext.user_ratings, name="user_ratings"),
     path("apply-selected", views_public_ext.bulk_apply, name="bulk_apply"),
     path("unapply-selected", views_public_ext.bulk_unapply, name="bulk_unapply"),
