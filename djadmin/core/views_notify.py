@@ -113,6 +113,44 @@ def notifications_unread_count(request):
 PUSH_MAX_SUBSCRIPTIONS = 10
 
 
+def _parse_legacy_ipv4(host: str):
+    """IPv4 в legacy-нотациях: 127.1, 0x7f.1, 0177.0.0.1, 2130706433.
+
+    glibc getaddrinfo (прод-Linux) резолвит их в реальные адреса, поэтому
+    «есть точка → домен» — дыра SSRF (аудит 2026-11-08, A2). Возвращает
+    ipaddress.IPv4Address или None, если хост не является числовым IP.
+    """
+    import ipaddress
+
+    parts = host.split(".")
+    if not 1 <= len(parts) <= 4:
+        return None
+    numbers = []
+    for part in parts:
+        if not part:
+            return None
+        try:
+            if part.lower().startswith("0x"):
+                numbers.append(int(part, 16))
+            elif len(part) > 1 and part.startswith("0"):
+                numbers.append(int(part, 8))
+            else:
+                numbers.append(int(part))
+        except ValueError:
+            return None
+    if any(n < 0 for n in numbers):
+        return None
+    if any(n > 255 for n in numbers[:-1]):
+        return None
+    if numbers[-1] >= 256 ** (5 - len(numbers)):
+        return None
+    value = 0
+    for number in numbers[:-1]:
+        value = (value << 8) | number
+    value = (value << (8 * (5 - len(numbers)))) | numbers[-1]
+    return ipaddress.IPv4Address(value)
+
+
 def _push_endpoint_ok(endpoint: str) -> bool:
     """R055: анти-SSRF фильтр endpoint'а push-подписки.
 
@@ -134,12 +172,15 @@ def _push_endpoint_ok(endpoint: str) -> bool:
         (".localhost", ".local", ".internal", ".home.arpa")
     ):
         return False
-    if "." not in host and ":" not in host:
-        return False  # однословные имена — внутренние псевдонимы
     try:
         ip = ipaddress.ip_address(host)
     except ValueError:
-        return True  # обычный домен
+        legacy = _parse_legacy_ipv4(host)
+        if legacy is not None:
+            ip = legacy
+        else:
+            # без точки/двоеточия — внутренний псевдоним, не домен
+            return "." in host or ":" in host
     return bool(ip.is_global)
 def push_vapid_public_key(request):
     """Публичный VAPID-ключ (для Service Worker, паритет Flask)."""

@@ -3653,3 +3653,19 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** Hyperstls
 
 **Пакет:** context/agent-pipeline/packs/R068.review.prompt.md
+
+## 2026-11-08 21:52:37 — R069: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Drift — файлы R070/R071 в дереве (views_notify/test_push, views_service/test_parity_final), соседние задачи
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-08 21:53:43 — R070: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R070.review.prompt.md

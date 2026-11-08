@@ -1,0 +1,37 @@
+{
+  "id": "R070",
+  "title": "A2: push endpoint — блокировать legacy-нотации IP (127.1, 0x7f.1, 0177.0.0.1)",
+  "goal": "Закрыть обход _push_endpoint_ok сокращёнными/hex/octal формами IPv4: такие хосты сейчас принимаются как «домены», а glibc на проде резолвит их в 127.0.0.1 → SSRF из Celery. Нормализовать хост в IP перед проверкой is_global.",
+  "why": "Строгий аудит 2026-11-08 (A2): R055 отбил только безточечные формы; https://127.1/, https://0x7f.1/, https://0177.0.0.1/ проходят валидацию (проверено) и резолвятся в loopback.",
+  "files": [
+    "djadmin/core/views_notify.py",
+    "djadmin/core/tests/test_push.py"
+  ],
+  "context_files": [
+    "djadmin/core/push.py"
+  ],
+  "interfaces": "views_notify.py: добавить _parse_legacy_ipv4(host) -> IPv4Address|None (компоненты через '.', поддержка 0x-hex и 0-octal; ≤4 компонент; первые <256, последний < 256**(5-len)) и в _push_endpoint_ok после неудачи ipaddress.ip_address(host): legacy = _parse_legacy_ipv4(host); если legacy is not None — вернуть legacy.is_global (а не True); иначе обычный домен → True. Не менять остальные правила (https, localhost/.local/.internal, однословные). test_push.py: добавить в test_rejects_private_ip_literals кейсы https://127.1/x, https://0x7f.1/x, https://0177.0.0.1/x, https://2130706433/x; в accept-тест — https://0x08080808/x (8.8.8.8) → 200; проверить, что нормальный домен и dotted-quad не сломаны.",
+  "acceptance": [
+    "_parse_legacy_ipv4 распознаёт dotted-quad, сокращённые (127.1), hex (0x7f.1) и octal (0177.0.0.1) формы; невалидные комбинации → None.",
+    "Все приватные/loopback legacy-формы → 400; публичные legacy-формы (0x08080808) → 200.",
+    "Обычные домены и прежние кейсы (fcm.googleapis.com, 8.8.8.8) работают.",
+    "py_compile; core.tests.test_push проходит."
+  ],
+  "out_of_scope": [
+    "DNS-resolve/rebinding (отдельно).",
+    "Перепроверка старых подписок в БД — отдельная операция/док.",
+    "Не менять push.py/tasks.py."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_notify.py djadmin/core/tests/test_push.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_push --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

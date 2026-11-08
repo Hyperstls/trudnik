@@ -146,6 +146,11 @@ class PushEndpointValidationTests(TestCase):
             "https://169.254.1.1/x",
             "https://[fd00::1]/x",
             "https://[::1]/x",
+            # legacy-нотации (A2): glibc резолвит их в loopback
+            "https://127.1/x",
+            "https://0x7f.1/x",
+            "https://0177.0.0.1/x",
+            "https://2130706433/x",
         ):
             with self.subTest(endpoint=endpoint):
                 self.assertEqual(self._post(endpoint).status_code, 400)
@@ -153,6 +158,8 @@ class PushEndpointValidationTests(TestCase):
 
     def test_accepts_public_ip_literal_and_domain(self):
         self.assertEqual(self._post("https://8.8.8.8/x").status_code, 200)
+        # публичный IP в hex-нотации — валиден (8.8.8.8)
+        self.assertEqual(self._post("https://0x08080808/x").status_code, 200)
         self.assertEqual(self._post(SUB_DATA["endpoint"]).status_code, 200)
 
     def test_subscription_limit_drops_oldest(self):
