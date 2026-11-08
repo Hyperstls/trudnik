@@ -4,7 +4,7 @@ from . import (views, views_auth, views_content, views_drafts, views_flow, views
                views_interact, views_messenger, views_notify, views_profile,
                views_profile_ext, views_public_ext, views_search, views_searches,
                views_service, views_sessions, views_support, views_analytics,
-               views_appeals)
+               views_appeals, views_workers)
 
 app_name = "core"
 
@@ -38,8 +38,8 @@ urlpatterns = [
     path("jobs/<uuid:job_id>/<str:action>", views_flow.job_action, name="job_action"),
     path("applications/<uuid:app_id>/worker-complete", views_flow.worker_confirm_completion, name="worker_confirm_completion"),
     path("applications/<uuid:app_id>/<str:action>", views_flow.application_action, name="application_action"),
-    path("workers", views.workers_list, name="workers"),
-    path("workers/<uuid:user_id>", views.worker_detail, name="worker_detail"),
+    path("workers", views_workers.workers_list, name="workers"),
+    path("workers/<uuid:user_id>", views_workers.worker_detail, name="worker_detail"),
     path("my-jobs", views_flow.my_jobs, name="my_jobs"),
     path("my-jobs/action", views_flow.my_jobs_bulk, name="my_jobs_bulk"),
     path("my-applications", views_flow.my_applications, name="my_applications"),

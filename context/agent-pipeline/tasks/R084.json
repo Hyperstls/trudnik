@@ -1,0 +1,41 @@
+{
+  "id": "R084",
+  "title": "Refactor: views.py → views_workers.py (workers_list/worker_detail)",
+  "goal": "Вынести workers_list и worker_detail из djadmin/core/views.py в новый djadmin/core/views_workers.py без изменения поведения; urls.py переключить на новый модуль; в views.py остаются home/jobs/job_detail/og/legal/robots, неиспользуемые после переноса импорты удалить; PUBLIC_PROFILE_FIELDS переносится с функциями, PAGE_SIZE остаётся в views.py и импортируется.",
+  "why": "views.py — 719 строк, публичные страницы каталога и кабинетные карточки в одном модуле; дальнейшее разделение по доменам (workers/employers) уменьшает связность и риск конфликтов при правках.",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/views_workers.py",
+    "djadmin/core/urls.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/templates/core/workers_list.html",
+    "djadmin/core/templates/core/worker_detail.html"
+  ],
+  "interfaces": "views_workers.py: module docstring (RLS-паритет, PUBLIC_PROFILE_FIELDS), imports только для workers_list/worker_detail (UUID, Decimal, django.db.models F/Count/Q, Paginator, Http404, render, Profile/Job/Application/Favorite/Invitation/Skill/UserSkill/UserReport, ts_query, reputation: criteria_labels/profile_metrics/public_ratings/rating_distribution/recent_rating/reliable_badge/tag_labels/weighted_expr, PAGE_SIZE из .views). Тела функций переносятся дословно (включая локальные импорты Decimal/F/Favorite/Job/UserSkill — можно поднять в шапку, поведение не менять). PUBLIC_PROFILE_FIELDS переносится в views_workers. views.py: удалить workers_list/worker_detail/PUBLIC_PROFILE_FIELDS и ставшие неиспользуемыми импорты (проверить каждый: Application/Blacklist/Favorite/Invitation/Profile/Rating/SitePage/Skill/UserReport/UserSkill, reputation-функции, UUID, Count/Q, timezone, messages и т.д. — оставить только реально используемые jobs/home/legal/robots). urls.py: workers → views_workers.workers_list/worker_detail (добавить import views_workers).",
+  "acceptance": [
+    "workers_list/worker_detail доступны по тем же URL и ведут себя идентично (тесты проходят без правок).",
+    "views_workers.py не импортирует .views целиком (только PAGE_SIZE), циклических импортов нет.",
+    "В views.py не осталось неиспользуемых импортов/констант после переноса.",
+    "urls.py ссылается на views_workers; публичное поведение и шаблоны не меняются.",
+    "py_compile; core.tests.test_public_views, core.tests.test_visibility, core.tests.test_review_fixes проходят."
+  ],
+  "out_of_scope": [
+    "Не менять шаблоны, тексты, фильтры и логику.",
+    "Не трогать jobs/home/legal/robots и employers.",
+    "Не переименовывать URL names."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views.py djadmin/core/views_workers.py djadmin/core/urls.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views core.tests.test_visibility core.tests.test_review_fixes --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
