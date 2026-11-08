@@ -1,0 +1,45 @@
+{
+  "id": "R065",
+  "title": "Безопасность: client_error без query, Dependabot, .env.example под Django",
+  "goal": "1) /api/client-error больше не логирует query string из url (там бывают ?email= и токены); 2) добавить .github/dependabot.yml (pip weekly + github-actions monthly) — обновления зависимостей перестают быть ручными; 3) переписать .env.example под реальные Django-переменные (settings.py) с пометкой legacy-ключей.",
+  "why": "L-7 аудита: URL в логах может содержать ПДн/токены; аудит состояния: нет Dependabot/Renovate — обновления только по CVE (pip-audit); .env.example — микс legacy-Flask ключей без реальных DJANGO_* (риск неверного окружения).",
+  "files": [
+    "djadmin/core/views_service.py",
+    "djadmin/core/tests/test_parity_final.py",
+    ".github/dependabot.yml",
+    ".env.example"
+  ],
+  "context_files": [
+    "djadmin/config/settings.py"
+  ],
+  "interfaces": "views_service.py client_error: url = str(data.get('url') or ''); strip query/fragment через urlsplit: safe['url'] = urlunsplit((scheme, netloc, path, '', '')) — оставить только путь (как в ErrorEventMiddleware); остальные поля без изменений; лог без query. test_parity_final.py: тест — POST /api/client-error с JSON {'url': 'https://trudnik.ru/jobs?email=a@b.c&token=xyz', 'message': 'x'} → assertLogs('core.views_service', 'WARNING'): полного email/token в логе нет, путь /jobs есть. .github/dependabot.yml: version 2; pip weekly (directory '/', requirements djadmin/requirements.txt через director 'djadmin'? — dependabot pip ищет requirements в указанной directory; поставить directory: '/djadmin'), open-pull-requests-limit 5; github-actions weekly directory '/'. .env.example: секции — Django (DEPLOYMENT_ENV, SECRET_KEY, DJANGO_ALLOWED_HOSTS, DJANGO_CSRF_TRUSTED_ORIGINS, DJANGO_DATABASE_URL/DATABASE_URL, REDIS_URL, DJANGO_ADMIN_ALLOWED_IPS, ADMIN_2FA_REQUIRED, SITE_URL/CANONICAL_HOST, SUPPORT_EMAIL, SMTP_*, VAPID_*, SMARTCAPTCHA_*, YANDEX_*, MAX_*, METRICS_TOKEN, GLOBAL_RATE_LIMIT_PER_MIN, AUTH_RATE_LIMIT_PER_MIN, ADMIN_BOOTSTRAP_EMAIL, UPLOAD_FOLDER), затем блок «Legacy Flask (не используется продом)» с POSTGREST_*/PG*/WEBSOCKET_*/YOOKASSA_*; значения-плейсхолдеры без реальных секретов.",
+  "acceptance": [
+    "client_error логирует только scheme+host+path, без query/fragment.",
+    "Тест подтверждает отсутствие email/token в логе и наличие пути.",
+    "dependabot.yml валиден по YAML и указывает pip (/djadmin) и github-actions.",
+    "В .env.example есть все ключевые Django-переменные из settings.py и явно помечены legacy-ключи; нет реальных секретов.",
+    "py_compile; core.tests.test_parity_final проходит; pre_deploy_check 7/7."
+  ],
+  "out_of_scope": [
+    "Не включать ADMIN_2FA_REQUIRED/MIGRATIONS_* в проде (только пример).",
+    "Не менять settings.py и механику логирования.",
+    "Не чинить email-в-URL (отдельная задача)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_service.py djadmin/core/tests/test_parity_final.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_parity_final --keepdb -v 0",
+      "cwd": "."
+    },
+    {
+      "name": "yaml",
+      "cmd": "{python} -c \"import yaml; yaml.safe_load(open('.github/dependabot.yml', encoding='utf-8')); print('YAML OK')\"",
+      "cwd": "."
+    }
+  ]
+}

@@ -75,6 +75,22 @@ class ClientErrorTests(TestCase):
         )
         self.assertEqual(response.status_code, 204)
 
+    def test_log_strips_query_with_pii_and_tokens(self):
+        """R065: в лог попадает только путь — без ?email= и токенов."""
+        with self.assertLogs("core.views_service", level="WARNING") as captured:
+            self.client.post(
+                "/api/client-error",
+                data=json.dumps({
+                    "message": "boom",
+                    "url": "https://trudnik.ru/jobs?email=secret@example.com&token=abc123",
+                }),
+                content_type="application/json",
+            )
+        joined = "\n".join(captured.output)
+        self.assertIn("/jobs", joined)
+        self.assertNotIn("secret@example.com", joined)
+        self.assertNotIn("token=abc123", joined)
+
 
 class RepostTests(TestCase):
     def test_owner_reposts_with_skills(self):

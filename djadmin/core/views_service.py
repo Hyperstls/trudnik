@@ -96,7 +96,11 @@ def metrics(request):
 @csrf_protect
 @require_POST
 def client_error(request):
-    """Приём отчётов об ошибках фронтенда (JSON, поля обрезаем и логируем)."""
+    """Приём отчётов об ошибках фронтенда (JSON, поля обрезаем и логируем).
+
+    R065: из url удаляем query/fragment — там бывают ?email= и токены
+    (152-ФЗ: ПДн/секреты не должны попадать в логи).
+    """
     try:
         data = json.loads(request.body.decode("utf-8", "replace") or "{}")
     except Exception:
@@ -105,6 +109,19 @@ def client_error(request):
         k: str(data.get(k, ""))[:500]
         for k in ("message", "source", "lineno", "colno", "url", "userAgent")
     }
+    if safe.get("url"):
+        from urllib.parse import urlsplit, urlunsplit
+
+        try:
+            parts = urlsplit(safe["url"])
+            # netloc без userinfo (там бывают токены), порт сохраняем
+            netloc = parts.hostname or ""
+            if parts.port:
+                netloc = "%s:%s" % (netloc, parts.port)
+            safe["url"] = urlunsplit((parts.scheme, netloc, parts.path, "", ""))
+        except (ValueError, TypeError):
+            # мусор вроде "http://[" не должен ронять эндпоинт (ревью R065)
+            safe["url"] = ""
     logger.warning("client-error: %s", json.dumps(safe, ensure_ascii=False))
     return HttpResponse(status=204)
 
