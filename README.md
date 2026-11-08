@@ -108,6 +108,6 @@ npm run build:css
 - Сохранённые поиски: `/searches` (список, уведомления, удаление).
 - Репутация: [`docs/REPUTATION.md`](docs/REPUTATION.md) — роли, double-blind, критерии, модерация.
 - Локализация RU/EN: [`docs/LOCALIZATION.md`](docs/LOCALIZATION.md).
-- Полный `core`: **856 OK**, JS `npm test` — 10/10, `pre_deploy_check` — 7/7.
+- Полный `core`: **884 OK**, JS `npm test` — 10/10, `pre_deploy_check` — 7/7.
 - Паритет auth/profile и jobs/applications: открытых пунктов нет (J026 — карта трудников n/a).
 - Прод: **RUNNING**, `/health` 200.
