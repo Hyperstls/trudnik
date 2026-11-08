@@ -60,7 +60,7 @@ jobs:
           node-version: "20"
       - name: JS unit tests
         run: npm test
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip

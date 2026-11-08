@@ -52,7 +52,7 @@ jobs:
       DATABASE_ADMIN_URL: postgresql://trudnik:trudnik_ci_password@localhost:5432/postgres  # pragma: allowlist secret
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
