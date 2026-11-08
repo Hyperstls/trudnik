@@ -13,10 +13,15 @@ django_asgi_app = get_asgi_application()
 
 from channels.auth import AuthMiddlewareStack  # noqa: E402
 from channels.routing import ProtocolTypeRouter, URLRouter  # noqa: E402
+from channels.security.websocket import AllowedHostsOriginValidator  # noqa: E402
 
 from core.routing import websocket_urlpatterns  # noqa: E402
 
 application = ProtocolTypeRouter({
     "http": django_asgi_app,
-    "websocket": AuthMiddlewareStack(URLRouter(websocket_urlpatterns)),
+    # R052: CSWSH — чужая страница не может открыть wss:// с куками жертвы;
+    # Origin обязан совпадать с ALLOWED_HOSTS (в DEBUG — '*').
+    "websocket": AllowedHostsOriginValidator(
+        AuthMiddlewareStack(URLRouter(websocket_urlpatterns))
+    ),
 })

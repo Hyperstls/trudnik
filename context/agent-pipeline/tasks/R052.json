@@ -1,0 +1,40 @@
+{
+  "id": "R052",
+  "title": "Безопасность: Origin-валидация WebSocket (CSWSH)",
+  "goal": "Обернуть websocket-приложение в AllowedHostsOriginValidator, чтобы чужая страница не могла открыть wss:// с куками жертвы и читать её чат/уведомления (Cross-Site WebSocket Hijacking).",
+  "why": "MH-1 кодревью 2026-11-08: asgi.py отдаёт WS в AuthMiddlewareStack без Origin-проверки; cookies приходят автоматически, CSRF на WS не действует. Браузеры шлют Origin на каждый WS-коннект, поэтому валидатор отсекает чужие источники, не мешая легитимным подключениям (хост из ALLOWED_HOSTS: прод-домен, *.amvera.tech, в DEBUG '*').",
+  "files": [
+    "djadmin/config/asgi.py",
+    "djadmin/core/tests/test_ws_origin.py"
+  ],
+  "context_files": [
+    "djadmin/core/consumers_notify.py",
+    "djadmin/core/routing.py"
+  ],
+  "interfaces": "asgi.py: from channels.security.websocket import AllowedHostsOriginValidator; application = ProtocolTypeRouter({'http': django_asgi_app, 'websocket': AllowedHostsOriginValidator(AuthMiddlewareStack(URLRouter(websocket_urlpatterns)))}). tests/test_ws_origin.py (новый, async): WebsocketCommunicator на '/ws/user/'; (1) override_settings(ALLOWED_HOSTS=['good.example']) + headers=[(b'origin', b'https://evil.example')] → connect → принимается close 403 (WebsocketDenier) ДО аутентификации; (2) тот же settings, без origin-заголовка → тоже 403; (3) origin https://good.example → проходит валидатор и закрывается_consumer'ом с 4001 (аноним) — это доказывает, что легитимный origin не отсекается; (4) в DEBUG-настройках по умолчанию (ALLOWED_HOSTS=['*']) любой origin проходит (до 4001 анонима). Использовать channels.testing.WebsocketCommunicator и ApplicationCommunicator-паттерн из channels 4.x; закрыть communicator disconnect.",
+  "acceptance": [
+    "ASGI-цепочка websocket обёрнута AllowedHostsOriginValidator поверх AuthMiddlewareStack.",
+    "Чужой Origin (не из ALLOWED_HOSTS) → коннект закрывается 403 до аутентификации.",
+    "Без Origin-заголовка (не-браузерный клиент) → 403, если в ALLOWED_HOSTS нет '*'.",
+    "Легитимный Origin проходит валидатор (дальше — обычная логика consumer, аноним 4001).",
+    "HTTP-часть ASGI не затронута.",
+    "py_compile asgi.py; manage.py test core.tests.test_ws_origin проходит."
+  ],
+  "out_of_scope": [
+    "Не менять consumers/routing и логику аутентификации WS.",
+    "Не менять ALLOWED_HOSTS.",
+    "Не добавлять токен-схему для не-браузерных WS-клиентов."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/config/asgi.py djadmin/core/tests/test_ws_origin.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_ws_origin core.tests.test_flows --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
