@@ -76,12 +76,15 @@ def send_transactional_email(self, subject: str, message: str, to_email: str) ->
     try:
         send_mail(subject, message, None, [to_email])
     except Exception as exc:
-        from .privacy import mask_email
+        from .privacy import mask_email, mask_text
 
+        # str(exc) у SMTPRecipientsRefused содержит адрес — маскируем текст,
+        # retry без exc: иначе Celery залогирует repr с адресом (A1).
         logger.warning(
-            "send_transactional_email failed to=%s: %s", mask_email(to_email), exc
+            "send_transactional_email failed to=%s (%s): %s",
+            mask_email(to_email), type(exc).__name__, mask_text(str(exc))[:300],
         )
-        raise self.retry(exc=exc)
+        raise self.retry()
 
 
 @app.task(ignore_result=True)
@@ -157,7 +160,9 @@ def _send_email(row: NotificationOutbox) -> bool:
         log.status, log.sent_at = "sent", timezone.now()
         return True
     except Exception as exc:
-        log.status, log.error_message = "failed", str(exc)[:500]
+        from .privacy import mask_text
+
+        log.status, log.error_message = "failed", mask_text(str(exc))[:500]
         return False
     finally:
         log.attempts = 1

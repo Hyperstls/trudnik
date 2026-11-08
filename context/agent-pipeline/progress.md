@@ -1433,3 +1433,19 @@
 - **2026-11-08 19:01:49** | **R067** | `verify` | **PASS** | scope=ok checks=yaml=0 attempts=0/3
 - **2026-11-08 19:01:55** | **R067** | `review-packet` | **READY** | bytes=3111 new_files=[]
 - **2026-11-08 19:02:30** | **R067** | `review` | **PASS** | by=Hyperstls → done
+- **2026-11-08 21:44:43** | **R068** | `add` | **OK** | contract=context/agent-pipeline/tasks/R068.json
+- **2026-11-08 21:44:43** | **R068** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/R068.impl.prompt.md
+- **2026-11-08 21:46:55** | **R068** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Дрейф — нет; baseline снят до правок. Если дрейф появился из-за context-файлов конвейера — они служебные drift=[]
+- **2026-11-08 21:47:36** | **R068** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=0/3
+- **2026-11-08 21:47:42** | **R068** | `review-packet` | **READY** | bytes=9107 new_files=[]
+- **2026-11-08 21:48:05** | **R070** | `add` | **OK** | contract=context/agent-pipeline/tasks/R070.json
+- **2026-11-08 21:48:06** | **R070** | `dispatch` | **OK** | status=implementing baseline=8 pack=context/agent-pipeline/packs/R070.impl.prompt.md
+- **2026-11-08 21:49:20** | **R070** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Drift — файлы R068 (privacy/tasks/views_auth/test_privacy) в том же дереве, соседняя задача drift=[]
+- **2026-11-08 21:49:29** | **R070** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=0/3
+- **2026-11-08 21:49:36** | **R070** | `review-packet` | **READY** | bytes=6496 new_files=[]
+- **2026-11-08 21:49:56** | **R071** | `add` | **OK** | contract=context/agent-pipeline/tasks/R071.json
+- **2026-11-08 21:49:57** | **R071** | `dispatch` | **OK** | status=implementing baseline=11 pack=context/agent-pipeline/packs/R071.impl.prompt.md
+- **2026-11-08 21:50:24** | **R071** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=Drift — файлы R068/R070 в дереве (privacy/tasks/views_auth/test_privacy, views_notify/test_push), соседние задачи drift=[]
+- **2026-11-08 21:50:32** | **R071** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=0/3
+- **2026-11-08 21:50:32** | **R071** | `review-packet` | **READY** | bytes=5855 new_files=[]
+- **2026-11-08 21:51:43** | **R068** | `review` | **PASS** | by=Hyperstls → done

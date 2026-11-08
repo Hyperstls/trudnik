@@ -88,9 +88,15 @@ def _send_mail(subject: str, message: str, to_email: str) -> None:
             )
     try:
         send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [to_email], fail_silently=False)
-    except Exception:
-        # сбой SMTP не должен ронять флоу: ссылка продублируется через resend
-        logger.exception("email send failed to=%s", mask_email(to_email))
+    except Exception as exc:
+        # сбой SMTP не должен ронять флоу: ссылка продублируется через resend.
+        # exc_info не используем: трейсбек SMTPRecipientsRefused содержит адрес (A1).
+        from .privacy import mask_text
+
+        logger.warning(
+            "email send failed to=%s (%s): %s",
+            mask_email(to_email), type(exc).__name__, mask_text(str(exc))[:300],
+        )
 
 
 def _site_url(request) -> str:

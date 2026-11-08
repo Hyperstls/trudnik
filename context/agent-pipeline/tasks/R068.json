@@ -1,0 +1,40 @@
+{
+  "id": "R068",
+  "title": "A1: убрать raw email из str(exc) в логах и EmailLog",
+  "goal": "Маскировать email внутри текста исключений: send_transactional_email failed (tasks.py), email send failed (views_auth.py), EmailLog.error_message; retry без exc, чтобы Celery не логировал repr исключения с адресом.",
+  "why": "Строгий аудит 2026-11-08: R058 замаскировал to=, но второй %s печатает str(SMTPRecipientsRefused) = {'user@example.com': ...}; адрес утекает в логи и в БД, цель R058 не достигнута.",
+  "files": [
+    "djadmin/core/privacy.py",
+    "djadmin/core/tasks.py",
+    "djadmin/core/views_auth.py",
+    "djadmin/core/tests/test_privacy.py"
+  ],
+  "context_files": [
+    "djadmin/core/anti_fraud.py"
+  ],
+  "interfaces": "privacy.py: EMAIL_RE = re.compile(r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}') и mask_text(text) -> str — заменяет все email в строке на mask_email(match); пустую/None → ''. tasks.py: except в send_transactional_email — лог 'send_transactional_email failed to=%s (%s): %s' с mask_email(to_email), type(exc).__name__, mask_text(str(exc))[:300]; raise self.retry() БЕЗ exc. _send_email: log.error_message = mask_text(str(exc))[:500]. views_auth.py _send_mail: в sync-ветке except — logger.warning('email send failed to=%s (%s): %s', mask_email(to_email), type(exc).__name__, mask_text(str(exc))[:300]) без exc_info; в enqueue-ветке — exc_info=True оставить, но добавить mask_text? — трейсбек enqueue не содержит адрес (ошибка брокера), оставить как есть. test_privacy.py: юнит mask_text (несколько адресов в строке, None/''); тест send_transactional_email с patch('core.tasks.send_mail', side_effect=smtplib.SMTPRecipientsRefused({'victim@example.com': (550, b'x')})): assertLogs('core.tasks') — нет 'victim@example.com', есть 'vi***@example.com'; EmailLog.error_message не содержит сырого адреса (если строка создаётся — задача бросает Retry до создания? Проверить: _send_email отдельно с patch send_mail, вызвать core.tasks._send_email(make_outbox-строка) — error_message маскирован).",
+  "acceptance": [
+    "mask_text маскирует все email внутри произвольного текста, не ломает строки без адресов.",
+    "Логи send-путей (task и sync-fallback) не содержат сырых email даже при SMTPRecipientsRefused.",
+    "EmailLog.error_message не содержит сырых email.",
+    "retry не передаёт exc (Celery не логирует repr с адресом).",
+    "py_compile; core.tests.test_privacy, core.tests.test_tasks, core.tests.test_auth_flows проходят."
+  ],
+  "out_of_scope": [
+    "Не менять EmailLog.to_email (хранит адрес по назначению, retention 7/30д).",
+    "Не менять push.py/str(exc) (отдельная задача при необходимости).",
+    "Не трогать тексты писем."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/privacy.py djadmin/core/tasks.py djadmin/core/views_auth.py djadmin/core/tests/test_privacy.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_privacy core.tests.test_tasks core.tests.test_auth_flows --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

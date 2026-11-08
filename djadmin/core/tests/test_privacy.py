@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
-from core.privacy import mask_email
+from core.privacy import mask_email, mask_text
 from core.tasks import send_transactional_email
 from core.tests.test_auth import make_profile
 
@@ -51,3 +51,48 @@ class ViewsAuthLoggingStaticTests(TestCase):
         self.assertIn("from .privacy import mask_email", source)
         self.assertNotIn('"transactional email enqueue failed to=%s", to_email', source)
         self.assertNotIn('"email send failed to=%s", to_email', source)
+
+
+class MaskTextTests(TestCase):
+    def test_masks_all_emails_inside_text(self):
+        text = "SMTPRecipientsRefused: {'victim@example.com': (550, b'no'), 'b@x.yz': (1, b'')}"
+        masked = mask_text(text)
+        self.assertNotIn("victim@example.com", masked)
+        self.assertNotIn("b@x.yz", masked)
+        self.assertIn("vi***@example.com", masked)
+        self.assertIn("b***@x.yz", masked)
+
+    def test_plain_text_untouched(self):
+        self.assertEqual(mask_text("smtp down"), "smtp down")
+        self.assertEqual(mask_text(""), "")
+        self.assertEqual(mask_text(None), "")
+
+
+class SmtpExceptionMaskedTests(TestCase):
+    def test_task_log_and_email_log_have_no_raw_address(self):
+        import smtplib
+
+        from core.models import EmailLog, NotificationOutbox
+        from core.tasks import _send_email, send_transactional_email
+        from core.tests.test_auth import make_profile
+
+        user = make_profile("victim-r068@example.com")
+        refused = smtplib.SMTPRecipientsRefused({"victim-r068@example.com": (550, b"no")})
+        with patch("core.tasks.send_mail", side_effect=refused):
+            with self.assertLogs("core.tasks", level="WARNING") as captured:
+                try:
+                    send_transactional_email("s", "m", user.email)
+                except Exception:
+                    pass  # Retry — ожидаемо
+        joined = "\n".join(captured.output)
+        self.assertNotIn("victim-r068@example.com", joined)
+        self.assertIn("vi***@example.com", joined)
+        # EmailLog: тот же сбой, но через _send_email (в том же patch-контексте)
+        row = NotificationOutbox.objects.create(
+            user=user, type="test", title="t", body="b"
+        )
+        with patch("core.tasks.send_mail", side_effect=refused):
+            self.assertFalse(_send_email(row))
+        log = EmailLog.objects.filter(user=user).latest("id")
+        self.assertNotIn(user.email, log.error_message or "")
+        self.assertIn("vi***@example.com", log.error_message or "")

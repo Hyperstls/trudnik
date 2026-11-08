@@ -3621,3 +3621,35 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** Hyperstls
 
 **Пакет:** context/agent-pipeline/packs/R067.review.prompt.md
+
+## 2026-11-08 21:46:55 — R068: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Дрейф — нет; baseline снят до правок. Если дрейф появился из-за context-файлов конвейера — они служебные
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-08 21:49:20 — R070: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Drift — файлы R068 (privacy/tasks/views_auth/test_privacy) в том же дереве, соседняя задача
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-08 21:50:24 — R071: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Drift — файлы R068/R070 в дереве (privacy/tasks/views_auth/test_privacy, views_notify/test_push), соседние задачи
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-08 21:51:43 — R068: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R068.review.prompt.md
