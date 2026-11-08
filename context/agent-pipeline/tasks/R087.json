@@ -1,0 +1,38 @@
+{
+  "id": "R087",
+  "title": "Fix: load smoke — только публичные пути + разбивка статусов",
+  "goal": "Прод-прогон R083 дал 25 non-2xx из 100: /workers под login_required отдаёт 302. Заменить дефолтные пути на публичные (/ , /jobs, /health), выводить распределение HTTP-статусов, обновить docs/LOAD_TEST.md. Повторный прод-прогон должен дать 100% 2xx.",
+  "why": "Сценарий по контракту должен проверять публичные страницы; 302 на /workers — не деградация, а неверный набор путей. Без разбивки по кодам причина non-2xx не видна.",
+  "files": [
+    "scripts/load_test.py",
+    "docs/LOAD_TEST.md"
+  ],
+  "context_files": [
+    "djadmin/core/urls.py"
+  ],
+  "interfaces": "load_test.py: DEFAULT_PATHS = '/,/jobs,/health'; argparse default paths; в run_load собрать Counter(status) и печатать 'status: {200: n, ...}' (всегда или при non2xx); остальное не менять. docs/LOAD_TEST.md: пример и таблица путей — только публичные (/, /jobs, /health); отметить, что /workers,/employers,/my-* требуют входа и в сценарий не входят; зафиксировать результат прод-прогона после фикса (100% 2xx, перцентили).",
+  "acceptance": [
+    "Дефолтные пути — только публичные /, /jobs, /health; /workers и кабинетные не входят.",
+    "Отчёт печатает распределение статусов; при non-2xx причина видна (код → количество).",
+    "self-test 100/8 по-прежнему PASS; прод-прогон 100/P=8 даёт 100% 2xx (или явно фиксирует иное с кодами).",
+    "docs/LOAD_TEST.md обновлён и содержит фактический результат прод-прогона.",
+    "py_compile; self-test exit 0."
+  ],
+  "out_of_scope": [
+    "Не менять пороги и allowlist.",
+    "Не трогать прод-код.",
+    "Не выполнять дополнительные прод-прогоны без окна."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile scripts/load_test.py",
+      "cwd": "."
+    },
+    {
+      "name": "self-test",
+      "cmd": "{python} scripts/load_test.py --self-test",
+      "cwd": "."
+    }
+  ]
+}

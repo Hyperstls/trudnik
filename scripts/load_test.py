@@ -18,11 +18,14 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 PROD_HOSTS = {"xn--d1aigknli.xn--p1ai", "трудник.рф"}
 HARD_CAP = 500
 USER_AGENT = "trudnik-load-test/1.0"
+# Только публичные 200-страницы: / — 302 на /jobs, /workers,/employers,/my-* — вход.
+DEFAULT_PATHS = "/jobs,/jobs?page=2,/health"
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -81,12 +84,15 @@ def run_load(base_url: str, paths: list[str], requests_n: int,
     errors = sum(1 for _, _, error in results if error is not None)
     error_names = sorted({error for _, _, error in results if error})
     failed = non2xx + errors
+    status_counts = Counter(status for status, _, _ in results)
+    codes = "  ".join(f"{code}:{count}" for code, count in sorted(status_counts.items()))
 
     rps = requests_n / elapsed if elapsed > 0 else 0.0
     print(f"target:     {base}")
     print(f"requests:   {requests_n}  concurrency: {concurrency}  "
           f"duration: {elapsed:.2f}s  rps: {rps:.1f}")
     print(f"total: {requests_n}  ok: {ok}  failed: {failed}  non2xx: {non2xx}  errors: {errors}")
+    print(f"status:     {codes}")
     if error_names:
         print("error types: " + ", ".join(error_names))
     print(
@@ -127,8 +133,8 @@ def main() -> int:
     parser.add_argument("--base-url", default="", help="https://<host> (только прод-allowlist)")
     parser.add_argument("--requests", type=int, default=100, help="всего GET-запросов (cap 500)")
     parser.add_argument("--concurrency", type=int, default=8, help="параллельных воркеров (1..32)")
-    parser.add_argument("--paths", default="/,/jobs,/workers,/health",
-                        help="список GET-путей через запятую")
+    parser.add_argument("--paths", default=DEFAULT_PATHS,
+                        help="список публичных GET-путей через запятую")
     parser.add_argument("--timeout", type=float, default=10.0, help="таймаут запроса, секунд")
     parser.add_argument("--confirm-prod", action="store_true",
                         help="подтверждение запуска против production в согласованное окно")
