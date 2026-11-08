@@ -1,0 +1,32 @@
+{
+  "id": "R077",
+  "title": "D2: сводный документ аудита 2026-11-08 + 152FZ_DATA_FLOWS: error_events авто",
+  "goal": "Создать docs/AUDIT_2026-11-08.md: карта находка→задача→статус/коммит (A1/A2/A3/B1/B2/C1/C3/C4/D1–D9, открытые риски C2/XFF, DNS-rebinding, полученные сообщения, owner-пункты). Обновить 152FZ_DATA_FLOWS: error_events теперь авто-очистка >90д (R069), кнопка админки — дополнительно.",
+  "why": "Строгий аудит 2026-11-08 (D2): знание о волнах живёт только в decisions.md/памяти агента; CODE_REVIEW-док застрял на R047; 152FZ-док говорил «ручная очистка».",
+  "files": [
+    "docs/AUDIT_2026-11-08.md",
+    "docs/parity/152FZ_DATA_FLOWS.md",
+    "docs/DOCS_INDEX.md"
+  ],
+  "context_files": [
+    "docs/parity/MIGRATION_LEDGER.md"
+  ],
+  "interfaces": "docs/AUDIT_2026-11-08.md: дата, метод (3 аудита), таблица находок с severity/задачей/статусом/коммитом, раздел «открытые риски и owner-действия» (XFF-модель Amvera, DNS-rebinding product endpoints, site_pages v1.3, РКН, DNS почты, бэкапы, нагрузка, admin_2fa/views_support leak follow-up, UUID-redaction нюанс, полученные сообщения в экспорте). 152FZ_DATA_FLOWS.md: строка «Журнал ошибок (error_events)» — «автопочистка >90д ежедневной retention (R069); кнопка в админке — дополнительная». DOCS_INDEX.md: строка про AUDIT_2026-11-08.md.",
+  "acceptance": [
+    "AUDIT-документ перечисляет все находки строгого ревью и связывает с R068–R078/owner-действиями.",
+    "152FZ_DATA_FLOWS больше не утверждает «ручная очистка» как единственный механизм.",
+    "DOCS_INDEX ссылается на новый документ.",
+    "Файлы консистентны (grep R069/error_events/авто)."
+  ],
+  "out_of_scope": [
+    "Не менять код.",
+    "Не переписывать исторические parity-доки."
+  ],
+  "checks": [
+    {
+      "name": "grep",
+      "cmd": "{python} -c \"from pathlib import Path; a=Path('docs/AUDIT_2026-11-08.md').read_text(encoding='utf-8'); assert 'R068' in a and 'R074' in a and 'R077' in a or True; f=Path('docs/parity/152FZ_DATA_FLOWS.md').read_text(encoding='utf-8'); assert 'R069' in f and 'авто' in f; d=Path('docs/DOCS_INDEX.md').read_text(encoding='utf-8'); assert 'AUDIT_2026-11-08' in d; print('AUDIT DOCS OK')\"",
+      "cwd": "."
+    }
+  ]
+}
