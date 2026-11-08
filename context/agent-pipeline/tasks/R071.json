@@ -1,0 +1,36 @@
+{
+  "id": "R071",
+  "title": "C1: client_error — не-dict JSON не даёт 500; токены в path редактируются",
+  "goal": "1) isinstance(data, dict) — JSON-массив/строка не роняют эндпоинт 500-й; 2) в URL для лога маскировать длинные path-сегменты (токены verify-email/password-reset ≥32 символов → '<redacted>'), т.к. секреты на этом сайте живут в path.",
+  "why": "Строгий аудит 2026-11-08 (C1): валидный не-dict JSON → AttributeError → 500 на публичном /api/client-error; path пишется как есть, а /verify-email/<token> и /password-reset/confirm/<token> несут email в payload токена.",
+  "files": [
+    "djadmin/core/views_service.py",
+    "djadmin/core/tests/test_parity_final.py"
+  ],
+  "context_files": [
+    "djadmin/core/privacy.py"
+  ],
+  "interfaces": "views_service.py client_error: после json.loads — if not isinstance(data, dict): data = {}; после urlunsplit — санитизация path: parts.path.split('/'), сегменты длиной >32 заменять на '<redacted>', собрать '/'.join; query/fragment/userinfo вырезаются как сейчас; всё в try (ValueError → url=''). test_parity_final.py ClientErrorTests: POST '[1,2]' → 204 (не 500); POST с url 'https://trudnik.ru/password-reset/confirm/ImFiY2RlZmdo.Zmdoa.Wl0aGluZw' → в логе '/password-reset/confirm/<redacted>' и нет 'ImFiY2RlZmdo'; короткие пути не меняются ('/jobs').",
+  "acceptance": [
+    "JSON-массив/строка/число → 204, никаких 500.",
+    "Path-сегменты >32 символов редактируются; короткие пути сохраняются.",
+    "Query/fragment/userinfo по-прежнему вырезаются.",
+    "py_compile; core.tests.test_parity_final проходит."
+  ],
+  "out_of_scope": [
+    "Не менять другие эндпоинты.",
+    "Не трогать маскировку email в message (это отдельно)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_service.py djadmin/core/tests/test_parity_final.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_parity_final --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

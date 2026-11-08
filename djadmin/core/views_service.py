@@ -105,6 +105,8 @@ def client_error(request):
         data = json.loads(request.body.decode("utf-8", "replace") or "{}")
     except Exception:
         data = {}
+    if not isinstance(data, dict):
+        data = {}  # валидный JSON-массив/строка не должны ронять 500 (C1)
     safe = {
         k: str(data.get(k, ""))[:500]
         for k in ("message", "source", "lineno", "colno", "url", "userAgent")
@@ -118,7 +120,13 @@ def client_error(request):
             netloc = parts.hostname or ""
             if parts.port:
                 netloc = "%s:%s" % (netloc, parts.port)
-            safe["url"] = urlunsplit((parts.scheme, netloc, parts.path, "", ""))
+            # токены сайта живут в path (/verify-email/<token>,
+            # /password-reset/confirm/<token>) — длинные сегменты редактируем (C1)
+            path = "/".join(
+                "<redacted>" if len(segment) > 32 else segment
+                for segment in parts.path.split("/")
+            )
+            safe["url"] = urlunsplit((parts.scheme, netloc, path, "", ""))
         except (ValueError, TypeError):
             # мусор вроде "http://[" не должен ронять эндпоинт (ревью R065)
             safe["url"] = ""

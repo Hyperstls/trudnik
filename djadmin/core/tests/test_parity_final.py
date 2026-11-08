@@ -91,6 +91,34 @@ class ClientErrorTests(TestCase):
         self.assertNotIn("secret@example.com", joined)
         self.assertNotIn("token=abc123", joined)
 
+    def test_non_dict_json_does_not_500(self):
+        """C1: массив/строка — валидный JSON, но не dict; эндпоинт не падает."""
+        for payload in ('[1,2]', '"string"', '42'):
+            with self.subTest(payload=payload):
+                response = self.client.post(
+                    "/api/client-error",
+                    data=payload,
+                    content_type="application/json",
+                )
+                self.assertEqual(response.status_code, 204)
+
+    def test_long_path_tokens_are_redacted(self):
+        """C1: токены verify-email/password-reset живут в path — не логируем."""
+        token = "ImFiY2RlZmdoZ2hpa2xt.bW5vcHFyc3R1.dnV3eHl6YWJjZA"
+        with self.assertLogs("core.views_service", level="WARNING") as captured:
+            self.client.post(
+                "/api/client-error",
+                data=json.dumps({
+                    "message": "boom",
+                    "url": "https://trudnik.ru/password-reset/confirm/" + token,
+                }),
+                content_type="application/json",
+            )
+        joined = chr(10).join(captured.output)
+        self.assertIn("/password-reset/confirm/<redacted>", joined)
+        self.assertNotIn(token, joined)
+        self.assertNotIn("bW5vcHFyc3R1", joined)
+
 
 class RepostTests(TestCase):
     def test_owner_reposts_with_skills(self):
