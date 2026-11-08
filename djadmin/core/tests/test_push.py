@@ -104,3 +104,68 @@ class PushInDrainTests(TestCase):
             result = send_web_push(SUB_DATA, "title", "body")
             self.assertFalse(result["success"])
             self.assertEqual(result["error"], "vapid_not_configured")
+
+
+class PushEndpointValidationTests(TestCase):
+    """R055: анти-SSRF фильтр endpoint'а и лимит подписок."""
+
+    def setUp(self):
+        self.user = make_profile("push-ssrf@example.com")
+        self.client.force_login(self.user)
+
+    def _post(self, endpoint):
+        return self.client.post(
+            "/push/subscription",
+            data=json.dumps({"endpoint": endpoint, **{
+                k: v for k, v in SUB_DATA.items() if k != "endpoint"
+            }}),
+            content_type="application/json",
+        )
+
+    def test_rejects_non_https(self):
+        self.assertEqual(self._post("http://fcm.googleapis.com/x").status_code, 400)
+
+    def test_rejects_localhost_and_local_names(self):
+        for endpoint in (
+            "https://localhost/x",
+            "https://svc.localhost/x",
+            "https://box.local/x",
+            "https://node.internal/x",
+            "https://router.home.arpa/x",
+            "https://intranet/x",  # однословный хост
+        ):
+            with self.subTest(endpoint=endpoint):
+                self.assertEqual(self._post(endpoint).status_code, 400)
+        self.assertEqual(PushSubscription.objects.filter(user=self.user).count(), 0)
+
+    def test_rejects_private_ip_literals(self):
+        for endpoint in (
+            "https://10.0.0.5/x",
+            "https://127.0.0.1/x",
+            "https://192.168.1.1/x",
+            "https://169.254.1.1/x",
+            "https://[fd00::1]/x",
+            "https://[::1]/x",
+        ):
+            with self.subTest(endpoint=endpoint):
+                self.assertEqual(self._post(endpoint).status_code, 400)
+        self.assertEqual(PushSubscription.objects.filter(user=self.user).count(), 0)
+
+    def test_accepts_public_ip_literal_and_domain(self):
+        self.assertEqual(self._post("https://8.8.8.8/x").status_code, 200)
+        self.assertEqual(self._post(SUB_DATA["endpoint"]).status_code, 200)
+
+    def test_subscription_limit_drops_oldest(self):
+        for i in range(11):
+            response = self._post(
+                "https://push%d.example-devices.test/endpoint" % i
+            )
+            self.assertEqual(response.status_code, 200)
+        subs = PushSubscription.objects.filter(user=self.user).order_by("pk")
+        self.assertEqual(subs.count(), 10)
+        self.assertFalse(
+            subs.filter(endpoint="https://push0.example-devices.test/endpoint").exists()
+        )
+        self.assertTrue(
+            subs.filter(endpoint="https://push10.example-devices.test/endpoint").exists()
+        )

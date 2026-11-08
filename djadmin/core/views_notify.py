@@ -109,6 +109,38 @@ def notifications_unread_count(request):
     })
 
 # ── Web Push подписки ───────────────────────────────────────────────────────
+
+PUSH_MAX_SUBSCRIPTIONS = 10
+
+
+def _push_endpoint_ok(endpoint: str) -> bool:
+    """R055: анти-SSRF фильтр endpoint'а push-подписки.
+
+    Сервер позже POST-ит на этот URL из Celery, поэтому принимаем только
+    https-адреса с нормальным публичным хостом: без localhost/.local/.internal,
+    без однословных имён; IP-литерал (v4/v6) обязан быть публичным.
+    """
+    import ipaddress
+    from urllib.parse import urlparse
+
+    try:
+        parsed = urlparse(endpoint)
+    except Exception:
+        return False
+    if parsed.scheme != "https" or not parsed.hostname:
+        return False
+    host = parsed.hostname.lower().rstrip(".")
+    if host == "localhost" or host.endswith(
+        (".localhost", ".local", ".internal", ".home.arpa")
+    ):
+        return False
+    if "." not in host and ":" not in host:
+        return False  # однословные имена — внутренние псевдонимы
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return True  # обычный домен
+    return bool(ip.is_global)
 def push_vapid_public_key(request):
     """Публичный VAPID-ключ (для Service Worker, паритет Flask)."""
     from django.conf import settings
@@ -131,9 +163,15 @@ def push_subscribe(request):
     auth = (data.get("auth") or (data.get("keys") or {}).get("auth") or "").strip()
     if not (endpoint and p256dh and auth):
         return JsonResponse({"error": "endpoint, p256dh, auth обязательны"}, status=400)
+    if not _push_endpoint_ok(endpoint):
+        return JsonResponse({"error": "endpoint отклонён"}, status=400)
     sub, _ = PushSubscription.objects.get_or_create(
         user=request.user, endpoint=endpoint, defaults={"p256dh": p256dh, "auth": auth}
     )
+    # R055: не копим мусорные подписки — старейшие сверх лимита удаляем.
+    newest_first = PushSubscription.objects.filter(user=request.user).order_by("-pk")
+    for stale in newest_first[PUSH_MAX_SUBSCRIPTIONS:]:
+        stale.delete()
     prefs = dict(request.user.notification_prefs or {})
     if not prefs.get("push_enabled"):
         prefs["push_enabled"] = True

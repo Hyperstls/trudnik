@@ -1,0 +1,40 @@
+{
+  "id": "R055",
+  "title": "Безопасность: валидация push-endpoint (SSRF) и лимит подписок",
+  "goal": "push_subscribe принимает произвольный URL, на который сервер затем POST-ит из Celery (blind SSRF на внутренние адреса) и копит бессрочные подписки. Валидировать endpoint: только https, hostname не localhost/.local/.internal/.home.arpa и не однословный, IP-литерал — только публичный; ограничить число подписок пользователя 10 (лишние старые удаляются).",
+  "why": "M-1 кодревью 2026-11-08: views_notify.py:129-136 принимает любой endpoint без проверки схемы/хоста; tasks.py:174-183 + push.py:32-40 затем шлют POST с VAPID-JWT на выбранный пользователем URL (внутренние адреса, localhost); лимита подписок нет.",
+  "files": [
+    "djadmin/core/views_notify.py",
+    "djadmin/core/tests/test_push.py"
+  ],
+  "context_files": [
+    "djadmin/core/push.py",
+    "djadmin/core/tasks.py"
+  ],
+  "interfaces": "views_notify.py: константа PUSH_MAX_SUBSCRIPTIONS = 10 и функция _push_endpoint_ok(endpoint) -> bool: urlparse; схема строго https; hostname непустой, приведён к нижнему регистру без конечной точки; reject host == 'localhost', endswith('.localhost','.local','.internal','.home.arpa'), однословный host без точки; ipaddress.ip_address(host) — если парсится (v4/v6 литерал), требовать ip.is_global; обычный домен — True. В push_subscribe: если не _push_endpoint_ok(endpoint) → JsonResponse({'error': 'endpoint отклонён'}, status=400); после get_or_create — если PushSubscription.objects.filter(user=request.user).count() > PUSH_MAX_SUBSCRIPTIONS: удалить старейшие сверх лимита (order by created_at/id). Тесты в test_push.py: http:// схема 400; https://localhost/x 400; https://10.0.0.5/x 400; https://[fd00::1]/x 400; https://intranet/ (без точки) 400; SUB_DATA (fcm.googleapis.com) 200 как раньше; лимит: 11 разных валидных endpoint → count == 10,最早的 удалён; 400-ответ не создаёт подписок.",
+  "acceptance": [
+    "endpoint строго https; localhost/.local/.internal/.home.arpa и однословные хосты отклоняются.",
+    "Приватные/loopback/link-local IP-литералы (v4 и v6) отклоняются; публичный IP-литерал допускается.",
+    "Валидные браузерные endpoint (fcm.googleapis.com) работают как раньше; 400 не создаёт записей.",
+    "Не более 10 подписок на пользователя; при превышении удаляются старейшие.",
+    "Существующие push-тесты проходят (SUB_DATA валиден).",
+    "py_compile обоих .py; core.tests.test_push, core.tests.test_tasks проходят."
+  ],
+  "out_of_scope": [
+    "Не менять отправку (push.py/tasks.py) и prefs-логику.",
+    "Не вводить DNS-резолв хостов (защита от DNS-rebinding) — отдельная тема.",
+    "Не менять unsubscribe и drain."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_notify.py djadmin/core/tests/test_push.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_push core.tests.test_tasks --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
