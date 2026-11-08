@@ -1,0 +1,37 @@
+{
+  "id": "R069",
+  "title": "A3: error_events в автополчение retention (обещание политики 10.8)",
+  "goal": "Добавить в cleanup_personal_data_retention ветку: ErrorEvent старше 90 дней удаляются автоматически (политика v1.3 п. 10.8 обещает «не более 90 дней», сейчас только ручная кнопка).",
+  "why": "Строгий аудит 2026-11-08 (A3): celery_app не содержит задачи для error_events, tasks.py cleanup чистит outbox/audit/sessions/push; юридическое обязательство 90 дней не обеспечено.",
+  "files": [
+    "djadmin/core/tasks.py",
+    "djadmin/core/tests/test_tasks.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py",
+    "djadmin/core/admin/error_events.py"
+  ],
+  "interfaces": "tasks.py cleanup_personal_data_retention: новая ветка try/except (тот же паттерн) до/после audit: ErrorEvent.objects.filter(created_at__lt=now - timedelta(days=90)).delete(); counts['error_events']=int(deleted); при сбое — logger.exception + None. Импорт ErrorEvent внутри ветки (как AuditLog/Session). test_tasks.py RetentionTaskTests: старый ErrorEvent 91д (update created_at) удаляется, свежий остаётся; counts['error_events'] == 1; в тесте изоляции веток ключ добавлен в проверку not None.",
+  "acceptance": [
+    "ErrorEvent старше 90 дней удаляются ежедневной задачей; свежие остаются.",
+    "Сбой ветки логируется и не мешает остальным (None в counts).",
+    "Политика 10.8 (90 дней) теперь обеспечена механизмом.",
+    "py_compile; core.tests.test_tasks проходит."
+  ],
+  "out_of_scope": [
+    "Не менять admin purge-кнопку.",
+    "Не менять сроки других веток."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tasks.py djadmin/core/tests/test_tasks.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_tasks --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

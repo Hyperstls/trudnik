@@ -366,6 +366,26 @@ class RetentionTaskTests(TestCase):
         self.assertFalse(Session.objects.filter(pk=stale.pk).exists())
         self.assertTrue(Session.objects.filter(pk=fresh.pk).exists())
 
+    def test_error_events_retention_90_days(self):
+        """R069: политика 10.8 — журнал ошибок не старше 90 дней."""
+        from core.models import ErrorEvent
+
+        old = ErrorEvent.objects.create(
+            exception_type="ValueError", path="/old", method="GET"
+        )
+        ErrorEvent.objects.filter(pk=old.pk).update(
+            created_at=self.now - timedelta(days=91)
+        )
+        fresh = ErrorEvent.objects.create(
+            exception_type="KeyError", path="/fresh", method="GET"
+        )
+
+        counts = cleanup_personal_data_retention()
+
+        self.assertEqual(counts["error_events"], 1)
+        self.assertFalse(ErrorEvent.objects.filter(pk=old.pk).exists())
+        self.assertTrue(ErrorEvent.objects.filter(pk=fresh.pk).exists())
+
     def test_stale_push_subscriptions_removed(self):
         from core.models import PushSubscription
 
@@ -393,5 +413,8 @@ class RetentionTaskTests(TestCase):
             counts = cleanup_personal_data_retention()
         self.assertIsNone(counts["notification_outbox"])
         # остальные ветки отработали (числа или 0, но не None)
-        for key in ("audit_log", "expired_sessions", "stale_push_subscriptions"):
+        for key in (
+            "audit_log", "expired_sessions", "stale_push_subscriptions",
+            "error_events",
+        ):
             self.assertIsNotNone(counts[key], key)

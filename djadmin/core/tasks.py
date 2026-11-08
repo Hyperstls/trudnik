@@ -262,6 +262,7 @@ def cleanup_personal_data_retention() -> dict:
     outbox: sent/skipped > 30 дн, failed > 7 дн (копии текстов уведомлений,
     включая превью чатов, не живут вечно);
     audit_log: > 180 дн (IP и ФИО/email в JSON);
+    error_events: > 90 дн (политика 10.8; R069);
     django_session: истёкшие (UA в метаданных);
     push_subscriptions: не обновлявшиеся > 90 дн (мёртвые браузеры).
     Каждая ветка независима: падение одной не блокирует остальные.
@@ -279,6 +280,16 @@ def cleanup_personal_data_retention() -> dict:
     except Exception:
         logger.exception("retention: notification_outbox cleanup failed")
         counts["notification_outbox"] = None
+    try:
+        from .models import ErrorEvent
+
+        deleted, _ = ErrorEvent.objects.filter(
+            created_at__lt=now - timedelta(days=90)
+        ).delete()
+        counts["error_events"] = int(deleted)
+    except Exception:
+        logger.exception("retention: error_events cleanup failed")
+        counts["error_events"] = None
     try:
         from .models import AuditLog
 
