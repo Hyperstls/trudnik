@@ -20,6 +20,7 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
+from .anti_fraud import allow_application
 from .http import safe_referer
 from .models import (
     Application,
@@ -34,6 +35,7 @@ from .models import (
     UserReport,
 )
 from .notifications import enqueue_notification
+from .ratelimit import rate_limit_write
 from .reputation import (
     criteria_labels, profile_metrics, public_ratings, rating_distribution,
     recent_rating, reliable_badge, tag_labels, weighted_expr,
@@ -230,12 +232,14 @@ def rate_workers(request, job_id):
 # ── Массовые отклики с ленты (apply-selected / unapply-selected) ──────────
 @login_required
 @require_POST
+@rate_limit_write(limit=10, window=60, redirect_to="/jobs")
 def bulk_apply(request):
     return _bulk(request, apply=True)
 
 
 @login_required
 @require_POST
+@rate_limit_write(limit=10, window=60, redirect_to="/jobs")
 def bulk_unapply(request):
     return _bulk(request, apply=False)
 
@@ -258,6 +262,11 @@ def _bulk(request, apply: bool):
             skipped += 1
             continue
         if apply:
+            # R054: каждая попытка расходует дневную квоту откликов, как в
+            # одиночном job_apply — массовый путь не должен обходить лимит.
+            if not allow_application(request.user.pk):
+                skipped += 1
+                continue
             try:
                 result = call_rpc("apply_job_atomic", job.pk, request.user.pk) or {}
             except Exception:

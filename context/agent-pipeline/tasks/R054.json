@@ -1,0 +1,39 @@
+{
+  "id": "R054",
+  "title": "Безопасность: bulk_apply — дневной антифрод-лимит и rate-limit",
+  "goal": "Массовый отклик (apply-selected) должен учитывать дневной лимит откликов (allow_application, 40/день, как в одиночном job_apply) и получать rate_limit_write. Сейчас один POST создаёт до 20 откликов, не трогая счётчик, и не имеет rate-limit — спам-вектор уведомлениями работодателям.",
+  "why": "M-4 кодревью 2026-11-08: views_public_ext.py:231-304 — _bulk вызывает apply_job_atomic без allow_application (счётчик application_day не инкрементируется) и без @rate_limit_write; одиночный job_apply (views_flow.py:461-466) проверяет и то и другое.",
+  "files": [
+    "djadmin/core/views_public_ext.py",
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/anti_fraud.py",
+    "djadmin/core/views_flow.py"
+  ],
+  "interfaces": "views_public_ext.py: импортировать allow_application из .anti_fraud и rate_limit_write из .ratelimit; bulk_apply и bulk_unapply получают @rate_limit_write(limit=10, window=60, redirect_to='/jobs') (как job_apply); в _bulk в ветке apply перед call_rpc: if not allow_application(request.user.pk): skipped += 1; continue — семантика одиночного отклика: каждая попытка расходует дневную квоту. Тесты в BulkApplyTests (test_flows.py): (1) test_bulk_apply_respects_daily_limit — выставить cache ключ 'af:application_day:<worker.pk>' в APPLICATION_DAILY_LIMIT (cache.set с window 86400), bulk POST 2 jobs → 'пропущено: 2' и 0 созданных Application; (2) test_bulk_apply_rate_limited — 11-й POST bulk_apply в течение минуты редиректит (follow=True) с сообщением 'Слишком часто' и не создаёт новых откликов (перед циклом очистить 'rl:bulk_apply:<user>:jobs' не нужно — просто считать POSTы: 10 проходят, 11-й блокируется; отдельный пользователь/jobs чтобы не упереться в дневной лимит 40 — использовать 2 job и <40 откликов суммарно, т.к. rate-limit=10 POST × 2 = 20 применений, ок).",
+  "acceptance": [
+    "bulk_apply/bulk_unapply декорированы @rate_limit_write(10, 60, '/jobs').",
+    "Каждая попытка bulk-отклика проходит allow_application (инкремент дневного счётчика); при исчерпании — skipped, отклик не создаётся.",
+    "Тесты: исчерпанный дневной лимит → 'пропущено', 0 новых Application; 11-й POST/мин → редирект 'Слишком часто'.",
+    "Существующие bulk-тесты не сломаны (лимиты с запасом).",
+    "py_compile обоих .py; core.tests.test_flows, core.tests.test_anti_fraud проходят."
+  ],
+  "out_of_scope": [
+    "Не менять лимиты/окна антифрода и job_apply.",
+    "Не менять группировку уведомлений и unapply-логику.",
+    "Не вводить отдельный bulk-лимит на количество job_ids (BULK_LIMIT=20 остаётся)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_public_ext.py djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows core.tests.test_anti_fraud --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

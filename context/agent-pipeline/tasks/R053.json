@@ -1,0 +1,41 @@
+{
+  "id": "R053",
+  "title": "Безопасность: смена/сброс пароля отзывает чужие активные сессии",
+  "goal": "После успешной смены пароля из профиля — отзывать все прочие сессии пользователя (кроме текущей); после сброса пароля по ссылке — отзывать все сессии. Иначе украденная сессия переживает смену пароля пострадавшим.",
+  "why": "M-3 кодревью 2026-11-08: механизм ревока есть (/profile/sessions), но автоматически при смене/сбросе пароля не вызывается; views_auth.py:310-320 и views_profile.py:53-70.",
+  "files": [
+    "djadmin/core/sessions.py",
+    "djadmin/core/views_profile.py",
+    "djadmin/core/views_auth.py",
+    "djadmin/core/tests/test_sessions.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_flow.py"
+  ],
+  "interfaces": "sessions.py: добавить revoke_other_user_sessions(user, keep_session_key=None) -> int — итерирует Session.objects.all(), get_decoded, совпадение _auth_user_id == str(user.pk), пропуск keep_session_key, delete; возвращает число удалённых; исключения decode — continue. views_profile.py: в ветке action=='password' после ok: вызвать revoke_other_user_sessions(user, request.session.session_key) и message добавить 'Выйли из других сессий.' при >0 (не менять существующий текст успеха — добавить отдельную info-строку). views_auth.py: в password_reset_confirm после ok (call_rpc change_password) — user = Profile.objects.filter(email=...).first(); revoke_other_user_sessions(user) (все); сообщение успеха не менять. test_sessions.py: (1) у пользователя 3 сессии (client login ×3 разными client/sessionid) — через самописный логин: создать сессии через SessionStore, у одной owner; после смены пароля через POST /profile action=password остаются только текущая; (2) password_reset_confirm (сгенерировать токен tokens.generate_reset_token или вызвать RPC-перегрузку как в тестах test_auth_flows) — все сессии удалены; использовать существующие паттерны тестов сброса в test_auth_flows/test_sessions; не ломать существующие тесты (учесть, что смена пароля в тестах логина теперь убивает другие сессии).",
+  "acceptance": [
+    "revoke_other_user_sessions удаляет сессии пользователя, кроме keep_session_key; возвращает количество.",
+    "Смена пароля из профиля сохраняет текущую сессию и отзывает остальные.",
+    "Сброс пароля по ссылке отзывает все сессии пользователя.",
+    "Существующие тесты логина/сброса проходят (нет ложных ревоков чужих сессий).",
+    "py_compile четырёх .py проходит.",
+    "core.tests.test_sessions, core.tests.test_auth_flows, core.tests.test_flows проходят."
+  ],
+  "out_of_scope": [
+    "Не менять /profile/sessions UI и HMAC-логику.",
+    "Не трогать удаление аккаунта (волна 2).",
+    "Не менять механику pwd_changed_at/токенов."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/sessions.py djadmin/core/views_profile.py djadmin/core/views_auth.py djadmin/core/tests/test_sessions.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_sessions core.tests.test_auth_flows core.tests.test_flows --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

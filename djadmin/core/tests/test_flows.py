@@ -1125,6 +1125,43 @@ class BulkApplyTests(TestCase):
             )
         self.assertContains(response, "Выполнено: 1, пропущено: 0, ошибок: 1")
 
+    def test_bulk_apply_respects_daily_limit(self):
+        """R054: массовый отклик расходует дневную квоту антифрода (40/день)."""
+        from django.core.cache import cache
+
+        from core.anti_fraud import APPLICATION_DAILY_LIMIT
+
+        cache.set(
+            "af:application_day:%s" % self.worker.pk,
+            APPLICATION_DAILY_LIMIT,
+            86400,
+        )
+        response = self.client.post(
+            reverse("core:bulk_apply"),
+            {"job_ids": [str(job.pk) for job in self.jobs]},
+            follow=True,
+        )
+        self.assertContains(response, "пропущено: 2")
+        self.assertEqual(
+            Application.objects.filter(worker=self.worker, job__in=self.jobs).count(),
+            0,
+        )
+
+    def test_bulk_apply_rate_limited_after_ten_posts(self):
+        """R054: bulk_apply ограничен 10 POST/мин (как одиночный отклик)."""
+        for _ in range(10):
+            self.client.post(reverse("core:bulk_apply"), {"job_ids": []}, follow=True)
+        response = self.client.post(
+            reverse("core:bulk_apply"),
+            {"job_ids": [str(self.jobs[0].pk)]},
+            follow=True,
+        )
+        self.assertContains(response, "Слишком часто")
+        self.assertEqual(
+            Application.objects.filter(job=self.jobs[0], worker=self.worker).count(),
+            0,
+        )
+
 
 class MyApplicationsDefaultTests(TestCase):
     def test_employer_defaults_to_received(self):

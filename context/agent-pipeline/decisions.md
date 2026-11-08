@@ -3357,3 +3357,35 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** Hyperstls
 
 **Пакет:** context/agent-pipeline/packs/R050.review.prompt.md
+
+## 2026-11-08 07:59:42 — R051: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R051.review.prompt.md
+
+## 2026-11-08 08:20:19 — R052: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R052.review.prompt.md
+
+## 2026-11-08 08:23:18 — R053: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** M-3 кодревью — ложноположительный: Django session auth hash уже инвалидирует все прочие сессии при смене/сбросе пароля (existing test_password_change_invalidates_other_sessions PASS; scratch-тест reset: /profile → 302 login без правок). Дублирующее удаление строк сессий не требуется.
+
+**Переход:** implementing → blocked
+
+## 2026-11-08 13:03:26 — R054: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R054.review.prompt.md
