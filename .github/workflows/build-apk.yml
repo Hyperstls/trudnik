@@ -58,14 +58,14 @@ jobs:
 
       - name: Upload APK artifact
         if: steps.check_twa.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: trudnik-apk
           path: twa-project/app-release-signed.apk
 
       - name: Upload AAB artifact (Google Play preferred)
         if: steps.check_twa.outputs.exists == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: trudnik-aab
           path: twa-project/app-release-bundle.aab
