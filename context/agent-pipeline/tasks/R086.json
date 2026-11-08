@@ -1,0 +1,42 @@
+{
+  "id": "R086",
+  "title": "Refactor: views_flow.py → views_auth_flow.py + views_applications.py",
+  "goal": "Разделить views_flow.py (779 строк) на три модуля без изменения поведения: views_flow.py — задания (create/edit/action/my_jobs/bulk job, файлы, _safe_back/_rpc_message/_public_job_or_none/_bulk_ids/RPC_ERROR_TEXT); views_auth_flow.py — вход/выход и 2FA (login_view, logout_view, _twofa_*, _safe_next, константы TWOFA_*); views_applications.py — отклики/избранное (job_apply, job_unapply, my_applications, worker_confirm_completion, job_applicants, application_action, my_applications_bulk, job_favorite_toggle, favorite_jobs). urls.py переключить на новые модули.",
+  "why": "views_flow.py смешивает аутентификацию, CRUD заданий, отклики и избранное; дальнейшее разделение по доменам упрощает навигацию и снижает риск конфликтов.",
+  "files": [
+    "djadmin/core/views_flow.py",
+    "djadmin/core/views_auth_flow.py",
+    "djadmin/core/views_applications.py",
+    "djadmin/core/urls.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_auth.py",
+    "djadmin/core/forms.py",
+    "djadmin/core/auth_backend.py"
+  ],
+  "interfaces": "views_auth_flow.py: TWOFA_CODE_TTL/MAX_ATTEMPTS/BACKEND, _twofa_code_key/_twofa_tries_key/_twofa_clear/_twofa_pending/_twofa_start/_twofa_code_view, _safe_next, login_view, logout_view; импорты settings/hmac/secrets/UUID/cache/messages/authenticate/auth_login/auth_logout/PermissionDenied/redirect/render/LoginForm/ProfileBackend/LOCKOUT_TEXT/enforce_ip_limit/RateLimitExceeded/RateLimitUnavailable/_lazy; _send_mail — локальный импорт из .views_auth (как сейчас). views_applications.py: импортирует из .views_flow RPC_ERROR_TEXT, _rpc_message, _public_job_or_none, _bulk_ids; тела функций дословно. views_flow.py: оставить только задания и общие helpers для applications; удалить auth/application-функции и их исключительные импорты (authenticate/login/logout/PermissionDenied/secrets/hmac? — проверить фактическое использование; enqueue_notification остаётся только если нужен в job_apply — он уходит в applications, значит в flow может стать неиспользуемым, проверить). urls.py: login/logout/2FA → views_auth_flow; applications/favorites → views_applications; jobs → views_flow.",
+  "acceptance": [
+    "Все URL и поведение идентичны (тесты проходят без правок): вход/2FA, задания, отклики, избранное.",
+    "views_flow.py не импортирует views_applications/views_auth_flow; циклических импортов нет (applications → flow — односторонне).",
+    "В каждом модуле только реально используемые импорты; мёртвых импортов нет.",
+    "views_auth_flow.py не дублирует регистрацию/сброс пароля из views_auth.py; _send_mail берётся оттуда.",
+    "py_compile; core.tests.test_flows, core.tests.test_auth_flows, core.tests.test_auth, core.tests.test_admin_2fa проходят."
+  ],
+  "out_of_scope": [
+    "Не менять шаблоны, тексты, статусы и RPC-контракты.",
+    "Не трогать views_auth.py (кроме импорта _send_mail).",
+    "Не переименовывать URL names."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_flow.py djadmin/core/views_auth_flow.py djadmin/core/views_applications.py djadmin/core/urls.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows core.tests.test_auth_flows core.tests.test_auth core.tests.test_admin_2fa --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
