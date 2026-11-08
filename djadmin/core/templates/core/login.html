@@ -75,12 +75,6 @@
 </div>
 <script nonce="{{ request.csp_nonce }}">
 document.addEventListener('DOMContentLoaded', function() {
-    // Успешная регистрация возвращает сюда с ?email= — черновик больше не нужен.
-    try {
-        if (new URLSearchParams(window.location.search).has('email')) {
-            sessionStorage.removeItem('trudnik-register-draft-v1');
-        }
-    } catch (error) { /* storage disabled */ }
     var password = document.getElementById('password');
     var toggleBtn = document.getElementById('toggle-password');
     if (toggleBtn && password) {

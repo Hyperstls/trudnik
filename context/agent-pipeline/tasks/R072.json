@@ -1,0 +1,38 @@
+{
+  "id": "R072",
+  "title": "C3: маскировать email в flash-сообщении регистрации; убрать мёртвую JS-очистку черновика",
+  "goal": "1) Сообщение «Письмо отправлено на %s» показывает маскированный адрес — raw email больше не попадает в подписанную cookie django_messages (FallbackStorage); 2) удалить из login.html мёртвый блок очистки черновика регистрации по ?email= (после R066 такой URL не создаётся) — черновик и так имеет TTL 7 дней.",
+  "why": "Строгий аудит 2026-11-08 (C3): R066 убрал email из URL, но его же отправил в Set-Cookie через messages; JS-очистка стала недостижимой.",
+  "files": [
+    "djadmin/core/views_auth.py",
+    "djadmin/core/templates/core/login.html",
+    "djadmin/core/tests/test_auth_flows.py"
+  ],
+  "context_files": [
+    "static/js/register-step.js"
+  ],
+  "interfaces": "views_auth.py register success: messages.success(..., 'Аккаунт создан. Письмо отправлено на %s. ...' % mask_email(email)); login.html: удалить блок 'Успешная регистрация возвращает сюда с ?email= — черновик больше не нужен' (URLSearchParams has('email') → sessionStorage.removeItem) целиком; register-step.js не менять (TTL 7 дней). test_auth_flows.py: тест — register POST follow=True: страница содержит 'Письмо отправлено на re***@' (маска) и не содержит полного адреса; сессия resend_email по-прежнему хранит полный (prefill работает).",
+  "acceptance": [
+    "Flash-сообщение регистрации содержит только маску email.",
+    "Полный адрес не появляется в HTML после регистрации (только в поле prefill формы resend из сессии — это input value, допустимо).",
+    "Мёртвый JS-блок удалён; черновик регистрации очищается по TTL.",
+    "py_compile; core.tests.test_auth_flows проходит."
+  ],
+  "out_of_scope": [
+    "Не менять session prefill.",
+    "Не менять register-step.js.",
+    "Не трогать i18n строку (msgid не меняется — маскируется только параметр)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_auth.py djadmin/core/tests/test_auth_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_auth_flows --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

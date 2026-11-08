@@ -117,6 +117,19 @@ class RegisterTests(TestCase):
         self.assertNotIn("%40", response["Location"])
         self.assertEqual(self.client.session["resend_email"], email)
 
+    @patch("core.views_auth.verify_captcha_token", return_value=True)
+    def test_register_flash_masks_email(self, mock_verify):
+        """C3: raw email не попадает в flash-сообщение (подписанная cookie)."""
+        email = "flash-mask@example.com"
+        response = self.client.post(
+            "/register", {**REG, "email": email}, follow=True
+        )
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode("utf-8")
+        self.assertIn("Письмо отправлено на fl***@example.com", html)
+        # полный адрес может быть только в value prefill-формы resend (из сессии)
+        self.assertNotIn("Письмо отправлено на flash-mask@example.com", html)
+
     def test_register_intent_post_jobs_maps_to_employer(self):
         self.client.post("/register", {**REG, "email": "employer-reg@example.com", "intent": "post_jobs"})
         profile = Profile.objects.get(email="employer-reg@example.com")
