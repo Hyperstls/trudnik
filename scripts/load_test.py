@@ -24,7 +24,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 PROD_HOSTS = {"xn--d1aigknli.xn--p1ai", "трудник.рф"}
 HARD_CAP = 500
 USER_AGENT = "trudnik-load-test/1.0"
-# Только публичные 200-страницы: / — 302 на /jobs, /workers,/employers,/my-* — вход.
+# Только стабильные публичные 200-страницы: / — 302 на /jobs,
+# /employers и /my-* требуют входа; /workers публичен, но в дефолт не входит.
 DEFAULT_PATHS = "/jobs,/jobs?page=2,/health"
 
 
