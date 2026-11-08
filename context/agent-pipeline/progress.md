@@ -1524,3 +1524,9 @@
 - **2026-11-08 22:36:18** | **R081** | `review-packet` | **READY** | bytes=13227 new_files=[]
 - **2026-11-08 22:53:50** | **R081** | `verify` | **PASS** | scope=ok checks=docs-consistency=0 attempts=0/3
 - **2026-11-08 22:53:54** | **R081** | `review` | **PASS** | by=independent-review-agent → done
+- **2026-11-08 23:24:14** | **R082** | `add` | **OK** | contract=context/agent-pipeline/tasks/R082.json
+- **2026-11-08 23:24:15** | **R082** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/R082.impl.prompt.md
+- **2026-11-08 23:25:09** | **R082** | `verify` | **PASS** | scope=ok checks=compile=0, local-rehearsal=0 attempts=0/3
+- **2026-11-08 23:25:15** | **R082** | `review-packet` | **READY** | bytes=17765 new_files=['scripts/backup_restore_rehearsal.py', 'docs/RESTORE_RUNBOOK.md']
+- **2026-11-08 23:33:21** | **R082** | `verify` | **PASS** | scope=ok checks=compile=0, local-rehearsal=0 attempts=0/3
+- **2026-11-08 23:33:27** | **R082** | `review` | **PASS** | by=independent-review-agent → done

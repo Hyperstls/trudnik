@@ -1,0 +1,39 @@
+{
+  "id": "R082",
+  "title": "Ops: репетиция backup/restore БД + runbook восстановления",
+  "goal": "Скрипт scripts/backup_restore_rehearsal.py делает pg_dump dockerized dev-БД, восстанавливает дамп в отдельную scratch-БД (*_restore_check), сверяет count(*) ключевых таблиц, удаляет scratch; ошибки/несовпадения → exit 1. Runbook docs/RESTORE_RUNBOOK.md описывает прод-процедуру: снятие дампа, репетиция на копии, окно, проверки, rollback, media.",
+  "why": "Аудит 2026-11-08: media не бэкапится, restore на проде не репетирован, RTO/RPO не зафиксированы. Нужен воспроизводимый и проверяемый локально механизм, чтобы прод-восстановление в окне было рутиной, а не экспериментом.",
+  "files": [
+    "scripts/backup_restore_rehearsal.py",
+    "docs/RESTORE_RUNBOOK.md"
+  ],
+  "context_files": [
+    "docker-compose.yml",
+    "docs/parity/MIGRATION_LEDGER.md"
+  ],
+  "interfaces": "Скрипт: argparse --container trudnik-db --user trudnik --database trudnik --dump-dir (по умолчанию tempfile.mkdtemp) --tables (default profiles,jobs,applications,messages,ratings,site_pages,schema_migrations) --keep-dump. subprocess docker с env MSYS_NO_PATHCONV=1 (Windows path conversion ломает /tmp). Шаги: проверка контейнера; pg_dump -Fc в /tmp/<name>.dump внутри контейнера; docker cp наружу; DROP/CREATE scratch <db>_restore_check (terminate backends); pg_restore --no-owner --no-acl; сверка count(*) source vs scratch по таблицам; DROP scratch в finally; печать размера дампа и длительности; exit 1 при любой ошибке/расхождении. Секреты не печатать. Runbook: прод-дамп (DATABASE_ADMIN_URL из env, pg_dump -Fc, хранение вне репо), репетиция на отдельной БД (никогда не на прод), чек-лист окна (MIGRATIONS_ENABLED, maintenance, smoke /health,/jobs, вход, админка), rollback (pre-restore дамп), media /data/uploads (volume snapshot/rsync), фиксация RTO/RPO.",
+  "acceptance": [
+    "Скрипт на локальном стенде делает дамп, восстанавливает в scratch-БД и завершает exit 0 при совпадении counts.",
+    "Scratch-БД всегда удаляется (finally), source-БД не изменяется; имя scratch оканчивается на _restore_check и не равно source (guard).",
+    "При расхождении counts или ошибке pg_dump/pg_restore — exit 1 с понятным сообщением.",
+    "Runbook содержит шаги прод-бэкапа, репетиции на копии, окна восстановления, rollback и media, без секретов.",
+    "py_compile; локальный прогон скрипта — OK."
+  ],
+  "out_of_scope": [
+    "Не выполнять restore на проде (только в согласованное окно, отдельным запуском).",
+    "Не менять схему/миграции.",
+    "Не добавлять внешние зависимости."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile scripts/backup_restore_rehearsal.py",
+      "cwd": "."
+    },
+    {
+      "name": "local-rehearsal",
+      "cmd": "{python} scripts/backup_restore_rehearsal.py",
+      "cwd": "."
+    }
+  ]
+}
