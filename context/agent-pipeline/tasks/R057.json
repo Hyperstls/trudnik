@@ -1,0 +1,40 @@
+{
+  "id": "R057",
+  "title": "152-ФЗ: retention-задача для outbox/аудита/сессий/мёртвых push-подписок",
+  "goal": "Ежедневная задача cleanup_personal_data_retention: notification_outbox sent/skipped>30д и failed>7д; audit_log старше 180д (IP+ФИО в JSON не должны жить вечно); истёкшие django_session (clearsessions-эквивалент); push-подписки с updated_at старше 90д (мёртвые браузеры). Ответ: сколько удалено по каждому типу.",
+  "why": "P4/P5/P2/P7 аудита 152-ФЗ 2026-11-08: единственная автопочистка — email_log; outbox с превью чатов, audit_log с IP и ФИО(email), истёкшие сессии с UA и мёртвые push-подписки копятся бессрочно, переживают удаление аккаунтов и противоречат политике (уничтожение ≤30 дн).",
+  "files": [
+    "djadmin/core/tasks.py",
+    "djadmin/core/celery_app.py",
+    "djadmin/core/tests/test_tasks.py"
+  ],
+  "context_files": [
+    "djadmin/core/models.py"
+  ],
+  "interfaces": "tasks.py: @app.task(ignore_result=True) def cleanup_personal_data_retention() -> dict: now=timezone.now(); (1) NotificationOutbox.objects.filter(status__in=('sent','skipped'), processed_at__lt=now-30д).delete() и (status='failed', created_at__lt=now-7д).delete(); (2) AuditLog.objects.filter(created_at__lt=now-180д).delete(); (3) Session.objects.filter(expire_date__lt=now).delete() (from django.contrib.sessions.models import Session); (4) PushSubscription.objects.filter(updated_at__lt=now-90д).delete(). Каждая ветка в своём try/except с logger.exception и продолжением (одно падение не блокирует остальные); вернуть dict с количеством удалённых по типам. celery_app.py: beat 'cleanup-personal-data-retention' → task, schedule 86400.0. Тесты в test_tasks.py (новый класс RetentionTaskTests): создать outbox sent с processed_at=now-31д (update после create, auto_now_add), skipped 31д (удаляется), sent 29д (остаётся), failed 8д (удаляется), failed 6д (остаётся); audit_log 181д (удаляется) и 179д (остаётся); Session expire_date=now-1ч (удаляется) и now+1д (остаётся); PushSubscription updated_at=91д (удаляется) и 89д (остаётся); вызвать cleanup_personal_data_retention() напрямую, проверить словарь counts и остатки; отдельный тест: падение одной ветки (mock NotificationOutbox.objects.filter...delete raise) не мешает остальным.",
+  "acceptance": [
+    "notification_outbox: sent/skipped старше 30 дней и failed старше 7 дней удаляются.",
+    "audit_log старше 180 дней удаляется (IP/ФИО не бессрочны).",
+    "Истёкшие сессии удаляются; свежие остаются.",
+    "push-подписки неактивные >90 дней удаляются.",
+    "Задача в beat-расписании (сутки); ошибка одной ветки не валит остальные (fail-open с логом).",
+    "py_compile трёх .py; core.tests.test_tasks проходит (весь модуль)."
+  ],
+  "out_of_scope": [
+    "Не менять cleanup_old_email_logs и drain.",
+    "Не менять текст политики (волна R060).",
+    "Не трогать notifications (пользовательские, удаляются вручную)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tasks.py djadmin/core/celery_app.py djadmin/core/tests/test_tasks.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_tasks --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

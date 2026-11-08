@@ -246,6 +246,63 @@ def cleanup_old_email_logs() -> int:
     return int(deleted)
 
 
+@app.task(ignore_result=True)
+def cleanup_personal_data_retention() -> dict:
+    """R057 (152-ФЗ): сроки хранения персональных данных.
+
+    outbox: sent/skipped > 30 дн, failed > 7 дн (копии текстов уведомлений,
+    включая превью чатов, не живут вечно);
+    audit_log: > 180 дн (IP и ФИО/email в JSON);
+    django_session: истёкшие (UA в метаданных);
+    push_subscriptions: не обновлявшиеся > 90 дн (мёртвые браузеры).
+    Каждая ветка независима: падение одной не блокирует остальные.
+    """
+    now = timezone.now()
+    counts = {}
+    try:
+        deleted, _ = NotificationOutbox.objects.filter(
+            status__in=("sent", "skipped"), processed_at__lt=now - timedelta(days=30)
+        ).delete()
+        deleted2, _ = NotificationOutbox.objects.filter(
+            status="failed", created_at__lt=now - timedelta(days=7)
+        ).delete()
+        counts["notification_outbox"] = int(deleted) + int(deleted2)
+    except Exception:
+        logger.exception("retention: notification_outbox cleanup failed")
+        counts["notification_outbox"] = None
+    try:
+        from .models import AuditLog
+
+        deleted, _ = AuditLog.objects.filter(
+            created_at__lt=now - timedelta(days=180)
+        ).delete()
+        counts["audit_log"] = int(deleted)
+    except Exception:
+        logger.exception("retention: audit_log cleanup failed")
+        counts["audit_log"] = None
+    try:
+        from django.contrib.sessions.models import Session
+
+        deleted, _ = Session.objects.filter(expire_date__lt=now).delete()
+        counts["expired_sessions"] = int(deleted)
+    except Exception:
+        logger.exception("retention: expired sessions cleanup failed")
+        counts["expired_sessions"] = None
+    try:
+        from .models import PushSubscription
+
+        deleted, _ = PushSubscription.objects.filter(
+            updated_at__lt=now - timedelta(days=90)
+        ).delete()
+        counts["stale_push_subscriptions"] = int(deleted)
+    except Exception:
+        logger.exception("retention: stale push subscriptions cleanup failed")
+        counts["stale_push_subscriptions"] = None
+    if any(counts.values()):
+        logger.info("cleanup_personal_data_retention: %s", counts)
+    return counts
+
+
 def _saved_search_jobs(user, item, since):
     from decimal import Decimal
     from .models import Application, Job

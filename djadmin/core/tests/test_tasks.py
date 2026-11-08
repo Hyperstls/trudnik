@@ -11,6 +11,7 @@ from core.tasks import (
     auto_freeze_on_complaints,
     notify_saved_searches,
     cleanup_old_email_logs,
+    cleanup_personal_data_retention,
     drain_notification_outbox,
     expire_old_jobs,
 )
@@ -301,3 +302,96 @@ class SavedSearchFrequencyTests(TestCase):
         self.assertTrue(
             NotificationOutbox.objects.filter(user=self.user, type="saved_search").exists()
         )
+
+
+class RetentionTaskTests(TestCase):
+    """R057: сроки хранения ПДн — outbox/audit/сессии/push-подписки."""
+
+    def setUp(self):
+        self.user = make_profile("retention-me@example.com")
+        self.now = timezone.now()
+
+    def _outbox(self, status, **fields):
+        row = NotificationOutbox.objects.create(
+            user=self.user, type="test", title="t", body="b", status=status
+        )
+        NotificationOutbox.objects.filter(pk=row.pk).update(**fields)
+        return row
+
+    def test_outbox_sent_skipped_and_failed_retention(self):
+        self._outbox("sent", processed_at=self.now - timedelta(days=31))
+        self._outbox("skipped", processed_at=self.now - timedelta(days=31))
+        self._outbox("sent", processed_at=self.now - timedelta(days=29))   # остаётся
+        self._outbox("failed", created_at=self.now - timedelta(days=8))    # удаляется
+        self._outbox("failed", created_at=self.now - timedelta(days=6))    # остаётся
+
+        counts = cleanup_personal_data_retention()
+
+        self.assertEqual(counts["notification_outbox"], 3)
+        self.assertEqual(NotificationOutbox.objects.count(), 2)
+        statuses = set(NotificationOutbox.objects.values_list("status", flat=True))
+        self.assertEqual(statuses, {"sent", "failed"})
+
+    def test_audit_log_retention_180_days(self):
+        from core.audit import log_admin_action
+        from core.models import AuditLog
+
+        old = AuditLog.objects.create(action="old", created_at=self.now - timedelta(days=181))
+        AuditLog.objects.filter(pk=old.pk).update(created_at=self.now - timedelta(days=181))
+        fresh = AuditLog.objects.create(action="fresh")
+
+        counts = cleanup_personal_data_retention()
+
+        self.assertEqual(counts["audit_log"], 1)
+        self.assertEqual(AuditLog.objects.filter(pk=fresh.pk).count(), 1)
+        self.assertFalse(AuditLog.objects.filter(pk=old.pk).exists())
+
+    def test_expired_sessions_removed(self):
+        from django.contrib.sessions.models import Session
+
+        stale = Session.objects.create(
+            session_key="retention-stale",
+            session_data="x",
+            expire_date=self.now - timedelta(hours=1),
+        )
+        fresh = Session.objects.create(
+            session_key="retention-fresh",
+            session_data="x",
+            expire_date=self.now + timedelta(days=1),
+        )
+
+        counts = cleanup_personal_data_retention()
+
+        self.assertGreaterEqual(counts["expired_sessions"], 1)
+        self.assertFalse(Session.objects.filter(pk=stale.pk).exists())
+        self.assertTrue(Session.objects.filter(pk=fresh.pk).exists())
+
+    def test_stale_push_subscriptions_removed(self):
+        from core.models import PushSubscription
+
+        stale = PushSubscription.objects.create(
+            user=self.user, endpoint="https://old.push.test/x", p256dh="k", auth="a"
+        )
+        PushSubscription.objects.filter(pk=stale.pk).update(
+            updated_at=self.now - timedelta(days=91)
+        )
+        fresh = PushSubscription.objects.create(
+            user=self.user, endpoint="https://new.push.test/x", p256dh="k", auth="a"
+        )
+
+        counts = cleanup_personal_data_retention()
+
+        self.assertEqual(counts["stale_push_subscriptions"], 1)
+        self.assertTrue(PushSubscription.objects.filter(pk=fresh.pk).exists())
+        self.assertFalse(PushSubscription.objects.filter(pk=stale.pk).exists())
+
+    def test_branch_failure_does_not_block_others(self):
+        with patch(
+            "core.models.NotificationOutbox.objects.filter",
+            side_effect=RuntimeError("db down"),
+        ):
+            counts = cleanup_personal_data_retention()
+        self.assertIsNone(counts["notification_outbox"])
+        # остальные ветки отработали (числа или 0, но не None)
+        for key in ("audit_log", "expired_sessions", "stale_push_subscriptions"):
+            self.assertIsNotNone(counts[key], key)

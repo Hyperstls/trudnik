@@ -46,6 +46,10 @@ app.conf.beat_schedule = {
         "task": "core.tasks.remind_pending_ratings",
         "schedule": 21600.0,
     },
+    "cleanup-personal-data-retention": {
+        "task": "core.tasks.cleanup_personal_data_retention",
+        "schedule": 86400.0,
+    },
 }
 
 app.autodiscover_tasks(["core"])

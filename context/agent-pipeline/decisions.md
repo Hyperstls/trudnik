@@ -3397,3 +3397,59 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** Hyperstls
 
 **Пакет:** context/agent-pipeline/packs/R055.review.prompt.md
+
+## 2026-11-08 13:44:54 — CONFIG: конфигурация изменена
+
+**Кто:** Hyperstls
+
+**Новое значение:** max_attempts=3, max_review_rounds=2, check_timeout=1200, spill_patterns=['/packs/', '/logs/', '/tasks/', 'state\\.json$', 'progress\\.md$', 'decisions\\.md$', '__pycache__/', '\\.pyc$', '\\.pytest_cache/', '\\.mypy_cache/', '\\.ruff_cache/', 'C:/Program Files/Git/_uploads/']
+
+## 2026-11-08 13:44:54 — R056: BLOCKED: лимит механических попыток
+
+**Измерение:** attempts=3/3, scope=fail, checks=skipped(scope).
+
+**Решение:** остановка. Третья вариация той же ошибки дороже вопроса человеку.
+
+**Вопрос человеку:** что чинить — код, контракт или проверку? После ответа: `pipeline.py set R056 --status fixing --reason '...' --reset-attempts`.
+
+## 2026-11-08 13:45:32 — R056: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** Дрейф scope от параллельной задачи R057 (tasks/celery/test_tasks) во время verify; чеки сами зелёные (871 OK на 5.2.19). Повтор с --skip-scope.
+
+**Переход:** blocked → fixing
+
+**Сброс:** attempts=0
+
+## 2026-11-08 15:14:50 — R056: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Дрейф — файлы волны 2 (R057 retention: tasks.py/celery_app.py/test_tasks.py) в том же дереве; R056 меняет только requirements.txt
+
+**Дрейф, который обойдён:** ['djadmin/core/celery_app.py', 'djadmin/core/tasks.py', 'djadmin/core/tests/test_tasks.py']
+
+## 2026-11-08 15:26:18 — R057: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Дрейф — requirements.txt от R056 (django 5.2.19, соседняя задача волне 1)
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-08 15:30:18 — R056: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R056.review.prompt.md
+
+## 2026-11-08 15:30:19 — R057: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R057.review.prompt.md
