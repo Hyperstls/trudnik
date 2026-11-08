@@ -1,0 +1,37 @@
+{
+  "id": "R056",
+  "title": "Безопасность: Django 5.2.18 → 5.2.19 (security-фикс)",
+  "goal": "Обновить пин Django с 5.2.18 до 5.2.19 (security release 2026-11-03, фикс memory-related DoS CVE). Прогнать полный набор тестов.",
+  "why": "M-6 кодревью 2026-11-08: djadmin/requirements.txt:4 — django==5.2.18 на один security-патч позади; 5.2.19 содержит фикс DoS-уязвимости.",
+  "files": [
+    "djadmin/requirements.txt"
+  ],
+  "context_files": [
+    "requirements-dev.txt",
+    ".github/workflows/test.yml"
+  ],
+  "interfaces": "requirements.txt: django==5.2.18 → django==5.2.19, других изменений нет. Перед verify установить в venv: .venv/Scripts/python.exe -m pip install 'django==5.2.19'. Проверка: полный manage.py test core --keepdb зелёный; pip check без конфликтов.",
+  "acceptance": [
+    "requirements.txt пинит django==5.2.19.",
+    "pip install 5.2.19 в venv успешен, pip check без конфликтов.",
+    "Полный набор core-тестов проходит на 5.2.19.",
+    "CI (unit-tests/test.yml ставит из requirements.txt) подхватит новую версию без правок workflow.",
+    "pre_deploy_check 7/7."
+  ],
+  "out_of_scope": [
+    "Не обновлять другие зависимости.",
+    "Не менять код ради депрекаций."
+  ],
+  "checks": [
+    {
+      "name": "version",
+      "cmd": "{python} -c \"import django; assert django.get_version()=='5.2.19', django.get_version(); print('django', django.get_version())\"",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
