@@ -2,7 +2,7 @@
 
 **Дата:** 2026-11-08
 **Текущий стек:** Django 5.2, Python 3.12, PostgreSQL/PostGIS, Celery/Redis, Channels, Tailwind, Amvera.
-**Прод:** трудник.рф; полный `core` — 893 OK (+ JS `npm test` 10/10), `pre_deploy_check` — 7/7.
+**Прод:** трудник.рф; полный `core` — 894 OK (+ JS `npm test` 10/10), `pre_deploy_check` — 7/7.
 
 ## 1. Актуальные документы (источник истины)
 
@@ -23,7 +23,7 @@
 | [APP_RELEASE.md](APP_RELEASE.md) | APK/TWA: сборка, подпись, assetlinks, страница установки |
 | [E2E_TESTING.md](E2E_TESTING.md) | Playwright: регистрация → задание → отклик → принятие → чат |
 | [MAX_VERIFICATION.md](MAX_VERIFICATION.md) | MAX-бот: deep link, webhook, self-heal, диагностика |
-| [AUDIT_2026-11-08.md](AUDIT_2026-11-08.md) | аудит 2026-11-08: находки → задачи R051–R077, открытые риски |
+| [AUDIT_2026-11-08.md](AUDIT_2026-11-08.md) | аудит 2026-11-08: находки → задачи R051–R078, открытые риски |
 | [MONITORING.md](MONITORING.md) | `/health`, uptime-workflow, алерты, деплой-порядок, staging/restore |
 | [ERROR_TRACKING.md](ERROR_TRACKING.md) | внутренний error tracking `error_events` (152-ФЗ-safe), админка |
 | [RESTORE_DRILL.md](RESTORE_DRILL.md) | проверенное восстановление БД, safety-правила, prod-процедура |

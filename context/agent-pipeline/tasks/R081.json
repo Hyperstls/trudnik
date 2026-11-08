@@ -1,0 +1,36 @@
+{
+  "id": "R081",
+  "title": "Docs: синхронизировать AUDIT/DOCS_INDEX/README/152FZ после R076–R078",
+  "goal": "Закрыть нон-блокеры ревью R077: проставить фактические статусы и SHA R076/R077/R078, заменить устаревшие счётчики тестов фактическим числом финального прогона, убрать опечатку 'Lедger', обновить дату шапки 152FZ_DATA_FLOWS, снять риск-строку admin_2fa/views_support (закрыта R078) и уточнить формулировку про CI (нет прогонов на коммитах волны), устранить/уточнить висячие ссылки на R079/R080.",
+  "why": "Независимое ревью R077 (PASS с нон-блокерами): статусы D4-D6 стояли 'done' до коммитов; 893 теста были верны до R078 (+1 тест); риск-пойнтеры admin_2fa.py:44,48/views_support.py:45 устарели после R078; 'Lедger' — латиница+кириллица; шапка 152FZ_DATA_FLOWS 'актуально на 2026-11-01' при правке от 2026-11-08; R079/R080 упомянуты как задачи, но контрактов нет; CI-строка обещает success для коммитов без прогонов.",
+  "files": [
+    "docs/AUDIT_2026-11-08.md",
+    "docs/DOCS_INDEX.md",
+    "README.md",
+    "docs/parity/152FZ_DATA_FLOWS.md"
+  ],
+  "context_files": [
+    "docs/parity/MIGRATION_LEDGER.md"
+  ],
+  "interfaces": "AUDIT: таблица волны 2 — D6 R076 ✅ 854b02e, D2 R077 ✅ 3d02b03, добавить строку R078 ✅ 6251e5a (хвост A1); в 'Проверках' — фактическое число тестов финального полного прогона core (записать в лог и использовать), JS 10/10, pre_deploy 7/7, CI-формулировку заменить на честную: 'CI зелёный на последнем кодовом коммите волны до R078; прогоны R074–R078 — после push (см. GitHub Actions)'; убрать риск-строку про admin_2fa/views_support или пометить 'закрыто R078'; R079/R080 переформулировать как 'планируемая задача (контракт ещё не создан)' либо убрать ID. Исправить 'Lедger' → 'Ledger'. DOCS_INDEX: строка 5 — фактическое число тестов; строка 26 — диапазон R051–R078. README: строки 25 и 111 — фактическое число тестов. 152FZ_DATA_FLOWS: шапка 'актуально на 2026-11-08'.",
+  "acceptance": [
+    "В AUDIT таблице R076/R077/R078 отмечены done с SHA 854b02e/3d02b03/6251e5a; ни одна строка не опережает конвейер.",
+    "Число тестов одинаково в AUDIT, DOCS_INDEX и README и равно результату фактического полного прогона (лог прогона приложен в decisions.md/verify-логе).",
+    "Опечатка 'Lедger' отсутствует; шапка 152FZ_DATA_FLOWS датирована 2026-11-08.",
+    "Риск-строка admin_2fa/views_support помечена закрытой R078 (без устаревших file:line) либо удалена; ссылки R079/R080 не выглядят как существующие контракты.",
+    "CI-строка не утверждает success там, где прогонов не было.",
+    "Изменены только 4 docs-файла; код и тесты не тронуты."
+  ],
+  "out_of_scope": [
+    "Не менять код, тесты, миграции.",
+    "Не создавать контракты R079/R080 (отдельное решение владельца).",
+    "Не переписывать исторические parity-документы."
+  ],
+  "checks": [
+    {
+      "name": "docs-consistency",
+      "cmd": "{python} -c \"import pathlib,sys; a=pathlib.Path('docs/AUDIT_2026-11-08.md').read_text(encoding='utf-8'); d=pathlib.Path('docs/DOCS_INDEX.md').read_text(encoding='utf-8'); r=pathlib.Path('README.md').read_text(encoding='utf-8'); f=pathlib.Path('docs/parity/152FZ_DATA_FLOWS.md').read_text(encoding='utf-8'); errs=[]; [errs.append('missing SHA '+s) for s in ('854b02e','3d02b03','6251e5a') if s not in a]; [errs.append('stale 893 in '+name) for name,t in (('AUDIT',a),('DOCS_INDEX',d),('README',r)) if '893' in t]; [errs.append('missing 894 in '+name) for name,t in (('AUDIT',a),('DOCS_INDEX',d),('README',r)) if '894' not in t]; errs.append('Lедger present') if 'Lеdger' in a else None; errs.append('stale 152FZ header') if '2026-11-01' in chr(10).join(f.splitlines()[:10]) else None; errs.append('stale admin_2fa pointer') if 'admin_2fa.py:44' in a else None; print('OK' if not errs else '; '.join(errs)); sys.exit(1 if errs else 0)\"",
+      "cwd": "."
+    }
+  ]
+}
