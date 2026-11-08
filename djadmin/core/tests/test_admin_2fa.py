@@ -404,3 +404,24 @@ class Admin2FASettingsTests(SimpleTestCase):
 
     def test_flag_defaults_off(self):
         self.assertFalse(settings.ADMIN_2FA_REQUIRED)
+
+
+@override_settings(TRANSACTIONAL_EMAIL_ASYNC=False)
+class Admin2FAEmailMaskingTests(TestCase):
+    """R078: SMTP-сбой не должен писать raw email в лог (str(SMTPRecipientsRefused))."""
+
+    def test_smtp_failure_log_has_no_raw_email(self):
+        import smtplib
+
+        from core.admin_2fa import _send_mail
+
+        refused = smtplib.SMTPRecipientsRefused(
+            {"admin-secret@example.com": (550, b"no")}
+        )
+        with patch("django.core.mail.send_mail", side_effect=refused):
+            with self.assertLogs("core.admin_2fa", level="WARNING") as captured:
+                _send_mail("subject", "body", "admin-secret@example.com")
+
+        joined = chr(10).join(captured.output)
+        self.assertNotIn("admin-secret@example.com", joined)
+        self.assertIn("ad***@example.com", joined)

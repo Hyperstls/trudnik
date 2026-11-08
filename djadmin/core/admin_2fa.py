@@ -18,6 +18,8 @@ from django.shortcuts import redirect
 
 logger = logging.getLogger(__name__)
 
+from .privacy import mask_email
+
 CODE_TTL = 600
 MAX_ATTEMPTS = 5
 SESSION_KEY = "admin_2fa_ok"
@@ -41,11 +43,20 @@ def _send_mail(subject: str, message: str, to_email: str) -> None:
             send_transactional_email.delay(subject, message, to_email)
             return
         except Exception:
-            logger.warning("admin 2fa email enqueue failed to=%s", to_email, exc_info=True)
+            logger.warning(
+                "admin 2fa email enqueue failed to=%s", mask_email(to_email),
+                exc_info=True,
+            )
     try:
         send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [to_email], fail_silently=False)
-    except Exception:
-        logger.exception("admin 2fa email send failed to=%s", to_email)
+    except Exception as exc:
+        # SMTPRecipientsRefused печатает адрес в str(exc) — маскируем (R078)
+        from .privacy import mask_text
+
+        logger.warning(
+            "admin 2fa email send failed to=%s (%s): %s",
+            mask_email(to_email), type(exc).__name__, mask_text(str(exc))[:300],
+        )
 
 
 def _is_six_ascii_digits(code) -> bool:

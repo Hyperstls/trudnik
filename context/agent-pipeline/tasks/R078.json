@@ -1,0 +1,37 @@
+{
+  "id": "R078",
+  "title": "A1 (хвост): маскировка email в admin_2fa и support-логах",
+  "goal": "Закрыть остаточные утечки класса R058/R068: admin_2fa.py логирует raw to_email (enqueue failed) и трейсбек SMTPRecipientsRefused (send failed); views_support.py — трейсбек с адресами. Использовать mask_email/mask_text, без exc_info на SMTP-ветках.",
+  "why": "Нон-блокер ревью R068: admin_2fa.py:44,48 и views_support.py:45 — тот же класс утечки ПДн в логи, что A1.",
+  "files": [
+    "djadmin/core/admin_2fa.py",
+    "djadmin/core/views_support.py",
+    "djadmin/core/tests/test_admin_2fa.py"
+  ],
+  "context_files": [
+    "djadmin/core/privacy.py"
+  ],
+  "interfaces": "admin_2fa.py: enqueue-failed — mask_email(to_email) + exc_info оставить (ошибка брокера адреса не содержит); sync-failed — except Exception as exc: logger.warning('admin 2fa email send failed to=%s (%s): %s', mask_email(to_email), type(exc).__name__, mask_text(str(exc))[:300]) без exc_info. views_support.py: except Exception as exc: logger.warning('support email failed (%s): %s', type(exc).__name__, mask_text(str(exc))[:300]) без exc_info; сообщение пользователю не менять. test_admin_2fa.py: тест send-пути с patch('core.admin_2fa.send_mail', side_effect=SMTPRecipientsRefused({email:...})) → assertLogs, нет raw email, есть маска.",
+  "acceptance": [
+    "admin_2fa send-путь не логирует raw to_email и не пишет трейсбек с адресом.",
+    "views_support не пишет трейсбек с адресами; пользовательское сообщение прежнее.",
+    "Тест подтверждает маску в логе.",
+    "py_compile; core.tests.test_admin_2fa, core.tests.test_public_views проходят."
+  ],
+  "out_of_scope": [
+    "Не менять флоу 2FA/support.",
+    "Не трогать push.py (отдельно, endpoint — не email)."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/admin_2fa.py djadmin/core/views_support.py djadmin/core/tests/test_admin_2fa.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_admin_2fa core.tests.test_public_views --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

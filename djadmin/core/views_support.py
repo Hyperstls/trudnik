@@ -41,8 +41,14 @@ def support(request):
                 [settings.SUPPORT_EMAIL],
                 reply_to=[data["email"]],
             ).send(fail_silently=False)
-        except Exception:
-            logger.exception("support email failed")
+        except Exception as exc:
+            from .privacy import mask_text
+
+            # без exc_info: трейсбек SMTP-исключения содержит адреса (R078)
+            logger.warning(
+                "support email failed (%s): %s",
+                type(exc).__name__, mask_text(str(exc))[:300],
+            )
             messages.error(
                 request,
                 _("Не удалось отправить сообщение. Напишите на %s.") % settings.SUPPORT_EMAIL,

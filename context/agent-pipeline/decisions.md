@@ -3829,3 +3829,43 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** Hyperstls
 
 **Пакет:** context/agent-pipeline/packs/R074.review.prompt.md
+
+## 2026-11-08 22:11:18 — R075: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R075.review.prompt.md
+
+## 2026-11-08 22:16:23 — R076: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R076.review.prompt.md
+
+## 2026-11-08 22:16:27 — R077: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R077.review.prompt.md
+
+## 2026-11-08 22:17:01 — R078: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** test_profile_flows.py и check_schema.py — коммит R075 f31ffa6, изменения не этой задачи; R078 трогает только admin_2fa/views_support/тест
+
+**Дрейф, который обойдён:** ['djadmin/core/tests/test_profile_flows.py', 'scripts/check_schema.py']
+
+## 2026-11-08 22:28:41 — R078: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R078.review.prompt.md
