@@ -3485,3 +3485,35 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** Hyperstls
 
 **Пакет:** context/agent-pipeline/packs/R061.review.prompt.md
+
+## 2026-11-08 16:23:49 — R060: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Дрейф — файлы R062 (миграция 164/models/0006/schema.sql) в том же дереве, соседняя задача
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-08 16:34:20 — R060: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Дрейф — R062 (164/models/0006/schema/dictionaries) и правка теста политики (прямое следствие v1.3) в том же дереве
+
+**Дрейф, который обойдён:** ['djadmin/core/admin/dictionaries.py', 'djadmin/core/tests/test_public_views.py']
+
+## 2026-11-08 16:34:31 — R060: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** Hyperstls
+
+**Пакет:** context/agent-pipeline/packs/R060.review.prompt.md
+
+## 2026-11-08 16:45:18 — R062: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** Сгенерированный артефакт tests/fixtures/schema.sql (dump_schema) и dictionaries.py (прямое следствие удаления related_name profiles у FK религии — Count('profiles') в ReligionAdmin сломался) + файлы R060 (политика/доки/тест)
+
+**Дрейф, который обойдён:** ['djadmin/core/admin/dictionaries.py', 'djadmin/core/templates/core/legal_fallback.html', 'djadmin/core/tests/test_public_views.py', 'docs/LAUNCH_CHECKLIST.md', 'docs/parity/152FZ_DATA_FLOWS.md', 'docs/rkn_notification_fill.md', 'tests/fixtures/schema.sql']
