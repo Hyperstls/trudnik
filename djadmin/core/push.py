@@ -15,6 +15,8 @@ def vapid_claims() -> dict:
 
 
 def vapid_configured() -> bool:
+    if not getattr(settings, "WEB_PUSH_ENABLED", False):
+        return False
     return bool(getattr(settings, "VAPID_PRIVATE_KEY", "") and getattr(settings, "VAPID_PUBLIC_KEY", ""))
 
 
@@ -23,6 +25,8 @@ def send_web_push(subscription_info: dict, title: str, body: str, url: str = "/"
 
     gone=True — подписка отозвана браузером (410), подлежит удалению.
     """
+    if not getattr(settings, "WEB_PUSH_ENABLED", False):
+        return {"success": False, "error": "push_disabled", "gone": False}
     if not vapid_configured():
         return {"success": False, "error": "vapid_not_configured", "gone": False}
     from pywebpush import WebPushException, WebPusher

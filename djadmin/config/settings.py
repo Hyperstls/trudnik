@@ -261,6 +261,10 @@ else:
 VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
 VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
 VAPID_CLAIMS_EMAIL = os.getenv("VAPID_CLAIMS_EMAIL", "notifications@trudnik.ru")
+# 152-ФЗ: Web Push уходит в Google/Mozilla (трансграничная передача).
+# По решению владельца от 2026-11-09 канал выключен по умолчанию; включать
+# только после декларирования по ст. 12 либо перехода на РФ-провайдера.
+WEB_PUSH_ENABLED = os.getenv("WEB_PUSH_ENABLED", "0").strip().lower() in ("1", "true", "yes")
 
 # ── Channels (WebSocket-чат; Redis channel layer при REDIS_URL) ─────────────
 if _redis_url:

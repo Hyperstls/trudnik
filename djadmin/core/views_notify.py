@@ -186,6 +186,8 @@ def push_vapid_public_key(request):
     """Публичный VAPID-ключ (для Service Worker, паритет Flask)."""
     from django.conf import settings
     from django.http import JsonResponse
+    if not getattr(settings, "WEB_PUSH_ENABLED", False):
+        return JsonResponse({"public_key": ""})
     key = getattr(settings, "VAPID_PUBLIC_KEY", "")
     return JsonResponse({"public_key": key})
 
@@ -194,6 +196,9 @@ def push_vapid_public_key(request):
 @require_POST
 def push_subscribe(request):
     """Регистрация push-подписки {endpoint, p256dh, auth}."""
+    from django.conf import settings as _settings
+    if not getattr(_settings, "WEB_PUSH_ENABLED", False):
+        return JsonResponse({"error": "push_disabled"}, status=403)
     import json as _json
     try:
         data = _json.loads(request.body.decode("utf-8", "replace"))

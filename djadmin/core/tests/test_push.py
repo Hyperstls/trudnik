@@ -17,6 +17,7 @@ SUB_DATA = {
 }
 
 
+@override_settings(WEB_PUSH_ENABLED=True)
 class PushSubscriptionAPITests(TestCase):
     def setUp(self):
         self.user = make_profile("push-user@example.com")
@@ -72,6 +73,7 @@ class PushSubscriptionAPITests(TestCase):
 
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+                   WEB_PUSH_ENABLED=True,
                    VAPID_PRIVATE_KEY="mock_priv", VAPID_PUBLIC_KEY="mock_pub")  # pragma: allowlist secret
 class PushInDrainTests(TestCase):
     def setUp(self):
@@ -106,6 +108,7 @@ class PushInDrainTests(TestCase):
             self.assertEqual(result["error"], "vapid_not_configured")
 
 
+@override_settings(WEB_PUSH_ENABLED=True)
 class PushEndpointValidationTests(TestCase):
     """R055: анти-SSRF фильтр endpoint'а и лимит подписок."""
 
@@ -176,3 +179,44 @@ class PushEndpointValidationTests(TestCase):
         self.assertTrue(
             subs.filter(endpoint="https://push10.example-devices.test/endpoint").exists()
         )
+
+
+@override_settings(WEB_PUSH_ENABLED=False, VAPID_PRIVATE_KEY="mock_priv",  # pragma: allowlist secret
+                   VAPID_PUBLIC_KEY="mock_pub")  # pragma: allowlist secret
+class DisabledWebPushTests(TestCase):
+    """R088: по умолчанию Web Push выключен — никакой трансграничной передачи."""
+
+    def setUp(self):
+        self.user = make_profile("push-off@example.com")
+        self.client.force_login(self.user)
+
+    def test_vapid_key_empty_when_disabled(self):
+        response = self.client.get("/push/vapid-public-key")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["public_key"], "")
+
+    def test_subscribe_rejected_when_disabled(self):
+        response = self.client.post(
+            "/push/subscription", data=json.dumps(SUB_DATA),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["error"], "push_disabled")
+        self.assertFalse(PushSubscription.objects.filter(user=self.user).exists())
+
+    def test_send_reports_disabled_without_pywebpush(self):
+        with patch("pywebpush.WebPusher") as mock_pusher:
+            result = send_web_push(SUB_DATA, "title", "body")
+        self.assertFalse(result["success"])
+        self.assertEqual(result["error"], "push_disabled")
+        self.assertFalse(mock_pusher.called)
+
+    def test_drain_does_not_send_push(self):
+        PushSubscription.objects.create(
+            user=self.user, endpoint=SUB_DATA["endpoint"],
+            p256dh=SUB_DATA["p256dh"], auth=SUB_DATA["auth"],
+        )
+        make_outbox(self.user, title="Push-off")
+        with patch("pywebpush.WebPusher") as mock_pusher:
+            drain_notification_outbox()
+        self.assertFalse(mock_pusher.called)

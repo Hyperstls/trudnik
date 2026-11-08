@@ -1,0 +1,41 @@
+{
+  "id": "R088",
+  "title": "152-ФЗ: отключить Web Push по умолчанию (без трансграничной передачи)",
+  "goal": "Ввести WEB_PUSH_ENABLED (env, default false): при выключенном канале VAPID-ключ не отдаётся, подписка отклоняется 403 push_disabled, отправка не выполняется (push_disabled), существующие подписки не используются. Уведомления остаются через email, in-app и MAX (РФ). Тесты обновлены, добавлен disabled-кейс.",
+  "why": "Решение владельца 2026-11-09: push нужен, но без трансграничной передачи; российского бесплатного аналога Web Push нет, поэтому канал отключается по умолчанию (payload/endpoint уходят в Google/Mozilla). MAX уже интегрирован и остаётся РФ-каналом.",
+  "files": [
+    "djadmin/config/settings.py",
+    "djadmin/core/push.py",
+    "djadmin/core/views_notify.py",
+    "djadmin/core/tests/test_push.py"
+  ],
+  "context_files": [
+    "djadmin/core/tasks.py",
+    "djadmin/core/models.py"
+  ],
+  "interfaces": "settings.py: WEB_PUSH_ENABLED = os.getenv('WEB_PUSH_ENABLED', '0').strip().lower() in ('1','true','yes'). push.py: vapid_configured() → False при WEB_PUSH_ENABLED=False (даже если VAPID_* заданы); send_web_push() при выключенном канале возвращает {'success': False, 'error': 'push_disabled', 'gone': False} до импорта pywebpush. views_notify.py: push_vapid_public_key → {'public_key': ''} при выключенном; push_subscribe → JsonResponse({'error':'push_disabled'}, status=403) до валидации endpoint/создания подписки; push_list/push_unsubscribe не меняются (отписка должна работать всегда). test_push.py: существующие классы помечены @override_settings(WEB_PUSH_ENABLED=True); новый DisabledWebPushTests: vapid key пуст, subscribe 403 и запись не создаётся, send_web_push → push_disabled, drain не вызывает pywebpush при VAPID_* заданных, но флаге False.",
+  "acceptance": [
+    "При WEB_PUSH_ENABLED=False (дефолт) VAPID public key пуст, POST /push/subscription → 403 push_disabled, подписка не создаётся.",
+    "send_web_push не импортирует pywebpush и возвращает push_disabled; drain не отправляет push.",
+    "При WEB_PUSH_ENABLED=True поведение прежнее (все старые push-тесты зелёные).",
+    "Отписка и список подписок работают независимо от флага.",
+    "py_compile; core.tests.test_push, core.tests.test_tasks, core.tests.test_public_views проходят."
+  ],
+  "out_of_scope": [
+    "Не удалять модели/таблицы push_subscriptions (retention чистит).",
+    "Не менять UI/шаблоны и политику (отдельные задачи).",
+    "Не трогать MAX/email/in-app каналы."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/config/settings.py djadmin/core/push.py djadmin/core/views_notify.py djadmin/core/tests/test_push.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_push core.tests.test_tasks core.tests.test_public_views --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
