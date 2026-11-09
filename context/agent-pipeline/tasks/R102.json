@@ -1,0 +1,29 @@
+{
+  "id": "R102",
+  "title": "Docker: исключить вложенные __pycache__/*.pyc из образа",
+  "goal": "Добавить в .dockerignore `**/__pycache__/`, `**/*.pyc`, `**/*.pyo`; root-only паттерны оставить. Уменьшить балласт и не тащить байткод в прод-образ.",
+  "why": "Ревью R076: root-only `__pycache__/`, `*.pyc` не покрывают вложенные каталоги (scripts/, djadmin/**), балласт остаётся.",
+  "files": [
+    ".dockerignore"
+  ],
+  "context_files": [
+    "Dockerfile.djadmin"
+  ],
+  "interfaces": "После строк `*.pyc`/`__pycache__/` добавить `**/__pycache__/`, `**/*.pyc`, `**/*.pyo`. Не трогать keep-list (certs/, static/, requirements, scripts/*.py).",
+  "acceptance": [
+    ".dockerignore содержит вложенные паттерны; root-паттерны сохранены.",
+    "Docker-семантика: `**` покрывает 0+ каталогов; build/runtime файлы не задеты (requirements, certs, static, scripts/*.py).",
+    "Проверка grep + py_compile не применим; reviewer подтверждает семантику."
+  ],
+  "out_of_scope": [
+    "Не менять Dockerfile.",
+    "Не менять другие паттерны."
+  ],
+  "checks": [
+    {
+      "name": "patterns",
+      "cmd": "{python} -c \"import pathlib,sys; s=pathlib.Path('.dockerignore').read_text(encoding='utf-8'); need=['**/__pycache__/','**/*.pyc','**/*.pyo']; print('OK' if all(n in s for n in need) else 'FAIL'); sys.exit(0 if all(n in s for n in need) else 1)\"",
+      "cwd": "."
+    }
+  ]
+}

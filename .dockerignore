@@ -60,6 +60,9 @@ twa-config.json
 # Бинарники, временные файлы
 *.pyc
 __pycache__/
+**/*.pyc
+**/*.pyo
+**/__pycache__/
 *.log
 *.bat
 **/*.sh
