@@ -33,7 +33,10 @@ class SmokeAllPagesTests(TestCase):
             rating=5, comment="ok", rating_type="employer", target_type="worker")
         
         for slug, title in (("terms", "Условия"), ("privacy", "Политика"), ("safety", "Безопасность")):
-            SitePage.objects.create(slug=slug, title=title, content="<p>текст</p>")
+            SitePage.objects.update_or_create(
+                slug=slug,
+                defaults={"title": title, "content": "<p>текст</p>"},
+            )
 
     def _get(self, name, *args, **kwargs):
         url = reverse(name, args=args) if args else reverse(name)

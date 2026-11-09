@@ -1,14 +1,14 @@
 # Migration ledger — P1-13 / DB-default P1-10
 
 **Дата:** 2026-11-09
-**Статус:** dev и production — **81/81** (150–166); миграция 166 применена на проде
+**Статус:** dev — **82/82** (150–167); production — 81/81, миграция 167 — в окне; миграция 166 применена на проде
 2026-11-09 14:25 MSK (`files=81 applied=81 pending=0`), флаг `MIGRATIONS_ENABLED` возвращён в `false`; миграция 165 применена на проде
 2026-11-09 10:49 MSK (run-лог: files=80, applied=80, pending=0), флаг `MIGRATIONS_ENABLED`
 возвращён в `false`; `/privacy` отдаёт «Редакция … (версия 1.4)»; прод RUNNING, `/health` 200,
 `/privacy`, `/terms`, `/safety` — 200. Флаги `MIGRATIONS_ENABLED` и
 `MIGRATIONS_RECONCILE` на проде — **false**.
 
-## Журнал 159–166 (2026-11-06…09)
+## Журнал 159–167 (2026-11-06…09)
 
 | # | Файл | Дата применения | Что |
 |---|---|---|---|
@@ -20,6 +20,7 @@
 | 164 | `164_drop_religion_columns.sql` | 2026-11-08 18:25 MSK | DROP religion_id/preferred_religion |
 | 165 | `165_privacy_policy_v14.sql` | dev 2026-11-09 10:37 MSK; прод — 10:49 MSK | `site_pages.privacy` → политика v1.4 (Web Push отключён); INSERT если нет, UPDATE только v1.2/v1.3 |
 | 166 | `166_announcement_sort_order.sql` | dev 2026-11-09 10:58 UTC; прод 14:25 MSK | `announcements.sort_order` — ручной порядок объявлений /info (админка: закрепить/активно/порядок) |
+| 167 | `167_privacy_policy_v15.sql` | dev 2026-11-09 16:49 MSK; прод — в окне | `site_pages.privacy` → политика v1.5: MAX только верификация, уведомления email/in-app |
 
 165 (dev): `apply_migrations.py` → «Миграция 165_privacy_policy_v14.sql успешно применена»,
 ledger 80/80; `site_pages.privacy` содержит «версия 1.4»; повторный прогон идемпотентен
@@ -31,6 +32,8 @@ NOTICE `165_privacy_policy_v14: privacy pages at v1.4 = 1` → вернуть ф
 `/privacy` (страница из БД отдаёт v1.4).
 166 (LF, prod): `188c199003138186921f503d127dbff43e09f6ee5f5a3e4a97716545d9b412c2`;
 dev-файл (CRLF) — `47f223d60727d121dc507855f31a426e06df0a99ce2ab6aac788fa7777ab5616`.
+167 (LF, prod): `eeaf8719925d842dbc9df14fba6fae991545b4beb1254aeb8469e96b1435fd39`;
+dev-файл (CRLF) — `d0b9616c5eb2b42dbf80b88ecd38d1214d9309dc18b3922ae523bfa6ce0bc5d1`.
 
 Источник записи 159–164: run-логи Amvera (метки контейнера — UTC; для 164 `15:25:22Z` = 18:25 MSK) (`apply_migrations.py` → «Миграция … успешно применена»,
 `check_migrations.py` → `files=79, applied=79, pending=0`, RESULT OK; SHA256 164 —

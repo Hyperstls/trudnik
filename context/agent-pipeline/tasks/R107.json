@@ -1,0 +1,36 @@
+{
+  "id": "R107",
+  "title": "Tests: независимость от остаточных данных в клонированной test-БД",
+  "goal": "SitePage/ErrorEvent тесты не падают, если в test-БД уже есть строки (клон dev): удалять/обновлять свои записи в setUp.",
+  "why": "Полный suite на свежем клоне dev дал 4 ERROR + 1 FAIL: duplicate site_pages privacy, лишние error_events, smoke SitePage create. CI на schema.sql пуст, локально --keepdb клон содержит данные.",
+  "files": [
+    "djadmin/core/tests/test_admin.py",
+    "djadmin/core/tests/test_error_events.py",
+    "djadmin/core/tests/test_smoke_pages.py"
+  ],
+  "context_files": [
+    "scripts/dj_test_clone.py"
+  ],
+  "interfaces": "test_admin.AdminAccessTests.test_sitepage_change...: SitePage.objects.filter(pk='privacy').delete() перед create. test_error_events.ErrorEventMiddlewareTests.setUp: ErrorEvent.objects.all().delete(). test_smoke_pages.setUpTestData: update_or_create для terms/privacy/safety вместо create.",
+  "acceptance": [
+    "Тесты проходят на клоне dev с существующими site_pages/error_events.",
+    "Никаких прод-изменений; только тесты.",
+    "py_compile; test_admin, test_error_events, test_smoke_pages проходят."
+  ],
+  "out_of_scope": [
+    "Не менять модели/миграции.",
+    "Не чистить dev-БД."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_admin.py djadmin/core/tests/test_error_events.py djadmin/core/tests/test_smoke_pages.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_admin core.tests.test_error_events core.tests.test_smoke_pages --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

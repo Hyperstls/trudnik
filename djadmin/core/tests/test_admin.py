@@ -74,6 +74,7 @@ class AdminAccessTests(TestCase):
         self.assertTrue(SitePage.objects.filter(pk="faq-admin-test").exists())
 
     def test_sitepage_change_is_previewable_and_slug_is_readonly(self):
+        SitePage.objects.filter(pk="privacy").delete()
         SitePage.objects.create(slug="privacy", title="Политика", content="<p>ok</p>")
         self.client.force_login(self.admin)
         response = self.client.get(reverse("admin:core_sitepage_change", args=["privacy"]))

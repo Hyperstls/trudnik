@@ -1,0 +1,32 @@
+{
+  "id": "R106",
+  "title": "Docs: MAX — верификация, не канал уведомлений (RKN + 152FZ)",
+  "goal": "Исправить rkn_notification_fill.md и 152FZ_DATA_FLOWS.md: MAX используется для верификации профиля; уведомления — email и in-app; политика v1.5.",
+  "why": "Ревью R103: MAX-бот в коде только верификация; документы после R093 ошибочно называют его каналом доставки уведомлений.",
+  "files": [
+    "docs/rkn_notification_fill.md",
+    "docs/parity/152FZ_DATA_FLOWS.md"
+  ],
+  "context_files": [
+    "djadmin/core/views_messenger.py",
+    "djadmin/core/templates/core/legal_fallback.html"
+  ],
+  "interfaces": "rkn: обработчики — 'сервис верификации через MAX (РФ)'; блок push — уведомления email/in-app, MAX только верификация; политика v1.5. 152FZ: строка Web Push/Push-подписки — 'уведомления email/in-app; MAX — верификация'.",
+  "acceptance": [
+    "В обоих документах нет утверждения, что MAX доставляет уведомления.",
+    "MAX описан как верификация.",
+    "Политика v1.5 упомянута.",
+    "grep-проверки."
+  ],
+  "out_of_scope": [
+    "Не менять код.",
+    "Не реализовывать MAX-уведомления."
+  ],
+  "checks": [
+    {
+      "name": "grep",
+      "cmd": "{python} -c \"import pathlib,sys; a=pathlib.Path('docs/rkn_notification_fill.md').read_text(encoding='utf-8'); b=pathlib.Path('docs/parity/152FZ_DATA_FLOWS.md').read_text(encoding='utf-8'); bad=[x for x in ('сервис доставки сообщений MAX','уведомления через MAX','через MAX-бот') if x in a or x in b]; print('OK' if not bad and 'верификац' in a and 'v1.5' in a else 'FAIL '+str(bad)); sys.exit(0 if not bad else 1)\"",
+      "cwd": "."
+    }
+  ]
+}

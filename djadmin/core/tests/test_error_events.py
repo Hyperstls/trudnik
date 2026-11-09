@@ -20,6 +20,7 @@ User = get_user_model()
 
 class ErrorEventMiddlewareTests(TestCase):
     def setUp(self):
+        ErrorEvent.objects.all().delete()
         self.factory = RequestFactory()
         self.middleware = ErrorEventMiddleware(lambda request: None)
         self.user = make_profile("err-mw@example.com")

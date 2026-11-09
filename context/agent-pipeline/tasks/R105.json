@@ -1,0 +1,36 @@
+{
+  "id": "R105",
+  "title": "Data: миграция 167 — site_pages.privacy → политика v1.5",
+  "goal": "Обновить site_pages.privacy с v1.4 до v1.5 (MAX только верификация, уведомления email/in-app); INSERT если нет, UPDATE только v1.4; ledger.",
+  "why": "R104 исправил шаблон; прод /privacy хранит v1.4 из БД и должен совпасть с фактами (152-ФЗ).",
+  "files": [
+    "migrations/167_privacy_policy_v15.sql",
+    "docs/parity/MIGRATION_LEDGER.md"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/legal_fallback.html"
+  ],
+  "interfaces": "SQL: INSERT ... WHERE NOT EXISTS; UPDATE WHERE slug='privacy' AND content LIKE '%(версия 1.4)%' AND content NOT LIKE '%(версия 1.5)%'; dollar-quoted текст из legal_fallback v1.5; NOTICE count.",
+  "acceptance": [
+    "Dev применяет 167 (82/82), /privacy-строка содержит 'версия 1.5'.",
+    "Повторный прогон идемпотентен (UPDATE 0).",
+    "Кастом/v1.5 не трогаются.",
+    "Ledger 167 + SHA256."
+  ],
+  "out_of_scope": [
+    "Не менять шаблон (R104).",
+    "Не трогать terms/safety."
+  ],
+  "checks": [
+    {
+      "name": "idempotent",
+      "cmd": "{python} -c \"import subprocess,sys; f=open('migrations/167_privacy_policy_v15.sql','rb'); p=subprocess.run(['docker','exec','-i','trudnik-db','psql','-U','trudnik','-d','trudnik','-v','ON_ERROR_STOP=1','-f','-'],stdin=f,capture_output=True); print((p.stdout+p.stderr).decode('utf-8','replace')); sys.exit(p.returncode)\"",
+      "cwd": "."
+    },
+    {
+      "name": "state",
+      "cmd": "{python} -c \"import subprocess,sys; q=\\\"select (select count(*) from _migrations), (select count(*) from site_pages where slug='privacy' and content like '%версия 1.5%')\\\"; p=subprocess.run(['docker','exec','trudnik-db','psql','-U','trudnik','-d','trudnik','-tAc',q],capture_output=True,text=True); print(p.stdout.strip()); sys.exit(0 if p.stdout.strip()=='82|1' else 1)\"",
+      "cwd": "."
+    }
+  ]
+}

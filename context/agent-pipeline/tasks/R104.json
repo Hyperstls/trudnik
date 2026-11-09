@@ -1,0 +1,36 @@
+{
+  "id": "R104",
+  "title": "152-ФЗ: политика v1.5 — MAX только верификация, уведомления email/in-app",
+  "goal": "Исправить неточность v1.4: MAX-бот используется для верификации, а не доставки уведомлений. П. 8.2 — MAX как сервис верификации; 9.1 — уведомления email + in-app; версия 1.5.",
+  "why": "Ревью R103: код views_messenger — только верификация; политика/доки обещают MAX-канал уведомлений, которого нет. 152-ФЗ: тексты должны соответствовать фактам.",
+  "files": [
+    "djadmin/core/templates/core/legal_fallback.html",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_messenger.py"
+  ],
+  "interfaces": "legal_fallback: редакция 09.11.2026 v1.5 (предыдущая 1.4); 8.2 заменить строку MAX на «сервис верификации профиля через MAX (РФ) — подтверждение по инициативе Пользователя»; 9.1 — «Уведомления доставляются по электронной почте и внутри Платформы. Web Push отключён...» без MAX. test_public_views: ожидание 'версия 1.5', assert 'Уведомления доставляются по электронной почте'.",
+  "acceptance": [
+    "В политике нет утверждения, что уведомления доставляются через MAX.",
+    "MAX описан как канал верификации (8.2).",
+    "Версия 1.5, тест обновлён.",
+    "py_compile; test_public_views проходит."
+  ],
+  "out_of_scope": [
+    "Не реализовывать MAX-уведомления.",
+    "Не менять код верификации."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
