@@ -1,0 +1,34 @@
+{
+  "id": "R092",
+  "title": "Tests: push-prompt ожидания при выключенном канале",
+  "goal": "Пометить существующие test_create_redirects_with_push_prompt и test_apply_shows_push_prompt как @override_settings(WEB_PUSH_ENABLED=True), чтобы они проверяли прежний сценарий только при включённом канале.",
+  "why": "R091 гейтит push-prompt флагом (default False); два старых теста ожидали prompt при дефолте и падали бы в CI (блокер ревью R091).",
+  "files": [
+    "djadmin/core/tests/test_flows.py"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/job_detail.html"
+  ],
+  "interfaces": "test_flows.py: JobCrudTests.test_create_redirects_with_push_prompt и ApplicationFlowTests.test_apply_shows_push_prompt получают @override_settings(WEB_PUSH_ENABLED=True); логика тестов не меняется.",
+  "acceptance": [
+    "Оба теста проходят при дефолтном флаге False (декоратор включает канал).",
+    "core.tests.test_flows проходит полностью.",
+    "Никаких изменений прод-кода."
+  ],
+  "out_of_scope": [
+    "Не менять шаблон/вью.",
+    "Не трогать другие тесты."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_flows.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_flows --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

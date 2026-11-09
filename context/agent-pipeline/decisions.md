@@ -4013,3 +4013,19 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review-agent
 
 **Пакет:** context/agent-pipeline/packs/R089.review.prompt.md
+
+## 2026-11-09 03:31:25 — R091: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** test_flows.py — отдельная задача R092 (фикс ожиданий push-prompt); R091: view/template/js/test_public_views
+
+**Дрейф, который обойдён:** ['djadmin/core/tests/test_flows.py', 'docs/AUDIT_2026-11-08.md']
+
+## 2026-11-09 03:40:07 — R092: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R092.review.prompt.md

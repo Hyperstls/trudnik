@@ -1588,3 +1588,15 @@
 - **2026-11-09 03:01:04** | **R089** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=test_push.py — коммит R088; R089: view/template/test_parity_ext/test_notifications drift=['djadmin/core/tests/test_push.py']
 - **2026-11-09 03:10:58** | **R089** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=2/3
 - **2026-11-09 03:11:07** | **R089** | `review` | **PASS** | by=independent-review-agent → done
+- **2026-11-09 03:11:27** | **R091** | `add` | **OK** | contract=context/agent-pipeline/tasks/R091.json
+- **2026-11-09 03:11:27** | **R091** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/R091.impl.prompt.md
+- **2026-11-09 03:14:56** | **R091** | `verify` | **PASS** | scope=ok checks=compile=0, tests=0 attempts=0/3
+- **2026-11-09 03:15:01** | **R091** | `review-packet` | **READY** | bytes=6907 new_files=[]
+- **2026-11-09 03:30:22** | **R092** | `add` | **OK** | contract=context/agent-pipeline/tasks/R092.json
+- **2026-11-09 03:30:23** | **R092** | `dispatch` | **OK** | status=implementing baseline=9 pack=context/agent-pipeline/packs/R092.impl.prompt.md
+- **2026-11-09 03:31:19** | **R092** | `verify` | **PASS** | scope=ok checks=compile=0, tests=0 attempts=0/3
+- **2026-11-09 03:31:25** | **R091** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=test_flows.py — отдельная задача R092 (фикс ожиданий push-prompt); R091: view/template/js/test_public_views drift=['djadmin/core/tests/test_flows.py', 'docs/AUDIT_2026-11-08.md']
+- **2026-11-09 03:34:35** | **R091** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=0/3
+- **2026-11-09 03:34:36** | **R091** | `review-packet` | **READY** | bytes=7016 new_files=[]
+- **2026-11-09 03:34:36** | **R092** | `review-packet` | **READY** | bytes=2606 new_files=[]
+- **2026-11-09 03:40:07** | **R092** | `review` | **PASS** | by=independent-review-agent → done

@@ -95,6 +95,7 @@ class JobCrudTests(TestCase):
             list(job.job_skills.values_list("skill_id", flat=True)), [self.skill.pk]
         )
 
+    @override_settings(WEB_PUSH_ENABLED=True)
     def test_create_redirects_with_push_prompt(self):
         response = self.client.post(reverse("core:job_create"), self._job_payload())
         self.assertEqual(response.status_code, 302)
@@ -517,6 +518,7 @@ class ApplicationFlowTests(TestCase):
         app = Application.objects.get(job=self.job, worker=self.worker)
         self.assertEqual(app.status, "pending")
 
+    @override_settings(WEB_PUSH_ENABLED=True)
     def test_apply_shows_push_prompt(self):
         response = self.client.post(reverse("core:job_apply", args=[self.job.pk]))
         self.assertEqual(response.status_code, 302)
