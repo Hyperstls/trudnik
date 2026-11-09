@@ -1,0 +1,39 @@
+{
+  "id": "R095",
+  "title": "Data: миграция 165 — site_pages.privacy → политика v1.4",
+  "goal": "Добавить идемпотентную SQL-миграцию 165, которая вставляет/обновляет site_pages.privacy до текста политики v1.4 (Web Push отключён); ledger 80/80; применить на проде через MIGRATIONS_ENABLED=true.",
+  "why": "Прод /privacy отдаёт SitePage из БД (v1.2), шаблон v1.4 его не перекрывает — юридический текст расходится с фактическим поведением после R088–R091.",
+  "files": [
+    "migrations/165_privacy_policy_v14.sql",
+    "docs/parity/MIGRATION_LEDGER.md"
+  ],
+  "context_files": [
+    "djadmin/core/templates/core/legal_fallback.html",
+    "migrations/164_drop_religion_columns.sql"
+  ],
+  "interfaces": "165_privacy_policy_v14.sql: INSERT ... WHERE NOT EXISTS (slug='privacy'); UPDATE ... WHERE slug='privacy' AND (content LIKE '%версия 1.2%' OR '%версия 1.3%'); DO $$ RAISE NOTICE counts; $$; текст — извлечён из legal_fallback.html v1.4, dollar-quoted $policy$; идемпотентно. MIGRATION_LEDGER: журнал 165, дата/время, SHA256, dev 80/80, прод-порядок (MIGRATIONS_ENABLED=true → redeploy → NOTICE → флаг off).",
+  "acceptance": [
+    "Миграция применяется на dev (80/80) и создаёт privacy-строку с 'версия 1.4'.",
+    "Повторный запуск идемпотентен: content не меняется/не дублируется.",
+    "На проде обновляется только v1.2/1.3; v1.4/кастом не трогается.",
+    "Ledger содержит 165 с SHA256 и процедурой прод-применения.",
+    "Проверки: повторный psql-прогон exit 0 + SQL-проверка версии/ledger."
+  ],
+  "out_of_scope": [
+    "Не менять текст политики в шаблоне.",
+    "Не трогать другие site_pages.",
+    "Не включать постоянный MIGRATIONS_ENABLED."
+  ],
+  "checks": [
+    {
+      "name": "idempotent-sql",
+      "cmd": "{python} -c \"import subprocess,sys; f=open('migrations/165_privacy_policy_v14.sql','rb'); p=subprocess.run(['docker','exec','-i','trudnik-db','psql','-U','trudnik','-d','trudnik','-v','ON_ERROR_STOP=1','-f','-'],stdin=f,capture_output=True); print((p.stdout+p.stderr).decode('utf-8','replace')); sys.exit(p.returncode)\"",
+      "cwd": "."
+    },
+    {
+      "name": "state",
+      "cmd": "{python} -c \"import subprocess,sys; q=\\\"select (select count(*) from _migrations), (select count(*) from site_pages where slug='privacy' and content like '%версия 1.4%')\\\"; p=subprocess.run(['docker','exec','trudnik-db','psql','-U','trudnik','-d','trudnik','-tAc',q],capture_output=True,text=True); print(p.stdout.strip()); sys.exit(0 if p.stdout.strip()=='80|1' else 1)\"",
+      "cwd": "."
+    }
+  ]
+}

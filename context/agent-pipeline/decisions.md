@@ -4061,3 +4061,19 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review-agent
 
 **Пакет:** context/agent-pipeline/packs/R094.review.prompt.md
+
+## 2026-11-09 10:37:58 — R095: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** удалён временный helper; SQL-условие исправлено по блокеру раунда 2
+
+**Дрейф, который обойдён:** ['djadmin/core/tests/test_push.py', 'docs/rkn_notification_fill.md', 'migrations/_privacy_v14_content.html']
+
+## 2026-11-09 10:42:22 — R095: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R095.review.prompt.md

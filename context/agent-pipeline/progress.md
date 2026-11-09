@@ -1618,3 +1618,8 @@
 - **2026-11-09 10:31:30** | **R095** | `verify` | **PASS** | scope=skipped checks=idempotent-sql=0, state=0 attempts=1/3
 - **2026-11-09 10:31:37** | **R093** | `review` | **PASS** | by=independent-review-agent → done
 - **2026-11-09 10:31:37** | **R094** | `review` | **PASS** | by=independent-review-agent → done
+- **2026-11-09 10:32:14** | **R095** | `review-packet` | **READY** | bytes=6978 new_files=[]
+- **2026-11-09 10:37:58** | **R095** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=удалён временный helper; SQL-условие исправлено по блокеру раунда 2 drift=['djadmin/core/tests/test_push.py', 'docs/rkn_notification_fill.md', 'migrations/_privacy_v14_content.html']
+- **2026-11-09 10:37:59** | **R095** | `verify` | **PASS** | scope=skipped checks=idempotent-sql=0, state=0 attempts=1/3
+- **2026-11-09 10:38:04** | **R095** | `review-packet` | **READY** | bytes=7088 new_files=[]
+- **2026-11-09 10:42:22** | **R095** | `review` | **PASS** | by=independent-review-agent → done

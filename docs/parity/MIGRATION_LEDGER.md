@@ -1,11 +1,12 @@
 # Migration ledger — P1-13 / DB-default P1-10
 
-**Дата:** 2026-11-08
-**Статус:** dev и production приведены к **79/79** (150–164); прод RUNNING, `/health` 200,
+**Дата:** 2026-11-09
+**Статус:** dev — **80/80** (150–165); production — 79/79, миграция 165
+готовится к применению в окне (MIGRATIONS_ENABLED=true → redeploy → флаг false); прод RUNNING, `/health` 200,
 `/privacy`, `/terms`, `/safety` — 200. Флаги `MIGRATIONS_ENABLED` и
 `MIGRATIONS_RECONCILE` на проде — **false**.
 
-## Журнал 159–164 (2026-11-06…08)
+## Журнал 159–165 (2026-11-06…09)
 
 | # | Файл | Дата применения | Что |
 |---|---|---|---|
@@ -15,6 +16,15 @@
 | 162 | `162_rating_appeals.sql` | 2026-11-06 | Апелляции на отзывы |
 | 163 | `163_error_events.sql` | 2026-11-07 | Внутренний error tracking |
 | 164 | `164_drop_religion_columns.sql` | 2026-11-08 18:25 MSK | DROP religion_id/preferred_religion |
+| 165 | `165_privacy_policy_v14.sql` | dev 2026-11-09 10:37 MSK; прод — в окне | `site_pages.privacy` → политика v1.4 (Web Push отключён); INSERT если нет, UPDATE только v1.2/v1.3 (v1.4 и кастом без маркера не трогает) |
+
+165 (dev): `apply_migrations.py` → «Миграция 165_privacy_policy_v14.sql успешно применена»,
+ledger 80/80; `site_pages.privacy` содержит «версия 1.4»; повторный прогон идемпотентен
+(UPDATE 0, content/updated_at не меняются). SHA256 165 —
+`f01f5752098fff7fc650bd4d08c40b23523730dc35c6eb388a1df6008fcf0b1d`.
+Прод-процедура: временно `MIGRATIONS_ENABLED=true` (env id 76937) → redeploy → в run-логе
+NOTICE `165_privacy_policy_v14: privacy pages at v1.4 = 1` → вернуть флаг `false` → проверить
+`/privacy` (страница из БД отдаёт v1.4).
 
 Источник записи 159–164: run-логи Amvera (метки контейнера — UTC; для 164 `15:25:22Z` = 18:25 MSK) (`apply_migrations.py` → «Миграция … успешно применена»,
 `check_migrations.py` → `files=79, applied=79, pending=0`, RESULT OK; SHA256 164 —
