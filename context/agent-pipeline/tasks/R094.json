@@ -1,0 +1,39 @@
+{
+  "id": "R094",
+  "title": "Безопасность: DNS-rebinding guard при отправке Web Push (R080)",
+  "goal": "Перед отправкой push резолвить host endpoint'а и требовать, чтобы все resolved IP были глобальными (не loopback/private/link-local/reserved); DNS-ошибка = отказ. Закрывает домен, который после подписки начинает резолвиться в внутренний адрес.",
+  "why": "R080 строгого ревью: валидация endpoint при подписке не защищает от DNS-rebinding — host проверен один раз, а резолвится заново при отправке (в т.ч. редирект на внутренний сервис).",
+  "files": [
+    "djadmin/core/push.py",
+    "djadmin/core/tests/test_push.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_notify.py",
+    "djadmin/core/tasks.py"
+  ],
+  "interfaces": "push.py: import ipaddress, socket, urllib.parse; helper _endpoint_host_global(endpoint)->bool: parse urlsplit, scheme=='https', hostname, socket.getaddrinfo(host,443,type=SOCK_STREAM); пустой ответ/исключение → False; для каждого sockaddr[0] ipaddress.ip_address(...).is_global → все True иначе False. send_web_push: после проверки флага/конфига, до pywebpush — if not _endpoint_host_global(endpoint) return {'success':False,'error':'endpoint_not_global','gone':False}. Логировать только тип ошибки, без endpoint. tests: patch core.push.socket.getaddrinfo; кейсы public→проходит к WebPusher, private/loopback/mixed→endpoint_not_global без WebPusher, gaierror→отказ; в существующих drain-тестах замокать getaddrinfo на публичный IP.",
+  "acceptance": [
+    "Приватный/loopback/mixed DNS-ответ → push не отправляется, error=endpoint_not_global, WebPusher не вызван.",
+    "DNS-ошибка → отказ (fail-closed), без сетевого вызова pywebpush.",
+    "Публичный IP → прежнее поведение (WebPusher вызывается).",
+    "Существующие push/drain-тесты зелёные (getaddrinfo замокан, без реального DNS).",
+    "py_compile; core.tests.test_push, core.tests.test_tasks проходят."
+  ],
+  "out_of_scope": [
+    "Не менять подписку/валидацию при subscribe.",
+    "Не менять флаг WEB_PUSH_ENABLED.",
+    "Не трогать UI."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/push.py djadmin/core/tests/test_push.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_push core.tests.test_tasks --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 """Web Push: подписки и отправка (мок pywebpush, VAPID-настройки)."""
 import json
+import socket
 from unittest.mock import patch
 
 from django.test import Client, TestCase, override_settings
@@ -77,6 +78,13 @@ class PushSubscriptionAPITests(TestCase):
                    VAPID_PRIVATE_KEY="mock_priv", VAPID_PUBLIC_KEY="mock_pub")  # pragma: allowlist secret
 class PushInDrainTests(TestCase):
     def setUp(self):
+        self._dns = patch(
+            "core.push.socket.getaddrinfo",
+            return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "",
+                           ("93.184.216.34", 0))],
+        )
+        self._dns.start()
+        self.addCleanup(self._dns.stop)
         self.user = make_profile("push-drain@example.com")
         PushSubscription.objects.create(user=self.user, endpoint=SUB_DATA["endpoint"],
                                         p256dh=SUB_DATA["p256dh"], auth=SUB_DATA["auth"])
@@ -220,3 +228,49 @@ class DisabledWebPushTests(TestCase):
         with patch("pywebpush.WebPusher") as mock_pusher:
             drain_notification_outbox()
         self.assertFalse(mock_pusher.called)
+
+
+@override_settings(WEB_PUSH_ENABLED=True,
+                   VAPID_PRIVATE_KEY="mock_priv",  # pragma: allowlist secret
+                   VAPID_PUBLIC_KEY="mock_pub")
+class PushDnsRebindingGuardTests(TestCase):
+    """R080: endpoint, резолвящийся внутрь, не получает push."""
+
+    def _send(self, addresses):
+        with patch("core.push.socket.getaddrinfo",
+                   return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", (a, 0))
+                                 for a in addresses]):
+            with patch("pywebpush.WebPusher") as pusher:
+                result = send_web_push(SUB_DATA, "title", "body")
+        return result, pusher
+
+    def test_private_ip_blocked(self):
+        result, pusher = self._send(["10.0.0.5"])
+        self.assertFalse(result["success"])
+        self.assertEqual(result["error"], "endpoint_not_global")
+        self.assertFalse(pusher.called)
+
+    def test_loopback_blocked(self):
+        result, pusher = self._send(["127.0.0.1"])
+        self.assertFalse(result["success"])
+        self.assertEqual(result["error"], "endpoint_not_global")
+        self.assertFalse(pusher.called)
+
+    def test_mixed_public_private_blocked(self):
+        result, pusher = self._send(["93.184.216.34", "192.168.1.10"])
+        self.assertFalse(result["success"])
+        self.assertEqual(result["error"], "endpoint_not_global")
+        self.assertFalse(pusher.called)
+
+    def test_dns_failure_blocks(self):
+        with patch("core.push.socket.getaddrinfo", side_effect=socket.gaierror("no dns")):
+            with patch("pywebpush.WebPusher") as pusher:
+                result = send_web_push(SUB_DATA, "title", "body")
+        self.assertFalse(result["success"])
+        self.assertEqual(result["error"], "endpoint_not_global")
+        self.assertFalse(pusher.called)
+
+    def test_public_ip_allowed(self):
+        result, pusher = self._send(["93.184.216.34"])
+        self.assertTrue(result["success"])
+        self.assertTrue(pusher.called)

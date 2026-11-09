@@ -1601,3 +1601,20 @@
 - **2026-11-09 03:34:36** | **R092** | `review-packet` | **READY** | bytes=2606 new_files=[]
 - **2026-11-09 03:40:07** | **R092** | `review` | **PASS** | by=independent-review-agent → done
 - **2026-11-09 03:51:10** | **R091** | `review` | **PASS** | by=independent-review-agent → done
+- **2026-11-09 10:18:13** | **R093** | `add` | **OK** | contract=context/agent-pipeline/tasks/R093.json
+- **2026-11-09 10:18:13** | **R093** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/R093.impl.prompt.md
+- **2026-11-09 10:18:24** | **R093** | `verify` | **PASS** | scope=ok checks=docs-grep=0 attempts=0/3
+- **2026-11-09 10:18:36** | **R094** | `add` | **OK** | contract=context/agent-pipeline/tasks/R094.json
+- **2026-11-09 10:18:36** | **R094** | `dispatch` | **OK** | status=implementing baseline=4 pack=context/agent-pipeline/packs/R094.impl.prompt.md
+- **2026-11-09 10:20:09** | **R094** | `verify` | **PASS** | scope=ok checks=compile=0, tests=0 attempts=0/3
+- **2026-11-09 10:20:10** | **R093** | `review-packet` | **READY** | bytes=15311 new_files=[]
+- **2026-11-09 10:20:10** | **R094** | `review-packet` | **READY** | bytes=8852 new_files=[]
+- **2026-11-09 10:21:09** | **R095** | `add` | **OK** | contract=context/agent-pipeline/tasks/R095.json
+- **2026-11-09 10:21:10** | **R095** | `dispatch` | **OK** | status=implementing baseline=9 pack=context/agent-pipeline/packs/R095.impl.prompt.md
+- **2026-11-09 10:21:24** | **R095** | `verify` | **PASS** | scope=ok checks=idempotent-sql=0, state=0 attempts=0/3
+- **2026-11-09 10:21:29** | **R095** | `review-packet` | **READY** | bytes=5415 new_files=[]
+- **2026-11-09 10:31:20** | **R095** | `verify` | **FAIL** | scope=fail checks=skipped(scope) attempts=1/3 → fixing
+- **2026-11-09 10:31:29** | **R095** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=удалён временный untracked helper migrations/_privacy_v14_content.html (гигиена, не коммитится) drift=['migrations/_privacy_v14_content.html']
+- **2026-11-09 10:31:30** | **R095** | `verify` | **PASS** | scope=skipped checks=idempotent-sql=0, state=0 attempts=1/3
+- **2026-11-09 10:31:37** | **R093** | `review` | **PASS** | by=independent-review-agent → done
+- **2026-11-09 10:31:37** | **R094** | `review` | **PASS** | by=independent-review-agent → done

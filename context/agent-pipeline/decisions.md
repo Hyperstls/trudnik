@@ -4037,3 +4037,27 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review-agent
 
 **Пакет:** context/agent-pipeline/packs/R091.review.prompt.md
+
+## 2026-11-09 10:31:29 — R095: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** удалён временный untracked helper migrations/_privacy_v14_content.html (гигиена, не коммитится)
+
+**Дрейф, который обойдён:** ['migrations/_privacy_v14_content.html']
+
+## 2026-11-09 10:31:37 — R093: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R093.review.prompt.md
+
+## 2026-11-09 10:31:37 — R094: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R094.review.prompt.md
