@@ -59,11 +59,18 @@ class ReligionAdmin(AuditAdminMixin, ModelAdmin):
 
 
 class AnnouncementAdmin(AuditAdminMixin, ModelAdmin):
-    list_display = ("title", "kind", "is_pinned", "is_active", "created_at", "updated_at")
+    list_display = (
+        "kind", "title", "is_pinned", "is_active", "sort_order", "created_at",
+    )
+    list_display_links = ("kind", "title")
     list_filter = ("kind", "is_pinned", "is_active")
     search_fields = ("title", "body")
-    list_editable = ("is_pinned", "is_active")
-    ordering = ("-is_pinned", "-created_at")
+    list_editable = ("is_pinned", "is_active", "sort_order")
+    ordering = ("-is_pinned", "sort_order", "-created_at")
+    fields = (
+        "kind", "title", "body", "url", "url_label",
+        "is_pinned", "is_active", "sort_order",
+    )
     list_per_page = 50
     date_hierarchy = "created_at"
 

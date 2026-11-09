@@ -1,0 +1,35 @@
+{
+  "id": "R098",
+  "title": "Django state: 0007 AlterModelOptions для Announcement (ordering/verbose)",
+  "goal": "Добавить state-only миграцию 0007, чтобы makemigrations --check --dry-run не находил изменений (CI-гейт) после смены Meta.ordering/verbose Announcement.",
+  "why": "Ревью R096: изменён Meta.ordering → CI/check падает; unmanaged-модели требуют state-миграции без SQL (прецедент 0006).",
+  "files": [
+    "djadmin/core/migrations/0007_alter_announcement_options.py"
+  ],
+  "context_files": [
+    "djadmin/core/migrations/0006_drop_religion_fields.py",
+    "djadmin/core/models.py"
+  ],
+  "interfaces": "Migration с dependencies [('core','0006_drop_religion_fields')] и AlterModelOptions(name='announcement', options={...}) — сгенерировать `manage.py makemigrations core`; никакого SQL/DB-эффекта (managed=False).",
+  "acceptance": [
+    "manage.py makemigrations core --check --dry-run exit 0.",
+    "0007 не содержит RunSQL/операций с БД.",
+    "py_compile; check без изменений."
+  ],
+  "out_of_scope": [
+    "Не менять модели/админку.",
+    "Не применять SQL-миграции."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/migrations/0007_alter_announcement_options.py",
+      "cwd": "."
+    },
+    {
+      "name": "state",
+      "cmd": "{python} djadmin/manage.py makemigrations core --check --dry-run",
+      "cwd": "."
+    }
+  ]
+}

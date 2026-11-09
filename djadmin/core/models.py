@@ -826,22 +826,23 @@ class Announcement(models.Model):
         LINK = "link", _("Ссылка")
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    kind = models.CharField(_("тип"), max_length=20, choices=Kind.choices, default=Kind.NEWS)
-    title = models.CharField(_("заголовок"), max_length=200)
-    body = models.TextField(_("текст"), blank=True, default="")
-    url = models.URLField(_("ссылка"), max_length=500, blank=True, default="")
-    url_label = models.CharField(_("подпись ссылки"), max_length=200, blank=True, default="")
-    is_pinned = models.BooleanField(_("закреплено"), default=False)
-    is_active = models.BooleanField(_("активно"), default=True)
-    created_at = models.DateTimeField(auto_now_add=True, editable=False)
-    updated_at = models.DateTimeField(auto_now=True, editable=False)
+    kind = models.CharField(_("Тип"), max_length=20, choices=Kind.choices, default=Kind.NEWS)
+    title = models.CharField(_("Заголовок"), max_length=200)
+    body = models.TextField(_("Текст"), blank=True, default="")
+    url = models.URLField(_("Ссылка"), max_length=500, blank=True, default="")
+    url_label = models.CharField(_("Подпись ссылки"), max_length=200, blank=True, default="")
+    is_pinned = models.BooleanField(_("Закрепить сверху"), default=False)
+    is_active = models.BooleanField(_("Активно"), default=True)
+    sort_order = models.PositiveIntegerField(_("Порядок"), default=0)
+    created_at = models.DateTimeField(_("Создано"), auto_now_add=True, editable=False)
+    updated_at = models.DateTimeField(_("Обновлено"), auto_now=True, editable=False)
 
     class Meta:
         managed = False
         db_table = "announcements"
         verbose_name = _("объявление")
-        verbose_name_plural = _("Объявления")
-        ordering = ("-is_pinned", "-created_at")
+        verbose_name_plural = _("Объявления (новости/ссылки)")
+        ordering = ("-is_pinned", "sort_order", "-created_at")
 
     def __str__(self):
         return self.title

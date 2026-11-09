@@ -1,0 +1,47 @@
+{
+  "id": "R096",
+  "title": "Админка: Announcement — порядок, inline-поля и понятные подписи (как в примере)",
+  "goal": "Добавить announcements.sort_order (миграция 166), ordering (-is_pinned, sort_order, -created_at), inline-редактирование is_pinned/is_active/sort_order в списке, list_display kind/title/pinned/active/order/created_at, verbose-подписи как в образце; обновить schema.sql.",
+  "why": "Владелец не может управлять порядком объявлений на /info; в админке нет колонки «Порядок» и подписи отличаются от привычного примера (sretenie admin).",
+  "files": [
+    "djadmin/core/models.py",
+    "djadmin/core/admin/dictionaries.py",
+    "migrations/166_announcement_sort_order.sql",
+    "tests/fixtures/schema.sql"
+  ],
+  "context_files": [
+    "djadmin/core/views_content.py",
+    "djadmin/core/templates/core/info.html",
+    "migrations/160_announcements.sql"
+  ],
+  "interfaces": "models.Announcement: sort_order=PositiveIntegerField(_('Порядок'), default=0); is_pinned verbose 'Закрепить сверху'; is_active 'Активно'; kind 'Тип'; title 'Заголовок'; Meta.ordering=('-is_pinned','sort_order','-created_at'); verbose_name_plural='Объявления (новости/ссылки)'. dictionaries.AnnouncementAdmin: list_display=('kind','title','is_pinned','is_active','sort_order','created_at'); list_display_links=('kind','title'); list_editable=('is_pinned','is_active','sort_order'); list_filter=('kind','is_pinned','is_active'); search_fields=('title','body'); ordering=('-is_pinned','sort_order','-created_at'); fields=('kind','title','body','url','url_label','is_pinned','is_active','sort_order'). Миграция 166: ALTER TABLE announcements ADD COLUMN IF NOT EXISTS sort_order integer NOT NULL DEFAULT 0 (идемпотентно). schema.sql перегенерировать scripts/dump_schema.py.",
+  "acceptance": [
+    "В админке /admin/core/announcement/ список содержит Тип, Заголовок, Закрепить сверху, Активно, Порядок, Создано; три поля редактируются прямо в списке и сохраняются.",
+    "Форма добавления/редактирования содержит kind/title/body/url/url_label/is_pinned/is_active/sort_order.",
+    "Сортировка: закреплённые сверху, затем sort_order, затем новые.",
+    "Миграция 166 применяется идемпотентно, schema.sql содержит sort_order.",
+    "py_compile; core.tests.test_admin, core.tests.test_announcements проходят."
+  ],
+  "out_of_scope": [
+    "Не менять публичный шаблон /info (отдельная задача R097).",
+    "Не менять SitePage/политику.",
+    "Не менять URL-имена."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/models.py djadmin/core/admin/dictionaries.py",
+      "cwd": "."
+    },
+    {
+      "name": "migration",
+      "cmd": "{python} -c \"import subprocess,sys; f=open('migrations/166_announcement_sort_order.sql','rb'); p=subprocess.run(['docker','exec','-i','trudnik-db','psql','-U','trudnik','-d','trudnik','-v','ON_ERROR_STOP=1','-f','-'],stdin=f,capture_output=True); print((p.stdout+p.stderr).decode('utf-8','replace')); sys.exit(p.returncode)\"",
+      "cwd": "."
+    },
+    {
+      "name": "schema",
+      "cmd": "{python} -c \"import pathlib,sys; s=pathlib.Path('tests/fixtures/schema.sql').read_text(encoding='utf-8'); sys.exit(0 if 'sort_order integer DEFAULT 0 NOT NULL' in s else 1)\"",
+      "cwd": "."
+    }
+  ]
+}

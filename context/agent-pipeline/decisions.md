@@ -4077,3 +4077,99 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review-agent
 
 **Пакет:** context/agent-pipeline/packs/R095.review.prompt.md
+
+## 2026-11-09 14:01:37 — R096: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** index/tests — задача R097 (соседняя), R096: models/admin/dictionaries/migration/schema.sql
+
+**Дрейф, который обойдён:** ['djadmin/core/templates/admin/trudnik_index.html', 'djadmin/core/tests/test_admin.py', 'djadmin/core/tests/test_announcements.py']
+
+## 2026-11-09 14:01:44 — R096: контракт обновлён
+
+**Причина:** (без причины)
+
+**Проверки до:** ['compile', 'migration', 'schema']
+
+**Проверки после:** ['compile', 'migration', 'schema']
+
+## 2026-11-09 14:01:44 — R096: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** index/tests — R097; проверка schema исправлена под формат pg_dump
+
+**Дрейф, который обойдён:** ['djadmin/core/templates/admin/trudnik_index.html', 'djadmin/core/tests/test_admin.py', 'djadmin/core/tests/test_announcements.py']
+
+## 2026-11-09 14:11:32 — R096: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** state-миграция 0007 — R098; index/tests — R097
+
+**Дрейф, который обойдён:** ['djadmin/core/migrations/0007_alter_announcement_options.py', 'djadmin/core/templates/admin/trudnik_index.html', 'djadmin/core/tests/test_admin.py', 'djadmin/core/tests/test_announcements.py']
+
+## 2026-11-09 14:11:33 — R097: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** state-миграция 0007 — R098; models/admin/migration/schema — R096
+
+**Дрейф, который обойдён:** ['djadmin/core/migrations/0007_alter_announcement_options.py']
+
+## 2026-11-09 14:12:01 — R096: ревью: FAIL
+
+**Раунд:** 1/2
+
+**Вердикт ревьюера:** FAIL (functional acceptance PASS, repo gate): makemigrations --check proposes 0007_alter_announcement_options.py after Meta.ordering change; CI enforces it. Fix: state-only migration 0007 (R098).
+
+**Действие:** fixing — раунд исправлений
+
+## 2026-11-09 14:12:01 — R097: ревью: FAIL
+
+**Раунд:** 1/2
+
+**Вердикт ревьюера:** FAIL (functional acceptance PASS, repo gate): pre_deploy Tailwind freshness red because index template mtime newer than CSS. Fix: npm run build:css.
+
+**Действие:** fixing — раунд исправлений
+
+## 2026-11-09 14:12:01 — R096: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** R098 state migration; R097 index/tests
+
+**Дрейф, который обойдён:** ['djadmin/core/migrations/0007_alter_announcement_options.py', 'djadmin/core/templates/admin/trudnik_index.html', 'djadmin/core/tests/test_admin.py', 'djadmin/core/tests/test_announcements.py']
+
+## 2026-11-09 14:12:02 — R097: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** R098 state migration; R096 model/admin/migration
+
+**Дрейф, который обойдён:** ['djadmin/core/migrations/0007_alter_announcement_options.py']
+
+## 2026-11-09 14:18:22 — R096: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R096.review.prompt.md
+
+## 2026-11-09 14:18:22 — R097: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R097.review.prompt.md
+
+## 2026-11-09 14:18:22 — R098: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R098.review.prompt.md

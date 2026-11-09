@@ -22,6 +22,7 @@ class AnnouncementModelTests(TestCase):
         self.assertEqual(announcement.url_label, "")
         self.assertFalse(announcement.is_pinned)
         self.assertTrue(announcement.is_active)
+        self.assertEqual(announcement.sort_order, 0)
         self.assertIsNotNone(announcement.created_at)
         self.assertIsNotNone(announcement.updated_at)
 
@@ -38,21 +39,26 @@ class AnnouncementModelTests(TestCase):
             with transaction.atomic():
                 Announcement.objects.create(title="неверный тип", kind="bogus")
 
-    def test_ordering_pinned_first_then_newest(self):
+    def test_ordering_pinned_then_sort_order_then_newest(self):
         now = timezone.now()
 
-        old = Announcement.objects.create(title="old")
+        old = Announcement.objects.create(title="old", sort_order=2)
         Announcement.objects.filter(pk=old.pk).update(created_at=now - timedelta(days=2))
 
-        new = Announcement.objects.create(title="new")
+        new = Announcement.objects.create(title="new", sort_order=1)
         Announcement.objects.filter(pk=new.pk).update(created_at=now)
 
-        pinned = Announcement.objects.create(title="pinned-old", is_pinned=True)
+        same_order_old = Announcement.objects.create(title="same-order-old", sort_order=1)
+        Announcement.objects.filter(pk=same_order_old.pk).update(
+            created_at=now - timedelta(days=1)
+        )
+
+        pinned = Announcement.objects.create(title="pinned-old", is_pinned=True, sort_order=9)
         Announcement.objects.filter(pk=pinned.pk).update(created_at=now - timedelta(days=5))
 
         self.assertEqual(
             list(Announcement.objects.values_list("title", flat=True)),
-            ["pinned-old", "new", "old"],
+            ["pinned-old", "new", "same-order-old", "old"],
         )
 
     def test_is_active_filter(self):
@@ -67,4 +73,7 @@ class AnnouncementModelTests(TestCase):
     def test_unmanaged_meta(self):
         self.assertFalse(Announcement._meta.managed)
         self.assertEqual(Announcement._meta.db_table, "announcements")
-        self.assertEqual(Announcement._meta.ordering, ("-is_pinned", "-created_at"))
+        self.assertEqual(
+            Announcement._meta.ordering,
+            ("-is_pinned", "sort_order", "-created_at"),
+        )

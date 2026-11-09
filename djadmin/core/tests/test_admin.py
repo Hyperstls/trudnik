@@ -134,7 +134,7 @@ class AnnouncementAdminTests(TestCase):
         self.assertEqual(response.status_code, 200)
         response = self.client.get(reverse("admin:core_announcement_add"))
         self.assertEqual(response.status_code, 200)
-        for field in ("title", "kind", "body", "url", "url_label", "is_pinned", "is_active"):
+        for field in ("title", "kind", "body", "url", "url_label", "is_pinned", "is_active", "sort_order"):
             with self.subTest(field=field):
                 self.assertContains(response, 'name="%s"' % field)
 
@@ -148,6 +148,7 @@ class AnnouncementAdminTests(TestCase):
             "url_label": "Подробнее",
             "is_pinned": "on",
             "is_active": "on",
+            "sort_order": "7",
             "_save": "Сохранить",
         })
         self.assertEqual(response.status_code, 302)
@@ -158,6 +159,22 @@ class AnnouncementAdminTests(TestCase):
         self.assertEqual(announcement.url_label, "Подробнее")
         self.assertTrue(announcement.is_pinned)
         self.assertTrue(announcement.is_active)
+        self.assertEqual(announcement.sort_order, 7)
+
+    def test_admin_index_links_announcements(self):
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("admin:index"))
+        self.assertContains(response, reverse("admin:core_announcement_changelist"))
+        self.assertContains(response, "Объявления (новости/ссылки)")
+
+    def test_changelist_has_inline_editable_fields(self):
+        Announcement.objects.create(title="inline", sort_order=3)
+        self.client.force_login(self.admin)
+        response = self.client.get(reverse("admin:core_announcement_changelist"))
+        self.assertEqual(response.status_code, 200)
+        for field in ("is_pinned", "is_active", "sort_order"):
+            with self.subTest(field=field):
+                self.assertContains(response, "form-0-%s" % field)
 
 
 class AdminEnvTests(TestCase):

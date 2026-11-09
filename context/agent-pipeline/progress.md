@@ -1623,3 +1623,40 @@
 - **2026-11-09 10:37:59** | **R095** | `verify` | **PASS** | scope=skipped checks=idempotent-sql=0, state=0 attempts=1/3
 - **2026-11-09 10:38:04** | **R095** | `review-packet` | **READY** | bytes=7088 new_files=[]
 - **2026-11-09 10:42:22** | **R095** | `review` | **PASS** | by=independent-review-agent → done
+- **2026-11-09 13:57:58** | **R096** | `add` | **OK** | contract=context/agent-pipeline/tasks/R096.json
+- **2026-11-09 13:57:58** | **R096** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/R096.impl.prompt.md
+- **2026-11-09 13:58:42** | **R097** | `add` | **OK** | contract=context/agent-pipeline/tasks/R097.json
+- **2026-11-09 13:58:43** | **R097** | `dispatch` | **OK** | status=implementing baseline=7 pack=context/agent-pipeline/packs/R097.impl.prompt.md
+- **2026-11-09 14:01:05** | **R096** | `verify` | **FAIL** | scope=fail checks=skipped(scope) attempts=1/3 → fixing
+- **2026-11-09 14:01:27** | **R097** | `verify` | **PASS** | scope=ok checks=compile=0, tests=0 attempts=0/3
+- **2026-11-09 14:01:37** | **R096** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=index/tests — задача R097 (соседняя), R096: models/admin/dictionaries/migration/schema.sql drift=['djadmin/core/templates/admin/trudnik_index.html', 'djadmin/core/tests/test_admin.py', 'djadmin/core/tests/test_announcements.py']
+- **2026-11-09 14:01:38** | **R096** | `verify` | **FAIL** | scope=skipped checks=compile=0, migration=0, schema=1 attempts=2/3 → fixing
+- **2026-11-09 14:01:44** | **R096** | `update` | **OK** | revision=1 reason=(без причины)
+- **2026-11-09 14:01:44** | **R096** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=index/tests — R097; проверка schema исправлена под формат pg_dump drift=['djadmin/core/templates/admin/trudnik_index.html', 'djadmin/core/tests/test_admin.py', 'djadmin/core/tests/test_announcements.py']
+- **2026-11-09 14:01:44** | **R096** | `verify` | **PASS** | scope=skipped checks=compile=0, migration=0, schema=0 attempts=2/3
+- **2026-11-09 14:01:50** | **R096** | `review-packet` | **READY** | bytes=7741 new_files=['migrations/166_announcement_sort_order.sql']
+- **2026-11-09 14:01:50** | **R097** | `review-packet` | **READY** | bytes=8020 new_files=[]
+- **2026-11-09 14:11:23** | **R098** | `add` | **OK** | contract=context/agent-pipeline/tasks/R098.json
+- **2026-11-09 14:11:23** | **R098** | `dispatch` | **OK** | status=implementing baseline=12 pack=context/agent-pipeline/packs/R098.impl.prompt.md
+- **2026-11-09 14:11:32** | **R098** | `verify` | **PASS** | scope=ok checks=compile=0, state=0 attempts=0/3
+- **2026-11-09 14:11:32** | **R096** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=state-миграция 0007 — R098; index/tests — R097 drift=['djadmin/core/migrations/0007_alter_announcement_options.py', 'djadmin/core/templates/admin/trudnik_index.html', 'djadmin/core/tests/test_admin.py', 'djadmin/core/tests/test_announcements.py']
+- **2026-11-09 14:11:33** | **R096** | `verify` | **PASS** | scope=skipped checks=compile=0, migration=0, schema=0 attempts=2/3
+- **2026-11-09 14:11:33** | **R097** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=state-миграция 0007 — R098; models/admin/migration/schema — R096 drift=['djadmin/core/migrations/0007_alter_announcement_options.py']
+- **2026-11-09 14:11:53** | **R097** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=0/3
+- **2026-11-09 14:12:01** | **R096** | `review` | **FAIL** | by=independent-review-agent round=1/2 verdict=FAIL (functional acceptance PASS, repo gate): makemigrations --check proposes 0007_alter_announcement_options.py after Meta.ordering change; CI enforces it. Fix: state-only migration 0007 (R098). → fixing
+- **2026-11-09 14:12:01** | **R097** | `review` | **FAIL** | by=independent-review-agent round=1/2 verdict=FAIL (functional acceptance PASS, repo gate): pre_deploy Tailwind freshness red because index template mtime newer than CSS. Fix: npm run build:css. → fixing
+- **2026-11-09 14:12:01** | **R096** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=R098 state migration; R097 index/tests drift=['djadmin/core/migrations/0007_alter_announcement_options.py', 'djadmin/core/templates/admin/trudnik_index.html', 'djadmin/core/tests/test_admin.py', 'djadmin/core/tests/test_announcements.py']
+- **2026-11-09 14:12:02** | **R096** | `verify` | **PASS** | scope=skipped checks=compile=0, migration=0, schema=0 attempts=2/3
+- **2026-11-09 14:12:02** | **R097** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=R098 state migration; R096 model/admin/migration drift=['djadmin/core/migrations/0007_alter_announcement_options.py']
+- **2026-11-09 14:12:21** | **R097** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=0/3
+- **2026-11-09 14:12:27** | **R096** | `review-packet` | **READY** | bytes=7741 new_files=['migrations/166_announcement_sort_order.sql']
+- **2026-11-09 14:12:27** | **R097** | `review-packet` | **READY** | bytes=8020 new_files=[]
+- **2026-11-09 14:12:27** | **R098** | `review-packet` | **READY** | bytes=3177 new_files=['djadmin/core/migrations/0007_alter_announcement_options.py']
+- **2026-11-09 14:12:40** | **R099** | `add` | **OK** | contract=context/agent-pipeline/tasks/R099.json
+- **2026-11-09 14:12:40** | **R099** | `dispatch` | **OK** | status=implementing baseline=14 pack=context/agent-pipeline/packs/R099.impl.prompt.md
+- **2026-11-09 14:12:50** | **R099** | `verify` | **PASS** | scope=ok checks=grep=0 attempts=0/3
+- **2026-11-09 14:12:56** | **R099** | `verify` | **PASS** | scope=ok checks=grep=0 attempts=0/3
+- **2026-11-09 14:12:57** | **R099** | `review-packet` | **READY** | bytes=5826 new_files=[]
+- **2026-11-09 14:18:22** | **R096** | `review` | **PASS** | by=independent-review-agent → done
+- **2026-11-09 14:18:22** | **R097** | `review` | **PASS** | by=independent-review-agent → done
+- **2026-11-09 14:18:22** | **R098** | `review` | **PASS** | by=independent-review-agent → done

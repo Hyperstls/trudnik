@@ -1,0 +1,39 @@
+{
+  "id": "R097",
+  "title": "Админка: ссылка на объявления в индексе + тесты порядка /info",
+  "goal": "В кастомном индексе админки добавить «Объявления (новости/ссылки)» в раздел «Контент»; тесты: ссылка видна staff, changelist содержит inline-поля, ordering pinned→sort_order→created_at.",
+  "why": "AnnouncementAdmin зарегистрирован, но в кастомном index-шаблоне ссылки нет — владелец не находит раздел; порядок объявлений не покрыт тестом.",
+  "files": [
+    "djadmin/core/templates/admin/trudnik_index.html",
+    "djadmin/core/tests/test_admin.py",
+    "djadmin/core/tests/test_announcements.py"
+  ],
+  "context_files": [
+    "djadmin/core/admin/dictionaries.py",
+    "djadmin/core/models.py"
+  ],
+  "interfaces": "trudnik_index.html: в module «Контент» добавить строку <a href=\"{% url 'admin:core_announcement_changelist' %}\">Объявления (новости/ссылки)</a> с описанием «Новости и ссылки для /info; порядок и закрепление». test_admin: staff GET /admin/ содержит ссылку и текст; changelist 200 и содержит sort_order/is_pinned/is_active поля. test_announcements: создать 3 объявления (pinned sort=5, active sort=1, active sort=0) → order_by даёт pinned, sort0, sort1.",
+  "acceptance": [
+    "Индекс /admin/ содержит ссылку на /admin/core/announcement/ в разделе «Контент».",
+    "Changelist объявлений отдаётся 200 и содержит колонки/поля is_pinned/is_active/sort_order.",
+    "Порядок: закреплённое всегда выше, затем sort_order asc, затем created_at desc.",
+    "py_compile; core.tests.test_admin, core.tests.test_announcements проходят."
+  ],
+  "out_of_scope": [
+    "Не менять public /info шаблон.",
+    "Не менять миграции/модель (R096).",
+    "Не менять права доступа."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/tests/test_admin.py djadmin/core/tests/test_announcements.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_admin core.tests.test_announcements --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
