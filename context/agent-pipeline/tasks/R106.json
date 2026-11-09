@@ -25,7 +25,7 @@
   "checks": [
     {
       "name": "grep",
-      "cmd": "{python} -c \"import pathlib,sys; a=pathlib.Path('docs/rkn_notification_fill.md').read_text(encoding='utf-8'); b=pathlib.Path('docs/parity/152FZ_DATA_FLOWS.md').read_text(encoding='utf-8'); bad=[x for x in ('сервис доставки сообщений MAX','уведомления через MAX','через MAX-бот') if x in a or x in b]; print('OK' if not bad and 'верификац' in a and 'v1.5' in a else 'FAIL '+str(bad)); sys.exit(0 if not bad else 1)\"",
+      "cmd": "{python} -c \"import pathlib,sys; a=pathlib.Path('docs/rkn_notification_fill.md').read_text(encoding='utf-8'); b=pathlib.Path('docs/parity/152FZ_DATA_FLOWS.md').read_text(encoding='utf-8'); bad=[x for x in ('сервис доставки сообщений MAX','уведомления через MAX','через MAX-бот','165: site_pages') if x in a or x in b]; ok=not bad and 'верификац' in a and 'v1.5' in a and '#167' in a; print('OK' if ok else 'FAIL '+str(bad)); sys.exit(0 if ok else 1)\"",
       "cwd": "."
     }
   ]

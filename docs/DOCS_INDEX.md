@@ -2,7 +2,7 @@
 
 **Дата:** 2026-11-09
 **Текущий стек:** Django 5.2, Python 3.12, PostgreSQL/PostGIS, Celery/Redis, Channels, Tailwind, Amvera.
-**Прод:** трудник.рф; полный `core` — 908 OK (+ JS `npm test` 10/10), `pre_deploy_check` — 7/7.
+**Прод:** трудник.рф; полный `core` — 910 OK (+ JS `npm test` 10/10), `pre_deploy_check` — 7/7.
 
 ## 1. Актуальные документы (источник истины)
 

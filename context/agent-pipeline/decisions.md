@@ -4229,3 +4229,99 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review-agent
 
 **Пакет:** context/agent-pipeline/packs/R102.review.prompt.md
+
+## 2026-11-09 17:14:43 — R103: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** соседние задачи R100-R107; проверка после правок ревью
+
+**Дрейф, который обойдён:** []
+
+## 2026-11-09 17:14:43 — R105: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** соседние задачи R100-R107; проверка после правок ревью
+
+**Дрейф, который обойдён:** ['docs/AUDIT_2026-11-08.md', 'docs/DOCS_INDEX.md', 'docs/LAUNCH_CHECKLIST.md']
+
+## 2026-11-09 17:14:45 — R106: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** соседние задачи R100-R107; проверка после правок ревью
+
+**Дрейф, который обойдён:** ['docs/AUDIT_2026-11-08.md', 'docs/DOCS_INDEX.md', 'docs/LAUNCH_CHECKLIST.md', 'docs/parity/MIGRATION_LEDGER.md']
+
+## 2026-11-09 17:14:52 — R104: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R104.review.prompt.md
+
+## 2026-11-09 17:14:52 — R107: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R107.review.prompt.md
+
+## 2026-11-09 17:17:51 — R106: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** RKN: исправлен номер миграции в шапке; соседние задачи
+
+**Дрейф, который обойдён:** ['docs/AUDIT_2026-11-08.md', 'docs/DOCS_INDEX.md', 'docs/LAUNCH_CHECKLIST.md', 'docs/parity/MIGRATION_LEDGER.md']
+
+## 2026-11-09 17:17:57 — R106: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** (без причины)
+
+**Переход:** reviewing → fixing
+
+## 2026-11-09 17:17:57 — R106: контракт обновлён
+
+**Причина:** (без причины)
+
+**Проверки до:** ['grep']
+
+**Проверки после:** ['grep']
+
+## 2026-11-09 17:17:58 — R106: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** соседние задачи; проверка после правки шапки RKN
+
+**Дрейф, который обойдён:** ['docs/AUDIT_2026-11-08.md', 'docs/DOCS_INDEX.md', 'docs/LAUNCH_CHECKLIST.md', 'docs/parity/MIGRATION_LEDGER.md']
+
+## 2026-11-09 17:18:09 — R103: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R103.review.prompt.md
+
+## 2026-11-09 17:18:09 — R105: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R105.review.prompt.md
+
+## 2026-11-09 17:20:56 — R106: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R106.review.prompt.md

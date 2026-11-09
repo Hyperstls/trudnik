@@ -22,7 +22,7 @@ djadmin/                    # Django-проект (единственный пр
     forms*.py               # формы и валидаторы
     models.py               # unmanaged-модели поверх существующей БД
     templates/core/         # все актуальные шаблоны (корневые templates/ — legacy Flask)
-    tests/                  # фикстура схемы; тесты — djadmin/core/tests (908)
+    tests/                  # фикстура схемы; тесты — djadmin/core/tests (910)
   static/                   # собранный Tailwind и JS
 migrations/                 # SQL-миграции 067–164, ledger 79/79
 scripts/                    # pre_deploy_check, dj_test_clone, миграции, Amvera
@@ -108,6 +108,6 @@ npm run build:css
 - Сохранённые поиски: `/searches` (список, уведомления, удаление).
 - Репутация: [`docs/REPUTATION.md`](docs/REPUTATION.md) — роли, double-blind, критерии, модерация.
 - Локализация RU/EN: [`docs/LOCALIZATION.md`](docs/LOCALIZATION.md).
-- Полный `core`: **908 OK**, JS `npm test` — 10/10, `pre_deploy_check` — 7/7.
+- Полный `core`: **910 OK**, JS `npm test` — 10/10, `pre_deploy_check` — 7/7.
 - Паритет auth/profile и jobs/applications: открытых пунктов нет (J026 — карта трудников n/a).
 - Прод: **RUNNING**, `/health` 200.

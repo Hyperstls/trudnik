@@ -5,7 +5,7 @@
 2026-11-09 17:13 MSK (`files=82 applied=82 pending=0`), флаг `MIGRATIONS_ENABLED` возвращён в `false`; миграция 166 применена на проде
 2026-11-09 14:25 MSK (`files=81 applied=81 pending=0`), флаг `MIGRATIONS_ENABLED` возвращён в `false`; миграция 165 применена на проде
 2026-11-09 10:49 MSK (run-лог: files=80, applied=80, pending=0), флаг `MIGRATIONS_ENABLED`
-возвращён в `false`; `/privacy` отдаёт «Редакция … (версия 1.4)»; прод RUNNING, `/health` 200,
+возвращён в `false`; на момент 165 `/privacy` отдавала «Редакция … (версия 1.4)»; прод RUNNING, `/health` 200,
 `/privacy`, `/terms`, `/safety` — 200. Флаги `MIGRATIONS_ENABLED` и
 `MIGRATIONS_RECONCILE` на проде — **false**.
 
@@ -30,7 +30,7 @@ ledger 80/80; `site_pages.privacy` содержит «версия 1.4»; пов
 (prod, LF; локальный CRLF-файл даёт `f01f5752…`, содержимое идентично).
 Прод-процедура 165: временно `MIGRATIONS_ENABLED=true` (env id 76937) → redeploy → в run-логе
 NOTICE `165_privacy_policy_v14: privacy pages at v1.4 = 1` → вернуть флаг `false` → проверить
-`/privacy` (страница из БД отдаёт v1.4).
+`/privacy` (на момент 165 страница из БД отдавала v1.4).
 166 (LF, prod): `188c199003138186921f503d127dbff43e09f6ee5f5a3e4a97716545d9b412c2`;
 dev-файл (CRLF) — `47f223d60727d121dc507855f31a426e06df0a99ce2ab6aac788fa7777ab5616`.
 167 (LF, prod): `eeaf8719925d842dbc9df14fba6fae991545b4beb1254aeb8469e96b1435fd39`;
