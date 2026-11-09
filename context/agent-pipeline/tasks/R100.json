@@ -1,0 +1,35 @@
+{
+  "id": "R100",
+  "title": "Uptime: глобальный повтор после деплой-окна (без ложных инцидентов)",
+  "goal": "uptime_check.py: при первом провале подождать UPTIME_GLOBAL_RETRY_DELAY (default 90с) и повторить весь набор; только затем exit 1. Снижает ложные FAIL во время redeploy/старта БД.",
+  "why": "Инцидент/деплой 2026-11-09 дал красный Uptime run и issue, хотя приложение поднялось через ~2 минуты; локальные retry 3×1.5с слишком короткие.",
+  "files": [
+    "scripts/uptime_check.py"
+  ],
+  "context_files": [
+    ".github/workflows/uptime.yml"
+  ],
+  "interfaces": "Вынести проверку в run_checks()->failures; main: failures=run_checks(); if failures and GLOBAL_RETRY_DELAY>0: sleep, failures=run_checks(); печать/exit. Env UPTIME_GLOBAL_RETRY_DELAY (сек, default 90, 0 отключает). Логика health JSON/статусов не меняется.",
+  "acceptance": [
+    "При доступном проде скрипт exit 0 и не спит.",
+    "При первом провале выполняется ровно один глобальный повтор после задержки; exit 1 только если провал повторился.",
+    "Задержка настраивается env, 0 отключает; секретов нет.",
+    "py_compile; прогон против прода — OK."
+  ],
+  "out_of_scope": [
+    "Не менять workflow (issue-логика остаётся).",
+    "Не менять список путей/таймауты."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile scripts/uptime_check.py",
+      "cwd": "."
+    },
+    {
+      "name": "live",
+      "cmd": "{python} scripts/uptime_check.py",
+      "cwd": "."
+    }
+  ]
+}

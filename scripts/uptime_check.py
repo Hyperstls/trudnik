@@ -17,6 +17,9 @@ PATHS = ("/health", "/jobs", "/login", "/static/js/job-view.js")
 TIMEOUT = 10
 ATTEMPTS = 3
 RETRY_DELAY = 1.5
+# Деплой/старт БД занимает 1–3 минуты: после первого провала ждём и повторяем
+# весь набор, иначе каждый redeploy открывает ложный инцидент.
+GLOBAL_RETRY_DELAY = float(os.getenv("UPTIME_GLOBAL_RETRY_DELAY", "90"))
 
 
 def fetch(path):
@@ -40,7 +43,7 @@ def fetch(path):
     raise OSError(last_error or "request failed")
 
 
-def main():
+def run_checks():
     failures = []
     for path in PATHS:
         try:
@@ -60,6 +63,18 @@ def main():
                 continue
             if payload.get("status") != "ok" or payload.get("db") is not True:
                 failures.append("/health: %s" % payload)
+    return failures
+
+
+def main():
+    failures = run_checks()
+    if failures and GLOBAL_RETRY_DELAY > 0:
+        print(
+            "\nFirst pass failed; retrying in %.0fs (deploy window)..."
+            % GLOBAL_RETRY_DELAY
+        )
+        time.sleep(GLOBAL_RETRY_DELAY)
+        failures = run_checks()
     if failures:
         print("\nUptime check failed:")
         for failure in failures:

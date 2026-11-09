@@ -4181,3 +4181,51 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review-agent
 
 **Пакет:** context/agent-pipeline/packs/R099.review.prompt.md
+
+## 2026-11-09 16:12:44 — R103: контракт обновлён
+
+**Причина:** (без причины)
+
+**Проверки до:** ['grep']
+
+**Проверки после:** ['grep']
+
+## 2026-11-09 16:50:34 — R103: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** policy v1.5 — R104, migration 167 — R105; R103: LAUNCH/AUDIT/DOCS_INDEX
+
+**Дрейф, который обойдён:** ['djadmin/core/templates/core/legal_fallback.html', 'djadmin/core/tests/test_public_views.py', 'docs/parity/MIGRATION_LEDGER.md', 'migrations/167_privacy_policy_v15.sql']
+
+## 2026-11-09 16:51:06 — R106: контракт обновлён
+
+**Причина:** (без причины)
+
+**Проверки до:** ['grep']
+
+**Проверки после:** ['grep']
+
+## 2026-11-09 16:51:14 — R100: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R100.review.prompt.md
+
+## 2026-11-09 16:51:15 — R101: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R101.review.prompt.md
+
+## 2026-11-09 16:51:15 — R102: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R102.review.prompt.md
