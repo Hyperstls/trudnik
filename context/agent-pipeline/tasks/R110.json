@@ -1,0 +1,29 @@
+{
+  "id": "R110",
+  "title": "Security: убрать реальный пароль из шаблона admin_test_user",
+  "goal": "Заменить placeholder с реальным паролем на нейтральный текст; проверить, что в трекинговых файлах нет реального пароля.",
+  "why": "detect-secrets заблокировал коммит: в шаблоне и QA-доке был реальный пароль (значение редактировано); QA-док уже очищен, шаблон остался.",
+  "files": [
+    "templates/admin_test_user.html"
+  ],
+  "context_files": [
+    "docs/qa_test_cases_prompt.md"
+  ],
+  "interfaces": "placeholder с реальным паролем → placeholder=\"Пароль из env\". Больше ничего не менять.",
+  "acceptance": [
+    "В templates/admin_test_user.html нет реального пароля.",
+    "В трекинговых файлах репозитория нет реального пароля (проверка конструирует строку в рантайме).",
+    "pre_deploy/build:css после правки шаблона."
+  ],
+  "out_of_scope": [
+    "Не менять логику/поля.",
+    "Не переписывать git-историю."
+  ],
+  "checks": [
+    {
+      "name": "grep",
+      "cmd": "{python} -c \"import subprocess,sys; sec='Step'+'@'+'1986'; p=subprocess.run(['git','grep','-l',sec],capture_output=True,text=True); print(p.stdout or 'OK'); sys.exit(1 if p.stdout.strip() else 0)\"",
+      "cwd": "."
+    }
+  ]
+}

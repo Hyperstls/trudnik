@@ -8,9 +8,9 @@ from playwright.sync_api import sync_playwright
 BASE_URL = "https://trudnik-hyperstls.amvera.io"
 
 USERS = {
-    "admin":    {"email": "admin@test.ru", "password": "Step@1986", "role": "admin"},
-    "employer": {"email": "org@test.ru",   "password": "Step@1986", "role": "employer"},
-    "worker":   {"email": "trud@test.ru",  "password": "Step@1986", "role": "worker"},
+    "admin":    {"email": "admin@test.ru", "password": "REDACTED_PASSWORD", "role": "admin"},  # pragma: allowlist secret
+    "employer": {"email": "org@test.ru",   "password": "REDACTED_PASSWORD", "role": "employer"},  # pragma: allowlist secret
+    "worker":   {"email": "trud@test.ru",  "password": "REDACTED_PASSWORD", "role": "worker"},  # pragma: allowlist secret
 }
 
 

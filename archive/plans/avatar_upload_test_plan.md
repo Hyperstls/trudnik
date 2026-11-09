@@ -36,10 +36,10 @@
 
 | Email | Пароль | Роль | Где используется |
 |-------|--------|------|-------------------|
-| `admin@test.ru` | `Step@1986` / `test` | admin | [`test_auth_admin.py:38`](test_auth_admin.py:38), [`scripts/set_admin_role.sql`](scripts/set_admin_role.sql), [`migrations/067_bootstrap_amvera.sql:2317`](migrations/067_bootstrap_amvera.sql:2317) |
-| `org@test.ru` | `Step@1986` | employer | [`tests/test_selenium_browser.py:28`](tests/test_selenium_browser.py:28), [`tests/conftest_playwright.py:24`](tests/conftest_playwright.py:24) |
-| `trud@test.ru` | `Step@1986` | worker | [`tests/conftest_playwright.py:26`](tests/conftest_playwright.py:26), [`tests/setup_test_users.py:15`](tests/setup_test_users.py:15) |
-| `trud3@test.ru` | `Step@1986` | worker | [`tests/test_selenium_browser.py:29`](tests/test_selenium_browser.py:29) |
+| `admin@test.ru` | `REDACTED_PASSWORD` / `test` | admin | [`test_auth_admin.py:38`](test_auth_admin.py:38), [`scripts/set_admin_role.sql`](scripts/set_admin_role.sql), [`migrations/067_bootstrap_amvera.sql:2317`](migrations/067_bootstrap_amvera.sql:2317) |
+| `org@test.ru` | `REDACTED_PASSWORD` | employer | [`tests/test_selenium_browser.py:28`](tests/test_selenium_browser.py:28), [`tests/conftest_playwright.py:24`](tests/conftest_playwright.py:24) |
+| `trud@test.ru` | `REDACTED_PASSWORD` | worker | [`tests/conftest_playwright.py:26`](tests/conftest_playwright.py:26), [`tests/setup_test_users.py:15`](tests/setup_test_users.py:15) |
+| `trud3@test.ru` | `REDACTED_PASSWORD` | worker | [`tests/test_selenium_browser.py:29`](tests/test_selenium_browser.py:29) |
 
 ---
 
@@ -152,8 +152,8 @@ tests_e2e/                      # Playwright e2e тесты с маркером 
 ```python
 # Файл: tests/test_selenium_browser.py:27-29
 BASE = os.environ.get("TEST_BASE_URL", "https://trudnik.onrender.com")
-E_EMAIL, E_PASS = "org@test.ru", "Step@1986"
-W_EMAIL, W_PASS = "trud3@test.ru", "Step@1986"
+E_EMAIL, E_PASS = "org@test.ru", "REDACTED_PASSWORD"
+W_EMAIL, W_PASS = "trud3@test.ru", "REDACTED_PASSWORD"
 ```
 
 **Логин:** [`tests/test_selenium_browser.py:106-115`](tests/test_selenium_browser.py:106)
@@ -172,9 +172,9 @@ def login(driver, email, pw, role):
 # Файл: tests/conftest_playwright.py:23-27
 BASE_URL = os.environ.get('BASE_URL', 'http://127.0.0.1:5000')
 EMPLOYER_EMAIL = os.environ.get('EMPLOYER_EMAIL', 'org@test.ru')
-EMPLOYER_PASSWORD = os.environ.get('EMPLOYER_PASSWORD', 'Step@1986')
+EMPLOYER_PASSWORD = os.environ.get('EMPLOYER_PASSWORD', 'REDACTED_PASSWORD')
 WORKER_EMAIL = os.environ.get('WORKER_EMAIL', 'trud@test.ru')
-WORKER_PASSWORD = os.environ.get('WORKER_PASSWORD', 'Step@1986')
+WORKER_PASSWORD = os.environ.get('WORKER_PASSWORD', 'REDACTED_PASSWORD')
 ```
 
 **Логин:** [`tests/conftest_playwright.py:51-84`](tests/conftest_playwright.py:51)
@@ -375,9 +375,9 @@ from datetime import datetime
 # ... импорты selenium ...
 
 BASE = os.environ.get("TEST_BASE_URL", "http://127.0.0.1:5000")
-E_EMAIL, E_PASS = "org@test.ru", "Step@1986"
-W_EMAIL, W_PASS = "trud3@test.ru", "Step@1986"
-A_EMAIL, A_PASS = "admin@test.ru", "Step@1986"
+E_EMAIL, E_PASS = "org@test.ru", "REDACTED_PASSWORD"
+W_EMAIL, W_PASS = "trud3@test.ru", "REDACTED_PASSWORD"
+A_EMAIL, A_PASS = "admin@test.ru", "REDACTED_PASSWORD"
 
 # Путь к тестовым фикстурам
 FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "fixtures")

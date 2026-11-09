@@ -10,7 +10,7 @@ s.headers.update({"User-Agent": "Mozilla/5.0 TrudnikCleanup/1.0"})
 
 # Login
 print("Login as admin@test.ru...")
-r = s.post(f"{BASE}/login", data={"email": "admin@test.ru", "password": "Step@1986"}, allow_redirects=False)
+r = s.post(f"{BASE}/login", data={"email": "admin@test.ru", "password": "REDACTED_PASSWORD"}, allow_redirects=False)
 print(f"  Status: {r.status_code}, Location: {r.headers.get('Location', '?')}")
 
 if r.status_code not in (302, 303, 301):

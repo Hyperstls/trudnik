@@ -79,8 +79,8 @@ npm run build:css
 ## Деплой
 
 - Прод собирается из ветки **`master`**; рабочая ветка — `feat/agent-pipeline`, `main` не меняется без релиза.
-- Из этой сети `api.msk0`/`git.msk0` недоступны; рабочий путь — `git push amvera-msk1 HEAD:master`
-  или MCP (`uploadFiles`/`rebuildProject`/`restartProject`).
+- Прод и MCP работают в регионе **msk1**; деплой — `git push amvera-msk1 HEAD:master`
+  или MCP (`uploadFiles`/`rebuildProject`/`restartProject`). Прежний регион выведен и не используется.
 - После сборки: `Status: RUNNING`, `/health` 200; при `RUN_PROBLEM` при живом health —
   `restartProject` без пересборки.
 - Секреты и доступы — только в env Amvera/`.env`, не в документации.

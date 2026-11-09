@@ -108,7 +108,7 @@ def main():
                     input.value = meta.content;
                     form.appendChild(input);
                 }
-            }""", {"email": "admin@test.ru", "password": "Step@1986"})
+            }""", {"email": "admin@test.ru", "password": "REDACTED_PASSWORD"})  # pragma: allowlist secret
             
             page.locator("button[type='submit']").first.click()
             page.wait_for_timeout(5000)

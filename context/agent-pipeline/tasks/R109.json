@@ -1,0 +1,31 @@
+{
+  "id": "R109",
+  "title": "Docs: README/QA/аудит — регион msk1 вместо msk0",
+  "goal": "README и актуальные документы (qa_test_cases_prompt, architect_audit_prompt_v2) переводятся на msk1; msk0 не упоминается как рабочий.",
+  "why": "Прод и MCP в msk1; документы вводят в заблуждение про регион БД/деплоя.",
+  "files": [
+    "README.md",
+    "docs/qa_test_cases_prompt.md",
+    "docs/architect_audit_prompt_v2.md"
+  ],
+  "context_files": [
+    "docs/django_migration_prompt.md"
+  ],
+  "interfaces": "README деплой-блок: «Прод в msk1; git push amvera-msk1 HEAD:master или MCP; msk0 выведен». QA/architect: «Amvera CloudNativePG, регион msk1/Москва»; в аудите заменить Amvera msk0 на msk1.",
+  "acceptance": [
+    "В трёх файлах нет msk0.",
+    "Деплой-инструкция README использует amvera-msk1.",
+    "grep-проверка."
+  ],
+  "out_of_scope": [
+    "Не переписывать исторические аудиты (architect_audit_2026-09).",
+    "Не менять код."
+  ],
+  "checks": [
+    {
+      "name": "grep",
+      "cmd": "{python} -c \"import pathlib,sys; files=['README.md','docs/qa_test_cases_prompt.md','docs/architect_audit_prompt_v2.md']; bad=[(f,'msk0') for f in files if 'msk0' in pathlib.Path(f).read_text(encoding='utf-8')]; print('OK' if not bad else bad); sys.exit(0 if not bad else 1)\"",
+      "cwd": "."
+    }
+  ]
+}

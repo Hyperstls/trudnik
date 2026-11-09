@@ -8,7 +8,7 @@ import os
 
 BASE_URL = "https://trudnik-hyperstls.amvera.io"
 EMAIL = "admin@test.ru"
-PASSWORD = "Step@1986"
+PASSWORD = "REDACTED_PASSWORD"  # pragma: allowlist secret
 
 results = []
 

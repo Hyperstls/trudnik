@@ -4325,3 +4325,133 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review-agent
 
 **Пакет:** context/agent-pipeline/packs/R106.review.prompt.md
+
+## 2026-11-09 23:59:02 — R108: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** R109 docs рядом; исправлены stale remote/health после ревью
+
+**Дрейф, который обойдён:** ['README.md', 'docs/architect_audit_prompt_v2.md', 'docs/qa_test_cases_prompt.md']
+
+## 2026-11-09 23:59:08 — R108: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R108.review.prompt.md
+
+## 2026-11-09 23:59:09 — R109: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R109.review.prompt.md
+
+## 2026-11-10 00:00:16 — R110: контракт обновлён
+
+**Причина:** (без причины)
+
+**Проверки до:** ['grep']
+
+**Проверки после:** ['grep']
+
+## 2026-11-10 00:00:37 — R110: контракт обновлён
+
+**Причина:** (без причины)
+
+**Проверки до:** ['grep']
+
+**Проверки после:** ['grep']
+
+## 2026-11-10 00:00:40 — R110: BLOCKED: лимит механических попыток
+
+**Измерение:** attempts=3/3, scope=ok, checks=grep=1.
+
+**Решение:** остановка. Третья вариация той же ошибки дороже вопроса человеку.
+
+**Вопрос человеку:** что чинить — код, контракт или проверку? После ответа: `pipeline.py set R110 --status fixing --reason '...' --reset-attempts`.
+
+## 2026-11-10 00:00:45 — R110: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** сброс после редактирования контракта
+
+**Переход:** blocked → fixing
+
+**Сброс:** attempts=0
+
+## 2026-11-10 00:01:36 — R111: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** R111-R113 — один security-scrub, соседние файлы
+
+**Дрейф, который обойдён:** ['archive/plans/avatar_upload_test_plan.md', 'archive/plans/local-postgrest-setup.md', 'archive/test_login_logout.py', 'archive/test_playwright_minimal.py', 'archive/test_prod_final.py', 'archive/test_prod_playwright.py', 'migrations/archive/066_one_shot_setup.sql']
+
+## 2026-11-10 00:01:37 — R112: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** R111-R113 — один security-scrub, соседние файлы
+
+**Дрейф, который обойдён:** ['archive/CODE_REVIEW_FINAL_REPORT.md', 'archive/CODE_REVIEW_STAGE7_SCRIPTS_MIGRATIONS.md', 'archive/browser_agent.py', 'archive/cleanup_extra_users.py', 'archive/test_prod_final.py', 'archive/test_prod_playwright.py', 'migrations/archive/066_one_shot_setup.sql']
+
+## 2026-11-10 00:01:38 — R113: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** R111-R113 — один security-scrub, соседние файлы
+
+**Дрейф, который обойдён:** ['archive/CODE_REVIEW_FINAL_REPORT.md', 'archive/CODE_REVIEW_STAGE7_SCRIPTS_MIGRATIONS.md', 'archive/browser_agent.py', 'archive/cleanup_extra_users.py', 'archive/plans/avatar_upload_test_plan.md', 'archive/plans/local-postgrest-setup.md', 'archive/test_login_logout.py', 'archive/test_playwright_minimal.py']
+
+## 2026-11-10 00:11:29 — R110: контракт обновлён
+
+**Причина:** (без причины)
+
+**Проверки до:** ['grep']
+
+**Проверки после:** ['grep']
+
+## 2026-11-10 00:11:40 — R110: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** archive/migrations scrub — R111-R113; R110 только templates/admin_test_user.html
+
+**Дрейф, который обойдён:** ['archive/CODE_REVIEW_FINAL_REPORT.md', 'archive/CODE_REVIEW_STAGE7_SCRIPTS_MIGRATIONS.md', 'archive/browser_agent.py', 'archive/cleanup_extra_users.py', 'archive/plans/avatar_upload_test_plan.md', 'archive/plans/local-postgrest-setup.md', 'archive/test_login_logout.py', 'archive/test_playwright_minimal.py', 'archive/test_prod_final.py', 'archive/test_prod_playwright.py', 'migrations/archive/066_one_shot_setup.sql']
+
+## 2026-11-10 00:11:47 — R111: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R111.review.prompt.md
+
+## 2026-11-10 00:11:48 — R112: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R112.review.prompt.md
+
+## 2026-11-10 00:11:48 — R113: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R113.review.prompt.md
+
+## 2026-11-10 00:16:33 — R110: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R110.review.prompt.md

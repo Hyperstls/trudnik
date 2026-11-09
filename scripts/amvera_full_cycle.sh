@@ -104,14 +104,14 @@ fi
 step "3" "Push в репозиторий Amvera"
 
 echo -e "${YELLOW}📤 Отправка кода в Amvera Git...${NC}"
-if git remote | grep -q "amvera"; then
-    git push amvera main:master 2>&1 || {
+if git remote | grep -q "amvera-msk1"; then
+    git push amvera-msk1 main:master 2>&1 || {
         echo -e "${YELLOW}⚠️  Push в amvera не удался. Использую rebuild...${NC}"
     }
-    check_error $? "git push amvera main:master"
+    check_error $? "git push amvera-msk1 main:master"
     echo -e "${GREEN}✅ Код отправлен в Amvera${NC}"
 else
-    echo -e "${YELLOW}ℹ️  Git remote 'amvera' не найден. Перехожу к rebuild...${NC}"
+    echo -e "${YELLOW}ℹ️  Git remote 'amvera-msk1' не найден. Перехожу к rebuild...${NC}"
 fi
 
 # =============================================

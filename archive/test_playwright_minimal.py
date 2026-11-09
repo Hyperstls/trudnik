@@ -8,7 +8,7 @@ from playwright.async_api import async_playwright
 
 BASE_URL = "https://trudnik-hyperstls.amvera.io"
 EMAIL = "admin@test.ru"
-PASSWORD = "Step@1986"
+PASSWORD = "REDACTED_PASSWORD"  # pragma: allowlist secret
 
 async def main():
     async with async_playwright() as p:
@@ -78,7 +78,7 @@ async def main():
                             'Content-Type': 'application/x-www-form-urlencoded',
                             'X-CSRF-Token': csrf
                         },
-                        body: 'email=admin@test.ru&password=Step@1986&_csrf_token=' + encodeURIComponent(csrf),
+                        body: 'email=admin@test.ru&password=REDACTED_PASSWORD&_csrf_token=' + encodeURIComponent(csrf),  # pragma: allowlist secret
                         redirect: 'follow'
                     });
                     return { status: resp.status, url: resp.url, ok: resp.ok };

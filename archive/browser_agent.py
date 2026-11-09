@@ -28,15 +28,15 @@ BASE_URL = "https://trudnik-hyperstls.amvera.io"
 
 # DeepSeek API
 client = OpenAI(
-    api_key="DEEPSEEK_API_KEY_PLACEHOLDER",
+    api_key="DEEPSEEK_API_KEY_PLACEHOLDER",  # pragma: allowlist secret
     base_url="https://api.deepseek.com/v1"
 )
 
 # Тестовые пользователи (после работы manage_users.py)
 TEST_USERS = {
-    "admin":    {"email": "admin@test.ru", "password": "Step@1986", "role": "admin"},
-    "employer": {"email": "org@test.ru",   "password": "Step@1986", "role": "employer"},
-    "worker":   {"email": "trud@test.ru",  "password": "Step@1986", "role": "worker"},
+    "admin":    {"email": "admin@test.ru", "password": "REDACTED_PASSWORD", "role": "admin"},  # pragma: allowlist secret
+    "employer": {"email": "org@test.ru",   "password": "REDACTED_PASSWORD", "role": "employer"},  # pragma: allowlist secret
+    "worker":   {"email": "trud@test.ru",  "password": "REDACTED_PASSWORD", "role": "worker"},  # pragma: allowlist secret
 }
 
 # ═══════════════════════════════════════════════════════════
@@ -400,7 +400,7 @@ def main():
         print("\nПримеры:")
         print('  python browser_agent.py --scenario admin')
         print('  python browser_agent.py --scenario all')
-        print('  python browser_agent.py "Зайди как admin@test.ru с паролем Step@1986 и проверь админ-панель"')
+        print('  python browser_agent.py "Зайди как admin@test.ru с паролем REDACTED_PASSWORD и проверь админ-панель"')  # pragma: allowlist secret
 
 
 if __name__ == "__main__":

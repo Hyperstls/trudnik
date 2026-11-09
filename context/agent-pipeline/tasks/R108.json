@@ -1,0 +1,32 @@
+{
+  "id": "R108",
+  "title": "Ops: убрать msk0 из правил и скрипта деплоя (только msk1)",
+  "goal": "Активные правила .kilocode/rules/09 и 06 и scripts/amvera_full_cycle.sh переводятся на регион msk1/remote amvera-msk1; msk0 помечен выведенным.",
+  "why": "Прод и MCP работают в msk1; правила и скрипт до сих пор ссылаются на git.msk0/api.msk0 и remote `amvera`, что приводит к таймаутам/ошибкам.",
+  "files": [
+    ".kilocode/rules/09_amvera_mcp_cli.md",
+    ".kilocode/rules/06_amvera_deploy.md",
+    "scripts/amvera_full_cycle.sh"
+  ],
+  "context_files": [
+    "README.md",
+    "docs/django_migration_prompt.md"
+  ],
+  "interfaces": "09: заголовок «регион msk1»; раздел регионов — msk1 основной, msk0 выведен (только историческая справка без рабочих URL); Remotes: amvera-msk1 → git.msk1; push-примеры amvera-msk1. 06: remote amvera-msk1 и git push amvera-msk1. script: проверка/пуш remote amvera-msk1.",
+  "acceptance": [
+    "В активных правилах/скрипте нет рабочих команд с msk0 или remote `amvera` (msk0).",
+    "Все деплой-примеры — git.msk1 / amvera-msk1.",
+    "grep-проверка: в трёх файлах нет 'git.msk0', 'api.msk0', 'openmcp.msk0', 'git push amvera '."
+  ],
+  "out_of_scope": [
+    "Не переписывать исторические аудиты/контекст задач.",
+    "Не менять прод."
+  ],
+  "checks": [
+    {
+      "name": "grep",
+      "cmd": "{python} -c \"import pathlib,sys; files=['.kilocode/rules/09_amvera_mcp_cli.md','.kilocode/rules/06_amvera_deploy.md','scripts/amvera_full_cycle.sh']; bad=[]; [bad.append((f,x)) for f in files for x in ('git.msk0','api.msk0','openmcp.msk0','git push amvera ') if x in pathlib.Path(f).read_text(encoding='utf-8')]; print('OK' if not bad else bad); sys.exit(0 if not bad else 1)\"",
+      "cwd": "."
+    }
+  ]
+}

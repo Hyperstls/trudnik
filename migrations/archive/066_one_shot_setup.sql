@@ -24,7 +24,7 @@
 --       cancel_job_atomic, force_complete_job, accept_invitation_atomic (из 061)
 --   - Колонка job_id в notifications (миграция 063)
 --   - Обновлённый accept_application (rejected→accepted) (миграция 064)
---   - Создание администратора admin@test.ru / Step@1986
+--   - Создание администратора admin@test.ru / REDACTED_PASSWORD
 --
 -- ИДЕМПОТЕНТНОСТЬ:
 --   Все операции используют IF NOT EXISTS / CREATE OR REPLACE / ON CONFLICT.
@@ -1015,20 +1015,20 @@ GRANT EXECUTE ON FUNCTION public.accept_application(uuid, uuid) TO authenticated
 COMMIT;
 
 -- ============================================================================
--- Шаг 8: Создание администратора admin@test.ru с паролем Step@1986
+-- Шаг 8: Создание администратора admin@test.ru с паролем REDACTED_PASSWORD
 -- Пароль хэшируется через bcrypt (pgcrypto crypt() + gen_salt('bf'))
 -- ============================================================================
 INSERT INTO profiles (id, email, password_hash, full_name, role, created_at)
 VALUES (
     gen_random_uuid(),
     'admin@test.ru',
-    crypt('Step@1986', gen_salt('bf')),
+    crypt('REDACTED_PASSWORD', gen_salt('bf')),
     'Администратор',
     'admin',
     now()
 )
 ON CONFLICT (email) DO UPDATE SET
-    password_hash = crypt('Step@1986', gen_salt('bf')),
+    password_hash = crypt('REDACTED_PASSWORD', gen_salt('bf')),
     role = 'admin';
 
 -- ============================================================================
@@ -1044,5 +1044,5 @@ ON CONFLICT (email) DO UPDATE SET
 --       force_complete_job, accept_invitation_atomic
 --   - Колонка job_id в notifications + индексы
 --   - Обновлённый accept_application (rejected→accepted)
---   - Администратор admin@test.ru / Step@1986
+--   - Администратор admin@test.ru / REDACTED_PASSWORD
 -- ============================================================================

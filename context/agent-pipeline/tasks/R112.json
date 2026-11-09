@@ -1,0 +1,32 @@
+{
+  "id": "R112",
+  "title": "Security: вычистить пароль из tracked-архива (R112)",
+  "goal": "Заменить реальный пароль на REDACTED_PASSWORD в перечисленных tracked-файлах.",
+  "why": "Пароль виден в публичном репозитории; detect-secrets блокирует коммиты. R111-R113 дробят 11 файлов по лимиту 4.",
+  "files": [
+    "archive/plans/avatar_upload_test_plan.md",
+    "archive/plans/local-postgrest-setup.md",
+    "archive/test_login_logout.py",
+    "archive/test_playwright_minimal.py"
+  ],
+  "context_files": [
+    "docs/qa_test_cases_prompt.md"
+  ],
+  "interfaces": "Текстовая замена литерала на REDACTED_PASSWORD; синтаксис/логика не меняются (архив).",
+  "acceptance": [
+    "В файлах задачи нет реального пароля.",
+    "git grep по секрету пуст.",
+    "Только текстовая замена."
+  ],
+  "out_of_scope": [
+    "Не переписывать историю.",
+    "Не менять действующий код."
+  ],
+  "checks": [
+    {
+      "name": "git-grep",
+      "cmd": "{python} -c \"import subprocess,sys; sec='Step'+'@'+'1986'; p=subprocess.run(['git','grep','-l',sec],capture_output=True,text=True); print(p.stdout or 'OK'); sys.exit(1 if p.stdout.strip() else 0)\"",
+      "cwd": "."
+    }
+  ]
+}

@@ -7,7 +7,7 @@ Amvera: управление продa «Трудник» через MCP и CLI.
 - ⚠️ НИКОГДА не выводи пароль в лог/ответ/коммит. CLI-команды — через переменные из `.env`, не инлайн.
 - **MCP** уже подключён к этому окружению (Bearer-токен настроен) — предпочитай MCP-Tools (не требуют CLI/логина).
 
-## 1. Топология продa (Amvera, регион msk0)
+## 1. Топология продa (Amvera, регион msk1)
 | Slug | Тип | Назначение |
 |---|---|---|
 | `trudnik` | compute | Приложение (Flask+FastAPI, supervisord: uvicorn+celery). |
@@ -15,7 +15,7 @@ Amvera: управление продa «Трудник» через MCP и CLI.
 | `trudnik-pr` | marketplace | **PostgREST v14** (отдельный сервис!) — `PGRST_JWT_SECRET` живёт ЗДЕСЬ И в `trudnik`. |
 | `trudnik-redis` | marketplace | Redis 8. |
 | `trudnik-pgadmin` | marketplace | pgAdmin (профиль debug). |
-- Health продa: `https://trudnik-hyperstls.amvera.io/health` (HTTP 200).
+- Health продa: `https://трудник.рф/health` (снаружи) или `https://trudnik-hyperstls.msk1.amvera.tech/health` (msk1).
 
 ## 2. MCP-Tools (предпочтительный способ, доступен сейчас)
 CRUD: `listProjects`, `getProject(slug)`, `createProject`, `deleteProject`.
@@ -33,19 +33,18 @@ Env: `listEnvVars(slug, isSecret)`, `createEnvVars(slug, envVarsJson)`, `updateE
 - Логин (сессия 24ч): `amvera login --user <u> --password <p>` (креды из `.env`).
 - Команды: `amvera -v`, `amvera` (список), `<cmd> -h` (справка).
 - Ключевые: `amvera describe project --slug trudnik`, `amvera rebuild --slug trudnik`, `amvera logs {build|run} --slug trudnik`, `amvera env ...` (⚠️ баг v1.2.2 на JSON-парсинге → флаг `dotenv`).
-- Регионы MCP: msk0 (Москва) `https://openmcp.msk0.amvera.ru/mcp`, waw0 (Варшава) `https://openmcp.waw0.amvera.ru/mcp`.
-- ⚠️ **Регионы: msk1 (2026-09-27, переезд с msk0).** Слова техподдержки Amvera: «Проекты в другом регионе — отдельные: домены другие, внутренние имена (напр. БД) доступны только внутри своего региона, миграции нет — переменные переносить руками». MCP-регионы: msk1 `https://openmcp.msk1.amvera.ru/mcp` (основной), waw0 — только диагностический fallback «жив ли MCP вообще».
-- История: 2026-09-18 msk0 временно отдавал 504 (регион лежал), 2026-09-19 восстановлен. Диагностика MCP:
+- **Регион — только msk1:** MCP `https://openmcp.msk1.amvera.ru/mcp`, git `https://git.msk1.amvera.ru/...`. Регион msk0 выведен и не используется; waw0 — только диагностический fallback «жив ли MCP вообще».
+- Историческая справка: 2026-09-27 был переезд с msk0; внутренние имена (БД) действуют только внутри msk1, переменные переносились руками. Диагностика MCP:
   1. Без токена: `curl -X POST <region-url> -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'` → ожидаем 401 (жив) или 504 (лежит, пробуй waw0 для диагностики).
   2. С токеном: то же + `Authorization: Bearer <token>` → 200 с `serverInfo amvera-mcp`.
   3. Токен — в ЛК Amvera; в Kimi Code хранится в `~/.kimi-code/mcp.json` → servers.amvera.headers.Authorization (user-level, вне git). Валиден до 2029-07.
   4. В Kimi Code MCP-серверы регистрируются только в НОВЫХ сессиях (`/mcp` — статус).
 
 ## 4. Деплой-воркфлоу (git + rebuild)
-- Remotes: `amvera` → `https://git.msk0.amvera.ru/hyperstls/trudnik`; `origin` → GitHub `Hyperstls/trudnik`.
+- Remotes: `amvera-msk1` → `https://git.msk1.amvera.ru/hyperstls/trudnik` (рабочий, msk1); `origin` → GitHub `Hyperstls/trudnik`. Remote `amvera` (msk0) удалён как устаревший.
 - Amvera деплоит ветку **`master`** (amvera/HEAD → amvera/master).
-- Триггер сборки: `git push amvera main:master` (локальный main → amvera/master) ИЛИ `amvera rebuild --slug trudnik` / `rebuildProject`.
-- Порядок: тесты локально → `git checkout main && git merge staging` → `git push amvera main:master` → монитор сборки (`getBuildLogs`) → `getRunLogs` → healthcheck.
+- Триггер сборки: `git push amvera-msk1 main:master` (локальный main → amvera-msk1/master) ИЛИ `rebuildProject` (MCP).
+- Порядок: тесты локально → `git checkout main` → `git push amvera-msk1 main:master` → монитор сборки (`getBuildLogs`) → `getRunLogs` → healthcheck.
 - Миграции НЕ автоприменяются (entrypoint.sh отключён). Self-heal `ensure_postgrest_role_grants` (beat, 120с) ре-применяет 123/132/133/134/135/136/137 + NOTIFY pgrst 'reload schema'. Для гарантии: `MIGRATIONS_ENABLED=true python scripts/apply_migrations.py` (суперпользователь).
 - ⚠️ Ротация `PGRST_JWT_SECRET` = обновить env В ОБОИХ `trudnik` и `trudnik-pr` + рестарт (логаут всех). Координируй синхронно.
 

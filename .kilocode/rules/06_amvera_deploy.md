@@ -12,7 +12,7 @@
    - Slug'и: приложение — `trudnik`; БД — `trudnik-db`; PostgREST — `trudnik-pr` (отдельный сервис, PGRST_JWT_SECRET живёт ЗДЕСЬ И в trudnik); Redis — `trudnik-redis`; pgAdmin — `trudnik-pgadmin` (профиль debug).
 
 3. Скрипты (scripts/):
-   - amvera_full_cycle.sh [slug] [commit-msg] — ОСНОВНОЙ CI/CD: login → describe → git add/commit/push origin main → push amvera (main:master) → rebuild → wait → logs build → logs run → healthcheck.
+   - amvera_full_cycle.sh [slug] [commit-msg] — ОСНОВНОЙ CI/CD: login → describe → git add/commit/push origin main → push amvera-msk1 (main:master) → rebuild → wait → logs build → logs run → healthcheck.
    - amvera_deploy.sh [slug] — ускоренный: login → rebuild → logs (build 50 / run 30 строк).
    - amvera_env_manager.sh {list|show|add KEY VAL|update|delete KEY|dotenv} [slug] — управление env.
      ⚠️ БАГ CLI v1.2.2: команда `env` падает на парсинге JSON → используй флаг `dotenv` (чтение из локального .env).
@@ -25,13 +25,13 @@
    - amvera logs {build|run} --slug <slug>
    - amvera describe project --slug <slug>
 
-5. Git remote `amvera`: `git push amvera main:master` триггерит сборку (альтернатива `amvera rebuild`).
+5. Git remote `amvera-msk1` (регион msk1): `git push amvera-msk1 main:master` триггерит сборку. Remote `amvera` (msk0) выведен.
 
 6. Миграции БД: НЕ применяются автоматически при деплое (entrypoint.sh их не запускает).
    Self-heal `ensure_postgrest_role_grants` (beat, 120с) ре-применяет 123/132/133/134 + Phase 3 миграции 135/136/137 + NOTIFY pgrst 'reload schema'.
    Для гарантии: `MIGRATIONS_ENABLED=true python scripts/apply_migrations.py` (суперпользователь).
    Для BREAKING-изменений схемы: сначала деплой кода (перестал использовать колонку/RPC) → потом миграция (см. 04_migrations.md).
 
-7. Healthcheck: снаружи https://<slug>-hyperstls.amvera.io/health (HTTP 200). Внутри контейнера — /ready (Dockerfile HEALTHCHECK); docker-compose — /health.
+7. Healthcheck: снаружи https://трудник.рф/health или https://<slug>-hyperstls.msk1.amvera.tech/health. Внутри контейнера — /ready (Dockerfile HEALTHCHECK); docker-compose — /health.
 
 8. Секреты (PGRST_JWT_SECRET, WEBSOCKET_JWT_SECRET, SECRET_KEY, ADMIN_API_TOKEN, VAPID_*, SMTP_PASSWORD, YOOKASSA_*) задаются через Amvera env (amvera_env_manager.sh / веб) либо .env. НИКОГДА не коммитить.

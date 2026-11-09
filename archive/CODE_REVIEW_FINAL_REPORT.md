@@ -162,7 +162,7 @@
 | # | Файл:Строка | Что захардкожено | Риск |
 |---|-------------|------------------|------|
 | 1 | [`amvera.yml:7`](amvera.yml) | `PGRST_JWT_SECRET=CHANGE_ME` — placeholder-секрет в Git | Компрометация JWT при утечке репозитория |
-| 2 | [`test_buttons.py:37-44`](scripts/test_buttons.py) | Пароли `Step@1986`, `test123456`, `test123` | Компрометация тестовых аккаунтов |
+| 2 | [`test_buttons.py:37-44`](scripts/test_buttons.py) | Пароли `REDACTED_PASSWORD`, `test123456`, `test123` | Компрометация тестовых аккаунтов |
 | 3 | `_apply_all_direct.py`, `_create_base_tables.py`, `_create_email_log.py`, `_create_missing_tables.py`, `_init_exec_sql.py` | `DATABASE_URL` с паролем `postgres:postgres` | Доступ к БД при утечке |
 | 4 | [`Dockerfile:34`](Dockerfile) | `USER appuser` закомментирован — контейнер от root | Нарушение least privilege |
 | 5 | [`render.yaml:6`](render.yaml) | Скачивание tailwindcss бинарника без проверки хеша | Supply chain атака |

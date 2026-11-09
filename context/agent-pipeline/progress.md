@@ -1731,3 +1731,49 @@
 - **2026-11-09 17:18:09** | **R103** | `review` | **PASS** | by=independent-review-agent → done
 - **2026-11-09 17:18:09** | **R105** | `review` | **PASS** | by=independent-review-agent → done
 - **2026-11-09 17:20:56** | **R106** | `review` | **PASS** | by=independent-review-agent → done
+- **2026-11-09 23:51:41** | **R108** | `add` | **OK** | contract=context/agent-pipeline/tasks/R108.json
+- **2026-11-09 23:51:41** | **R108** | `dispatch` | **OK** | status=implementing baseline=2 pack=context/agent-pipeline/packs/R108.impl.prompt.md
+- **2026-11-09 23:51:51** | **R108** | `verify` | **PASS** | scope=ok checks=grep=0 attempts=0/3
+- **2026-11-09 23:52:00** | **R109** | `add` | **OK** | contract=context/agent-pipeline/tasks/R109.json
+- **2026-11-09 23:52:00** | **R109** | `dispatch` | **OK** | status=implementing baseline=6 pack=context/agent-pipeline/packs/R109.impl.prompt.md
+- **2026-11-09 23:52:01** | **R109** | `verify` | **FAIL** | scope=ok checks=grep=1 attempts=1/3 → fixing
+- **2026-11-09 23:52:13** | **R109** | `verify` | **PASS** | scope=ok checks=grep=0 attempts=1/3
+- **2026-11-09 23:52:27** | **R108** | `review-packet` | **READY** | bytes=9494 new_files=[]
+- **2026-11-09 23:52:27** | **R109** | `review-packet` | **READY** | bytes=13188 new_files=[]
+- **2026-11-09 23:59:02** | **R108** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=R109 docs рядом; исправлены stale remote/health после ревью drift=['README.md', 'docs/architect_audit_prompt_v2.md', 'docs/qa_test_cases_prompt.md']
+- **2026-11-09 23:59:02** | **R108** | `verify` | **PASS** | scope=skipped checks=grep=0 attempts=0/3
+- **2026-11-09 23:59:08** | **R108** | `review` | **PASS** | by=independent-review-agent → done
+- **2026-11-09 23:59:09** | **R109** | `review` | **PASS** | by=independent-review-agent → done
+- **2026-11-09 23:59:49** | **R110** | `add` | **OK** | contract=context/agent-pipeline/tasks/R110.json
+- **2026-11-09 23:59:49** | **R110** | `dispatch` | **OK** | status=implementing baseline=11 pack=context/agent-pipeline/packs/R110.impl.prompt.md
+- **2026-11-10 00:00:02** | **R110** | `verify` | **FAIL** | scope=ok checks=grep=1 attempts=1/3 → fixing
+- **2026-11-10 00:00:16** | **R110** | `update` | **OK** | revision=1 reason=(без причины)
+- **2026-11-10 00:00:19** | **R110** | `verify` | **FAIL** | scope=ok checks=grep=1 attempts=2/3 → fixing
+- **2026-11-10 00:00:37** | **R110** | `update` | **OK** | revision=2 reason=(без причины)
+- **2026-11-10 00:00:40** | **R110** | `verify` | **FAIL** | scope=ok checks=grep=1 attempts=3/3 → blocked
+- **2026-11-10 00:00:45** | **R110** | `set` | **blocked→fixing** | by=Hyperstls reason=сброс после редактирования контракта reset=attempts=0
+- **2026-11-10 00:00:47** | **R110** | `verify` | **FAIL** | scope=ok checks=grep=1 attempts=1/3 → fixing
+- **2026-11-10 00:01:28** | **R111** | `add` | **OK** | contract=context/agent-pipeline/tasks/R111.json
+- **2026-11-10 00:01:29** | **R111** | `dispatch` | **OK** | status=implementing baseline=15 pack=context/agent-pipeline/packs/R111.impl.prompt.md
+- **2026-11-10 00:01:29** | **R112** | `add` | **OK** | contract=context/agent-pipeline/tasks/R112.json
+- **2026-11-10 00:01:30** | **R112** | `dispatch` | **OK** | status=implementing baseline=15 pack=context/agent-pipeline/packs/R112.impl.prompt.md
+- **2026-11-10 00:01:30** | **R113** | `add` | **OK** | contract=context/agent-pipeline/tasks/R113.json
+- **2026-11-10 00:01:30** | **R113** | `dispatch` | **OK** | status=implementing baseline=15 pack=context/agent-pipeline/packs/R113.impl.prompt.md
+- **2026-11-10 00:01:36** | **R111** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=R111-R113 — один security-scrub, соседние файлы drift=['archive/plans/avatar_upload_test_plan.md', 'archive/plans/local-postgrest-setup.md', 'archive/test_login_logout.py', 'archive/test_playwright_minimal.py', 'archive/test_prod_final.py', 'archive/test_prod_playwright.py', 'migrations/archive/066_one_shot_setup.sql']
+- **2026-11-10 00:01:37** | **R111** | `verify` | **PASS** | scope=skipped checks=git-grep=0 attempts=0/3
+- **2026-11-10 00:01:37** | **R112** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=R111-R113 — один security-scrub, соседние файлы drift=['archive/CODE_REVIEW_FINAL_REPORT.md', 'archive/CODE_REVIEW_STAGE7_SCRIPTS_MIGRATIONS.md', 'archive/browser_agent.py', 'archive/cleanup_extra_users.py', 'archive/test_prod_final.py', 'archive/test_prod_playwright.py', 'migrations/archive/066_one_shot_setup.sql']
+- **2026-11-10 00:01:37** | **R112** | `verify` | **PASS** | scope=skipped checks=git-grep=0 attempts=0/3
+- **2026-11-10 00:01:38** | **R113** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=R111-R113 — один security-scrub, соседние файлы drift=['archive/CODE_REVIEW_FINAL_REPORT.md', 'archive/CODE_REVIEW_STAGE7_SCRIPTS_MIGRATIONS.md', 'archive/browser_agent.py', 'archive/cleanup_extra_users.py', 'archive/plans/avatar_upload_test_plan.md', 'archive/plans/local-postgrest-setup.md', 'archive/test_login_logout.py', 'archive/test_playwright_minimal.py']
+- **2026-11-10 00:01:38** | **R113** | `verify` | **PASS** | scope=skipped checks=git-grep=0 attempts=0/3
+- **2026-11-10 00:01:51** | **R111** | `review-packet` | **READY** | bytes=7538 new_files=[]
+- **2026-11-10 00:01:51** | **R112** | `review-packet` | **READY** | bytes=8263 new_files=[]
+- **2026-11-10 00:01:52** | **R113** | `review-packet` | **READY** | bytes=5392 new_files=[]
+- **2026-11-10 00:11:29** | **R110** | `update` | **OK** | revision=3 reason=(без причины)
+- **2026-11-10 00:11:30** | **R110** | `verify` | **FAIL** | scope=fail checks=skipped(scope) attempts=2/3 → fixing
+- **2026-11-10 00:11:40** | **R110** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=archive/migrations scrub — R111-R113; R110 только templates/admin_test_user.html drift=['archive/CODE_REVIEW_FINAL_REPORT.md', 'archive/CODE_REVIEW_STAGE7_SCRIPTS_MIGRATIONS.md', 'archive/browser_agent.py', 'archive/cleanup_extra_users.py', 'archive/plans/avatar_upload_test_plan.md', 'archive/plans/local-postgrest-setup.md', 'archive/test_login_logout.py', 'archive/test_playwright_minimal.py', 'archive/test_prod_final.py', 'archive/test_prod_playwright.py', 'migrations/archive/066_one_shot_setup.sql']
+- **2026-11-10 00:11:40** | **R110** | `verify` | **PASS** | scope=skipped checks=grep=0 attempts=2/3
+- **2026-11-10 00:11:40** | **R110** | `review-packet` | **READY** | bytes=3395 new_files=[]
+- **2026-11-10 00:11:47** | **R111** | `review` | **PASS** | by=independent-review-agent → done
+- **2026-11-10 00:11:48** | **R112** | `review` | **PASS** | by=independent-review-agent → done
+- **2026-11-10 00:11:48** | **R113** | `review` | **PASS** | by=independent-review-agent → done
+- **2026-11-10 00:16:33** | **R110** | `review` | **PASS** | by=independent-review-agent → done

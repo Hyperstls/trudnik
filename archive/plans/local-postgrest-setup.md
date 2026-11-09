@@ -61,7 +61,7 @@ db:
     - "${PGPORT:-5433}:5432"
   environment:
     POSTGRES_USER: ${PGUSER:-trudnikapp}
-    POSTGRES_PASSWORD: ${PGPASSWORD:-devpassword}
+    POSTGRES_PASSWORD: ${PGPASSWORD:-devpassword}  # pragma: allowlist secret
     POSTGRES_DB: ${PGDATABASE:-trudnik}
   volumes:
     - pgdata:/var/lib/postgresql/data
@@ -118,9 +118,9 @@ web:
   environment:
     - POSTGREST_URL=http://postgrest:3000  # ← изменить с localhost на имя сервиса
     - PGRST_JWT_SECRET=${PGRST_JWT_SECRET}
-    - DATABASE_URL=postgresql://${PGUSER:-trudnikapp}:${PGPASSWORD:-devpassword}@db:5432/${PGDATABASE:-trudnik}
+    - DATABASE_URL=postgresql://${PGUSER:-trudnikapp}:${PGPASSWORD:-devpassword}@db:5432/${PGDATABASE:-trudnik}  # pragma: allowlist secret
     - PGUSER=${PGUSER:-trudnikapp}
-    - PGPASSWORD=${PGPASSWORD:-devpassword}
+    - PGPASSWORD=${PGPASSWORD:-devpassword}  # pragma: allowlist secret
     - PGHOST=db
     - PGPORT=5432
     - PGDATABASE=${PGDATABASE:-trudnik}
@@ -217,7 +217,7 @@ graph LR
 | RLS-политики | Для всех таблиц (JWT-based через `current_setting('request.jwt.claim.xxx', true)`) |
 | RPC-функции | `login_user`, `register_user`, `change_password`, `atomic_apply_job`, `atomic_accept_application`, `atomic_reject_application`, `atomic_delete_job`, `atomic_delete_application`, `get_job_stats`, `nearby_jobs`, `exec_sql` |
 | Права доступа | REVOKE ALL + GRANT для `anon`, `authenticated`, `service_role` |
-| Администратор | `admin@test.ru` / `Step@1986` |
+| Администратор | `admin@test.ru` / `REDACTED_PASSWORD` |
 
 ### 4.3 Сброс и переинициализация
 
@@ -259,11 +259,11 @@ SECRET_KEY=dev-secret-key-change-in-production-min-32-chars
 
 # База данных (внутри Docker-сети)
 PGUSER=trudnikapp
-PGPASSWORD=devpassword
+PGPASSWORD=devpassword  # pragma: allowlist secret
 PGHOST=db
 PGPORT=5432
 PGDATABASE=trudnik
-DATABASE_URL=postgresql://trudnikapp:devpassword@db:5432/trudnik
+DATABASE_URL=postgresql://trudnikapp:devpassword@db:5432/trudnik  # pragma: allowlist secret
 
 # PostgREST
 POSTGREST_URL=http://postgrest:3000
@@ -306,11 +306,11 @@ VAPID_CLAIMS_EMAIL=notifications@trudnik.ru
 # Хост: db (имя сервиса в docker-compose, доступен только внутри Docker-сети)
 # Порт: 5433 на хосте → 5432 внутри контейнера
 PGUSER=trudnikapp
-PGPASSWORD=devpassword
+PGPASSWORD=devpassword  # pragma: allowlist secret
 PGHOST=db
 PGPORT=5432
 PGDATABASE=trudnik
-DATABASE_URL=postgresql://trudnikapp:devpassword@db:5432/trudnik
+DATABASE_URL=postgresql://trudnikapp:devpassword@db:5432/trudnik  # pragma: allowlist secret
 ```
 
 ### 5.3 Сводка: какие переменные куда
@@ -318,7 +318,7 @@ DATABASE_URL=postgresql://trudnikapp:devpassword@db:5432/trudnik
 | Переменная | db | postgrest | web | celery_worker | celery_beat | websocket |
 |---|---|---|---|---|---|---|
 | `POSTGRES_USER`/`PGUSER` | ✓ | | ✓ | ✓ | ✓ | |
-| `POSTGRES_PASSWORD`/`PGPASSWORD` | ✓ | | ✓ | ✓ | ✓ | |
+| `POSTGRES_PASSWORD`/`PGPASSWORD` | ✓ | | ✓ | ✓ | ✓ | |  # pragma: allowlist secret
 | `POSTGRES_DB`/`PGDATABASE` | ✓ | | ✓ | ✓ | ✓ | |
 | `PGRST_DB_URI` | | ✓ | | | | |
 | `PGRST_JWT_SECRET` | | ✓ | ✓ | ✓ | ✓ | |
