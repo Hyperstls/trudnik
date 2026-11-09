@@ -1,0 +1,33 @@
+{
+  "id": "R103",
+  "title": "Docs: push-решение, инцидент 2026-11-09, актуальный диапазон задач",
+  "goal": "LAUNCH_CHECKLIST: push-решение закрыто (отключён, R088–R091), MAX как РФ-канал. AUDIT: запись об инциденте (app+DB STOPPED, восстановлено scale/restart) и оставшихся owner-пунктах. DOCS_INDEX: диапазон R051–R102.",
+  "why": "Документы утверждают, что решение по push не принято, и не фиксируют инцидент простоя; диапазон задач устарел.",
+  "files": [
+    "docs/LAUNCH_CHECKLIST.md",
+    "docs/AUDIT_2026-11-08.md",
+    "docs/DOCS_INDEX.md"
+  ],
+  "context_files": [
+    "docs/parity/MIGRATION_LEDGER.md",
+    "docs/rkn_notification_fill.md"
+  ],
+  "interfaces": "LAUNCH_CHECKLIST: заменить пункт «Решение по push-каналу…» на «✅ закрыто 2026-11-09: Web Push отключён (WEB_PUSH_ENABLED=0, R088–R091), политика v1.4; уведомления email/in-app/MAX (РФ); включать только после ст.12/РФ-провайдера». AUDIT: добавить блок «Инцидент 2026-11-09» (время ~15:20–15:35 MSK, app STOPPED/DB CREATING, восстановление scaleProject+restartProject, причина платформой не сообщена, нужен контроль лимитов/алертов) и обновить открытые риски (backup, XFF, DNS, RKN, p95). DOCS_INDEX: R051–R099, дата 2026-11-09.",
+  "acceptance": [
+    "В LAUNCH_CHECKLIST нет «решение не принято»; есть отключённый push и MAX.",
+    "AUDIT содержит запись инцидента и текущие owner-пункты.",
+    "DOCS_INDEX: диапазон R051–R102 (или R051–R103), дата 2026-11-09.",
+    "grep-проверки."
+  ],
+  "out_of_scope": [
+    "Не менять код/RUNBOOK.",
+    "Не менять юридические тексты."
+  ],
+  "checks": [
+    {
+      "name": "grep",
+      "cmd": "{python} -c \"import pathlib,sys; a=pathlib.Path('docs/LAUNCH_CHECKLIST.md').read_text(encoding='utf-8'); b=pathlib.Path('docs/AUDIT_2026-11-08.md').read_text(encoding='utf-8'); c=pathlib.Path('docs/DOCS_INDEX.md').read_text(encoding='utf-8'); ok=('отключён' in a and 'MAX' in a and 'Инцидент 2026-11-09' in b and 'R051–R103' in c); print('OK' if ok else 'FAIL'); sys.exit(0 if ok else 1)\"",
+      "cwd": "."
+    }
+  ]
+}
