@@ -5,6 +5,7 @@
 import hmac
 import json
 import logging
+import re
 import time
 from pathlib import Path
 
@@ -14,6 +15,11 @@ from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 
 logger = logging.getLogger(__name__)
+
+UUID_SEGMENT_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
+    r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
 _START_TS = time.time()
 
 
@@ -122,8 +128,11 @@ def client_error(request):
                 netloc = "%s:%s" % (netloc, parts.port)
             # токены сайта живут в path (/verify-email/<token>,
             # /password-reset/confirm/<token>) — длинные сегменты редактируем (C1)
+            # UUID — не токен: сохраняем для диагностики /jobs/<uuid> (R101)
             path = "/".join(
-                "<redacted>" if len(segment) > 32 else segment
+                "<redacted>"
+                if len(segment) > 32 and not UUID_SEGMENT_RE.match(segment)
+                else segment
                 for segment in parts.path.split("/")
             )
             safe["url"] = urlunsplit((parts.scheme, netloc, path, "", ""))

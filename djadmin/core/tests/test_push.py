@@ -117,6 +117,33 @@ class PushInDrainTests(TestCase):
 
 
 @override_settings(WEB_PUSH_ENABLED=True)
+class PushErrorRedactionTests(TestCase):
+    """R101: URL/endpoint из исключения pywebpush не попадает в лог."""
+
+    def test_exception_url_is_redacted(self):
+        from pywebpush import WebPushException
+
+        exc = WebPushException(
+            "boom https://fcm.googleapis.com/fcm/send/secret-endpoint-token"
+        )
+        with override_settings(
+            WEB_PUSH_ENABLED=True,
+            VAPID_PRIVATE_KEY="mock_priv",  # pragma: allowlist secret
+            VAPID_PUBLIC_KEY="mock_pub",
+        ):
+            with patch("core.push.socket.getaddrinfo",
+                       return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "",
+                                      ("93.184.216.34", 0))]):
+                with patch("pywebpush.WebPusher") as pusher:
+                    pusher.return_value.send.side_effect = exc
+                    with self.assertLogs("core.push", level="WARNING") as captured:
+                        send_web_push(SUB_DATA, "title", "body")
+        joined = chr(10).join(captured.output)
+        self.assertNotIn("secret-endpoint-token", joined)
+        self.assertIn("<url>", joined)
+
+
+@override_settings(WEB_PUSH_ENABLED=True)
 class PushEndpointValidationTests(TestCase):
     """R055: анти-SSRF фильтр endpoint'а и лимит подписок."""
 

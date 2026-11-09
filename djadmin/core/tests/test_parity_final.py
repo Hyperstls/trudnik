@@ -119,6 +119,21 @@ class ClientErrorTests(TestCase):
         self.assertNotIn(token, joined)
         self.assertNotIn("bW5vcHFyc3R1", joined)
 
+    def test_uuid_path_is_preserved(self):
+        """R101: UUID — не токен, оставляем для диагностики /jobs/<uuid>."""
+        uuid = "123e4567-e89b-12d3-a456-426614174000"
+        with self.assertLogs("core.views_service", level="WARNING") as captured:
+            self.client.post(
+                "/api/client-error",
+                data=json.dumps({
+                    "message": "boom",
+                    "url": "https://trudnik.ru/jobs/" + uuid,
+                }),
+                content_type="application/json",
+            )
+        joined = chr(10).join(captured.output)
+        self.assertIn("/jobs/" + uuid, joined)
+
 
 class RepostTests(TestCase):
     def test_owner_reposts_with_skills(self):

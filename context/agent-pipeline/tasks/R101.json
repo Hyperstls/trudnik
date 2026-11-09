@@ -1,0 +1,37 @@
+{
+  "id": "R101",
+  "title": "Логи: редактировать URL в ошибках pywebpush; сохранять UUID в client_error",
+  "goal": "push.py: перед логированием str(exc) заменять URL на <url> (endpoint/токены не утекают). views_service.client_error: длинные сегменты пути редактировать, кроме UUID (диагностика /jobs/<uuid> сохраняется).",
+  "why": "R094-ревью: pywebpush-исключения могут содержать endpoint; R071-ревью: UUID (36>32) режется, теряется диагностика. 152-ФЗ: endpoint — идентификатор устройства.",
+  "files": [
+    "djadmin/core/push.py",
+    "djadmin/core/views_service.py",
+    "djadmin/core/tests/test_push.py",
+    "djadmin/core/tests/test_parity_final.py"
+  ],
+  "context_files": [
+    "djadmin/core/privacy.py"
+  ],
+  "interfaces": "push.py: import re; URL_RE = re.compile(r'https?://[^\\s'\\\"]+'); _redact_urls(text)->URL_RE.sub('<url>', text); оба logger.warning используют _redact_urls(str(exc))[:120]. views_service.py: import re; UUID_SEGMENT_RE = re.compile(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'); условие redacted: len(segment)>32 and not UUID_SEGMENT_RE.match(segment). test_push: WebPusher raises Exception('boom https://fcm.googleapis.com/fcm/send/secret-token') → assertLogs, нет 'secret-token', есть '<url>'. test_parity_final: client_error с URL /jobs/<uuid> сохраняет uuid; /verify-email/<token> режется.",
+  "acceptance": [
+    "В логах webpush нет URL/endpoint/токенов, только <url>.",
+    "UUID-сегмент в client_error сохраняется, прочие длинные токены режутся.",
+    "py_compile; core.tests.test_push, core.tests.test_parity_final проходят."
+  ],
+  "out_of_scope": [
+    "Не менять формат остальных логов.",
+    "Не менять ответы API."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/push.py djadmin/core/views_service.py djadmin/core/tests/test_push.py djadmin/core/tests/test_parity_final.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_push core.tests.test_parity_final --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

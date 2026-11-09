@@ -5,12 +5,20 @@ VAPID-ключи из env; payload — JSON c title/body/tag/url.
 import ipaddress
 import json
 import logging
+import re
 import socket
 import urllib.parse
 
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
+# endpoint/токены в тексте исключений не должны попадать в лог (152-ФЗ)
+URL_RE = re.compile(r"https?://[^\s'\"]+")
+
+
+def _redact_urls(text: str) -> str:
+    return URL_RE.sub("<url>", text or "")
 
 
 def vapid_claims() -> dict:
@@ -86,8 +94,8 @@ def send_web_push(subscription_info: dict, title: str, body: str, url: str = "/"
     except WebPushException as exc:
         status = getattr(getattr(exc, "response", None), "status_code", None)
         gone = status in (404, 410)
-        logger.warning("webpush failed (status=%s): %s", status, str(exc)[:120])
+        logger.warning("webpush failed (status=%s): %s", status, _redact_urls(str(exc))[:120])
         return {"success": False, "error": str(exc)[:200], "gone": gone}
     except Exception as exc:
-        logger.warning("webpush unexpected: %s", str(exc)[:120])
+        logger.warning("webpush unexpected: %s", _redact_urls(str(exc))[:120])
         return {"success": False, "error": str(exc)[:200], "gone": False}
