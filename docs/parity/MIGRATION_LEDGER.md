@@ -1,13 +1,14 @@
 # Migration ledger — P1-13 / DB-default P1-10
 
 **Дата:** 2026-11-09
-**Статус:** dev и production — **80/80** (150–165); миграция 165 применена на проде
+**Статус:** dev — **81/81** (150–166); production — 80/80, миграция 166 — в окне
+(`MIGRATIONS_ENABLED=true` → redeploy → флаг false); миграция 165 применена на проде
 2026-11-09 10:49 MSK (run-лог: files=80, applied=80, pending=0), флаг `MIGRATIONS_ENABLED`
 возвращён в `false`; `/privacy` отдаёт «Редакция … (версия 1.4)»; прод RUNNING, `/health` 200,
 `/privacy`, `/terms`, `/safety` — 200. Флаги `MIGRATIONS_ENABLED` и
 `MIGRATIONS_RECONCILE` на проде — **false**.
 
-## Журнал 159–165 (2026-11-06…09)
+## Журнал 159–166 (2026-11-06…09)
 
 | # | Файл | Дата применения | Что |
 |---|---|---|---|
@@ -17,16 +18,19 @@
 | 162 | `162_rating_appeals.sql` | 2026-11-06 | Апелляции на отзывы |
 | 163 | `163_error_events.sql` | 2026-11-07 | Внутренний error tracking |
 | 164 | `164_drop_religion_columns.sql` | 2026-11-08 18:25 MSK | DROP religion_id/preferred_religion |
-| 165 | `165_privacy_policy_v14.sql` | dev 2026-11-09 10:37 MSK; прод — в окне | `site_pages.privacy` → политика v1.4 (Web Push отключён); INSERT если нет, UPDATE только v1.2/v1.3 (v1.4 и кастом без маркера не трогает) |
+| 165 | `165_privacy_policy_v14.sql` | dev 2026-11-09 10:37 MSK; прод — 10:49 MSK | `site_pages.privacy` → политика v1.4 (Web Push отключён); INSERT если нет, UPDATE только v1.2/v1.3 |
+| 166 | `166_announcement_sort_order.sql` | dev 2026-11-09 10:58 UTC; прод — в окне | `announcements.sort_order` — ручной порядок объявлений /info (админка: закрепить/активно/порядок) |
 
 165 (dev): `apply_migrations.py` → «Миграция 165_privacy_policy_v14.sql успешно применена»,
 ledger 80/80; `site_pages.privacy` содержит «версия 1.4»; повторный прогон идемпотентен
 (UPDATE 0, content/updated_at не меняются). SHA256 165 —
 `80bd856aaa5bd82ec1b7454d2db3181430e68da9c6fa9b746809007ce493c0f3`
 (prod, LF; локальный CRLF-файл даёт `f01f5752…`, содержимое идентично).
-Прод-процедура: временно `MIGRATIONS_ENABLED=true` (env id 76937) → redeploy → в run-логе
+Прод-процедура 165: временно `MIGRATIONS_ENABLED=true` (env id 76937) → redeploy → в run-логе
 NOTICE `165_privacy_policy_v14: privacy pages at v1.4 = 1` → вернуть флаг `false` → проверить
 `/privacy` (страница из БД отдаёт v1.4).
+166 (LF, prod): `188c199003138186921f503d127dbff43e09f6ee5f5a3e4a97716545d9b412c2`;
+dev-файл (CRLF) — `47f223d60727d121dc507855f31a426e06df0a99ce2ab6aac788fa7777ab5616`.
 
 Источник записи 159–164: run-логи Amvera (метки контейнера — UTC; для 164 `15:25:22Z` = 18:25 MSK) (`apply_migrations.py` → «Миграция … успешно применена»,
 `check_migrations.py` → `files=79, applied=79, pending=0`, RESULT OK; SHA256 164 —

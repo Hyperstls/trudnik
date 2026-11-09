@@ -1,0 +1,27 @@
+{
+  "id": "R099",
+  "title": "Ledger: миграция 166 (announcements.sort_order)",
+  "goal": "Записать 166 в MIGRATION_LEDGER: dev 81/81, prod — применить в том же окне; SHA256, назначение.",
+  "why": "Ledger должен отражать все SQL-миграции (CI check_migrations и аудит).",
+  "files": [
+    "docs/parity/MIGRATION_LEDGER.md"
+  ],
+  "context_files": [
+    "migrations/166_announcement_sort_order.sql"
+  ],
+  "interfaces": "Статус dev 81/81; журнал 159–166 + строка 166 с SHA256 47f223d6…; прод-процедура MIGRATIONS_ENABLED=true.",
+  "acceptance": [
+    "Ledger содержит 166, SHA256, dev 81/81; прод помечен «в окне», без ложного применения.",
+    "grep-проверка."
+  ],
+  "out_of_scope": [
+    "Не менять код/миграции."
+  ],
+  "checks": [
+    {
+      "name": "grep",
+      "cmd": "{python} -c \"import pathlib,sys; s=pathlib.Path('docs/parity/MIGRATION_LEDGER.md').read_text(encoding='utf-8'); sys.exit(0 if '166' in s and '81/81' in s and '47f223d6' in s else 1)\"",
+      "cwd": "."
+    }
+  ]
+}
