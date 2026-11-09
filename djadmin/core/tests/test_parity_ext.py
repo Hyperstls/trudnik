@@ -6,7 +6,7 @@ from unittest.mock import patch
 from django.conf import settings
 from django.contrib.messages import get_messages
 from django.core.cache import cache
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -586,14 +586,24 @@ class FavoritesPageTests(TestCase):
 
 
 class PushSettingsTests(TestCase):
+    @override_settings(WEB_PUSH_ENABLED=True)
     def test_settings_page_wires_push(self):
-        user = make_profile("push-settings@example.com")
+        user = make_profile("push-settings-on@example.com")
         self.client.force_login(user)
         response = self.client.get(reverse("core:notification_prefs"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "js/api.js")
         self.assertContains(response, "js/push-notifications.js")
         self.assertContains(response, "push-toggle")
+
+    @override_settings(WEB_PUSH_ENABLED=False)
+    def test_settings_page_hides_push_when_disabled(self):
+        user = make_profile("push-settings-off@example.com")
+        self.client.force_login(user)
+        response = self.client.get(reverse("core:notification_prefs"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "js/push-notifications.js")
+        self.assertNotContains(response, "push-toggle")
 
     def test_push_manager_uses_meta_csrf(self):
         path = Path(settings.REPO_ROOT) / "static" / "js" / "push-notifications.js"

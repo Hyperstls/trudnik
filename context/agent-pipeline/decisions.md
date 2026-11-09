@@ -3949,3 +3949,67 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review-agent
 
 **Пакет:** context/agent-pipeline/packs/R090.review.prompt.md
+
+## 2026-11-09 02:41:33 — R089: контракт обновлён
+
+**Причина:** (без причины)
+
+**Проверки до:** ['compile', 'tests']
+
+**Проверки после:** ['compile', 'tests']
+
+## 2026-11-09 02:41:42 — R089: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** djadmin/core/tests/test_push.py — коммит R088 bec48ff (pragma), не относится к R089; R089 трогает view/template/test_parity_ext
+
+**Дрейф, который обойдён:** ['djadmin/core/tests/test_push.py']
+
+## 2026-11-09 02:52:26 — R089: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** test_push.py — коммит R088; R089: view/template/test_parity_ext/test_notifications
+
+**Дрейф, который обойдён:** ['djadmin/core/tests/test_notifications.py', 'djadmin/core/tests/test_push.py']
+
+## 2026-11-09 02:56:41 — R089: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** test_push.py — коммит R088; R089: view/template/test_parity_ext/test_notifications
+
+**Дрейф, который обойдён:** ['djadmin/core/tests/test_notifications.py', 'djadmin/core/tests/test_push.py']
+
+## 2026-11-09 03:01:03 — R089: ручной перевод статуса
+
+**Кто:** Hyperstls
+
+**Почему:** (без причины)
+
+**Переход:** reviewing → fixing
+
+## 2026-11-09 03:01:03 — R089: контракт обновлён
+
+**Причина:** (без причины)
+
+**Проверки до:** ['compile', 'tests']
+
+**Проверки после:** ['compile', 'tests']
+
+## 2026-11-09 03:01:04 — R089: verify --skip-scope (обход scope)
+
+**Кто:** Hyperstls
+
+**Почему:** test_push.py — коммит R088; R089: view/template/test_parity_ext/test_notifications
+
+**Дрейф, который обойдён:** ['djadmin/core/tests/test_push.py']
+
+## 2026-11-09 03:11:07 — R089: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R089.review.prompt.md

@@ -279,10 +279,14 @@ TYPE_LABELS = (
 @login_required
 def notification_prefs(request):
     prefs = request.user.notification_prefs or {}
+    web_push_enabled = bool(getattr(settings, "WEB_PUSH_ENABLED", False))
     if request.method == "POST":
         updated = dict(prefs)
         for key, _label in CHANNEL_LABELS + TYPE_LABELS:
             updated[key] = key in request.POST
+        if not web_push_enabled:
+            # Push выключен: не теряем ранее сохранённое предпочтение пользователя.
+            updated["push_enabled"] = bool(prefs.get("push_enabled", False))
         frequency = request.POST.get("digest_frequency")
         updated["digest_frequency"] = frequency if frequency in ("instant", "daily", "off") else "daily"
         Profile.objects.filter(pk=request.user.pk).update(notification_prefs=updated)
@@ -295,11 +299,17 @@ def notification_prefs(request):
                 "id": item["id"], "name": item.get("name") or _("Мой поиск"),
                 "notify": item.get("notify", True) is not False,
             })
+    channels = [
+        (k, label, prefs.get(k, True))
+        for k, label in CHANNEL_LABELS
+        if web_push_enabled or k != "push_enabled"
+    ]
     context = {
-        "channels": [(k, label, prefs.get(k, True)) for k, label in CHANNEL_LABELS],
+        "channels": channels,
         "types": [(k, label, prefs.get(k, True)) for k, label in TYPE_LABELS],
         "saved_searches": searches,
         "digest_frequency": prefs.get("digest_frequency", "daily"),
+        "web_push_enabled": web_push_enabled,
     }
     return render(request, "core/notification_settings.html", context)
 

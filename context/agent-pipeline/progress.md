@@ -1574,3 +1574,17 @@
 - **2026-11-09 02:30:40** | **R090** | `review-packet` | **READY** | bytes=14142 new_files=[]
 - **2026-11-09 02:35:55** | **R088** | `review` | **PASS** | by=independent-review-agent → done
 - **2026-11-09 02:40:36** | **R090** | `review` | **PASS** | by=independent-review-agent → done
+- **2026-11-09 02:41:28** | **R089** | `verify` | **FAIL** | scope=fail checks=skipped(scope) attempts=1/3 → fixing
+- **2026-11-09 02:41:33** | **R089** | `update` | **OK** | revision=1 reason=(без причины)
+- **2026-11-09 02:41:33** | **R089** | `verify` | **FAIL** | scope=fail checks=skipped(scope) attempts=2/3 → fixing
+- **2026-11-09 02:41:42** | **R089** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=djadmin/core/tests/test_push.py — коммит R088 bec48ff (pragma), не относится к R089; R089 трогает view/template/test_parity_ext drift=['djadmin/core/tests/test_push.py']
+- **2026-11-09 02:51:34** | **R089** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=2/3
+- **2026-11-09 02:52:26** | **R089** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=test_push.py — коммит R088; R089: view/template/test_parity_ext/test_notifications drift=['djadmin/core/tests/test_notifications.py', 'djadmin/core/tests/test_push.py']
+- **2026-11-09 02:56:34** | **R089** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=2/3
+- **2026-11-09 02:56:41** | **R089** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=test_push.py — коммит R088; R089: view/template/test_parity_ext/test_notifications drift=['djadmin/core/tests/test_notifications.py', 'djadmin/core/tests/test_push.py']
+- **2026-11-09 03:00:57** | **R089** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=2/3
+- **2026-11-09 03:01:03** | **R089** | `set` | **reviewing→fixing** | by=Hyperstls reason=(без причины)
+- **2026-11-09 03:01:03** | **R089** | `update` | **OK** | revision=2 reason=(без причины)
+- **2026-11-09 03:01:04** | **R089** | `verify` | **SKIP-SCOPE** | by=Hyperstls reason=test_push.py — коммит R088; R089: view/template/test_parity_ext/test_notifications drift=['djadmin/core/tests/test_push.py']
+- **2026-11-09 03:10:58** | **R089** | `verify` | **PASS** | scope=skipped checks=compile=0, tests=0 attempts=2/3
+- **2026-11-09 03:11:07** | **R089** | `review` | **PASS** | by=independent-review-agent → done

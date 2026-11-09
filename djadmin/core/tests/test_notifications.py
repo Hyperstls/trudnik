@@ -1,7 +1,7 @@
 """Фаза 2д: уведомления (доступ только к своим, отметки, счётчик)."""
 import uuid
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from core.models import Notification, Profile
@@ -125,6 +125,7 @@ class NotificationSettingsDiagnosticsTests(TestCase):
         self.user.save(update_fields=["notification_prefs"])
         self.client.force_login(self.user)
 
+    @override_settings(WEB_PUSH_ENABLED=True)
     def test_saved_search_and_ios_help_visible(self):
         response = self.client.get(reverse("core:notification_prefs"))
         self.assertContains(response, "Москва удалёнка")

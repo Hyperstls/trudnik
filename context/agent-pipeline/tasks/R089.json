@@ -1,0 +1,41 @@
+{
+  "id": "R089",
+  "title": "UI: скрыть Web Push в настройках при выключенном канале",
+  "goal": "При WEB_PUSH_ENABLED=False не показывать блок Push и чекбокс push_enabled в настройках уведомлений; при включённом флаге — прежний UI. Новых строк не добавлять (переводы не требуются).",
+  "why": "R088 отключает канал по умолчанию; UI не должен предлагать включить push, если сервер отклонит подписку 403. Решение владельца: без трансграничной передачи.",
+  "files": [
+    "djadmin/core/views_profile_ext.py",
+    "djadmin/core/templates/core/notification_settings.html",
+    "djadmin/core/tests/test_parity_ext.py",
+    "djadmin/core/tests/test_notifications.py"
+  ],
+  "context_files": [
+    "djadmin/config/settings.py",
+    "djadmin/core/views_notify.py"
+  ],
+  "interfaces": "views_profile_ext.notification_prefs: context['web_push_enabled'] = bool(getattr(settings,'WEB_PUSH_ENABLED',False)); channels = CHANNEL_LABELS без push_enabled при выключенном канале; POST-обработка не меняется (push_enabled станет False, т.к. ключа нет в POST). template: карточка 'Push-уведомления' и <script src=push-notifications.js> обёрнуты в {% if web_push_enabled %}; при выключенном — ничего не рендерится (без новых msgid). test_parity_ext.PushSettingsTests: базовый тест с @override_settings(WEB_PUSH_ENABLED=True); новый test_settings_page_hides_push_when_disabled (False) — нет push-toggle/push-notifications.js. views_profile_ext: при POST с выключенным каналом push_enabled сохраняется из prefs (не сбрасывается). test_notifications.NotificationSettingsDiagnosticsTests.test_saved_search_and_ios_help_visible — @override_settings(WEB_PUSH_ENABLED=True).",
+  "acceptance": [
+    "При WEB_PUSH_ENABLED=False в /profile/notifications нет кнопки/блока push, нет push-чекбокса, push-notifications.js не подключается.",
+    "При WEB_PUSH_ENABLED=True UI идентичен прежнему.",
+    "Новых msgid нет; makemessages/compilemessages не требуются.",
+    "Сообщение о сохранении настроек и digest-блок не меняются.",
+    "py_compile; core.tests.test_public_views, core.tests.test_flows проходят."
+  ],
+  "out_of_scope": [
+    "Не менять политику/документы (R090).",
+    "Не менять JS push-notifications.js.",
+    "Не добавлять новые переводы."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views_profile_ext.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views core.tests.test_flows core.tests.test_parity_ext.PushSettingsTests core.tests.test_notifications --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}
