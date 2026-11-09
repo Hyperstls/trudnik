@@ -1,8 +1,9 @@
 # Migration ledger — P1-13 / DB-default P1-10
 
 **Дата:** 2026-11-09
-**Статус:** dev — **80/80** (150–165); production — 79/79, миграция 165
-готовится к применению в окне (MIGRATIONS_ENABLED=true → redeploy → флаг false); прод RUNNING, `/health` 200,
+**Статус:** dev и production — **80/80** (150–165); миграция 165 применена на проде
+2026-11-09 10:49 MSK (run-лог: files=80, applied=80, pending=0), флаг `MIGRATIONS_ENABLED`
+возвращён в `false`; `/privacy` отдаёт «Редакция … (версия 1.4)»; прод RUNNING, `/health` 200,
 `/privacy`, `/terms`, `/safety` — 200. Флаги `MIGRATIONS_ENABLED` и
 `MIGRATIONS_RECONCILE` на проде — **false**.
 
@@ -21,7 +22,8 @@
 165 (dev): `apply_migrations.py` → «Миграция 165_privacy_policy_v14.sql успешно применена»,
 ledger 80/80; `site_pages.privacy` содержит «версия 1.4»; повторный прогон идемпотентен
 (UPDATE 0, content/updated_at не меняются). SHA256 165 —
-`f01f5752098fff7fc650bd4d08c40b23523730dc35c6eb388a1df6008fcf0b1d`.
+`80bd856aaa5bd82ec1b7454d2db3181430e68da9c6fa9b746809007ce493c0f3`
+(prod, LF; локальный CRLF-файл даёт `f01f5752…`, содержимое идентично).
 Прод-процедура: временно `MIGRATIONS_ENABLED=true` (env id 76937) → redeploy → в run-логе
 NOTICE `165_privacy_policy_v14: privacy pages at v1.4 = 1` → вернуть флаг `false` → проверить
 `/privacy` (страница из БД отдаёт v1.4).
