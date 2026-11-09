@@ -97,8 +97,8 @@ class PushNotificationsManager {
             const subscription = await this.swRegistration.pushManager.getSubscription();
             if (subscription) {
                 // Отправляем запрос на удаление подписки на сервер
-                await apiFetch('/push/subscription', {
-                    method: 'DELETE',
+                await apiFetch('/push/unsubscribe', {
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-Token': this._getCSRFToken()

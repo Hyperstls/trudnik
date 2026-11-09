@@ -1,0 +1,40 @@
+{
+  "id": "R091",
+  "title": "Fix: не подключать push-JS на /jobs/<id> при выключенном канале; верный unsubscribe endpoint",
+  "goal": "Гейтить push-prompt и push-notifications.js на карточке задания флагом WEB_PUSH_ENABLED; исправить клиентскую отписку: POST /push/unsubscribe вместо несуществующего DELETE /push/subscription. Тесты на оба состояния.",
+  "why": "Нон-блокеры R089/R088: при выключенном канале карточка задания всё равно грузит push-JS и предлагает включить; JS отписки бьёт в несуществующий маршрут, поэтому отписка из UI не работала.",
+  "files": [
+    "djadmin/core/views.py",
+    "djadmin/core/templates/core/job_detail.html",
+    "static/js/push-notifications.js",
+    "djadmin/core/tests/test_public_views.py"
+  ],
+  "context_files": [
+    "djadmin/core/views_notify.py",
+    "djadmin/core/urls.py"
+  ],
+  "interfaces": "views.py job_detail: context['web_push_enabled']=bool(getattr(settings,'WEB_PUSH_ENABLED',False)); template: prompt-блок и скрипты push-notifications.js + inline prompt-скрипт обёрнуть в {% if web_push_enabled %}; static/js/push-notifications.js unsubscribe(): apiFetch('/push/unsubscribe', {method:'POST', headers Content-Type + X-CSRF-Token, body {endpoint}}); test_public_views: новый тест job_detail с ?push=1 при False → нет 'push-notifications.js'/'push-prompt-enable'; при True → есть.",
+  "acceptance": [
+    "При WEB_PUSH_ENABLED=False карточка задания с ?push=1 не содержит push-prompt и push-notifications.js.",
+    "При True поведение прежнее.",
+    "JS отписки вызывает POST /push/unsubscribe (маршрут существует), а не DELETE /push/subscription.",
+    "py_compile; test_public_views; JS не ломает build:css."
+  ],
+  "out_of_scope": [
+    "Не включать push.",
+    "Не менять серверные API отписки.",
+    "Не менять политику."
+  ],
+  "checks": [
+    {
+      "name": "compile",
+      "cmd": "{python} -m py_compile djadmin/core/views.py djadmin/core/tests/test_public_views.py",
+      "cwd": "."
+    },
+    {
+      "name": "tests",
+      "cmd": "{python} djadmin/manage.py test core.tests.test_public_views --keepdb -v 0",
+      "cwd": "."
+    }
+  ]
+}

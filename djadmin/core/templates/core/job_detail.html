@@ -30,7 +30,7 @@
     </div>
     {% endif %}
 
-    {% if show_push_prompt and user.is_authenticated %}
+    {% if show_push_prompt and user.is_authenticated and web_push_enabled %}
     <div id="push-prompt" class="hidden mb-4 rounded-2xl border border-primary-200 bg-primary-50 p-4 flex flex-wrap items-center justify-between gap-3" role="region" aria-label="{% translate 'Уведомления о задании' %}">
         <div class="min-w-0">
             <p class="text-sm font-semibold text-neutral-800">{% translate "Не пропустите ответ" %}</p>
@@ -299,6 +299,7 @@
 {% if request.GET.created == '1' %}<script nonce="{{ request.csp_nonce }}" src="{% static 'js/job-draft.js' %}"></script>{% endif %}
 <script nonce="{{ request.csp_nonce }}" src="{% static 'js/job-view.js' %}" defer></script>
 <script nonce="{{ request.csp_nonce }}" src="{% static 'js/api.js' %}"></script>
+{% if web_push_enabled %}
 <script nonce="{{ request.csp_nonce }}" src="{% static 'js/push-notifications.js' %}"></script>
 <script nonce="{{ request.csp_nonce }}">
 (function(){
@@ -358,4 +359,5 @@
   });
 })();
 </script>
+{% endif %}
 {% endblock %}

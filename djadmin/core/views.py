@@ -424,6 +424,7 @@ def job_detail(request, job_id):
         "review_tag_labels": tag_labels("employer"),
         "is_owner": is_owner,
         "show_push_prompt": request.GET.get("push") == "1",
+        "web_push_enabled": bool(getattr(settings, "WEB_PUSH_ENABLED", False)),
         "yandex_maps_key": os.getenv("YANDEX_MAPS_API_KEY", ""),
         "is_fav": (
             request.user.is_authenticated

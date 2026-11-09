@@ -2029,3 +2029,31 @@ class InfoPageTests(TestCase):
     def test_empty_state(self):
         response = self.client.get("/info")
         self.assertContains(response, "Пока без новостей")
+
+
+class JobDetailPushPromptTests(TestCase):
+    """R091: push-JS на карточке задания только при включённом канале."""
+
+    def setUp(self):
+        employer = make_profile("push-job-emp@example.com", role="employer")
+        self.job = make_job(employer, work_type="Push prompt job")
+
+    def test_prompt_hidden_when_push_disabled(self):
+        from django.test import override_settings
+        user = make_profile("push-off-worker@example.com")
+        self.client.force_login(user)
+        with override_settings(WEB_PUSH_ENABLED=False):
+            response = self.client.get(f"/jobs/{self.job.pk}?push=1")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "push-notifications.js")
+        self.assertNotContains(response, 'id="push-prompt-enable"')
+
+    def test_prompt_visible_when_push_enabled(self):
+        from django.test import override_settings
+        user = make_profile("push-job-worker@example.com")
+        self.client.force_login(user)
+        with override_settings(WEB_PUSH_ENABLED=True):
+            response = self.client.get(f"/jobs/{self.job.pk}?push=1")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "push-notifications.js")
+        self.assertContains(response, 'id="push-prompt-enable"')
