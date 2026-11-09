@@ -1,7 +1,8 @@
 # Migration ledger — P1-13 / DB-default P1-10
 
 **Дата:** 2026-11-09
-**Статус:** dev — **82/82** (150–167); production — 81/81, миграция 167 — в окне; миграция 166 применена на проде
+**Статус:** dev и production — **82/82** (150–167); миграция 167 применена на проде
+2026-11-09 17:13 MSK (`files=82 applied=82 pending=0`), флаг `MIGRATIONS_ENABLED` возвращён в `false`; миграция 166 применена на проде
 2026-11-09 14:25 MSK (`files=81 applied=81 pending=0`), флаг `MIGRATIONS_ENABLED` возвращён в `false`; миграция 165 применена на проде
 2026-11-09 10:49 MSK (run-лог: files=80, applied=80, pending=0), флаг `MIGRATIONS_ENABLED`
 возвращён в `false`; `/privacy` отдаёт «Редакция … (версия 1.4)»; прод RUNNING, `/health` 200,
@@ -20,7 +21,7 @@
 | 164 | `164_drop_religion_columns.sql` | 2026-11-08 18:25 MSK | DROP religion_id/preferred_religion |
 | 165 | `165_privacy_policy_v14.sql` | dev 2026-11-09 10:37 MSK; прод — 10:49 MSK | `site_pages.privacy` → политика v1.4 (Web Push отключён); INSERT если нет, UPDATE только v1.2/v1.3 |
 | 166 | `166_announcement_sort_order.sql` | dev 2026-11-09 10:58 UTC; прод 14:25 MSK | `announcements.sort_order` — ручной порядок объявлений /info (админка: закрепить/активно/порядок) |
-| 167 | `167_privacy_policy_v15.sql` | dev 2026-11-09 16:49 MSK; прод — в окне | `site_pages.privacy` → политика v1.5: MAX только верификация, уведомления email/in-app |
+| 167 | `167_privacy_policy_v15.sql` | dev 16:49 MSK; прод 17:13 MSK | `site_pages.privacy` → политика v1.5: MAX только верификация, уведомления email/in-app |
 
 165 (dev): `apply_migrations.py` → «Миграция 165_privacy_policy_v14.sql успешно применена»,
 ledger 80/80; `site_pages.privacy` содержит «версия 1.4»; повторный прогон идемпотентен
