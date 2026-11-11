@@ -1,0 +1,30 @@
+{
+  "id": "R114",
+  "title": "CI: приостановить прод-пробы Uptime и UX quality на время паузы Amvera",
+  "goal": "Убрать schedule-триггеры из uptime.yml и ux-quality.yml, оставив workflow_dispatch/push; добавить комментарий, как вернуть при возобновлении прода.",
+  "why": "Прод намеренно остановлен до подачи уведомления РКН; Uptime каждые 30 минут падает и открывает issue #17, UX quality по понедельникам ударит в недоступный прод.",
+  "files": [
+    ".github/workflows/uptime.yml",
+    ".github/workflows/ux-quality.yml"
+  ],
+  "context_files": [
+    "scripts/uptime_check.py"
+  ],
+  "interfaces": "В uptime.yml отключить schedule И push-триггеры (оставить workflow_dispatch), в ux-quality.yml — schedule; добавить комментарии с порядком возврата.",
+  "acceptance": [
+    "В uptime.yml и ux-quality.yml нет активных schedule; uptime не запускается на push.",
+    "workflow_dispatch сохранён, YAML валиден.",
+    "Комментарии о причине и возврате есть."
+  ],
+  "out_of_scope": [
+    "Не менять скрипт uptime_check.",
+    "Не трогать другие workflow."
+  ],
+  "checks": [
+    {
+      "name": "yaml+grep",
+      "cmd": "{python} -c \"import pathlib,yaml,sys; fs=['.github/workflows/uptime.yml','.github/workflows/ux-quality.yml']; bad=[]; [bad.append(f) for f in fs if 'schedule' in (yaml.safe_load(pathlib.Path(f).read_text(encoding='utf-8')).get('on') or {})]; print('OK' if not bad else bad); sys.exit(0 if not bad else 1)\"",
+      "cwd": "."
+    }
+  ]
+}

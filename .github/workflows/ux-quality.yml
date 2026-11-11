@@ -2,8 +2,10 @@ name: UX quality
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 6 * * 1"
+  # Пауза прода до подачи уведомления РКН (2026-11-11): live-аудит отключён.
+  # При возобновлении вернуть:
+  # schedule:
+  #   - cron: "0 6 * * 1"
 
 permissions:
   contents: read
