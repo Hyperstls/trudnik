@@ -2,16 +2,14 @@ name: Uptime
 
 on:
   workflow_dispatch:
-  # push-триггер также отключён на паузе (иначе любой push workflow даст FAIL).
-  # При возобновлении вернуть:
-  # push:
-  #   paths:
-  #     - "scripts/uptime_check.py"
-  #     - ".github/workflows/uptime.yml"
-  # Пауза прода до подачи уведомления РКН (2026-11-11): schedule отключён.
-  # При возобновлении вернуть:
-  # schedule:
-  #   - cron: "*/30 * * * *"
+  push:
+    paths:
+      - "scripts/uptime_check.py"
+      - ".github/workflows/uptime.yml"
+  schedule:
+    - cron: "*/30 * * * *"
+# Прод на паузе до уведомления РКН: job скипается при repository variable
+# PROD_PAUSED=true. При возобновлении прода выставить PROD_PAUSED=false.
 
 permissions:
   contents: read
@@ -19,6 +17,7 @@ permissions:
 
 jobs:
   probe:
+    if: vars.PROD_PAUSED != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

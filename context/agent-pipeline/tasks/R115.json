@@ -1,0 +1,31 @@
+{
+  "id": "R115",
+  "title": "CI: вернуть расписание проб с паузой через PROD_PAUSED",
+  "goal": "Вернуть schedule/push в uptime.yml и schedule в ux-quality.yml; добавить job-if `vars.PROD_PAUSED != 'true'`, чтобы при паузе прода пробы скипались, а не падали.",
+  "why": "Владелец не может руками включать/выключать; прод на паузе до РКН. Расписание должно быть активным, но не шуметь.",
+  "files": [
+    ".github/workflows/uptime.yml",
+    ".github/workflows/ux-quality.yml"
+  ],
+  "context_files": [
+    "scripts/uptime_check.py"
+  ],
+  "interfaces": "uptime.yml: активные push+schedule как раньше; job probe — if: vars.PROD_PAUSED != 'true'. ux-quality.yml: активный schedule; оба job (lighthouse, axe) — тот же if. Repository variable PROD_PAUSED=true сейчас; при возобновлении прода — false.",
+  "acceptance": [
+    "YAML валиден; schedule есть в обоих; uptime push-триггер есть.",
+    "У job'ов есть guard по vars.PROD_PAUSED.",
+    "При PROD_PAUSED=true manual Uptime run завершается skipped и не открывает issue.",
+    "Другие workflow не тронуты."
+  ],
+  "out_of_scope": [
+    "Не менять скрипт uptime_check.",
+    "Не менять прод."
+  ],
+  "checks": [
+    {
+      "name": "yaml",
+      "cmd": "{python} -c \"import pathlib,yaml,sys; fs=['.github/workflows/uptime.yml','.github/workflows/ux-quality.yml']; bad=[]; [bad.append(f) for f in fs if 'schedule' not in ((lambda d: d.get('on') or d.get(True) or {})(yaml.safe_load(pathlib.Path(f).read_text(encoding='utf-8'))))]; print('OK' if not bad else bad); sys.exit(0 if not bad else 1)\"",
+      "cwd": "."
+    }
+  ]
+}

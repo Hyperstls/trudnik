@@ -4487,3 +4487,19 @@ P2-01 карта закрыта. Ключ должен быть JS API с refere
 **Кто:** independent-review-agent
 
 **Пакет:** context/agent-pipeline/packs/R114.review.prompt.md
+
+## 2026-11-11 18:52:55 — R115: контракт обновлён
+
+**Причина:** (без причины)
+
+**Проверки до:** ['yaml']
+
+**Проверки после:** ['yaml']
+
+## 2026-11-11 18:58:23 — R115: ревью пройдено
+
+**Вердикт:** PASS
+
+**Кто:** independent-review-agent
+
+**Пакет:** context/agent-pipeline/packs/R115.review.prompt.md

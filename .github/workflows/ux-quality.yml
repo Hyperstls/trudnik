@@ -2,10 +2,9 @@ name: UX quality
 
 on:
   workflow_dispatch:
-  # Пауза прода до подачи уведомления РКН (2026-11-11): live-аудит отключён.
-  # При возобновлении вернуть:
-  # schedule:
-  #   - cron: "0 6 * * 1"
+  schedule:
+    - cron: "0 6 * * 1"
+# Прод на паузе до уведомления РКН: jobs скипаются при PROD_PAUSED=true.
 
 permissions:
   contents: read
@@ -17,6 +16,7 @@ concurrency:
 
 jobs:
   lighthouse:
+    if: vars.PROD_PAUSED != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +27,7 @@ jobs:
           uploadArtifacts: true
 
   axe:
+    if: vars.PROD_PAUSED != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
